@@ -16,11 +16,19 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        request.auth.token.email == 'yilongwang05@gmail.com'
+      );
     }
 
     function isApprovedUser() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true;
+      // In rules, we can't easily check another doc's field without potentially triggering recursive lookups
+      // but get() is fine if carefully used. For now, we'll allow admin or verified owner.
+      return isSignedIn() && (
+        request.auth.token.email == 'yilongwang05@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true
+      );
     }
 
     function isOwner(userId) {
@@ -43,9 +51,9 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isOwner(userId) && 
                       request.resource.data.keys().hasAll(['email', 'displayName', 'photoURL', 'approved']) &&
-                      request.resource.data.approved == false; // Direct signups are pending approval
-      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL'])) ||
-                      isAdmin();
+                      (request.resource.data.approved == false || request.auth.token.email == 'yilongwang05@gmail.com');
+      allow update: if (isOwner(userId) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'approved'])) &&
+                      (isAdmin() || (isOwner(userId) && request.resource.data.approved == resource.data.approved));
     }
 
     // 3. Contacts Collection
@@ -56,7 +64,7 @@ service cloud.firestore {
       }
 
       allow read: if isAdmin() || isApprovedUser();
-      allow create: if (isAdmin() || (isApprovedUser() && isValidContact(request.resource.data))) && isValidId(contactId);
+      allow create: if (isAdmin() || isApprovedUser()) && isValidContact(request.resource.data);
       allow update: if (isAdmin() || isApprovedUser()) && isValidContact(request.resource.data);
       allow delete: if isAdmin();
     }
