@@ -1,7 +1,11 @@
 import React from 'react';
 import { Search, Bell, HelpCircle, Menu } from 'lucide-react';
+import { useAuth } from '../AuthProvider';
+import { getUserAvatar } from '../../lib/utils';
 
 export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
+  const { user } = useAuth();
+
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
       {/* Mobile Menu Icon */}
@@ -38,9 +42,9 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         <button className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors">
           <HelpCircle className="w-5 h-5" />
         </button>
-        <div className="md:hidden w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+        <div className="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
           <img 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz2w0t-GcizG3scFlODrLSObdLQAUFmHxrBJCY7WPDwztsCZisG3Dqo9b72pTlEhwxvYPO3QEecKQxzyj9TYWR3enToxrSU52XmOoEoKcg75hRXdWS6zWxcNyHzBAgIfZLvy0OTErYJX7QnpiJm_Gb7SVCyeOHJzqgUkijPUYQccywmHE-kLjfXrqg9iYDXn_FYoxXEvlMYVQMlw61-IICzWxDDOAZQAlPE_KOaWmyTaHHOzpiutwhCVG_F1kTrhz_OkqGevkwL7xO" 
+            src={getUserAvatar(user?.photoURL)} 
             alt="Profile"
             className="w-full h-full object-cover"
           />
