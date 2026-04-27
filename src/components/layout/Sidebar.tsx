@@ -28,8 +28,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { icon: Kanban, label: 'Outreach Board', href: '/board' },
-    { icon: Users, label: 'Directory', href: '/directory' },
+    { icon: Kanban, label: 'Status', href: '/board' },
+    { icon: Users, label: 'Contacts', href: '/directory' },
     { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   ];
 
