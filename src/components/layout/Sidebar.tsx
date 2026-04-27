@@ -24,7 +24,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
-  const { logOut } = useAuth();
+  const { logOut, isAdmin } = useAuth();
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -57,7 +57,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <div className="w-10 h-10 min-w-[40px] rounded-xl bg-[#4A00E0] flex items-center justify-center shadow-md overflow-hidden border border-[#FFF59D]/20">
               <img 
                 src="/logo.svg" 
-                alt="CampusHub" 
+                alt="Campus Hub" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
@@ -71,8 +71,8 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             </div>
             {!isCollapsed && (
               <div className="whitespace-nowrap transition-opacity">
-                <h2 className="text-lg font-black text-primary leading-tight">CampusHub</h2>
-                <p className="text-xs text-on-surface-variant opacity-80">Community Manager</p>
+                <h2 className="text-lg font-black text-primary leading-tight">Campus Hub</h2>
+                <p className="text-xs text-on-surface-variant opacity-80">{isAdmin ? 'Admin' : 'Community Manager'}</p>
               </div>
             )}
           </div>
@@ -132,7 +132,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           <button
             onClick={logOut}
             className={cn(
-              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-error/10 hover:text-error",
+              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-error/10 hover:text-error cursor-pointer",
               isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-3 px-4"
             )}
             title={isCollapsed ? "Log out" : undefined}
@@ -144,7 +144,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {/* Collapse Toggle Button - Desktop Only */}
           <button
             onClick={onToggleCollapse}
-            className="hidden md:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 gap-3"
+            className="hidden md:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 gap-3 cursor-pointer"
             style={{ paddingLeft: isCollapsed ? '0' : undefined, paddingRight: isCollapsed ? '0' : undefined, justifyContent: isCollapsed ? 'center' : undefined }}
           >
             {isCollapsed ? (
@@ -152,7 +152,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             ) : (
               <>
                 <ChevronLeft className="w-5 h-5 min-w-[20px]" />
-                <span className="whitespace-nowrap text-xs font-bold uppercase tracking-widest">Collapse Menu</span>
+                <span className="whitespace-nowrap">Collapse Menu</span>
               </>
             )}
           </button>
