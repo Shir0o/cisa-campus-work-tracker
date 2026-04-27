@@ -29,7 +29,7 @@ export default function Directory() {
       {/* Header Info */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-normal text-on-background mb-1">Directory</h2>
+          <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
           <p className="text-sm text-on-surface-variant">Manage your 1,248 active contacts across all campaigns.</p>
         </div>
         <div className="flex gap-3">

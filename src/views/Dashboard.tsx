@@ -51,14 +51,14 @@ export default function Dashboard() {
       <div className={cn(
         "grid gap-4 sm:gap-6 items-start",
         isSidebarCollapsed 
-          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" 
-          : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" 
+          : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
       )}>
         {metrics.map((metric, idx) => (
-          <div key={idx} className="bg-surface-container rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[160px] sm:h-48 border border-outline-variant/30">
+          <div key={idx} className="bg-surface-container rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[170px] sm:h-48 border border-outline-variant/30 overflow-hidden group">
             <div className="flex items-start justify-between">
               <div className={cn(
-                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center",
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-105",
                 metric.color === 'primary' ? "bg-primary-container text-on-primary-container" :
                 metric.color === 'secondary' ? "bg-secondary-container text-on-secondary-container" :
                 "bg-tertiary-container text-on-tertiary-container"
@@ -76,11 +76,11 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <div className="mt-4 sm:mt-0">
+            <div className="mt-auto pt-4 sm:pt-0">
               <p className="text-label-sm sm:text-label-lg text-on-surface-variant mb-1">{metric.label}</p>
-              <h3 className="text-3xl sm:text-5xl font-regular text-on-surface truncate">{metric.value}</h3>
+              <h3 className="text-3xl sm:text-4xl xl:text-5xl font-regular text-on-surface truncate">{metric.value}</h3>
               {metric.progress && (
-                <div className="w-full bg-surface-variant rounded-full h-1.5 mt-3 sm:mt-4">
+                <div className="w-full bg-on-surface/5 rounded-full h-1.5 mt-3 sm:mt-4">
                   <div className="bg-tertiary h-1.5 rounded-full" style={{ width: `${metric.progress}%` }}></div>
                 </div>
               )}
@@ -91,7 +91,7 @@ export default function Dashboard() {
 
       {/* Main Content Grid */}
       <div className={cn(
-        "grid gap-4 sm:gap-6",
+        "grid gap-6 md:gap-8",
         isSidebarCollapsed 
           ? "grid-cols-1 xl:grid-cols-4" 
           : "grid-cols-1 lg:grid-cols-3"
