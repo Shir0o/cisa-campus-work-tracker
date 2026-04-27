@@ -17,7 +17,6 @@ export default function MobileNav() {
     { icon: Kanban, label: 'Board', href: '/board' },
     { icon: Users, label: 'People', href: '/directory' },
     { icon: UserCheck, label: 'Admin', href: '/attendance' },
-    ...(isAdmin ? [{ icon: Settings, label: 'Settings', href: '/settings' }] : []),
   ];
 
   return (

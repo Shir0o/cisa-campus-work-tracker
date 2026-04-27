@@ -87,10 +87,45 @@ export default function Settings() {
 
   if (!isAdmin) {
     return (
-      <div className="p-8 text-center">
-        <Shield className="w-16 h-16 text-error mx-auto mb-4 opacity-20" />
-        <h2 className="text-2xl font-bold text-on-surface">Access Denied</h2>
-        <p className="text-on-surface-variant">You do not have permission to view this page.</p>
+      <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24 lg:pb-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-on-surface mb-2">My Profile</h1>
+          <p className="text-on-surface-variant">Manage your account information and preferences.</p>
+        </div>
+        
+        <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/10 shadow-inner shrink-0 bg-secondary-container flex items-center justify-center">
+             {currentUser?.photoURL ? (
+               <img 
+                 src={currentUser.photoURL} 
+                 alt={currentUser.displayName || ''} 
+                 className="w-full h-full object-cover" 
+                 referrerPolicy="no-referrer"
+               />
+             ) : (
+               <span className="text-4xl font-black text-secondary">{currentUser?.displayName?.[0] || currentUser?.email?.[0]?.toUpperCase()}</span>
+             )}
+          </div>
+          <div className="text-center md:text-left flex-1">
+            <h2 className="text-2xl font-black text-on-surface mb-1">{currentUser?.displayName || 'Campus User'}</h2>
+            <p className="text-on-surface-variant mb-6">{currentUser?.email}</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-medium">
+              <div className="p-4 bg-surface-container-high rounded-2xl flex flex-col gap-1">
+                <span className="text-xs text-on-surface-variant uppercase tracking-wider">Account Status</span>
+                <span className="text-success font-bold">Approved</span>
+              </div>
+              <div className="p-4 bg-surface-container-high rounded-2xl flex flex-col gap-1">
+                <span className="text-xs text-on-surface-variant uppercase tracking-wider">Assigned Role</span>
+                <span className="text-primary font-bold">Community Manager</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 text-center py-12 px-4 bg-surface-variant/20 rounded-[2rem] border border-dashed border-outline-variant">
+          <p className="text-on-surface-variant italic">Additional profile settings and application preferences will appear here in a future update.</p>
+        </div>
       </div>
     );
   }
