@@ -38,7 +38,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       {/* Mobile Overlay */}
       <div 
         className={cn(
-          "fixed inset-0 bg-black/40 z-40 transition-opacity md:hidden",
+          "fixed inset-0 bg-black/40 z-40 transition-opacity lg:hidden",
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
@@ -49,7 +49,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         animate={{ width: isCollapsed ? 80 : 288 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 flex px-3 hidden md:flex overflow-hidden"
+          "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 flex px-3 hidden lg:flex overflow-hidden"
         )}
       >
         {/* Brand Header */}
@@ -179,7 +179,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           {/* Collapse Toggle Button - Desktop Only */}
           <button
             onClick={onToggleCollapse}
-            className="hidden md:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left h-12 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 cursor-pointer gap-0"
+            className="hidden lg:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left h-12 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 cursor-pointer gap-0"
             style={{ paddingLeft: isCollapsed ? '0' : undefined, paddingRight: isCollapsed ? '0' : undefined, justifyContent: isCollapsed ? 'center' : undefined }}
           >
             {isCollapsed ? (
