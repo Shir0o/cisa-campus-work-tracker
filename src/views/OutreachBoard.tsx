@@ -88,7 +88,12 @@ export default function OutreachBoard() {
   );
 }
 
-function KanbanCard({ contact }: { contact: Contact }) {
+interface KanbanCardProps {
+  contact: Contact;
+  key?: string | number;
+}
+
+function KanbanCard({ contact }: KanbanCardProps) {
   return (
     <div className={cn(
       "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing",
