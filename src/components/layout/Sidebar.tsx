@@ -11,7 +11,18 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export default function Sidebar() {
+import { useAuth } from '../AuthProvider';
+
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const { user, logOut } = useAuth();
+  const firstName = user?.displayName || 'User';
+  const email = user?.email || '';
+
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Outreach Board', href: '/board' },
@@ -20,32 +31,69 @@ export default function Sidebar() {
   ];
 
   return (
-    <nav className="hidden md:flex bg-surface-container-low h-screen w-72 flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-40 pt-4 pb-6 px-3">
-      {/* Brand Header */}
-      <div className="px-3 mb-8 flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
-          <Megaphone className="w-6 h-6" />
-        </div>
-        <div>
-          <h2 className="text-lg font-black text-primary leading-tight">Contact Manager</h2>
-          <p className="text-xs text-on-surface-variant opacity-80">Active: Fall 2023</p>
-        </div>
-      </div>
+    <>
+      {/* Mobile Overlay */}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-black/40 z-40 transition-opacity md:hidden",
+          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        )}
+        onClick={onClose}
+      />
 
-      {/* New Contact Button */}
-      <div className="px-1 mb-6">
-        <button className="w-full bg-primary text-on-primary rounded-full py-3 px-6 font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-sm">
-          <PlusCircle className="w-5 h-5" />
-          New Contact
-        </button>
-      </div>
+      <nav className={cn(
+        "bg-surface-container-low h-screen w-72 flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 px-3 transition-transform duration-300 md:translate-x-0 flex",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        {/* Brand Header */}
+        <div className="px-3 mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
+              <Megaphone className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-primary leading-tight">Contact Manager</h2>
+              <p className="text-xs text-on-surface-variant opacity-80">Active Session</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="md:hidden p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant">
+            <PlusCircle className="w-6 h-6 rotate-45" />
+          </button>
+        </div>
 
-      {/* Main Nav Items */}
-      <div className="flex-1 space-y-1">
-        {navItems.map((item) => (
+        {/* New Contact Button */}
+        <div className="px-1 mb-6">
+          <button className="w-full bg-primary text-on-primary rounded-full py-3 px-6 font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-sm">
+            <PlusCircle className="w-5 h-5" />
+            New Contact
+          </button>
+        </div>
+
+        {/* Main Nav Items */}
+        <div className="flex-1 space-y-1">
+          {navItems.map((item) => (
+            <NavLink
+              key={item.href}
+              to={item.href}
+              onClick={onClose}
+              className={({ isActive }) => cn(
+                "flex items-center gap-3 px-4 py-3 rounded-full transition-all duration-200 ease-in-out font-medium",
+                isActive 
+                  ? "bg-secondary-container text-on-secondary-container" 
+                  : "text-on-surface-variant hover:bg-surface-container-high"
+              )}
+            >
+              <item.icon className={cn("w-5 h-5", item.href === window.location.pathname ? "fill-current" : "")} />
+              <span>{item.label}</span>
+            </NavLink>
+          ))}
+        </div>
+
+        {/* Footer Nav */}
+        <div className="mt-auto border-t border-outline-variant pt-4">
           <NavLink
-            key={item.href}
-            to={item.href}
+            to="/settings"
+            onClick={onClose}
             className={({ isActive }) => cn(
               "flex items-center gap-3 px-4 py-3 rounded-full transition-all duration-200 ease-in-out font-medium",
               isActive 
@@ -53,39 +101,26 @@ export default function Sidebar() {
                 : "text-on-surface-variant hover:bg-surface-container-high"
             )}
           >
-            <item.icon className={cn("w-5 h-5", item.href === window.location.pathname ? "fill-current" : "")} />
-            <span>{item.label}</span>
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
           </NavLink>
-        ))}
-      </div>
 
-      {/* Footer Nav */}
-      <div className="mt-auto border-t border-outline-variant pt-4">
-        <NavLink
-          to="/settings"
-          className={({ isActive }) => cn(
-            "flex items-center gap-3 px-4 py-3 rounded-full transition-all duration-200 ease-in-out font-medium",
-            isActive 
-              ? "bg-secondary-container text-on-secondary-container" 
-              : "text-on-surface-variant hover:bg-surface-container-high"
-          )}
-        >
-          <Settings className="w-5 h-5" />
-          <span>Settings</span>
-        </NavLink>
-
-        <div className="mt-4 px-4 flex items-center gap-3">
-          <img 
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz2w0t-GcizG3scFlODrLSObdLQAUFmHxrBJCY7WPDwztsCZisG3Dqo9b72pTlEhwxvYPO3QEecKQxzyj9TYWR3enToxrSU52XmOoEoKcg75hRXdWS6zWxcNyHzBAgIfZLvy0OTErYJX7QnpiJm_Gb7SVCyeOHJzqgUkijPUYQccywmHE-kLjfXrqg9iYDXn_FYoxXEvlMYVQMlw61-IICzWxDDOAZQAlPE_KOaWmyTaHHOzpiutwhCVG_F1kTrhz_OkqGevkwL7xO" 
-            alt="Alex Mercer"
-            className="w-10 h-10 rounded-full object-cover"
-          />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-on-surface truncate">Alex Mercer</p>
-            <p className="text-xs text-on-surface-variant truncate">alex@outreachpro.com</p>
-          </div>
+          <button 
+            onClick={logOut}
+            className="w-full mt-4 p-4 flex items-center gap-3 hover:bg-surface-container-high rounded-2xl transition-all cursor-pointer group text-left"
+          >
+            <img 
+              src={user?.photoURL || "https://www.gstatic.com/images/branding/product/2x/contacts_96dp.png"} 
+              alt={firstName}
+              className="w-10 h-10 rounded-full object-cover border border-outline-variant group-hover:border-primary transition-colors"
+            />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-on-surface truncate">{firstName}</p>
+              <p className="text-xs text-on-surface-variant truncate">{email}</p>
+            </div>
+          </button>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   );
 }
