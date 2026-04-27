@@ -34,7 +34,7 @@ export default function OutreachBoard() {
       {/* Header */}
       <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 border-b border-surface-variant flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-surface/50 backdrop-blur-md sticky top-0 z-20 gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-normal text-on-surface">Outreach Board</h2>
+          <h2 className="text-2xl sm:text-3xl font-normal text-on-surface">Status</h2>
           <p className="text-xs sm:text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
