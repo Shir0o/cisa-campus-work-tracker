@@ -15,8 +15,11 @@ import {
 import { motion } from 'motion/react';
 import { CONTACTS } from '../constants';
 import { cn } from '../lib/utils';
+import { useLayout } from '../App';
 
 export default function Directory() {
+  const { isSidebarCollapsed } = useLayout();
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -83,10 +86,19 @@ export default function Directory() {
                 <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group whitespace-nowrap w-auto">
                   Name <ArrowDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" />
                 </th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant hidden md:table-cell w-1/4">Company</th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant hidden lg:table-cell w-1/4">Contact Info</th>
+                <th className={cn(
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-1/4",
+                  isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
+                )}>Company</th>
+                <th className={cn(
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-1/4",
+                  isSidebarCollapsed ? "hidden lg:table-cell" : "hidden lg:table-cell"
+                )}>Contact Info</th>
                 <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-20 sm:w-32">Stage</th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right hidden sm:table-cell w-24 sm:w-28">Last Seen</th>
+                <th className={cn(
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right w-24 sm:w-28",
+                  isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
+                )}>Last Seen</th>
                 <th className="py-4 px-4 sm:px-6 w-12 sm:w-16"></th>
               </tr>
             </thead>
@@ -117,7 +129,10 @@ export default function Directory() {
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-4 hidden md:table-cell overflow-hidden">
+                  <td className={cn(
+                    "py-4 px-4 overflow-hidden",
+                    isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
+                  )}>
                     <p className="text-sm font-medium text-on-surface truncate">{contact.company}</p>
                     <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.location}</p>
                   </td>
@@ -144,7 +159,10 @@ export default function Directory() {
                       <span className="truncate">{contact.status || contact.stage}</span>
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right hidden sm:table-cell overflow-hidden">
+                  <td className={cn(
+                    "py-4 px-4 text-right overflow-hidden",
+                    isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
+                  )}>
                     <p className={cn(
                       "text-sm whitespace-nowrap truncate",
                       contact.id === '3' ? "text-primary font-bold" : "text-on-surface font-medium"
