@@ -82,16 +82,19 @@ export default function Attendance() {
       {/* Attendance Table */}
       <div className="bg-surface-container rounded-2xl border border-outline-variant/50 flex flex-col overflow-hidden shadow-sm">
         <div className="overflow-x-auto no-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[800px]">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-surface-container-high border-b border-outline-variant">
-                <th className="p-4 sticky left-0 z-20 bg-surface-container-high border-r border-outline-variant w-72">
-                  <div className="text-sm font-semibold text-on-surface-variant">Contact</div>
+                <th className="p-3 sm:p-4 sticky left-0 z-20 bg-surface-container-high border-r border-outline-variant min-w-[120px] sm:w-72">
+                  <div className="text-xs sm:text-sm font-semibold text-on-surface-variant">Contact</div>
                 </th>
                 {dates.map((date, idx) => (
-                  <th key={idx} className="p-4 text-center border-r border-outline-variant/50 group cursor-pointer hover:bg-surface-container-highest transition-colors">
-                    <div className="text-sm font-bold text-on-surface">{date}</div>
-                    <div className="text-[11px] text-on-surface-variant mt-0.5 group-hover:text-primary transition-colors leading-tight">{events[idx]}</div>
+                  <th key={idx} className={cn(
+                    "p-2 sm:p-4 text-center border-r border-outline-variant/50 group cursor-pointer hover:bg-surface-container-highest transition-colors",
+                    idx < dates.length - 2 && "hidden sm:table-cell"
+                  )}>
+                    <div className="text-xs sm:text-sm font-bold text-on-surface">{date}</div>
+                    <div className="text-[9px] sm:text-[11px] text-on-surface-variant mt-0.5 group-hover:text-primary transition-colors leading-tight">{events[idx]}</div>
                   </th>
                 ))}
               </tr>
@@ -102,40 +105,43 @@ export default function Attendance() {
                   "hover:bg-surface-variant/20 transition-colors group",
                   contact.name === 'Sarah Jenkins' && "bg-error-container/5"
                 )}>
-                  <td className="sticky left-0 z-10 bg-surface-container-lowest group-hover:bg-surface-container-low border-r border-outline-variant p-4 transition-colors">
-                    <div className="flex items-center gap-3">
+                  <td className="sticky left-0 z-10 bg-surface-container-lowest group-hover:bg-surface-container-low border-r border-outline-variant p-3 sm:p-4 transition-colors">
+                    <div className="flex items-center gap-2 sm:gap-3">
                       {contact.avatar ? (
-                        <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full border border-outline-variant shrink-0 object-cover" />
+                        <img src={contact.avatar} alt={contact.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-outline-variant shrink-0 object-cover" />
                       ) : (
                         <div className={cn(
-                          "w-10 h-10 rounded-full flex items-center justify-center font-bold shrink-0",
+                          "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-xs sm:text-base",
                           contact.id === '1' ? "bg-secondary-container text-on-secondary-container" : "bg-primary-fixed text-on-primary-fixed"
                         )}>{contact.initials}</div>
                       )}
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-on-surface truncate flex items-center gap-2">
+                        <p className="text-xs sm:text-sm font-semibold text-on-surface truncate flex items-center gap-1 sm:gap-2">
                           {contact.name}
-                          {contact.name === 'Sarah Jenkins' && <span className="w-2 h-2 rounded-full bg-error" />}
+                          {contact.name === 'Sarah Jenkins' && <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-error" />}
                         </p>
-                        <p className="text-xs text-on-surface-variant truncate">{contact.role}</p>
+                        <p className="text-[10px] sm:text-xs text-on-surface-variant truncate">{contact.role}</p>
                       </div>
                     </div>
                   </td>
                   {dates.map((date, idx) => {
                     const status = contact.attendance?.[date];
                     return (
-                      <td key={idx} className="p-4 text-center border-r border-outline-variant/50">
+                      <td key={idx} className={cn(
+                        "p-2 sm:p-4 text-center border-r border-outline-variant/50",
+                        idx < dates.length - 2 && "hidden sm:table-cell"
+                      )}>
                         <div className="flex justify-center">
                           {status === true ? (
-                            <div className="w-6 h-6 rounded-md bg-primary text-white flex items-center justify-center">
-                              <CheckCircle2 className="w-4 h-4" />
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-primary text-white flex items-center justify-center">
+                              <CheckCircle2 className="w-3 h-3 sm:w-4 sm:h-4" />
                             </div>
                           ) : status === 'absent' ? (
-                            <div className="w-6 h-6 rounded-md bg-error-container text-on-error-container flex items-center justify-center">
-                              <X className="w-4 h-4" />
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-error-container text-on-error-container flex items-center justify-center">
+                              <X className="w-3 h-3 sm:w-4 sm:h-4" />
                             </div>
                           ) : (
-                            <div className="w-6 h-6 rounded-md border-2 border-outline transition-colors hover:border-primary cursor-pointer" />
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md border border-outline transition-colors hover:border-primary cursor-pointer" />
                           )}
                         </div>
                       </td>

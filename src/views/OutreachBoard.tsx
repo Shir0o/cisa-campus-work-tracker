@@ -30,59 +30,61 @@ export default function OutreachBoard() {
       className="flex flex-col h-full bg-background overflow-hidden"
     >
       {/* Header */}
-      <div className="px-6 py-6 lg:px-8 border-b border-surface-variant flex items-center justify-between shrink-0 bg-surface/50 backdrop-blur-md sticky top-0 z-20">
+      <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 border-b border-surface-variant flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-surface/50 backdrop-blur-md sticky top-0 z-20 gap-4">
         <div>
-          <h2 className="text-3xl font-normal text-on-surface">Outreach Board</h2>
-          <p className="text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
+          <h2 className="text-2xl sm:text-3xl font-normal text-on-surface">Outreach Board</h2>
+          <p className="text-xs sm:text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative hidden sm:block">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative flex-1 sm:flex-initial">
+            <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input 
               type="text" 
-              className="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-64"
+              className="pl-9 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs sm:text-sm w-full sm:w-64"
               placeholder="Search board..."
             />
           </div>
-          <button className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant">
+          <button className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0">
             <Filter className="w-5 h-5" />
           </button>
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-6 lg:p-8 flex gap-6 items-start no-scrollbar">
-        {stages.map((stageInfo) => {
-          const boardContacts = getStageContacts(stageInfo.stage);
-          return (
-            <div key={stageInfo.stage} className="flex flex-col shrink-0 w-80 max-h-full bg-surface-container rounded-2xl border border-outline-variant/20">
-              {/* Column Header */}
-              <div className="p-4 flex items-center justify-between border-b border-surface-variant">
-                <div className="flex items-center gap-2">
-                  <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
-                  <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
-                  <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
-                    {boardContacts.length}
-                  </span>
-                </div>
-                <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
-                  <MoreHorizontal className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Column Content */}
-              <div className="p-3 flex-1 overflow-y-auto space-y-3 no-scrollbar min-h-[200px]">
-                {boardContacts.length > 0 ? boardContacts.map((contact) => (
-                  <KanbanCard key={contact.id} contact={contact} />
-                )) : (
-                  <div className="flex-1 flex items-center justify-center py-10">
-                    <p className="text-on-surface-variant text-sm italic opacity-60">No contacts in this stage</p>
+      <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 no-scrollbar">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 items-start">
+          {stages.map((stageInfo) => {
+            const boardContacts = getStageContacts(stageInfo.stage);
+            return (
+              <div key={stageInfo.stage} className="flex flex-col w-full bg-surface-container rounded-2xl border border-outline-variant/20 h-fit lg:max-h-full">
+                {/* Column Header */}
+                <div className="p-4 flex items-center justify-between border-b border-surface-variant">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
+                    <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
+                    <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
+                      {boardContacts.length}
+                    </span>
                   </div>
-                )}
+                  <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Column Content */}
+                <div className="p-3 overflow-y-auto space-y-3 no-scrollbar min-h-[100px] max-h-[400px] lg:max-h-none">
+                  {boardContacts.length > 0 ? boardContacts.map((contact) => (
+                    <KanbanCard key={contact.id} contact={contact} />
+                  )) : (
+                    <div className="flex-1 flex items-center justify-center py-10">
+                      <p className="text-on-surface-variant text-sm italic opacity-60">No contacts in this stage</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </motion.div>
   );
