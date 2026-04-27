@@ -15,9 +15,11 @@ import { motion } from 'motion/react';
 import { ACTIVITIES, TASKS } from '../constants';
 import { cn } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { useLayout } from '../App';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { isSidebarCollapsed } = useLayout();
   const firstName = user?.displayName?.split(' ')[0] || 'Campaigner';
 
   const metrics = [
@@ -46,21 +48,26 @@ export default function Dashboard() {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className={cn(
+        "grid gap-4 sm:gap-6 items-start",
+        isSidebarCollapsed 
+          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4" 
+          : "grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
+      )}>
         {metrics.map((metric, idx) => (
-          <div key={idx} className="bg-surface-container rounded-3xl p-6 flex flex-col justify-between h-48 border border-outline-variant/30">
+          <div key={idx} className="bg-surface-container rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[160px] sm:h-48 border border-outline-variant/30">
             <div className="flex items-start justify-between">
               <div className={cn(
-                "w-12 h-12 rounded-full flex items-center justify-center",
+                "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center",
                 metric.color === 'primary' ? "bg-primary-container text-on-primary-container" :
                 metric.color === 'secondary' ? "bg-secondary-container text-on-secondary-container" :
                 "bg-tertiary-container text-on-tertiary-container"
               )}>
-                <metric.icon className="w-6 h-6" />
+                <metric.icon className="w-5 h-5 sm:w-6 sm:h-6" />
               </div>
               {metric.trend && (
                 <span className={cn(
-                  "px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1",
+                  "px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold flex items-center gap-1",
                   metric.color === 'primary' ? "bg-primary-fixed-dim text-primary" : "bg-secondary-fixed-dim text-secondary"
                 )}>
                   {metric.trend === '12%' && <TrendingUp className="w-3 h-3" />}
@@ -69,11 +76,11 @@ export default function Dashboard() {
                 </span>
               )}
             </div>
-            <div>
-              <p className="text-label-lg text-on-surface-variant mb-1">{metric.label}</p>
-              <h3 className="text-5xl font-regular text-on-surface">{metric.value}</h3>
+            <div className="mt-4 sm:mt-0">
+              <p className="text-label-sm sm:text-label-lg text-on-surface-variant mb-1">{metric.label}</p>
+              <h3 className="text-3xl sm:text-5xl font-regular text-on-surface truncate">{metric.value}</h3>
               {metric.progress && (
-                <div className="w-full bg-surface-variant rounded-full h-1.5 mt-4">
+                <div className="w-full bg-surface-variant rounded-full h-1.5 mt-3 sm:mt-4">
                   <div className="bg-tertiary h-1.5 rounded-full" style={{ width: `${metric.progress}%` }}></div>
                 </div>
               )}
@@ -83,9 +90,17 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className={cn(
+        "grid gap-4 sm:gap-6",
+        isSidebarCollapsed 
+          ? "grid-cols-1 xl:grid-cols-4" 
+          : "grid-cols-1 lg:grid-cols-3"
+      )}>
         {/* Recent Activity Feed */}
-        <div className="lg:col-span-2 bg-surface-container rounded-3xl p-6 border border-outline-variant/30">
+        <div className={cn(
+          "bg-surface-container rounded-3xl p-5 sm:p-6 border border-outline-variant/30",
+          isSidebarCollapsed ? "xl:col-span-3" : "lg:col-span-2"
+        )}>
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-medium text-on-surface">Recent Activity</h3>
             <button className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">

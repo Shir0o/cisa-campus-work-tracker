@@ -45,8 +45,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
       />
 
       <nav className={cn(
-        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-all duration-300 md:translate-x-0 flex px-3",
-        isOpen ? "translate-x-0" : "-translate-x-full",
+        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-all duration-300 flex px-3 hidden md:flex",
         isCollapsed ? "md:w-20" : "md:w-72"
       )}>
         {/* Brand Header */}
