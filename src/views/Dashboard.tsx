@@ -14,8 +14,12 @@ import {
 import { motion } from 'motion/react';
 import { ACTIVITIES, TASKS } from '../constants';
 import { cn } from '../lib/utils';
+import { useAuth } from '../components/AuthProvider';
 
 export default function Dashboard() {
+  const { user } = useAuth();
+  const firstName = user?.displayName?.split(' ')[0] || 'Campaigner';
+
   const metrics = [
     { label: 'Total Contacts', value: '2,405', trend: '12%', icon: Users, color: 'primary' },
     { label: 'Recent Follow-ups', value: '342', trend: 'Past 7 Days', icon: CheckCircle2, color: 'secondary' },
@@ -30,7 +34,7 @@ export default function Dashboard() {
       className="p-6 md:p-8 space-y-8"
     >
       <div>
-        <h2 className="text-3xl font-normal text-on-surface mb-2">Welcome back, Campaigner</h2>
+        <h2 className="text-3xl font-normal text-on-surface mb-2">Welcome back, {firstName}</h2>
         <p className="text-body-lg text-on-surface-variant">Here is an overview of your active outreach efforts.</p>
       </div>
 

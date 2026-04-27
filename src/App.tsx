@@ -10,7 +10,7 @@ import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { user, isApproved, loading, signIn } = useAuth();
+  const { user, isApproved, loading, signIn, logOut } = useAuth();
 
   if (loading) {
     return (
