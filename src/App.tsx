@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
+import MobileNav from './components/layout/MobileNav';
 import Dashboard from './views/Dashboard';
 import Attendance from './views/Attendance';
 import OutreachBoard from './views/OutreachBoard';
@@ -64,15 +65,18 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
+    <div className="flex min-h-screen bg-background pb-16 md:pb-0">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 flex flex-col md:ml-72 min-h-screen">
-        <TopBar />
-        <main className="flex-1">
+        <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
+        <main className="flex-1 overflow-x-hidden">
           {children}
         </main>
       </div>
+      <MobileNav />
     </div>
   );
 }
