@@ -4,16 +4,20 @@ import {
   LayoutDashboard, 
   Kanban, 
   Users, 
-  UserCheck 
+  UserCheck,
+  Settings
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { useAuth } from '../AuthProvider';
 
 export default function MobileNav() {
+  const { isAdmin } = useAuth();
   const navItems = [
     { icon: LayoutDashboard, label: 'Home', href: '/' },
     { icon: Kanban, label: 'Board', href: '/board' },
     { icon: Users, label: 'People', href: '/directory' },
     { icon: UserCheck, label: 'Admin', href: '/attendance' },
+    ...(isAdmin ? [{ icon: Settings, label: 'Settings', href: '/settings' }] : []),
   ];
 
   return (
