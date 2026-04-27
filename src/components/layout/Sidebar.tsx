@@ -9,7 +9,7 @@ import {
   Megaphone,
   PlusCircle
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getUserAvatar } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
 
@@ -20,9 +20,9 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, logOut } = useAuth();
-  const firstName = user?.displayName || 'User';
+  const displayName = user?.displayName || 'User';
   const email = user?.email || '';
-
+  
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Outreach Board', href: '/board' },
@@ -110,12 +110,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             className="w-full mt-4 p-4 flex items-center gap-3 hover:bg-surface-container-high rounded-2xl transition-all cursor-pointer group text-left"
           >
             <img 
-              src={user?.photoURL || "https://www.gstatic.com/images/branding/product/2x/contacts_96dp.png"} 
-              alt={firstName}
+              src={getUserAvatar(user?.photoURL)} 
+              alt={displayName}
               className="w-10 h-10 rounded-full object-cover border border-outline-variant group-hover:border-primary transition-colors"
             />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-on-surface truncate">{firstName}</p>
+              <p className="text-sm font-semibold text-on-surface truncate">{displayName}</p>
               <p className="text-xs text-on-surface-variant truncate">{email}</p>
             </div>
           </button>
