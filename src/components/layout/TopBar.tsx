@@ -16,7 +16,7 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         >
           <Menu className="w-6 h-6" />
         </button>
-        <span className="text-lg font-bold text-primary truncate">OutreachPro</span>
+        <span className="text-lg font-bold text-primary truncate">CampusHub</span>
       </div>
 
       {/* Desktop Search */}

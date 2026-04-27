@@ -1,6 +1,6 @@
 {
-  "name": "Contact Manager Pro",
-  "description": "A comprehensive outreach management system for tracking contacts, attendance, and campaign progress.",
+  "name": "CampusHub",
+  "description": "A comprehensive community management system for tracking student engagement, campus events, and organizational progress.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

@@ -31,9 +31,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setUser(user);
       if (user) {
+        const userEmail = user.email?.toLowerCase();
+        const isAdminEmail = userEmail === 'yilongwang05@gmail.com';
+        
         // Check admin status
         const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        setIsAdmin(adminDoc.exists() || user.email === 'yilongwang05@gmail.com');
+        setIsAdmin(adminDoc.exists() || isAdminEmail);
 
         // Check user record and approval
         const userDoc = await getDoc(doc(db, 'users', user.uid));
@@ -43,11 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: user.email,
             displayName: user.displayName,
             photoURL: user.photoURL,
-            approved: user.email === 'yilongwang05@gmail.com' // Auto-approve the specified admin
+            approved: isAdminEmail // Auto-approve the specified admin
           });
-          setIsApproved(user.email === 'yilongwang05@gmail.com');
+          setIsApproved(isAdminEmail);
         } else {
-          setIsApproved(userDoc.data().approved || user.email === 'yilongwang05@gmail.com');
+          setIsApproved(userDoc.data().approved || isAdminEmail);
         }
       } else {
         setIsAdmin(false);
