@@ -97,7 +97,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <LayoutContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
-      <div className="flex min-h-screen bg-background pb-16 md:pb-0">
+      <div className="flex min-h-screen bg-background pb-16 lg:pb-0">
         <Sidebar 
           isOpen={isSidebarOpen} 
           onClose={() => setIsSidebarOpen(false)}
@@ -106,7 +106,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
         <div className={cn(
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
-          isSidebarCollapsed ? "md:ml-20" : "md:ml-72"
+          isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"
         )}>
           <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
