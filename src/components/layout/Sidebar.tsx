@@ -30,7 +30,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { icon: Kanban, label: 'Status', href: '/board' },
     { icon: Users, label: 'Contacts', href: '/directory' },
     { icon: UserCheck, label: 'Attendance', href: '/attendance' },
-    ...(isAdmin ? [{ icon: Settings, label: 'Settings', href: '/settings' }] : []),
   ];
 
   return (
