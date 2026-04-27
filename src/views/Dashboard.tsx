@@ -42,7 +42,7 @@ export default function Dashboard() {
     >
       <div>
         <h2 className="text-3xl font-normal text-on-surface mb-2">{getGreeting()}, {firstName}</h2>
-        <p className="text-body-lg text-on-surface-variant">Here is an overview of your active outreach efforts.</p>
+        <p className="text-body-lg text-on-surface-variant">Here is an overview of your active CampusHub community.</p>
       </div>
 
       {/* Metrics Row */}

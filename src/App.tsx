@@ -26,7 +26,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
         <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant shadow-lg">
-          <h2 className="text-3xl font-regular mb-4">Welcome to OutreachPro</h2>
+          <h2 className="text-3xl font-regular mb-4">Welcome to CampusHub</h2>
           <p className="text-on-surface-variant mb-8">Please sign in with your Google account to continue.</p>
           <button 
             onClick={signIn}
@@ -67,20 +67,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [isCollapsed, setIsCollapsed] = React.useState(false);
 
   return (
     <div className="flex min-h-screen bg-background pb-16 md:pb-0">
       <Sidebar 
         isOpen={isSidebarOpen} 
         onClose={() => setIsSidebarOpen(false)} 
-        isCollapsed={isCollapsed}
-        onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
       />
-      <div className={cn(
-        "flex-1 flex flex-col min-h-screen transition-all duration-300",
-        isCollapsed ? "md:ml-20" : "md:ml-72"
-      )}>
+      <div className="flex-1 flex flex-col min-h-screen md:ml-72 transition-all duration-300">
         <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden">
           {children}
