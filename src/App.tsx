@@ -67,14 +67,20 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   return (
     <div className="flex min-h-screen bg-background pb-16 md:pb-0">
       <Sidebar 
         isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)} 
+        onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <div className="flex-1 flex flex-col min-h-screen md:ml-72 transition-all duration-300 min-w-0">
+      <div className={cn(
+        "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
+        isSidebarCollapsed ? "md:ml-20" : "md:ml-72"
+      )}>
         <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
         <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
           {children}

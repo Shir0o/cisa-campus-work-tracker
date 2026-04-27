@@ -8,7 +8,9 @@ import {
   UserCheck, 
   Settings, 
   PlusCircle,
-  LogOut
+  LogOut,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -17,9 +19,11 @@ import { useAuth } from '../AuthProvider';
 interface SidebarProps {
   isOpen?: boolean;
   onClose?: () => void;
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   const { logOut } = useAuth();
   
   const navItems = [
@@ -41,11 +45,15 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       />
 
       <nav className={cn(
-        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-all duration-300 md:translate-x-0 flex w-72 px-3",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-all duration-300 md:translate-x-0 flex px-3",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isCollapsed ? "md:w-20" : "md:w-72"
       )}>
         {/* Brand Header */}
-        <div className="mb-8 flex items-center justify-between px-3">
+        <div className={cn(
+          "mb-8 flex items-center px-3 transition-all",
+          isCollapsed ? "justify-center md:px-0" : "justify-between"
+        )}>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 min-w-[40px] rounded-xl bg-[#4A00E0] flex items-center justify-center shadow-md overflow-hidden border border-[#FFF59D]/20">
               <img 
@@ -62,18 +70,23 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 }}
               />
             </div>
-            <div className="whitespace-nowrap">
-              <h2 className="text-lg font-black text-primary leading-tight">CampusHub</h2>
-              <p className="text-xs text-on-surface-variant opacity-80">Community Manager</p>
-            </div>
+            {!isCollapsed && (
+              <div className="whitespace-nowrap transition-opacity">
+                <h2 className="text-lg font-black text-primary leading-tight">CampusHub</h2>
+                <p className="text-xs text-on-surface-variant opacity-80">Community Manager</p>
+              </div>
+            )}
           </div>
         </div>
 
         {/* New Contact Button */}
         <div className="mb-6 px-1">
-          <button className="bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all active:scale-95 shadow-sm w-full py-3 px-6">
-            <PlusCircle className="w-5 h-5" />
-            <span className="whitespace-nowrap">New Contact</span>
+          <button className={cn(
+            "bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center transition-all active:scale-95 shadow-sm px-0 h-12 overflow-hidden",
+            isCollapsed ? "w-12 mx-auto" : "w-full gap-2 px-6"
+          )}>
+            <PlusCircle className="w-5 h-5 shrink-0" />
+            {!isCollapsed && <span className="whitespace-nowrap">New Contact</span>}
           </button>
         </div>
 
@@ -85,40 +98,64 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               to={item.href}
               onClick={onClose}
               className={({ isActive }) => cn(
-                "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium gap-3 px-4 py-3",
+                "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium px-4 py-3",
+                isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-3 px-4",
                 isActive 
                   ? "bg-secondary-container text-on-secondary-container" 
                   : "text-on-surface-variant hover:bg-surface-container-high"
               )}
+              title={isCollapsed ? item.label : undefined}
             >
               <item.icon className={cn("w-5 h-5 min-w-[20px]", item.href === window.location.pathname ? "fill-current" : "")} />
-              <span className="whitespace-nowrap">{item.label}</span>
+              {!isCollapsed && <span className="whitespace-nowrap">{item.label}</span>}
             </NavLink>
           ))}
         </div>
 
         {/* Footer Nav */}
-        <div className="mt-auto border-t border-outline-variant pt-4">
+        <div className="mt-auto border-t border-outline-variant pt-4 space-y-1">
           <NavLink
             to="/settings"
             onClick={onClose}
             className={({ isActive }) => cn(
-              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium gap-3 px-4 py-3",
+              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium px-4 py-3",
+              isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-3 px-4",
               isActive 
                 ? "bg-secondary-container text-on-secondary-container" 
                 : "text-on-surface-variant hover:bg-surface-container-high"
             )}
+            title={isCollapsed ? "Settings" : undefined}
           >
             <Settings className="w-5 h-5 min-w-[20px]" />
-            <span className="whitespace-nowrap">Settings</span>
+            {!isCollapsed && <span className="whitespace-nowrap">Settings</span>}
           </NavLink>
 
           <button
             onClick={logOut}
-            className="flex items-center rounded-full transition-all duration-200 ease-in-out font-medium mt-1 w-full text-left gap-3 px-4 py-3 text-on-surface-variant hover:bg-error/10 hover:text-error"
+            className={cn(
+              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-error/10 hover:text-error",
+              isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-3 px-4"
+            )}
+            title={isCollapsed ? "Log out" : undefined}
           >
             <LogOut className="w-5 h-5 min-w-[20px]" />
-            <span className="whitespace-nowrap">Log out</span>
+            {!isCollapsed && <span className="whitespace-nowrap">Log out</span>}
+          </button>
+
+          {/* Collapse Toggle Button - Desktop Only */}
+          <button
+            onClick={onToggleCollapse}
+            className="hidden md:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left py-3 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 gap-3"
+            style={{ paddingLeft: isCollapsed ? '0' : undefined, paddingRight: isCollapsed ? '0' : undefined, justifyContent: isCollapsed ? 'center' : undefined }}
+          >
+            {isCollapsed ? (
+              <ChevronRight className="w-5 h-5 min-w-[20px]" />
+            ) : (
+              <>
+                <ChevronLeft className="w-5 h-5 min-w-[20px]" />
+                <span className="whitespace-nowrap text-xs font-bold uppercase tracking-widest">Collapse Menu</span>
+              </>
+            )}
           </button>
         </div>
       </nav>
