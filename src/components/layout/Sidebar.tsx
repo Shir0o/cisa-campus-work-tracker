@@ -10,7 +10,7 @@ import {
   PlusCircle,
   LogOut
 } from 'lucide-react';
-import { cn, getUserAvatar } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
 
@@ -20,9 +20,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const { user, logOut } = useAuth();
-  const displayName = user?.displayName || 'User';
-  const email = user?.email || '';
+  const { logOut } = useAuth();
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -122,18 +120,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             <LogOut className="w-5 h-5 min-w-[20px]" />
             <span className="whitespace-nowrap">Log out</span>
           </button>
-
-          <div className="w-full mt-2 flex items-center rounded-2xl transition-all gap-3 p-4">
-            <img 
-              src={getUserAvatar(user?.photoURL)} 
-              alt={displayName}
-              className="w-10 h-10 min-w-[40px] rounded-full object-cover border border-outline-variant"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-on-surface truncate leading-none mb-0.5">{displayName}</p>
-              <p className="text-xs text-on-surface-variant truncate opacity-70">{email}</p>
-            </div>
-          </div>
         </div>
       </nav>
     </>
