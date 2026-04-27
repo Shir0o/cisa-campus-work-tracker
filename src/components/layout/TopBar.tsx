@@ -1,0 +1,48 @@
+import React from 'react';
+import { Search, Bell, HelpCircle, Menu } from 'lucide-react';
+
+export default function TopBar() {
+  return (
+    <header className="bg-surface h-16 border-b border-outline-variant px-6 flex items-center justify-between sticky top-0 z-30">
+      {/* Mobile Menu Icon */}
+      <div className="md:hidden flex items-center gap-4">
+        <button className="p-2 -ml-2 rounded-full hover:bg-surface-container-high text-on-surface-variant">
+          <Menu className="w-6 h-6" />
+        </button>
+        <span className="text-xl font-bold text-primary">OutreachPro</span>
+      </div>
+
+      {/* Desktop Search */}
+      <div className="hidden md:flex flex-1 max-w-xl">
+        <div className="relative flex items-center w-full h-10 rounded-full bg-surface-container-high focus-within:bg-secondary-container/30 focus-within:shadow-sm transition-all group">
+          <div className="grid place-items-center h-full w-12 text-on-surface-variant group-focus-within:text-primary">
+            <Search className="w-5 h-5" />
+          </div>
+          <input
+            type="text"
+            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-4 font-medium"
+            placeholder="Search contacts, companies, or tags..."
+          />
+        </div>
+      </div>
+
+      {/* Notifications & Profile */}
+      <div className="flex items-center gap-2 md:gap-4">
+        <button className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors relative">
+          <Bell className="w-5 h-5" />
+          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        <button className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors">
+          <HelpCircle className="w-5 h-5" />
+        </button>
+        <div className="md:hidden w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+          <img 
+            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCz2w0t-GcizG3scFlODrLSObdLQAUFmHxrBJCY7WPDwztsCZisG3Dqo9b72pTlEhwxvYPO3QEecKQxzyj9TYWR3enToxrSU52XmOoEoKcg75hRXdWS6zWxcNyHzBAgIfZLvy0OTErYJX7QnpiJm_Gb7SVCyeOHJzqgUkijPUYQccywmHE-kLjfXrqg9iYDXn_FYoxXEvlMYVQMlw61-IICzWxDDOAZQAlPE_KOaWmyTaHHOzpiutwhCVG_F1kTrhz_OkqGevkwL7xO" 
+            alt="Profile"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      </div>
+    </header>
+  );
+}

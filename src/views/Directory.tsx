@@ -1,0 +1,166 @@
+import React from 'react';
+import { 
+  Search, 
+  Filter, 
+  Download, 
+  MoreVertical, 
+  Mail, 
+  Phone,
+  Tag,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  ArrowDown
+} from 'lucide-react';
+import { motion } from 'motion/react';
+import { CONTACTS } from '../constants';
+import { cn } from '../lib/utils';
+
+export default function Directory() {
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="p-6 md:p-8 flex flex-col gap-6 h-full"
+    >
+      {/* Header Info */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-normal text-on-background mb-1">Directory</h2>
+          <p className="text-sm text-on-surface-variant">Manage your 1,248 active contacts across all campaigns.</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-outline text-primary hover:bg-surface-container-highest transition-all font-semibold text-sm">
+            <Filter className="w-4 h-4" />
+            Filter
+          </button>
+          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container hover:bg-opacity-90 transition-all font-semibold text-sm shadow-sm">
+            <Download className="w-4 h-4" />
+            Export
+          </button>
+        </div>
+      </div>
+
+      {/* Table Surface */}
+      <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 flex flex-col border border-outline-variant/30 shadow-sm">
+        {/* Controls */}
+        <div className="h-16 px-6 flex items-center justify-between border-b border-surface-variant bg-surface-container-low/50">
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-3 cursor-pointer group">
+              <div className="w-5 h-5 rounded border-2 border-outline group-hover:border-primary transition-colors flex items-center justify-center">
+                {/* Empty check */}
+              </div>
+              <span className="text-sm font-bold text-on-surface-variant select-none">Select All</span>
+            </label>
+            <div className="h-6 w-px bg-outline-variant hidden sm:block"></div>
+            <div className="hidden sm:flex items-center gap-4 text-on-surface-variant">
+              <button className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" title="Tag Selected">
+                <Tag className="w-5 h-5" />
+              </button>
+              <button className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" title="Email Selected">
+                <Mail className="w-5 h-5" />
+              </button>
+              <button className="hover:text-error transition-colors p-1.5 rounded-full hover:bg-error-container" title="Delete Selected">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 text-on-surface-variant">
+            <span className="text-xs font-bold uppercase tracking-widest">1-50 of 1,248</span>
+            <div className="flex gap-1">
+              <button className="p-1.5 rounded-full hover:bg-surface-container-highest disabled:opacity-30"><ChevronLeft className="w-5 h-5" /></button>
+              <button className="p-1.5 rounded-full hover:bg-surface-container-highest"><ChevronRight className="w-5 h-5" /></button>
+            </div>
+          </div>
+        </div>
+
+        {/* Scrollable Area */}
+        <div className="flex-1 overflow-auto no-scrollbar">
+          <table className="w-full text-left border-collapse min-w-[900px]">
+            <thead className="bg-surface-container-low sticky top-0 z-10 border-b border-surface-variant shadow-sm">
+              <tr>
+                <th className="py-4 px-6 w-16"></th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group">
+                  Name <ArrowDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Company</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Contact Info</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Stage</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right">Last Seen</th>
+                <th className="py-4 px-6 w-16"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
+              {CONTACTS.map((contact) => (
+                <tr key={contact.id} className={cn(
+                  "hover:bg-surface-container-low transition-colors group cursor-pointer",
+                  contact.id === '3' && "bg-primary-container/[0.03]"
+                )}>
+                  <td className="py-4 px-6">
+                    <div className="w-5 h-5 rounded border-2 border-outline group-hover:border-primary transition-colors flex items-center justify-center opacity-40 group-hover:opacity-100"></div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="flex items-center gap-3">
+                      {contact.avatar ? (
+                        <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full shrink-0 object-cover shadow-sm" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-sm">
+                          {contact.initials}
+                        </div>
+                      )}
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-on-surface">{contact.name}</p>
+                          {contact.id === '3' && <span className="w-2 h-2 rounded-full bg-primary" title="New Activity" />}
+                        </div>
+                        <p className="text-xs text-on-surface-variant opacity-80">{contact.role}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <p className="text-sm font-medium text-on-surface">{contact.company}</p>
+                    <p className="text-xs text-on-surface-variant opacity-80">{contact.location}</p>
+                  </td>
+                  <td className="py-4 px-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group/info cursor-default">
+                        <Mail className="w-3.5 h-3.5 opacity-60 group-hover/info:opacity-100" />
+                        <span className="text-xs font-medium">{contact.email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-on-surface-variant cursor-default">
+                        <Phone className="w-3.5 h-3.5 opacity-60" />
+                        <span className="text-xs font-medium">{contact.phone}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="py-4 px-4">
+                    <span className={cn(
+                      "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                      contact.status === 'Meeting Scheduled' ? "bg-secondary-container text-on-secondary-container" :
+                      contact.status === 'Email Sent' ? "bg-tertiary-container text-on-tertiary-container" :
+                      contact.status === 'Follow Up Required' ? "bg-error-container text-on-error-container" :
+                      "bg-surface-variant text-on-surface-variant"
+                    )}>
+                      {contact.status || contact.stage}
+                    </span>
+                  </td>
+                  <td className="py-4 px-4 text-right">
+                    <p className={cn(
+                      "text-sm",
+                      contact.id === '3' ? "text-primary font-bold" : "text-on-surface font-medium"
+                    )}>{contact.lastSeen}</p>
+                  </td>
+                  <td className="py-4 px-6 text-right">
+                    <button className="p-2 rounded-full text-on-surface-variant hover:bg-surface-variant transition-opacity opacity-0 group-hover:opacity-100">
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
