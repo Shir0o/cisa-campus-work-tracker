@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { cn } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
@@ -10,6 +10,21 @@ import OutreachBoard from './views/OutreachBoard';
 import Directory from './views/Directory';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+
+interface LayoutContextType {
+  isSidebarCollapsed: boolean;
+  setIsSidebarCollapsed: (value: boolean) => void;
+}
+
+const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
+
+export function useLayout() {
+  const context = useContext(LayoutContext);
+  if (!context) {
+    throw new Error('useLayout must be used within a LayoutProvider');
+  }
+  return context;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut } = useAuth();
@@ -70,24 +85,26 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
 
   return (
-    <div className="flex min-h-screen bg-background pb-16 md:pb-0">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(false)}
-        isCollapsed={isSidebarCollapsed}
-        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
-      <div className={cn(
-        "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
-        isSidebarCollapsed ? "md:ml-20" : "md:ml-72"
-      )}>
-        <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
-          {children}
-        </main>
+    <LayoutContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
+      <div className="flex min-h-screen bg-background pb-16 md:pb-0">
+        <Sidebar 
+          isOpen={isSidebarOpen} 
+          onClose={() => setIsSidebarOpen(false)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
+        <div className={cn(
+          "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
+          isSidebarCollapsed ? "md:ml-20" : "md:ml-72"
+        )}>
+          <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
+          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
+            {children}
+          </main>
+        </div>
+        <MobileNav />
       </div>
-      <MobileNav />
-    </div>
+    </LayoutContext.Provider>
   );
 }
 

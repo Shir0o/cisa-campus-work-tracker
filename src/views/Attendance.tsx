@@ -11,8 +11,10 @@ import {
 import { motion } from 'motion/react';
 import { CONTACTS } from '../constants';
 import { cn } from '../lib/utils';
+import { useLayout } from '../App';
 
 export default function Attendance() {
+  const { isSidebarCollapsed } = useLayout();
   const dates = ['Oct 12', 'Oct 19', 'Oct 26', 'Nov 02', 'Nov 09'];
   const events = [
     'Kickoff Event',
@@ -91,7 +93,7 @@ export default function Attendance() {
                 {dates.map((date, idx) => (
                   <th key={idx} className={cn(
                     "p-2 sm:p-4 text-center border-r border-outline-variant/50 group cursor-pointer hover:bg-surface-container-highest transition-colors",
-                    idx < dates.length - 2 && "hidden sm:table-cell"
+                    idx < dates.length - 2 && (isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell")
                   )}>
                     <div className="text-xs sm:text-sm font-bold text-on-surface">{date}</div>
                     <div className="text-[9px] sm:text-[11px] text-on-surface-variant mt-0.5 group-hover:text-primary transition-colors leading-tight">{events[idx]}</div>
@@ -129,7 +131,7 @@ export default function Attendance() {
                     return (
                       <td key={idx} className={cn(
                         "p-2 sm:p-4 text-center border-r border-outline-variant/50",
-                        idx < dates.length - 2 && "hidden sm:table-cell"
+                        idx < dates.length - 2 && (isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell")
                       )}>
                         <div className="flex justify-center">
                           {status === true ? (
