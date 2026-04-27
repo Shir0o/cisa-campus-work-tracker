@@ -7,7 +7,6 @@ import {
   Users, 
   UserCheck, 
   Settings, 
-  Megaphone,
   PlusCircle,
   LogOut
 } from 'lucide-react';
@@ -54,16 +53,25 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         <div className={cn("mb-8 flex items-center", isCollapsed ? "justify-center" : "justify-between px-3")}>
           {!isCollapsed && (
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shadow-sm">
-                <Megaphone className="w-6 h-6" />
+              <div className="w-10 h-10 min-w-[40px] rounded-xl bg-[#4A00E0] flex items-center justify-center shadow-md overflow-hidden border border-[#FFF59D]/20">
+                <svg viewBox="0 0 100 100" className="w-8 h-8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Stylized Wavy Ram Head */}
+                  <path d="M50 30C40 30 30 35 25 45C22 55 25 65 35 75C40 80 50 85 60 85C70 85 80 80 85 75C95 65 98 55 95 45C90 35 80 30 70 30" stroke="#FFF59D" strokeWidth="4" strokeLinecap="round" />
+                  <path d="M35 45C30 45 25 50 25 60C25 70 30 75 35 75" stroke="#FFF59D" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M65 45C70 45 75 50 75 60C75 70 70 75 65 75" stroke="#FFF59D" strokeWidth="3" strokeLinecap="round" />
+                  <path d="M40 35C45 32 55 32 60 35" stroke="#FFF59D" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M30 40C40 38 60 38 70 40" stroke="#FFF59D" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M25 45C35 43 65 43 75 45" stroke="#FFF59D" strokeWidth="2" strokeLinecap="round" />
+                  <path d="M45 80L50 90L55 80" stroke="#FFF59D" strokeWidth="2" strokeLinejoin="round" />
+                </svg>
               </div>
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="whitespace-nowrap"
               >
-                <h2 className="text-lg font-black text-primary leading-tight">Contact Manager</h2>
-                <p className="text-xs text-on-surface-variant opacity-80">Active Session</p>
+                <h2 className="text-lg font-black text-primary leading-tight">OutreachPro</h2>
+                <p className="text-xs text-on-surface-variant opacity-80">Campaign Manager</p>
               </motion.div>
             </div>
           )}
