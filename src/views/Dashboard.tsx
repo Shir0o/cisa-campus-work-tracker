@@ -26,6 +26,13 @@ export default function Dashboard() {
     { label: 'Integrated Systems', value: '85%', icon: RefreshCw, color: 'tertiary', progress: 85 },
   ];
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning';
+    if (hour < 18) return 'Good Afternoon';
+    return 'Good Evening';
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
@@ -34,7 +41,7 @@ export default function Dashboard() {
       className="p-6 md:p-8 space-y-8"
     >
       <div>
-        <h2 className="text-3xl font-normal text-on-surface mb-2">Welcome back, {firstName}</h2>
+        <h2 className="text-3xl font-normal text-on-surface mb-2">{getGreeting()}, {firstName}</h2>
         <p className="text-body-lg text-on-surface-variant">Here is an overview of your active outreach efforts.</p>
       </div>
 
