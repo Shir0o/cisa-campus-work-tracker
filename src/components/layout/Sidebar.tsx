@@ -27,7 +27,7 @@ export default function Sidebar() {
           <Megaphone className="w-6 h-6" />
         </div>
         <div>
-          <h2 className="text-lg font-black text-primary leading-tight">Campaign Manager</h2>
+          <h2 className="text-lg font-black text-primary leading-tight">Contact Manager</h2>
           <p className="text-xs text-on-surface-variant opacity-80">Active: Fall 2023</p>
         </div>
       </div>
