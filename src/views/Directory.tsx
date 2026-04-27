@@ -76,17 +76,17 @@ export default function Directory() {
 
         {/* Scrollable Area */}
         <div className="flex-1 overflow-auto no-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+          <table className="w-full text-left border-collapse">
             <thead className="bg-surface-container-low sticky top-0 z-10 border-b border-surface-variant shadow-sm">
               <tr>
                 <th className="py-4 px-6 w-16"></th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group">
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group whitespace-nowrap">
                   Name <ArrowDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Company</th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Contact Info</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant hidden md:table-cell">Company</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant hidden lg:table-cell">Contact Info</th>
                 <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant">Stage</th>
-                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right">Last Seen</th>
+                <th className="py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right hidden sm:table-cell">Last Seen</th>
                 <th className="py-4 px-6 w-16"></th>
               </tr>
             </thead>
@@ -102,26 +102,26 @@ export default function Directory() {
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
                       {contact.avatar ? (
-                        <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full shrink-0 object-cover shadow-sm" />
+                        <img src={contact.avatar} alt={contact.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full shrink-0 object-cover shadow-sm" />
                       ) : (
-                        <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-sm">
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-xs sm:text-sm">
                           {contact.initials}
                         </div>
                       )}
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-on-surface">{contact.name}</p>
-                          {contact.id === '3' && <span className="w-2 h-2 rounded-full bg-primary" title="New Activity" />}
+                          <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
+                          {contact.id === '3' && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New Activity" />}
                         </div>
-                        <p className="text-xs text-on-surface-variant opacity-80">{contact.role}</p>
+                        <p className="text-[10px] sm:text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4 hidden md:table-cell">
                     <p className="text-sm font-medium text-on-surface">{contact.company}</p>
                     <p className="text-xs text-on-surface-variant opacity-80">{contact.location}</p>
                   </td>
-                  <td className="py-4 px-4">
+                  <td className="py-4 px-4 hidden lg:table-cell">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group/info cursor-default">
                         <Mail className="w-3.5 h-3.5 opacity-60 group-hover/info:opacity-100" />
@@ -135,7 +135,7 @@ export default function Directory() {
                   </td>
                   <td className="py-4 px-4">
                     <span className={cn(
-                      "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter",
+                      "inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tighter whitespace-nowrap",
                       contact.status === 'Meeting Scheduled' ? "bg-secondary-container text-on-secondary-container" :
                       contact.status === 'Email Sent' ? "bg-tertiary-container text-on-tertiary-container" :
                       contact.status === 'Follow Up Required' ? "bg-error-container text-on-error-container" :
@@ -144,9 +144,9 @@ export default function Directory() {
                       {contact.status || contact.stage}
                     </span>
                   </td>
-                  <td className="py-4 px-4 text-right">
+                  <td className="py-4 px-4 text-right hidden sm:table-cell">
                     <p className={cn(
-                      "text-sm",
+                      "text-sm whitespace-nowrap",
                       contact.id === '3' ? "text-primary font-bold" : "text-on-surface font-medium"
                     )}>{contact.lastSeen}</p>
                   </td>
