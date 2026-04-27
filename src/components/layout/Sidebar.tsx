@@ -6,9 +6,7 @@ import {
   Kanban, 
   Users, 
   UserCheck, 
-  Settings, 
   PlusCircle,
-  LogOut,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -134,48 +132,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
         {/* Footer Nav */}
         <div className="mt-auto border-t border-outline-variant pt-4 space-y-1 overflow-hidden">
-          <NavLink
-            to="/settings"
-            onClick={onClose}
-            className={({ isActive }) => cn(
-              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium h-12",
-              isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4",
-              isActive 
-                ? "bg-secondary-container text-on-secondary-container" 
-                : "text-on-surface-variant hover:bg-surface-container-high"
-            )}
-            title={isCollapsed ? "Settings" : undefined}
-          >
-            <Settings className="w-5 h-5 min-w-[20px] shrink-0" />
-            <motion.span 
-              initial={false}
-              animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 12 }}
-              transition={{ duration: 0.2 }}
-              className="whitespace-nowrap overflow-hidden"
-            >
-              Settings
-            </motion.span>
-          </NavLink>
-
-          <button
-            onClick={logOut}
-            className={cn(
-              "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left h-12 text-on-surface-variant hover:bg-error/10 hover:text-error cursor-pointer",
-              isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4"
-            )}
-            title={isCollapsed ? "Log out" : undefined}
-          >
-            <LogOut className="w-5 h-5 min-w-[20px] shrink-0" />
-            <motion.span 
-              initial={false}
-              animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 12 }}
-              transition={{ duration: 0.2 }}
-              className="whitespace-nowrap overflow-hidden"
-            >
-              Log out
-            </motion.span>
-          </button>
-
           {/* Collapse Toggle Button - Desktop Only */}
           <button
             onClick={onToggleCollapse}
