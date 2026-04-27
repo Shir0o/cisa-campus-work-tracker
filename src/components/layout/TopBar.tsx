@@ -22,8 +22,8 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
-      {/* Mobile Brand / Menu Toggle */}
-      <div className="lg:hidden flex items-center gap-2">
+      {/* Desktop Menu Toggle */}
+      <div className="hidden lg:flex items-center gap-2">
         <button 
           onClick={onMenuClick}
           className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors"

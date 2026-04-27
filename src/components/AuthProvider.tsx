@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface AuthContextType {
@@ -27,31 +27,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let userDocUnsubscribe: (() => void) | null = null;
+
+    const unsubscribe = onAuthStateChanged(auth, async (authUser) => {
       setLoading(true);
-      setUser(user);
-      if (user) {
-        const userEmail = user.email?.toLowerCase();
+      setUser(authUser);
+
+      if (userDocUnsubscribe) {
+        userDocUnsubscribe();
+        userDocUnsubscribe = null;
+      }
+
+      if (authUser) {
+        const userEmail = authUser.email?.toLowerCase();
         const isAdminEmail = userEmail === 'yilongwang05@gmail.com';
         
-        // Check admin status
-        const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-        setIsAdmin(adminDoc.exists() || isAdminEmail);
-
-        // Check user record and approval
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
+        // Initial setup/check
+        const userDocRef = doc(db, 'users', authUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        
         if (!userDoc.exists()) {
-          // Auto-create user record for new sign-ins
-          await setDoc(doc(db, 'users', user.uid), {
-            email: user.email,
-            displayName: user.displayName,
-            photoURL: user.photoURL,
-            approved: isAdminEmail // Auto-approve the specified admin
-          });
+          const initialData = {
+            email: authUser.email,
+            displayName: authUser.displayName,
+            photoURL: authUser.photoURL,
+            approved: isAdminEmail,
+            role: isAdminEmail ? 'admin' : 'community_manager'
+          };
+          await setDoc(userDocRef, initialData);
           setIsApproved(isAdminEmail);
-        } else {
-          setIsApproved(userDoc.data().approved || isAdminEmail);
+          setIsAdmin(isAdminEmail);
         }
+
+        // Listen for real-time changes to the user's record
+        userDocUnsubscribe = onSnapshot(userDocRef, (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            setIsApproved(data.approved || isAdminEmail);
+            setIsAdmin(data.role === 'admin' || isAdminEmail);
+          }
+        });
+
       } else {
         setIsAdmin(false);
         setIsApproved(false);
@@ -59,7 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      if (userDocUnsubscribe) userDocUnsubscribe();
+    };
   }, []);
 
   const signIn = async () => {

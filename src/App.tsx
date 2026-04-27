@@ -8,6 +8,7 @@ import Dashboard from './views/Dashboard';
 import Attendance from './views/Attendance';
 import OutreachBoard from './views/OutreachBoard';
 import Directory from './views/Directory';
+import Settings from './views/Settings';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 
@@ -108,7 +109,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"
         )}>
-          <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
+          <TopBar onMenuClick={toggleSidebarCollapse} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
             {children}
           </main>
@@ -154,6 +155,14 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Directory />
+              </DashboardLayout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/settings" element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Settings />
               </DashboardLayout>
             </ProtectedRoute>
           } />
