@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "contacts": {
+      "title": "Contact",
+      "description": "A person involved in an outreach campaign.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "company": { "type": "string" },
+        "location": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "stage": { 
+          "type": "string",
+          "enum": ["New", "First Contact", "Second Contact", "Regular"]
+        },
+        "lastSeen": { "type": "string" },
+        "avatar": { "type": "string" },
+        "initials": { "type": "string" },
+        "status": { "type": "string" },
+        "attendance": { "type": "object" },
+        "approved": { "type": "boolean" }
+      },
+      "required": ["name", "email", "stage"]
+    },
+    "admins": {
+      "title": "Admin",
+      "description": "A user with administrative privileges.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "uid": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "users": {
+        "title": "User",
+        "description": "An authenticated user of the system.",
+        "type": "object",
+        "properties": {
+            "email": { "type": "string" },
+            "displayName": { "type": "string" },
+            "photoURL": { "type": "string" },
+            "approved": { "type": "boolean" }
+        },
+        "required": ["email"]
+    }
+  },
+  "firestore": {
+    "contacts/{contactId}": {
+      "schema": "contacts",
+      "description": "Global directory of contacts."
+    },
+    "admins/{adminId}": {
+      "schema": "admins",
+      "description": "Whitelisted administrators."
+    },
+    "users/{userId}": {
+        "schema": "users",
+        "description": "Authenticated users profiles."
+    }
+  }
+}
