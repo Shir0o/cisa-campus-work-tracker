@@ -8,14 +8,8 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 md:px-6 flex items-center justify-between sticky top-0 z-30">
-      {/* Mobile Menu Icon */}
+      {/* Mobile Brand */}
       <div className="md:hidden flex items-center gap-3">
-        <button 
-          onClick={onMenuClick}
-          className="p-2 -ml-2 rounded-full hover:bg-surface-container-high text-on-surface-variant active:scale-95 transition-all"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
         <span className="text-lg font-bold text-primary truncate">CampusHub</span>
       </div>
 
