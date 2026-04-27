@@ -128,14 +128,6 @@ export default function Dashboard() {
               ))}
             </div>
             
-            {/* Call to action card */}
-            <div className="mt-8 bg-primary-container text-on-primary-container rounded-2xl p-6 shadow-sm">
-              <h3 className="text-lg font-bold mb-2">Need Help?</h3>
-              <p className="text-sm mb-4 opacity-90">Access our training resources to improve your outreach campaigns.</p>
-              <button className="bg-on-primary text-primary font-bold py-2.5 px-4 rounded-full w-full hover:bg-opacity-90 transition-all active:scale-95 text-sm">
-                View Documentation
-              </button>
-            </div>
           </div>
         </div>
       </div>
