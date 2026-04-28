@@ -19,9 +19,10 @@ interface SidebarProps {
   onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  onNewContact?: () => void;
 }
 
-export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onNewContact }: SidebarProps) {
   const { logOut, isAdmin, role } = useAuth();
   
   const navItems = [
@@ -96,10 +97,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
         {/* New Contact Button */}
         <div className="mb-6 px-1">
-          <button className={cn(
-            "bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center transition-all active:scale-95 shadow-sm px-0 h-12 overflow-hidden w-full",
-            isCollapsed ? "px-0" : "px-6"
-          )}>
+          <button 
+            onClick={onNewContact}
+            className={cn(
+              "bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center transition-all active:scale-95 shadow-sm px-0 h-12 overflow-hidden w-full cursor-pointer",
+              isCollapsed ? "px-0" : "px-6"
+            )}
+          >
             <PlusCircle className="w-5 h-5 shrink-0" />
             <motion.span 
               initial={false}
