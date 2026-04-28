@@ -4,8 +4,7 @@ import {
   LayoutDashboard, 
   Kanban, 
   Users, 
-  UserCheck,
-  Settings
+  UserCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';

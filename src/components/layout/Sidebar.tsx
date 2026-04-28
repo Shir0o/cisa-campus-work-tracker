@@ -8,8 +8,7 @@ import {
   UserCheck, 
   PlusCircle,
   ChevronLeft,
-  ChevronRight,
-  Settings
+  ChevronRight
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
