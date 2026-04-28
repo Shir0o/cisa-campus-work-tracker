@@ -119,12 +119,11 @@ function KanbanCard({ contact }: KanbanCardProps) {
         )}
       </div>
       
-      <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic">
-        {contact.id === '1' ? "Referred by Sarah J. interested in upcoming community event." :
-         contact.id === '5' ? "Signed up via website form. Asking about volunteer opportunities." :
-         contact.id === '6' ? "Sent welcome email and intro packet. Awaiting response." :
-         "Attended last 3 meetings. Good candidate for committee lead."}
-      </p>
+      {contact.notes && (
+        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic">
+          {contact.notes}
+        </p>
+      )}
 
       {contact.status && (
         <div className="flex">
@@ -143,7 +142,7 @@ function KanbanCard({ contact }: KanbanCardProps) {
           {contact.stage === 'New' ? <AlertCircle className="w-3 h-3 text-error" /> : <History className="w-3 h-3" />}
           {contact.stage === 'New' ? 'Needs Contact' : contact.lastSeen}
         </div>
-        <span>{contact.id === '3' || contact.id === '5' ? 'Added: Today' : 'Added: Yesterday'}</span>
+        <span>{contact.createdAt ? `Added: ${contact.createdAt}` : 'Lead'}</span>
       </div>
     </div>
   );

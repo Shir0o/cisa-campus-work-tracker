@@ -11,6 +11,9 @@ export interface Contact {
   initials: string;
   status?: 'Needs Contact' | 'Email Sent' | 'Qualified Lead' | 'Follow Up Required' | 'Meeting Scheduled';
   attendance?: Record<string, boolean | 'absent'>;
+  notes?: string;
+  createdAt?: string;
+  hasNewActivity?: boolean;
 }
 
 export interface Metric {

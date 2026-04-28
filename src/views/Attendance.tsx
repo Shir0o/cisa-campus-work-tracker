@@ -35,7 +35,7 @@ export default function Attendance() {
           <h1 className="text-3xl font-normal text-on-surface mb-1">Attendance Tracker</h1>
           <p className="text-body-md text-on-surface-variant flex items-center gap-2">
             <CalendarDays className="w-4 h-4" />
-            Fall 2023 Cohort • 24 Contacts
+            Fall Cohort • 0 Contacts
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -58,7 +58,7 @@ export default function Attendance() {
           </div>
           <div>
             <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Total Reach</p>
-            <p className="text-2xl font-medium text-on-surface">24</p>
+            <p className="text-2xl font-medium text-on-surface">0</p>
           </div>
         </div>
         <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
@@ -67,7 +67,7 @@ export default function Attendance() {
           </div>
           <div>
             <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Avg Attendance</p>
-            <p className="text-2xl font-medium text-on-surface">78%</p>
+            <p className="text-2xl font-medium text-on-surface">0%</p>
           </div>
         </div>
         <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
@@ -76,7 +76,7 @@ export default function Attendance() {
           </div>
           <div>
             <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">At Risk (&lt; 50%)</p>
-            <p className="text-2xl font-medium text-on-surface">3</p>
+            <p className="text-2xl font-medium text-on-surface">0</p>
           </div>
         </div>
       </div>
@@ -103,24 +103,19 @@ export default function Attendance() {
             </thead>
             <tbody className="divide-y divide-outline-variant/50 bg-surface-container-lowest">
               {CONTACTS.filter(c => c.attendance).map((contact) => (
-                <tr key={contact.id} className={cn(
-                  "hover:bg-surface-variant/20 transition-colors group",
-                  contact.name === 'Sarah Jenkins' && "bg-error-container/5"
-                )}>
+                <tr key={contact.id} className="hover:bg-surface-variant/20 transition-colors group">
                   <td className="sticky left-0 z-10 bg-surface-container-lowest group-hover:bg-surface-container-low border-r border-outline-variant p-3 sm:p-4 transition-colors">
                     <div className="flex items-center gap-2 sm:gap-3">
                       {contact.avatar ? (
                         <img src={contact.avatar} alt={contact.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-outline-variant shrink-0 object-cover" />
                       ) : (
-                        <div className={cn(
-                          "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-xs sm:text-base",
-                          contact.id === '1' ? "bg-secondary-container text-on-secondary-container" : "bg-primary-fixed text-on-primary-fixed"
-                        )}>{contact.initials}</div>
+                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-xs sm:text-base bg-primary-fixed text-on-primary-fixed">
+                          {contact.initials}
+                        </div>
                       )}
                       <div className="min-w-0">
                         <p className="text-xs sm:text-sm font-semibold text-on-surface truncate flex items-center gap-1 sm:gap-2">
                           {contact.name}
-                          {contact.name === 'Sarah Jenkins' && <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-error" />}
                         </p>
                         <p className="text-[10px] sm:text-xs text-on-surface-variant truncate">{contact.role}</p>
                       </div>
