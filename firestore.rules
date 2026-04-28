@@ -17,17 +17,17 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        request.auth.token.email.lower() == 'yilongwang05@gmail.com' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
     }
 
     function isApprovedUser() {
-      // In rules, we can't easily check another doc's field without potentially triggering recursive lookups
-      // but get() is fine if carefully used. For now, we'll allow admin or verified owner.
       return isSignedIn() && (
-        request.auth.token.email == 'yilongwang05@gmail.com' ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true
+        (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
       );
     }
 
