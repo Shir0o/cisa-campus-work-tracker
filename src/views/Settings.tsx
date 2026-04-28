@@ -207,15 +207,15 @@ export default function Settings() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto pb-24 lg:pb-8">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24 lg:pb-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-on-surface mb-2">User Management</h1>
         <p className="text-on-surface-variant">Manage application users, approve access, and assign roles.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        <div className="lg:col-span-1">
-          <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-6 h-full shadow-sm">
+      <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8 items-start">
+        <div className="lg:col-span-1 lg:sticky lg:top-24">
+          <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-6 shadow-sm">
             <div className="flex items-center gap-3 mb-6">
               <div className="p-2 bg-primary/10 rounded-xl text-primary">
                 <UserPlus className="w-5 h-5" />
@@ -254,18 +254,18 @@ export default function Settings() {
               <button 
                 type="submit"
                 disabled={isInviting || !inviteEmail}
-                className="w-full py-3 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50"
+                className="w-full py-3 bg-primary text-on-primary rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
               >
                 {isInviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                Invite Member
+                Send Invitation
               </button>
             </form>
           </div>
         </div>
 
-        <div className="lg:col-span-2">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 mb-4">
-            <div className="lg:col-span-7 relative">
+        <div className="lg:col-span-2 xl:col-span-3">
+          <div className="flex flex-col md:flex-row gap-4 mb-4">
+            <div className="flex-1 relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
               <input 
                 type="text"
@@ -275,19 +275,19 @@ export default function Settings() {
                 className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-2xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
               />
             </div>
-            <div className="lg:col-span-5 flex gap-1 p-1 bg-surface-container rounded-2xl border border-outline-variant overflow-x-auto no-scrollbar">
+            <div className="flex gap-1 p-1 bg-surface-container rounded-2xl border border-outline-variant overflow-x-auto no-scrollbar min-w-fit">
               {(['all', 'pending', 'approved', 'invited'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    "flex-1 whitespace-nowrap py-2 px-3 rounded-xl text-xs font-medium capitalize transition-all",
+                    "whitespace-nowrap py-2 px-6 rounded-xl text-xs font-bold capitalize transition-all",
                     filter === f 
                       ? "bg-secondary text-on-secondary shadow-sm" 
                       : "text-on-surface-variant hover:bg-surface-variant"
                   )}
                 >
-                  {f === 'invited' ? 'Pending Invites' : f}
+                  {f === 'invited' ? 'Invitations' : f}
                 </button>
               ))}
             </div>
@@ -325,7 +325,6 @@ export default function Settings() {
                       ))
                     ) : (
                       <>
-                        {/* Invitations Row */}
                         {filteredInvites.map((invite) => (
                           <motion.tr 
                             layout
@@ -337,17 +336,17 @@ export default function Settings() {
                           >
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold">
-                                  <Mail className="w-5 h-5" />
+                                <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm">
+                                  <Mail className="w-4 h-4" />
                                 </div>
                                 <div>
-                                  <p className="font-bold text-on-surface leading-tight italic">Awaiting Sign In</p>
+                                  <p className="font-bold text-on-surface leading-tight italic">Pending Activation</p>
                                   <p className="text-xs text-on-surface-variant">{invite.email}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <span className="text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded bg-surface-variant/50 border border-outline-variant/50">
+                              <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-surface-variant/50 border border-outline-variant/50 text-on-surface-variant">
                                 {invite.role.replace('_', ' ')}
                               </span>
                             </td>
@@ -360,6 +359,7 @@ export default function Settings() {
                               <button
                                 onClick={() => revokeInvitation(invite.email)}
                                 className="p-2 text-error hover:bg-error-container/30 rounded-lg transition-all"
+                                title="Revoke Invitation"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -367,7 +367,6 @@ export default function Settings() {
                           </motion.tr>
                         ))}
                         
-                        {/* Users Rows */}
                         {filteredUsers.map((u) => (
                           <motion.tr 
                             layout
@@ -379,7 +378,7 @@ export default function Settings() {
                           >
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant relative">
+                                <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant relative shadow-sm">
                                   {u.photoURL ? (
                                     <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
                                   ) : (
@@ -389,7 +388,7 @@ export default function Settings() {
                                   )}
                                   {u.uid === currentUser?.uid && (
                                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-sm shadow-primary"></div>
                                     </div>
                                   )}
                                 </div>
@@ -404,7 +403,7 @@ export default function Settings() {
                                 value={u.role || 'community_manager'} 
                                 onChange={(e) => changeRole(u.uid, e.target.value as any)}
                                 disabled={updatingId === u.uid || u.uid === currentUser?.uid}
-                                className="text-xs font-bold px-3 py-1.5 rounded-full bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer"
+                                className="text-xs font-bold px-3 py-1.5 rounded-full bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer hover:bg-surface-variant"
                               >
                                 <option value="community_manager">Community Manager</option>
                                 <option value="admin">Administrator</option>
