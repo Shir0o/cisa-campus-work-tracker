@@ -46,3 +46,11 @@ export interface AppUser {
   approved: boolean;
   role: 'admin' | 'community_manager';
 }
+
+export interface Invitation {
+  email: string;
+  role: 'admin' | 'community_manager';
+  approved: boolean;
+  invitedBy: string;
+  createdAt: any;
+}
