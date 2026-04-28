@@ -35,16 +35,20 @@ export function useLayout() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut } = useAuth();
+  const isSidebarCollapsed = typeof window !== 'undefined' && localStorage.getItem('sidebar_collapsed') === 'true';
 
   if (loading) {
     return (
       <div className="flex min-h-screen bg-background overflow-hidden">
         {/* Sidebar Skeleton */}
-        <div className="hidden lg:flex flex-col w-72 bg-surface-container border-r border-outline-variant p-6 gap-8">
-          <Skeleton className="h-10 w-32 rounded-xl" />
+        <div className={cn(
+          "hidden lg:flex flex-col bg-surface-container border-r border-outline-variant p-6 gap-8 transition-all duration-300",
+          isSidebarCollapsed ? "w-20" : "w-72"
+        )}>
+          <Skeleton className={cn("h-10 rounded-xl", isSidebarCollapsed ? "w-10" : "w-32")} />
           <Skeleton className="h-12 w-full rounded-2xl" />
           <div className="space-y-4">
-            <Skeleton className="h-4 w-24" />
+            {!isSidebarCollapsed && <Skeleton className="h-4 w-24" />}
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
