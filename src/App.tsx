@@ -84,7 +84,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const [isNewContactModalOpen, setIsNewContactModalOpen] = React.useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
@@ -103,8 +102,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     <LayoutContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
       <div className="flex min-h-screen bg-background pb-16 lg:pb-0">
         <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebarCollapse}
           onNewContact={() => setIsNewContactModalOpen(true)}
@@ -113,7 +110,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"
         )}>
-          <TopBar onMenuClick={toggleSidebarCollapse} onMobileMenuClick={() => setIsSidebarOpen(true)} />
+          <TopBar onMenuClick={toggleSidebarCollapse} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
             {children}
           </main>
