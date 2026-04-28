@@ -12,7 +12,10 @@ import Directory from './views/Directory';
 import Settings from './views/Settings';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
-import { Plus } from 'lucide-react';
+import { 
+  Plus
+} from 'lucide-react';
+import { Skeleton } from './components/ui/Skeleton';
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -34,8 +37,43 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <div className="flex min-h-screen bg-background overflow-hidden">
+        {/* Sidebar Skeleton */}
+        <div className="hidden lg:flex flex-col w-72 bg-surface-container border-r border-outline-variant p-6 gap-8">
+          <Skeleton className="h-10 w-32 rounded-xl" />
+          <Skeleton className="h-12 w-full rounded-2xl" />
+          <div className="space-y-4">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </div>
+        
+        <div className="flex-1 flex flex-col min-h-screen">
+          {/* TopBar Skeleton */}
+          <div className="h-16 border-b border-outline-variant px-6 flex items-center justify-between">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+          
+          {/* Main Content Skeleton */}
+          <div className="p-8 space-y-8 flex-1">
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-64" />
+              <Skeleton className="h-4 w-96" />
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Skeleton className="h-32 rounded-3xl" />
+              <Skeleton className="h-32 rounded-3xl" />
+              <Skeleton className="h-32 rounded-3xl" />
+            </div>
+            
+            <Skeleton className="h-96 w-full rounded-3xl" />
+          </div>
+        </div>
       </div>
     );
   }
