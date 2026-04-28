@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { doc, updateDoc, deleteDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
-import { cn } from '../../lib/utils';
+import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { Contact, Stage } from '../../types';
 
 interface ContactDetailsModalProps {
@@ -29,6 +29,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     role: '',
@@ -83,6 +84,28 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   }, [isOpen]);
 
   if (!contact) return null;
+
+  const handlePhoneBlur = () => {
+    if (!formData.phone) {
+      setPhoneError(null);
+      return;
+    }
+    const formatted = formatPhoneNumber(formData.phone);
+    setFormData(f => ({ ...f, phone: formatted }));
+    
+    if (!validatePhoneNumber(formData.phone)) {
+      const digits = formData.phone.replace(/[^\d]/g, '');
+      if (digits.length < 10) {
+        setPhoneError('Phone number too short (need 10 digits)');
+      } else if (digits.length > 10) {
+        setPhoneError('Phone number too long (need 10 digits)');
+      } else {
+        setPhoneError(null);
+      }
+    } else {
+      setPhoneError(null);
+    }
+  };
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -212,9 +235,28 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={e => setFormData(f => ({ ...f, phone: e.target.value }))}
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        onChange={e => {
+                          setFormData(f => ({ ...f, phone: e.target.value }));
+                          if (phoneError) setPhoneError(null);
+                        }}
+                        onBlur={handlePhoneBlur}
+                        className={cn(
+                          "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm",
+                          phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
+                        )}
                       />
+                      <AnimatePresence>
+                        {phoneError && (
+                          <motion.p
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
+                          >
+                            {phoneError}
+                          </motion.p>
+                        )}
+                      </AnimatePresence>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
