@@ -41,6 +41,16 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   });
 
   useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (contact) {
       setFormData({
         name: contact.name || '',

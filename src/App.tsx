@@ -20,6 +20,7 @@ import { Skeleton } from './components/ui/Skeleton';
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (value: boolean) => void;
+  openNewContact: () => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
@@ -137,7 +138,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <LayoutContext.Provider value={{ isSidebarCollapsed, setIsSidebarCollapsed }}>
+    <LayoutContext.Provider value={{ 
+      isSidebarCollapsed, 
+      setIsSidebarCollapsed, 
+      openNewContact: () => setIsNewContactModalOpen(true) 
+    }}>
       <div className="flex min-h-screen bg-background pb-16 lg:pb-0">
         <Sidebar 
           isCollapsed={isSidebarCollapsed}
