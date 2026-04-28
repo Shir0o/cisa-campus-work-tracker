@@ -53,17 +53,12 @@ export default function OutreachBoard() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 no-scrollbar">
-        <div className={cn(
-          "grid gap-4 sm:gap-6 items-start transition-all",
-          isSidebarCollapsed 
-            ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" 
-            : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
-        )}>
+      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar">
+        <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
           {stages.map((stageInfo) => {
             const boardContacts = getStageContacts(stageInfo.stage);
             return (
-              <div key={stageInfo.stage} className="flex flex-col w-full bg-surface-container rounded-2xl border border-outline-variant/20 h-fit lg:max-h-full">
+              <div key={stageInfo.stage} className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
                 {/* Column Header */}
                 <div className="p-4 flex items-center justify-between border-b border-surface-variant">
                   <div className="flex items-center gap-2">
@@ -77,9 +72,9 @@ export default function OutreachBoard() {
                     <MoreHorizontal className="w-5 h-5" />
                   </button>
                 </div>
-
+ 
                 {/* Column Content */}
-                <div className="p-3 overflow-y-auto space-y-3 no-scrollbar min-h-[100px] max-h-[400px] lg:max-h-none">
+                <div className="p-3 overflow-y-auto space-y-3 custom-scrollbar min-h-[100px]">
                   {boardContacts.length > 0 ? boardContacts.map((contact) => (
                     <KanbanCard key={contact.id} contact={contact} />
                   )) : (
