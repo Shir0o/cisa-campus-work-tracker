@@ -14,22 +14,22 @@ interface NewContactModalProps {
 export default function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     role: '',
     location: '',
     email: '',
     phone: '',
-    stage: 'New' as Contact['stage'],
+    stage: 'First Contact' as Contact['stage'],
     notes: ''
   });
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map(n => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
+  const capitalize = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,9 +37,16 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
     setLoading(true);
 
     try {
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       const contactData = {
-        ...formData,
-        initials: getInitials(formData.name),
+        name: fullName,
+        role: formData.role,
+        location: formData.location,
+        email: formData.email,
+        phone: formData.phone,
+        stage: formData.stage,
+        notes: formData.notes,
+        initials: getInitials(formData.firstName, formData.lastName),
         status: 'Needs Contact',
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
@@ -52,12 +59,13 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
       onClose();
       // Reset form
       setFormData({
-        name: '',
+        firstName: '',
+        lastName: '',
         role: '',
         location: '',
         email: '',
         phone: '',
-        stage: 'New',
+        stage: 'First Contact',
         notes: ''
       });
     } catch (error) {
@@ -99,18 +107,33 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name */}
-                <div className="space-y-1.5 md:col-span-2">
+                {/* First Name */}
+                <div className="space-y-1.5">
                   <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <User className="w-4 h-4" /> FULL NAME
+                    <User className="w-4 h-4" /> FIRST NAME
                   </label>
                   <input
                     required
                     type="text"
-                    value={formData.name}
-                    onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
+                    value={formData.firstName}
+                    onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                     className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                    placeholder="e.g. Alex Johnson"
+                    placeholder="e.g. Alex"
+                  />
+                </div>
+
+                {/* Last Name */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <User className="w-4 h-4" /> LAST NAME
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={formData.lastName}
+                    onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
+                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    placeholder="e.g. Johnson"
                   />
                 </div>
 
