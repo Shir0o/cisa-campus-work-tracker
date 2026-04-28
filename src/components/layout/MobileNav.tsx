@@ -13,7 +13,7 @@ export default function MobileNav() {
   const { isAdmin } = useAuth();
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { icon: Kanban, label: 'Status', href: '/board' },
+    { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Users, label: 'Contacts', href: '/directory' },
     { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   ];

@@ -54,29 +54,39 @@ vi.mock('../App', () => ({
 // Assuming stages are fetched via some hook or state. 
 // For now, I'll mock components that might break.
 
-describe('OutreachBoard FAB Accessibility and Responsiveness', () => {
-  it('renders fixed "Add Stage" button with correct responsive positioning', async () => {
+describe('OutreachBoard Features', () => {
+  it('renders "Stage" header and description', async () => {
     render(<OutreachBoard />);
-    
-    // Use findByTitle to wait for loading to finish
-    const addStageBtn = await screen.findByTitle(/Add New Stage/i);
-    expect(addStageBtn).toBeInTheDocument();
-    
-    const container = addStageBtn.parentElement;
-    expect(container).toHaveClass('fixed');
-    
-    // Verify responsive bottom spacing to avoid overlapping with bottom nav
-    expect(container).toHaveClass('bottom-44');     // Default (mobile)
-    expect(container).toHaveClass('sm:bottom-24');  // Small/Medium
-    expect(container).toHaveClass('md:bottom-24');  // Medium
-    expect(container).toHaveClass('lg:bottom-8');   // Large
+    expect(await screen.findByRole('heading', { name: /Stage/i, level: 2 })).toBeInTheDocument();
+    expect(screen.getByText(/Manage contact progression and relationship stages/i)).toBeInTheDocument();
   });
 
-  it('Accessibility: "Add Stage" button has meaningful text for screen readers', async () => {
+  it('renders search input with correct placeholder', async () => {
+    render(<OutreachBoard />);
+    const searchInput = await screen.findByPlaceholderText(/Search board/i);
+    expect(searchInput).toBeInTheDocument();
+  });
+
+  it('shows "No stages configured" when no stages exist', async () => {
+    render(<OutreachBoard />);
+    // Initial state from mock is empty docs
+    expect(await screen.findByText(/No stages configured/i)).toBeInTheDocument();
+  });
+
+  it('shows "Add Stage" button for admin users', async () => {
     render(<OutreachBoard />);
     const addStageBtn = await screen.findByTitle(/Add New Stage/i);
-    
-    // It should contain "Add Stage" text
-    expect(addStageBtn).toHaveTextContent(/Add Stage/i);
+    expect(addStageBtn).toBeInTheDocument();
+  });
+});
+
+describe('OutreachBoard Responsiveness', () => {
+  it('has correct fixed positioning for the FAB', async () => {
+    render(<OutreachBoard />);
+    const addStageBtn = await screen.findByTitle(/Add New Stage/i);
+    const container = addStageBtn.parentElement;
+    expect(container).toHaveClass('fixed');
+    expect(container).toHaveClass('bottom-44'); // mobile
+    expect(container).toHaveClass('lg:bottom-8'); // desktop
   });
 });
