@@ -12,7 +12,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { cn } from '../lib/utils';
+import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { Contact } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -50,10 +50,10 @@ export default function Attendance() {
         ...doc.data()
       })) as Event[];
       setEvents(eventData);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'events');
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     });
 
     return () => {

@@ -79,10 +79,10 @@ export default function OutreachBoard() {
       }
       
       setStages(stagesData);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'stages');
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     });
 
     return () => unsubscribe();
@@ -245,7 +245,7 @@ export default function OutreachBoard() {
 
         {/* Add Stage FAB */}
         {isAdmin && (
-          <div className="fixed bottom-24 right-6 lg:bottom-8 lg:right-8 z-40 lg:z-50 transition-all">
+          <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
             <button 
               onClick={() => setShowAddStage(true)}
               className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"

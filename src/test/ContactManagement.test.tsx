@@ -111,9 +111,9 @@ describe('Contact Management', () => {
 
     render(<Directory />, { wrapper: BrowserRouter });
 
-    expect(screen.getByText('John Doe')).toBeInTheDocument();
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
-    expect(screen.getByText('john@example.com')).toBeInTheDocument();
+    expect(await screen.findByText('John Doe')).toBeInTheDocument();
+    expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
+    expect(await screen.findByText('john@example.com')).toBeInTheDocument();
   });
 
   it('Adding a Contact: calls addDoc with correct data', async () => {

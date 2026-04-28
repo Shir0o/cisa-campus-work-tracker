@@ -5,6 +5,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+export function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export function getUserAvatar(photoURL: string | null | undefined, gender?: string | null) {
   if (photoURL) return photoURL;
   

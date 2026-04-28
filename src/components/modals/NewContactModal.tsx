@@ -246,7 +246,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   className="flex-[2] h-12 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                   {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="animate-pulse">Adding Contact...</span>
                   ) : (
                     'Add Contact'
                   )}
