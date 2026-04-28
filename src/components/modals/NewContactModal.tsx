@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, MapPin, Mail, Phone, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
-import { Contact } from '../../types';
+import { Contact, Stage } from '../../types';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -20,9 +20,31 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
     location: '',
     email: '',
     phone: '',
-    stage: 'First Contact' as Contact['stage'],
+    stage: '',
     notes: ''
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchDefaultStage = async () => {
+        try {
+          const q = query(collection(db, 'stages'), orderBy('order', 'asc'), limit(1));
+          const querySnapshot = await getDocs(q);
+          if (!querySnapshot.empty) {
+            const firstStage = querySnapshot.docs[0].data() as Stage;
+            setFormData(f => ({ ...f, stage: firstStage.label }));
+          } else {
+            // Fallback if no stages exist yet
+            setFormData(f => ({ ...f, stage: 'First Contact' }));
+          }
+        } catch (error) {
+          console.error("Error fetching default stage:", error);
+          setFormData(f => ({ ...f, stage: 'First Contact' }));
+        }
+      };
+      fetchDefaultStage();
+    }
+  }, [isOpen]);
 
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);
@@ -65,7 +87,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         location: '',
         email: '',
         phone: '',
-        stage: 'First Contact',
+        stage: formData.stage, // Keep current stage as default for next entry
         notes: ''
       });
     } catch (error) {

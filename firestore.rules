@@ -118,5 +118,19 @@ service cloud.firestore {
       allow update: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
       allow delete: if isAdmin() || isManager();
     }
+
+    // 5. Stages Collection
+    match /stages/{stageId} {
+      function isValidStage(data) {
+        return data.label is string && data.label.size() <= 64 &&
+               data.color is string && data.color.size() <= 64 &&
+               data.order is int;
+      }
+
+      allow read: if isApprovedUser();
+      allow create: if isAdmin() && isValidId(stageId) && isValidStage(request.resource.data);
+      allow update: if isAdmin() && isValidId(stageId) && isValidStage(request.resource.data);
+      allow delete: if isAdmin() && isValidId(stageId);
+    }
   }
 }
