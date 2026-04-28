@@ -12,6 +12,8 @@ import { auth, db } from '../lib/firebase';
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
+  isManager: boolean;
+  role: string | null;
   isApproved: boolean;
   loading: boolean;
   signIn: () => Promise<void>;
@@ -23,6 +25,8 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userEmail = authUser.email?.toLowerCase();
         if (!userEmail) return;
 
-        const isAdminEmail = userEmail === 'yilongwang05@gmail.com';
+        const isSuperAdminEmail = userEmail === 'yilongwang05@gmail.com';
         
         // Initial setup/check
         const userDocRef = doc(db, 'users', authUser.uid);
@@ -53,8 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const inviteRef = doc(db, 'invitations', userEmail);
           const inviteDoc = await getDoc(inviteRef);
           
-          let initialRole = isAdminEmail ? 'admin' : 'community_manager';
-          let initialApproved = isAdminEmail;
+          let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isSuperAdminEmail ? 'admin' : 'viewer';
+          let initialApproved = isSuperAdminEmail;
 
           if (inviteDoc.exists()) {
             const inviteData = inviteDoc.data();
@@ -72,19 +76,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await setDoc(userDocRef, initialData);
           setIsApproved(initialApproved);
           setIsAdmin(initialRole === 'admin');
+          setIsManager(initialRole === 'admin' || initialRole === 'manager');
+          setRole(initialRole);
         }
 
         // Listen for real-time changes to the user's record
         userDocUnsubscribe = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             const data = doc.data();
-            setIsApproved(data.approved || isAdminEmail);
-            setIsAdmin(data.role === 'admin' || isAdminEmail);
+            setIsApproved(data.approved || isSuperAdminEmail);
+            const currentRole = data.role as string;
+            setRole(currentRole);
+            setIsAdmin(currentRole === 'admin' || isSuperAdminEmail);
+            setIsManager(currentRole === 'admin' || currentRole === 'manager' || isSuperAdminEmail);
           }
         });
 
       } else {
         setIsAdmin(false);
+        setIsManager(false);
+        setRole(null);
         setIsApproved(false);
       }
       setLoading(false);
@@ -106,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isApproved, loading, signIn, logOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, signIn, logOut }}>
       {children}
     </AuthContext.Provider>
   );

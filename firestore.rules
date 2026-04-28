@@ -15,19 +15,43 @@ service cloud.firestore {
       return isSignedIn() && request.auth.token.email_verified == true;
     }
 
+    function getUser() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
     function isAdmin() {
       return isSignedIn() && (
         (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+         getUser().role == 'admin')
+      );
+    }
+
+    function isManager() {
+      return isSignedIn() && (
+        isAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         getUser().role == 'manager')
+      );
+    }
+
+    function isOperator() {
+      return isSignedIn() && (
+        isManager() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         getUser().role == 'operator')
+      );
+    }
+
+    function isViewer() {
+      return isSignedIn() && (
+        isOperator() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         getUser().role == 'viewer')
       );
     }
 
     function isApprovedUser() {
-      return isSignedIn() && (
+      return isViewer() && (
         (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
+        getUser().approved == true
       );
     }
 
@@ -50,16 +74,16 @@ service cloud.firestore {
                data.displayName is string && data.displayName.size() <= 100 &&
                (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 512)) &&
                data.approved is bool &&
-               (data.role == 'admin' || data.role == 'community_manager');
+               (data.role in ['admin', 'manager', 'operator', 'viewer']);
       }
 
-      allow get: if isOwner(userId) || isAdmin();
-      allow list: if isAdmin();
+      allow get: if isOwner(userId) || isManager();
+      allow list: if isManager();
       allow create: if isOwner(userId) && 
                       request.resource.data.keys().hasAll(['email', 'displayName', 'photoURL', 'approved', 'role']) &&
                       isValidUser(request.resource.data) &&
                       (request.resource.data.approved == false || isAdmin()) &&
-                      (request.resource.data.role == 'community_manager' || isAdmin());
+                      (request.resource.data.role == 'viewer' || isAdmin());
       allow update: if (isAdmin() && isValidUser(request.resource.data)) || 
                       (isOwner(userId) && 
                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']) &&
@@ -74,14 +98,14 @@ service cloud.firestore {
     match /invitations/{email} {
       function isValidInvitation(data) {
         return data.email is string && data.email.size() <= 100 &&
-               (data.role == 'admin' || data.role == 'community_manager') &&
+               (data.role in ['admin', 'manager', 'operator', 'viewer']) &&
                data.approved is bool &&
                data.invitedBy is string &&
                data.createdAt is timestamp;
       }
 
-      allow get: if isAdmin() || (isSignedIn() && request.auth.token.email.lower() == email.lower());
-      allow list: if isAdmin();
+      allow get: if isManager() || (isSignedIn() && request.auth.token.email.lower() == email.lower());
+      allow list: if isManager();
       allow create: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
       allow update: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
       allow delete: if isAdmin();
@@ -94,10 +118,10 @@ service cloud.firestore {
                data.email is string && data.email.size() <= 100;
       }
 
-      allow read: if isAdmin() || isApprovedUser();
-      allow create: if (isAdmin() || isApprovedUser()) && isValidContact(request.resource.data);
-      allow update: if (isAdmin() || isApprovedUser()) && isValidContact(request.resource.data);
-      allow delete: if isAdmin();
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
+      allow update: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
+      allow delete: if isAdmin() || isManager();
     }
   }
 }

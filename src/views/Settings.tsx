@@ -32,7 +32,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 export default function Settings() {
-  const { user: currentUser, isAdmin } = useAuth();
+  const { user: currentUser, isAdmin, isManager } = useAuth();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,11 +43,11 @@ export default function Settings() {
   
   // Invitation Form state
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'community_manager'>('community_manager');
+  const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'operator' | 'viewer'>('operator');
   const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isManager) return;
 
     // Listen to users
     const usersQ = query(collection(db, 'users'), orderBy('email', 'asc'));
@@ -76,7 +76,7 @@ export default function Settings() {
       unsubscribeUsers();
       unsubscribeInvites();
     };
-  }, [isAdmin]);
+  }, [isManager]);
 
   const sendInvitation = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +101,7 @@ export default function Settings() {
       });
       
       setInviteEmail('');
-      setInviteRole('community_manager');
+      setInviteRole('operator');
     } catch (error) {
       console.error("Error sending invitation:", error);
       alert('Failed to send invitation. Please try again.');
@@ -133,7 +133,7 @@ export default function Settings() {
     }
   };
 
-  const changeRole = async (uid: string, newRole: 'admin' | 'community_manager') => {
+  const changeRole = async (uid: string, newRole: 'admin' | 'manager' | 'operator' | 'viewer') => {
     setUpdatingId(uid);
     try {
       await updateDoc(doc(db, 'users', uid), {
@@ -161,7 +161,7 @@ export default function Settings() {
     return matchesSearch;
   });
 
-  if (!isAdmin) {
+  if (!isManager) {
     // ... (rest of the non-admin view remains same)
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24 lg:pb-8">
@@ -194,7 +194,7 @@ export default function Settings() {
               </div>
               <div className="p-4 bg-surface-container-high rounded-2xl flex flex-col gap-1">
                 <span className="text-xs text-on-surface-variant uppercase tracking-wider">Assigned Role</span>
-                <span className="text-primary font-bold">Community Manager</span>
+                <span className="text-primary font-bold capitalize">{users.find(u => u.uid === currentUser?.uid)?.role?.replace('_', ' ') || 'Member'}</span>
               </div>
             </div>
           </div>
@@ -216,10 +216,10 @@ export default function Settings() {
         </div>
         <button 
           onClick={() => setShowInviteDialog(true)}
-          className="bg-primary text-on-primary px-6 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-lg shadow-primary/20"
+          className="md:static fixed bottom-24 right-6 z-40 bg-primary text-on-primary md:px-6 md:py-3 p-4 rounded-full md:rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-primary/30 md:shadow-lg md:shadow-primary/20"
         >
-          <UserPlus className="w-5 h-5" />
-          Invite New Member
+          <UserPlus className="w-6 h-6 md:w-5 md:h-5" />
+          <span className="hidden md:inline">Invite New Member</span>
         </button>
       </div>
 
@@ -358,12 +358,14 @@ export default function Settings() {
                         </td>
                         <td className="px-6 py-4">
                           <select 
-                            value={u.role || 'community_manager'} 
+                            value={u.role || 'viewer'} 
                             onChange={(e) => changeRole(u.uid, e.target.value as any)}
-                            disabled={updatingId === u.uid || u.uid === currentUser?.uid}
+                            disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
                             className="text-xs font-bold px-3 py-1.5 rounded-full bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer hover:bg-surface-variant"
                           >
-                            <option value="community_manager">Community Manager</option>
+                            <option value="viewer">Viewer</option>
+                            <option value="operator">Operator</option>
+                            <option value="manager">Manager</option>
                             <option value="admin">Administrator</option>
                           </select>
                         </td>
@@ -384,7 +386,7 @@ export default function Settings() {
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => toggleApproval(u.uid, u.approved)}
-                            disabled={updatingId === u.uid || u.uid === currentUser?.uid}
+                            disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
                             className={cn(
                               "px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50",
                               u.approved 
@@ -474,7 +476,9 @@ export default function Settings() {
                     onChange={(e) => setInviteRole(e.target.value as any)}
                     className="w-full px-4 py-4 bg-surface-container-high rounded-2xl border border-outline-variant focus:border-primary outline-none transition-all text-sm font-bold appearance-none cursor-pointer"
                   >
-                    <option value="community_manager">Community Manager</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="operator">Operator</option>
+                    <option value="manager">Manager</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>

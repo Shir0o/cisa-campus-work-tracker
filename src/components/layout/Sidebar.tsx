@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
-  const { logOut, isAdmin } = useAuth();
+  const { logOut, isAdmin, role } = useAuth();
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -30,6 +30,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
     { icon: Users, label: 'Contacts', href: '/directory' },
     { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   ];
+
+  const getRoleLabel = (r: string | null) => {
+    if (!r) return 'Guest';
+    switch (r) {
+      case 'admin': return 'Administrator';
+      case 'manager': return 'Manager';
+      case 'operator': return 'Operator';
+      case 'viewer': return 'Viewer';
+      default: return r.charAt(0).toUpperCase() + r.slice(1);
+    }
+  };
 
   return (
     <>
@@ -78,7 +89,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               className="whitespace-nowrap overflow-hidden"
             >
               <h2 className="text-lg font-black text-primary leading-tight">Campus Hub</h2>
-              <p className="text-xs text-on-surface-variant opacity-80">{isAdmin ? 'Admin' : 'Community Manager'}</p>
+              <p className="text-xs text-on-surface-variant opacity-80">{getRoleLabel(role)}</p>
             </motion.div>
           </div>
         </div>
