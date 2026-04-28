@@ -2,7 +2,6 @@ import React from 'react';
 import { 
   Search, 
   Filter, 
-  Download, 
   MoreVertical, 
   Mail, 
   Phone,
@@ -36,10 +35,6 @@ export default function Directory() {
           <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-outline text-primary hover:bg-surface-container-highest transition-all font-semibold text-sm">
             <Filter className="w-4 h-4" />
             Filter
-          </button>
-          <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-secondary-container text-on-secondary-container hover:bg-opacity-90 transition-all font-semibold text-sm shadow-sm">
-            <Download className="w-4 h-4" />
-            Export
           </button>
         </div>
       </div>
