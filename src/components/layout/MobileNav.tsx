@@ -12,10 +12,10 @@ import { useAuth } from '../AuthProvider';
 export default function MobileNav() {
   const { isAdmin } = useAuth();
   const navItems = [
-    { icon: LayoutDashboard, label: 'Home', href: '/' },
-    { icon: Kanban, label: 'Board', href: '/board' },
-    { icon: Users, label: 'People', href: '/directory' },
-    { icon: UserCheck, label: 'Admin', href: '/attendance' },
+    { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
+    { icon: Kanban, label: 'Status', href: '/board' },
+    { icon: Users, label: 'Contacts', href: '/directory' },
+    { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   ];
 
   return (

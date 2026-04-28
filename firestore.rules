@@ -12,7 +12,7 @@ service cloud.firestore {
     }
 
     function getAuthEmail() {
-      return request.auth.token.email.lower();
+      return request.auth.token.get('email', '').lower();
     }
 
     function isSuperAdmin() {
@@ -48,11 +48,11 @@ service cloud.firestore {
     }
 
     function isValidId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
     function isValidEmailId(id) {
-      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_.@+\\-]+$');
+      return id is string && id.size() > 0 && id.size() <= 128;
     }
 
     // 2. Users Collection
@@ -94,18 +94,16 @@ service cloud.firestore {
     // 3. Invitations Collection
     match /invitations/{email} {
       function isValidInvitation(data) {
-        return data.email is string && data.email.size() <= 100 &&
+        return data.email is string &&
                (data.role in ['admin', 'manager', 'operator', 'viewer']) &&
-               data.approved is bool &&
-               data.invitedBy is string &&
-               data.createdAt is timestamp;
+               data.approved is bool;
       }
 
       allow get: if isValidEmailId(email) && (isManager() || (isSignedIn() && getAuthEmail() == email.lower()));
       allow list: if isManager();
-      allow create: if isManager() && isValidEmailId(email) && isValidInvitation(request.resource.data);
-      allow update: if isManager() && isValidEmailId(email) && isValidInvitation(request.resource.data);
-      allow delete: if isManager() && isValidEmailId(email);
+      allow create: if (isSuperAdmin() || isManager()) && isValidInvitation(request.resource.data);
+      allow update: if (isSuperAdmin() || isManager()) && isValidInvitation(request.resource.data);
+      allow delete: if (isSuperAdmin() || isManager());
     }
 
     // 4. Contacts Collection

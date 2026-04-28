@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           "mb-8 flex items-center px-3 transition-all h-10",
           isCollapsed ? "justify-center md:px-0" : "justify-between"
         )}>
-          <div className="flex items-center gap-3 overflow-hidden">
+          <NavLink to="/" className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 min-w-[40px] rounded-xl bg-[#4A00E0] flex items-center justify-center shadow-md overflow-hidden border border-[#FFF59D]/20 shrink-0">
               <img 
                 src="/logo.svg" 
@@ -91,7 +91,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
               <h2 className="text-lg font-black text-primary leading-tight">Campus Hub</h2>
               <p className="text-xs text-on-surface-variant opacity-80">{getRoleLabel(role)}</p>
             </motion.div>
-          </div>
+          </NavLink>
         </div>
 
         {/* New Contact Button */}
