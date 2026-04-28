@@ -11,47 +11,36 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isEmailVerified() {
-      return isSignedIn() && request.auth.token.email_verified == true;
+    function getAuthEmail() {
+      return request.auth.token.email.lower();
     }
 
-    function getUser() {
+    function isSuperAdmin() {
+      return isSignedIn() && 
+             getAuthEmail() == 'yilongwang05@gmail.com' && 
+             request.auth.token.email_verified == true;
+    }
+
+    function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    function isAdmin() {
+    function hasRole(role) {
       return isSignedIn() && (
-        (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         getUser().role == 'admin')
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role)
       );
     }
 
-    function isManager() {
-      return isSignedIn() && (
-        isAdmin() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         getUser().role == 'manager')
-      );
-    }
-
-    function isOperator() {
-      return isSignedIn() && (
-        isManager() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         getUser().role == 'operator')
-      );
-    }
-
-    function isViewer() {
-      return isSignedIn() && (
-        isOperator() || (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-         getUser().role == 'viewer')
-      );
-    }
+    function isAdmin() { return hasRole('admin'); }
+    function isManager() { return isAdmin() || hasRole('manager'); }
+    function isOperator() { return isManager() || hasRole('operator'); }
+    function isViewer() { return isOperator() || hasRole('viewer'); }
 
     function isApprovedUser() {
       return isViewer() && (
-        (request.auth.token.email.lower() == 'yilongwang05@gmail.com') ||
-        getUser().approved == true
+        isSuperAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().approved == true)
       );
     }
 
@@ -77,21 +66,30 @@ service cloud.firestore {
                (data.role in ['admin', 'manager', 'operator', 'viewer']);
       }
 
-      allow get: if isOwner(userId) || isManager();
+      allow get: if isValidId(userId) && (isOwner(userId) || isManager());
       allow list: if isManager();
-      allow create: if isOwner(userId) && 
-                      request.resource.data.keys().hasAll(['email', 'displayName', 'photoURL', 'approved', 'role']) &&
+      allow create: if isValidId(userId) && isOwner(userId) && 
+                      request.resource.data.keys().hasAll(['email', 'displayName', 'photoURL', 'approved', 'role', 'createdAt', 'updatedAt']) &&
                       isValidUser(request.resource.data) &&
-                      (request.resource.data.approved == false || isAdmin()) &&
-                      (request.resource.data.role == 'viewer' || isAdmin());
-      allow update: if (isAdmin() && isValidUser(request.resource.data)) || 
+                      (
+                        (request.resource.data.approved == false && request.resource.data.role == 'viewer') || 
+                        isAdmin() ||
+                        (
+                          exists(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())) &&
+                          get(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())).data.role == request.resource.data.role &&
+                          get(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())).data.approved == request.resource.data.approved
+                        )
+                      );
+      allow update: if isValidId(userId) && (
+                      (isManager() && isValidUser(request.resource.data)) || 
                       (isOwner(userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL']) &&
+                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']) &&
                        request.resource.data.email == resource.data.email &&
                        request.resource.data.role == resource.data.role &&
                        request.resource.data.approved == resource.data.approved &&
-                       isValidUser(request.resource.data));
-      allow delete: if isAdmin();
+                       isValidUser(request.resource.data))
+                    );
+      allow delete: if isValidId(userId) && isAdmin();
     }
 
     // 3. Invitations Collection
@@ -104,11 +102,11 @@ service cloud.firestore {
                data.createdAt is timestamp;
       }
 
-      allow get: if isManager() || (isSignedIn() && request.auth.token.email.lower() == email.lower());
+      allow get: if isValidEmailId(email) && (isManager() || (isSignedIn() && getAuthEmail() == email.lower()));
       allow list: if isManager();
-      allow create: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
-      allow update: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
-      allow delete: if isAdmin();
+      allow create: if isManager() && isValidEmailId(email) && isValidInvitation(request.resource.data);
+      allow update: if isManager() && isValidEmailId(email) && isValidInvitation(request.resource.data);
+      allow delete: if isManager() && isValidEmailId(email);
     }
 
     // 4. Contacts Collection

@@ -101,13 +101,18 @@ export default function Settings() {
         return;
       }
 
-      await setDoc(doc(db, 'invitations', emailLower), {
-        email: emailLower,
-        role: inviteRole,
-        approved: true, // Auto-approve invited members
-        invitedBy: currentUser.uid,
-        createdAt: serverTimestamp()
-      });
+      const invitationPath = `invitations/${emailLower}`;
+      try {
+        await setDoc(doc(db, 'invitations', emailLower), {
+          email: emailLower,
+          role: inviteRole,
+          approved: true, // Auto-approve invited members
+          invitedBy: currentUser.uid,
+          createdAt: serverTimestamp()
+        });
+      } catch (error) {
+        handleFirestoreError(error, 'CREATE', invitationPath);
+      }
       
       setInviteEmail('');
       setInviteRole('operator');
@@ -131,12 +136,14 @@ export default function Settings() {
 
   const toggleApproval = async (uid: string, currentStatus: boolean) => {
     setUpdatingId(uid);
+    const userPath = `users/${uid}`;
     try {
       await updateDoc(doc(db, 'users', uid), {
-        approved: !currentStatus
+        approved: !currentStatus,
+        updatedAt: serverTimestamp()
       });
     } catch (error) {
-      console.error("Error updating approval:", error);
+      handleFirestoreError(error, 'UPDATE', userPath);
     } finally {
       setUpdatingId(null);
     }
@@ -144,12 +151,14 @@ export default function Settings() {
 
   const changeRole = async (uid: string, newRole: 'admin' | 'manager' | 'operator' | 'viewer') => {
     setUpdatingId(uid);
+    const userPath = `users/${uid}`;
     try {
       await updateDoc(doc(db, 'users', uid), {
-        role: newRole
+        role: newRole,
+        updatedAt: serverTimestamp()
       });
     } catch (error) {
-      console.error("Error updating role:", error);
+      handleFirestoreError(error, 'UPDATE', userPath);
     } finally {
       setUpdatingId(null);
     }
@@ -169,6 +178,20 @@ export default function Settings() {
     const matchesSearch = invite.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
+
+  const handleFirestoreError = (error: unknown, operationType: string, path: string | null) => {
+    const errInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: currentUser?.uid,
+        email: currentUser?.email,
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    throw new Error(JSON.stringify(errInfo));
+  };
 
   if (!isManager) {
     // ... (rest of the non-admin view remains same)
@@ -375,7 +398,7 @@ export default function Settings() {
                             <option value="viewer">Viewer</option>
                             <option value="operator">Operator</option>
                             <option value="manager">Manager</option>
-                            <option value="admin">Administrator</option>
+                            {isAdmin && <option value="admin">Administrator</option>}
                           </select>
                         </td>
                         <td className="px-6 py-4">
@@ -395,7 +418,7 @@ export default function Settings() {
                         <td className="px-6 py-4 text-right">
                           <button
                             onClick={() => toggleApproval(u.uid, u.approved)}
-                            disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
+                            disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isManager}
                             className={cn(
                               "px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95 disabled:opacity-50",
                               u.approved 
