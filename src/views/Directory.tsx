@@ -10,7 +10,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowDown,
-  ExternalLink
+  ExternalLink,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from 'firebase/firestore';
@@ -22,7 +23,7 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Directory() {
-  const { isSidebarCollapsed } = useLayout();
+  const { isSidebarCollapsed, openNewContact } = useLayout();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +54,16 @@ export default function Directory() {
   const [filterRole, setFilterRole] = useState<string>('All');
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsTagModalOpen(false);
+    };
+    if (isTagModalOpen) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isTagModalOpen]);
 
   const filteredAndSortedContacts = useMemo(() => {
     let result = [...contacts];
@@ -515,6 +526,18 @@ export default function Directory() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Add Contact FAB */}
+      <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
+        <button 
+          onClick={openNewContact}
+          className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
+          title="Add New Contact"
+        >
+          <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+          <span className="hidden sm:inline">New Contact</span>
+        </button>
+      </div>
     </motion.div>
   );
 }

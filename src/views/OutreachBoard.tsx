@@ -86,6 +86,16 @@ export default function OutreachBoard() {
   );
 
   useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAddStage(false);
+    };
+    if (showAddStage) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showAddStage]);
+
+  useEffect(() => {
     const q = query(collection(db, 'stages'), orderBy('order', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const stagesData = snapshot.docs.map(doc => ({
@@ -578,6 +588,16 @@ function KanbanCard(props: KanbanCardProps) {
 function InternalKanbanCard({ contact, stages, onUpdateStage, isOverlay }: KanbanCardProps & { isOverlay?: boolean }) {
   const [isUpdating, setIsUpdating] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowMoveMenu(false);
+    };
+    if (showMoveMenu) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [showMoveMenu]);
 
   const handleMove = async (newStageLabel: string) => {
     setIsUpdating(true);

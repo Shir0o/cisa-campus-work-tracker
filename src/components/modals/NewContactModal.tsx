@@ -25,6 +25,16 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
   });
 
   useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
     if (isOpen) {
       const fetchDefaultStage = async () => {
         try {
