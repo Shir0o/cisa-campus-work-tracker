@@ -70,7 +70,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 md:p-10">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -83,10 +83,10 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden"
+            className="relative w-full max-w-lg bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
               <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
               <button 
                 onClick={onClose}
@@ -97,12 +97,12 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Name */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-medium text-on-surface-variant flex items-center gap-2">
-                    <User className="w-4 h-4" /> Full Name
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <User className="w-4 h-4" /> FULL NAME
                   </label>
                   <input
                     required
@@ -116,8 +116,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Role */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant flex items-center gap-2">
-                    <Briefcase className="w-4 h-4" /> Role
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <Briefcase className="w-4 h-4" /> ROLE
                   </label>
                   <input
                     required
@@ -131,8 +131,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Location */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant flex items-center gap-2">
-                    <MapPin className="w-4 h-4" /> Location
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <MapPin className="w-4 h-4" /> LOCATION
                   </label>
                   <input
                     type="text"
@@ -145,8 +145,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant flex items-center gap-2">
-                    <Mail className="w-4 h-4" /> Email
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <Mail className="w-4 h-4" /> EMAIL
                   </label>
                   <input
                     required
@@ -160,8 +160,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Phone */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant flex items-center gap-2">
-                    <Phone className="w-4 h-4" /> Phone
+                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
+                    <Phone className="w-4 h-4" /> PHONE
                   </label>
                   <input
                     type="tel"
@@ -174,7 +174,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Stage */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-medium text-on-surface-variant">Lead Stage</label>
+                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">LEAD STAGE</label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {['New', 'First Contact', 'Second Contact', 'Regular'].map((s) => (
                       <button
@@ -182,7 +182,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                         type="button"
                         onClick={() => setFormData(f => ({ ...f, stage: s as any }))}
                         className={cn(
-                          "h-10 rounded-lg text-xs font-semibold transition-all border cursor-pointer",
+                          "h-10 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all border cursor-pointer",
                           formData.stage === s 
                             ? "bg-primary text-on-primary border-primary" 
                             : "bg-surface-container-highest text-on-surface-variant border-outline hover:border-primary"
@@ -196,7 +196,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-medium text-on-surface-variant">Initial Notes</label>
+                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">INITIAL NOTES</label>
                   <textarea
                     value={formData.notes}
                     onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
@@ -207,7 +207,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
               </div>
 
               {/* Actions */}
-              <div className="pt-4 flex gap-3">
+              <div className="pt-4 flex gap-3 sticky bottom-0 bg-surface-container pb-2">
                 <button
                   type="button"
                   onClick={onClose}
