@@ -4,6 +4,7 @@ import { cn } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
 import MobileNav from './components/layout/MobileNav';
+import NewContactModal from './components/modals/NewContactModal';
 import Dashboard from './views/Dashboard';
 import Attendance from './views/Attendance';
 import OutreachBoard from './views/OutreachBoard';
@@ -11,6 +12,7 @@ import Directory from './views/Directory';
 import Settings from './views/Settings';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+import { Plus } from 'lucide-react';
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -83,6 +85,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
+  const [isNewContactModalOpen, setIsNewContactModalOpen] = React.useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
     return saved === 'true';
@@ -104,6 +107,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           onClose={() => setIsSidebarOpen(false)}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebarCollapse}
+          onNewContact={() => setIsNewContactModalOpen(true)}
         />
         <div className={cn(
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
@@ -114,7 +118,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+        
+        {/* Mobile New Contact FAB */}
+        <div className="lg:hidden fixed bottom-20 right-6 z-40">
+          <button
+            onClick={() => setIsNewContactModalOpen(true)}
+            className="w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          >
+            <Plus className="w-6 h-6" />
+          </button>
+        </div>
+
         <MobileNav />
+        
+        <NewContactModal 
+          isOpen={isNewContactModalOpen} 
+          onClose={() => setIsNewContactModalOpen(false)} 
+        />
       </div>
     </LayoutContext.Provider>
   );
