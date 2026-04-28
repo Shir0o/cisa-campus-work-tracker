@@ -65,9 +65,16 @@ export default function OutreachBoard() {
           { label: 'Regular', color: 'bg-secondary', order: 2 },
         ];
         
-        Promise.all(defaultStages.map(s => addDoc(collection(db, 'stages'), s)))
-          .catch(err => handleFirestoreError(err, OperationType.CREATE, 'stages'))
-          .finally(() => setLoading(false));
+        const createStages = async () => {
+          try {
+            await Promise.all(defaultStages.map(s => addDoc(collection(db, 'stages'), s)));
+          } catch (err) {
+            handleFirestoreError(err, OperationType.CREATE, 'stages');
+          } finally {
+            setLoading(false);
+          }
+        };
+        createStages();
       }
       
       setStages(stagesData);

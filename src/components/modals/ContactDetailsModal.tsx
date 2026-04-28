@@ -65,7 +65,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
           const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
           setStages(stageData);
         } catch (error) {
-          console.error("Error fetching stages:", error);
+          handleFirestoreError(error, OperationType.LIST, 'stages');
         }
       };
       fetchStages();

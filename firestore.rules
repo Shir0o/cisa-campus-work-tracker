@@ -128,9 +128,23 @@ service cloud.firestore {
       }
 
       allow read: if isApprovedUser();
-      allow create: if isAdmin() && isValidId(stageId) && isValidStage(request.resource.data);
-      allow update: if isAdmin() && isValidId(stageId) && isValidStage(request.resource.data);
-      allow delete: if isAdmin() && isValidId(stageId);
+      allow create: if isManager() && isValidId(stageId) && isValidStage(request.resource.data);
+      allow update: if isManager() && isValidId(stageId) && isValidStage(request.resource.data);
+      allow delete: if isManager() && isValidId(stageId);
+    }
+
+    // 6. Events Collection
+    match /events/{eventId} {
+      function isValidEvent(data) {
+        return data.name is string && data.name.size() <= 100 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.order is int;
+      }
+
+      allow read: if isApprovedUser();
+      allow create: if isOperator() && isValidEvent(request.resource.data);
+      allow update: if isOperator() && isValidEvent(request.resource.data);
+      allow delete: if isManager();
     }
   }
 }
