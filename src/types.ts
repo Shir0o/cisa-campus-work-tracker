@@ -5,7 +5,7 @@ export interface Contact {
   location: string;
   email: string;
   phone: string;
-  stage: 'First Contact' | 'Second Contact' | 'Regular';
+  stage: string;
   lastSeen: string;
   avatar?: string;
   initials: string;
@@ -14,6 +14,13 @@ export interface Contact {
   notes?: string;
   createdAt?: string;
   hasNewActivity?: boolean;
+}
+
+export interface Stage {
+  id: string;
+  label: string;
+  color: string;
+  order: number;
 }
 
 export interface Metric {

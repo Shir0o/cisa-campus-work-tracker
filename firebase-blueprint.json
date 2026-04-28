@@ -12,8 +12,7 @@
         "email": { "type": "string" },
         "phone": { "type": "string" },
         "stage": { 
-          "type": "string",
-          "enum": ["New", "First Contact", "Second Contact", "Regular"]
+          "type": "string"
         },
         "lastSeen": { "type": "string" },
         "avatar": { "type": "string" },
@@ -62,6 +61,18 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["email", "role", "approved"]
+    },
+    "stages": {
+      "title": "Stage",
+      "description": "A workflow stage in the kanban board.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "label": { "type": "string" },
+        "color": { "type": "string" },
+        "order": { "type": "integer" }
+      },
+      "required": ["label", "color", "order"]
     }
   },
   "firestore": {
@@ -74,12 +85,16 @@
       "description": "Whitelisted administrators."
     },
     "users/{userId}": {
-        "schema": "users",
-        "description": "Authenticated users profiles."
+      "schema": "users",
+      "description": "Authenticated users profiles."
     },
     "invitations/{email}": {
       "schema": "invitations",
       "description": "Pre-authorized user email roles."
+    },
+    "stages/{stageId}": {
+      "schema": "stages",
+      "description": "Configurable workflow stages."
     }
   }
 }
