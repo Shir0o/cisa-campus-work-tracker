@@ -114,10 +114,10 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   />
                 </div>
 
-                {/* Role */}
+                {/* Status (formerly Role) */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <Briefcase className="w-4 h-4" /> ROLE
+                    <Briefcase className="w-4 h-4" /> STATUS
                   </label>
                   <input
                     required
@@ -129,17 +129,17 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   />
                 </div>
 
-                {/* Location */}
+                {/* First Met (formerly Location) */}
                 <div className="space-y-1.5">
                   <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <MapPin className="w-4 h-4" /> LOCATION
+                    <MapPin className="w-4 h-4" /> FIRST MET
                   </label>
                   <input
                     type="text"
                     value={formData.location}
                     onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
                     className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                    placeholder="e.g. Building A"
+                    placeholder="e.g. Campus Coffee"
                   />
                 </div>
 
@@ -172,27 +172,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   />
                 </div>
 
-                {/* Stage */}
-                <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">LEAD STAGE</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {['New', 'First Contact', 'Second Contact', 'Regular'].map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setFormData(f => ({ ...f, stage: s as any }))}
-                        className={cn(
-                          "h-10 rounded-lg text-[10px] font-black uppercase tracking-tight transition-all border cursor-pointer",
-                          formData.stage === s 
-                            ? "bg-primary text-on-primary border-primary" 
-                            : "bg-surface-container-highest text-on-surface-variant border-outline hover:border-primary"
-                        )}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
