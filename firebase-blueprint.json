@@ -73,6 +73,19 @@
         "order": { "type": "integer" }
       },
       "required": ["label", "color", "order"]
+    },
+    "events": {
+      "title": "Event",
+      "description": "An outreach event for tracking attendance.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "date": { "type": "string" },
+        "order": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "date", "order"]
     }
   },
   "firestore": {
@@ -95,6 +108,10 @@
     "stages/{stageId}": {
       "schema": "stages",
       "description": "Configurable workflow stages."
+    },
+    "events/{eventId}": {
+      "schema": "events",
+      "description": "Outreach events for attendance tracking."
     }
   }
 }

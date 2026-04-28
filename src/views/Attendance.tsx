@@ -38,6 +38,8 @@ export default function Attendance() {
         ...doc.data()
       })) as Contact[];
       setContacts(contactData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'contacts');
     });
 
     // Fetch Events
@@ -48,6 +50,9 @@ export default function Attendance() {
         ...doc.data()
       })) as Event[];
       setEvents(eventData);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'events');
       setLoading(false);
     });
 
