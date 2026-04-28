@@ -30,7 +30,7 @@ export default function Directory() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
-          <p className="text-sm text-on-surface-variant">Manage your 1,248 active contacts across all campaigns.</p>
+          <p className="text-sm text-on-surface-variant">Manage your active contacts across all campaigns.</p>
         </div>
         <div className="flex gap-3">
           <button className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl border border-outline text-primary hover:bg-surface-container-highest transition-all font-semibold text-sm">
@@ -106,7 +106,7 @@ export default function Directory() {
               {CONTACTS.map((contact) => (
                 <tr key={contact.id} className={cn(
                   "hover:bg-surface-container-low transition-colors group cursor-pointer",
-                  contact.id === '3' && "bg-primary-container/[0.03]"
+                  contact.hasNewActivity && "bg-primary-container/[0.03]"
                 )}>
                   <td className="py-4 px-4 sm:px-6">
                     <div className="w-5 h-5 rounded border-2 border-outline group-hover:border-primary transition-colors flex items-center justify-center opacity-40 group-hover:opacity-100"></div>
@@ -123,7 +123,7 @@ export default function Directory() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
-                          {contact.id === '3' && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New Activity" />}
+                          {contact.hasNewActivity && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New Activity" />}
                         </div>
                         <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
                       </div>
@@ -164,7 +164,7 @@ export default function Directory() {
                   )}>
                     <p className={cn(
                       "text-sm whitespace-nowrap",
-                      contact.id === '3' ? "text-primary font-bold" : "text-on-surface font-medium"
+                      contact.hasNewActivity ? "text-primary font-bold" : "text-on-surface font-medium"
                     )}>{contact.lastSeen}</p>
                   </td>
                   <td className="py-4 px-4 sm:px-6 text-right">

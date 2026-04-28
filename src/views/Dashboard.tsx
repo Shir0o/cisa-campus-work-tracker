@@ -23,9 +23,9 @@ export default function Dashboard() {
   const firstName = user?.displayName?.split(' ')[0] || 'Campaigner';
 
   const metrics = [
-    { label: 'Total Contacts', value: '2,405', trend: '12%', icon: Users, color: 'primary' },
-    { label: 'Recent Follow-ups', value: '342', trend: 'Past 7 Days', icon: CheckCircle2, color: 'secondary' },
-    { label: 'Integrated Systems', value: '85%', icon: RefreshCw, color: 'tertiary', progress: 85 },
+    { label: 'Total Contacts', value: '0', trend: '0%', icon: Users, color: 'primary' },
+    { label: 'Recent Follow-ups', value: '0', trend: 'Past 7 Days', icon: CheckCircle2, color: 'secondary' },
+    { label: 'Integrated Systems', value: '0%', icon: RefreshCw, color: 'tertiary', progress: 0 },
   ];
 
   const getGreeting = () => {
