@@ -56,10 +56,14 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
 
       <motion.nav 
         initial={false}
-        animate={{ width: isCollapsed ? 80 : 288 }}
+        animate={{ 
+          width: isCollapsed ? 80 : 288,
+          x: (isOpen || !window.matchMedia('(max-width: 1023px)').matches) ? 0 : -288
+        }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 flex px-3 hidden lg:flex overflow-hidden"
+          "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 flex px-3",
+          !isOpen && "hidden lg:flex"
         )}
       >
         {/* Brand Header */}

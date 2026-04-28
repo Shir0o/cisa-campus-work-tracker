@@ -113,22 +113,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"
         )}>
-          <TopBar onMenuClick={toggleSidebarCollapse} />
+          <TopBar onMenuClick={toggleSidebarCollapse} onMobileMenuClick={() => setIsSidebarOpen(true)} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
             {children}
           </main>
         </div>
         
-        {/* Mobile New Contact FAB */}
-        <div className="lg:hidden fixed bottom-20 right-6 z-40">
-          <button
-            onClick={() => setIsNewContactModalOpen(true)}
-            className="w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
-        </div>
-
         <MobileNav />
         
         <NewContactModal 
