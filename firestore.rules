@@ -17,8 +17,8 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
-        request.auth.token.email == 'yilongwang05@gmail.com'
+        request.auth.token.email == 'yilongwang05@gmail.com' ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
       );
     }
 
@@ -37,12 +37,6 @@ service cloud.firestore {
 
     function isValidId(id) {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
-    }
-
-    // 1. Admins Collection
-    match /admins/{adminId} {
-      allow read: if isSignedIn();
-      allow write: if false; // Admins must be provisioned manually or via secure process
     }
 
     // 2. Users Collection

@@ -46,6 +46,8 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
         </div>
       </div>
 
+      <div className="flex-1" />
+
       {/* Notifications & Profile */}
       <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
         <button className="w-12 h-12 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors relative">
