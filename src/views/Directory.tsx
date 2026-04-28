@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowDown,
-  Loader2,
   ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -20,6 +19,7 @@ import { cn } from '../lib/utils';
 import { useLayout } from '../App';
 import { Contact } from '../types';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Directory() {
   const { isSidebarCollapsed } = useLayout();
@@ -163,8 +163,39 @@ export default function Directory() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6 h-full">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-4 w-64" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-48 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
+          </div>
+        </div>
+        
+        <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 border border-outline-variant/30">
+          <div className="h-16 px-6 flex items-center border-b border-outline-variant">
+            <Skeleton className="h-5 w-32" />
+          </div>
+          <div className="p-6 space-y-4">
+            {[...Array(8)].map((_, i) => (
+              <div key={i} className="flex items-center gap-4 py-3 border-b border-outline-variant/30 last:border-0">
+                <Skeleton className="h-5 w-5 rounded" />
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-1/4" />
+                  <Skeleton className="h-3 w-1/6" />
+                </div>
+                <Skeleton className="h-4 w-24 hidden md:block" />
+                <Skeleton className="h-6 w-32 rounded-full" />
+                <Skeleton className="h-4 w-24 hidden sm:block" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
@@ -300,19 +301,19 @@ export default function Settings() {
               <AnimatePresence mode="popLayout">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={`skeleton-${i}`} className="animate-pulse">
+                    <tr key={`skeleton-${i}`}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-surface-variant"></div>
+                          <Skeleton className="w-10 h-10 rounded-full" />
                           <div className="space-y-2">
-                            <div className="h-4 w-32 bg-surface-variant rounded"></div>
-                            <div className="h-3 w-48 bg-surface-variant rounded"></div>
+                            <Skeleton className="h-4 w-32" />
+                            <Skeleton className="h-3 w-48" />
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4"><div className="h-6 w-20 bg-surface-variant rounded-full"></div></td>
-                      <td className="px-6 py-4"><div className="h-6 w-16 bg-surface-variant rounded-full"></div></td>
-                      <td className="px-6 py-4"></td>
+                      <td className="px-6 py-4"><Skeleton className="h-8 w-24 rounded-full" /></td>
+                      <td className="px-6 py-4"><Skeleton className="h-8 w-20 rounded-full" /></td>
+                      <td className="px-6 py-4 text-right"><Skeleton className="ml-auto h-8 w-24 rounded-xl" /></td>
                     </tr>
                   ))
                 ) : (

@@ -7,8 +7,7 @@ import {
   Download,
   CalendarDays,
   X,
-  Plus,
-  Loader2
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
@@ -16,6 +15,7 @@ import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useLayout } from '../App';
 import { Contact } from '../types';
+import { Skeleton } from '../components/ui/Skeleton';
 
 interface Event {
   id: string;
@@ -127,8 +127,46 @@ export default function Attendance() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="p-6 md:p-8 space-y-6 flex flex-col h-full">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="h-10 w-32 rounded-xl" />
+            <Skeleton className="h-10 w-32 rounded-xl" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+
+        <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 border border-outline-variant/30">
+          <div className="h-16 px-6 border-b border-outline-variant flex items-center">
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="p-6 space-y-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-center gap-6 py-4 border-b border-outline-variant/30 last:border-0">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <div className="flex gap-4">
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }

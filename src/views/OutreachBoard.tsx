@@ -29,6 +29,7 @@ import {
   updateDoc 
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { Skeleton } from '../components/ui/Skeleton';
 
 export default function OutreachBoard() {
   const { isSidebarCollapsed } = useLayout();
@@ -122,6 +123,54 @@ export default function OutreachBoard() {
   const [boardContacts, setBoardContacts] = useState<Contact[]>([]);
 
   const getStageContactsArr = (stageLabel: string) => boardContacts.filter(c => c.stage === stageLabel);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-full bg-background overflow-hidden">
+        <div className="px-8 py-6 border-b border-surface-variant flex items-center justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-4 w-96" />
+          </div>
+          <div className="flex gap-4">
+            <Skeleton className="h-10 w-64 rounded-full" />
+            <Skeleton className="h-10 w-10 rounded-full" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-x-auto p-8">
+          <div className="flex gap-6 h-full">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="w-80 bg-surface-container rounded-2xl border border-outline-variant/20 flex flex-col">
+                <div className="p-4 border-b border-surface-variant flex justify-between">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-3 w-3 rounded-full" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                  <Skeleton className="h-5 w-5" />
+                </div>
+                <div className="p-3 space-y-3">
+                  {[...Array(3)].map((_, j) => (
+                    <div key={j} className="bg-surface-container-lowest p-4 rounded-xl space-y-3">
+                      <div className="flex justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                      </div>
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-2/3" />
+                      <div className="pt-2 border-t border-outline-variant/20 flex justify-between">
+                        <Skeleton className="h-3 w-12" />
+                        <Skeleton className="h-3 w-16" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
