@@ -26,7 +26,8 @@ import {
   UserPlus,
   Mail,
   Trash2,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -40,11 +41,19 @@ export default function Settings() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'invited'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [showRoleInfo, setShowRoleInfo] = useState(false);
   
-  // Invitation Form state
+  // Member Form state
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'operator' | 'viewer'>('operator');
   const [isInviting, setIsInviting] = useState(false);
+
+  const roleDefinitions = [
+    { name: 'Admin', desc: 'Full control over settings, users, and data management.' },
+    { name: 'Manager', desc: 'Can manage users and access all directory features.' },
+    { name: 'Operator', desc: 'Can add and edit directory/attendance records.' },
+    { name: 'Viewer', desc: 'Read-only access to view data and dashboards.' }
+  ];
 
   useEffect(() => {
     if (!isManager) return;
@@ -103,8 +112,8 @@ export default function Settings() {
       setInviteEmail('');
       setInviteRole('operator');
     } catch (error) {
-      console.error("Error sending invitation:", error);
-      alert('Failed to send invitation. Please try again.');
+      console.error("Error adding member:", error);
+      alert('Failed to add member. Please try again.');
     } finally {
       setIsInviting(false);
     }
@@ -219,7 +228,7 @@ export default function Settings() {
           className="md:static fixed bottom-24 right-6 z-40 bg-primary text-on-primary md:px-6 md:py-3 p-4 rounded-full md:rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-primary/30 md:shadow-lg md:shadow-primary/20"
         >
           <UserPlus className="w-6 h-6 md:w-5 md:h-5" />
-          <span className="hidden md:inline">Invite New Member</span>
+          <span className="hidden md:inline">Add Member</span>
         </button>
       </div>
 
@@ -438,8 +447,8 @@ export default function Settings() {
                     <UserPlus className="w-6 h-6" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-on-surface">Invite Member</h2>
-                    <p className="text-sm text-on-surface-variant">Add a new person to the team</p>
+                    <h2 className="text-2xl font-black text-on-surface">Add New Member</h2>
+                    <p className="text-sm text-on-surface-variant">Pre-authorize a new person for access</p>
                   </div>
                 </div>
                 <button 
@@ -469,8 +478,41 @@ export default function Settings() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-black text-on-surface-variant uppercase tracking-widest ml-1">Assigned Role</label>
+                <div className="space-y-1.5 relative">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black text-on-surface-variant uppercase tracking-widest ml-1">Assigned Role</label>
+                    <div className="relative">
+                      <button 
+                        type="button"
+                        onMouseEnter={() => setShowRoleInfo(true)}
+                        onMouseLeave={() => setShowRoleInfo(false)}
+                        onClick={() => setShowRoleInfo(!showRoleInfo)}
+                        className="p-1 text-on-surface-variant hover:text-primary transition-colors"
+                      >
+                        <Info className="w-4 h-4" />
+                      </button>
+                      
+                      <AnimatePresence>
+                        {showRoleInfo && (
+                          <motion.div 
+                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                            animate={{ opacity: 1, y: 0, scale: 1 }}
+                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                            className="absolute bottom-full right-0 mb-2 w-64 bg-surface-container-high border border-outline-variant rounded-2xl p-4 shadow-xl z-[110]"
+                          >
+                            <div className="space-y-3">
+                              {roleDefinitions.map(role => (
+                                <div key={role.name}>
+                                  <h4 className="text-[10px] font-black text-primary uppercase">{role.name}</h4>
+                                  <p className="text-[10px] text-on-surface-variant leading-tight">{role.desc}</p>
+                                </div>
+                              ))}
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
+                  </div>
                   <select 
                     value={inviteRole}
                     onChange={(e) => setInviteRole(e.target.value as any)}
@@ -496,8 +538,8 @@ export default function Settings() {
                     disabled={isInviting || !inviteEmail}
                     className="flex-[2] py-4 bg-primary text-on-primary rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
                   >
-                    {isInviting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Mail className="w-5 h-5" />}
-                    Send Invitation
+                    {isInviting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
+                    Confirm & Add
                   </button>
                 </div>
               </form>
