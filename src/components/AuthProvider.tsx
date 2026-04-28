@@ -6,7 +6,7 @@ import {
   GoogleAuthProvider, 
   signOut 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface AuthContextType {
@@ -71,7 +71,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             displayName: authUser.displayName,
             photoURL: authUser.photoURL,
             approved: initialApproved,
-            role: initialRole
+            role: initialRole,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
           };
           await setDoc(userDocRef, initialData);
           setIsApproved(initialApproved);
