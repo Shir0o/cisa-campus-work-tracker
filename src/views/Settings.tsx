@@ -182,7 +182,7 @@ export default function Settings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="wait">
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={`skeleton-${i}`} className="animate-pulse">
@@ -201,18 +201,22 @@ export default function Settings() {
                     </tr>
                   ))
                 ) : filteredUsers.length === 0 ? (
-                  <tr>
+                  <motion.tr
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
                     <td colSpan={4} className="px-6 py-12 text-center text-on-surface-variant">
                       No users found matching your criteria.
                     </td>
-                  </tr>
+                  </motion.tr>
                 ) : (
                   filteredUsers.map((u) => (
                     <motion.tr 
-                      layout
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.98 }}
+                      transition={{ duration: 0.2 }}
                       key={u.uid} 
                       className="hover:bg-surface-container-high/50 transition-colors group"
                     >
