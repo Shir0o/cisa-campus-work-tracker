@@ -79,27 +79,27 @@ export default function Directory() {
 
         {/* Scrollable Area */}
         <div className="flex-1 overflow-auto no-scrollbar">
-          <table className="w-full text-left border-collapse table-fixed">
+          <table className="w-full text-left border-collapse table-auto min-w-[700px]">
             <thead className="bg-surface-container-low sticky top-0 z-10 border-b border-surface-variant shadow-sm">
               <tr>
-                <th className="py-4 px-4 sm:px-6 w-12 sm:w-16"></th>
-                <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group whitespace-nowrap w-auto">
+                <th className="py-4 px-4 sm:px-6 w-16"></th>
+                <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant cursor-pointer hover:text-on-surface group whitespace-nowrap">
                   Name <ArrowDown className="w-3 h-3 inline-block ml-1 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap" />
                 </th>
                 <th className={cn(
-                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-1/4",
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant",
                   isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
-                )}>Company</th>
+                )}>Location</th>
                 <th className={cn(
-                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-1/4",
-                  isSidebarCollapsed ? "hidden lg:table-cell" : "hidden lg:table-cell"
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant",
+                  "hidden lg:table-cell"
                 )}>Contact Info</th>
-                <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-20 sm:w-32">Stage</th>
+                <th className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant w-32">Stage</th>
                 <th className={cn(
-                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right w-24 sm:w-28",
+                  "py-4 px-4 text-xs font-black uppercase tracking-wider text-on-surface-variant text-right w-28",
                   isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                 )}>Last Seen</th>
-                <th className="py-4 px-4 sm:px-6 w-12 sm:w-16"></th>
+                <th className="py-4 px-4 sm:px-6 w-16"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
@@ -109,35 +109,34 @@ export default function Directory() {
                   contact.id === '3' && "bg-primary-container/[0.03]"
                 )}>
                   <td className="py-4 px-4 sm:px-6">
-                    <div className="w-4 h-4 sm:w-5 sm:h-5 rounded border-2 border-outline group-hover:border-primary transition-colors flex items-center justify-center opacity-40 group-hover:opacity-100"></div>
+                    <div className="w-5 h-5 rounded border-2 border-outline group-hover:border-primary transition-colors flex items-center justify-center opacity-40 group-hover:opacity-100"></div>
                   </td>
-                  <td className="py-4 px-2 sm:px-4 overflow-hidden">
+                  <td className="py-4 px-2 sm:px-4 max-w-[200px]">
                     <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                       {contact.avatar ? (
-                        <img src={contact.avatar} alt={contact.name} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-outline-variant shrink-0 object-cover shadow-sm" />
+                        <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full border border-outline-variant shrink-0 object-cover shadow-sm" />
                       ) : (
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-xs sm:text-sm">
+                        <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-sm">
                           {contact.initials}
                         </div>
                       )}
-                      <div className="min-w-0 overflow-hidden">
+                      <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
-                          {contact.id === '3' && <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-primary shrink-0" title="New Activity" />}
+                          {contact.id === '3' && <span className="w-2 h-2 rounded-full bg-primary shrink-0" title="New Activity" />}
                         </div>
-                        <p className="text-[10px] sm:text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
+                        <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
                       </div>
                     </div>
                   </td>
                   <td className={cn(
-                    "py-4 px-4 overflow-hidden",
+                    "py-4 px-4",
                     isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
                   )}>
-                    <p className="text-sm font-medium text-on-surface truncate">{contact.company}</p>
-                    <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.location}</p>
+                    <p className="text-sm font-medium text-on-surface truncate">{contact.location}</p>
                   </td>
-                  <td className="py-4 px-4 hidden lg:table-cell overflow-hidden">
-                    <div className="space-y-1">
+                  <td className="py-4 px-4 hidden lg:table-cell">
+                    <div className="space-y-1 max-w-[180px]">
                       <div className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors group/info cursor-default overflow-hidden">
                         <Mail className="w-3.5 h-3.5 opacity-60 group-hover/info:opacity-100 shrink-0" />
                         <span className="text-xs font-medium truncate">{contact.email}</span>
@@ -150,21 +149,21 @@ export default function Directory() {
                   </td>
                   <td className="py-4 px-2 sm:px-4">
                     <span className={cn(
-                      "inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tighter whitespace-nowrap overflow-hidden",
+                      "inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter whitespace-nowrap",
                       contact.status === 'Meeting Scheduled' ? "bg-secondary-container text-on-secondary-container" :
                       contact.status === 'Email Sent' ? "bg-tertiary-container text-on-tertiary-container" :
                       contact.status === 'Follow Up Required' ? "bg-error-container text-on-error-container" :
                       "bg-surface-variant text-on-surface-variant"
                     )}>
-                      <span className="truncate">{contact.status || contact.stage}</span>
+                      <span className="max-w-[100px] truncate">{contact.status || contact.stage}</span>
                     </span>
                   </td>
                   <td className={cn(
-                    "py-4 px-4 text-right overflow-hidden",
+                    "py-4 px-4 text-right",
                     isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                   )}>
                     <p className={cn(
-                      "text-sm whitespace-nowrap truncate",
+                      "text-sm whitespace-nowrap",
                       contact.id === '3' ? "text-primary font-bold" : "text-on-surface font-medium"
                     )}>{contact.lastSeen}</p>
                   </td>

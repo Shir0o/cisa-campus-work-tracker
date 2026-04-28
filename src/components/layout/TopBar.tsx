@@ -22,6 +22,25 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
+      {/* Mobile Logo/Title */}
+      <Link to="/" className="flex lg:hidden items-center gap-2 hover:opacity-80 transition-opacity">
+        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
+          <img 
+            src="/logo.svg" 
+            alt="CH" 
+            className="w-full h-full object-contain"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              if (target.parentElement) {
+                target.parentElement.innerHTML = '<span class="text-[8px] text-on-primary font-bold">CH</span>';
+              }
+            }}
+          />
+        </div>
+        <span className="font-black text-primary text-sm tracking-tight">Campus Hub</span>
+      </Link>
+
       {/* Desktop Menu Toggle */}
       <div className="hidden lg:flex items-center gap-2">
         <button 

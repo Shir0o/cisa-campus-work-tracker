@@ -8,7 +8,6 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "role": { "type": "string" },
-        "company": { "type": "string" },
         "location": { "type": "string" },
         "email": { "type": "string" },
         "phone": { "type": "string" },
