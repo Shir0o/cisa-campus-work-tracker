@@ -321,7 +321,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   className="flex items-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm hover:bg-error/10 transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {loading ? 'Deleting...' : 'Delete Contact'}
+                  {loading ? <span className="animate-pulse">Deleting...</span> : 'Delete Contact'}
                 </button>
               </div>
               
@@ -341,7 +341,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       disabled={loading}
                       className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                     >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+                      {loading ? <span className="animate-pulse">Saving...</span> : 'Save Changes'}
                     </button>
                   </>
                 ) : (
@@ -363,7 +363,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {loading ? 'Deleting...' : 'Delete Contact'}
+                  {loading ? <span className="animate-pulse">Deleting...</span> : 'Delete Contact'}
                 </button>
             </div>
           </motion.div>

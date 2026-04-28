@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
+import { sleep } from '../lib/utils';
 
 interface AuthContextType {
   user: User | null;
@@ -100,6 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(null);
         setIsApproved(false);
       }
+      await sleep(1000); // Ensure skeleton is visible for at least 1s
       setLoading(false);
     });
 

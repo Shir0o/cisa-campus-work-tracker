@@ -15,7 +15,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { cn } from '../lib/utils';
+import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { Contact } from '../types';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -39,7 +39,9 @@ export default function Directory() {
         ...doc.data()
       })) as Contact[];
       setContacts(contactData);
-      setLoading(false);
+      
+      // Delay first loading=false to make it less flashy
+      setTimeout(() => setLoading(false), 800);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'contacts');
     });

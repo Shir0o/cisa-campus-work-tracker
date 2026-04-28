@@ -67,10 +67,10 @@ export default function Settings() {
         ...doc.data()
       })) as AppUser[];
       setUsers(userData);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     }, (error) => {
       console.error("Error fetching users:", error);
-      setLoading(false);
+      setTimeout(() => setLoading(false), 800);
     });
 
     // Listen to invitations
@@ -563,8 +563,7 @@ export default function Settings() {
                     disabled={isInviting || !inviteEmail}
                     className="flex-[2] py-4 bg-primary text-on-primary rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 shadow-lg shadow-primary/20"
                   >
-                    {isInviting ? <Loader2 className="w-5 h-5 animate-spin" /> : <UserPlus className="w-5 h-5" />}
-                    Confirm & Add
+                    {isInviting ? <span className="animate-pulse">Adding...</span> : <><UserPlus className="w-5 h-5" /> Confirm & Add</>}
                   </button>
                 </div>
               </form>
