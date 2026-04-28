@@ -81,6 +81,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsAdmin(initialRole === 'admin');
           setIsManager(initialRole === 'admin' || initialRole === 'manager');
           setRole(initialRole);
+        } else {
+          // Document exists, set initial state before listener starts
+          const data = userDoc.data();
+          const currentRole = data.role as string;
+          setIsApproved(data.approved || isSuperAdminEmail);
+          const effectiveRole = isSuperAdminEmail ? (currentRole || 'admin') : currentRole;
+          setRole(effectiveRole);
+          setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
+          setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);
         }
 
         // Listen for real-time changes to the user's record
@@ -89,9 +98,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = doc.data();
             setIsApproved(data.approved || isSuperAdminEmail);
             const currentRole = data.role as string;
-            setRole(currentRole);
-            setIsAdmin(currentRole === 'admin' || isSuperAdminEmail);
-            setIsManager(currentRole === 'admin' || currentRole === 'manager' || isSuperAdminEmail);
+            const effectiveRole = isSuperAdminEmail ? (currentRole || 'admin') : currentRole;
+            setRole(effectiveRole);
+            setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
+            setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);
           }
         });
 
