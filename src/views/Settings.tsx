@@ -137,8 +137,8 @@ export default function Settings() {
         <p className="text-on-surface-variant">Manage application users, approve access, and assign roles.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="md:col-span-2 relative">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6 mb-8">
+        <div className="lg:col-span-6 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
           <input 
             type="text"
@@ -148,13 +148,13 @@ export default function Settings() {
             className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-2xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
           />
         </div>
-        <div className="flex gap-2 p-1 bg-surface-container rounded-2xl border border-outline-variant">
+        <div className="lg:col-span-4 flex gap-1 sm:gap-2 p-1 bg-surface-container rounded-2xl border border-outline-variant">
           {(['all', 'pending', 'approved'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "flex-1 py-2 px-3 rounded-xl text-sm font-medium capitalize transition-all",
+                "flex-1 py-2 px-1 sm:px-3 rounded-xl text-xs sm:text-sm font-medium capitalize transition-all",
                 filter === f 
                   ? "bg-secondary text-on-secondary shadow-sm" 
                   : "text-on-surface-variant hover:bg-surface-variant"
@@ -164,8 +164,8 @@ export default function Settings() {
             </button>
           ))}
         </div>
-        <div className="bg-surface-container rounded-2xl border border-outline-variant px-4 py-3 flex items-center justify-between">
-          <span className="text-sm font-medium text-on-surface-variant">Total Users</span>
+        <div className="lg:col-span-2 bg-surface-container rounded-2xl border border-outline-variant px-4 py-3 flex items-center justify-between">
+          <span className="text-sm font-medium text-on-surface-variant">Users</span>
           <span className="text-xl font-bold text-primary">{users.length}</span>
         </div>
       </div>
