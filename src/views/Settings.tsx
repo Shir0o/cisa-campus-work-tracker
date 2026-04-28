@@ -185,6 +185,7 @@ export default function Settings() {
       authInfo: {
         userId: currentUser?.uid,
         email: currentUser?.email,
+        emailVerified: currentUser?.emailVerified,
       },
       operationType,
       path

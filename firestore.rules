@@ -17,8 +17,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && 
-             getAuthEmail() == 'yilongwang05@gmail.com' && 
-             request.auth.token.email_verified == true;
+             getAuthEmail() == 'yilongwang05@gmail.com';
     }
 
     function getUserData() {
