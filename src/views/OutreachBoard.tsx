@@ -112,14 +112,6 @@ export default function OutreachBoard() {
           <p className="text-xs sm:text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3">
-          {isAdmin && (
-            <button 
-              onClick={() => setShowAddStage(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-full text-sm font-bold hover:shadow-lg transition-all"
-            >
-              <Plus className="w-4 h-4" /> Add Stage
-            </button>
-          )}
           <div className="relative flex-1 sm:flex-initial">
             <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input 
@@ -135,7 +127,7 @@ export default function OutreachBoard() {
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
         <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
           {stages.length > 0 ? stages.map((stageInfo) => {
             const boardContacts = getStageContacts(stageInfo.label);
@@ -172,11 +164,25 @@ export default function OutreachBoard() {
               <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
               <h3 className="text-lg font-bold text-on-surface">No stages configured</h3>
               <p className="text-sm text-on-surface-variant mt-1">
-                {isAdmin ? 'Click "Add Stage" to start building your workflow.' : 'Workflow stages haven\'t been set up yet.'}
+                {isAdmin ? 'Click the button below to start building your workflow.' : 'Workflow stages haven\'t been set up yet.'}
               </p>
             </div>
           )}
         </div>
+
+        {/* Add Stage FAB */}
+        {isAdmin && (
+          <div className="fixed bottom-44 right-6 sm:bottom-8 sm:right-8 z-40 lg:z-50">
+            <button 
+              onClick={() => setShowAddStage(true)}
+              className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
+              title="Add New Stage"
+            >
+              <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+              <span className="hidden sm:inline">Add Stage</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add Stage Modal */}

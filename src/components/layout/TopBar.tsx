@@ -3,10 +3,12 @@ import { Search, Bell, Menu, Settings, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
-import { getUserAvatar } from '../../lib/utils';
+import { getUserAvatar, cn } from '../../lib/utils';
+import { useLayout } from '../../App';
 
-export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
+export default function TopBar({ onMenuClick, onMobileMenuClick }: { onMenuClick?: () => void, onMobileMenuClick?: () => void }) {
   const { user, logOut } = useAuth();
+  const { isSidebarCollapsed } = useLayout();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -23,33 +25,43 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
       {/* Mobile Logo/Title */}
-      <Link to="/" className="flex lg:hidden items-center gap-2 hover:opacity-80 transition-opacity">
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
-          <img 
-            src="/logo.svg" 
-            alt="CH" 
-            className="w-full h-full object-contain"
-            onError={(e) => {
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              if (target.parentElement) {
-                target.parentElement.innerHTML = '<span class="text-[8px] text-on-primary font-bold">CH</span>';
-              }
-            }}
-          />
-        </div>
-        <span className="font-black text-primary text-sm tracking-tight">Campus Hub</span>
-      </Link>
-
-      {/* Desktop Menu Toggle */}
-      <div className="hidden lg:flex items-center gap-2">
+      <div className="flex lg:hidden items-center gap-2">
         <button 
-          onClick={onMenuClick}
+          onClick={onMobileMenuClick}
           className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors"
         >
           <Menu className="w-6 h-6" />
         </button>
+        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
+            <img 
+              src="/logo.svg" 
+              alt="CH" 
+              className="w-full h-full object-contain"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                if (target.parentElement) {
+                  target.parentElement.innerHTML = '<span class="text-[8px] text-on-primary font-bold">CH</span>';
+                }
+              }}
+            />
+          </div>
+          <span className="font-black text-primary text-sm tracking-tight hidden sm:inline">Campus Hub</span>
+        </Link>
       </div>
+
+      {/* Desktop Menu Toggle */}
+      {isSidebarCollapsed && (
+        <div className="hidden lg:flex items-center gap-2 mr-2">
+          <button 
+            onClick={onMenuClick}
+            className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+        </div>
+      )}
 
       {/* Search Bar - Now responsive instead of hidden */}
       <div className="flex-1 max-w-xl">
