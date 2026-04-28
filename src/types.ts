@@ -5,7 +5,7 @@ export interface Contact {
   location: string;
   email: string;
   phone: string;
-  stage: 'New' | 'First Contact' | 'Second Contact' | 'Regular';
+  stage: 'First Contact' | 'Second Contact' | 'Regular';
   lastSeen: string;
   avatar?: string;
   initials: string;

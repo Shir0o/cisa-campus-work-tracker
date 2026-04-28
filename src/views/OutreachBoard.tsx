@@ -17,7 +17,6 @@ import { useLayout } from '../App';
 export default function OutreachBoard() {
   const { isSidebarCollapsed } = useLayout();
   const stages = [
-    { label: 'New', color: 'bg-error', stage: 'New' },
     { label: 'First Contact', color: 'bg-primary-fixed-dim', stage: 'First Contact' },
     { label: 'Second Contact', color: 'bg-primary', stage: 'Second Contact' },
     { label: 'Regular', color: 'bg-secondary', stage: 'Regular' },
@@ -134,8 +133,8 @@ function KanbanCard({ contact }: KanbanCardProps) {
 
       <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">
         <div className="flex items-center gap-1">
-          {contact.stage === 'New' ? <AlertCircle className="w-3 h-3 text-error" /> : <History className="w-3 h-3" />}
-          {contact.stage === 'New' ? 'Needs Contact' : contact.lastSeen}
+          <History className="w-3 h-3" />
+          {contact.lastSeen}
         </div>
         <span>{contact.createdAt ? `Added: ${contact.createdAt}` : 'Lead'}</span>
       </div>
