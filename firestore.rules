@@ -39,6 +39,10 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isValidEmailId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_.@+\\-]+$');
+    }
+
     // 2. Users Collection
     match /users/{userId} {
       function isValidUser(data) {
@@ -66,7 +70,24 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 3. Contacts Collection
+    // 3. Invitations Collection
+    match /invitations/{email} {
+      function isValidInvitation(data) {
+        return data.email is string && data.email.size() <= 100 &&
+               (data.role == 'admin' || data.role == 'community_manager') &&
+               data.approved is bool &&
+               data.invitedBy is string &&
+               data.createdAt is timestamp;
+      }
+
+      allow get: if isAdmin() || (isSignedIn() && request.auth.token.email.lower() == email.lower());
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
+      allow update: if isAdmin() && isValidEmailId(email) && isValidInvitation(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // 4. Contacts Collection
     match /contacts/{contactId} {
       function isValidContact(data) {
         return data.name is string && data.name.size() <= 100 &&

@@ -50,6 +50,19 @@
             }
         },
         "required": ["email"]
+    },
+    "invitations": {
+      "title": "Invitation",
+      "description": "A pre-approved role and access assigned to an email.",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "community_manager"] },
+        "approved": { "type": "boolean" },
+        "invitedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "role", "approved"]
     }
   },
   "firestore": {
@@ -64,6 +77,10 @@
     "users/{userId}": {
         "schema": "users",
         "description": "Authenticated users profiles."
+    },
+    "invitations/{email}": {
+      "schema": "invitations",
+      "description": "Pre-authorized user email roles."
     }
   }
 }

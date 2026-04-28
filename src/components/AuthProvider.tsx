@@ -40,6 +40,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (authUser) {
         const userEmail = authUser.email?.toLowerCase();
+        if (!userEmail) return;
+
         const isAdminEmail = userEmail === 'yilongwang05@gmail.com';
         
         // Initial setup/check
@@ -47,16 +49,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userDoc = await getDoc(userDocRef);
         
         if (!userDoc.exists()) {
+          // Check for invitation
+          const inviteRef = doc(db, 'invitations', userEmail);
+          const inviteDoc = await getDoc(inviteRef);
+          
+          let initialRole = isAdminEmail ? 'admin' : 'community_manager';
+          let initialApproved = isAdminEmail;
+
+          if (inviteDoc.exists()) {
+            const inviteData = inviteDoc.data();
+            initialRole = inviteData.role;
+            initialApproved = inviteData.approved;
+          }
+
           const initialData = {
             email: authUser.email,
             displayName: authUser.displayName,
             photoURL: authUser.photoURL,
-            approved: isAdminEmail,
-            role: isAdminEmail ? 'admin' : 'community_manager'
+            approved: initialApproved,
+            role: initialRole
           };
           await setDoc(userDocRef, initialData);
-          setIsApproved(isAdminEmail);
-          setIsAdmin(isAdminEmail);
+          setIsApproved(initialApproved);
+          setIsAdmin(initialRole === 'admin');
         }
 
         // Listen for real-time changes to the user's record
