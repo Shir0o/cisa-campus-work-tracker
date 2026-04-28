@@ -150,7 +150,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     <User className="w-4 h-4" /> LAST NAME
                   </label>
                   <input
-                    required
                     type="text"
                     value={formData.lastName}
                     onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
@@ -165,7 +164,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     <Briefcase className="w-4 h-4" /> STATUS
                   </label>
                   <input
-                    required
                     type="text"
                     value={formData.role}
                     onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
@@ -194,7 +192,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     <Mail className="w-4 h-4" /> EMAIL
                   </label>
                   <input
-                    required
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
@@ -221,8 +218,9 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">INITIAL NOTES</label>
+                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">NOTES</label>
                   <textarea
+                    required
                     value={formData.notes}
                     onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
                     className="w-full min-h-[100px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface resize-none"
