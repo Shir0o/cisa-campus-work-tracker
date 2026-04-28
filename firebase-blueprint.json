@@ -86,6 +86,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "date", "order"]
+    },
+    "comments": {
+      "title": "Comment",
+      "description": "A message left on a contact record.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "text", "createdAt"]
     }
   },
   "firestore": {
@@ -112,6 +125,10 @@
     "events/{eventId}": {
       "schema": "events",
       "description": "Outreach events for attendance tracking."
+    },
+    "contacts/{contactId}/comments/{commentId}": {
+      "schema": "comments",
+      "description": "Comments left on a contact by team members."
     }
   }
 }

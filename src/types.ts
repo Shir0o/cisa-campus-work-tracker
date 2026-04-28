@@ -47,6 +47,15 @@ export interface Task {
   priority: 'low' | 'medium' | 'high';
 }
 
+export interface Comment {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  text: string;
+  createdAt: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;

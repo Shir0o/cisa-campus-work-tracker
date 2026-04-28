@@ -117,6 +117,21 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
       allow update: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
       allow delete: if isAdmin() || isManager();
+
+      // Comments subcollection
+      match /comments/{commentId} {
+        function isValidComment(data) {
+          return data.userId == request.auth.uid &&
+                 data.userName is string && data.userName.size() <= 100 &&
+                 data.text is string && data.text.size() <= 1000 &&
+                 data.createdAt == request.time;
+        }
+
+        allow read: if isApprovedUser();
+        allow create: if isApprovedUser() && isOperator() && isValidComment(request.resource.data);
+        allow update: if isApprovedUser() && isOperator() && isValidComment(request.resource.data) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isApprovedUser() && (isManager() || (resource.data.userId == request.auth.uid));
+      }
     }
 
     // 5. Stages Collection
