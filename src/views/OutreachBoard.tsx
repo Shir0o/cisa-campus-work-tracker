@@ -97,7 +97,24 @@ export default function OutreachBoard() {
     }
   };
 
-  const getStageContacts = (stageLabel: string) => CONTACTS.filter(c => c.stage === stageLabel);
+  useEffect(() => {
+    const q = query(collection(db, 'contacts'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const contactData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Contact[];
+      setBoardContacts(contactData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'contacts');
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const [boardContacts, setBoardContacts] = useState<Contact[]>([]);
+
+  const getStageContactsArr = (stageLabel: string) => boardContacts.filter(c => c.stage === stageLabel);
 
   return (
     <motion.div 
@@ -130,7 +147,7 @@ export default function OutreachBoard() {
       <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
         <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
           {stages.length > 0 ? stages.map((stageInfo) => {
-            const boardContacts = getStageContacts(stageInfo.label);
+            const columnContacts = getStageContactsArr(stageInfo.label);
             return (
               <div key={stageInfo.id} className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
                 {/* Column Header */}
@@ -139,7 +156,7 @@ export default function OutreachBoard() {
                     <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
                     <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
                     <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
-                      {boardContacts.length}
+                      {columnContacts.length}
                     </span>
                   </div>
                   <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
@@ -149,7 +166,7 @@ export default function OutreachBoard() {
  
                 {/* Column Content */}
                 <div className="p-3 overflow-y-auto space-y-3 custom-scrollbar min-h-[100px]">
-                  {boardContacts.length > 0 ? boardContacts.map((contact) => (
+                  {columnContacts.length > 0 ? columnContacts.map((contact) => (
                     <KanbanCard key={contact.id} contact={contact} />
                   )) : (
                     <div className="flex-1 flex items-center justify-center py-10">
@@ -172,7 +189,7 @@ export default function OutreachBoard() {
 
         {/* Add Stage FAB */}
         {isAdmin && (
-          <div className="fixed bottom-44 right-6 sm:bottom-24 md:bottom-24 lg:bottom-8 lg:right-8 z-40 lg:z-50">
+          <div className="fixed bottom-24 right-6 lg:bottom-8 lg:right-8 z-40 lg:z-50 transition-all">
             <button 
               onClick={() => setShowAddStage(true)}
               className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"

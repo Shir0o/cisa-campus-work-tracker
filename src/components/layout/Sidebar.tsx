@@ -43,6 +43,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }:
 
   return (
     <motion.nav 
+      aria-label="Main Navigation"
       initial={false}
       animate={{ 
         width: isCollapsed ? 80 : 288
