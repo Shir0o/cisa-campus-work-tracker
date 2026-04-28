@@ -25,7 +25,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }:
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { icon: Kanban, label: 'Status', href: '/board' },
+    { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Users, label: 'Contacts', href: '/directory' },
     { icon: UserCheck, label: 'Attendance', href: '/attendance' },
   ];

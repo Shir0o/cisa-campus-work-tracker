@@ -59,7 +59,7 @@ describe('Responsive Layout Components', () => {
   it('Accessibility: MobileNav has navigation links with labels', () => {
     renderWithRouter(<MobileNav />);
     const dashboardLink = screen.getByText(/Dashboard/i);
-    const statusLink = screen.getByText(/Status/i);
+    const statusLink = screen.getByText(/Stage/i);
     expect(dashboardLink).toBeInTheDocument();
     expect(statusLink).toBeInTheDocument();
   });
