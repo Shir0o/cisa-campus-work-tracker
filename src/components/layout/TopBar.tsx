@@ -6,7 +6,7 @@ import { useAuth } from '../AuthProvider';
 import { getUserAvatar, cn } from '../../lib/utils';
 import { useLayout } from '../../App';
 
-export default function TopBar({ onMenuClick, onMobileMenuClick }: { onMenuClick?: () => void, onMobileMenuClick?: () => void }) {
+export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
   const { user, logOut } = useAuth();
   const { isSidebarCollapsed } = useLayout();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -26,12 +26,6 @@ export default function TopBar({ onMenuClick, onMobileMenuClick }: { onMenuClick
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
       {/* Mobile Logo/Title */}
       <div className="flex lg:hidden items-center gap-2">
-        <button 
-          onClick={onMobileMenuClick}
-          className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors"
-        >
-          <Menu className="w-6 h-6" />
-        </button>
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
             <img 
@@ -51,17 +45,8 @@ export default function TopBar({ onMenuClick, onMobileMenuClick }: { onMenuClick
         </Link>
       </div>
 
-      {/* Desktop Menu Toggle */}
-      {isSidebarCollapsed && (
-        <div className="hidden lg:flex items-center gap-2 mr-2">
-          <button 
-            onClick={onMenuClick}
-            className="w-10 h-10 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-        </div>
-      )}
+      {/* Desktop Logo/Title placeholder or empty if sidebar handles it */}
+      <div className="hidden lg:block w-12" />
 
       {/* Search Bar - Now responsive instead of hidden */}
       <div className="flex-1 max-w-xl">

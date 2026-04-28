@@ -15,14 +15,12 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 
 interface SidebarProps {
-  isOpen?: boolean;
-  onClose?: () => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onNewContact?: () => void;
 }
 
-export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse, onNewContact }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }: SidebarProps) {
   const { logOut, isAdmin, role } = useAuth();
   
   const navItems = [
@@ -44,29 +42,17 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
   };
 
   return (
-    <>
-      {/* Mobile Overlay */}
-      <div 
-        className={cn(
-          "fixed inset-0 bg-black/40 z-40 transition-opacity lg:hidden",
-          isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
-        )}
-        onClick={onClose}
-      />
-
-      <motion.nav 
-        initial={false}
-        animate={{ 
-          width: isCollapsed ? 80 : 288,
-          x: (isOpen || !window.matchMedia('(max-width: 1023px)').matches) ? 0 : -288
-        }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={cn(
-          "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 flex px-3",
-          !isOpen && "hidden lg:flex"
-        )}
-      >
-        {/* Brand Header */}
+    <motion.nav 
+      initial={false}
+      animate={{ 
+        width: isCollapsed ? 80 : 288
+      }}
+      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+      className={cn(
+        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 hidden lg:flex px-3 overflow-hidden"
+      )}
+    >
+      {/* Brand Header */}
         <div className={cn(
           "mb-8 flex items-center px-3 transition-all h-10",
           isCollapsed ? "justify-center md:px-0" : "justify-between"
@@ -126,7 +112,6 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <NavLink
               key={item.href}
               to={item.href}
-              onClick={onClose}
               className={({ isActive }) => cn(
                 "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium h-12",
                 isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4",
@@ -174,6 +159,5 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
           </button>
         </div>
       </motion.nav>
-    </>
   );
 }
