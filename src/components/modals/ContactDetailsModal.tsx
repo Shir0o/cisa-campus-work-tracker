@@ -12,12 +12,28 @@ import {
   Edit3, 
   Calendar,
   MessageSquare,
-  ChevronRight
+  ChevronRight,
+  Send,
+  UserCircle
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { doc, updateDoc, deleteDoc, collection, query, orderBy, getDocs } from 'firebase/firestore';
+import { 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  collection, 
+  query, 
+  orderBy, 
+  getDocs, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
-import { Contact, Stage } from '../../types';
+import { Contact, Stage, Comment } from '../../types';
+import { useAuth } from '../AuthProvider';
+import { Skeleton } from '../ui/Skeleton';
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -26,9 +42,14 @@ interface ContactDetailsModalProps {
 }
 
 export default function ContactDetailsModal({ isOpen, onClose, contact }: ContactDetailsModalProps) {
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [commentsLoading, setCommentsLoading] = useState(true);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -83,6 +104,33 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen && contact) {
+      const commentsRef = collection(db, 'contacts', contact.id, 'comments');
+      const q = query(commentsRef, orderBy('createdAt', 'asc'));
+      
+      setCommentsLoading(true);
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const commentData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          // Convert serverTimestamp to ISO string for the UI if needed, 
+          // or just handle it in the component
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
+          } as Comment;
+        });
+        setComments(commentData);
+        setCommentsLoading(false);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `contacts/${contact.id}/comments`);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, contact]);
+
   if (!contact) return null;
 
   const handlePhoneBlur = () => {
@@ -134,6 +182,28 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       handleFirestoreError(error, OperationType.DELETE, `contacts/${contact.id}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddComment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newComment.trim() || !user || !contact) return;
+
+    setSubmittingComment(true);
+    try {
+      const commentsRef = collection(db, 'contacts', contact.id, 'comments');
+      await addDoc(commentsRef, {
+        userId: user.uid,
+        userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
+        userPhoto: user.photoURL || '',
+        text: newComment.trim(),
+        createdAt: serverTimestamp()
+      });
+      setNewComment('');
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/comments`);
+    } finally {
+      setSubmittingComment(false);
     }
   };
 
@@ -353,6 +423,96 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
                       {contact.notes || "No notes recorded for this contact yet."}
                     </div>
+                  </div>
+
+                  {/* Comments Section */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
+                       Team Discussion ({comments.length})
+                    </h3>
+                    
+                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                      {commentsLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2].map(i => (
+                            <div key={i} className="flex gap-3">
+                              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-3 w-24 rounded-full" />
+                                <Skeleton className="h-12 w-full rounded-xl" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : comments.length === 0 ? (
+                        <div className="text-center py-8 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                          <MessageSquare className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-2" />
+                          <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
+                        </div>
+                      ) : (
+                        comments.map(comment => (
+                          <div key={comment.id} className="flex gap-3 group">
+                            <div className="shrink-0 mt-0.5">
+                              {comment.userPhoto ? (
+                                <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                  <UserCircle className="w-5 h-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-black text-on-surface uppercase tracking-tight">{comment.userName}</span>
+                                <span className="text-[10px] font-bold text-on-surface-variant/40">
+                                  {comment.createdAt ? (
+                                    `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                  ) : (
+                                    'Sending...'
+                                  )}
+                                </span>
+                              </div>
+                              <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                {comment.text}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* New Comment Input */}
+                    <form onSubmit={handleAddComment} className="relative mt-2">
+                      <div className="relative group">
+                        <textarea
+                          placeholder="Add a comment..."
+                          value={newComment}
+                          onChange={e => setNewComment(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handleAddComment(e);
+                            }
+                          }}
+                          className="w-full min-h-[80px] p-4 pr-12 rounded-[24px] bg-surface-container-high border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
+                        />
+                        <button
+                          type="submit"
+                          disabled={submittingComment || !newComment.trim()}
+                          className="absolute right-3 bottom-3 p-2 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
+                        >
+                          {submittingComment ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                      <p className="px-4 mt-1.5 text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest flex items-center justify-between">
+                        <span>Press Enter to send</span>
+                        {user && <span>Logged in as {user.displayName}</span>}
+                      </p>
+                    </form>
                   </div>
 
                   {/* Timestamps */}
