@@ -46,7 +46,7 @@
             "approved": { "type": "boolean" },
             "role": { 
               "type": "string",
-              "enum": ["admin", "community_manager"]
+              "enum": ["admin", "manager", "operator", "viewer"]
             }
         },
         "required": ["email"]
@@ -57,7 +57,7 @@
       "type": "object",
       "properties": {
         "email": { "type": "string" },
-        "role": { "type": "string", "enum": ["admin", "community_manager"] },
+        "role": { "type": "string", "enum": ["admin", "manager", "operator", "viewer"] },
         "approved": { "type": "boolean" },
         "invitedBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }

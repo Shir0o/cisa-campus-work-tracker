@@ -44,12 +44,12 @@ export interface AppUser {
   displayName: string;
   photoURL: string;
   approved: boolean;
-  role: 'admin' | 'community_manager';
+  role: 'admin' | 'manager' | 'operator' | 'viewer';
 }
 
 export interface Invitation {
   email: string;
-  role: 'admin' | 'community_manager';
+  role: 'admin' | 'manager' | 'operator' | 'viewer';
   approved: boolean;
   invitedBy: string;
   createdAt: any;
