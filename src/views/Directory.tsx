@@ -10,7 +10,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ArrowDown,
-  ExternalLink,
   Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -18,13 +17,14 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } fr
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
-import { Contact } from '../types';
+import { Contact, Stage } from '../types';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Directory() {
   const { isSidebarCollapsed, openNewContact } = useLayout();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -33,21 +33,36 @@ export default function Directory() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
-    const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+    const unsubscribeContacts = onSnapshot(qContacts, (snapshot) => {
       const contactData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as Contact[];
       setContacts(contactData);
-      
-      // Delay first loading=false to make it less flashy
-      setTimeout(() => setLoading(false), 800);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'contacts');
     });
 
-    return () => unsubscribe();
+    const qStages = query(collection(db, 'stages'), orderBy('order', 'asc'));
+    const unsubscribeStages = onSnapshot(qStages, (snapshot) => {
+      const stages = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Stage[];
+      setStagesData(stages);
+      
+      // Delay first loading=false after both are loaded or after contacts if stages are empty
+      setTimeout(() => setLoading(false), 800);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'stages');
+      setTimeout(() => setLoading(false), 800);
+    });
+
+    return () => {
+      unsubscribeContacts();
+      unsubscribeStages();
+    };
   }, []);
 
   const [filterStage, setFilterStage] = useState<string>('All');
@@ -127,8 +142,8 @@ export default function Directory() {
     }
   };
 
-  const stages = useMemo(() => ['All', ...new Set(contacts.map(c => c.stage))], [contacts]);
-  const roles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
+  const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
+  const filterRoles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredAndSortedContacts.length) {
@@ -242,14 +257,14 @@ export default function Directory() {
               onChange={(e) => setFilterStage(e.target.value)}
               className="px-3 h-10 rounded-xl border border-outline bg-surface-container text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer max-w-[120px]"
             >
-              {stages.map(s => <option key={s} value={s}>{s}</option>)}
+              {filterStages.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
             <select 
               value={filterRole}
               onChange={(e) => setFilterRole(e.target.value)}
               className="px-3 h-10 rounded-xl border border-outline bg-surface-container text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer max-w-[120px]"
             >
-              {roles.map(r => <option key={r} value={r}>{r}</option>)}
+              {filterRoles.map(r => <option key={r} value={r}>{r}</option>)}
             </select>
           </div>
         </div>
@@ -359,7 +374,6 @@ export default function Directory() {
                     "py-4 px-4 text-xs font-black uppercase tracking-wider text-right w-28",
                     isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                   )}>Last Seen</th>
-                  <th className="py-4 px-4 sm:px-6 w-16"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
@@ -425,15 +439,19 @@ export default function Directory() {
                       </div>
                     </td>
                     <td className="py-4 px-2 sm:px-4">
-                      <span className={cn(
-                        "inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
-                        contact.status === 'Meeting Scheduled' ? "bg-secondary-container text-on-secondary-container" :
-                        contact.status === 'Email Sent' ? "bg-tertiary-container text-on-tertiary-container" :
-                        contact.status === 'Follow Up Required' ? "bg-error-container text-on-error-container" :
-                        "bg-surface-variant text-on-surface-variant"
-                      )}>
-                        <span className="max-w-[80px] truncate">{contact.status || contact.stage}</span>
-                      </span>
+                      <div className="flex flex-col gap-1">
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider w-fit",
+                          stagesData.find(s => s.label === contact.stage)?.color || "bg-surface-variant text-on-surface-variant"
+                        )}>
+                          <span className="max-w-[100px] truncate">{contact.stage}</span>
+                        </span>
+                        {contact.status && (
+                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-tight opacity-70">
+                            {contact.status}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className={cn(
                       "py-4 px-4 text-right",
@@ -443,17 +461,6 @@ export default function Directory() {
                         "text-xs whitespace-nowrap",
                         contact.hasNewActivity ? "text-primary font-bold" : "text-on-surface-variant font-medium"
                       )}>{contact.lastSeen}</p>
-                    </td>
-                    <td className="py-4 px-4 sm:px-6 text-right">
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedContact(contact);
-                        }}
-                        className="p-2 rounded-full text-on-surface-variant hover:bg-surface-container-highest transition-opacity opacity-0 group-hover:opacity-100"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </button>
                     </td>
                   </tr>
                 ))}
