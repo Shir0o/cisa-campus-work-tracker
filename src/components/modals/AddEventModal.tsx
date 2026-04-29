@@ -4,7 +4,7 @@ import { X, Calendar, Tag, Plus, Loader2, RefreshCw } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
-import { addDays, addWeeks, addMonths, format, parseISO } from 'date-fns';
+import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, endOfMonth, getWeekOfMonth, isBefore, isSameDay } from 'date-fns';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -13,6 +13,17 @@ interface AddEventModalProps {
 }
 
 type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
+type MonthlyType = 'same-day' | 'relative-day';
+
+const DAYS = [
+  { label: 'S', value: 0 },
+  { label: 'M', value: 1 },
+  { label: 'T', value: 2 },
+  { label: 'W', value: 3 },
+  { label: 'T', value: 4 },
+  { label: 'F', value: 5 },
+  { label: 'S', value: 6 },
+];
 
 export default function AddEventModal({ isOpen, onClose, currentEventCount }: AddEventModalProps) {
   const [loading, setLoading] = useState(false);
@@ -21,8 +32,42 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
     date: new Date().toISOString().split('T')[0],
     isRecurring: false,
     recurrenceType: 'weekly' as RecurrenceType,
-    recurrenceCount: 4
+    recurrenceCount: 4,
+    recurrenceDays: [] as number[],
+    monthlyType: 'same-day' as MonthlyType
   });
+
+  useEffect(() => {
+    // Initialize recurrence days if empty
+    if (formData.date && formData.recurrenceDays.length === 0) {
+      const day = getDay(parseISO(formData.date));
+      setFormData(f => ({ ...f, recurrenceDays: [day] }));
+    }
+  }, [formData.date, formData.recurrenceDays.length]);
+
+  const getNthDayOfMonth = (date: Date, dayOfWeek: number, weekIndex: number) => {
+    const monthStart = startOfMonth(date);
+    let count = 0;
+    let current = monthStart;
+
+    // Handle "Last" (weekIndex could be interpreted as 5 or -1, but let's say 1-5)
+    // Actually getWeekOfMonth returns 1-based index
+    
+    while (current.getMonth() === monthStart.getMonth()) {
+      if (getDay(current) === dayOfWeek) {
+        count++;
+        if (count === weekIndex) return current;
+      }
+      current = addDays(current, 1);
+    }
+    
+    // If not found (e.g. 5th Monday doesn't exist), return the last occurrence
+    current = endOfMonth(date);
+    while (getDay(current) !== dayOfWeek) {
+      current = addDays(current, -1);
+    }
+    return current;
+  };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -44,33 +89,60 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
       if (formData.isRecurring && formData.recurrenceCount > 1) {
         const batch = writeBatch(db);
         const startDate = parseISO(formData.date);
+        const startDayOfWeek = getDay(startDate);
+        const weekOfMonthIndex = Math.ceil(startDate.getDate() / 7); // Rough estimate, or use date-fns getWeekOfMonth
         
-        for (let i = 0; i < formData.recurrenceCount; i++) {
+        let occurrencesCreated = 0;
+        let currentDate = startDate;
+        
+        while (occurrencesCreated < formData.recurrenceCount) {
           let eventDate: Date;
-          switch (formData.recurrenceType) {
-            case 'daily':
-              eventDate = addDays(startDate, i);
-              break;
-            case 'weekly':
-              eventDate = addWeeks(startDate, i);
-              break;
-            case 'monthly':
-              eventDate = addMonths(startDate, i);
-              break;
-            default:
-              eventDate = startDate;
+          
+          if (occurrencesCreated === 0) {
+            eventDate = startDate;
+          } else {
+            switch (formData.recurrenceType) {
+              case 'daily':
+                eventDate = addDays(currentDate, 1);
+                break;
+              case 'weekly':
+                // Find next allowed day
+                let next = addDays(currentDate, 1);
+                const allowedDays = formData.recurrenceDays.length > 0 ? formData.recurrenceDays : [startDayOfWeek];
+                while (!allowedDays.includes(getDay(next))) {
+                  next = addDays(next, 1);
+                }
+                eventDate = next;
+                break;
+              case 'monthly':
+                if (formData.monthlyType === 'same-day') {
+                  eventDate = addMonths(startDate, occurrencesCreated);
+                } else {
+                  // nth DayOfWeek
+                  const nextMonth = addMonths(startDate, occurrencesCreated);
+                  eventDate = getNthDayOfMonth(nextMonth, startDayOfWeek, weekOfMonthIndex) || addMonths(startDate, occurrencesCreated);
+                }
+                break;
+              default:
+                eventDate = addWeeks(currentDate, 1);
+            }
           }
 
+          currentDate = eventDate;
           const eventRef = doc(collection(db, 'events'));
           batch.set(eventRef, {
-            name: formData.name + (formData.recurrenceCount > 1 ? ` (${i + 1})` : ''),
+            name: formData.name + (formData.recurrenceCount > 1 ? ` (${occurrencesCreated + 1})` : ''),
             date: format(eventDate, 'yyyy-MM-dd'),
-            order: currentEventCount + i,
+            order: currentEventCount + occurrencesCreated,
             isRecurring: true,
             recurrenceType: formData.recurrenceType,
             recurrenceCount: formData.recurrenceCount,
+            recurrenceDays: formData.recurrenceType === 'weekly' ? formData.recurrenceDays : null,
+            monthlyType: formData.recurrenceType === 'monthly' ? formData.monthlyType : null,
             createdAt: new Date().toISOString()
           });
+          
+          occurrencesCreated++;
         }
         await batch.commit();
       } else {
@@ -89,7 +161,9 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
         date: new Date().toISOString().split('T')[0],
         isRecurring: false,
         recurrenceType: 'weekly',
-        recurrenceCount: 4
+        recurrenceCount: 4,
+        recurrenceDays: [getDay(new Date())],
+        monthlyType: 'same-day'
       });
       onClose();
     } catch (error) {
@@ -204,7 +278,15 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                           <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Frequency</label>
                           <select
                             value={formData.recurrenceType}
-                            onChange={e => setFormData(f => ({ ...f, recurrenceType: e.target.value as RecurrenceType }))}
+                            onChange={e => {
+                              const newType = e.target.value as RecurrenceType;
+                              setFormData(f => ({ 
+                                ...f, 
+                                recurrenceType: newType,
+                                // Reset days if switching away from weekly
+                                recurrenceDays: newType === 'weekly' ? f.recurrenceDays : f.recurrenceDays
+                              }));
+                            }}
                             className="w-full h-10 px-3 rounded-xl bg-surface-container-high border border-outline outline-none text-xs text-on-surface"
                           >
                             <option value="daily">Daily</option>
@@ -224,6 +306,73 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                           />
                         </div>
                       </div>
+
+                      {/* Weekly Day Selection */}
+                      {formData.recurrenceType === 'weekly' && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Repeat on</label>
+                          <div className="flex justify-between gap-1">
+                            {DAYS.map(day => (
+                              <button
+                                key={day.value}
+                                type="button"
+                                onClick={() => {
+                                  setFormData(f => {
+                                    const days = f.recurrenceDays.includes(day.value)
+                                      ? f.recurrenceDays.filter(d => d !== day.value)
+                                      : [...f.recurrenceDays, day.value];
+                                    // Don't allow empty selection
+                                    return days.length > 0 ? { ...f, recurrenceDays: days } : f;
+                                  });
+                                }}
+                                className={cn(
+                                  "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all",
+                                  formData.recurrenceDays.includes(day.value)
+                                    ? "bg-primary text-on-primary"
+                                    : "bg-surface-container-high text-on-surface-variant border border-outline/30 hover:border-outline"
+                                )}
+                              >
+                                {day.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Monthly Options */}
+                      {formData.recurrenceType === 'monthly' && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Repeat on</label>
+                          <div className="grid grid-cols-1 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setFormData(f => ({ ...f, monthlyType: 'same-day' }))}
+                              className={cn(
+                                "w-full h-10 px-4 rounded-xl flex items-center justify-between text-xs transition-all border",
+                                formData.monthlyType === 'same-day'
+                                  ? "bg-primary/10 border-primary text-primary font-bold"
+                                  : "bg-surface-container-high border-outline/30 text-on-surface-variant hover:border-outline"
+                              )}
+                            >
+                              <span>Same day of month ({formData.date ? parseISO(formData.date).getDate() : ''})</span>
+                              {formData.monthlyType === 'same-day' && <Plus className="w-3 h-3" />}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(f => ({ ...f, monthlyType: 'relative-day' }))}
+                              className={cn(
+                                "w-full h-10 px-4 rounded-xl flex items-center justify-between text-xs transition-all border",
+                                formData.monthlyType === 'relative-day'
+                                  ? "bg-primary/10 border-primary text-primary font-bold"
+                                  : "bg-surface-container-high border-outline/30 text-on-surface-variant hover:border-outline"
+                              )}
+                            >
+                              <span>Relative to start (e.g. 4th Wednesday)</span>
+                              {formData.monthlyType === 'relative-day' && <Plus className="w-3 h-3" />}
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>
