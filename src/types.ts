@@ -56,6 +56,17 @@ export interface Comment {
   createdAt: string;
 }
 
+export interface Interaction {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  content: string;
+  dateTime: string;
+  duration?: string;
+  createdAt: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;
