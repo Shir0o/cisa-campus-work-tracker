@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Menu, Settings, LogOut } from 'lucide-react';
+import { Search, Bell, Settings, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
 import { getUserAvatar, cn } from '../../lib/utils';
 import { useLayout } from '../../App';
 
-export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
+export default function TopBar() {
   const { user, logOut } = useAuth();
   const { isSidebarCollapsed } = useLayout();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -24,15 +24,6 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
-      {/* Sidebar Toggle / Mobile Menu */}
-      <button 
-        onClick={onMenuClick}
-        className="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"
-        aria-label="Toggle Menu"
-      >
-        <Menu className="w-6 h-6" />
-      </button>
-
       {/* Mobile Logo/Title */}
       <div className="flex lg:hidden items-center gap-2 ml-1">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
