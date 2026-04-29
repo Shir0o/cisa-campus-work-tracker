@@ -83,6 +83,10 @@
         "name": { "type": "string" },
         "date": { "type": "string" },
         "order": { "type": "integer" },
+        "isRecurring": { "type": "boolean" },
+        "recurrenceType": { "type": "string", "enum": ["none", "daily", "weekly", "monthly"] },
+        "recurrenceCount": { "type": "integer" },
+        "parentEventId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "date", "order"]

@@ -76,6 +76,10 @@ export interface Event {
   name: string;
   date: string;
   order: number;
+  isRecurring?: boolean;
+  recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
+  recurrenceCount?: number;
+  parentEventId?: string;
   createdAt: string;
 }
 

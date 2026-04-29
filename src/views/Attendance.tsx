@@ -14,10 +14,10 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
-import { Contact } from '../types';
+import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import AddEventModal from '../components/modals/AddEventModal';
-import { Event } from '../types';
+import { format, parseISO, isValid } from 'date-fns';
 
 export default function Attendance() {
   const { isSidebarCollapsed } = useLayout();
@@ -39,7 +39,7 @@ export default function Attendance() {
     });
 
     // Fetch Events
-    const qEvents = query(collection(db, 'events'), orderBy('order', 'asc'));
+    const qEvents = query(collection(db, 'events'), orderBy('date', 'asc'), orderBy('order', 'asc'));
     const unsubscribeEvents = onSnapshot(qEvents, (snapshot) => {
       const eventData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -57,6 +57,16 @@ export default function Attendance() {
       unsubscribeEvents();
     };
   }, []);
+
+  const formatEventDate = (dateStr: string) => {
+    try {
+      const date = parseISO(dateStr);
+      if (!isValid(date)) return dateStr;
+      return format(date, 'MMM d');
+    } catch {
+      return dateStr;
+    }
+  };
 
   const toggleAttendance = async (contactId: string, eventId: string, currentStatus: boolean | 'absent' | undefined) => {
     try {
@@ -167,7 +177,7 @@ export default function Attendance() {
         <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsAddEventModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Add Event
@@ -228,8 +238,12 @@ export default function Attendance() {
                   </th>
                   {events.map((event) => (
                     <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[100px]">
-                      <div className="text-xs font-bold text-on-surface truncate">{event.date}</div>
-                      <div className="text-[9px] text-on-surface-variant mt-0.5 leading-tight truncate">{event.name}</div>
+                      <div className="text-xs font-bold text-on-surface truncate">
+                        {formatEventDate(event.date)}
+                      </div>
+                      <div className="text-[9px] text-on-surface-variant mt-0.5 leading-tight truncate">
+                        {event.name}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -265,7 +279,7 @@ export default function Attendance() {
                               <button
                                 onClick={() => toggleAttendance(contact.id, event.id, status)}
                                 className={cn(
-                                  "w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all active:scale-95",
+                                  "w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer",
                                   status === true ? "bg-primary text-on-primary shadow-sm hover:brightness-110" : 
                                   status === 'absent' ? "bg-error-container text-on-error-container shadow-sm hover:brightness-110" : 
                                   "border-2 border-outline/30 hover:border-primary/50 bg-transparent"
