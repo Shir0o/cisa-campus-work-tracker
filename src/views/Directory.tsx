@@ -280,7 +280,6 @@ export default function Directory() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
-          <p className="text-sm text-on-surface-variant">Manage your active contacts across all campaigns.</p>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
           <div className="relative flex-1 md:w-48 lg:w-64">
