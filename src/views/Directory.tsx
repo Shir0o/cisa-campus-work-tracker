@@ -468,9 +468,9 @@ export default function Directory() {
             <table className="w-full text-left border-collapse table-auto min-w-[700px]">
               <thead className="bg-surface-container-low sticky top-0 z-10 border-b border-surface-variant shadow-sm text-on-surface-variant">
                 <tr>
-                  <th className="py-4 px-4 sm:px-6 w-16"></th>
+                  <th className="py-4 px-3 sm:px-4 w-12 text-center"></th>
                   <th 
-                    className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap"
+                    className="py-4 px-2 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap"
                     onClick={() => handleSort('name')}
                   >
                     Name <ArrowDown className={cn(
@@ -503,7 +503,7 @@ export default function Directory() {
                     )} />
                   </th>
                   <th 
-                    className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group w-32"
+                    className="py-4 px-2 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group w-32"
                     onClick={() => handleSort('stage')}
                   >
                     Stage <ArrowDown className={cn(
@@ -513,7 +513,7 @@ export default function Directory() {
                   </th>
                   <th 
                     className={cn(
-                      "py-4 px-4 text-xs font-black uppercase tracking-wider text-right w-28 cursor-pointer hover:text-on-surface group",
+                      "py-4 px-4 sm:px-6 text-xs font-black uppercase tracking-wider text-right w-36 cursor-pointer hover:text-on-surface group",
                       isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                     )}
                     onClick={() => handleSort('lastSeen')}
@@ -535,11 +535,11 @@ export default function Directory() {
                       selectedIds.has(contact.id) && "bg-primary/5"
                     )}
                   >
-                    <td className="py-4 px-4 sm:px-6">
+                    <td className="py-4 px-3 sm:px-4">
                       <div 
                         onClick={(e) => toggleSelect(contact.id, e)}
                         className={cn(
-                          "w-5 h-5 rounded border-2 transition-colors flex items-center justify-center",
+                          "w-4 h-4 rounded border-2 transition-colors flex items-center justify-center mx-auto",
                           selectedIds.has(contact.id) 
                             ? "bg-primary border-primary opacity-100" 
                             : "border-outline opacity-40 group-hover:opacity-100 group-hover:border-primary"
@@ -550,7 +550,7 @@ export default function Directory() {
                         )}
                       </div>
                     </td>
-                    <td className="py-4 px-2 sm:px-4 max-w-[200px]">
+                    <td className="py-4 px-2 max-w-[200px]">
                       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                         {contact.avatar ? (
                           <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full border border-outline-variant shrink-0 object-cover shadow-sm" />
@@ -585,7 +585,7 @@ export default function Directory() {
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-2 sm:px-4">
+                    <td className="py-4 px-2">
                       <div className="flex flex-col gap-1">
                         <span className={cn(
                           "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider w-fit",
@@ -601,7 +601,7 @@ export default function Directory() {
                       </div>
                     </td>
                     <td className={cn(
-                      "py-4 px-4 text-right",
+                      "py-4 px-4 sm:px-6 text-right",
                       isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                     )}>
                       <p className="text-xs whitespace-nowrap text-on-surface-variant font-medium">{contact.lastSeen}</p>
