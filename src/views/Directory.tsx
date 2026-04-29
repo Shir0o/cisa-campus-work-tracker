@@ -67,18 +67,24 @@ export default function Directory() {
 
   const [filterStage, setFilterStage] = useState<string>('All');
   const [filterRole, setFilterRole] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsTagModalOpen(false);
+      if (e.key === 'Escape') {
+        setIsTagModalOpen(false);
+        setShowFilterMenu(false);
+      }
     };
-    if (isTagModalOpen) {
+    if (isTagModalOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen]);
+  }, [isTagModalOpen, showFilterMenu]);
 
   const filteredAndSortedContacts = useMemo(() => {
     let result = [...contacts];
@@ -102,6 +108,18 @@ export default function Directory() {
     // Filter by Role
     if (filterRole !== 'All') {
       result = result.filter(c => c.role === filterRole);
+    }
+
+    // Filter by Status
+    if (filterStatus !== 'All') {
+      result = result.filter(c => c.status === filterStatus);
+    }
+
+    // Filter by Tags
+    if (selectedTags.length > 0) {
+      result = result.filter(c => 
+        c.tags && selectedTags.every(tag => c.tags?.includes(tag))
+      );
     }
 
     // Sort
@@ -144,6 +162,24 @@ export default function Directory() {
 
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
   const filterRoles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
+  const filterStatuses = useMemo(() => ['All', 'Needs Contact', 'Email Sent', 'Qualified Lead', 'Follow Up Required', 'Meeting Scheduled'], []);
+  const allTags = useMemo(() => [...new Set(contacts.flatMap(c => c.tags || []))], [contacts]);
+
+  const toggleTagFilter = (tag: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchQuery('');
+    setFilterStage('All');
+    setFilterRole('All');
+    setFilterStatus('All');
+    setSelectedTags([]);
+  };
+
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterStatus !== 'All' || selectedTags.length > 0;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredAndSortedContacts.length) {
@@ -201,7 +237,13 @@ export default function Directory() {
             <Skeleton className="h-10 w-48 rounded-xl" />
             <Skeleton className="h-10 w-24 rounded-xl" />
             <Skeleton className="h-10 w-24 rounded-xl" />
+            <Skeleton className="h-10 w-24 rounded-xl" />
           </div>
+        </div>
+        <div className="flex gap-2 mb-2">
+          <Skeleton className="h-6 w-16 rounded-full" />
+          <Skeleton className="h-6 w-20 rounded-full" />
+          <Skeleton className="h-6 w-14 rounded-full" />
         </div>
         
         <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 border border-outline-variant/30">
@@ -240,7 +282,7 @@ export default function Directory() {
           <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
           <p className="text-sm text-on-surface-variant">Manage your active contacts across all campaigns.</p>
         </div>
-        <div className="flex flex-wrap gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
           <div className="relative flex-1 md:w-48 lg:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input 
@@ -251,24 +293,107 @@ export default function Directory() {
               className="w-full h-10 pl-10 pr-4 rounded-xl border border-outline bg-surface-container focus:border-primary outline-none text-sm transition-all shadow-sm"
             />
           </div>
-          <div className="flex gap-2">
-            <select 
-              value={filterStage}
-              onChange={(e) => setFilterStage(e.target.value)}
-              className="px-3 h-10 rounded-xl border border-outline bg-surface-container text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer max-w-[120px]"
+          <div className="flex flex-wrap gap-2 relative">
+            <button 
+              onClick={() => setShowFilterMenu(!showFilterMenu)}
+              className={cn(
+                "p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center gap-2",
+                hasActiveFilters && "text-primary bg-primary/5"
+              )}
+              title="Filters"
             >
-              {filterStages.map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
-            <select 
-              value={filterRole}
-              onChange={(e) => setFilterRole(e.target.value)}
-              className="px-3 h-10 rounded-xl border border-outline bg-surface-container text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer max-w-[120px]"
-            >
-              {filterRoles.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
+              <Filter className="w-5 h-5" />
+              {hasActiveFilters && (
+                <span className="flex-none w-2 h-2 rounded-full bg-primary" />
+              )}
+            </button>
+
+            <AnimatePresence>
+              {showFilterMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-30" 
+                    onClick={() => setShowFilterMenu(false)}
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-2xl p-4 min-w-[240px] space-y-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Filters</span>
+                      {hasActiveFilters && (
+                        <button 
+                          onClick={clearFilters}
+                          className="text-[10px] font-bold text-primary hover:underline"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Stage</label>
+                        <select 
+                          value={filterStage}
+                          onChange={(e) => setFilterStage(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
+                        >
+                          {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? 'All Stages' : s}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Status</label>
+                        <select 
+                          value={filterStatus}
+                          onChange={(e) => setFilterStatus(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
+                        >
+                          {filterStatuses.map(s => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Group</label>
+                        <select 
+                          value={filterRole}
+                          onChange={(e) => setFilterRole(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
+                        >
+                          {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? 'All Groups' : r}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
+
+      {/* Tag Chips Filter */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 max-h-24 no-scrollbar">
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => toggleTagFilter(tag)}
+              className={cn(
+                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all shrink-0",
+                selectedTags.includes(tag) 
+                  ? "bg-primary text-on-primary border-primary shadow-sm shadow-primary/20" 
+                  : "bg-surface-container-high text-on-surface-variant border-outline/30 hover:border-outline"
+              )}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Table Surface */}
       <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 flex flex-col border border-outline-variant/30 shadow-sm min-w-0">
@@ -353,14 +478,30 @@ export default function Directory() {
                       sortField === 'name' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
                     )} />
                   </th>
-                  <th className={cn(
-                    "py-4 px-4 text-xs font-black uppercase tracking-wider",
-                    isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
-                  )}>Location</th>
-                  <th className={cn(
-                    "py-4 px-4 text-xs font-black uppercase tracking-wider",
-                    "hidden lg:table-cell"
-                  )}>Contact Info</th>
+                  <th 
+                    className={cn(
+                      "py-4 px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap",
+                      isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
+                    )}
+                    onClick={() => handleSort('location')}
+                  >
+                    Location <ArrowDown className={cn(
+                      "w-3 h-3 inline-block ml-1 transition-all",
+                      sortField === 'location' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
+                    )} />
+                  </th>
+                  <th 
+                    className={cn(
+                      "py-4 px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap",
+                      "hidden lg:table-cell"
+                    )}
+                    onClick={() => handleSort('email')}
+                  >
+                    Contact Info <ArrowDown className={cn(
+                      "w-3 h-3 inline-block ml-1 transition-all",
+                      sortField === 'email' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
+                    )} />
+                  </th>
                   <th 
                     className="py-4 px-2 sm:px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group w-32"
                     onClick={() => handleSort('stage')}
@@ -370,10 +511,18 @@ export default function Directory() {
                       sortField === 'stage' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
                     )} />
                   </th>
-                  <th className={cn(
-                    "py-4 px-4 text-xs font-black uppercase tracking-wider text-right w-28",
-                    isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
-                  )}>Last Seen</th>
+                  <th 
+                    className={cn(
+                      "py-4 px-4 text-xs font-black uppercase tracking-wider text-right w-28 cursor-pointer hover:text-on-surface group",
+                      isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
+                    )}
+                    onClick={() => handleSort('lastSeen')}
+                  >
+                    Last Seen <ArrowDown className={cn(
+                      "w-3 h-3 inline-block ml-1 transition-all",
+                      sortField === 'lastSeen' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
+                    )} />
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
