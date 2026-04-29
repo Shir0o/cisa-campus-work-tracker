@@ -730,32 +730,11 @@ function InternalKanbanCard({
   isOverlay,
   dragListeners 
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowSettingsMenu(false);
-    };
-    if (showSettingsMenu) {
-      window.addEventListener('keydown', handleEsc);
-    }
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [showSettingsMenu]);
-
-  const handleMove = async (newStageLabel: string) => {
-    setIsUpdating(true);
-    setShowSettingsMenu(false);
-    await onUpdateStage(contact.id, newStageLabel);
-    setIsUpdating(false);
-  };
-
   return (
     <div 
       className={cn(
         "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing relative overflow-visible",
         contact.stage === 'Regular' && "border-l-4 border-l-secondary",
-        isUpdating && "opacity-50 pointer-events-none",
         isOverlay && "shadow-2xl border-primary/50"
       )}
       {...dragListeners}
@@ -764,87 +743,6 @@ function InternalKanbanCard({
         <div className="flex flex-col gap-1">
           <h4 className="text-sm font-bold text-on-surface leading-tight">{contact.name}</h4>
           <p className="text-[10px] text-on-surface-variant font-medium">{contact.role}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {!isOverlay && (
-            <div className="relative">
-              <button 
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowSettingsMenu(!showSettingsMenu);
-                }}
-                className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity"
-                title="Card settings"
-              >
-                <Settings2 className="w-3.5 h-3.5" />
-              </button>
-
-              <AnimatePresence>
-                {showSettingsMenu && (
-                  <>
-                    <div className="fixed inset-0 z-[60]" onClick={(e) => {
-                      e.stopPropagation();
-                      setShowSettingsMenu(false);
-                    }} />
-                    <motion.div 
-                      onPointerDown={(e) => e.stopPropagation()}
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      className="absolute top-8 right-0 z-[70] bg-surface-container-high border border-outline-variant rounded-xl shadow-xl p-1 min-w-[180px]"
-                    >
-                      <div className="text-[10px] font-bold text-on-surface-variant px-3 py-1.5 uppercase tracking-wider border-b border-outline-variant/50 mb-1">Actions</div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onEditContact(contact);
-                          setShowSettingsMenu(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-surface-variant text-on-surface transition-colors"
-                      >
-                        <Edit3 className="w-3.5 h-3.5 text-primary" />
-                        Edit Lead
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteContact(contact.id);
-                          setShowSettingsMenu(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-error/10 text-error transition-colors font-medium"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        Delete Lead
-                      </button>
-                      
-                      <div className="text-[10px] font-bold text-on-surface-variant px-3 py-1.5 uppercase tracking-wider border-y border-outline-variant/50 my-1">Move to Stage</div>
-                      <div className="space-y-0.5">
-                        {stages.map(s => (
-                          <button
-                            key={s.id}
-                            disabled={s.label === contact.stage}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleMove(s.label);
-                            }}
-                            className={cn(
-                              "w-full text-left px-3 py-2 rounded-lg text-[11px] transition-all",
-                              s.label === contact.stage 
-                                ? "bg-primary/10 text-primary font-bold" 
-                                : "hover:bg-surface-variant text-on-surface"
-                            )}
-                          >
-                            {s.label}
-                          </button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
         </div>
       </div>
 

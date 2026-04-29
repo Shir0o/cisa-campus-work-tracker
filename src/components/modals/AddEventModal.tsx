@@ -6,6 +6,8 @@ import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
 import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, endOfMonth, getWeekOfMonth, isBefore, isSameDay } from 'date-fns';
 
+import DatePicker from '../ui/DatePicker';
+
 interface AddEventModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -230,18 +232,12 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 </div>
 
                 {/* Event Date */}
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Calendar className="w-3 h-3" /> Date
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    value={formData.date}
-                    onChange={e => setFormData(f => ({ ...f, date: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  />
-                </div>
+                <DatePicker 
+                  label="Date"
+                  value={formData.date}
+                  onChange={val => setFormData(f => ({ ...f, date: val }))}
+                  required
+                />
 
                 {/* Recurrence Toggle */}
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container-high border border-outline/30">
@@ -303,12 +299,10 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                           </select>
                         </div>
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">End By</label>
-                          <input
-                            type="date"
+                          <DatePicker 
+                            label="End By"
                             value={formData.recurrenceEndDate}
-                            onChange={e => setFormData(f => ({ ...f, recurrenceEndDate: e.target.value }))}
-                            className="w-full h-10 px-3 rounded-xl bg-surface-container-high border border-outline outline-none text-xs text-on-surface"
+                            onChange={val => setFormData(f => ({ ...f, recurrenceEndDate: val }))}
                           />
                         </div>
                       </div>
