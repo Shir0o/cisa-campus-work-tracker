@@ -22,6 +22,16 @@
   --color-on-error: #ffffff;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
+
+  /* Custom Board Colors - Bright but Dark */
+  --color-board-indigo: #3949ab;
+  --color-board-teal: #00897b;
+  --color-board-emerald: #2e7d32;
+  --color-board-amber: #ff8f00;
+  --color-board-crimson: #c62828;
+  --color-board-plum: #8e24aa;
+  --color-board-ocean: #0277bd;
+  --color-board-rose: #d81b60;
   
   --color-background: #fdf7ff;
   --color-on-background: #1d1b20;

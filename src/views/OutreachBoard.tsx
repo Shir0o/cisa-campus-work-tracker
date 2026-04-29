@@ -11,7 +11,9 @@ import {
   Settings2,
   X,
   Palette,
-  GripVertical
+  GripVertical,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -54,25 +56,31 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 export default function OutreachBoard() {
   const { isSidebarCollapsed } = useLayout();
   const { isAdmin } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
+  const [editingStage, setEditingStage] = useState<Stage | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  
   const [newStageName, setNewStageName] = useState('');
-  const [newStageColor, setNewStageColor] = useState('bg-primary');
+  const [newStageColor, setNewStageColor] = useState('bg-board-indigo');
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const colors = [
-    { name: 'Primary', class: 'bg-primary' },
-    { name: 'Secondary', class: 'bg-secondary' },
-    { name: 'Error', class: 'bg-error' },
-    { name: 'Success', class: 'bg-success' },
-    { name: 'Info', class: 'bg-info' },
-    { name: 'Warm', class: 'bg-tertiary' },
-    { name: 'Dim', class: 'bg-primary-fixed-dim' },
+    { name: 'Indigo', class: 'bg-board-indigo' },
+    { name: 'Teal', class: 'bg-board-teal' },
+    { name: 'Emerald', class: 'bg-board-emerald' },
+    { name: 'Amber', class: 'bg-board-amber' },
+    { name: 'Crimson', class: 'bg-board-crimson' },
+    { name: 'Plum', class: 'bg-board-plum' },
+    { name: 'Ocean', class: 'bg-board-ocean' },
+    { name: 'Rose', class: 'bg-board-rose' },
   ];
 
   const sensors = useSensors(
@@ -139,16 +147,32 @@ export default function OutreachBoard() {
     if (!newStageName.trim() || !isAdmin) return;
 
     try {
-      await addDoc(collection(db, 'stages'), {
-        label: newStageName,
-        color: newStageColor,
-        order: stages.length,
-      });
+      if (editingStage) {
+        await updateDoc(doc(db, 'stages', editingStage.id), {
+          label: newStageName,
+          color: newStageColor,
+        });
+      } else {
+        await addDoc(collection(db, 'stages'), {
+          label: newStageName,
+          color: newStageColor,
+          order: stages.length,
+        });
+      }
       setNewStageName('');
+      setEditingStage(null);
       setShowAddStage(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'stages');
     }
+  };
+
+  const handleEditStage = (stage: Stage) => {
+    if (!isAdmin) return;
+    setEditingStage(stage);
+    setNewStageName(stage.label);
+    setNewStageColor(stage.color);
+    setShowAddStage(true);
   };
 
   useEffect(() => {
@@ -188,6 +212,15 @@ export default function OutreachBoard() {
       await deleteDoc(doc(db, 'stages', stageId));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'stages');
+    }
+  };
+
+  const handleDeleteContact = async (contactId: string) => {
+    if (!window.confirm('Are you sure you want to delete this lead?')) return;
+    try {
+      await deleteDoc(doc(db, 'contacts', contactId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'contacts');
     }
   };
 
@@ -363,6 +396,12 @@ export default function OutreachBoard() {
                 contacts={getStageContactsArr(stageInfo.label)}
                 stages={stages}
                 onDeleteStage={handleDeleteStage}
+                onEditStage={handleEditStage}
+                onEditContact={(contact) => {
+                  setSelectedContact(contact);
+                  setIsDetailsOpen(true);
+                }}
+                onDeleteContact={handleDeleteContact}
                 onUpdateContactStage={handleUpdateContactStage}
               />
             )) : !loading && (
@@ -414,8 +453,8 @@ export default function OutreachBoard() {
                       <Plus className="w-6 h-6" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-on-surface">New Stage</h2>
-                      <p className="text-xs text-on-surface-variant">Add a column to your board</p>
+                      <h2 className="text-xl font-bold text-on-surface">{editingStage ? 'Edit Stage' : 'New Stage'}</h2>
+                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Modify your board column' : 'Add a column to your board'}</p>
                     </div>
                   </div>
                   <button 
@@ -476,7 +515,7 @@ export default function OutreachBoard() {
                       disabled={!newStageName.trim()}
                       className="flex-3 h-12 bg-primary text-on-primary rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
                     >
-                      Create Stage
+                      {editingStage ? 'Save Changes' : 'Create Stage'}
                     </button>
                   </div>
                 </form>
@@ -488,10 +527,23 @@ export default function OutreachBoard() {
         <DragOverlay dropAnimation={dropAnimation}>
           {activeId && activeContact ? (
             <div className="w-[280px] sm:w-[320px] rotate-3 scale-105 pointer-events-none">
-              <InternalKanbanCard contact={activeContact} stages={stages} onUpdateStage={async () => {}} isOverlay />
+              <InternalKanbanCard 
+                contact={activeContact} 
+                stages={stages} 
+                onUpdateStage={async () => {}} 
+                onEditContact={() => {}}
+                onDeleteContact={async () => {}}
+                isOverlay 
+              />
             </div>
           ) : null}
         </DragOverlay>
+
+        <ContactDetailsModal 
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          contact={selectedContact}
+        />
       </motion.div>
     </DndContext>
   );
@@ -503,14 +555,29 @@ interface KanbanColumnProps {
   isAdmin: boolean;
   stages: Stage[];
   onDeleteStage: (id: string) => Promise<void>;
+  onEditStage: (stage: Stage) => void;
+  onEditContact: (contact: Contact) => void;
+  onDeleteContact: (id: string) => Promise<void>;
   onUpdateContactStage: (cid: string, sid: string) => Promise<void>;
   key?: string | number;
 }
 
-function KanbanColumn({ stageInfo, contacts, isAdmin, stages, onDeleteStage, onUpdateContactStage }: KanbanColumnProps) {
+function KanbanColumn({ 
+  stageInfo, 
+  contacts, 
+  isAdmin, 
+  stages, 
+  onDeleteStage, 
+  onEditStage,
+  onEditContact,
+  onDeleteContact,
+  onUpdateContactStage 
+}: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
     id: stageInfo.label,
   });
+
+  const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
@@ -523,19 +590,52 @@ function KanbanColumn({ stageInfo, contacts, isAdmin, stages, onDeleteStage, onU
             {contacts.length}
           </span>
         </div>
-        <div className="flex items-center gap-1">
-          {isAdmin && (
-            <button 
-              onClick={() => onDeleteStage(stageInfo.id)}
-              className="text-on-surface-variant hover:text-error hover:bg-error-container/20 p-1 rounded-full transition-colors"
-              title="Delete Stage"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
-          <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
+        <div className="flex items-center gap-1 relative">
+          <button 
+            onClick={() => setShowMenu(!showMenu)}
+            className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full transition-colors"
+          >
             <MoreHorizontal className="w-5 h-5" />
           </button>
+
+          <AnimatePresence>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  className="absolute top-10 right-0 z-40 w-48 bg-surface-container-high rounded-xl shadow-xl border border-outline-variant p-1"
+                >
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => {
+                          onEditStage(stageInfo);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <Settings2 className="w-4 h-4" />
+                        Edit Stage
+                      </button>
+                      <button
+                        onClick={() => {
+                          onDeleteStage(stageInfo.id);
+                          setShowMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-error hover:bg-error/10 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Delete Stage
+                      </button>
+                    </>
+                  )}
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
@@ -554,6 +654,8 @@ function KanbanColumn({ stageInfo, contacts, isAdmin, stages, onDeleteStage, onU
               key={contact.id} 
               contact={contact} 
               stages={stages}
+              onEditContact={onEditContact}
+              onDeleteContact={onDeleteContact}
               onUpdateStage={onUpdateContactStage}
             />
           )) : (
@@ -570,6 +672,8 @@ function KanbanColumn({ stageInfo, contacts, isAdmin, stages, onDeleteStage, onU
 interface KanbanCardProps {
   contact: Contact;
   stages: Stage[];
+  onEditContact: (contact: Contact) => void;
+  onDeleteContact: (id: string) => Promise<void>;
   onUpdateStage: (cid: string, sid: string) => Promise<void>;
   key?: string | number;
 }
@@ -600,40 +704,51 @@ function KanbanCard(props: KanbanCardProps) {
   }
 
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
-      <InternalKanbanCard {...props} />
+    <div ref={setNodeRef} style={style} {...attributes}>
+      <InternalKanbanCard {...props} dragListeners={listeners} />
     </div>
   );
 }
 
-function InternalKanbanCard({ contact, stages, onUpdateStage, isOverlay }: KanbanCardProps & { isOverlay?: boolean }) {
+function InternalKanbanCard({ 
+  contact, 
+  stages, 
+  onEditContact,
+  onDeleteContact,
+  onUpdateStage, 
+  isOverlay,
+  dragListeners 
+}: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
   const [isUpdating, setIsUpdating] = useState(false);
-  const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowMoveMenu(false);
+      if (e.key === 'Escape') setShowSettingsMenu(false);
     };
-    if (showMoveMenu) {
+    if (showSettingsMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [showMoveMenu]);
+  }, [showSettingsMenu]);
 
   const handleMove = async (newStageLabel: string) => {
     setIsUpdating(true);
-    setShowMoveMenu(false);
+    setShowSettingsMenu(false);
     await onUpdateStage(contact.id, newStageLabel);
     setIsUpdating(false);
   };
 
   return (
-    <div className={cn(
-      "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing relative overflow-visible",
-      contact.stage === 'Regular' && "border-l-4 border-l-secondary",
-      isUpdating && "opacity-50 pointer-events-none",
-      isOverlay && "shadow-2xl border-primary/50"
-    )}>
+    <div 
+      className={cn(
+        "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing relative overflow-visible",
+        contact.stage === 'Regular' && "border-l-4 border-l-secondary",
+        isUpdating && "opacity-50 pointer-events-none",
+        isOverlay && "shadow-2xl border-primary/50"
+      )}
+      {...dragListeners}
+    >
       <div className="flex justify-between items-start">
         <div className="flex flex-col gap-1">
           <h4 className="text-sm font-bold text-on-surface leading-tight">{contact.name}</h4>
@@ -641,18 +756,83 @@ function InternalKanbanCard({ contact, stages, onUpdateStage, isOverlay }: Kanba
         </div>
         <div className="flex items-center gap-2">
           {!isOverlay && (
-            <button 
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowMoveMenu(!showMoveMenu);
-              }}
-              onPointerDown={(e) => e.stopPropagation()} // Prevent drag when clicking settings
-              className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity"
-              title="Move to stage"
-            >
-              <Settings2 className="w-3.5 h-3.5" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowSettingsMenu(!showSettingsMenu);
+                }}
+                className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Card settings"
+              >
+                <Settings2 className="w-3.5 h-3.5" />
+              </button>
+
+              <AnimatePresence>
+                {showSettingsMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[60]" onClick={(e) => {
+                      e.stopPropagation();
+                      setShowSettingsMenu(false);
+                    }} />
+                    <motion.div 
+                      onPointerDown={(e) => e.stopPropagation()}
+                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                      className="absolute top-8 right-0 z-[70] bg-surface-container-high border border-outline-variant rounded-xl shadow-xl p-1 min-w-[180px]"
+                    >
+                      <div className="text-[10px] font-bold text-on-surface-variant px-3 py-1.5 uppercase tracking-wider border-b border-outline-variant/50 mb-1">Actions</div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEditContact(contact);
+                          setShowSettingsMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-surface-variant text-on-surface transition-colors"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-primary" />
+                        Edit Lead
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteContact(contact.id);
+                          setShowSettingsMenu(false);
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-error/10 text-error transition-colors font-medium"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        Delete Lead
+                      </button>
+                      
+                      <div className="text-[10px] font-bold text-on-surface-variant px-3 py-1.5 uppercase tracking-wider border-y border-outline-variant/50 my-1">Move to Stage</div>
+                      <div className="space-y-0.5">
+                        {stages.map(s => (
+                          <button
+                            key={s.id}
+                            disabled={s.label === contact.stage}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMove(s.label);
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-lg text-[11px] transition-all",
+                              s.label === contact.stage 
+                                ? "bg-primary/10 text-primary font-bold" 
+                                : "hover:bg-surface-variant text-on-surface"
+                            )}
+                          >
+                            {s.label}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           )}
           {contact.avatar ? (
             <img src={contact.avatar} alt={contact.name} className="w-8 h-8 rounded-full object-cover shadow-sm" />
@@ -664,37 +844,6 @@ function InternalKanbanCard({ contact, stages, onUpdateStage, isOverlay }: Kanba
         </div>
       </div>
 
-      {showMoveMenu && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute top-12 right-4 z-50 bg-surface-container-high border border-outline-variant rounded-xl shadow-xl p-2 min-w-[160px]"
-        >
-          <div className="text-[10px] font-bold text-on-surface-variant px-2 py-1 uppercase tracking-wider">Move to Stage</div>
-          <div className="space-y-1 mt-1">
-            {stages.map(s => (
-              <button
-                key={s.id}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleMove(s.label);
-                }}
-                disabled={s.label === contact.stage}
-                className={cn(
-                  "w-full text-left px-3 py-2 rounded-lg text-xs transition-all",
-                  s.label === contact.stage 
-                    ? "bg-primary/10 text-primary font-bold" 
-                    : "hover:bg-surface-variant text-on-surface"
-                )}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-      
       {contact.notes && (
         <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic">
           {contact.notes}
