@@ -35,6 +35,7 @@ import {
   verticalListSortingStrategy,
   useSortable
 } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { CONTACTS } from '../constants';
 import { cn } from '../lib/utils';
@@ -157,13 +158,15 @@ export default function OutreachBoard() {
         id: doc.id,
         ...doc.data()
       })) as Contact[];
-      setBoardContacts(contactData);
+      if (!activeId) {
+        setBoardContacts(contactData);
+      }
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'contacts');
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [activeId]);
 
   const [boardContacts, setBoardContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -212,26 +215,27 @@ export default function OutreachBoard() {
     const activeId = active.id as string;
     const overId = over.id as string;
 
+    // Find active contact
     const activeContact = boardContacts.find((c) => c.id === activeId);
     if (!activeContact) return;
 
-    // Is the user hovering over a stage column or another card?
-    let overStage = overId;
+    // Identify target stage
+    let overStageLabel = '';
     const overContact = boardContacts.find((c) => c.id === overId);
     
     if (overContact) {
-      overStage = overContact.stage;
+      overStageLabel = overContact.stage;
     } else {
-      // It might be the stage label itself or a stage ID
+      // It might be the stage ID or label
       const maybeStage = stages.find(s => s.id === overId || s.label === overId);
-      if (maybeStage) overStage = maybeStage.label;
+      if (maybeStage) overStageLabel = maybeStage.label;
     }
 
-    if (activeContact.stage !== overStage) {
+    if (overStageLabel && activeContact.stage !== overStageLabel) {
       setBoardContacts((prev) => {
         return prev.map((c) => {
           if (c.id === activeId) {
-            return { ...c, stage: overStage };
+            return { ...c, stage: overStageLabel };
           }
           return c;
         });
@@ -241,28 +245,17 @@ export default function OutreachBoard() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    const dragId = active.id as string;
+    
+    // We get the final stage from the contact in our local state
+    // because handleDragOver has been updating it.
+    const finalContact = boardContacts.find(c => c.id === dragId);
+    
     setActiveId(null);
+    if (!over || !finalContact) return;
 
-    if (!over) return;
-
-    const activeId = active.id as string;
-    const overId = over.id as string;
-
-    const activeContact = boardContacts.find((c) => c.id === activeId);
-    if (!activeContact) return;
-
-    // Find the stage label
-    let finalStage = activeContact.stage;
-    const overContact = boardContacts.find((c) => c.id === overId);
-    if (overContact) {
-      finalStage = overContact.stage;
-    } else {
-      const maybeStage = stages.find(s => s.id === overId || s.label === overId);
-      if (maybeStage) finalStage = maybeStage.label;
-    }
-
-    // Sync with Firestore
-    await handleUpdateContactStage(activeId, finalStage);
+    // Persist to database
+    await handleUpdateContactStage(dragId, finalContact.stage);
   };
 
   const dropAnimation: DropAnimation = {
@@ -362,59 +355,17 @@ export default function OutreachBoard() {
         {/* Kanban Board */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
           <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
-            {stages.length > 0 ? stages.map((stageInfo) => {
-              const columnContacts = getStageContactsArr(stageInfo.label);
-              return (
-                <div key={stageInfo.id} className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
-                  {/* Column Header */}
-                  <div className="p-4 flex items-center justify-between border-b border-surface-variant">
-                    <div className="flex items-center gap-2">
-                      <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
-                      <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
-                      <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
-                        {columnContacts.length}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {isAdmin && (
-                        <button 
-                          onClick={() => handleDeleteStage(stageInfo.id)}
-                          className="text-on-surface-variant hover:text-error hover:bg-error-container/20 p-1 rounded-full transition-colors"
-                          title="Delete Stage"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      )}
-                      <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
-                        <MoreHorizontal className="w-5 h-5" />
-                      </button>
-                    </div>
-                  </div>
-  
-                  {/* Column Content */}
-                  <SortableContext 
-                    id={stageInfo.label}
-                    items={columnContacts.map(c => c.id)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="p-3 overflow-y-auto space-y-3 custom-scrollbar min-h-[100px] flex-1">
-                      {columnContacts.length > 0 ? columnContacts.map((contact) => (
-                        <KanbanCard 
-                          key={contact.id} 
-                          contact={contact} 
-                          stages={stages}
-                          onUpdateStage={handleUpdateContactStage}
-                        />
-                      )) : (
-                        <div className="flex-1 flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/30 rounded-xl m-2">
-                          <p className="text-on-surface-variant text-sm italic opacity-60 text-center px-4">No contacts in this stage</p>
-                        </div>
-                      )}
-                    </div>
-                  </SortableContext>
-                </div>
-              );
-            }) : !loading && (
+            {stages.length > 0 ? stages.map((stageInfo) => (
+              <KanbanColumn 
+                key={stageInfo.id}
+                stageInfo={stageInfo}
+                isAdmin={isAdmin}
+                contacts={getStageContactsArr(stageInfo.label)}
+                stages={stages}
+                onDeleteStage={handleDeleteStage}
+                onUpdateContactStage={handleUpdateContactStage}
+              />
+            )) : !loading && (
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
                 <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
                 <h3 className="text-lg font-bold text-on-surface">No stages configured</h3>
@@ -536,8 +487,8 @@ export default function OutreachBoard() {
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeId && activeContact ? (
-            <div className="w-[256px] sm:w-[296px] rotate-3 scale-105 pointer-events-none">
-              <InternalKanbanCard contact={activeContact} stages={stages} onUpdateStage={() => {}} isOverlay />
+            <div className="w-[280px] sm:w-[320px] rotate-3 scale-105 pointer-events-none">
+              <InternalKanbanCard contact={activeContact} stages={stages} onUpdateStage={async () => {}} isOverlay />
             </div>
           ) : null}
         </DragOverlay>
@@ -546,10 +497,80 @@ export default function OutreachBoard() {
   );
 }
 
+interface KanbanColumnProps {
+  stageInfo: Stage;
+  contacts: Contact[];
+  isAdmin: boolean;
+  stages: Stage[];
+  onDeleteStage: (id: string) => Promise<void>;
+  onUpdateContactStage: (cid: string, sid: string) => Promise<void>;
+  key?: string | number;
+}
+
+function KanbanColumn({ stageInfo, contacts, isAdmin, stages, onDeleteStage, onUpdateContactStage }: KanbanColumnProps) {
+  const { setNodeRef } = useDroppable({
+    id: stageInfo.label,
+  });
+
+  return (
+    <div className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
+      {/* Column Header */}
+      <div className="p-4 flex items-center justify-between border-b border-surface-variant">
+        <div className="flex items-center gap-2">
+          <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
+          <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
+          <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
+            {contacts.length}
+          </span>
+        </div>
+        <div className="flex items-center gap-1">
+          {isAdmin && (
+            <button 
+              onClick={() => onDeleteStage(stageInfo.id)}
+              className="text-on-surface-variant hover:text-error hover:bg-error-container/20 p-1 rounded-full transition-colors"
+              title="Delete Stage"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
+          <button className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full">
+            <MoreHorizontal className="w-5 h-5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Column Content */}
+      <SortableContext 
+        id={stageInfo.label}
+        items={contacts.map(c => c.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        <div 
+          ref={setNodeRef}
+          className="p-3 overflow-y-auto space-y-3 custom-scrollbar min-h-[150px] flex-1"
+        >
+          {contacts.length > 0 ? contacts.map((contact) => (
+            <KanbanCard 
+              key={contact.id} 
+              contact={contact} 
+              stages={stages}
+              onUpdateStage={onUpdateContactStage}
+            />
+          )) : (
+            <div className="flex-1 flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/30 rounded-xl m-1">
+              <p className="text-on-surface-variant text-[10px] italic opacity-60 text-center px-4 uppercase font-bold tracking-widest">Empty Stage</p>
+            </div>
+          )}
+        </div>
+      </SortableContext>
+    </div>
+  );
+}
+
 interface KanbanCardProps {
   contact: Contact;
   stages: Stage[];
-  onUpdateStage: (cid: string, sid: string) => void;
+  onUpdateStage: (cid: string, sid: string) => Promise<void>;
   key?: string | number;
 }
 
