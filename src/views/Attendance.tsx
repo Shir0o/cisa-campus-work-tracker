@@ -175,13 +175,6 @@ export default function Attendance() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => setIsAddEventModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            Add Event
-          </button>
           <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary-container text-on-secondary-container font-bold text-sm hover:opacity-80 transition-colors">
             <Download className="w-4 h-4" />
             Export
@@ -237,12 +230,12 @@ export default function Attendance() {
                     <div className="text-xs font-black uppercase tracking-widest text-on-surface-variant">Contact</div>
                   </th>
                   {events.map((event) => (
-                    <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[100px]">
+                    <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[120px]">
                       <div className="text-xs font-bold text-on-surface truncate">
-                        {formatEventDate(event.date)}
-                      </div>
-                      <div className="text-[9px] text-on-surface-variant mt-0.5 leading-tight truncate">
                         {event.name}
+                      </div>
+                      <div className="text-[10px] text-primary font-medium mt-0.5 leading-tight truncate">
+                        {formatEventDate(event.date)}
                       </div>
                     </th>
                   ))}
@@ -299,6 +292,18 @@ export default function Attendance() {
             </table>
           )}
         </div>
+      </div>
+
+      {/* Add Event FAB */}
+      <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
+        <button 
+          onClick={() => setIsAddEventModalOpen(true)}
+          className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
+          title="Add New Event"
+        >
+          <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
+          <span className="hidden sm:inline">Add Event</span>
+        </button>
       </div>
     </motion.div>
       <AddEventModal 
