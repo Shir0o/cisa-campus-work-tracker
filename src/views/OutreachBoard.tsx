@@ -330,14 +330,9 @@ export default function OutreachBoard() {
                     <div key={j} className="bg-surface-container-lowest p-4 rounded-xl space-y-3">
                       <div className="flex justify-between">
                         <Skeleton className="h-4 w-24" />
-                        <Skeleton className="h-8 w-8 rounded-full" />
                       </div>
                       <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-2/3" />
-                      <div className="pt-2 border-t border-outline-variant/20 flex justify-between">
-                        <Skeleton className="h-3 w-12" />
-                        <Skeleton className="h-3 w-16" />
-                      </div>
                     </div>
                   ))}
                 </div>
@@ -808,16 +803,6 @@ function InternalKanbanCard({
         )}
       </div>
 
-      <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20 text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">
-        <div className="flex items-center gap-1">
-          <History className="w-3 h-3" />
-          {contact.lastSeen}
-        </div>
-        <div className="flex items-center gap-1.5">
-           <GripVertical className="w-3 h-3 text-on-surface-variant/40" />
-           <span>{contact.createdAt ? `Added: ${contact.createdAt}` : 'Lead'}</span>
-        </div>
-      </div>
     </div>
   );
 }
