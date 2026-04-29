@@ -378,12 +378,11 @@ export default function Directory() {
               </thead>
               <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
                 {filteredAndSortedContacts.map((contact) => (
-                  <tr 
+                    <tr 
                     key={contact.id} 
                     onClick={() => setSelectedContact(contact)}
                     className={cn(
                       "hover:bg-surface-container-low transition-colors group cursor-pointer",
-                      contact.hasNewActivity && "bg-primary-container/[0.03]",
                       selectedIds.has(contact.id) && "bg-primary/5"
                     )}
                   >
@@ -414,7 +413,6 @@ export default function Directory() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 min-w-0">
                             <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
-                            {contact.hasNewActivity && <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
                           </div>
                           <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
                         </div>
@@ -457,10 +455,7 @@ export default function Directory() {
                       "py-4 px-4 text-right",
                       isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
                     )}>
-                      <p className={cn(
-                        "text-xs whitespace-nowrap",
-                        contact.hasNewActivity ? "text-primary font-bold" : "text-on-surface-variant font-medium"
-                      )}>{contact.lastSeen}</p>
+                      <p className="text-xs whitespace-nowrap text-on-surface-variant font-medium">{contact.lastSeen}</p>
                     </td>
                   </tr>
                 ))}
