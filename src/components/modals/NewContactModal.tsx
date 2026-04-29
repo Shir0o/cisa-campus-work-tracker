@@ -22,8 +22,11 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
     email: '',
     phone: '',
     stage: '',
+    status: 'Needs Contact' as Contact['status'],
+    tags: [] as string[],
     notes: ''
   });
+  const [stages, setStages] = useState<Stage[]>([]);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -37,15 +40,16 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
   useEffect(() => {
     if (isOpen) {
-      const fetchDefaultStage = async () => {
+      const fetchStages = async () => {
         try {
-          const q = query(collection(db, 'stages'), orderBy('order', 'asc'), limit(1));
+          const q = query(collection(db, 'stages'), orderBy('order', 'asc'));
           const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            const firstStage = querySnapshot.docs[0].data() as Stage;
-            setFormData(f => ({ ...f, stage: firstStage.label }));
+          const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
+          setStages(stageData);
+          
+          if (stageData.length > 0) {
+            setFormData(f => ({ ...f, stage: stageData[0].label }));
           } else {
-            // Fallback if no stages exist yet
             setFormData(f => ({ ...f, stage: 'First Contact' }));
           }
         } catch (error) {
@@ -53,7 +57,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
           setFormData(f => ({ ...f, stage: 'First Contact' }));
         }
       };
-      fetchDefaultStage();
+      fetchStages();
     }
   }, [isOpen]);
 
@@ -62,7 +66,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return (firstName.charAt(0) + lastName.charAt(0)).toUpperCase();
+    return (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
   };
 
   const handlePhoneBlur = () => {
@@ -89,6 +93,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (phoneError) return;
     setLoading(true);
 
     try {
@@ -100,12 +105,13 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
+        status: formData.status,
+        tags: formData.tags,
         notes: formData.notes,
         initials: getInitials(formData.firstName, formData.lastName),
-        status: 'Needs Contact',
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
-        serverCreatedAt: serverTimestamp(), // For firestore rules consistency if needed
+        serverCreatedAt: serverTimestamp(),
         hasNewActivity: true,
         attendance: {}
       };
@@ -120,7 +126,9 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         location: '',
         email: '',
         phone: '',
-        stage: formData.stage, // Keep current stage as default for next entry
+        stage: formData.stage,
+        status: 'Needs Contact',
+        tags: [],
         notes: ''
       });
     } catch (error) {
@@ -129,6 +137,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
       setLoading(false);
     }
   };
+
+  const statusOptions = ['Needs Contact', 'Email Sent', 'Qualified Lead', 'Follow Up Required', 'Meeting Scheduled'];
 
   return (
     <AnimatePresence>
@@ -164,79 +174,82 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* First Name */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <User className="w-4 h-4" /> FIRST NAME
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <User className="w-3.5 h-3.5" /> FIRST NAME
                   </label>
                   <input
                     required
                     type="text"
                     value={formData.firstName}
                     onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                     placeholder="e.g. Alex"
                   />
                 </div>
 
                 {/* Last Name */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <User className="w-4 h-4" /> LAST NAME
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <User className="w-3.5 h-3.5" /> LAST NAME
                   </label>
                   <input
                     type="text"
                     value={formData.lastName}
                     onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                     placeholder="e.g. Johnson"
                   />
                 </div>
 
-                {/* Status (formerly Role) */}
+                {/* Status (role) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <Briefcase className="w-4 h-4" /> STATUS
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <Briefcase className="w-3.5 h-3.5" /> STATUS
                   </label>
                   <input
+                    required
                     type="text"
                     value={formData.role}
                     onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                     placeholder="e.g. Student, Faculty"
                   />
                 </div>
 
-                {/* First Met (formerly Location) */}
+                {/* First Met (location) */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <MapPin className="w-4 h-4" /> FIRST MET
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5" /> FIRST MET
                   </label>
                   <input
+                    required
                     type="text"
                     value={formData.location}
                     onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                     placeholder="e.g. Campus Coffee"
                   />
                 </div>
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <Mail className="w-4 h-4" /> EMAIL
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <Mail className="w-3.5 h-3.5" /> EMAIL
                   </label>
                   <input
+                    required
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                     placeholder="alex@campus.edu"
                   />
                 </div>
 
                 {/* Phone */}
                 <div className="space-y-1.5">
-                  <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                    <Phone className="w-4 h-4" /> PHONE
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <Phone className="w-3.5 h-3.5" /> PHONE
                   </label>
                   <input
                     type="tel"
@@ -247,10 +260,10 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     }}
                     onBlur={handlePhoneBlur}
                     className={cn(
-                      "w-full h-12 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-on-surface",
+                      "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm text-on-surface",
                       phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
                     )}
-                    placeholder="+1 (555) 000-0000"
+                    placeholder="(555) 000-0000"
                   />
                   <AnimatePresence>
                     {phoneError && (
@@ -266,16 +279,63 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   </AnimatePresence>
                 </div>
 
+                {/* Stage selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <MapPin className="w-3.5 h-3.5" /> STAGE
+                  </label>
+                  <select
+                    value={formData.stage}
+                    onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none"
+                  >
+                    {stages.map(s => (
+                      <option key={s.id} value={s.label}>{s.label}</option>
+                    ))}
+                  </select>
+                </div>
 
+                {/* Interaction Status */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION STATUS
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={e => setFormData(f => ({ ...f, status: e.target.value as Contact['status'] }))}
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none"
+                  >
+                    {statusOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tags */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    TAGS (COMMA SEPARATED)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.tags.join(', ')}
+                    onChange={e => setFormData(f => ({ 
+                      ...f, 
+                      tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) 
+                    }))}
+                    placeholder="e.g. Lead, Fall2023"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                  />
+                </div>
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-sm font-bold text-on-surface-variant px-1 uppercase tracking-wider">NOTES</label>
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">NOTES</label>
                   <textarea
                     required
                     value={formData.notes}
                     onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full min-h-[100px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface resize-none"
+                    className="w-full min-h-[100px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
                     placeholder="Add some context about this contact..."
                   />
                 </div>
