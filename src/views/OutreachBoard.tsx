@@ -577,8 +577,6 @@ function KanbanColumn({
     id: stageInfo.label,
   });
 
-  const [showMenu, setShowMenu] = useState(false);
-
   return (
     <div className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
       {/* Column Header */}
@@ -589,53 +587,6 @@ function KanbanColumn({
           <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
             {contacts.length}
           </span>
-        </div>
-        <div className="flex items-center gap-1 relative">
-          <button 
-            onClick={() => setShowMenu(!showMenu)}
-            className="text-on-surface-variant hover:bg-surface-variant p-1 rounded-full transition-colors"
-          >
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
-
-          <AnimatePresence>
-            {showMenu && (
-              <>
-                <div className="fixed inset-0 z-30" onClick={() => setShowMenu(false)} />
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                  className="absolute top-10 right-0 z-40 w-48 bg-surface-container-high rounded-xl shadow-xl border border-outline-variant p-1"
-                >
-                  {isAdmin && (
-                    <>
-                      <button
-                        onClick={() => {
-                          onEditStage(stageInfo);
-                          setShowMenu(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <Settings2 className="w-4 h-4" />
-                        Edit Stage
-                      </button>
-                      <button
-                        onClick={() => {
-                          onDeleteStage(stageInfo.id);
-                          setShowMenu(false);
-                        }}
-                        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-error hover:bg-error/10 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                        Delete Stage
-                      </button>
-                    </>
-                  )}
-                </motion.div>
-              </>
-            )}
-          </AnimatePresence>
         </div>
       </div>
 
@@ -832,13 +783,6 @@ function InternalKanbanCard({
                   </>
                 )}
               </AnimatePresence>
-            </div>
-          )}
-          {contact.avatar ? (
-            <img src={contact.avatar} alt={contact.name} className="w-8 h-8 rounded-full object-cover shadow-sm" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center text-[10px] font-bold">
-              {contact.initials}
             </div>
           )}
         </div>
