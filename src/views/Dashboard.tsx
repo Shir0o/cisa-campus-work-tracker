@@ -51,7 +51,7 @@ export default function Dashboard() {
       <div className={cn(
         "grid gap-4 sm:gap-6 items-start",
         isSidebarCollapsed 
-          ? "grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4" 
+          ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" 
           : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
       )}>
         {metrics.map((metric, idx) => (
@@ -93,13 +93,13 @@ export default function Dashboard() {
       <div className={cn(
         "grid gap-6 md:gap-8",
         isSidebarCollapsed 
-          ? "grid-cols-1 xl:grid-cols-4" 
+          ? "grid-cols-1 lg:grid-cols-3" 
           : "grid-cols-1 lg:grid-cols-3"
       )}>
         {/* Recent Activity Feed */}
         <div className={cn(
           "bg-surface-container rounded-3xl p-5 sm:p-6 border border-outline-variant/30",
-          isSidebarCollapsed ? "xl:col-span-3" : "lg:col-span-2"
+          isSidebarCollapsed ? "lg:col-span-2" : "lg:col-span-2"
         )}>
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-medium text-on-surface">Recent Activity</h3>
