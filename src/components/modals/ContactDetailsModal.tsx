@@ -66,7 +66,8 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     role: '',
     location: '',
     email: '',
@@ -76,6 +77,22 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     tags: [] as string[],
     notes: ''
   });
+
+  const capitalize = (str: string) => {
+    return str.charAt(0).toUpperCase() + str.slice(1);
+  };
+
+  const getInitials = (firstName: string, lastName: string) => {
+    return (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
+  };
+
+  const splitName = (fullName: string) => {
+    const parts = fullName.trim().split(' ');
+    if (parts.length <= 1) return { first: fullName, last: '' };
+    const last = parts.pop() || '';
+    const first = parts.join(' ');
+    return { first, last };
+  };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -89,8 +106,10 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   useEffect(() => {
     if (contact) {
+      const { first, last } = splitName(contact.name || '');
       setFormData({
-        name: contact.name || '',
+        firstName: first,
+        lastName: last,
         role: contact.role || '',
         location: contact.location || '',
         email: contact.email || '',
@@ -242,14 +261,27 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (phoneError) return;
     setLoading(true);
     try {
       const contactRef = doc(db, 'contacts', contact.id);
-      await updateDoc(contactRef, {
-        ...formData,
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      
+      const updateData = {
+        name: fullName,
+        initials: getInitials(formData.firstName, formData.lastName),
+        role: formData.role,
+        location: formData.location,
+        email: formData.email,
+        phone: formData.phone,
+        stage: formData.stage,
+        status: formData.status as Contact['status'],
         tags: formData.tags,
+        notes: formData.notes,
         updatedAt: new Date().toISOString()
-      });
+      };
+
+      await updateDoc(contactRef, updateData);
       setIsEditing(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
@@ -257,6 +289,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       setLoading(false);
     }
   };
+
 
   const handleDelete = async () => {
     if (!confirm('Are you sure you want to delete this contact?')) return;
@@ -406,21 +439,37 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
               {isEditing ? (
                 <form id="edit-contact-form" onSubmit={handleUpdate} className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* First Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <User className="w-3.5 h-3.5" /> Full Name
+                        <User className="w-3.5 h-3.5" /> FIRST NAME
                       </label>
                       <input
                         required
                         type="text"
-                        value={formData.name}
-                        onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
+                        value={formData.firstName}
+                        onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        placeholder="e.g. Alex"
                       />
                     </div>
+                    {/* Last Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Briefcase className="w-3.5 h-3.5" /> Status/Role
+                        <User className="w-3.5 h-3.5" /> LAST NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.lastName}
+                        onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        placeholder="e.g. Johnson"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Briefcase className="w-3.5 h-3.5" /> STATUS
                       </label>
                       <input
                         required
@@ -428,11 +477,26 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         value={formData.role}
                         onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        placeholder="e.g. Student, Faculty"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Mail className="w-3.5 h-3.5" /> Email
+                        <MapPin className="w-3.5 h-3.5" /> FIRST MET
+                      </label>
+                      <input
+                        required
+                        type="text"
+                        value={formData.location}
+                        onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        placeholder="e.g. Campus Coffee"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Mail className="w-3.5 h-3.5" /> EMAIL
                       </label>
                       <input
                         required
@@ -440,11 +504,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         value={formData.email}
                         onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        placeholder="alex@campus.edu"
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Phone className="w-3.5 h-3.5" /> Phone
+                        <Phone className="w-3.5 h-3.5" /> PHONE
                       </label>
                       <input
                         type="tel"
@@ -458,6 +523,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                           "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm",
                           phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
                         )}
+                        placeholder="(555) 000-0000"
                       />
                       <AnimatePresence>
                         {phoneError && (
@@ -474,7 +540,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Calendar className="w-3.5 h-3.5" /> Stage
+                        <Calendar className="w-3.5 h-3.5" /> STAGE
                       </label>
                       <select
                         value={formData.stage}
@@ -488,7 +554,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <ChevronRight className="w-3.5 h-3.5" /> Interaction Status
+                        <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION STATUS
                       </label>
                       <select
                         value={formData.status}
@@ -501,28 +567,57 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         ))}
                       </select>
                     </div>
+
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        TAGS (COMMA SEPARATED)
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.tags.join(', ')}
+                        onChange={e => setFormData(f => ({ ...f, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
+                        placeholder="e.g. Lead, Fall2023"
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <MessageSquare className="w-3.5 h-3.5" /> NOTES
+                      </label>
+                      <textarea
+                        required
+                        value={formData.notes}
+                        onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
+                        className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
+                        placeholder="Add some context about this contact..."
+                      />
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                      Tags (comma separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={formData.tags.join(', ')}
-                      onChange={e => setFormData(f => ({ ...f, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
-                      placeholder="e.g. Lead, Fall2023"
-                      className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                      <MessageSquare className="w-3.5 h-3.5" /> Notes
-                    </label>
-                    <textarea
-                      value={formData.notes}
-                      onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
-                      className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
-                    />
+                  
+                  {/* Edit Actions */}
+                  <div className="flex gap-3 pt-4 sticky bottom-0 bg-surface-container pb-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      disabled={loading}
+                      type="submit"
+                      className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                    >
+                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      className="p-3 rounded-full text-error hover:bg-error/10 transition-all shrink-0"
+                      title="Delete Contact"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
                   </div>
                 </form>
               ) : (

@@ -732,6 +732,7 @@ function InternalKanbanCard({
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
   return (
     <div 
+      onClick={() => !isOverlay && onEditContact(contact)}
       className={cn(
         "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing relative overflow-visible",
         contact.stage === 'Regular' && "border-l-4 border-l-secondary",
