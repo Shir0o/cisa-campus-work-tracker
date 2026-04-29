@@ -24,8 +24,17 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
 
   return (
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
+      {/* Sidebar Toggle / Mobile Menu */}
+      <button 
+        onClick={onMenuClick}
+        className="p-2 rounded-full hover:bg-surface-container-highest text-on-surface-variant transition-colors"
+        aria-label="Toggle Menu"
+      >
+        <Menu className="w-6 h-6" />
+      </button>
+
       {/* Mobile Logo/Title */}
-      <div className="flex lg:hidden items-center gap-2">
+      <div className="flex lg:hidden items-center gap-2 ml-1">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
             <img 
@@ -44,9 +53,6 @@ export default function TopBar({ onMenuClick }: { onMenuClick?: () => void }) {
           <span className="font-black text-primary text-sm tracking-tight hidden sm:inline">Campus Hub</span>
         </Link>
       </div>
-
-      {/* Desktop Logo/Title placeholder or empty if sidebar handles it */}
-      <div className="hidden lg:block w-12" />
 
       {/* Search Bar - Now responsive instead of hidden */}
       <div className="flex-1 max-w-xl">

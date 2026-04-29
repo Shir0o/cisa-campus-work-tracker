@@ -50,7 +50,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }:
       }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       className={cn(
-        "bg-surface-container-low h-screen flex-col border-r border-outline-variant fixed left-0 top-0 bottom-0 z-50 pt-4 pb-6 transition-colors duration-300 hidden lg:flex px-3 overflow-hidden"
+        "bg-surface-container-low h-screen flex-col border-r border-outline-variant z-50 pt-4 pb-6 transition-colors duration-300 hidden lg:flex px-3 overflow-hidden shrink-0"
       )}
     >
       {/* Brand Header */}
