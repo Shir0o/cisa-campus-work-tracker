@@ -17,7 +17,7 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && 
-             getAuthEmail() == 'yilongwang05@gmail.com';
+             request.auth.token.get('email', '').lower() == 'yilongwang05@gmail.com';
     }
 
     function getUserData() {
@@ -33,11 +33,11 @@ service cloud.firestore {
 
     function isAdmin() { return hasRole('admin'); }
     function isManager() { return isAdmin() || hasRole('manager'); }
-    function isOperator() { return isManager() || hasRole('operator'); }
-    function isViewer() { return isOperator() || hasRole('viewer'); }
+    function isOperator() { return isManager() || hasRole('operator') || isSuperAdmin(); }
+    function isViewer() { return isOperator() || hasRole('viewer') || isSuperAdmin(); }
 
     function isApprovedUser() {
-      return isViewer() && (
+      return isSignedIn() && (
         isSuperAdmin() || 
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().approved == true)
       );
@@ -117,6 +117,24 @@ service cloud.firestore {
       allow create: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
       allow update: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
       allow delete: if isAdmin() || isManager();
+
+      // Interactions subcollection
+      match /interactions/{interactionId} {
+        function isValidInteraction(data) {
+          return data.userId == request.auth.uid &&
+                 data.userName is string && data.userName.size() <= 100 &&
+                 data.content is string && data.content.size() <= 5000 &&
+                 data.dateTime is string &&
+                 data.createdAt == request.time;
+        }
+
+        // Allow list only if they are approved and authenticated correctly
+        allow list: if isApprovedUser();
+        allow get: if isApprovedUser();
+        allow create: if isApprovedUser() && isOperator() && isValidInteraction(request.resource.data);
+        allow update: if isApprovedUser() && isOperator() && isValidInteraction(request.resource.data) && request.resource.data.userId == resource.data.userId;
+        allow delete: if isApprovedUser() && (isManager() || (resource.data.userId == request.auth.uid));
+      }
 
       // Comments subcollection
       match /comments/{commentId} {

@@ -14,7 +14,9 @@ import {
   MessageSquare,
   ChevronRight,
   Send,
-  UserCircle
+  UserCircle,
+  Clock,
+  Plus
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { 
@@ -31,7 +33,7 @@ import {
   Timestamp 
 } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
-import { Contact, Stage, Comment } from '../../types';
+import { Contact, Stage, Interaction, Comment } from '../../types';
 import { useAuth } from '../AuthProvider';
 import { Skeleton } from '../ui/Skeleton';
 
@@ -45,11 +47,20 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [interactionsLoading, setInteractionsLoading] = useState(true);
   const [commentsLoading, setCommentsLoading] = useState(true);
   const [stages, setStages] = useState<Stage[]>([]);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [newInteraction, setNewInteraction] = useState({
+    content: '',
+    dateTime: new Date().toISOString().slice(0, 16),
+    duration: ''
+  });
+  const [submittingInteraction, setSubmittingInteraction] = useState(false);
+  const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -106,6 +117,31 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   useEffect(() => {
     if (isOpen && contact) {
+      const interactionsRef = collection(db, 'contacts', contact.id, 'interactions');
+      const q = query(interactionsRef, orderBy('createdAt', 'asc'));
+      
+      setInteractionsLoading(true);
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const interactionData = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
+          } as Interaction;
+        });
+        setInteractions(interactionData);
+        setInteractionsLoading(false);
+      }, (error) => {
+        handleFirestoreError(error, OperationType.LIST, `contacts/${contact.id}/interactions`);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, contact]);
+
+  useEffect(() => {
+    if (isOpen && contact) {
       const commentsRef = collection(db, 'contacts', contact.id, 'comments');
       const q = query(commentsRef, orderBy('createdAt', 'asc'));
       
@@ -113,8 +149,6 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       const unsubscribe = onSnapshot(q, (snapshot) => {
         const commentData = snapshot.docs.map(doc => {
           const data = doc.data();
-          // Convert serverTimestamp to ISO string for the UI if needed, 
-          // or just handle it in the component
           return {
             id: doc.id,
             ...data,
@@ -182,6 +216,35 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       handleFirestoreError(error, OperationType.DELETE, `contacts/${contact.id}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAddInteraction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newInteraction.content.trim() || !newInteraction.dateTime || !user || !contact) return;
+
+    setSubmittingInteraction(true);
+    try {
+      const interactionsRef = collection(db, 'contacts', contact.id, 'interactions');
+      await addDoc(interactionsRef, {
+        userId: user.uid,
+        userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
+        userPhoto: user.photoURL || '',
+        content: newInteraction.content.trim(),
+        dateTime: newInteraction.dateTime,
+        duration: newInteraction.duration.trim() || null,
+        createdAt: serverTimestamp()
+      });
+      setNewInteraction({
+        content: '',
+        dateTime: new Date().toISOString().slice(0, 16),
+        duration: ''
+      });
+      setIsLoggingInteraction(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/interactions`);
+    } finally {
+      setSubmittingInteraction(false);
     }
   };
 
@@ -425,8 +488,152 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </div>
                   </div>
 
-                  {/* Comments Section */}
+                  {/* Interactions Section */}
                   <div className="space-y-4">
+                    <div className="flex items-center justify-between px-2">
+                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+                        Interaction Log ({interactions.length})
+                      </h3>
+                      <button
+                        onClick={() => setIsLoggingInteraction(!isLoggingInteraction)}
+                        className="p-1 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                      >
+                        {isLoggingInteraction ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                        {isLoggingInteraction ? 'Cancel' : 'Log Interaction'}
+                      </button>
+                    </div>
+                    
+                    {/* Log Interaction Form */}
+                    <AnimatePresence>
+                      {isLoggingInteraction && (
+                        <motion.form
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          onSubmit={handleAddInteraction}
+                          className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
+                        >
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                <Calendar className="w-3 h-3" /> Date & Time
+                              </label>
+                              <input
+                                required
+                                type="datetime-local"
+                                value={newInteraction.dateTime}
+                                onChange={e => setNewInteraction(prev => ({ ...prev, dateTime: e.target.value }))}
+                                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                <Clock className="w-3 h-3" /> Duration (e.g. 15m)
+                              </label>
+                              <input
+                                type="text"
+                                placeholder="Optional"
+                                value={newInteraction.duration}
+                                onChange={e => setNewInteraction(prev => ({ ...prev, duration: e.target.value }))}
+                                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                              <MessageSquare className="w-3 h-3" /> Content
+                            </label>
+                            <textarea
+                              required
+                              placeholder="Describe the interaction..."
+                              value={newInteraction.content}
+                              onChange={e => setNewInteraction(prev => ({ ...prev, content: e.target.value }))}
+                              className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2 pt-1">
+                            <button
+                              type="submit"
+                              disabled={submittingInteraction || !newInteraction.content.trim()}
+                              className="px-4 h-9 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
+                            >
+                              {submittingInteraction ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Send className="w-3.5 h-3.5" />
+                              )}
+                              Log Interaction
+                            </button>
+                          </div>
+                        </motion.form>
+                      )}
+                    </AnimatePresence>
+
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      {interactionsLoading ? (
+                        <div className="space-y-3">
+                          {[1, 2].map(i => (
+                            <div key={i} className="flex gap-3">
+                              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                              <div className="flex-1 space-y-2">
+                                <Skeleton className="h-3 w-24 rounded-full" />
+                                <Skeleton className="h-12 w-full rounded-xl" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : interactions.length === 0 ? (
+                        <div className="text-center py-8 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                          <MessageSquare className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-2" />
+                          <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No interactions logged yet.</p>
+                        </div>
+                      ) : (
+                        [...interactions].reverse().map(interaction => (
+                          <div key={interaction.id} className="flex gap-3 group">
+                            <div className="shrink-0 mt-0.5">
+                              {interaction.userPhoto ? (
+                                <img src={interaction.userPhoto} alt={interaction.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                  <UserCircle className="w-5 h-5" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{interaction.userName}</span>
+                                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                    {new Date(interaction.dateTime).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                {interaction.duration && (
+                                  <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {interaction.duration}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                {interaction.content}
+                              </div>
+                              <div className="mt-1 flex items-center gap-2">
+                                <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                                  {interaction.createdAt ? (
+                                    `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                  ) : (
+                                    'Logging...'
+                                  )}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Team Discussion Section */}
+                  <div className="space-y-4 pt-4 border-t border-outline-variant">
                     <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
                        Team Discussion ({comments.length})
                     </h3>
@@ -445,9 +652,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                           ))}
                         </div>
                       ) : comments.length === 0 ? (
-                        <div className="text-center py-8 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                        <div className="text-center py-6 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                           <MessageSquare className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-2" />
-                          <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
+                          <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
                         </div>
                       ) : (
                         comments.map(comment => (
@@ -485,7 +692,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     <form onSubmit={handleAddComment} className="relative mt-2">
                       <div className="relative group">
                         <textarea
-                          placeholder="Add a comment..."
+                          placeholder="Add a comment to the discussion..."
                           value={newComment}
                           onChange={e => setNewComment(e.target.value)}
                           onKeyDown={(e) => {
@@ -508,10 +715,6 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                           )}
                         </button>
                       </div>
-                      <p className="px-4 mt-1.5 text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest flex items-center justify-between">
-                        <span>Press Enter to send</span>
-                        {user && <span>Logged in as {user.displayName}</span>}
-                      </p>
                     </form>
                   </div>
 

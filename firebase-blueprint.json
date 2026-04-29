@@ -87,6 +87,21 @@
       },
       "required": ["name", "date", "order"]
     },
+    "interactions": {
+      "title": "Interaction",
+      "description": "A log of an interaction with a contact.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "dateTime": { "type": "string", "format": "date-time" },
+        "duration": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "content", "dateTime", "createdAt"]
+    },
     "comments": {
       "title": "Comment",
       "description": "A message left on a contact record.",
@@ -125,6 +140,10 @@
     "events/{eventId}": {
       "schema": "events",
       "description": "Outreach events for attendance tracking."
+    },
+    "contacts/{contactId}/interactions/{interactionId}": {
+      "schema": "interactions",
+      "description": "Logs of interactions with a contact."
     },
     "contacts/{contactId}/comments/{commentId}": {
       "schema": "comments",
