@@ -86,6 +86,8 @@
         "isRecurring": { "type": "boolean" },
         "recurrenceType": { "type": "string", "enum": ["none", "daily", "weekly", "monthly"] },
         "recurrenceCount": { "type": "integer" },
+        "recurrenceDays": { "type": "array", "items": { "type": "integer" } },
+        "monthlyType": { "type": "string", "enum": ["same-day", "relative-day"] },
         "parentEventId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
