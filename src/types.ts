@@ -71,6 +71,14 @@ export interface Interaction {
   createdAt: string;
 }
 
+export interface Event {
+  id: string;
+  name: string;
+  date: string;
+  order: number;
+  createdAt: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;

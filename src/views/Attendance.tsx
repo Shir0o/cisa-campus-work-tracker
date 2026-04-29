@@ -16,19 +16,15 @@ import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { Contact } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
-
-interface Event {
-  id: string;
-  name: string;
-  date: string;
-  order: number;
-}
+import AddEventModal from '../components/modals/AddEventModal';
+import { Event } from '../types';
 
 export default function Attendance() {
   const { isSidebarCollapsed } = useLayout();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
 
   useEffect(() => {
     // Fetch Contacts
@@ -84,24 +80,6 @@ export default function Attendance() {
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contactId}`);
-    }
-  };
-
-  const handleAddEvent = async () => {
-    const name = prompt('Event Name:');
-    if (!name) return;
-    const date = prompt('Date (e.g. Oct 12):');
-    if (!date) return;
-
-    try {
-      await addDoc(collection(db, 'events'), {
-        name,
-        date,
-        order: events.length,
-        createdAt: new Date().toISOString()
-      });
-    } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'events');
     }
   };
 
@@ -172,7 +150,8 @@ export default function Attendance() {
   }
 
   return (
-    <motion.div 
+    <>
+      <motion.div 
       initial={{ opacity: 0, scale: 0.98 }}
       animate={{ opacity: 1, scale: 1 }}
       className="p-6 md:p-8 space-y-6 flex flex-col h-full"
@@ -187,7 +166,7 @@ export default function Attendance() {
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={handleAddEvent}
+            onClick={() => setIsAddEventModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl border border-primary text-primary font-bold text-sm hover:bg-primary/5 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -308,5 +287,11 @@ export default function Attendance() {
         </div>
       </div>
     </motion.div>
+      <AddEventModal 
+        isOpen={isAddEventModalOpen}
+        onClose={() => setIsAddEventModalOpen(false)}
+        currentEventCount={events.length}
+      />
+    </>
   );
 }
