@@ -12,6 +12,7 @@ export interface Contact {
   status?: 'Needs Contact' | 'Email Sent' | 'Qualified Lead' | 'Follow Up Required' | 'Meeting Scheduled';
   attendance?: Record<string, boolean | 'absent'>;
   notes?: string;
+  tags?: string[];
   createdAt?: string;
   hasNewActivity?: boolean;
   lastAiAnalysisAt?: string;

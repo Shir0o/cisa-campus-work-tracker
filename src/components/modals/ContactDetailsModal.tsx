@@ -17,7 +17,8 @@ import {
   UserCircle,
   Clock,
   Plus,
-  Sparkles
+  Sparkles,
+  Tag
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { 
@@ -73,6 +74,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     phone: '',
     stage: '',
     status: '',
+    tags: [] as string[],
     notes: ''
   });
 
@@ -96,6 +98,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         phone: contact.phone || '',
         stage: contact.stage || '',
         status: contact.status || '',
+        tags: contact.tags || [],
         notes: contact.notes || ''
       });
       setIsEditing(false);
@@ -229,6 +232,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       const contactRef = doc(db, 'contacts', contact.id);
       await updateDoc(contactRef, {
         ...formData,
+        tags: formData.tags,
         updatedAt: new Date().toISOString()
       });
       setIsEditing(false);
@@ -485,6 +489,18 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   </div>
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      Tags (comma separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.tags.join(', ')}
+                      onChange={e => setFormData(f => ({ ...f, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
+                      placeholder="e.g. Lead, Fall2023"
+                      className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
                       <MessageSquare className="w-3.5 h-3.5" /> Notes
                     </label>
                     <textarea
@@ -538,6 +554,23 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         </div>
                       </div>
                     </div>
+                    {contact.tags && contact.tags.length > 0 && (
+                      <div className="flex items-start gap-4 md:col-span-2">
+                        <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                          <Tag className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Tags</p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {contact.tags.map(tag => (
+                              <span key={tag} className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20">
+                                #{tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Notes Section */}
