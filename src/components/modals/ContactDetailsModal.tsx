@@ -16,7 +16,8 @@ import {
   Send,
   UserCircle,
   Clock,
-  Plus
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { 
@@ -36,6 +37,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { Contact, Stage, Interaction, Comment } from '../../types';
 import { useAuth } from '../AuthProvider';
 import { Skeleton } from '../ui/Skeleton';
+import { aiService } from '../../services/aiService';
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -61,6 +63,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   });
   const [submittingInteraction, setSubmittingInteraction] = useState(false);
   const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -165,6 +168,36 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     }
   }, [isOpen, contact]);
 
+  useEffect(() => {
+    const triggerAI = async () => {
+      if (!isOpen || !contact || isAnalyzing) return;
+      if (interactionsLoading || commentsLoading) return;
+      
+      const lastAnalysis = contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt) : null;
+      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      
+      const hasRecentData = (data: (Interaction | Comment)[]) => {
+        if (!lastAnalysis) return data.length > 0;
+        return data.some(item => {
+          const createdAt = item.createdAt ? new Date(item.createdAt) : new Date(0);
+          return createdAt > lastAnalysis;
+        });
+      };
+
+      const needsAnalysis = !lastAnalysis || 
+                           lastAnalysis < twentyFourHoursAgo || 
+                           hasRecentData(interactions) || 
+                           hasRecentData(comments);
+
+      if (needsAnalysis && (interactions.length > 0 || comments.length > 0)) {
+        console.log('Triggering automatic AI activity analysis for', contact.name);
+        handleAIAnalyze();
+      }
+    };
+
+    triggerAI();
+  }, [isOpen, contact?.id, interactionsLoading, commentsLoading]);
+
   if (!contact) return null;
 
   const handlePhoneBlur = () => {
@@ -266,7 +299,31 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/comments`);
     } finally {
+      setSubmittingComment(true); // Keep spinner until next tick or just reset
       setSubmittingComment(false);
+    }
+  };
+
+  const handleAIAnalyze = async () => {
+    if (!contact || isAnalyzing) return;
+    setIsAnalyzing(true);
+    try {
+      const analysis = await aiService.calculateLastSeen(contact, interactions, comments);
+      
+      const contactRef = doc(db, 'contacts', contact.id);
+      const now = new Date().toISOString();
+      await updateDoc(contactRef, {
+        lastSeen: new Date(analysis.timestamp).toLocaleDateString(),
+        updatedAt: now,
+        lastAiAnalysisAt: now,
+        lastSeenAiReason: `${analysis.reasoning} (${analysis.source})`
+      });
+
+    } catch (error) {
+      console.error("AI Analysis Error:", error);
+      // Removed alert to avoid interrupting user during auto-trigger
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -719,9 +776,29 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   </div>
 
                   {/* Timestamps */}
-                  <div className="flex items-center justify-between px-2 text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">
-                    <span>Last Seen: {contact.lastSeen}</span>
-                    <span>Created: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
+                  <div className="flex items-center justify-between px-2 pt-2 border-t border-outline-variant/30">
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Last Seen: {contact.lastSeen}</span>
+                        <button
+                          onClick={handleAIAnalyze}
+                          disabled={isAnalyzing}
+                          className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
+                          title="Recalculate using AI analysis of interactions and comments"
+                        >
+                          {isAnalyzing ? (
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                          ) : (
+                            <Sparkles className="w-3 h-3 text-primary-active" />
+                          )}
+                          {isAnalyzing ? 'Analyzing...' : 'AI Recalculate'}
+                        </button>
+                      </div>
+                      {contact.lastSeenAiReason && (
+                        <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">{contact.lastSeenAiReason}</span>
+                      )}
+                      <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Added: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
+                    </div>
                   </div>
                 </div>
               )}

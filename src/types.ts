@@ -14,6 +14,8 @@ export interface Contact {
   notes?: string;
   createdAt?: string;
   hasNewActivity?: boolean;
+  lastAiAnalysisAt?: string;
+  lastSeenAiReason?: string;
 }
 
 export interface Stage {
