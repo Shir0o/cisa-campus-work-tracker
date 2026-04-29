@@ -308,20 +308,25 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     if (!contact || isAnalyzing) return;
     setIsAnalyzing(true);
     try {
-      const analysis = await aiService.calculateLastSeen(contact, interactions, comments);
+      const analysis = await aiService.analyzeContact(contact, interactions, comments);
       
       const contactRef = doc(db, 'contacts', contact.id);
       const now = new Date().toISOString();
+      
+      // If AI suggests Needs Contact and we aren't already there or explicitly follow up
+      const shouldUpdateStage = analysis.needsContact.suggested && contact.stage !== 'Needs Contact';
+      
       await updateDoc(contactRef, {
-        lastSeen: new Date(analysis.timestamp).toLocaleDateString(),
+        lastSeen: new Date(analysis.lastSeen.timestamp).toLocaleDateString(),
         updatedAt: now,
         lastAiAnalysisAt: now,
-        lastSeenAiReason: `${analysis.reasoning} (${analysis.source})`
+        lastSeenAiReason: `${analysis.lastSeen.reasoning} (${analysis.lastSeen.source})`,
+        needsContactAiReason: analysis.needsContact.suggested ? analysis.needsContact.reasoning : null,
+        ...(shouldUpdateStage ? { stage: 'Needs Contact' } : {})
       });
 
     } catch (error) {
       console.error("AI Analysis Error:", error);
-      // Removed alert to avoid interrupting user during auto-trigger
     } finally {
       setIsAnalyzing(false);
     }
@@ -784,7 +789,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                           onClick={handleAIAnalyze}
                           disabled={isAnalyzing}
                           className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
-                          title="Recalculate using AI analysis of interactions and comments"
+                          title="Recalculate using AI analysis"
                         >
                           {isAnalyzing ? (
                             <Loader2 className="w-3 h-3 animate-spin" />
@@ -795,7 +800,10 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         </button>
                       </div>
                       {contact.lastSeenAiReason && (
-                        <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">{contact.lastSeenAiReason}</span>
+                        <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">activity: {contact.lastSeenAiReason}</span>
+                      )}
+                      {contact.needsContactAiReason && (
+                        <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">attention: {contact.needsContactAiReason}</span>
                       )}
                       <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Added: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
                     </div>

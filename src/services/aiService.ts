@@ -3,21 +3,30 @@ import { Interaction, Comment, Contact } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
-export interface LastSeenAnalysis {
-  timestamp: string;
-  source: 'interaction' | 'comment' | 'attendance' | 'unknown';
-  confidence: number;
-  reasoning: string;
+export interface ContactAnalysis {
+  lastSeen: {
+    timestamp: string;
+    source: 'interaction' | 'comment' | 'attendance' | 'unknown';
+    confidence: number;
+    reasoning: string;
+  };
+  needsContact: {
+    suggested: boolean;
+    reasoning: string;
+    priority: 'low' | 'medium' | 'high';
+  };
 }
 
 export const aiService = {
-  async calculateLastSeen(
+  async analyzeContact(
     contact: Contact,
     interactions: Interaction[],
     comments: Comment[]
-  ): Promise<LastSeenAnalysis> {
+  ): Promise<ContactAnalysis> {
     const context = {
       contactName: contact.name,
+      currentStage: contact.stage,
+      lastSeen: contact.lastSeen,
       attendance: contact.attendance || {},
       interactions: interactions.map(i => ({
         content: i.content,
@@ -32,10 +41,17 @@ export const aiService = {
     };
 
     const prompt = `
-      Analyze the following data for contact "${contact.name}" to determine the most recent time they were "seen" or active.
-      "Seen" means a physical presence at an event, a direct response in an interaction, or a comment from a team member explicitly mentioning seeing them.
+      Analyze the following data for contact "${contact.name}".
       
-      Passive events like "Sent Email" should be ignored unless there was a reply.
+      Task 1: Determine the most recent "seen" or interactive activity.
+      - "Seen" means physical presence, direct response, or a comment explicitly mentioning seeing them.
+      - Passive events (Sent Email) without replies should be ignored.
+      
+      Task 2: Determine if this contact "Needs Contact".
+      - "Needs Contact" should be true if:
+        1. It has been more than 14 days since the last active encounter.
+        2. The last interaction/comment implies an unanswered question or pending follow-up.
+        3. The contact is in a stage like "Email Sent" but hasn't responded in 7 days.
       
       Current Date: ${new Date().toISOString()}
       
@@ -43,10 +59,10 @@ export const aiService = {
       ${JSON.stringify(context, null, 2)}
       
       Return a JSON object with:
-      1. timestamp (ISO string of the most recent active encounter)
-      2. source (one of: 'interaction', 'comment', 'attendance', 'unknown')
-      3. confidence (0-1 score)
-      4. reasoning (brief explanation of why this was chosen)
+      {
+        "lastSeen": { "timestamp": "...", "source": "...", "confidence": 0.9, "reasoning": "..." },
+        "needsContact": { "suggested": true/false, "reasoning": "...", "priority": "low/medium/high" }
+      }
     `;
 
     try {
@@ -58,28 +74,47 @@ export const aiService = {
           responseSchema: {
             type: Type.OBJECT,
             properties: {
-              timestamp: { type: Type.STRING },
-              source: { 
-                type: Type.STRING, 
-                enum: ['interaction', 'comment', 'attendance', 'unknown'] 
+              lastSeen: {
+                type: Type.OBJECT,
+                properties: {
+                  timestamp: { type: Type.STRING },
+                  source: { type: Type.STRING, enum: ['interaction', 'comment', 'attendance', 'unknown'] },
+                  confidence: { type: Type.NUMBER },
+                  reasoning: { type: Type.STRING }
+                },
+                required: ['timestamp', 'source', 'confidence', 'reasoning']
               },
-              confidence: { type: Type.NUMBER },
-              reasoning: { type: Type.STRING }
+              needsContact: {
+                type: Type.OBJECT,
+                properties: {
+                  suggested: { type: Type.BOOLEAN },
+                  reasoning: { type: Type.STRING },
+                  priority: { type: Type.STRING, enum: ['low', 'medium', 'high'] }
+                },
+                required: ['suggested', 'reasoning', 'priority']
+              }
             },
-            required: ['timestamp', 'source', 'confidence', 'reasoning']
+            required: ['lastSeen', 'needsContact']
           }
         }
       });
 
       const result = JSON.parse(response.text || '{}');
-      return result as LastSeenAnalysis;
+      return result as ContactAnalysis;
     } catch (error) {
-      console.error("AI Last Seen Calculation Failed:", error);
+      console.error("AI Analysis Failed:", error);
       return {
-        timestamp: contact.lastSeen || new Date().toISOString(),
-        source: 'unknown',
-        confidence: 0,
-        reasoning: "Failed to calculate via AI."
+        lastSeen: {
+          timestamp: contact.lastSeen || new Date().toISOString(),
+          source: 'unknown',
+          confidence: 0,
+          reasoning: "Failed to calculate via AI."
+        },
+        needsContact: {
+          suggested: false,
+          reasoning: "Analysis failed.",
+          priority: 'low'
+        }
       };
     }
   }
