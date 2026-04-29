@@ -79,6 +79,7 @@ export interface Event {
   isRecurring?: boolean;
   recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
   recurrenceCount?: number;
+  recurrenceEndDate?: string;
   recurrenceDays?: number[];
   monthlyType?: 'same-day' | 'relative-day';
   parentEventId?: string;

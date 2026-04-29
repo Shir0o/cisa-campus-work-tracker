@@ -52,7 +52,8 @@ import {
   addDoc, 
   doc, 
   deleteDoc,
-  updateDoc 
+  updateDoc,
+  writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -148,13 +149,26 @@ export default function OutreachBoard() {
 
     try {
       if (editingStage) {
+        const oldLabel = editingStage.label;
+        const newLabel = newStageName.trim();
+        
         await updateDoc(doc(db, 'stages', editingStage.id), {
-          label: newStageName,
+          label: newLabel,
           color: newStageColor,
         });
+
+        // Migrate contacts if label changed
+        if (oldLabel !== newLabel) {
+          const batch = writeBatch(db);
+          const contactsToUpdate = boardContacts.filter(c => c.stage === oldLabel);
+          contactsToUpdate.forEach(c => {
+            batch.update(doc(db, 'contacts', c.id), { stage: newLabel });
+          });
+          await batch.commit();
+        }
       } else {
         await addDoc(collection(db, 'stages'), {
-          label: newStageName,
+          label: newStageName.trim(),
           color: newStageColor,
           order: stages.length,
         });
@@ -163,7 +177,7 @@ export default function OutreachBoard() {
       setEditingStage(null);
       setShowAddStage(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, 'stages');
+      handleFirestoreError(error, OperationType.UPDATE, 'stages');
     }
   };
 
@@ -572,10 +586,12 @@ function KanbanColumn({
     id: stageInfo.label,
   });
 
+  const [showMenu, setShowMenu] = useState(false);
+
   return (
     <div className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
       {/* Column Header */}
-      <div className="p-4 flex items-center justify-between border-b border-surface-variant">
+      <div className="p-4 flex items-center justify-between border-b border-surface-variant relative">
         <div className="flex items-center gap-2">
           <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
           <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
@@ -583,6 +599,55 @@ function KanbanColumn({
             {contacts.length}
           </span>
         </div>
+
+        {isAdmin && (
+          <div className="relative">
+            <button
+              onClick={() => setShowMenu(!showMenu)}
+              className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
+            >
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+
+            <AnimatePresence>
+              {showMenu && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-[60]" 
+                    onClick={() => setShowMenu(false)}
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    className="absolute top-8 right-0 z-[70] bg-surface-container-high border border-outline-variant rounded-xl shadow-xl p-1 min-w-[150px]"
+                  >
+                    <button
+                      onClick={() => {
+                        onEditStage(stageInfo);
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-surface-variant text-on-surface transition-colors"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-primary" />
+                      Edit Stage
+                    </button>
+                    <button
+                      onClick={() => {
+                        onDeleteStage(stageInfo.id);
+                        setShowMenu(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-error/10 text-error transition-colors font-medium border-t border-outline-variant/30 mt-1"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      Delete Stage
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
       </div>
 
       {/* Column Content */}

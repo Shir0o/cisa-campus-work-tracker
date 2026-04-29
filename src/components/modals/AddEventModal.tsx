@@ -32,7 +32,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
     date: new Date().toISOString().split('T')[0],
     isRecurring: false,
     recurrenceType: 'weekly' as RecurrenceType,
-    recurrenceCount: 4,
+    recurrenceEndDate: addMonths(new Date(), 1).toISOString().split('T')[0],
     recurrenceDays: [] as number[],
     monthlyType: 'same-day' as MonthlyType
   });
@@ -86,16 +86,23 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
     setLoading(true);
 
     try {
-      if (formData.isRecurring && formData.recurrenceCount > 1) {
+      if (formData.isRecurring && formData.recurrenceEndDate) {
         const batch = writeBatch(db);
         const startDate = parseISO(formData.date);
+        const endDate = parseISO(formData.recurrenceEndDate);
         const startDayOfWeek = getDay(startDate);
-        const weekOfMonthIndex = Math.ceil(startDate.getDate() / 7); // Rough estimate, or use date-fns getWeekOfMonth
+        const weekOfMonthIndex = Math.ceil(startDate.getDate() / 7);
         
         let occurrencesCreated = 0;
         let currentDate = startDate;
         
-        while (occurrencesCreated < formData.recurrenceCount) {
+        // Safety limit to prevent infinite loops (max 100 occurrences)
+        const maxOccurrences = 100;
+
+        while (
+          (isBefore(currentDate, endDate) || isSameDay(currentDate, endDate)) && 
+          occurrencesCreated < maxOccurrences
+        ) {
           let eventDate: Date;
           
           if (occurrencesCreated === 0) {
@@ -106,7 +113,6 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 eventDate = addDays(currentDate, 1);
                 break;
               case 'weekly':
-                // Find next allowed day
                 let next = addDays(currentDate, 1);
                 const allowedDays = formData.recurrenceDays.length > 0 ? formData.recurrenceDays : [startDayOfWeek];
                 while (!allowedDays.includes(getDay(next))) {
@@ -118,7 +124,6 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 if (formData.monthlyType === 'same-day') {
                   eventDate = addMonths(startDate, occurrencesCreated);
                 } else {
-                  // nth DayOfWeek
                   const nextMonth = addMonths(startDate, occurrencesCreated);
                   eventDate = getNthDayOfMonth(nextMonth, startDayOfWeek, weekOfMonthIndex) || addMonths(startDate, occurrencesCreated);
                 }
@@ -128,21 +133,24 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
             }
           }
 
-          currentDate = eventDate;
-          const eventRef = doc(collection(db, 'events'));
-          batch.set(eventRef, {
-            name: formData.name + (formData.recurrenceCount > 1 ? ` (${occurrencesCreated + 1})` : ''),
-            date: format(eventDate, 'yyyy-MM-dd'),
-            order: currentEventCount + occurrencesCreated,
-            isRecurring: true,
-            recurrenceType: formData.recurrenceType,
-            recurrenceCount: formData.recurrenceCount,
-            recurrenceDays: formData.recurrenceType === 'weekly' ? formData.recurrenceDays : null,
-            monthlyType: formData.recurrenceType === 'monthly' ? formData.monthlyType : null,
-            createdAt: new Date().toISOString()
-          });
-          
-          occurrencesCreated++;
+          if (isBefore(eventDate, endDate) || isSameDay(eventDate, endDate)) {
+            currentDate = eventDate;
+            const eventRef = doc(collection(db, 'events'));
+            batch.set(eventRef, {
+              name: formData.name.trim(),
+              date: format(eventDate, 'yyyy-MM-dd'),
+              order: currentEventCount + occurrencesCreated,
+              isRecurring: true,
+              recurrenceType: formData.recurrenceType,
+              recurrenceEndDate: formData.recurrenceEndDate,
+              recurrenceDays: formData.recurrenceType === 'weekly' ? formData.recurrenceDays : null,
+              monthlyType: formData.recurrenceType === 'monthly' ? formData.monthlyType : null,
+              createdAt: new Date().toISOString()
+            });
+            occurrencesCreated++;
+          } else {
+            break;
+          }
         }
         await batch.commit();
       } else {
@@ -161,7 +169,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
         date: new Date().toISOString().split('T')[0],
         isRecurring: false,
         recurrenceType: 'weekly',
-        recurrenceCount: 4,
+        recurrenceEndDate: addMonths(new Date(), 1).toISOString().split('T')[0],
         recurrenceDays: [getDay(new Date())],
         monthlyType: 'same-day'
       });
@@ -295,13 +303,11 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                           </select>
                         </div>
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Occurrences</label>
+                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">End By</label>
                           <input
-                            type="number"
-                            min="2"
-                            max="52"
-                            value={formData.recurrenceCount}
-                            onChange={e => setFormData(f => ({ ...f, recurrenceCount: parseInt(e.target.value) }))}
+                            type="date"
+                            value={formData.recurrenceEndDate}
+                            onChange={e => setFormData(f => ({ ...f, recurrenceEndDate: e.target.value }))}
                             className="w-full h-10 px-3 rounded-xl bg-surface-container-high border border-outline outline-none text-xs text-on-surface"
                           />
                         </div>
@@ -397,7 +403,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                   ) : (
                     <>
                       <Plus className="w-3 h-3" />
-                      {formData.isRecurring ? `Create ${formData.recurrenceCount} Events` : 'Create Event'}
+                      {formData.isRecurring ? 'Create Schedule' : 'Create Event'}
                     </>
                   )}
                 </button>
