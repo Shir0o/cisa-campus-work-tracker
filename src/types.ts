@@ -16,6 +16,7 @@ export interface Contact {
   hasNewActivity?: boolean;
   lastAiAnalysisAt?: string;
   lastSeenAiReason?: string;
+  needsContactAiReason?: string;
 }
 
 export interface Stage {
