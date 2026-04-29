@@ -17,7 +17,6 @@ import {
   UserCircle,
   Clock,
   Plus,
-  Sparkles,
   Tag
 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -177,9 +176,11 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       if (interactionsLoading || commentsLoading) return;
       
       const lastAnalysis = contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt) : null;
-      const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const now = new Date();
+      const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+      const fifteenMinsAgo = new Date(now.getTime() - 15 * 60 * 1000);
       
-      const hasRecentData = (data: (Interaction | Comment)[]) => {
+      const hasNewDataPostAnalysis = (data: (Interaction | Comment)[]) => {
         if (!lastAnalysis) return data.length > 0;
         return data.some(item => {
           const createdAt = item.createdAt ? new Date(item.createdAt) : new Date(0);
@@ -187,10 +188,13 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         });
       };
 
+      // Smart trigger logic:
+      // 1. Never analyzed before
+      // 2. Last analysis was over 4 hours ago (automatic refresh)
+      // 3. New interaction/comment added AND last analysis was over 15 mins ago (smart update)
       const needsAnalysis = !lastAnalysis || 
-                           lastAnalysis < twentyFourHoursAgo || 
-                           hasRecentData(interactions) || 
-                           hasRecentData(comments);
+                           lastAnalysis < fourHoursAgo || 
+                           ((hasNewDataPostAnalysis(interactions) || hasNewDataPostAnalysis(comments)) && lastAnalysis < fifteenMinsAgo);
 
       if (needsAnalysis && (interactions.length > 0 || comments.length > 0)) {
         console.log('Triggering automatic AI activity analysis for', contact.name);
@@ -199,7 +203,18 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     };
 
     triggerAI();
-  }, [isOpen, contact?.id, interactionsLoading, commentsLoading]);
+  }, [
+    isOpen, 
+    contact?.id, 
+    interactionsLoading, 
+    commentsLoading, 
+    interactions.length, 
+    comments.length,
+    contact?.notes,
+    contact?.status,
+    contact?.stage,
+    contact?.lastAiAnalysisAt
+  ]);
 
   if (!contact) return null;
 
@@ -817,20 +832,10 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   <div className="flex items-center justify-between px-2 pt-2 border-t border-outline-variant/30">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest">Last Seen: {contact.lastSeen}</span>
-                        <button
-                          onClick={handleAIAnalyze}
-                          disabled={isAnalyzing}
-                          className="flex items-center gap-1 text-[10px] font-bold text-primary hover:text-primary/70 transition-colors disabled:opacity-50"
-                          title="Recalculate using AI analysis"
-                        >
-                          {isAnalyzing ? (
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                          ) : (
-                            <Sparkles className="w-3 h-3 text-primary-active" />
-                          )}
-                          {isAnalyzing ? 'Analyzing...' : 'AI Recalculate'}
-                        </button>
+                        <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
+                          Last Analysis: {contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt).toLocaleDateString() : contact.lastSeen}
+                          {isAnalyzing && <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />}
+                        </span>
                       </div>
                       {contact.lastSeenAiReason && (
                         <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">activity: {contact.lastSeenAiReason}</span>

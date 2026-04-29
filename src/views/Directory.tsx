@@ -274,7 +274,7 @@ export default function Directory() {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="p-4 sm:p-6 md:p-8 flex flex-col gap-4 sm:gap-6 h-full min-w-0"
+      className="px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 flex flex-col gap-4 sm:gap-6 h-full min-w-0 max-w-[1600px] mx-auto w-full"
     >
       {/* Header Info */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

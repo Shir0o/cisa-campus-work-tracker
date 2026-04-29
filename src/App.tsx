@@ -154,8 +154,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           onNewContact={() => setIsNewContactModalOpen(true)}
         />
         <div className={cn(
-          "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
-          isSidebarCollapsed ? "lg:ml-20" : "lg:ml-72"
+          "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0"
         )}>
           <TopBar onMenuClick={toggleSidebarCollapse} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
