@@ -19,7 +19,7 @@ import {
   Plus,
   Tag
 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { 
   doc, 
   updateDoc, 
@@ -282,6 +282,15 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       };
 
       await updateDoc(contactRef, updateData);
+      
+      logActivity({
+        action: 'updated contact details for',
+        targetId: contact.id,
+        targetName: fullName,
+        targetType: 'contact',
+        type: 'edit'
+      });
+
       setIsEditing(false);
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
@@ -295,7 +304,19 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     if (!confirm('Are you sure you want to delete this contact?')) return;
     setLoading(true);
     try {
-      await deleteDoc(doc(db, 'contacts', contact.id));
+      const contactId = contact.id;
+      const contactName = contact.name;
+      
+      await deleteDoc(doc(db, 'contacts', contactId));
+
+      logActivity({
+        action: 'deleted contact',
+        targetId: contactId,
+        targetName: contactName,
+        targetType: 'contact',
+        type: 'alert'
+      });
+
       onClose();
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `contacts/${contact.id}`);
@@ -311,7 +332,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     setSubmittingInteraction(true);
     try {
       const interactionsRef = collection(db, 'contacts', contact.id, 'interactions');
-      await addDoc(interactionsRef, {
+      const docRef = await addDoc(interactionsRef, {
         userId: user.uid,
         userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
         userPhoto: user.photoURL || '',
@@ -320,6 +341,16 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         duration: newInteraction.duration.trim() || null,
         createdAt: serverTimestamp()
       });
+
+      logActivity({
+        action: 'logged an interaction for',
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'call', // or derive from duration? let's stick to call as default
+        description: newInteraction.content.trim()
+      });
+
       setNewInteraction({
         content: '',
         dateTime: new Date().toISOString().slice(0, 16),
@@ -340,13 +371,23 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     setSubmittingComment(true);
     try {
       const commentsRef = collection(db, 'contacts', contact.id, 'comments');
-      await addDoc(commentsRef, {
+      const docRef = await addDoc(commentsRef, {
         userId: user.uid,
         userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
         userPhoto: user.photoURL || '',
         text: newComment.trim(),
         createdAt: serverTimestamp()
       });
+
+      logActivity({
+        action: 'left a comment on',
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'comment',
+        description: newComment.trim()
+      });
+
       setNewComment('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/comments`);
