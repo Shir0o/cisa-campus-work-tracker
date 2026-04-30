@@ -98,14 +98,9 @@ export default function Dashboard() {
     };
   }, []);
 
-  const completeness = contacts.length > 0
-    ? Math.round((contacts.filter(c => c.email && c.phone).length / contacts.length) * 100)
-    : 0;
-
   const metrics = [
     { label: 'Total Contacts', value: contacts.length.toString(), trend: '0%', icon: Users, color: 'primary' },
     { label: 'Recent Follow-ups', value: recentFollowUpsCount.toString(), trend: 'Past 7 Days', icon: CheckCircle2, color: 'secondary' },
-    { label: 'Data Completeness', value: `${completeness}%`, icon: RefreshCw, color: 'tertiary', progress: completeness },
   ];
 
   const getGreeting = () => {
@@ -119,8 +114,7 @@ export default function Dashboard() {
     return (
       <div className="p-6 md:p-8 space-y-8 animate-pulse">
         <Skeleton className="h-10 w-64 mb-4" />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-          <Skeleton className="h-48 rounded-3xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <Skeleton className="h-48 rounded-3xl" />
           <Skeleton className="h-48 rounded-3xl" />
         </div>
@@ -147,7 +141,7 @@ export default function Dashboard() {
       {/* Metrics Row */}
       <div className={cn(
         "grid gap-4 sm:gap-6 items-start",
-        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+        "grid-cols-1 sm:grid-cols-2"
       )}>
         {metrics.map((metric, idx) => (
           <div key={idx} className="bg-surface-container rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[170px] sm:h-48 border border-outline-variant/30 overflow-hidden group">
@@ -174,11 +168,6 @@ export default function Dashboard() {
             <div className="mt-auto pt-4 sm:pt-0">
               <p className="text-label-sm sm:text-label-lg text-on-surface-variant mb-1">{metric.label}</p>
               <h3 className="text-3xl sm:text-4xl xl:text-5xl font-regular text-on-surface truncate">{metric.value}</h3>
-              {metric.progress !== undefined && (
-                <div className="w-full bg-on-surface/5 rounded-full h-1.5 mt-3 sm:mt-4">
-                  <div className="bg-tertiary h-1.5 rounded-full transition-all duration-1000" style={{ width: `${metric.progress}%` }}></div>
-                </div>
-              )}
             </div>
           </div>
         ))}
