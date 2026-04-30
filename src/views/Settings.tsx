@@ -321,9 +321,9 @@ export default function Settings() {
                     ...filteredInvites.map((invite) => (
                       <motion.tr 
                         layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
                         key={`invite-${invite.email}`} 
                         className="bg-primary/5 hover:bg-primary/10 transition-colors group"
                       >
@@ -362,8 +362,8 @@ export default function Settings() {
                     ...filteredUsers.map((u) => (
                       <motion.tr 
                         layout
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
                         key={u.uid} 
                         className="hover:bg-surface-container-high/50 transition-colors group"
