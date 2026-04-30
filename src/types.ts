@@ -40,6 +40,7 @@ export interface Activity {
   user: string;
   action: string;
   target: string;
+  contactId?: string;
   time: string;
   description?: string;
   type: 'call' | 'email' | 'event' | 'alert' | 'edit' | 'create' | 'comment';
