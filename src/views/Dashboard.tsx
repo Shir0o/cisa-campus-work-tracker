@@ -46,27 +46,34 @@ export default function Dashboard() {
       })) as Contact[];
       setContacts(contactData);
       
-      const creationEvents = contactData
+    const creationEvents = contactData
         .filter(c => c.createdAt)
-        .map(c => ({
-          id: `creation-${c.id}`,
-          user: 'System',
-          action: 'added a new contact',
-          target: c.name,
-          time: new Date(c.createdAt || '').toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(c.createdAt || '').toLocaleDateString(),
-          type: 'create',
-          rawTime: new Date(c.createdAt || '').getTime()
-        } as Activity & { rawTime: number }));
+        .map(c => {
+          // Check if we have a system activity for this contact creation
+          // We can't easily check 'systemActivities' here because it's a separate state that updates independently
+          // So we'll keep the ID consistent so we can filter duplicates in the useMemo
+          return {
+            id: `create-contact-${c.id}`, // Constant ID format for creations
+            user: 'System',
+            action: 'added a new contact',
+            target: c.name,
+            contactId: c.id,
+            time: new Date(c.createdAt || '').toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(c.createdAt || '').toLocaleDateString(),
+            type: 'create',
+            rawTime: new Date(c.createdAt || '').getTime()
+          } as Activity & { rawTime: number };
+        });
       
       setLegacyCreations(creationEvents);
 
       const editEvents = contactData
         .filter(c => c.updatedAt && c.updatedAt !== c.createdAt)
         .map(c => ({
-          id: `edit-${c.id}`,
+          id: `edit-contact-${c.id}`,
           user: 'System',
           action: 'updated details for',
           target: c.name,
+          contactId: c.id,
           time: new Date(c.updatedAt || '').toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(c.updatedAt || '').toLocaleDateString(),
           type: 'edit',
           rawTime: new Date(c.updatedAt || '').getTime()
@@ -83,11 +90,23 @@ export default function Dashboard() {
     const unsubscribeActivities = onSnapshot(qActivities, (snapshot) => {
       const activities = snapshot.docs.map(doc => {
         const data = doc.data() as SystemActivity;
+        let activityId = doc.id;
+        
+        // Use a consistent ID for creations and updates to deduplicate with legacy fallback
+        if (data.targetType === 'contact') {
+          if (data.type === 'create') {
+            activityId = `create-contact-${data.targetId}`;
+          } else if (data.type === 'edit') {
+            activityId = `edit-contact-${data.targetId}`;
+          }
+        }
+
         return {
-          id: doc.id,
+          id: activityId,
           user: data.userName,
           action: data.action,
           target: data.targetName,
+          contactId: data.targetType === 'contact' ? data.targetId : undefined,
           time: new Date(data.createdAt).toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(data.createdAt).toLocaleDateString(),
           type: data.type,
           description: data.description,
@@ -110,7 +129,8 @@ export default function Dashboard() {
           id: docSnapshot.id,
           user: data.userName,
           action: 'logged an interaction for',
-          target: `Contact (${contactId.slice(0, 4)})`, 
+          target: 'a contact', 
+          contactId: contactId,
           time: new Date(data.dateTime).toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(data.dateTime).toLocaleDateString(),
           type: 'call',
           description: data.content,
@@ -133,7 +153,8 @@ export default function Dashboard() {
           id: docSnapshot.id,
           user: data.userName,
           action: 'left a comment on',
-          target: `Contact (${contactId.slice(0, 4)})`,
+          target: 'a contact',
+          contactId: contactId,
           time: new Date(data.createdAt).toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(data.createdAt).toLocaleDateString(),
           type: 'comment',
           description: data.text,
@@ -170,8 +191,21 @@ export default function Dashboard() {
       .sort((a: any, b: any) => b.rawTime - a.rawTime)
       .filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i)
       .slice(0, 20);
-    return merged;
-  }, [systemActivities, legacyInteractions, legacyComments, legacyCreations, legacyEdits]);
+
+    // Resolve contact names if we have the IDs
+    return merged.map(activity => {
+      if (activity.contactId) {
+        const contact = contacts.find(c => c.id === activity.contactId);
+        if (contact) {
+          return {
+            ...activity,
+            target: contact.name
+          };
+        }
+      }
+      return activity;
+    });
+  }, [systemActivities, legacyInteractions, legacyComments, legacyCreations, legacyEdits, contacts]);
 
   const metrics = [
     { label: 'Total Contacts', value: contacts.length.toString(), trend: '0%', icon: Users, color: 'primary' },
