@@ -121,6 +121,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "userName", "text", "createdAt"]
+    },
+    "activities": {
+      "title": "Activity",
+      "description": "A summary log of significant events in the system.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "action": { "type": "string" },
+        "targetId": { "type": "string" },
+        "targetName": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["contact", "event", "comment", "interaction"] },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["call", "email", "event", "alert", "edit", "create", "comment"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userName", "action", "targetId", "targetType", "type", "createdAt"]
     }
   },
   "firestore": {
@@ -155,6 +173,10 @@
     "contacts/{contactId}/comments/{commentId}": {
       "schema": "comments",
       "description": "Comments left on a contact by team members."
+    },
+    "activities/{activityId}": {
+      "schema": "activities",
+      "description": "Global activity feed log."
     }
   }
 }

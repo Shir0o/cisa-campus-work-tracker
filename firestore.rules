@@ -17,7 +17,8 @@ service cloud.firestore {
 
     function isSuperAdmin() {
       return isSignedIn() && 
-             request.auth.token.get('email', '').lower() == 'yilongwang05@gmail.com';
+             request.auth.token.get('email', '').lower() == 'yilongwang05@gmail.com' &&
+             request.auth.token.email_verified == true;
     }
 
     function getUserData() {
@@ -27,7 +28,7 @@ service cloud.firestore {
     function hasRole(role) {
       return isSignedIn() && (
         isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role == role)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role)
       );
     }
 
@@ -39,7 +40,7 @@ service cloud.firestore {
     function isApprovedUser() {
       return isSignedIn() && (
         isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().approved == true)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
       );
     }
 
@@ -178,6 +179,30 @@ service cloud.firestore {
       allow create: if isOperator() && isValidEvent(request.resource.data);
       allow update: if isOperator() && isValidEvent(request.resource.data);
       allow delete: if isManager();
+    }
+
+    // 7. Activities Collection
+    match /activities/{activityId} {
+      function isValidActivity(data) {
+        return data.userId == request.auth.uid &&
+               data.userName is string && data.userName.size() <= 100 &&
+               data.action is string && data.action.size() <= 200 &&
+               data.targetId is string &&
+               data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
+               data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'] &&
+               data.createdAt is string;
+      }
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser() && isOperator() && isValidActivity(request.resource.data);
+      allow update, delete: if isManager();
+    }
+
+    // Collection Group support
+    match /{path=**}/interactions/{interactionId} {
+      allow list: if isApprovedUser();
+    }
+    match /{path=**}/comments/{commentId} {
+      allow list: if isApprovedUser();
     }
   }
 }

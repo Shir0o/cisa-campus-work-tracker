@@ -55,7 +55,7 @@ import {
   updateDoc,
   writeBatch
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
@@ -211,10 +211,24 @@ export default function OutreachBoard() {
 
   const handleUpdateContactStage = async (contactId: string, newStageLabel: string) => {
     try {
+      const contact = boardContacts.find(c => c.id === contactId);
+      const oldStage = contact?.stage;
+
       await updateDoc(doc(db, 'contacts', contactId), {
         stage: newStageLabel,
         updatedAt: new Date().toISOString()
       });
+
+      if (oldStage && oldStage !== newStageLabel) {
+        logActivity({
+          action: `moved contact to stage "${newStageLabel}"`,
+          targetId: contactId,
+          targetName: contact?.name || 'Contact',
+          targetType: 'contact',
+          type: 'edit',
+          description: `Changed stage from ${oldStage} to ${newStageLabel}`
+        });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'contacts');
     }

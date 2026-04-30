@@ -54,7 +54,25 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-import { doc, getDocFromServer } from 'firebase/firestore';
+import { doc, getDocFromServer, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { SystemActivity } from '../types';
+
+export async function logActivity(activity: Omit<SystemActivity, 'id' | 'createdAt' | 'userId' | 'userName' | 'userPhoto'>) {
+  if (!auth.currentUser) return;
+
+  try {
+    const activityData = {
+      ...activity,
+      userId: auth.currentUser.uid,
+      userName: auth.currentUser.displayName || 'Anonymous',
+      userPhoto: auth.currentUser.photoURL || '',
+      createdAt: new Date().toISOString(),
+    };
+    await addDoc(collection(db, 'activities'), activityData);
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+  }
+}
 
 async function testConnection() {
   try {

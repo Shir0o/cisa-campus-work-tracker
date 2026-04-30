@@ -14,6 +14,7 @@ export interface Contact {
   notes?: string;
   tags?: string[];
   createdAt?: string;
+  updatedAt?: string;
   hasNewActivity?: boolean;
   lastAiAnalysisAt?: string;
   lastSeenAiReason?: string;
@@ -41,7 +42,21 @@ export interface Activity {
   target: string;
   time: string;
   description?: string;
-  type: 'call' | 'email' | 'event' | 'alert';
+  type: 'call' | 'email' | 'event' | 'alert' | 'edit' | 'create' | 'comment';
+}
+
+export interface SystemActivity {
+  id?: string;
+  userId: string;
+  userName: string;
+  userPhoto?: string;
+  action: string;
+  targetId: string;
+  targetName: string;
+  targetType: 'contact' | 'event' | 'comment' | 'interaction';
+  description?: string;
+  type: Activity['type'];
+  createdAt: string;
 }
 
 export interface Task {

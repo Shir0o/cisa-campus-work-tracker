@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, MapPin, Mail, Phone, Loader2 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { Contact, Stage } from '../../types';
@@ -116,7 +116,16 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         attendance: {}
       };
 
-      await addDoc(collection(db, 'contacts'), contactData);
+      const docRef = await addDoc(collection(db, 'contacts'), contactData);
+      
+      logActivity({
+        action: 'created a new contact',
+        targetId: docRef.id,
+        targetName: fullName,
+        targetType: 'contact',
+        type: 'create'
+      });
+
       onClose();
       // Reset form
       setFormData({
