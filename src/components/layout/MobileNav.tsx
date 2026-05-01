@@ -3,8 +3,8 @@ import { NavLink } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Kanban, 
-  Users, 
-  UserCheck
+  Contact, 
+  CalendarCheck
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -14,8 +14,8 @@ export default function MobileNav() {
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Stage', href: '/board' },
-    { icon: Users, label: 'Contacts', href: '/directory' },
-    { icon: UserCheck, label: 'Attendance', href: '/attendance' },
+    { icon: Contact, label: 'Contacts', href: '/directory' },
+    { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
   ];
 
   return (
