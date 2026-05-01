@@ -624,6 +624,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                       />
                     </div>
+                  {/* Notes Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
                         <MessageSquare className="w-3.5 h-3.5" /> NOTES
@@ -636,32 +637,6 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         placeholder="Add some context about this contact..."
                       />
                     </div>
-                  </div>
-                  
-                  {/* Edit Actions */}
-                  <div className="flex gap-3 pt-4 sticky bottom-0 bg-surface-container pb-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      disabled={loading}
-                      type="submit"
-                      className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
-                    >
-                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      className="p-3 rounded-full text-error hover:bg-error/10 transition-all shrink-0"
-                      title="Delete Contact"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
                   </div>
                 </form>
               ) : (

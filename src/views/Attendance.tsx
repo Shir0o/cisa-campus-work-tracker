@@ -18,6 +18,7 @@ import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import AddEventModal from '../components/modals/AddEventModal';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { format, parseISO, isValid } from 'date-fns';
 
 export default function Attendance() {
@@ -27,6 +28,7 @@ export default function Attendance() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     // Fetch Contacts
@@ -100,21 +102,37 @@ export default function Attendance() {
   const calculateAvgAttendance = () => {
     if (contacts.length === 0 || events.length === 0) return 0;
     let totalPresent = 0;
+    let totalChecked = 0;
     contacts.forEach(c => {
       events.forEach(e => {
-        if (c.attendance?.[e.id] === true) totalPresent++;
+        const status = c.attendance?.[e.id];
+        if (status === true) {
+          totalPresent++;
+          totalChecked++;
+        } else if (status === 'absent') {
+          totalChecked++;
+        }
       });
     });
-    return Math.round((totalPresent / (contacts.length * events.length)) * 100);
+    if (totalChecked === 0) return 0;
+    return Math.round((totalPresent / totalChecked) * 100);
   };
 
   const atRiskCount = contacts.filter(c => {
     if (events.length === 0) return false;
     let present = 0;
+    let checked = 0;
     events.forEach(e => {
-      if (c.attendance?.[e.id] === true) present++;
+      const status = c.attendance?.[e.id];
+      if (status === true) {
+        present++;
+        checked++;
+      } else if (status === 'absent') {
+        checked++;
+      }
     });
-    return (present / events.length) < 0.5;
+    if (checked === 0) return false;
+    return (present / checked) < 0.5;
   }).length;
 
   if (loading) {
@@ -187,16 +205,7 @@ export default function Attendance() {
       </div>
 
       {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 shrink-0">
-        <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
-          <div className="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed">
-            <Users className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">Total Reach</p>
-            <p className="text-2xl font-bold text-on-surface">{contacts.length}</p>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
         <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
           <div className="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed">
             <CheckCircle2 className="w-6 h-6" />
@@ -254,7 +263,7 @@ export default function Attendance() {
                   </tr>
                 ) : (
                   contacts.map((contact) => (
-                    <tr key={contact.id} className="hover:bg-surface-container-low transition-colors group">
+                    <tr key={contact.id} className="hover:bg-surface-container-low transition-colors group cursor-pointer" onClick={() => setSelectedContact(contact)}>
                       <td className="sticky left-0 z-20 bg-surface-container-lowest group-hover:bg-surface-container-low border-r border-outline-variant p-3 sm:p-4 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
                         <div className="flex items-center gap-2 sm:gap-3">
                           <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-xs sm:text-base bg-secondary-container text-on-secondary-container">
@@ -271,7 +280,7 @@ export default function Attendance() {
                       {events.map((event) => {
                         const status = contact.attendance?.[event.id];
                         return (
-                          <td key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/30">
+                          <td key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/30" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-center">
                               <button
                                 onClick={() => toggleAttendance(contact.id, event.id, status)}
@@ -314,6 +323,11 @@ export default function Attendance() {
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         currentEventCount={events.length}
+      />
+      <ContactDetailsModal 
+        isOpen={selectedContact !== null}
+        onClose={() => setSelectedContact(null)}
+        contact={selectedContact}
       />
     </>
   );

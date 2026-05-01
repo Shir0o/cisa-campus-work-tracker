@@ -183,7 +183,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-6 overflow-y-auto custom-scrollbar flex-1">
+            <div className="overflow-y-auto custom-scrollbar flex-1">
+              <form id="new-contact-form" onSubmit={handleSubmit} className="p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* First Name */}
                 <div className="space-y-1.5">
@@ -353,30 +354,32 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   />
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="pt-4 flex gap-3 sticky bottom-0 bg-surface-container pb-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 h-12 rounded-full font-bold text-primary hover:bg-primary/5 transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  disabled={loading}
-                  type="submit"
-                  className="flex-[2] h-12 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
-                >
-                  {loading ? (
-                    <span className="animate-pulse">Adding Contact...</span>
-                  ) : (
-                    'Add Contact'
-                  )}
-                </button>
-              </div>
             </form>
-          </motion.div>
+          </div>
+
+          {/* Footer */}
+          <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low/50">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              form="new-contact-form"
+              disabled={loading}
+              type="submit"
+              className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+            >
+              {loading ? (
+                <span className="animate-pulse">Adding Contact...</span>
+              ) : (
+                'Add Contact'
+              )}
+            </button>
+          </div>
+        </motion.div>
         </div>
       )}
     </AnimatePresence>
