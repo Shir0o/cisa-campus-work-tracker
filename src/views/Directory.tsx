@@ -17,12 +17,14 @@ import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } fr
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
+import { useAuth } from '../components/AuthProvider';
 import { Contact, Stage } from '../types';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Directory() {
   const { isSidebarCollapsed, openNewContact } = useLayout();
+  const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +148,10 @@ export default function Directory() {
           const currentTags = contact.tags || [];
           if (!currentTags.includes(newTag)) {
             batch.update(doc(db, 'contacts', id), {
-              tags: [...currentTags, newTag]
+              tags: [...currentTags, newTag],
+              updatedAt: new Date().toISOString(),
+              updatedBy: user?.uid,
+              updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
             });
           }
         }

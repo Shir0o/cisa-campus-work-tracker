@@ -14,6 +14,7 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
+import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import AddEventModal from '../components/modals/AddEventModal';
@@ -21,6 +22,7 @@ import { format, parseISO, isValid } from 'date-fns';
 
 export default function Attendance() {
   const { isSidebarCollapsed } = useLayout();
+  const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,9 @@ export default function Attendance() {
 
       await updateDoc(contactRef, {
         attendance: newAttendance,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.uid,
+        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contactId}`);

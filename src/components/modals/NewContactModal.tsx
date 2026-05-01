@@ -4,6 +4,7 @@ import { X, User, Briefcase, MapPin, Mail, Phone, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
+import { useAuth } from '../AuthProvider';
 import { Contact, Stage } from '../../types';
 
 interface NewContactModalProps {
@@ -12,6 +13,7 @@ interface NewContactModalProps {
 }
 
 export default function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -112,6 +114,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
         serverCreatedAt: serverTimestamp(),
+        createdBy: user?.uid,
+        createdByName: user?.displayName || 'Tony Wang',
         hasNewActivity: true,
         attendance: {}
       };

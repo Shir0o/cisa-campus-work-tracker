@@ -15,6 +15,10 @@ export interface Contact {
   tags?: string[];
   createdAt?: string;
   updatedAt?: string;
+  createdBy?: string;
+  createdByName?: string;
+  updatedBy?: string;
+  updatedByName?: string;
   hasNewActivity?: boolean;
   lastAiAnalysisAt?: string;
   lastSeenAiReason?: string;
