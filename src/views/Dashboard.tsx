@@ -54,7 +54,7 @@ export default function Dashboard() {
           // So we'll keep the ID consistent so we can filter duplicates in the useMemo
           return {
             id: `create-contact-${c.id}`, // Constant ID format for creations
-            user: 'System',
+            user: c.createdByName || 'Tony Wang', // Prefer actual creator, fallback to Tony Wang
             action: 'added a new contact',
             target: c.name,
             contactId: c.id,
@@ -70,7 +70,7 @@ export default function Dashboard() {
         .filter(c => c.updatedAt && c.updatedAt !== c.createdAt)
         .map(c => ({
           id: `edit-contact-${c.id}`,
-          user: 'System',
+          user: c.updatedByName || 'Tony Wang', // Prefer actual updater, fallback to Tony Wang
           action: 'updated details for',
           target: c.name,
           contactId: c.id,

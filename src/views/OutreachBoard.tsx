@@ -61,7 +61,7 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 export default function OutreachBoard() {
   const { isSidebarCollapsed } = useLayout();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
@@ -216,7 +216,9 @@ export default function OutreachBoard() {
 
       await updateDoc(doc(db, 'contacts', contactId), {
         stage: newStageLabel,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.uid,
+        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
       });
 
       if (oldStage && oldStage !== newStageLabel) {
@@ -226,8 +228,9 @@ export default function OutreachBoard() {
           targetName: contact?.name || 'Contact',
           targetType: 'contact',
           type: 'edit',
-          description: `Changed stage from ${oldStage} to ${newStageLabel}`
-        });
+          description: `Changed stage from ${oldStage} to ${newStageLabel}`,
+          userName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+        } as any);
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'contacts');

@@ -267,7 +267,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       const contactRef = doc(db, 'contacts', contact.id);
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
-      const updateData = {
+      const updateData: any = {
         name: fullName,
         initials: getInitials(formData.firstName, formData.lastName),
         role: formData.role,
@@ -278,7 +278,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         status: formData.status as Contact['status'],
         tags: formData.tags,
         notes: formData.notes,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.uid,
+        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
       };
 
       await updateDoc(contactRef, updateData);
@@ -288,8 +290,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         targetId: contact.id,
         targetName: fullName,
         targetType: 'contact',
-        type: 'edit'
-      });
+        type: 'edit',
+        userName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+      } as any);
 
       setIsEditing(false);
     } catch (error) {
