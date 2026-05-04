@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Briefcase, MapPin, Mail, Phone, Loader2 } from 'lucide-react';
+import { X, User, Briefcase, MapPin, Mail, Phone, Loader2, Calendar, Tag, MessageSquare } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
@@ -169,11 +169,19 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-lg bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
+            className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
           >
             {/* Header */}
             <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
-              <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xl">
+                  <User className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
+                  <p className="text-sm text-on-surface-variant font-medium">Add a new connection to your network</p>
+                </div>
+              </div>
               <button 
                 onClick={onClose}
                 className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer"
@@ -183,8 +191,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             </div>
 
             {/* Form */}
-            <div className="overflow-y-auto custom-scrollbar flex-1">
-              <form id="new-contact-form" onSubmit={handleSubmit} className="p-6 space-y-6">
+            <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
+              <form id="new-contact-form" onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* First Name */}
                 <div className="space-y-1.5">
@@ -296,12 +304,12 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                 {/* Stage selector */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <MapPin className="w-3.5 h-3.5" /> STAGE
+                    <Calendar className="w-3.5 h-3.5" /> STAGE
                   </label>
                   <select
                     value={formData.stage}
                     onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
                   >
                     {stages.map(s => (
                       <option key={s.id} value={s.label}>{s.label}</option>
@@ -317,7 +325,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   <select
                     value={formData.status}
                     onChange={e => setFormData(f => ({ ...f, status: e.target.value as Contact['status'] }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none"
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
                   >
                     {statusOptions.map(opt => (
                       <option key={opt} value={opt}>{opt}</option>
@@ -328,7 +336,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                 {/* Tags */}
                 <div className="space-y-1.5 md:col-span-2">
                   <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    TAGS (COMMA SEPARATED)
+                    <Tag className="w-3.5 h-3.5" /> TAGS (COMMA SEPARATED)
                   </label>
                   <input
                     type="text"
@@ -344,12 +352,14 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">NOTES</label>
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <MessageSquare className="w-3.5 h-3.5" /> NOTES
+                  </label>
                   <textarea
                     required
                     value={formData.notes}
                     onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
-                    className="w-full min-h-[100px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
+                    className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
                     placeholder="Add some context about this contact..."
                   />
                 </div>
