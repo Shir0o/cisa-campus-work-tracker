@@ -38,6 +38,9 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isSidebarCollapsed = typeof window !== 'undefined' && localStorage.getItem('sidebar_collapsed') === 'true';
 
   if (loading) {
+    if (!user) {
+      return <div className="min-h-screen bg-background" />;
+    }
     return (
       <div className="flex min-h-screen bg-background overflow-hidden">
         {/* Sidebar Skeleton */}
