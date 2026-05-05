@@ -6,41 +6,43 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
-    // Helper functions
-    function isSignedIn() {
-      return request.auth != null;
+    // --- PRIMITIVES & HELPERS ---
+    function isSignedIn() { return request.auth != null; }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function emailVerified() { return request.auth.token.email_verified == true; }
+    function getAuthEmail() { return request.auth.token.get('email', '').lower(); }
+
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
 
-    function getAuthEmail() {
-      return request.auth.token.get('email', '').lower();
-    }
-
+    // Super Admin: Explicitly whitelisted email
     function isSuperAdmin() {
-      return isSignedIn() && 
-             request.auth.token.get('email', '').lower() == 'yilongwang05@gmail.com' &&
-             request.auth.token.email_verified == true;
+      return isSignedIn() && emailVerified() && getAuthEmail() == 'yilongwang05@gmail.com';
     }
 
-    function getUserData() {
+    // Role detection via trusted document lookup
+    function getStoredUser() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     function hasRole(role) {
       return isSignedIn() && (
         isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getStoredUser().role == role)
       );
     }
 
-    function isAdmin() { return hasRole('admin'); }
+    function isAdmin() { return hasRole('admin') || isSuperAdmin(); }
     function isManager() { return isAdmin() || hasRole('manager'); }
-    function isOperator() { return isManager() || hasRole('operator') || isSuperAdmin(); }
-    function isViewer() { return isOperator() || hasRole('viewer') || isSuperAdmin(); }
+    function isOperator() { return isManager() || hasRole('operator'); }
+    function isViewer() { return isOperator() || hasRole('viewer'); }
 
     function isApprovedUser() {
       return isSignedIn() && (
         isSuperAdmin() || 
-        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true)
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getStoredUser().approved == true)
       );
     }
 
@@ -48,46 +50,43 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isValidId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
-    }
-
-    function isValidEmailId(id) {
-      return id is string && id.size() > 0 && id.size() <= 128;
-    }
+    // --- COLLECTION RULES ---
 
     // 2. Users Collection
     match /users/{userId} {
       function isValidUser(data) {
-        return data.email is string && data.email.size() <= 100 &&
-               data.displayName is string && data.displayName.size() <= 100 &&
+        return data.keys().hasAll(['email', 'displayName', 'role', 'approved']) &&
+               data.email is string && data.email.size() <= 128 &&
+               data.displayName is string && data.displayName.size() <= 128 &&
                (data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 512)) &&
-               data.approved is bool &&
-               (data.role in ['admin', 'manager', 'operator', 'viewer']);
+               data.role in ['admin', 'manager', 'operator', 'viewer'] &&
+               data.approved is bool;
       }
 
       allow get: if isValidId(userId) && (isOwner(userId) || isManager());
       allow list: if isManager();
+      
       allow create: if isValidId(userId) && isOwner(userId) && 
-                      request.resource.data.keys().hasAll(['email', 'displayName', 'photoURL', 'approved', 'role', 'createdAt', 'updatedAt']) &&
-                      isValidUser(request.resource.data) &&
+                      isValidUser(incoming()) &&
+                      // Self-registration defaults: unapproved viewer OR check invitation
                       (
-                        (request.resource.data.approved == false && request.resource.data.role == 'viewer') || 
+                        (incoming().approved == false && incoming().role == 'viewer') || 
                         isAdmin() ||
                         (
-                          exists(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())) &&
-                          get(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())).data.role == request.resource.data.role &&
-                          get(/databases/$(database)/documents/invitations/$(request.resource.data.email.lower())).data.approved == request.resource.data.approved
+                          exists(/databases/$(database)/documents/invitations/$(incoming().email.lower())) &&
+                          get(/databases/$(database)/documents/invitations/$(incoming().email.lower())).data.role == incoming().role &&
+                          get(/databases/$(database)/documents/invitations/$(incoming().email.lower())).data.approved == incoming().approved
                         )
                       );
+
       allow update: if isValidId(userId) && (
-                      (isManager() && isValidUser(request.resource.data)) || 
+                      (isManager() && isValidUser(incoming())) || 
                       (isOwner(userId) && 
-                       request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']) &&
-                       request.resource.data.email == resource.data.email &&
-                       request.resource.data.role == resource.data.role &&
-                       request.resource.data.approved == resource.data.approved &&
-                       isValidUser(request.resource.data))
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']) &&
+                       incoming().email == existing().email &&
+                       incoming().role == existing().role &&
+                       incoming().approved == existing().approved &&
+                       isValidUser(incoming()))
                     );
       allow delete: if isValidId(userId) && isAdmin();
     }
@@ -95,109 +94,117 @@ service cloud.firestore {
     // 3. Invitations Collection
     match /invitations/{email} {
       function isValidInvitation(data) {
-        return data.email is string &&
-               (data.role in ['admin', 'manager', 'operator', 'viewer']) &&
+        return data.keys().hasAll(['email', 'role', 'approved']) &&
+               data.email is string && data.email.size() <= 128 &&
+               data.role in ['admin', 'manager', 'operator', 'viewer'] &&
                data.approved is bool;
       }
 
-      allow get: if isValidEmailId(email) && (isManager() || (isSignedIn() && getAuthEmail() == email.lower()));
+      allow get: if isManager() || (isSignedIn() && getAuthEmail() == email.lower());
       allow list: if isManager();
-      allow create: if (isSuperAdmin() || isManager()) && isValidInvitation(request.resource.data);
-      allow update: if (isSuperAdmin() || isManager()) && isValidInvitation(request.resource.data);
-      allow delete: if (isSuperAdmin() || isManager());
+      allow create, update: if isManager() && isValidInvitation(incoming());
+      allow delete: if isManager();
     }
 
     // 4. Contacts Collection
     match /contacts/{contactId} {
       function isValidContact(data) {
-        return data.name is string && data.name.size() <= 100 &&
-               data.email is string && data.email.size() <= 100;
+        return data.name is string && data.name.size() <= 128 &&
+               data.email is string && data.email.size() <= 128 &&
+               (data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
+               (data.role == null || (data.role is string && data.role.size() <= 64)) &&
+               (data.location == null || (data.location is string && data.location.size() <= 128)) &&
+               (data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
+               (data.status == null || (data.status is string && data.status.size() <= 32));
       }
 
       allow read: if isApprovedUser();
-      allow create: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
-      allow update: if isApprovedUser() && isOperator() && isValidContact(request.resource.data);
-      allow delete: if isAdmin() || isManager();
+      allow create: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
+      allow update: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
+      allow delete: if isValidId(contactId) && isManager();
 
-      // Interactions subcollection
+      // Interactions
       match /interactions/{interactionId} {
         function isValidInteraction(data) {
-          return data.userId == request.auth.uid &&
-                 data.userName is string && data.userName.size() <= 100 &&
+          return data.keys().hasAll(['userId', 'userName', 'content', 'dateTime', 'createdAt']) &&
+                 data.userId == request.auth.uid &&
+                 data.userName is string && data.userName.size() <= 128 &&
                  data.content is string && data.content.size() <= 5000 &&
-                 data.dateTime is string &&
                  data.createdAt == request.time;
         }
 
-        // Allow list only if they are approved and authenticated correctly
         allow list: if isApprovedUser();
-        allow get: if isApprovedUser();
-        allow create: if isApprovedUser() && isOperator() && isValidInteraction(request.resource.data);
-        allow update: if isApprovedUser() && isOperator() && isValidInteraction(request.resource.data) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isApprovedUser() && (isManager() || (resource.data.userId == request.auth.uid));
+        allow get: if isValidId(interactionId) && isApprovedUser();
+        allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && isValidInteraction(incoming());
+        allow update: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
+                        isValidInteraction(incoming()) && 
+                        incoming().userId == existing().userId &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'dateTime', 'userName', 'userPhoto']);
+        allow delete: if isValidId(interactionId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
       }
 
-      // Comments subcollection
+      // Comments
       match /comments/{commentId} {
         function isValidComment(data) {
-          return data.userId == request.auth.uid &&
-                 data.userName is string && data.userName.size() <= 100 &&
-                 data.text is string && data.text.size() <= 1000 &&
+          return data.keys().hasAll(['userId', 'userName', 'text', 'createdAt']) &&
+                 data.userId == request.auth.uid &&
+                 data.userName is string && data.userName.size() <= 128 &&
+                 data.text is string && data.text.size() <= 2000 &&
                  data.createdAt == request.time;
         }
 
         allow read: if isApprovedUser();
-        allow create: if isApprovedUser() && isOperator() && isValidComment(request.resource.data);
-        allow update: if isApprovedUser() && isOperator() && isValidComment(request.resource.data) && request.resource.data.userId == resource.data.userId;
-        allow delete: if isApprovedUser() && (isManager() || (resource.data.userId == request.auth.uid));
+        allow create: if isValidId(commentId) && isApprovedUser() && isOperator() && isValidComment(incoming());
+        allow update: if isValidId(commentId) && isApprovedUser() && isOperator() && 
+                        isValidComment(incoming()) && 
+                        existing().userId == request.auth.uid &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['text']);
+        allow delete: if isValidId(commentId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
       }
     }
 
     // 5. Stages Collection
     match /stages/{stageId} {
       function isValidStage(data) {
-        return data.label is string && data.label.size() <= 64 &&
+        return data.keys().hasAll(['label', 'color', 'order']) &&
+               data.label is string && data.label.size() <= 64 &&
                data.color is string && data.color.size() <= 64 &&
                data.order is int;
       }
 
       allow read: if isApprovedUser();
-      allow create: if isManager() && isValidId(stageId) && isValidStage(request.resource.data);
-      allow update: if isManager() && isValidId(stageId) && isValidStage(request.resource.data);
-      allow delete: if isManager() && isValidId(stageId);
+      allow create, update, delete: if isValidId(stageId) && isManager() && (request.method != 'DELETE' ? isValidStage(incoming()) : true);
     }
 
     // 6. Events Collection
     match /events/{eventId} {
       function isValidEvent(data) {
-        return data.name is string && data.name.size() <= 100 &&
+        return data.keys().hasAll(['name', 'date', 'order']) &&
+               data.name is string && data.name.size() <= 128 &&
                data.date is string && data.date.size() <= 64 &&
                data.order is int;
       }
 
       allow read: if isApprovedUser();
-      allow create: if isOperator() && isValidEvent(request.resource.data);
-      allow update: if isOperator() && isValidEvent(request.resource.data);
-      allow delete: if isManager();
+      allow create, update: if isValidId(eventId) && isOperator() && isValidEvent(incoming());
+      allow delete: if isValidId(eventId) && isManager();
     }
 
     // 7. Activities Collection
     match /activities/{activityId} {
       function isValidActivity(data) {
         return data.userId == request.auth.uid &&
-               data.userName is string && data.userName.size() <= 100 &&
-               data.action is string && data.action.size() <= 200 &&
-               data.targetId is string &&
+               data.userName is string && data.userName.size() <= 128 &&
+               data.action is string && data.action.size() <= 256 &&
                data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
-               data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'] &&
-               data.createdAt is string;
+               data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'];
       }
       allow read: if isApprovedUser();
-      allow create: if isApprovedUser() && isOperator() && isValidActivity(request.resource.data);
-      allow update, delete: if isManager();
+      allow create: if isValidId(activityId) && isApprovedUser() && isOperator() && isValidActivity(incoming());
+      allow update, delete: if isValidId(activityId) && isManager();
     }
 
-    // Collection Group support
+    // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();
     }
