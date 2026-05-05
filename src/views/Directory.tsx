@@ -205,6 +205,15 @@ export default function Directory() {
     setSelectedIds(newSelected);
   };
 
+  const handleBulkEmail = () => {
+    if (selectedIds.size === 0) return;
+    const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+    const emails = selectedContacts.map(c => c.email).filter(Boolean).join(',');
+    if (emails) {
+      window.location.href = `mailto:${emails}`;
+    }
+  };
+
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`Are you sure you want to delete ${selectedIds.size} contacts?`)) return;
@@ -437,7 +446,11 @@ export default function Directory() {
                   >
                     <Tag className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
-                  <button className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" title="Email Selected">
+                  <button 
+                    onClick={handleBulkEmail}
+                    className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" 
+                    title="Email Selected"
+                  >
                     <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
                   </button>
                   <button 
