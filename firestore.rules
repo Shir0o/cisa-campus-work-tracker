@@ -230,6 +230,22 @@ service cloud.firestore {
       allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager());
     }
 
+    // 9. Prayers Collection
+    match /prayers/{prayerId} {
+      function isValidPrayer(data) {
+        return isValidId(data.contactId) &&
+               data.date is string && data.date.size() <= 32 &&
+               (data.burden == null || (data.burden is string && data.burden.size() <= 10000)) &&
+               (data.answer == null || (data.answer is string && data.answer.size() <= 10000)) &&
+               data.updatedAt is string;
+      }
+
+      allow get: if isApprovedUser();
+      allow list: if isApprovedUser();
+      allow create, update: if isApprovedUser() && isOperator() && isValidPrayer(incoming());
+      allow delete: if isManager();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

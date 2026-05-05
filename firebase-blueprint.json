@@ -122,6 +122,21 @@
       },
       "required": ["userId", "userName", "text", "createdAt"]
     },
+    "prayers": {
+      "title": "Prayer Record",
+      "description": "A log of prayer burdens and answers for a contact on a specific date.",
+      "type": "object",
+      "properties": {
+        "contactId": { "type": "string" },
+        "date": { "type": "string" },
+        "burden": { "type": "string" },
+        "answer": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" },
+        "updatedByName": { "type": "string" }
+      },
+      "required": ["contactId", "date", "updatedAt"]
+    },
     "activities": {
       "title": "Activity",
       "description": "A summary log of significant events in the system.",
@@ -197,6 +212,10 @@
     "notifications/{notificationId}": {
       "schema": "notifications",
       "description": "Direct alerts for users."
+    },
+    "prayers/{prayerId}": {
+      "schema": "prayers",
+      "description": "Weekly prayer burdens and answers."
     }
   }
 }

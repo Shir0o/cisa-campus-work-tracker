@@ -9,6 +9,7 @@ import Dashboard from './views/Dashboard';
 import Attendance from './views/Attendance';
 import OutreachBoard from './views/OutreachBoard';
 import Directory from './views/Directory';
+import PrayerList from './views/PrayerList';
 import Settings from './views/Settings';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
@@ -227,6 +228,14 @@ export default function App() {
               <ProtectedRoute>
                 <DashboardLayout>
                   <Directory />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/prayer" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <PrayerList />
                 </DashboardLayout>
               </ProtectedRoute>
             } />
