@@ -8,7 +8,8 @@ import {
   CalendarCheck, 
   PlusCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  HeartHandshake
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -28,6 +29,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }:
     { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Contact, label: 'Contacts', href: '/directory' },
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
+    { icon: HeartHandshake, label: 'Prayer List', href: '/prayer' },
   ];
 
   const getRoleLabel = (r: string | null) => {

@@ -106,6 +106,17 @@ export interface Event {
   createdAt: string;
 }
 
+export interface PrayerRecord {
+  id: string;
+  contactId: string;
+  date: string; // Format: "YYYY-MM-DD"
+  burden: string;
+  answer: string;
+  updatedAt: string;
+  updatedBy?: string;
+  updatedByName?: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;
