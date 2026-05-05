@@ -22,6 +22,7 @@ import { useLayout } from '../App';
 import { Contact, Activity, Interaction, Comment, SystemActivity } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import AICampaignStrategy from '../components/dashboard/AICampaignStrategy';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -345,6 +346,12 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* AI Strategy Section */}
+      <AICampaignStrategy 
+        contacts={contacts}
+        recentActivities={activities}
+      />
 
       {/* Main Content Grid */}
       <div className={cn(

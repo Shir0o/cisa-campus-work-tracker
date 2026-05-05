@@ -17,6 +17,18 @@ export interface ContactAnalysis {
   };
 }
 
+export interface CampaignStrategy {
+  pillars: {
+    title: string;
+    description: string;
+    priority: 'low' | 'medium' | 'high';
+    targetStage: string;
+    actionableTips: string[];
+  }[];
+  overallAssessment: string;
+  suggestedFocus: string;
+}
+
 export const aiService = {
   async analyzeContact(
     contact: Contact,
@@ -116,6 +128,70 @@ export const aiService = {
           priority: 'low'
         }
       };
+    }
+  },
+
+  async generateCampaignStrategy(
+    contacts: Contact[],
+    recentActivities: any[]
+  ): Promise<CampaignStrategy> {
+    const stageDistribution = contacts.reduce((acc: any, c) => {
+      acc[c.stage] = (acc[c.stage] || 0) + 1;
+      return acc;
+    }, {});
+
+    const context = {
+      totalContacts: contacts.length,
+      stageDistribution,
+      recentActivitySummary: recentActivities.slice(0, 5).map(a => `${a.user} ${a.action} ${a.target}`),
+      currentDate: new Date().toISOString()
+    };
+
+    const prompt = `
+      Based on the community health data below, generate a 3-pillar "AI Campaign Strategy" to help the community manager (user) grow and engage their members.
+      
+      Community Data:
+      ${JSON.stringify(context, null, 2)}
+      
+      Your goal is to identify bottlenecks (e.g. many people in 'Lead' but few in 'Active') and suggest high-impact actions.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              pillars: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING },
+                    description: { type: Type.STRING },
+                    priority: { type: Type.STRING, enum: ['low', 'medium', 'high'] },
+                    targetStage: { type: Type.STRING },
+                    actionableTips: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  },
+                  required: ['title', 'description', 'priority', 'targetStage', 'actionableTips']
+                }
+              },
+              overallAssessment: { type: Type.STRING },
+              suggestedFocus: { type: Type.STRING }
+            },
+            required: ['pillars', 'overallAssessment', 'suggestedFocus']
+          }
+        }
+      });
+
+      const result = JSON.parse(response.text || '{}');
+      return result as CampaignStrategy;
+    } catch (error) {
+      console.error("AI Strategy Generation Failed:", error);
+      throw error;
     }
   }
 };

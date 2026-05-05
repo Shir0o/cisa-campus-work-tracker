@@ -19,13 +19,15 @@ import {
   Plus,
   Tag
 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { 
   doc, 
   updateDoc, 
   deleteDoc, 
   collection, 
   query, 
+  where,
+  limit,
   orderBy, 
   getDocs, 
   onSnapshot, 
@@ -54,6 +56,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   const [stages, setStages] = useState<Stage[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'info' | 'interactions' | 'comments' | 'history'>('info');
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [newInteraction, setNewInteraction] = useState({
@@ -190,6 +195,33 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   }, [isOpen, contact]);
 
   useEffect(() => {
+    if (isOpen && contact) {
+      const q = query(
+        collection(db, 'activities'), 
+        where('targetId', '==', contact.id),
+        orderBy('createdAt', 'desc'),
+        limit(50)
+      );
+      
+      setActivitiesLoading(true);
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const activityData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setActivities(activityData);
+        setActivitiesLoading(false);
+      }, (error) => {
+        // activities might not have index yet or permission issues
+        console.error("Activities listener error:", error);
+        setActivitiesLoading(false);
+      });
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, contact]);
+
+  useEffect(() => {
     const triggerAI = async () => {
       if (!isOpen || !contact || isAnalyzing) return;
       if (interactionsLoading || commentsLoading) return;
@@ -267,6 +299,16 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       const contactRef = doc(db, 'contacts', contact.id);
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
+      const changes: string[] = [];
+      if (fullName !== contact.name) changes.push(`name: "${contact.name}" → "${fullName}"`);
+      if (formData.email !== contact.email) changes.push(`email: "${contact.email}" → "${formData.email}"`);
+      if (formData.phone !== contact.phone) changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
+      if (formData.location !== contact.location) changes.push(`first met: "${contact.location}" → "${formData.location}"`);
+      if (formData.role !== contact.role) changes.push(`status: "${contact.role}" → "${formData.role}"`);
+      if (formData.stage !== contact.stage) changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
+      if (formData.status !== contact.status) changes.push(`interaction status: "${contact.status}" → "${formData.status}"`);
+      if (formData.notes !== contact.notes) changes.push(`notes updated`);
+
       const updateData: any = {
         name: fullName,
         initials: getInitials(formData.firstName, formData.lastName),
@@ -286,12 +328,13 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       await updateDoc(contactRef, updateData);
       
       logActivity({
-        action: 'updated contact details for',
+        action: changes.length > 0 ? `updated ${changes.join(', ')} for` : 'updated contact details for',
         targetId: contact.id,
         targetName: fullName,
         targetType: 'contact',
         type: 'edit',
-        userName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+        userName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
+        description: changes.join('\n')
       } as any);
 
       setIsEditing(false);
@@ -391,6 +434,18 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         description: newComment.trim()
       });
 
+      // Send notification to contact creator if it's not the current user
+      if (contact.createdBy && contact.createdBy !== user.uid) {
+        await sendNotification({
+          userId: contact.createdBy,
+          title: 'New Comment',
+          message: `${user.displayName || user.email} commented on ${contact.name}: "${newComment.trim().substring(0, 50)}${newComment.length > 50 ? '...' : ''}"`,
+          type: 'info',
+          link: `/directory`, // Focus on directory for now, or just notify
+          targetId: contact.id
+        });
+      }
+
       setNewComment('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/comments`);
@@ -477,6 +532,52 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                 </button>
               </div>
             </div>
+
+            {/* Content Tab Switcher */}
+            {!isEditing && (
+              <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0">
+                <button 
+                  onClick={() => setActiveTab('info')}
+                  className={cn(
+                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
+                    activeTab === 'info' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                  )}
+                >
+                  General Info
+                  {activeTab === 'info' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('interactions')}
+                  className={cn(
+                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
+                    activeTab === 'interactions' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                  )}
+                >
+                  Interactions ({interactions.length})
+                  {activeTab === 'interactions' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('comments')}
+                  className={cn(
+                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
+                    activeTab === 'comments' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                  )}
+                >
+                  Discussion ({comments.length})
+                  {activeTab === 'comments' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+                <button 
+                  onClick={() => setActiveTab('history')}
+                  className={cn(
+                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
+                    activeTab === 'history' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                  )}
+                >
+                  Audit History
+                  {activeTab === 'history' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+              </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -640,326 +741,422 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   </div>
                 </form>
               ) : (
-                <div className="space-y-8">
-                  {/* Info Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 transition-colors">
-                        <Mail className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Email Address</p>
-                        <p className="text-sm font-bold text-on-surface break-all">{contact.email}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                        <Phone className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Phone Number</p>
-                        <p className="text-sm font-bold text-on-surface">{contact.phone || 'Not provided'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                        <MapPin className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">First Met</p>
-                        <p className="text-sm font-bold text-on-surface">{contact.location || 'Not recorded'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                        <Briefcase className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Current Stage</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight">
-                            {contact.stage}
-                          </span>
+                <div className="min-h-[400px]">
+                  {activeTab === 'info' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-8"
+                    >
+                      {/* Info Grid */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 transition-colors">
+                            <Mail className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Email Address</p>
+                            <p className="text-sm font-bold text-on-surface break-all">{contact.email}</p>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                    {contact.tags && contact.tags.length > 0 && (
-                      <div className="flex items-start gap-4 md:col-span-2">
-                        <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                          <Tag className="w-5 h-5" />
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                            <Phone className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Phone Number</p>
+                            <p className="text-sm font-bold text-on-surface">{contact.phone || 'Not provided'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Tags</p>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            {contact.tags.map(tag => (
-                              <span key={tag} className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20">
-                                #{tag}
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                            <MapPin className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">First Met</p>
+                            <p className="text-sm font-bold text-on-surface">{contact.location || 'Not recorded'}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                            <Briefcase className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Current Stage</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight">
+                                {contact.stage}
                               </span>
-                            ))}
+                            </div>
                           </div>
+                        </div>
+                        {contact.tags && contact.tags.length > 0 && (
+                          <div className="flex items-start gap-4 md:col-span-2">
+                            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                              <Tag className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Tags</p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {contact.tags.map(tag => (
+                                  <span key={tag} className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20">
+                                    #{tag}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Notes Section */}
+                      <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
+                        <h3 className="text-sm font-black text-on-surface uppercase tracking-widest flex items-center gap-2 mb-4">
+                          <MessageSquare className="w-4 h-4 text-primary" /> Contact Notes
+                        </h3>
+                        <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
+                          {contact.notes || "No notes recorded for this contact yet."}
                         </div>
                       </div>
-                    )}
-                  </div>
 
-                  {/* Notes Section */}
-                  <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
-                    <h3 className="text-sm font-black text-on-surface uppercase tracking-widest flex items-center gap-2 mb-4">
-                      <MessageSquare className="w-4 h-4 text-primary" /> Contact Notes
-                    </h3>
-                    <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                      {contact.notes || "No notes recorded for this contact yet."}
-                    </div>
-                  </div>
-
-                  {/* Interactions Section */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between px-2">
-                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
-                        Interaction Log ({interactions.length})
-                      </h3>
-                      <button
-                        onClick={() => setIsLoggingInteraction(!isLoggingInteraction)}
-                        className="p-1 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
-                      >
-                        {isLoggingInteraction ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                        {isLoggingInteraction ? 'Cancel' : 'Log Interaction'}
-                      </button>
-                    </div>
-                    
-                    {/* Log Interaction Form */}
-                    <AnimatePresence>
-                      {isLoggingInteraction && (
-                        <motion.form
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          onSubmit={handleAddInteraction}
-                          className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
-                        >
-                          <div className="grid grid-cols-2 gap-3">
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
-                                <Calendar className="w-3 h-3" /> Date & Time
-                              </label>
-                              <input
-                                required
-                                type="datetime-local"
-                                value={newInteraction.dateTime}
-                                onChange={e => setNewInteraction(prev => ({ ...prev, dateTime: e.target.value }))}
-                                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
-                                <Clock className="w-3 h-3" /> Duration (e.g. 15m)
-                              </label>
-                              <input
-                                type="text"
-                                placeholder="Optional"
-                                value={newInteraction.duration}
-                                onChange={e => setNewInteraction(prev => ({ ...prev, duration: e.target.value }))}
-                                className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-                              />
-                            </div>
+                      {/* Timestamps */}
+                      <div className="flex items-center justify-between px-2 pt-2 border-t border-outline-variant/30">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
+                              Last Analysis: {contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt).toLocaleDateString() : contact.lastSeen}
+                              {isAnalyzing && <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />}
+                            </span>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
-                              <MessageSquare className="w-3 h-3" /> Content
-                            </label>
-                            <textarea
-                              required
-                              placeholder="Describe the interaction..."
-                              value={newInteraction.content}
-                              onChange={e => setNewInteraction(prev => ({ ...prev, content: e.target.value }))}
-                              className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2 pt-1">
-                            <button
-                              type="submit"
-                              disabled={submittingInteraction || !newInteraction.content.trim()}
-                              className="px-4 h-9 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
-                            >
-                              {submittingInteraction ? (
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                              ) : (
-                                <Send className="w-3.5 h-3.5" />
-                              )}
-                              Log Interaction
-                            </button>
-                          </div>
-                        </motion.form>
-                      )}
-                    </AnimatePresence>
-
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                      {interactionsLoading ? (
-                        <div className="space-y-3">
-                          {[1, 2].map(i => (
-                            <div key={i} className="flex gap-3">
-                              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                              <div className="flex-1 space-y-2">
-                                <Skeleton className="h-3 w-24 rounded-full" />
-                                <Skeleton className="h-12 w-full rounded-xl" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : interactions.length === 0 ? (
-                        <div className="text-center py-8 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                          <MessageSquare className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-2" />
-                          <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No interactions logged yet.</p>
-                        </div>
-                      ) : (
-                        [...interactions].reverse().map(interaction => (
-                          <div key={interaction.id} className="flex gap-3 group">
-                            <div className="shrink-0 mt-0.5">
-                              {interaction.userPhoto ? (
-                                <img src={interaction.userPhoto} alt={interaction.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                  <UserCircle className="w-5 h-5" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{interaction.userName}</span>
-                                  <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                    {new Date(interaction.dateTime).toLocaleDateString()}
-                                  </span>
-                                </div>
-                                {interaction.duration && (
-                                  <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
-                                    <Clock className="w-3 h-3" /> {interaction.duration}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                {interaction.content}
-                              </div>
-                              <div className="mt-1 flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
-                                  {interaction.createdAt ? (
-                                    `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                  ) : (
-                                    'Logging...'
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Team Discussion Section */}
-                  <div className="space-y-4 pt-4 border-t border-outline-variant">
-                    <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
-                       Team Discussion ({comments.length})
-                    </h3>
-                    
-                    <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                      {commentsLoading ? (
-                        <div className="space-y-3">
-                          {[1, 2].map(i => (
-                            <div key={i} className="flex gap-3">
-                              <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                              <div className="flex-1 space-y-2">
-                                <Skeleton className="h-3 w-24 rounded-full" />
-                                <Skeleton className="h-12 w-full rounded-xl" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : comments.length === 0 ? (
-                        <div className="text-center py-6 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                          <MessageSquare className="w-8 h-8 text-on-surface-variant/20 mx-auto mb-2" />
-                          <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
-                        </div>
-                      ) : (
-                        comments.map(comment => (
-                          <div key={comment.id} className="flex gap-3 group">
-                            <div className="shrink-0 mt-0.5">
-                              {comment.userPhoto ? (
-                                <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
-                              ) : (
-                                <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                  <UserCircle className="w-5 h-5" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-black text-on-surface uppercase tracking-tight">{comment.userName}</span>
-                                <span className="text-[10px] font-bold text-on-surface-variant/40">
-                                  {comment.createdAt ? (
-                                    `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                  ) : (
-                                    'Sending...'
-                                  )}
-                                </span>
-                              </div>
-                              <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                {comment.text}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-
-                    {/* New Comment Input */}
-                    <form onSubmit={handleAddComment} className="relative mt-2">
-                      <div className="relative group">
-                        <textarea
-                          placeholder="Add a comment to the discussion..."
-                          value={newComment}
-                          onChange={e => setNewComment(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault();
-                              handleAddComment(e);
-                            }
-                          }}
-                          className="w-full min-h-[80px] p-4 pr-12 rounded-[24px] bg-surface-container-high border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
-                        />
-                        <button
-                          type="submit"
-                          disabled={submittingComment || !newComment.trim()}
-                          className="absolute right-3 bottom-3 p-2 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
-                        >
-                          {submittingComment ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Send className="w-4 h-4" />
+                          {contact.lastSeenAiReason && (
+                            <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">activity: {contact.lastSeenAiReason}</span>
                           )}
+                          {contact.needsContactAiReason && (
+                            <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">attention: {contact.needsContactAiReason}</span>
+                          )}
+                          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Added: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'interactions' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
+                          Interaction Log ({interactions.length})
+                        </h3>
+                        <button
+                          onClick={() => setIsLoggingInteraction(!isLoggingInteraction)}
+                          className="p-1 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                        >
+                          {isLoggingInteraction ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                          {isLoggingInteraction ? 'Cancel' : 'Log Interaction'}
                         </button>
                       </div>
-                    </form>
-                  </div>
+                      
+                      {/* Log Interaction Form */}
+                      <AnimatePresence>
+                        {isLoggingInteraction && (
+                          <motion.form
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            onSubmit={handleAddInteraction}
+                            className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
+                          >
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                  <Calendar className="w-3 h-3" /> Date & Time
+                                </label>
+                                <input
+                                  required
+                                  type="datetime-local"
+                                  value={newInteraction.dateTime}
+                                  onChange={e => setNewInteraction(prev => ({ ...prev, dateTime: e.target.value }))}
+                                  className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                  <Clock className="w-3 h-3" /> Duration (e.g. 15m)
+                                </label>
+                                <input
+                                  type="text"
+                                  placeholder="Optional"
+                                  value={newInteraction.duration}
+                                  onChange={e => setNewInteraction(prev => ({ ...prev, duration: e.target.value }))}
+                                  className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
+                                />
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                <MessageSquare className="w-3 h-3" /> Content
+                              </label>
+                              <textarea
+                                required
+                                placeholder="Describe the interaction..."
+                                value={newInteraction.content}
+                                onChange={e => setNewInteraction(prev => ({ ...prev, content: e.target.value }))}
+                                className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
+                              />
+                            </div>
+                            <div className="flex justify-end gap-2 pt-1">
+                              <button
+                                type="submit"
+                                disabled={submittingInteraction || !newInteraction.content.trim()}
+                                className="px-4 h-9 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
+                              >
+                                {submittingInteraction ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Send className="w-3.5 h-3.5" />
+                                )}
+                                Log Interaction
+                              </button>
+                            </div>
+                          </motion.form>
+                        )}
+                      </AnimatePresence>
 
-                  {/* Timestamps */}
-                  <div className="flex items-center justify-between px-2 pt-2 border-t border-outline-variant/30">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
-                          Last Analysis: {contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt).toLocaleDateString() : contact.lastSeen}
-                          {isAnalyzing && <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />}
-                        </span>
+                      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        {interactionsLoading ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className="flex gap-3">
+                                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <Skeleton className="h-3 w-24 rounded-full" />
+                                  <Skeleton className="h-12 w-full rounded-xl" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : interactions.length === 0 ? (
+                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                            <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
+                            <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No interactions logged yet.</p>
+                          </div>
+                        ) : (
+                          [...interactions].reverse().map(interaction => (
+                            <div key={interaction.id} className="flex gap-3 group">
+                              <div className="shrink-0 mt-0.5">
+                                {interaction.userPhoto ? (
+                                  <img src={interaction.userPhoto} alt={interaction.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                    <UserCircle className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-black text-on-surface uppercase tracking-tight">{interaction.userName}</span>
+                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                      {new Date(interaction.dateTime).toLocaleDateString()}
+                                    </span>
+                                  </div>
+                                  {interaction.duration && (
+                                    <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
+                                      <Clock className="w-3 h-3" /> {interaction.duration}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                  {interaction.content}
+                                </div>
+                                <div className="mt-1 flex items-center gap-2">
+                                  <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                                    {interaction.createdAt ? (
+                                      `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                    ) : (
+                                      'Logging...'
+                                    )}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                      {contact.lastSeenAiReason && (
-                        <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">activity: {contact.lastSeenAiReason}</span>
-                      )}
-                      {contact.needsContactAiReason && (
-                        <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">attention: {contact.needsContactAiReason}</span>
-                      )}
-                      <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Added: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
-                    </div>
-                  </div>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'comments' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
+                    >
+                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
+                         Team Discussion ({comments.length})
+                      </h3>
+                      
+                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        {commentsLoading ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className="flex gap-3">
+                                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <Skeleton className="h-3 w-24 rounded-full" />
+                                  <Skeleton className="h-12 w-full rounded-xl" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : comments.length === 0 ? (
+                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                            <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
+                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
+                          </div>
+                        ) : (
+                          comments.map(comment => (
+                            <div key={comment.id} className="flex gap-3 group">
+                              <div className="shrink-0 mt-0.5">
+                                {comment.userPhoto ? (
+                                  <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                    <UserCircle className="w-5 h-5" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{comment.userName}</span>
+                                  <span className="text-[10px] font-bold text-on-surface-variant/40">
+                                    {comment.createdAt ? (
+                                      `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                    ) : (
+                                      'Sending...'
+                                    )}
+                                  </span>
+                                </div>
+                                <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                  {comment.text}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* New Comment Input */}
+                      <form onSubmit={handleAddComment} className="relative mt-2">
+                        <div className="relative group">
+                          <textarea
+                            placeholder="Add a comment to the discussion..."
+                            value={newComment}
+                            onChange={e => setNewComment(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleAddComment(e);
+                              }
+                            }}
+                            className="w-full min-h-[100px] p-4 pr-12 rounded-[24px] bg-surface-container-high border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
+                          />
+                          <button
+                            type="submit"
+                            disabled={submittingComment || !newComment.trim()}
+                            className="absolute right-3 bottom-3 p-2 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
+                          >
+                            {submittingComment ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </form>
+                    </motion.div>
+                  )}
+
+                  {activeTab === 'history' && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
+                    >
+                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
+                         Audit History Log ({activities.length})
+                      </h3>
+                      
+                      <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                        {activitiesLoading ? (
+                          <div className="space-y-4">
+                            {[1, 2, 3, 4].map(i => (
+                              <div key={i} className="flex gap-4">
+                                <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                                <div className="flex-1 space-y-2">
+                                  <Skeleton className="h-4 w-1/3 rounded-full" />
+                                  <Skeleton className="h-8 w-full rounded-xl" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : activities.length === 0 ? (
+                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                            <Clock className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
+                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No audit history found for this contact.</p>
+                          </div>
+                        ) : (
+                          activities.map((activity, idx) => (
+                            <div key={activity.id || idx} className="relative pl-8 pb-4 last:pb-0 group">
+                              {/* Timeline line */}
+                              {idx !== activities.length - 1 && (
+                                <div className="absolute left-4 top-10 bottom-0 w-[1px] bg-outline-variant group-hover:bg-primary/30 transition-colors" />
+                              )}
+                              
+                              {/* Icon Bubble */}
+                              <div className={cn(
+                                "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 shadow-sm",
+                                activity.type === 'edit' ? "bg-tertiary-container text-on-tertiary-container" :
+                                activity.type === 'create' ? "bg-primary-container text-on-primary-container" :
+                                activity.type === 'comment' ? "bg-secondary-container text-on-secondary-container" :
+                                activity.type === 'call' ? "bg-primary-fixed text-on-primary-fixed" :
+                                "bg-surface-container-highest text-on-surface-variant"
+                              )}>
+                                {activity.type === 'edit' && <Edit3 className="w-4 h-4" />}
+                                {activity.type === 'create' && <UserCircle className="w-4 h-4" />}
+                                {activity.type === 'comment' && <MessageSquare className="w-4 h-4" />}
+                                {activity.type === 'call' && <Phone className="w-4 h-4" />}
+                                {!['edit', 'create', 'comment', 'call'].includes(activity.type) && <Calendar className="w-4 h-4" />}
+                              </div>
+
+                              <div className="flex-1">
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{activity.userName}</span>
+                                  <span className="text-xs text-on-surface-variant">{activity.action}</span>
+                                  <span className="text-[10px] font-bold text-on-surface-variant/40 ml-auto uppercase tracking-widest whitespace-nowrap">
+                                    {new Date(activity.createdAt).toLocaleDateString()} at {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                {activity.description && activity.type === 'edit' && (
+                                  <div className="p-3 rounded-xl bg-surface-container-high border border-outline-variant/30 text-[11px] font-mono leading-relaxed text-on-surface-variant whitespace-pre-wrap">
+                                    {activity.description}
+                                  </div>
+                                )}
+                                {activity.description && activity.type !== 'edit' && (
+                                  <div className="text-xs text-on-surface-variant italic line-clamp-2 px-1">
+                                    "{activity.description}"
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               )}
             </div>

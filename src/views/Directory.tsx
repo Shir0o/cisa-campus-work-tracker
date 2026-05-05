@@ -19,11 +19,10 @@ import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Stage } from '../types';
-import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function Directory() {
-  const { isSidebarCollapsed, openNewContact } = useLayout();
+  const { isSidebarCollapsed, openNewContact, setSelectedContact } = useLayout();
   const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
@@ -32,7 +31,6 @@ export default function Directory() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortField, setSortField] = useState<keyof Contact>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
     const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -630,13 +628,6 @@ export default function Directory() {
           )}
         </div>
       </div>
-
-      {/* Details Modal */}
-      <ContactDetailsModal 
-        isOpen={selectedContact !== null}
-        onClose={() => setSelectedContact(null)}
-        contact={selectedContact}
-      />
 
       {/* Tag Modal */}
       <AnimatePresence>

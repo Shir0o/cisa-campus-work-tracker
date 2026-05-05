@@ -64,7 +64,7 @@ service cloud.firestore {
       }
 
       allow get: if isValidId(userId) && (isOwner(userId) || isManager());
-      allow list: if isManager();
+      allow list: if isSignedIn() && (isManager() || isSuperAdmin());
       
       allow create: if isValidId(userId) && isOwner(userId) && 
                       isValidUser(incoming()) &&
@@ -118,8 +118,8 @@ service cloud.firestore {
                (data.status == null || (data.status is string && data.status.size() <= 32));
       }
 
-      allow read: if isApprovedUser();
-      allow create: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
+      allow read: if true;
+      allow create: if isValidId(contactId) && isValidContact(incoming());
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
       allow delete: if isValidId(contactId) && isManager();
 
@@ -172,7 +172,7 @@ service cloud.firestore {
                data.order is int;
       }
 
-      allow read: if isApprovedUser();
+      allow read: if true;
       allow create, update, delete: if isValidId(stageId) && isManager() && (request.method != 'DELETE' ? isValidStage(incoming()) : true);
     }
 
@@ -199,9 +199,35 @@ service cloud.firestore {
                data.targetType in ['contact', 'event', 'comment', 'interaction'] &&
                data.type in ['call', 'email', 'event', 'alert', 'edit', 'create', 'comment'];
       }
-      allow read: if isApprovedUser();
+      allow list: if isSignedIn() && (isApprovedUser() || isSuperAdmin());
+      allow get: if isApprovedUser();
       allow create: if isValidId(activityId) && isApprovedUser() && isOperator() && isValidActivity(incoming());
       allow update, delete: if isValidId(activityId) && isManager();
+    }
+
+    // 8. Notifications Collection
+    match /notifications/{notificationId} {
+      function isValidNotification(data) {
+        return data.userId is string &&
+               data.title is string && data.title.size() <= 128 &&
+               data.message is string && data.message.size() <= 512 &&
+               data.type in ['info', 'success', 'warning', 'error', 'assignment', 'event'] &&
+               data.read is bool &&
+               data.createdAt == request.time;
+      }
+
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      
+      allow create: if isValidId(notificationId) && isApprovedUser() && isOperator() && isValidNotification(incoming());
+      
+      allow update: if isValidId(notificationId) && isSignedIn() && (
+                      (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
+                      isSuperAdmin() ||
+                      isManager()
+                    );
+      
+      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager());
     }
 
     // Collection Group helpers

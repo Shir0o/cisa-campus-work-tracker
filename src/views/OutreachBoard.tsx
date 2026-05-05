@@ -57,16 +57,13 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
-import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 export default function OutreachBoard() {
-  const { isSidebarCollapsed } = useLayout();
+  const { isSidebarCollapsed, setSelectedContact } = useLayout();
   const { isAdmin, user } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('bg-board-indigo');
@@ -475,7 +472,6 @@ export default function OutreachBoard() {
                 onEditStage={handleEditStage}
                 onEditContact={(contact) => {
                   setSelectedContact(contact);
-                  setIsDetailsOpen(true);
                 }}
                 onDeleteContact={handleDeleteContact}
                 onUpdateContactStage={handleUpdateContactStage}
@@ -614,12 +610,6 @@ export default function OutreachBoard() {
             </div>
           ) : null}
         </DragOverlay>
-
-        <ContactDetailsModal 
-          isOpen={isDetailsOpen}
-          onClose={() => setIsDetailsOpen(false)}
-          contact={selectedContact}
-        />
       </motion.div>
     </DndContext>
   );

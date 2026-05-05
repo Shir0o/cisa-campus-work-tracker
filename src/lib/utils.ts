@@ -33,3 +33,13 @@ export function validatePhoneNumber(value: string) {
   const digits = value.replace(/[^\d]/g, '');
   return digits.length === 10;
 }
+
+export function getUserInitials(name: string | null | undefined) {
+  if (!name) return '??';
+  return name
+    .split(' ')
+    .map(n => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}

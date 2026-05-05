@@ -17,11 +17,15 @@ import {
   Plus
 } from 'lucide-react';
 import { Skeleton } from './components/ui/Skeleton';
+import { Contact } from './types';
+import ContactDetailsModal from './components/modals/ContactDetailsModal';
+import Toaster from './components/Toaster';
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (value: boolean) => void;
   openNewContact: () => void;
+  setSelectedContact: (contact: Contact | null) => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
@@ -132,6 +136,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isNewContactModalOpen, setIsNewContactModalOpen] = React.useState(false);
+  const [selectedContact, setSelectedContact] = React.useState<Contact | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
     return saved === 'true';
@@ -149,7 +154,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     <LayoutContext.Provider value={{ 
       isSidebarCollapsed, 
       setIsSidebarCollapsed, 
-      openNewContact: () => setIsNewContactModalOpen(true) 
+      openNewContact: () => setIsNewContactModalOpen(true),
+      setSelectedContact: (contact: Contact | null) => setSelectedContact(contact)
     }}>
       <div className="flex min-h-screen bg-background pb-16 lg:pb-0">
         <Sidebar 
@@ -172,6 +178,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           isOpen={isNewContactModalOpen} 
           onClose={() => setIsNewContactModalOpen(false)} 
         />
+
+        <ContactDetailsModal 
+          isOpen={selectedContact !== null}
+          onClose={() => setSelectedContact(null)}
+          contact={selectedContact}
+        />
+
+        <Toaster />
       </div>
     </LayoutContext.Provider>
   );
