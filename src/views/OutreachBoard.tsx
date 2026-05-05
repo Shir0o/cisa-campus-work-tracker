@@ -255,11 +255,20 @@ export default function OutreachBoard() {
     }
   };
 
-  const filteredContacts = boardContacts.filter(c => 
-    c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [filterRole, setFilterRole] = useState<string>('All');
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+
+  const filteredContacts = boardContacts.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      c.email.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesRole = filterRole === 'All' || c.role === filterRole;
+    
+    return matchesSearch && matchesRole;
+  });
+
+  const filterRoles = useMemo(() => ['All', ...new Set(boardContacts.map(c => c.role))], [boardContacts]);
 
   const getStageContactsArr = (stageLabel: string) => filteredContacts.filter(c => c.stage === stageLabel);
 
@@ -405,9 +414,50 @@ export default function OutreachBoard() {
                 placeholder="Search board..."
               />
             </div>
-            <button className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0">
-              <Filter className="w-5 h-5" />
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowFilterMenu(!showFilterMenu)}
+                className={cn(
+                  "p-2 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0",
+                  filterRole !== 'All' && "text-primary bg-primary/10"
+                )}
+              >
+                <Filter className="w-5 h-5" />
+              </button>
+
+              <AnimatePresence>
+                {showFilterMenu && (
+                  <>
+                    <div className="fixed inset-0 z-30" onClick={() => setShowFilterMenu(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-3 min-w-[180px] space-y-2"
+                    >
+                      <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-2">Filter by Role</p>
+                      <div className="space-y-1">
+                        {filterRoles.map(role => (
+                          <button
+                            key={role}
+                            onClick={() => {
+                              setFilterRole(role);
+                              setShowFilterMenu(false);
+                            }}
+                            className={cn(
+                              "w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors",
+                              filterRole === role ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-variant"
+                            )}
+                          >
+                            {role}
+                          </button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </div>
 

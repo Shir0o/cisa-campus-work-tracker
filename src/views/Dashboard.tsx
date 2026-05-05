@@ -13,6 +13,7 @@ import {
   MessageSquare
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, orderBy, limit, collectionGroup, where, getDoc, doc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
@@ -20,10 +21,12 @@ import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { Contact, Activity, Interaction, Comment, SystemActivity } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { isSidebarCollapsed } = useLayout();
+  const navigate = useNavigate();
   const firstName = user?.displayName?.split(' ')[0] || 'Campaigner';
 
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -35,6 +38,9 @@ export default function Dashboard() {
   const [legacyComments, setLegacyComments] = useState<Activity[]>([]);
   const [legacyCreations, setLegacyCreations] = useState<Activity[]>([]);
   const [legacyEdits, setLegacyEdits] = useState<Activity[]>([]);
+
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
     // 1. Fetch Contacts
@@ -352,7 +358,10 @@ export default function Dashboard() {
         )}>
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-medium text-on-surface">Recent Activity</h3>
-            <button className="text-primary font-semibold text-sm hover:underline flex items-center gap-1">
+            <button 
+              onClick={() => navigate('/directory')}
+              className="text-primary font-semibold text-sm hover:underline flex items-center gap-1"
+            >
               View All <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -402,7 +411,14 @@ export default function Dashboard() {
             <h3 className="text-xl font-medium text-on-surface mb-6">Priority Tasks</h3>
             <div className="space-y-3 flex-1">
               {contacts.filter(c => c.status === 'Follow Up Required' || c.status === 'Needs Contact').slice(0, 5).map((contact) => (
-                <div key={contact.id} className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant hover:border-primary/30 transition-colors flex items-center gap-4 cursor-pointer group">
+                <div 
+                  key={contact.id} 
+                  onClick={() => {
+                    setSelectedContact(contact);
+                    setIsDetailsModalOpen(true);
+                  }}
+                  className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant hover:border-primary/30 transition-colors flex items-center gap-4 cursor-pointer group"
+                >
                   <div className="w-6 h-6 rounded border-2 border-outline group-hover:border-primary transition-colors flex-shrink-0"></div>
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-on-surface truncate">Follow up with {contact.name}</p>
@@ -422,6 +438,12 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      <ContactDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        contact={selectedContact}
+      />
     </motion.div>
   );
 }

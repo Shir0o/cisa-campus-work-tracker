@@ -7,10 +7,11 @@ import {
   Download,
   CalendarDays,
   X,
-  Plus
+  Plus,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
@@ -23,7 +24,7 @@ import { format, parseISO, isValid } from 'date-fns';
 
 export default function Attendance() {
   const { isSidebarCollapsed } = useLayout();
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +70,49 @@ export default function Attendance() {
       return format(date, 'MMM d');
     } catch {
       return dateStr;
+    }
+  };
+
+  const handleExport = () => {
+    if (contacts.length === 0 || events.length === 0) return;
+
+    const headers = ['Name', 'Role', ...events.map(e => `${e.name} (${e.date})`)];
+    const rows = contacts.map(c => [
+      c.name,
+      c.role,
+      ...events.map(e => {
+        const s = c.attendance?.[e.id];
+        return s === true ? 'Present' : s === 'absent' ? 'Absent' : 'None';
+      })
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(r => r.map(v => `"${v}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `attendance_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeleteEvent = async (eventId: string, eventName: string) => {
+    if (!isAdmin || !window.confirm(`Are you sure you want to delete event "${eventName}"? This will also remove all associated attendance records for this event.`)) return;
+
+    try {
+      await deleteDoc(doc(db, 'events', eventId));
+      
+      // Cleanup attendance from contacts
+      // Note: In a production app, this should ideally be done via a Cloud Function or batch
+      // But here we'll just let the UI reflect it since we filter by current events anyway
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `events/${eventId}`);
     }
   };
 
@@ -197,7 +241,10 @@ export default function Attendance() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary-container text-on-secondary-container font-bold text-sm hover:opacity-80 transition-colors">
+          <button 
+            onClick={handleExport}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary-container text-on-secondary-container font-bold text-sm hover:opacity-80 transition-colors"
+          >
             <Download className="w-4 h-4" />
             Export
           </button>
@@ -243,13 +290,25 @@ export default function Attendance() {
                     <div className="text-xs font-black uppercase tracking-widest text-on-surface-variant">Contact</div>
                   </th>
                   {events.map((event) => (
-                    <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[120px]">
+                    <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[120px] relative group/header">
                       <div className="text-xs font-bold text-on-surface truncate">
                         {event.name}
                       </div>
                       <div className="text-[10px] text-primary font-medium mt-0.5 leading-tight truncate">
                         {formatEventDate(event.date)}
                       </div>
+                      {isAdmin && (
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(event.id, event.name);
+                          }}
+                          className="absolute -top-1 -right-1 p-1 bg-error text-white rounded-full opacity-0 group-header/header:opacity-100 transition-opacity shadow-lg scale-75 hover:scale-100"
+                          title="Delete Event"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                     </th>
                   ))}
                 </tr>

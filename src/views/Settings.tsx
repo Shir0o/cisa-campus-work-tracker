@@ -27,14 +27,19 @@ import {
   Mail,
   Trash2,
   Loader2,
-  Info
+  Info,
+  Moon,
+  Sun,
+  Monitor
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
+import { useTheme } from '../components/ThemeProvider';
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -195,6 +200,41 @@ export default function Settings() {
     throw new Error(JSON.stringify(errInfo));
   };
 
+  const ThemeSection = () => (
+    <div className="mt-8">
+      <h2 className="text-xl font-bold text-on-surface mb-4">App Preferences</h2>
+      <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-6 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="font-bold text-on-surface">Appearance</h3>
+            <p className="text-sm text-on-surface-variant">Customize how the application looks on your device.</p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4">
+          {(['light', 'dark', 'system'] as const).map((t) => {
+            const Icon = t === 'light' ? Sun : t === 'dark' ? Moon : Monitor;
+            return (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                className={cn(
+                  "flex flex-col items-center gap-3 p-4 rounded-2xl border-2 transition-all",
+                  theme === t 
+                    ? "bg-primary/10 border-primary text-primary shadow-sm" 
+                    : "bg-surface-container-high border-transparent text-on-surface-variant hover:bg-surface-variant"
+                )}
+              >
+                <Icon className={cn("w-6 h-6", theme === t ? "text-primary" : "text-on-surface-variant")} />
+                <span className="text-xs font-bold capitalize">{t}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
   if (!isManager) {
     // ... (rest of the non-admin view remains same)
     return (
@@ -224,7 +264,7 @@ export default function Settings() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm font-medium">
               <div className="p-4 bg-surface-container-high rounded-2xl flex flex-col gap-1">
                 <span className="text-xs text-on-surface-variant uppercase tracking-wider">Account Status</span>
-                <span className="text-success font-bold">Approved</span>
+                <span className="text-success-container text-success font-bold px-2 py-0.5 bg-success/10 rounded-full w-fit">Approved</span>
               </div>
               <div className="p-4 bg-surface-container-high rounded-2xl flex flex-col gap-1">
                 <span className="text-xs text-on-surface-variant uppercase tracking-wider">Assigned Role</span>
@@ -234,8 +274,10 @@ export default function Settings() {
           </div>
         </div>
 
-        <div className="mt-8 text-center py-12 px-4 bg-surface-variant/20 rounded-[2rem] border border-dashed border-outline-variant">
-          <p className="text-on-surface-variant italic">Additional profile settings and application preferences will appear here in a future update.</p>
+        <ThemeSection />
+
+        <div className="mt-12 text-center py-6 px-4 bg-surface-variant/10 rounded-[2rem] border border-dashed border-outline-variant">
+          <p className="text-xs text-on-surface-variant italic">More account settings will be available in future updates.</p>
         </div>
       </div>
     );
@@ -571,6 +613,8 @@ export default function Settings() {
           </div>
         )}
       </AnimatePresence>
+      <ThemeSection />
+
       <div className="mt-8 p-6 bg-secondary-container/20 rounded-[2rem] border border-secondary/10 flex items-start gap-4">
         <div className="p-2 bg-secondary/10 rounded-xl text-secondary">
           <Shield className="w-6 h-6" />

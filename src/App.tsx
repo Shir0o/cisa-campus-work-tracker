@@ -12,6 +12,7 @@ import Directory from './views/Directory';
 import Settings from './views/Settings';
 import SignUp from './views/SignUp';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+import { ThemeProvider } from './components/ThemeProvider';
 import { 
   Plus
 } from 'lucide-react';
@@ -178,55 +179,57 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/signup" element={<SignUp />} />
-          
-          <Route path="/" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Dashboard />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/attendance" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Attendance />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/board" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <OutreachBoard />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
-          
-          <Route path="/directory" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Directory />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
+    <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/signup" element={<SignUp />} />
+            
+            <Route path="/" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Dashboard />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/attendance" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Attendance />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/board" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <OutreachBoard />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
+            
+            <Route path="/directory" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Directory />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
 
-          <Route path="/settings" element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <Settings />
-              </DashboardLayout>
-            </ProtectedRoute>
-          } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <Settings />
+                </DashboardLayout>
+              </ProtectedRoute>
+            } />
 
-          {/* Redirect unknown routes */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+            {/* Redirect unknown routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
