@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, MapPin, Mail, Phone, Loader2, Calendar, Tag, MessageSquare } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -129,6 +129,17 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         targetType: 'contact',
         type: 'create'
       });
+
+      if (user) {
+        await sendNotification({
+          userId: user.uid,
+          title: 'Contact Created',
+          message: `Successfully added ${fullName} to your directory.`,
+          type: 'success',
+          link: '/directory',
+          targetId: docRef.id
+        });
+      }
 
       onClose();
       // Reset form

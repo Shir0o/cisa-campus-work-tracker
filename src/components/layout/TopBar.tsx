@@ -5,6 +5,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
 import { getUserAvatar, cn } from '../../lib/utils';
 import { useLayout } from '../../App';
+import GlobalSearch from './GlobalSearch';
+import NotificationCenter from './NotificationCenter';
 
 export default function TopBar() {
   const { user, logOut } = useAuth();
@@ -31,7 +33,7 @@ export default function TopBar() {
             <img 
               src="/logo.svg" 
               alt="CH" 
-              className="w-full h-full object-contain"
+              className="w-full h-full object-contain p-1"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
@@ -46,27 +48,13 @@ export default function TopBar() {
       </div>
 
       {/* Search Bar - Now responsive instead of hidden */}
-      <div className="flex-1 max-w-xl">
-        <div className="relative flex items-center w-full h-10 rounded-full bg-surface-container-high focus-within:bg-secondary-container/30 focus-within:shadow-sm transition-all group">
-          <div className="grid place-items-center h-full w-10 sm:w-12 text-on-surface-variant group-focus-within:text-primary">
-            <Search className="w-4 h-4 sm:w-5 h-5" />
-          </div>
-          <input
-            type="text"
-            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-4 font-medium"
-            placeholder="Search"
-          />
-        </div>
-      </div>
+      <GlobalSearch />
 
       <div className="flex-1" />
 
       {/* Notifications & Profile */}
       <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
-        <button className="w-12 h-12 rounded-full hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant transition-colors relative">
-          <Bell className="w-6 h-6" />
-          <span className="absolute top-3 right-3 w-2 h-2 bg-error rounded-full"></span>
-        </button>
+        <NotificationCenter />
         
         <div className="relative" ref={dropdownRef}>
           <button 

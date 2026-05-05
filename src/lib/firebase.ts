@@ -54,8 +54,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   throw new Error(JSON.stringify(errInfo));
 }
 
-import { doc, getDocFromServer, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { SystemActivity } from '../types';
+import { doc, getDocFromServer, collection, addDoc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { SystemActivity, Notification } from '../types';
 
 export async function logActivity(activity: Omit<SystemActivity, 'id' | 'createdAt' | 'userId' | 'userName' | 'userPhoto'>) {
   if (!auth.currentUser) return;
@@ -71,6 +71,19 @@ export async function logActivity(activity: Omit<SystemActivity, 'id' | 'created
     await addDoc(collection(db, 'activities'), activityData);
   } catch (error) {
     console.error('Failed to log activity:', error);
+  }
+}
+
+export async function sendNotification(notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) {
+  try {
+    const targetRef = doc(collection(db, 'notifications'));
+    await setDoc(targetRef, {
+      ...notification,
+      read: false,
+      createdAt: serverTimestamp(),
+    });
+  } catch (error) {
+    console.error('Failed to send notification:', error);
   }
 }
 

@@ -122,3 +122,15 @@ export interface Invitation {
   invitedBy: string;
   createdAt: any;
 }
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'assignment' | 'event';
+  read: boolean;
+  createdAt: string;
+  link?: string;
+  targetId?: string;
+}

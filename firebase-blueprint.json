@@ -139,6 +139,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "userName", "action", "targetId", "targetType", "type", "createdAt"]
+    },
+    "notifications": {
+      "title": "Notification",
+      "description": "A live alert for a specific user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error", "assignment", "event"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "link": { "type": "string" },
+        "targetId": { "type": "string" }
+      },
+      "required": ["userId", "title", "message", "type", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -177,6 +193,10 @@
     "activities/{activityId}": {
       "schema": "activities",
       "description": "Global activity feed log."
+    },
+    "notifications/{notificationId}": {
+      "schema": "notifications",
+      "description": "Direct alerts for users."
     }
   }
 }
