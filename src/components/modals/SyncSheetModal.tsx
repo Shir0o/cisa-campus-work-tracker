@@ -30,6 +30,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
     newContacts: any[];
     updates: any[];
     eventMappings: Record<string, string>;
+    displayRows: { identifier: string; status: 'new' | 'update'; count: number }[];
   } | null>(null);
 
   const handleDryRun = async () => {
@@ -77,6 +78,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
 
       const newContacts: any[] = [];
       const updates: any[] = [];
+      const displayRows: { identifier: string; status: 'new' | 'update'; count: number }[] = [];
 
       for (const row of dataRows) {
         const identifier = row[0]?.trim();
@@ -88,25 +90,34 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
         );
 
         const attendance: Record<string, boolean | 'absent'> = {};
+        let count = 0;
         for (const colIdxStr in colToEventId) {
           const colIdx = parseInt(colIdxStr);
           const val = row[colIdx]?.toLowerCase().trim();
-          if (['p', 'present', 'x', '1', 'yes'].includes(val)) attendance[colToEventId[colIdx]] = true;
-          else if (['a', 'absent', '0', 'no'].includes(val)) attendance[colToEventId[colIdx]] = 'absent';
+          if (['p', 'present', 'x', '1', 'yes'].includes(val)) {
+            attendance[colToEventId[colIdx]] = true;
+            count++;
+          } else if (['a', 'absent', '0', 'no'].includes(val)) {
+            attendance[colToEventId[colIdx]] = 'absent';
+            count++;
+          }
         }
 
         if (contact) {
           updates.push({ id: contact.id, name: contact.name, attendance });
+          displayRows.push({ identifier: contact.name, status: 'update', count });
         } else {
+          const name = identifier.includes('@') ? identifier.split('@')[0] : identifier;
           newContacts.push({ 
-            name: identifier.includes('@') ? identifier.split('@')[0] : identifier,
+            name,
             email: identifier.includes('@') ? identifier : '',
             attendance 
           });
+          displayRows.push({ identifier: name, status: 'new', count });
         }
       }
 
-      setDryRunData({ newContacts, updates, eventMappings });
+      setDryRunData({ newContacts, updates, eventMappings, displayRows });
     } catch (err: any) {
       setError(err.message || 'Validation failed');
     } finally {
@@ -275,6 +286,29 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                         <div className="text-[10px] font-bold text-on-surface-variant">Updates</div>
                       </div>
                     </div>
+                    <div className="space-y-1">
+                      <div className="text-[10px] font-bold text-on-surface-variant flex items-center justify-between">
+                        <span>Participants to Sync</span>
+                        <span>{dryRunData.displayRows.length} rows</span>
+                      </div>
+                      <div className="space-y-1 max-h-[120px] overflow-y-auto pr-1">
+                        {dryRunData.displayRows.map((row, idx) => (
+                          <div key={idx} className="flex items-center justify-between text-[10px] bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/10">
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <span className={cn(
+                                "px-1.5 py-0.5 rounded text-[8px] font-black uppercase",
+                                row.status === 'new' ? "bg-primary text-on-primary" : "bg-outline-variant text-on-surface-variant"
+                              )}>
+                                {row.status}
+                              </span>
+                              <span className="font-bold text-on-surface truncate">{row.identifier}</span>
+                            </div>
+                            <span className="text-on-surface-variant shrink-0">{row.count} events</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                     <div className="space-y-1">
                       <div className="text-[10px] font-bold text-on-surface-variant">Event Mappings</div>
                       <div className="space-y-1">
