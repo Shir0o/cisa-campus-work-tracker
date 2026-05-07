@@ -29,16 +29,16 @@ export default function TopBar() {
       {/* Mobile Logo/Title */}
       <div className="flex lg:hidden items-center gap-2 ml-1">
         <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shadow-sm overflow-hidden">
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
             <img 
               src="/logo.svg" 
               alt="CH" 
-              className="w-full h-full object-contain p-1"
+              className="w-full h-full object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 if (target.parentElement) {
-                  target.parentElement.innerHTML = '<span class="text-[8px] text-on-primary font-bold">CH</span>';
+                  target.parentElement.innerHTML = '<span class="text-[8px] text-primary font-bold">CH</span>';
                 }
               }}
             />

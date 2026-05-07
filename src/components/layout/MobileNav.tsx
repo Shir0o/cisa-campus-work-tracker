@@ -4,7 +4,8 @@ import {
   LayoutDashboard, 
   Kanban, 
   Contact, 
-  CalendarCheck
+  CalendarCheck,
+  HeartHandshake
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -15,6 +16,7 @@ export default function MobileNav() {
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Contact, label: 'Contacts', href: '/directory' },
+    { icon: HeartHandshake, label: 'Prayer', href: '/prayer' },
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
   ];
 
