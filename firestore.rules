@@ -103,7 +103,7 @@ service cloud.firestore {
       allow get: if isManager() || (isSignedIn() && getAuthEmail() == email.lower());
       allow list: if isManager();
       allow create, update: if isManager() && isValidInvitation(incoming());
-      allow delete: if isManager();
+      allow delete: if isManager() || (isSignedIn() && getAuthEmail() == email.lower());
     }
 
     // 4. Contacts Collection
