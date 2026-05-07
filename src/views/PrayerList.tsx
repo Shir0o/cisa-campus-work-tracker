@@ -117,17 +117,53 @@ export default function PrayerList() {
 
   if (loading && contacts.length === 0) {
     return (
-      <div className="p-8 space-y-6">
-        <div className="flex justify-between items-center">
-          <Skeleton className="h-10 w-48 rounded-lg" />
-          <Skeleton className="h-10 w-64 rounded-lg" />
-        </div>
-        <div className="border border-outline-variant rounded-2xl overflow-hidden shadow-sm bg-surface">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="border-b border-outline-variant/30 last:border-0 overflow-hidden">
-              <Skeleton className="h-16 w-full rounded-none" />
+      <div className="h-full flex flex-col bg-surface-container-lowest/30 animate-pulse">
+        {/* Header Skeleton */}
+        <div className="px-8 pt-8 pb-6 bg-surface border-b border-outline-variant/50 sticky top-0 z-10">
+          <div className="flex flex-col gap-6 md:flex-row md:items-end justify-between">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Skeleton className="w-10 h-10 rounded-xl" />
+                <Skeleton className="h-8 w-64" />
+              </div>
+              <Skeleton className="h-4 w-96 ml-13" />
             </div>
-          ))}
+            <Skeleton className="h-11 w-64 rounded-xl" />
+          </div>
+
+          {/* Date Bar Skeleton */}
+          <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-2">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
+              <Skeleton key={i} className="h-10 w-24 rounded-full flex-shrink-0" />
+            ))}
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <div className="flex-1 overflow-auto p-8 pt-6">
+          <div className="border border-outline-variant rounded-[32px] overflow-hidden bg-surface shadow-xl shadow-surface-container/20">
+            <div className="h-14 bg-surface-container-low/50 border-b border-outline-variant/30 flex items-center px-8 gap-8">
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-3 w-48" />
+            </div>
+            <div className="p-0">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div key={i} className="flex gap-8 p-4 px-8 border-b border-outline-variant/10 items-center">
+                  <div className="flex items-center gap-4 min-w-[176px]">
+                    <Skeleton className="w-10 h-10 rounded-xl" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-20 flex-1 rounded-2xl" />
+                  <Skeleton className="h-20 flex-1 rounded-2xl" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
