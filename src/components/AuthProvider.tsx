@@ -17,6 +17,7 @@ interface AuthContextType {
   role: string | null;
   isApproved: boolean;
   loading: boolean;
+  authorizeSheets: () => Promise<string | null>;
   signIn: () => Promise<void>;
   logOut: () => Promise<void>;
 }
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   useEffect(() => {
     let userDocUnsubscribe: (() => void) | null = null;
@@ -77,6 +79,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             updatedAt: serverTimestamp(),
           };
           await setDoc(userDocRef, initialData);
+          
+          if (inviteDoc.exists()) {
+            try {
+              const { deleteDoc } = await import('firebase/firestore');
+              await deleteDoc(inviteRef);
+            } catch (error) {
+              console.warn('Failed to delete invitation:', error);
+            }
+          }
+
           setIsApproved(initialApproved);
           setIsAdmin(initialRole === 'admin');
           setIsManager(initialRole === 'admin' || initialRole === 'manager');
@@ -125,6 +137,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const authorizeSheets = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/spreadsheets.readonly');
+      
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      const token = credential?.accessToken || null;
+      setAccessToken(token);
+      return token;
+    } catch (error) {
+      console.error('Failed to authorize sheets:', error);
+      return null;
+    }
+  };
+
   const signIn = async () => {
     const provider = new GoogleAuthProvider();
     await signInWithPopup(auth, provider);
@@ -132,10 +160,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logOut = async () => {
     await signOut(auth);
+    setAccessToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, signIn, logOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, authorizeSheets, signIn, logOut }}>
       {children}
     </AuthContext.Provider>
   );

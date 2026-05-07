@@ -8,7 +8,8 @@ import {
   CalendarDays,
   X,
   Plus,
-  Trash2
+  Trash2,
+  FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit, deleteDoc } from 'firebase/firestore';
@@ -20,6 +21,7 @@ import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import AddEventModal from '../components/modals/AddEventModal';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import SyncSheetModal from '../components/modals/SyncSheetModal';
 import { format, parseISO, isValid } from 'date-fns';
 
 export default function Attendance() {
@@ -29,6 +31,7 @@ export default function Attendance() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   useEffect(() => {
@@ -241,6 +244,15 @@ export default function Attendance() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {isAdmin && (
+            <button 
+              onClick={() => setIsSyncModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Sync Sheet
+            </button>
+          )}
           <button 
             onClick={handleExport}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary-container text-on-secondary-container font-bold text-sm hover:opacity-80 transition-colors"
@@ -378,6 +390,11 @@ export default function Attendance() {
         </button>
       </div>
     </motion.div>
+      <SyncSheetModal 
+        isOpen={isSyncModalOpen}
+        onClose={() => setIsSyncModalOpen(false)}
+        contacts={contacts}
+      />
       <AddEventModal 
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}

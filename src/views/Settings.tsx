@@ -181,6 +181,8 @@ export default function Settings() {
 
   const filteredInvites = invitations.filter(invite => {
     if (filter !== 'all' && filter !== 'invited') return false;
+    // Hide if user already exists
+    if (users.some(u => u.email.toLowerCase() === invite.email.toLowerCase())) return false;
     const matchesSearch = invite.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });

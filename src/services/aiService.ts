@@ -193,5 +193,48 @@ export const aiService = {
       console.error("AI Strategy Generation Failed:", error);
       throw error;
     }
+  },
+
+  async mapSheetColumnsToEvents(
+    headers: string[],
+    existingEventNames: string[]
+  ): Promise<Record<number, string | null>> {
+    const prompt = `
+      You are a data integration assistant. I have a Google Sheet with these headers: ${JSON.stringify(headers)}.
+      Column index 0 is always the User Identifier (Name or Email).
+      
+      I have these existing attendance events in my database: ${JSON.stringify(existingEventNames)}.
+      
+      Task: Map the headers (from index 1 onwards) to the existing event names.
+      - If a header closely matches an event name (considering typos, dates, or casing), map it to that event name.
+      - If a header does not match any existing event, return null for that index.
+      
+      Return a JSON object where the keys are the column indices (starting from 1) and the values are the matching event name (of null if no match).
+      Example: { "1": "Orientation", "2": "Weekly Meetup" }
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            additionalProperties: { type: Type.STRING }
+          }
+        }
+      });
+
+      const result = JSON.parse(response.text || '{}');
+      const mapping: Record<number, string | null> = {};
+      Object.entries(result).forEach(([k, v]) => {
+        mapping[parseInt(k)] = v as string | null;
+      });
+      return mapping;
+    } catch (error) {
+      console.error("AI Mapping Failed:", error);
+      return {};
+    }
   }
 };
