@@ -136,7 +136,7 @@ export default function PrayerList() {
   return (
     <div className="h-full flex flex-col bg-surface-container-lowest/30">
       {/* Header Area */}
-      <div className="px-8 pt-8 pb-6 bg-white border-b border-outline-variant/50 sticky top-0 z-10">
+      <div className="px-8 pt-8 pb-6 bg-surface border-b border-outline-variant/50 sticky top-0 z-10">
         <div className="flex flex-col gap-6 md:flex-row md:items-end justify-between">
           <div>
             <div className="flex items-center gap-3 mb-2">
@@ -186,7 +186,7 @@ export default function PrayerList() {
 
       {/* Table Container */}
       <div className="flex-1 overflow-auto p-8 pt-6">
-        <div className="border border-outline-variant rounded-[32px] overflow-hidden bg-white shadow-xl shadow-surface-container/20">
+        <div className="border border-outline-variant rounded-[32px] overflow-hidden bg-surface shadow-xl shadow-surface-container/20">
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-surface-container-low/50">
@@ -227,7 +227,7 @@ export default function PrayerList() {
                       key={contact.id} 
                       className="group hover:bg-surface-container-lowest/50 transition-colors border-b border-outline-variant/10 last:border-0"
                     >
-                      <td className="sticky left-0 z-10 bg-white group-hover:bg-surface-container-lowest/50 p-4 px-8 transition-colors">
+                      <td className="sticky left-0 z-10 bg-surface group-hover:bg-surface-container-lowest/50 p-4 px-8 transition-colors">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary font-black text-sm uppercase">
                             {contact.initials}
@@ -247,7 +247,7 @@ export default function PrayerList() {
                           placeholder={`Enter burden for ${formatDate(selectedDate)}...`}
                           value={prayer?.burden || ''}
                           onChange={(e) => handleUpdatePrayer(contact.id, selectedDate, 'burden', e.target.value)}
-                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low border border-outline-variant focus:border-primary focus:bg-white outline-none transition-all text-xs font-medium resize-none shadow-sm group-hover:shadow-md"
+                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low border border-outline-variant focus:border-primary focus:bg-surface outline-none transition-all text-xs font-medium resize-none shadow-sm group-hover:shadow-md"
                         />
                       </td>
                       <td className="p-4">
@@ -255,7 +255,7 @@ export default function PrayerList() {
                           placeholder="How did God answer?"
                           value={prayer?.answer || ''}
                           onChange={(e) => handleUpdatePrayer(contact.id, selectedDate, 'answer', e.target.value)}
-                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low/50 border border-outline-variant focus:border-tertiary focus:bg-white outline-none transition-all text-xs font-medium italic text-on-surface-variant resize-none shadow-sm group-hover:shadow-md"
+                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low/50 border border-outline-variant focus:border-tertiary focus:bg-surface outline-none transition-all text-xs font-medium italic text-on-surface-variant resize-none shadow-sm group-hover:shadow-md"
                         />
                       </td>
                       <td className="p-4 text-right">
