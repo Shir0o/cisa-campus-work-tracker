@@ -205,7 +205,7 @@ export default function Settings() {
   const ThemeSection = () => (
     <div className="mt-8">
       <h2 className="text-xl font-bold text-on-surface mb-4">App Preferences</h2>
-      <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-6 shadow-sm">
+      <div className="bg-surface-container rounded-[2rem] border border-outline-variant/50 p-6 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
           <div>
             <h3 className="font-bold text-on-surface">Appearance</h3>
@@ -246,7 +246,7 @@ export default function Settings() {
           <p className="text-on-surface-variant">Manage your account information and preferences.</p>
         </div>
         
-        <div className="bg-surface-container rounded-[2rem] border border-outline-variant p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
+        <div className="bg-surface-container rounded-[2rem] border border-outline-variant/50 p-8 flex flex-col md:flex-row items-center gap-8 shadow-sm">
           <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/10 shadow-inner shrink-0 bg-secondary-container flex items-center justify-center">
              {currentUser?.photoURL ? (
                <img 
@@ -278,7 +278,7 @@ export default function Settings() {
 
         <ThemeSection />
 
-        <div className="mt-12 text-center py-6 px-4 bg-surface-variant/10 rounded-[2rem] border border-dashed border-outline-variant">
+        <div className="mt-12 text-center py-6 px-4 bg-surface-variant/5 rounded-[2rem] border border-dashed border-outline-variant/30">
           <p className="text-xs text-on-surface-variant italic">More account settings will be available in future updates.</p>
         </div>
       </div>
@@ -309,32 +309,39 @@ export default function Settings() {
             placeholder="Search users or invites..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-2xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
+            className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-2xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
           />
         </div>
-        <div className="flex gap-1 p-1 bg-surface-container rounded-2xl border border-outline-variant overflow-x-auto no-scrollbar min-w-fit">
+        <div className="flex gap-1 p-1 bg-surface-container rounded-2xl border border-outline-variant/50 overflow-x-auto no-scrollbar min-w-fit relative">
           {(['all', 'pending', 'approved', 'invited'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                "whitespace-nowrap py-2 px-6 rounded-xl text-xs font-bold capitalize transition-all",
+                "relative whitespace-nowrap py-2 px-6 rounded-xl text-xs font-bold capitalize transition-all z-10",
                 filter === f 
-                  ? "bg-secondary text-on-secondary shadow-sm" 
+                  ? "text-on-secondary" 
                   : "text-on-surface-variant hover:bg-surface-variant"
               )}
             >
+              {filter === f && (
+                <motion.div
+                  layoutId="activeFilter"
+                  className="absolute inset-0 bg-secondary rounded-xl shadow-sm z-[-1]"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                />
+              )}
               {f === 'invited' ? 'Invitations' : f}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-surface-container rounded-[2.5rem] border border-outline-variant overflow-hidden shadow-sm">
+      <div className="bg-surface-container rounded-[2.5rem] border border-outline-variant/40 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-outline-variant bg-surface-container-high/50">
+              <tr className="border-b border-outline-variant/20 bg-surface-container-high/50">
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Identity</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Role</th>
                 <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-on-surface-variant">Status</th>
@@ -342,10 +349,15 @@ export default function Settings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              <AnimatePresence mode="popLayout">
+              <AnimatePresence mode="popLayout" initial={false}>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <tr key={`skeleton-${i}`}>
+                    <motion.tr 
+                      key={`skeleton-${i}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <Skeleton className="w-10 h-10 rounded-full" />
@@ -358,16 +370,17 @@ export default function Settings() {
                       <td className="px-6 py-4"><Skeleton className="h-8 w-24 rounded-full" /></td>
                       <td className="px-6 py-4"><Skeleton className="h-8 w-20 rounded-full" /></td>
                       <td className="px-6 py-4 text-right"><Skeleton className="ml-auto h-8 w-24 rounded-xl" /></td>
-                    </tr>
+                    </motion.tr>
                   ))
                 ) : (
                   [
                     ...filteredInvites.map((invite) => (
                       <motion.tr 
                         layout
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
                         key={`invite-${invite.email}`} 
                         className="bg-primary/5 hover:bg-primary/10 transition-colors group"
                       >
@@ -406,15 +419,16 @@ export default function Settings() {
                     ...filteredUsers.map((u) => (
                       <motion.tr 
                         layout
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
                         key={u.uid} 
                         className="hover:bg-surface-container-high/50 transition-colors group"
                       >
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant relative shadow-sm">
+                            <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 relative shadow-sm">
                               {u.photoURL ? (
                                 <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
                               ) : (
@@ -422,14 +436,14 @@ export default function Settings() {
                                   {u.displayName?.[0] || u.email[0].toUpperCase()}
                                 </div>
                               )}
-                              {u.uid === currentUser?.uid && (
-                                <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                                  <div className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-sm shadow-primary"></div>
-                                </div>
-                              )}
                             </div>
                             <div>
-                              <p className="font-bold text-on-surface leading-tight">{u.displayName || 'Unnamed User'}</p>
+                              <p className="font-bold text-on-surface leading-tight">
+                                {u.displayName || 'Unnamed User'}
+                                {u.uid === currentUser?.uid && (
+                                  <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md uppercase tracking-wider">You</span>
+                                )}
+                              </p>
                               <p className="text-xs text-on-surface-variant">{u.email}</p>
                             </div>
                           </div>
@@ -508,7 +522,7 @@ export default function Settings() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-md bg-surface-container rounded-[2.5rem] border border-outline-variant p-8 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-surface-container rounded-[2.5rem] border border-outline-variant/50 p-8 shadow-2xl overflow-hidden"
             >
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
