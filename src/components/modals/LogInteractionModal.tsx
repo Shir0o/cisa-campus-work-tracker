@@ -1,0 +1,360 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  Search, 
+  X, 
+  Check, 
+  MessageSquare, 
+  Calendar, 
+  Clock, 
+  Loader2,
+  Users,
+  Send,
+  Phone,
+  Coffee,
+  Info,
+  CalendarDays,
+  HeartHandshake
+} from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
+import { Contact } from '../../types';
+import { cn } from '../../lib/utils';
+import { useAuth } from '../AuthProvider';
+
+interface LogInteractionModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function LogInteractionModal({ isOpen, onClose }: LogInteractionModalProps) {
+  const { user } = useAuth();
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Form State
+  const [type, setType] = useState<'chat' | 'email' | 'call' | 'meeting'>('chat');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [notes, setNotes] = useState('');
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Contact[];
+      setContacts(data);
+      setLoading(false);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'contacts');
+    });
+    return () => unsubscribe();
+  }, [isOpen]);
+
+  const filteredContacts = useMemo(() => {
+    const lower = searchQuery.toLowerCase();
+    return contacts.filter(c => 
+      c.name.toLowerCase().includes(lower) || 
+      c.email.toLowerCase().includes(lower) ||
+      (c.role && c.role.toLowerCase().includes(lower))
+    );
+  }, [searchQuery, contacts]);
+
+  const toggleContact = (id: string) => {
+    const newSet = new Set(selectedContactIds);
+    if (newSet.has(id)) newSet.delete(id);
+    else newSet.add(id);
+    setSelectedContactIds(newSet);
+  };
+
+  const selectedContacts = contacts.filter(c => selectedContactIds.has(c.id));
+
+  const handleLogInteraction = async () => {
+    if (selectedContactIds.size === 0 || !notes.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      const batch = writeBatch(db);
+      
+      for (const contactId of selectedContactIds) {
+        const contact = contacts.find(c => c.id === contactId);
+        const interactionRef = doc(collection(db, `contacts/${contactId}/interactions`));
+        
+        batch.set(interactionRef, {
+          type,
+          date,
+          content: notes,
+          createdAt: serverTimestamp(),
+          createdById: user?.uid,
+          createdByName: user?.displayName || 'Tony Wang',
+          contactId,
+          contactName: contact?.name || 'Unknown'
+        });
+
+        // Also update contact's last seen/activity
+        const contactRef = doc(db, 'contacts', contactId);
+        batch.update(contactRef, {
+          lastSeen: date,
+          updatedAt: serverTimestamp()
+        });
+      }
+
+      await batch.commit();
+      onClose();
+      // Reset form
+      setSelectedContactIds(new Set());
+      setNotes('');
+      setSearchQuery('');
+    } catch (error) {
+      console.error('Error logging batch interaction:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'batch/interactions');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const interactionTypes = [
+    { id: 'chat', label: 'Message', icon: MessageSquare, color: 'text-primary bg-primary/10' },
+    { id: 'email', label: 'Email', icon: Send, color: 'text-secondary bg-secondary/10' },
+    { id: 'call', label: 'Call', icon: Phone, color: 'text-tertiary bg-tertiary/10' },
+    { id: 'meeting', label: 'Meeting', icon: Coffee, color: 'text-success bg-success/10' },
+  ];
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="relative w-full max-w-4xl max-h-[90vh] bg-surface-container rounded-[2rem] shadow-2xl overflow-hidden border border-outline-variant flex flex-col"
+          >
+            {/* Header */}
+            <div className="p-6 border-b border-outline-variant flex items-center justify-between bg-surface-container-high/50 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center">
+                  <HeartHandshake className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-on-surface">Log Interaction</h2>
+                  <p className="text-xs text-on-surface-variant font-medium">Record activities for multiple contacts at once</p>
+                </div>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-2 rounded-full hover:bg-surface-variant transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+              {/* Left Side: Contact Picker */}
+              <div className="w-full lg:w-1/2 border-r border-outline-variant/30 flex flex-col min-h-0 bg-surface-container-low/30">
+                <div className="p-4 space-y-4">
+                   <div className="relative">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                    <input 
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search to add contacts..."
+                      className="w-full h-12 bg-surface-container-low border border-outline/20 rounded-2xl pl-11 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 text-on-surface transition-all"
+                    />
+                  </div>
+
+                  <AnimatePresence mode="popLayout">
+                    {selectedContactIds.size > 0 && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto no-scrollbar p-1"
+                      >
+                        {selectedContacts.map(c => (
+                          <motion.div 
+                            layout
+                            key={c.id}
+                            initial={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.8, opacity: 0 }}
+                            className="flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-[10px] font-black uppercase tracking-widest border border-primary/20 shadow-sm"
+                          >
+                            {c.name}
+                            <button onClick={() => toggleContact(c.id)} className="hover:text-primary-variant ml-1">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </motion.div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2 no-scrollbar font-sans">
+                  {loading ? (
+                    <div className="flex flex-col items-center justify-center h-full p-8 opacity-40">
+                      <Loader2 className="w-8 h-8 animate-spin mb-2" />
+                      <p className="text-xs font-bold uppercase tracking-widest">Loading Contacts...</p>
+                    </div>
+                  ) : filteredContacts.length === 0 ? (
+                    <div className="p-8 text-center opacity-50">
+                      <p className="text-sm">No contacts matching "{searchQuery}"</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0.5">
+                      {filteredContacts.map(contact => {
+                        const isSelected = selectedContactIds.has(contact.id);
+                        return (
+                          <button
+                            key={contact.id}
+                            onClick={() => toggleContact(contact.id)}
+                            className={cn(
+                              "w-full flex items-center gap-3 p-3 rounded-2xl transition-all text-left",
+                              isSelected 
+                                ? "bg-primary/5 ring-1 ring-primary/20" 
+                                : "hover:bg-surface-container-highest"
+                            )}
+                          >
+                            <div className="relative shrink-0">
+                              <div className="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center font-bold text-sm text-on-surface-variant overflow-hidden border border-outline-variant/30">
+                                {contact.avatar ? (
+                                  <img src={contact.avatar} alt={contact.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <span className="text-[10px]">{contact.initials}</span>
+                                )}
+                              </div>
+                              <div className={cn(
+                                "absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-surface-container flex items-center justify-center transition-all",
+                                isSelected ? "bg-primary scale-110" : "bg-surface-container-highest scale-0"
+                              )}>
+                                <Check className="w-2.5 h-2.5 text-white" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className={cn(
+                                "text-sm font-bold transition-colors",
+                                isSelected ? "text-primary" : "text-on-surface"
+                              )}>{contact.name}</p>
+                              <p className="text-[9px] text-on-surface-variant font-black uppercase tracking-[0.05em] opacity-60 truncate">
+                                {contact.role} • {contact.stage}
+                              </p>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Side: Form */}
+              <div className="w-full lg:w-1/2 flex flex-col min-h-0 bg-surface-container p-6 space-y-6 overflow-y-auto no-scrollbar">
+                <div className="space-y-6">
+                  <div>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1 mb-3 block">Interaction Type</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {interactionTypes.map(t => {
+                        const Icon = t.icon;
+                        const isActive = type === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => setType(t.id as any)}
+                            className={cn(
+                              "flex items-center gap-2.5 p-3 rounded-2xl border transition-all text-xs font-bold",
+                              isActive 
+                                ? "bg-primary/10 border-primary text-primary" 
+                                : "bg-surface-container-low border-outline/10 text-on-surface-variant hover:border-outline/40"
+                            )}
+                          >
+                            <div className={cn("p-1.5 rounded-xl", t.color)}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            {t.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1 block">Date</label>
+                    <div className="relative">
+                      <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+                      <input 
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full h-11 bg-surface-container-low border border-outline/20 rounded-xl pl-10 pr-4 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1 block">Notes / Content</label>
+                    <textarea 
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="What was discussed? Any takeaways or follow-ups?"
+                      className="w-full h-32 bg-surface-container-low border border-outline/20 rounded-2xl p-4 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed placeholder:text-on-surface-variant/30 shadow-sm"
+                    />
+                  </div>
+
+                  {selectedContactIds.size > 0 && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-primary/5 rounded-2xl p-4 border border-primary/10 flex gap-3"
+                    >
+                      <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Batch Recognition</p>
+                        <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                          This interaction will be logged for <strong>{selectedContactIds.size} contacts</strong>. Each will have their own activity entry and updated "Last Seen" date.
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+
+                <div className="mt-auto pt-6 border-t border-outline-variant/30 flex items-center justify-end gap-3">
+                  <button 
+                    onClick={onClose}
+                    className="px-6 h-12 rounded-2xl font-bold text-on-surface-variant hover:bg-surface-variant transition-colors text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={selectedContactIds.size === 0 || !notes.trim() || isSubmitting}
+                    onClick={handleLogInteraction}
+                    className="px-8 h-12 bg-primary text-on-primary rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-2px] disabled:opacity-50 disabled:translate-y-0 disabled:shadow-none transition-all flex items-center gap-2 text-sm"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Check className="w-4 h-4" />
+                        Log Interaction
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+}

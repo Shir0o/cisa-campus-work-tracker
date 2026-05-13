@@ -136,7 +136,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
       const existingEvents = existingEventsSnapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
 
       for (const mapping in dryRunData.eventMappings) {
-        const status = dryRunData.eventMappings[mapping];
+        const status = dryRunData.eventMappings[mapping] as string;
         if (status.startsWith('Will create')) {
           const name = status.replace('Will create new event: ', '');
           const exists = existingEvents.find(e => e.name === name);
@@ -317,8 +317,8 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                             <div className="font-bold text-on-surface w-1/3 truncate">{header}</div>
                             <div className={cn(
                               "w-2/3 italic",
-                              String(status).startsWith('Matches') ? "text-primary" : "text-secondary"
-                            )}>{String(status)}</div>
+                              (status as string).startsWith('Matches') ? "text-primary" : "text-secondary"
+                            )}>{status as string}</div>
                           </div>
                         ))}
                       </div>
