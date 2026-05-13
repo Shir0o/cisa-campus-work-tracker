@@ -72,18 +72,7 @@ export default function Dashboard() {
       
       setLegacyCreations(creationEvents);
 
-      const editEvents = contactData
-        .filter(c => c.updatedAt && c.updatedAt !== c.createdAt)
-        .map(c => ({
-          id: `edit-contact-${c.id}`,
-          user: c.updatedByName || 'Tony Wang', // Prefer actual updater, fallback to Tony Wang
-          action: 'updated details for',
-          target: c.name,
-          contactId: c.id,
-          time: new Date(c.updatedAt || '').toLocaleDateString() === new Date().toLocaleDateString() ? 'Today' : new Date(c.updatedAt || '').toLocaleDateString(),
-          type: 'edit',
-          rawTime: new Date(c.updatedAt || '').getTime()
-        } as Activity & { rawTime: number }));
+      const editEvents: Activity[] = [];
       
       setLegacyEdits(editEvents);
       setLoading(false);
@@ -390,8 +379,18 @@ export default function Dashboard() {
                     <p className="text-on-surface">
                       <span className="font-bold">{activity.user}</span> {activity.action} <span className="font-bold">{activity.target}</span>.
                     </p>
-                    <p className="text-sm text-on-surface-variant mt-1">
-                      {activity.time} {activity.description && `• ${activity.description}`}
+                    {activity.description && (
+                      <div className="text-sm text-on-surface-variant mt-2 bg-surface-container-low/50 p-3 rounded-xl border border-outline-variant/30 leading-relaxed">
+                        {activity.description.split('\n').map((line, i) => (
+                          <div key={i} className="flex items-start gap-2">
+                            <span className="text-primary mt-1.5 w-1 h-1 rounded-full shrink-0" />
+                            <span>{line}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] sm:text-xs text-on-surface-variant mt-2 font-medium opacity-70">
+                      {activity.time}
                     </p>
                   </div>
                 </div>

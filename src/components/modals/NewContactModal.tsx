@@ -127,7 +127,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         targetId: docRef.id,
         targetName: fullName,
         targetType: 'contact',
-        type: 'create'
+        type: 'create',
+        description: `Group: ${formData.role}\nStage: ${formData.stage}\nFirst Met: ${formData.location}`
       });
 
       if (user) {

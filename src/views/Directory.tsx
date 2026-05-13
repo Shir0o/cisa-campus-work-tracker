@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
@@ -140,18 +140,27 @@ export default function Directory() {
 
     try {
       const batch = writeBatch(db);
-      selectedIds.forEach(id => {
-        const contact = contacts.find(c => c.id === id);
-        if (contact) {
-          const currentTags = contact.tags || [];
-          if (!currentTags.includes(newTag)) {
-            batch.update(doc(db, 'contacts', id), {
-              tags: [...currentTags, newTag],
-              updatedAt: new Date().toISOString(),
-              updatedBy: user?.uid,
-              updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
-            });
-          }
+      const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+      
+      selectedContacts.forEach(contact => {
+        const currentTags = contact.tags || [];
+        if (!currentTags.includes(newTag)) {
+          const updatedTags = [...currentTags, newTag];
+          batch.update(doc(db, 'contacts', contact.id), {
+            tags: updatedTags,
+            updatedAt: new Date().toISOString(),
+            updatedBy: user?.uid,
+            updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+          });
+
+          logActivity({
+            action: `added tag #${newTag} to`,
+            targetId: contact.id,
+            targetName: contact.name,
+            targetType: 'contact',
+            type: 'edit',
+            description: `Tags: [${currentTags.join(', ')}] → [${updatedTags.join(', ')}]`
+          });
         }
       });
       await batch.commit();
@@ -218,8 +227,18 @@ export default function Directory() {
 
     try {
       const batch = writeBatch(db);
-      selectedIds.forEach(id => {
-        batch.delete(doc(db, 'contacts', id));
+      const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+
+      selectedContacts.forEach(contact => {
+        batch.delete(doc(db, 'contacts', contact.id));
+        
+        logActivity({
+          action: 'deleted contact',
+          targetId: contact.id,
+          targetName: contact.name,
+          targetType: 'contact',
+          type: 'alert'
+        });
       });
       await batch.commit();
       setSelectedIds(new Set());

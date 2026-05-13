@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit, deleteDoc } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { cn, sleep } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
@@ -135,11 +135,25 @@ export default function Attendance() {
         newAttendance[eventId] = true;
       }
 
+      const newStatus = newAttendance[eventId];
+      const event = events.find(e => e.id === eventId);
+      const statusText = newStatus === true ? 'Present' : newStatus === 'absent' ? 'Absent' : 'None';
+      const prevStatusText = currentStatus === true ? 'Present' : currentStatus === 'absent' ? 'Absent' : 'None';
+
       await updateDoc(contactRef, {
         attendance: newAttendance,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
         updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+      });
+
+      logActivity({
+        action: `updated attendance for event "${event?.name || 'Unknown Event'}" to ${statusText} for`,
+        targetId: contactId,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'edit',
+        description: `Attendance [${event?.name}]: ${prevStatusText} → ${statusText}`
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `contacts/${contactId}`);
