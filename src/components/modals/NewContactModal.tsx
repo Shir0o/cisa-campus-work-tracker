@@ -237,7 +237,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                 {/* Status (role) */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Briefcase className="w-3.5 h-3.5" /> STATUS
+                    <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                   </label>
                   <input
                     required
@@ -315,7 +315,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                 {/* Stage selector */}
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Calendar className="w-3.5 h-3.5" /> STAGE
+                    <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
                   </label>
                   <select
                     value={formData.stage}

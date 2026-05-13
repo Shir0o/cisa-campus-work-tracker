@@ -304,7 +304,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       if (formData.email !== contact.email) changes.push(`email: "${contact.email}" → "${formData.email}"`);
       if (formData.phone !== contact.phone) changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
       if (formData.location !== contact.location) changes.push(`first met: "${contact.location}" → "${formData.location}"`);
-      if (formData.role !== contact.role) changes.push(`status: "${contact.role}" → "${formData.role}"`);
+      if (formData.role !== contact.role) changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage) changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
       if (formData.status !== contact.status) changes.push(`interaction status: "${contact.status}" → "${formData.status}"`);
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
@@ -613,8 +613,8 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Briefcase className="w-3.5 h-3.5" /> STATUS
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider text-primary">
+                        <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                       </label>
                       <input
                         required
@@ -684,8 +684,8 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       </AnimatePresence>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <Calendar className="w-3.5 h-3.5" /> STAGE
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider text-primary">
+                        <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
                       </label>
                       <select
                         value={formData.stage}
@@ -782,11 +782,16 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                             <Briefcase className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Current Stage</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight">
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Pipeline Stage</p>
+                            <div className="flex flex-col gap-1 mt-1">
+                              <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight w-fit">
                                 {contact.stage}
                               </span>
+                              {contact.status && contact.status !== contact.stage && (
+                                <span className="text-[9px] text-on-surface-variant font-bold uppercase italic opacity-70 ml-1">
+                                  {contact.status}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
