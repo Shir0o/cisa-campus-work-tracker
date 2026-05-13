@@ -26,6 +26,137 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { aiService } from '../services/aiService';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
+interface ActivityItemProps {
+  key?: React.Key;
+  activity: Activity;
+  contacts: Contact[];
+  onOpenContact: (contact: Contact) => void;
+}
+
+function ActivityItem({ activity, contacts, onOpenContact }: ActivityItemProps) {
+  const [humanMessage, setHumanMessage] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const isInteraction = ['call', 'email', 'event'].includes(activity.type);
+
+  useEffect(() => {
+    const fetchHumanFriendly = async () => {
+      const fingerprint = `${activity.id}-${activity.type}-${activity.description?.length || 0}`;
+      
+      try {
+        const cacheRef = doc(db, 'ai_summaries', `msg-${fingerprint}`);
+        const cacheSnap = await getDoc(cacheRef);
+        
+        if (cacheSnap.exists()) {
+          setHumanMessage(cacheSnap.data().summary);
+          return;
+        }
+
+        setLoading(true);
+        const msg = await aiService.humanizeActivity(activity);
+        
+        await setDoc(cacheRef, {
+          summary: msg,
+          activityIds: [activity.id],
+          createdAt: serverTimestamp()
+        });
+
+        setHumanMessage(msg);
+      } catch (err) {
+        console.error("Single Activity Humanization Error:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHumanFriendly();
+  }, [activity.id]);
+
+  return (
+    <div className="flex gap-4 items-start group relative">
+      <div className={cn(
+        "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:rounded-xl group-hover:rotate-3",
+        activity.type === 'call' ? "bg-primary-container text-primary" :
+        activity.type === 'email' ? "bg-secondary-container text-secondary" :
+        activity.type === 'event' ? "bg-tertiary-container text-tertiary" :
+        activity.type === 'comment' ? "bg-surface-container-high text-on-surface-variant" :
+        activity.type === 'edit' ? "bg-surface-container-high text-on-surface-variant" :
+        activity.type === 'create' ? "bg-primary-container text-primary" :
+        "bg-error-container text-on-error-container"
+      )}>
+        {activity.type === 'call' && <Phone className="w-5 h-5" />}
+        {activity.type === 'email' && <Mail className="w-5 h-5" />}
+        {activity.type === 'event' && <Calendar className="w-5 h-5" />}
+        {activity.type === 'comment' && <MessageSquare className="w-5 h-5" />}
+        {activity.type === 'edit' && <RefreshCw className="w-4 h-4" />}
+        {activity.type === 'create' && <Users className="w-5 h-5" />}
+        {activity.type === 'alert' && <AlertTriangle className="w-5 h-5" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-baseline gap-2">
+          <div className="text-on-surface text-[15px] leading-snug relative group/msg">
+            {loading ? (
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+              </div>
+            ) : (
+              <div className="relative">
+                <p className="font-medium">
+                  {humanMessage || (
+                    <>
+                      <span className="font-semibold text-primary">{activity.user}</span> 
+                      {' '}{activity.action}{' '}
+                      <span className="font-semibold">{activity.target}</span>
+                    </>
+                  )}
+                </p>
+                
+                {/* Interaction Hover Details */}
+                {isInteraction && activity.description && (
+                  <div className="absolute z-20 left-0 top-full mt-2 w-72 p-4 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant opacity-0 pointer-events-none group-hover/msg:opacity-100 group-hover/msg:pointer-events-auto transition-all duration-200 transform translate-y-1 group-hover/msg:translate-y-0 backdrop-blur-md">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Original Record</span>
+                    </div>
+                    <div className="text-xs text-on-surface font-medium leading-relaxed italic bg-surface-container/50 p-3 rounded-xl border border-outline-variant/30">
+                      "{activity.description}"
+                    </div>
+                    <div className="absolute -top-1 left-4 w-2 h-2 bg-surface-container-high border-l border-t border-outline-variant rotate-45" />
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          <span className="text-[10px] text-on-surface-variant/60 whitespace-nowrap font-medium">
+            {activity.time}
+          </span>
+        </div>
+        
+        <div className="flex items-center gap-3 mt-1">
+          {activity.contactId && (
+            <button
+              onClick={() => {
+                const contact = contacts.find(c => c.id === activity.contactId);
+                if (contact) {
+                  onOpenContact(contact);
+                }
+              }}
+              className="text-[10px] font-bold text-primary flex items-center gap-1 hover:gap-1.5 transition-all opacity-0 group-hover:opacity-100"
+            >
+              Contact Profile <ExternalLink className="w-3 h-3" />
+            </button>
+          )}
+          {isInteraction && (
+            <div className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity">
+              Hover for notes
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { isSidebarCollapsed } = useLayout();
@@ -44,19 +175,6 @@ export default function Dashboard() {
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [aiSummary, setAiSummary] = useState<string | null>(null);
-  const [aiSummaryKey, setAiSummaryKey] = useState<string | null>(null);
-  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-
-  // Helper to generate a stable cache key from activities
-  const getCacheKey = async (acts: Activity[]) => {
-    // We base the key on the sorted IDs of the activities included in the summary
-    const ids = acts.map(a => a.id).sort().join(',');
-    const msgUint8 = new TextEncoder().encode(ids);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  };
 
   useEffect(() => {
     // 1. Fetch Contacts
@@ -218,51 +336,6 @@ export default function Dashboard() {
     });
   }, [systemActivities, legacyInteractions, legacyComments, legacyCreations, legacyEdits, contacts]);
 
-  // Generate AI Summary with caching
-  useEffect(() => {
-    const generateSummary = async () => {
-      // Only generate if we have enough context and aren't already working on it
-      if (activities.length > 5 && !isGeneratingSummary) {
-        try {
-          const cacheKey = await getCacheKey(activities);
-          
-          // Skip if the summary in state matches the current activity set
-          if (aiSummaryKey === cacheKey) return;
-
-          setIsGeneratingSummary(true);
-          
-          // Check Firestore Cache first
-          const cacheRef = doc(db, 'ai_summaries', cacheKey);
-          const cacheSnap = await getDoc(cacheRef);
-
-          if (cacheSnap.exists()) {
-            setAiSummary(cacheSnap.data().summary);
-            setAiSummaryKey(cacheKey);
-          } else {
-            // Generate new summary via AI
-            const summary = await aiService.summarizeRecentActivity(activities);
-            
-            // Persist to cache
-            await setDoc(cacheRef, {
-              summary,
-              activityIds: activities.map(a => a.id),
-              createdAt: serverTimestamp()
-            });
-
-            setAiSummary(summary);
-            setAiSummaryKey(cacheKey);
-          }
-        } catch (err) {
-          console.error("AI Summarization / Cache Error:", err);
-        } finally {
-          setIsGeneratingSummary(false);
-        }
-      }
-    };
-
-    generateSummary();
-  }, [activities, aiSummaryKey, isGeneratingSummary]);
-
   const metrics = [
     { label: 'Total Contacts', value: contacts.length.toString(), trend: '0%', icon: Users, color: 'primary' },
     { label: 'Recent Follow-ups', value: recentFollowUpsCount.toString(), trend: 'Past 7 Days', icon: CheckCircle2, color: 'secondary' },
@@ -416,92 +489,18 @@ export default function Dashboard() {
           </div>
 
           <div className="px-5 sm:px-6 pb-6 space-y-6 flex-1 overflow-hidden">
-            {/* AI Summary Card */}
-            <AnimatePresence mode="wait">
-              {(aiSummary || isGeneratingSummary) && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="bg-primary-container/30 rounded-2xl p-4 border border-primary/10 mb-6 relative overflow-hidden"
-                >
-                  <div className="flex items-center gap-2 mb-2 text-primary">
-                    <Sparkles className={cn("w-4 h-4", isGeneratingSummary && "animate-pulse")} />
-                    <span className="text-xs font-bold uppercase tracking-wider">AI Insights</span>
-                  </div>
-                  {isGeneratingSummary ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-2/3" />
-                    </div>
-                  ) : (
-                    <p className="text-on-surface-variant text-sm leading-relaxed italic">
-                      "{aiSummary}"
-                    </p>
-                  )}
-                  {/* Decorative background circle */}
-                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
-                </motion.div>
-              )}
-            </AnimatePresence>
-
             <div className="space-y-6">
               {activities.length > 0 ? (
                 activities.map((activity) => (
-                  <div key={activity.id} className="flex gap-4 items-start group">
-                    <div className={cn(
-                      "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:rounded-xl group-hover:rotate-3",
-                      activity.type === 'call' ? "bg-primary-container text-primary" :
-                      activity.type === 'email' ? "bg-secondary-container text-secondary" :
-                      activity.type === 'event' ? "bg-tertiary-container text-tertiary" :
-                      activity.type === 'comment' ? "bg-surface-container-high text-on-surface-variant" :
-                      activity.type === 'edit' ? "bg-surface-container-high text-on-surface-variant" :
-                      activity.type === 'create' ? "bg-primary-container text-primary" :
-                      "bg-error-container text-on-error-container"
-                    )}>
-                      {activity.type === 'call' && <Phone className="w-5 h-5" />}
-                      {activity.type === 'email' && <Mail className="w-5 h-5" />}
-                      {activity.type === 'event' && <Calendar className="w-5 h-5" />}
-                      {activity.type === 'comment' && <MessageSquare className="w-5 h-5" />}
-                      {activity.type === 'edit' && <RefreshCw className="w-4 h-4" />}
-                      {activity.type === 'create' && <Users className="w-5 h-5" />}
-                      {activity.type === 'alert' && <AlertTriangle className="w-5 h-5" />}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-baseline gap-2">
-                        <p className="text-on-surface text-[15px] leading-snug">
-                          <span className="font-semibold text-primary">{activity.user}</span> 
-                          {' '}{activity.action}{' '}
-                          <span className="font-semibold">{activity.target}</span>
-                        </p>
-                        <span className="text-[10px] text-on-surface-variant/60 whitespace-nowrap font-medium">
-                          {activity.time}
-                        </span>
-                      </div>
-                      
-                      {activity.description && (
-                        <div className="mt-2 bg-surface-container-low/40 p-3 rounded-2xl border border-outline-variant/20 hover:border-outline-variant/40 transition-colors group/card">
-                          <div className="text-sm text-on-surface-variant leading-relaxed line-clamp-3 group-hover/card:line-clamp-none transition-all">
-                            {activity.description}
-                          </div>
-                          {activity.contactId && (
-                            <button
-                              onClick={() => {
-                                const contact = contacts.find(c => c.id === activity.contactId);
-                                if (contact) {
-                                  setSelectedContact(contact);
-                                  setIsDetailsModalOpen(true);
-                                }
-                              }}
-                              className="mt-2 text-[10px] font-bold text-primary flex items-center gap-1 hover:gap-1.5 transition-all opacity-0 group-hover:opacity-100"
-                            >
-                              Details <ExternalLink className="w-3 h-3" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <ActivityItem 
+                    key={activity.id} 
+                    activity={activity} 
+                    contacts={contacts}
+                    onOpenContact={(c) => {
+                      setSelectedContact(c);
+                      setIsDetailsModalOpen(true);
+                    }}
+                  />
                 ))
               ) : (
                 <div className="text-center py-12">

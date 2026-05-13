@@ -276,5 +276,42 @@ export const aiService = {
       console.error("AI Summarization Failed:", error);
       return "Unable to generate activity summary at this time.";
     }
+  },
+
+  async humanizeActivity(activity: Activity): Promise<string> {
+    const prompt = `
+      Convert the following community activity into a short, natural, and friendly sentence for a community dashboard.
+      A community manager will read this to stay updated on their members.
+
+      Activity Data:
+      - User who performed action: ${activity.user}
+      - Type of Action: ${activity.action}
+      - Person targeted/affected: ${activity.target}
+      - Event Type: ${activity.type}
+      - Technical Details (often shows changes or raw input): ${activity.description || 'N/A'}
+
+      Special Instructions for Technical Details:
+      - If you see patterns like "field: 'old' -> 'new'", translate it into a human update (e.g., "John updated Sarah's phone number").
+      - If it's a 'call', 'email', or 'event', emphasize the interaction based on the notes (e.g., "John shared a warm phone conversation with Sarah").
+      - If it's a comment, mention that a thought or note was shared.
+      
+      General Rules:
+      - Max 15 words.
+      - Use active voice.
+      - Sound professional yet warm.
+      - Output ONLY the humanized sentence. No quotes, no intro.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+      });
+
+      return response.text.trim().replace(/^"|"$/g, '') || `${activity.user} ${activity.action} ${activity.target}`;
+    } catch (error) {
+      console.error("AI Humanization Failed:", error);
+      return `${activity.user} ${activity.action} ${activity.target}`;
+    }
   }
 };
