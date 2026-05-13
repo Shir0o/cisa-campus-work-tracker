@@ -1,26 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import { 
-  Users, 
-  CheckCircle2, 
-  AlertTriangle, 
-  TrendingUp, 
-  Clock, 
-  RefreshCw,
-  Phone,
-  Mail,
-  Calendar,
-  ChevronRight,
-  MessageSquare
+  Sparkles, 
+  Phone, 
+  Mail, 
+  Calendar, 
+  ChevronRight, 
+  MessageSquare, 
+  ExternalLink,
+  Users,
+  CheckCircle2,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, query, orderBy, limit, collectionGroup, where, getDoc, doc } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, collectionGroup, where } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { Contact, Activity, Interaction, Comment, SystemActivity } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
+import { aiService } from '../services/aiService';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 export default function Dashboard() {
@@ -41,6 +44,8 @@ export default function Dashboard() {
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
 
   useEffect(() => {
     // 1. Fetch Contacts
@@ -185,7 +190,7 @@ export default function Dashboard() {
     const merged = [...systemActivities, ...legacyInteractions, ...legacyComments, ...legacyCreations, ...legacyEdits]
       .sort((a: any, b: any) => b.rawTime - a.rawTime)
       .filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i)
-      .slice(0, 20);
+      .slice(0, 15);
 
     // Resolve contact names if we have the IDs
     return merged.map(activity => {
@@ -201,6 +206,25 @@ export default function Dashboard() {
       return activity;
     });
   }, [systemActivities, legacyInteractions, legacyComments, legacyCreations, legacyEdits, contacts]);
+
+  // Generate AI Summary when activities change significantly
+  useEffect(() => {
+    const generateSummary = async () => {
+      if (activities.length > 3 && !aiSummary && !isGeneratingSummary) {
+        setIsGeneratingSummary(true);
+        try {
+          const summary = await aiService.summarizeRecentActivity(activities);
+          setAiSummary(summary);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setIsGeneratingSummary(false);
+        }
+      }
+    };
+
+    generateSummary();
+  }, [activities.length, aiSummary, isGeneratingSummary]);
 
   const metrics = [
     { label: 'Total Contacts', value: contacts.length.toString(), trend: '0%', icon: Users, color: 'primary' },
@@ -341,65 +365,113 @@ export default function Dashboard() {
       )}>
         {/* Recent Activity Feed */}
         <div className={cn(
-          "bg-surface-container rounded-3xl p-5 sm:p-6 border border-outline-variant/30",
+          "bg-surface-container rounded-3xl border border-outline-variant/30 flex flex-col",
           "lg:col-span-2"
         )}>
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-medium text-on-surface">Recent Activity</h3>
+          <div className="p-5 sm:p-6 pb-0 flex justify-between items-center mb-4">
+            <h3 className="text-xl font-medium text-on-surface">Community Pulse</h3>
             <button 
               onClick={() => navigate('/directory')}
               className="text-primary font-semibold text-sm hover:underline flex items-center gap-1"
             >
-              View All <ChevronRight className="w-4 h-4" />
+              Recent <ChevronRight className="w-4 h-4" />
             </button>
           </div>
-          <div className="space-y-6">
-            {activities.length > 0 ? (
-              activities.map((activity) => (
-                <div key={activity.id} className="flex gap-4 items-start group">
-                  <div className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110",
-                    activity.type === 'call' ? "bg-primary-fixed text-on-primary-fixed" :
-                    activity.type === 'email' ? "bg-secondary-fixed text-on-secondary-fixed" :
-                    activity.type === 'event' ? "bg-tertiary-fixed text-on-tertiary-fixed" :
-                    activity.type === 'comment' ? "bg-secondary-container text-on-secondary-container" :
-                    activity.type === 'edit' ? "bg-tertiary-container text-on-tertiary-container" :
-                    activity.type === 'create' ? "bg-primary-container text-on-primary-container" :
-                    "bg-error-container text-on-error-container"
-                  )}>
-                    {activity.type === 'call' && <Phone className="w-5 h-5" />}
-                    {activity.type === 'email' && <Mail className="w-5 h-5" />}
-                    {activity.type === 'event' && <Calendar className="w-5 h-5" />}
-                    {activity.type === 'comment' && <MessageSquare className="w-5 h-5" />}
-                    {activity.type === 'edit' && <RefreshCw className="w-5 h-5" />}
-                    {activity.type === 'create' && <Users className="w-5 h-5" />}
-                    {activity.type === 'alert' && <AlertTriangle className="w-5 h-5" />}
+
+          <div className="px-5 sm:px-6 pb-6 space-y-6 flex-1 overflow-hidden">
+            {/* AI Summary Card */}
+            <AnimatePresence mode="wait">
+              {(aiSummary || isGeneratingSummary) && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="bg-primary-container/30 rounded-2xl p-4 border border-primary/10 mb-6 relative overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 mb-2 text-primary">
+                    <Sparkles className={cn("w-4 h-4", isGeneratingSummary && "animate-pulse")} />
+                    <span className="text-xs font-bold uppercase tracking-wider">AI Insights</span>
                   </div>
-                  <div>
-                    <p className="text-on-surface">
-                      <span className="font-bold">{activity.user}</span> {activity.action} <span className="font-bold">{activity.target}</span>.
+                  {isGeneratingSummary ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-2/3" />
+                    </div>
+                  ) : (
+                    <p className="text-on-surface-variant text-sm leading-relaxed italic">
+                      "{aiSummary}"
                     </p>
-                    {activity.description && (
-                      <div className="text-sm text-on-surface-variant mt-2 bg-surface-container-low/50 p-3 rounded-xl border border-outline-variant/30 leading-relaxed">
-                        {activity.description.split('\n').map((line, i) => (
-                          <div key={i} className="flex items-start gap-2">
-                            <span className="text-primary mt-1.5 w-1 h-1 rounded-full shrink-0" />
-                            <span>{line}</span>
-                          </div>
-                        ))}
+                  )}
+                  {/* Decorative background circle */}
+                  <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-primary/5 rounded-full blur-2xl" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="space-y-6">
+              {activities.length > 0 ? (
+                activities.map((activity) => (
+                  <div key={activity.id} className="flex gap-4 items-start group">
+                    <div className={cn(
+                      "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all duration-300 group-hover:rounded-xl group-hover:rotate-3",
+                      activity.type === 'call' ? "bg-primary-container text-primary" :
+                      activity.type === 'email' ? "bg-secondary-container text-secondary" :
+                      activity.type === 'event' ? "bg-tertiary-container text-tertiary" :
+                      activity.type === 'comment' ? "bg-surface-container-high text-on-surface-variant" :
+                      activity.type === 'edit' ? "bg-surface-container-high text-on-surface-variant" :
+                      activity.type === 'create' ? "bg-primary-container text-primary" :
+                      "bg-error-container text-on-error-container"
+                    )}>
+                      {activity.type === 'call' && <Phone className="w-5 h-5" />}
+                      {activity.type === 'email' && <Mail className="w-5 h-5" />}
+                      {activity.type === 'event' && <Calendar className="w-5 h-5" />}
+                      {activity.type === 'comment' && <MessageSquare className="w-5 h-5" />}
+                      {activity.type === 'edit' && <RefreshCw className="w-4 h-4" />}
+                      {activity.type === 'create' && <Users className="w-5 h-5" />}
+                      {activity.type === 'alert' && <AlertTriangle className="w-5 h-5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between items-baseline gap-2">
+                        <p className="text-on-surface text-[15px] leading-snug">
+                          <span className="font-semibold text-primary">{activity.user}</span> 
+                          {' '}{activity.action}{' '}
+                          <span className="font-semibold">{activity.target}</span>
+                        </p>
+                        <span className="text-[10px] text-on-surface-variant/60 whitespace-nowrap font-medium">
+                          {activity.time}
+                        </span>
                       </div>
-                    )}
-                    <p className="text-[10px] sm:text-xs text-on-surface-variant mt-2 font-medium opacity-70">
-                      {activity.time}
-                    </p>
+                      
+                      {activity.description && (
+                        <div className="mt-2 bg-surface-container-low/40 p-3 rounded-2xl border border-outline-variant/20 hover:border-outline-variant/40 transition-colors group/card">
+                          <div className="text-sm text-on-surface-variant leading-relaxed line-clamp-3 group-hover/card:line-clamp-none transition-all">
+                            {activity.description}
+                          </div>
+                          {activity.contactId && (
+                            <button
+                              onClick={() => {
+                                const contact = contacts.find(c => c.id === activity.contactId);
+                                if (contact) {
+                                  setSelectedContact(contact);
+                                  setIsDetailsModalOpen(true);
+                                }
+                              }}
+                              className="mt-2 text-[10px] font-bold text-primary flex items-center gap-1 hover:gap-1.5 transition-all opacity-0 group-hover:opacity-100"
+                            >
+                              Details <ExternalLink className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-on-surface-variant">No recent activity to show.</p>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-12">
-                <p className="text-on-surface-variant">No recent activity found.</p>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
