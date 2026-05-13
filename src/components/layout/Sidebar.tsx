@@ -18,10 +18,10 @@ import { useAuth } from '../AuthProvider';
 interface SidebarProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
-  onNewContact?: () => void;
+  onLogInteraction?: () => void;
 }
 
-export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
   const { logOut, isAdmin, role } = useAuth();
   
   const navItems = [
@@ -88,23 +88,23 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onNewContact }:
           </NavLink>
         </div>
 
-        {/* New Contact Button */}
+        {/* Log Interaction Button */}
         <div className="mb-6 px-1">
           <button 
-            onClick={onNewContact}
+            onClick={onLogInteraction}
             className={cn(
               "bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center transition-all active:scale-95 shadow-sm px-0 h-12 overflow-hidden w-full cursor-pointer",
               isCollapsed ? "px-0" : "px-6"
             )}
           >
-            <PlusCircle className="w-5 h-5 shrink-0" />
+            <HeartHandshake className="w-5 h-5 shrink-0" />
             <motion.span 
               initial={false}
               animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 8 }}
               transition={{ duration: 0.2 }}
               className="whitespace-nowrap overflow-hidden"
             >
-              New Contact
+              Log Interaction
             </motion.span>
           </button>
         </div>

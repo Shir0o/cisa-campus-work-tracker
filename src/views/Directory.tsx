@@ -294,6 +294,13 @@ export default function Directory() {
           <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
         </div>
         <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
+          <button 
+            onClick={openNewContact}
+            className="h-10 px-4 bg-primary text-on-primary rounded-xl font-bold flex items-center gap-2 shadow-sm hover:translate-y-[-1px] transition-all"
+          >
+            <Plus className="w-4 h-4" />
+            <span className="text-sm">New Contact</span>
+          </button>
           <div className="relative flex-1 md:w-48 lg:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input 
@@ -685,18 +692,6 @@ export default function Directory() {
           </div>
         )}
       </AnimatePresence>
-
-      {/* Add Contact FAB */}
-      <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
-        <button 
-          onClick={openNewContact}
-          className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
-          title="Add New Contact"
-        >
-          <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-          <span className="hidden sm:inline">New Contact</span>
-        </button>
-      </div>
     </motion.div>
   );
 }

@@ -12,7 +12,7 @@ vi.mock('../components/AuthProvider', () => ({
 
 describe('Sidebar Role Label', () => {
   const mockToggleCollapse = vi.fn();
-  const mockNewContact = vi.fn();
+  const mockLogInteraction = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -24,7 +24,7 @@ describe('Sidebar Role Label', () => {
         <Sidebar 
           isCollapsed={false} 
           onToggleCollapse={mockToggleCollapse} 
-          onNewContact={mockNewContact} 
+          onLogInteraction={mockLogInteraction} 
         />
       </BrowserRouter>
     );
