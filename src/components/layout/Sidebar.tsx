@@ -6,7 +6,7 @@ import {
   Kanban, 
   Contact, 
   CalendarCheck, 
-  PlusCircle,
+  Plus,
   ChevronLeft,
   ChevronRight,
   HeartHandshake
@@ -97,7 +97,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
               isCollapsed ? "px-0" : "px-6"
             )}
           >
-            <HeartHandshake className="w-5 h-5 shrink-0" />
+            <Plus className="w-5 h-5 shrink-0" />
             <motion.span 
               initial={false}
               animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 8 }}

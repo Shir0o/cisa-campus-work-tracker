@@ -134,7 +134,9 @@ export default function PrayerList() {
           {/* Date Bar Skeleton */}
           <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-2">
             {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-              <Skeleton key={i} className="h-10 w-24 rounded-full flex-shrink-0" />
+              <div key={i} className="flex-shrink-0">
+                <Skeleton className="h-10 w-24 rounded-full" />
+              </div>
             ))}
           </div>
         </div>

@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { cn } from './lib/utils';
 import Sidebar from './components/layout/Sidebar';
 import TopBar from './components/layout/TopBar';
@@ -20,9 +20,8 @@ import {
 import { Skeleton } from './components/ui/Skeleton';
 import { Contact } from './types';
 import ContactDetailsModal from './components/modals/ContactDetailsModal';
-import SearchContactModal from './components/modals/SearchContactModal';
+import LogInteractionModal from './components/modals/LogInteractionModal';
 import Toaster from './components/Toaster';
-import { MessageSquarePlus } from 'lucide-react';
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -140,7 +139,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isNewContactModalOpen, setIsNewContactModalOpen] = React.useState(false);
-  const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
+  const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
     const saved = localStorage.getItem('sidebar_collapsed');
@@ -160,14 +159,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       isSidebarCollapsed, 
       setIsSidebarCollapsed, 
       openNewContact: () => setIsNewContactModalOpen(true),
-      openLogInteraction: () => setIsSearchModalOpen(true),
+      openLogInteraction: () => setIsLogInteractionOpen(true),
       setSelectedContact: (contact: Contact | null) => setSelectedContact(contact)
     }}>
       <div className="flex min-h-screen bg-background pb-16 lg:pb-0 relative">
         <Sidebar 
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebarCollapse}
-          onLogInteraction={() => setIsSearchModalOpen(true)}
+          onLogInteraction={() => setIsLogInteractionOpen(true)}
         />
         <div className={cn(
           "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0"
@@ -181,11 +180,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         {/* Mobile FAB for Hero Action (Log Interaction) */}
         <div className="fixed bottom-20 right-6 z-[60] lg:hidden">
           <button
-            onClick={() => setIsSearchModalOpen(true)}
+            onClick={() => setIsLogInteractionOpen(true)}
             className="w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl shadow-primary/25 flex items-center justify-center active:scale-95 transition-all"
             title="Log Interaction"
           >
-            <MessageSquarePlus className="w-6 h-6" />
+            <Plus className="w-6 h-6" />
           </button>
         </div>
 
@@ -196,9 +195,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           onClose={() => setIsNewContactModalOpen(false)} 
         />
 
-        <SearchContactModal 
-          isOpen={isSearchModalOpen}
-          onClose={() => setIsSearchModalOpen(false)}
+        <LogInteractionModal 
+          isOpen={isLogInteractionOpen}
+          onClose={() => setIsLogInteractionOpen(false)}
         />
 
         <ContactDetailsModal 
