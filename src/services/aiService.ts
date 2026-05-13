@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Interaction, Comment, Contact } from "../types";
+import { Interaction, Comment, Contact, Activity } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
 
@@ -235,6 +235,46 @@ export const aiService = {
     } catch (error) {
       console.error("AI Mapping Failed:", error);
       return {};
+    }
+  },
+
+  async summarizeRecentActivity(activities: Activity[]): Promise<string> {
+    if (activities.length === 0) return "No recent activity to summarize.";
+
+    const context = activities.map(a => ({
+      user: a.user,
+      action: a.action,
+      target: a.target,
+      type: a.type,
+      time: a.time,
+      description: a.description
+    }));
+
+    const prompt = `
+      You are an executive assistant for a community manager. 
+      Summarize the following recent activities into a concise, professional, and friendly executive summary (2-3 sentences).
+      Focus on key trends, high-priority interactions, and overall momentum.
+      
+      Activities:
+      ${JSON.stringify(context, null, 2)}
+      
+      Rules:
+      - Use natural, non-technical language.
+      - Avoid lists or bullet points.
+      - Make it sound human and encouraging.
+      - Target a "narrative" style.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt
+      });
+
+      return response.text || "Could not generate summary.";
+    } catch (error) {
+      console.error("AI Summarization Failed:", error);
+      return "Unable to generate activity summary at this time.";
     }
   }
 };
