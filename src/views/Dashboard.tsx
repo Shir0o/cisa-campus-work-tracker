@@ -22,7 +22,6 @@ import { useLayout } from '../App';
 import { Contact, Activity, Interaction, Comment, SystemActivity } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
-import AICampaignStrategy from '../components/dashboard/AICampaignStrategy';
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -309,7 +308,6 @@ export default function Dashboard() {
     >
       <div>
         <h2 className="text-3xl font-normal text-on-surface mb-2">{getGreeting()}, {firstName}</h2>
-        <p className="text-body-lg text-on-surface-variant">Here is an overview of your active Campus Hub community.</p>
       </div>
 
       {/* Metrics Row */}
@@ -346,12 +344,6 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
-
-      {/* AI Strategy Section */}
-      <AICampaignStrategy 
-        contacts={contacts}
-        recentActivities={activities}
-      />
 
       {/* Main Content Grid */}
       <div className={cn(
