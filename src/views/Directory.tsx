@@ -470,7 +470,7 @@ export default function Directory() {
         </div>
 
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-auto no-scrollbar">
+        <div className="flex-1 overflow-auto no-scrollbar pb-32">
           {filteredAndSortedContacts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4">
@@ -578,7 +578,7 @@ export default function Directory() {
                           <div className="flex items-center gap-1.5 min-w-0">
                             <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
                           </div>
-                          <p className="text-xs text-on-surface-variant opacity-80 truncate">{contact.role}</p>
+                          <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight opacity-70 truncate">{contact.role}</p>
                         </div>
                       </div>
                     </td>
@@ -609,7 +609,7 @@ export default function Directory() {
                           <span className="max-w-[100px] truncate">{contact.stage}</span>
                         </span>
                         {contact.status && contact.status !== contact.stage && (
-                          <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-tight opacity-70">
+                          <span className="text-[9px] text-on-surface-variant font-bold uppercase italic tracking-tight opacity-60 ml-0.5">
                             {contact.status}
                           </span>
                         )}
