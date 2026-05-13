@@ -317,8 +317,8 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                             <div className="font-bold text-on-surface w-1/3 truncate">{header}</div>
                             <div className={cn(
                               "w-2/3 italic",
-                              status.startsWith('Matches') ? "text-primary" : "text-secondary"
-                            )}>{status}</div>
+                              String(status).startsWith('Matches') ? "text-primary" : "text-secondary"
+                            )}>{String(status)}</div>
                           </div>
                         ))}
                       </div>
