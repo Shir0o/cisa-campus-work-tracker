@@ -170,6 +170,17 @@
         "targetId": { "type": "string" }
       },
       "required": ["userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "ai_summaries": {
+      "title": "AI Summary Cache",
+      "description": "Cached AI summaries to avoid redundant API calls.",
+      "type": "object",
+      "properties": {
+        "summary": { "type": "string" },
+        "activityIds": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["summary", "activityIds", "createdAt"]
     }
   },
   "firestore": {
@@ -216,6 +227,10 @@
     "prayers/{prayerId}": {
       "schema": "prayers",
       "description": "Weekly prayer burdens and answers."
+    },
+    "ai_summaries/{cacheKey}": {
+      "schema": "ai_summaries",
+      "description": "Cached summaries of community activity."
     }
   }
 }

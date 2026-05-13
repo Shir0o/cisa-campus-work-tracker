@@ -246,6 +246,17 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // 10. AI Summaries Cache
+    match /ai_summaries/{cacheKey} {
+      function isValidSummary(data) {
+        return data.summary is string && data.summary.size() <= 2000 &&
+               data.activityIds is list && data.activityIds.size() <= 20;
+      }
+      allow read: if isApprovedUser();
+      allow create: if isApprovedUser() && isOperator() && isValidSummary(incoming());
+      allow update, delete: if isManager();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, query, orderBy, limit, collectionGroup, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, orderBy, limit, collectionGroup, where, getDoc, setDoc, doc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { cn } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
@@ -45,7 +45,18 @@ export default function Dashboard() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiSummaryKey, setAiSummaryKey] = useState<string | null>(null);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+
+  // Helper to generate a stable cache key from activities
+  const getCacheKey = async (acts: Activity[]) => {
+    // We base the key on the sorted IDs of the activities included in the summary
+    const ids = acts.map(a => a.id).sort().join(',');
+    const msgUint8 = new TextEncoder().encode(ids);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgUint8);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  };
 
   useEffect(() => {
     // 1. Fetch Contacts
@@ -207,16 +218,42 @@ export default function Dashboard() {
     });
   }, [systemActivities, legacyInteractions, legacyComments, legacyCreations, legacyEdits, contacts]);
 
-  // Generate AI Summary when activities change significantly
+  // Generate AI Summary with caching
   useEffect(() => {
     const generateSummary = async () => {
-      if (activities.length > 3 && !aiSummary && !isGeneratingSummary) {
-        setIsGeneratingSummary(true);
+      // Only generate if we have enough context and aren't already working on it
+      if (activities.length > 5 && !isGeneratingSummary) {
         try {
-          const summary = await aiService.summarizeRecentActivity(activities);
-          setAiSummary(summary);
+          const cacheKey = await getCacheKey(activities);
+          
+          // Skip if the summary in state matches the current activity set
+          if (aiSummaryKey === cacheKey) return;
+
+          setIsGeneratingSummary(true);
+          
+          // Check Firestore Cache first
+          const cacheRef = doc(db, 'ai_summaries', cacheKey);
+          const cacheSnap = await getDoc(cacheRef);
+
+          if (cacheSnap.exists()) {
+            setAiSummary(cacheSnap.data().summary);
+            setAiSummaryKey(cacheKey);
+          } else {
+            // Generate new summary via AI
+            const summary = await aiService.summarizeRecentActivity(activities);
+            
+            // Persist to cache
+            await setDoc(cacheRef, {
+              summary,
+              activityIds: activities.map(a => a.id),
+              createdAt: serverTimestamp()
+            });
+
+            setAiSummary(summary);
+            setAiSummaryKey(cacheKey);
+          }
         } catch (err) {
-          console.error(err);
+          console.error("AI Summarization / Cache Error:", err);
         } finally {
           setIsGeneratingSummary(false);
         }
@@ -224,7 +261,7 @@ export default function Dashboard() {
     };
 
     generateSummary();
-  }, [activities.length, aiSummary, isGeneratingSummary]);
+  }, [activities, aiSummaryKey, isGeneratingSummary]);
 
   const metrics = [
     { label: 'Total Contacts', value: contacts.length.toString(), trend: '0%', icon: Users, color: 'primary' },
