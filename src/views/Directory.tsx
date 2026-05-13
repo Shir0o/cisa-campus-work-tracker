@@ -608,7 +608,7 @@ export default function Directory() {
                         )}>
                           <span className="max-w-[100px] truncate">{contact.stage}</span>
                         </span>
-                        {contact.status && (
+                        {contact.status && contact.status !== contact.stage && (
                           <span className="text-[9px] text-on-surface-variant font-medium uppercase tracking-tight opacity-70">
                             {contact.status}
                           </span>
