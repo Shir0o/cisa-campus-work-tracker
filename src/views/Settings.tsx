@@ -44,7 +44,6 @@ export default function Settings() {
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'invited'>('all');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [showRoleInfo, setShowRoleInfo] = useState(false);
@@ -173,14 +172,10 @@ export default function Settings() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.email.toLowerCase().includes(searchQuery.toLowerCase()) || 
                          user.displayName?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = filter === 'all' ? true : 
-                         filter === 'pending' ? !user.approved : 
-                         filter === 'approved' ? user.approved : false;
-    return matchesSearch && matchesFilter;
+    return matchesSearch;
   });
 
   const filteredInvites = invitations.filter(invite => {
-    if (filter !== 'all' && filter !== 'invited') return false;
     // Hide if user already exists
     if (users.some(u => u.email.toLowerCase() === invite.email.toLowerCase())) return false;
     const matchesSearch = invite.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -312,29 +307,6 @@ export default function Settings() {
             className="w-full pl-12 pr-4 py-3 bg-surface-container rounded-2xl border border-outline-variant/50 focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all"
           />
         </div>
-        <div className="flex gap-1 p-1 bg-surface-container rounded-2xl border border-outline-variant/50 overflow-x-auto no-scrollbar min-w-fit relative">
-          {(['all', 'pending', 'approved', 'invited'] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "relative whitespace-nowrap py-2 px-6 rounded-xl text-xs font-bold capitalize transition-all z-10",
-                filter === f 
-                  ? "text-on-secondary" 
-                  : "text-on-surface-variant hover:bg-surface-variant"
-              )}
-            >
-              {filter === f && (
-                <motion.div
-                  layoutId="activeFilter"
-                  className="absolute inset-0 bg-secondary rounded-xl shadow-sm z-[-1]"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
-                />
-              )}
-              {f === 'invited' ? 'Invitations' : f}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="bg-surface-container rounded-[2.5rem] border border-outline-variant/40 overflow-hidden shadow-sm">
@@ -349,7 +321,7 @@ export default function Settings() {
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/30">
-              <AnimatePresence mode="popLayout" initial={false}>
+              <AnimatePresence initial={false}>
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <motion.tr 
@@ -376,10 +348,9 @@ export default function Settings() {
                   [
                     ...filteredInvites.map((invite) => (
                       <motion.tr 
-                        layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         key={`invite-${invite.email}`} 
                         className="bg-primary/5 hover:bg-primary/10 transition-colors group"
@@ -418,10 +389,9 @@ export default function Settings() {
                     )),
                     ...filteredUsers.map((u) => (
                       <motion.tr 
-                        layout
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, scale: 0.95 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
                         transition={{ duration: 0.2 }}
                         key={u.uid} 
                         className="hover:bg-surface-container-high/50 transition-colors group"
