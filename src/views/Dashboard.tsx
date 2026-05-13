@@ -479,7 +479,7 @@ export default function Dashboard() {
           "lg:col-span-2"
         )}>
           <div className="p-5 sm:p-6 pb-0 flex justify-between items-center mb-4">
-            <h3 className="text-xl font-medium text-on-surface">Community Pulse</h3>
+            <h3 className="text-xl font-medium text-on-surface">Contact Log</h3>
             <button 
               onClick={() => navigate('/directory')}
               className="text-primary font-semibold text-sm hover:underline flex items-center gap-1"

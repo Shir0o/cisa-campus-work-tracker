@@ -294,9 +294,10 @@ export const aiService = {
       - If you see patterns like "field: 'old' -> 'new'", translate it into a human update (e.g., "John updated Sarah's phone number").
       - If it's a 'call', 'email', or 'event', emphasize the interaction based on the notes (e.g., "John shared a warm phone conversation with Sarah").
       - If it's a comment, mention that a thought or note was shared.
+      - **CRITICAL**: If the details imply a follow-up action (e.g., "will call back", "send info next week", "needs prayer for X"), concisely include it as a next step (e.g., "...and will follow up next Tuesday").
       
       General Rules:
-      - Max 15 words.
+      - Max 18 words.
       - Use active voice.
       - Sound professional yet warm.
       - Output ONLY the humanized sentence. No quotes, no intro.
