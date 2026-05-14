@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { 
-  X, 
-  User, 
-  Briefcase, 
-  MapPin, 
-  Mail, 
-  Phone, 
-  Loader2, 
-  Trash2, 
-  Edit3, 
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import {
+  X,
+  User,
+  Briefcase,
+  MapPin,
+  Mail,
+  Phone,
+  Loader2,
+  Trash2,
+  Edit3,
   Calendar,
   MessageSquare,
   ChevronRight,
@@ -17,29 +17,36 @@ import {
   UserCircle,
   Clock,
   Plus,
-  Tag
-} from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
-import { 
-  doc, 
-  updateDoc, 
-  deleteDoc, 
-  collection, 
-  query, 
+  Tag,
+  Sparkles,
+} from "lucide-react";
+import {
+  db,
+  handleFirestoreError,
+  OperationType,
+  logActivity,
+  sendNotification,
+} from "../../lib/firebase";
+import {
+  doc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  query,
   where,
   limit,
-  orderBy, 
-  getDocs, 
-  onSnapshot, 
-  addDoc, 
+  orderBy,
+  getDocs,
+  onSnapshot,
+  addDoc,
   serverTimestamp,
-  Timestamp 
-} from 'firebase/firestore';
-import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
-import { Contact, Stage, Interaction, Comment } from '../../types';
-import { useAuth } from '../AuthProvider';
-import { Skeleton } from '../ui/Skeleton';
-import { aiService } from '../../services/aiService';
+  Timestamp,
+} from "firebase/firestore";
+import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
+import { Contact, Stage, Interaction, Comment } from "../../types";
+import { useAuth } from "../AuthProvider";
+import { Skeleton } from "../ui/Skeleton";
+import { aiService } from "../../services/aiService";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -47,7 +54,105 @@ interface ContactDetailsModalProps {
   contact: Contact | null;
 }
 
-export default function ContactDetailsModal({ isOpen, onClose, contact }: ContactDetailsModalProps) {
+function AuditActivityItem({
+  activity,
+  isLast,
+  key
+}: {
+  activity: any;
+  isLast: boolean;
+  key?: React.Key;
+}) {
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <div
+      className="relative pl-8 pb-4 last:pb-0 group"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Timeline line */}
+      {!isLast && (
+        <div className="absolute left-4 top-10 bottom-0 w-[1px] bg-outline-variant group-hover:bg-primary/30 transition-colors" />
+      )}
+
+      {/* Icon Bubble */}
+      <div
+        className={cn(
+          "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 shadow-sm",
+          activity.type === "edit"
+            ? "bg-tertiary-container text-on-tertiary-container"
+            : activity.type === "create"
+              ? "bg-primary-container text-on-primary-container"
+              : activity.type === "comment"
+                ? "bg-secondary-container text-on-secondary-container"
+                : activity.type === "call"
+                  ? "bg-primary-fixed text-on-primary-fixed"
+                  : "bg-surface-container-highest text-on-surface-variant",
+        )}
+      >
+        {activity.type === "edit" && <Edit3 className="w-4 h-4" />}
+        {activity.type === "create" && <UserCircle className="w-4 h-4" />}
+        {activity.type === "comment" && <MessageSquare className="w-4 h-4" />}
+        {activity.type === "call" && <Phone className="w-4 h-4" />}
+        {!["edit", "create", "comment", "call"].includes(activity.type) && (
+          <Calendar className="w-4 h-4" />
+        )}
+      </div>
+
+      <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+          <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+            {activity.userName}
+          </span>
+          <span className="text-xs text-on-surface-variant">
+            {activity.action === "logged an interaction for" ||
+            activity.action === "logged a batch interaction for"
+              ? activity.type === "call"
+                ? "called"
+                : activity.type === "email"
+                  ? "emailed"
+                  : activity.type === "event"
+                    ? "had a meeting with"
+                    : activity.type === "comment"
+                      ? "left a note for"
+                      : "interacted with"
+              : activity.action.startsWith("updated") &&
+                  activity.type === "edit" &&
+                  activity.description
+                ? `updated the ${activity.description
+                    .split("\\n")
+                    .map((line: string) => line.split(":")[0])
+                    .filter(
+                      (v: string, i: number, a: string[]) => a.indexOf(v) === i,
+                    )
+                    .join(", ")} for`
+                : activity.action}
+          </span>
+          <span className="text-[10px] font-bold text-on-surface-variant/40 ml-auto uppercase tracking-widest whitespace-nowrap">
+            {new Date(activity.createdAt).toLocaleDateString()} at{" "}
+            {new Date(activity.createdAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </span>
+        </div>
+
+        {activity.description && activity.type !== "edit" && (
+          <div className="mt-2 p-3 rounded-xl bg-surface-container-high border border-outline-variant/30 text-[13px] leading-relaxed text-on-surface-variant italic">
+            "{activity.description}"
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function ContactDetailsModal({
+  isOpen,
+  onClose,
+  contact,
+}: ContactDetailsModalProps) {
   const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -58,29 +163,41 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   const [comments, setComments] = useState<Comment[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'info' | 'interactions' | 'comments' | 'history'>('info');
-  const [newComment, setNewComment] = useState('');
+  const [activeTab, setActiveTab] = useState<
+    "info" | "interactions" | "comments" | "history"
+  >("info");
+  const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [newInteraction, setNewInteraction] = useState({
-    content: '',
+    content: "",
     dateTime: new Date().toISOString().slice(0, 16),
-    duration: ''
+    duration: "",
+    type: "interaction",
   });
   const [submittingInteraction, setSubmittingInteraction] = useState(false);
   const [isLoggingInteraction, setIsLoggingInteraction] = useState(false);
+  const [editingInteractionId, setEditingInteractionId] = useState<
+    string | null
+  >(null);
+  const [editInteractionData, setEditInteractionData] = useState({
+    content: "",
+    dateTime: "",
+    type: "interaction",
+  });
+  const [isUpdatingInteraction, setIsUpdatingInteraction] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    role: '',
-    location: '',
-    email: '',
-    phone: '',
-    stage: '',
-    status: '',
+    firstName: "",
+    lastName: "",
+    role: "",
+    location: "",
+    email: "",
+    phone: "",
+    stage: "",
+    status: "",
     tags: [] as string[],
-    notes: ''
+    notes: "",
   });
 
   const capitalize = (str: string) => {
@@ -88,41 +205,41 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   };
 
   const getInitials = (firstName: string, lastName: string) => {
-    return (firstName.charAt(0) + (lastName.charAt(0) || '')).toUpperCase();
+    return (firstName.charAt(0) + (lastName.charAt(0) || "")).toUpperCase();
   };
 
   const splitName = (fullName: string) => {
-    const parts = fullName.trim().split(' ');
-    if (parts.length <= 1) return { first: fullName, last: '' };
-    const last = parts.pop() || '';
-    const first = parts.join(' ');
+    const parts = fullName.trim().split(" ");
+    if (parts.length <= 1) return { first: fullName, last: "" };
+    const last = parts.pop() || "";
+    const first = parts.join(" ");
     return { first, last };
   };
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
     if (isOpen) {
-      window.addEventListener('keydown', handleEsc);
+      window.addEventListener("keydown", handleEsc);
     }
-    return () => window.removeEventListener('keydown', handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
   }, [isOpen, onClose]);
 
   useEffect(() => {
     if (contact) {
-      const { first, last } = splitName(contact.name || '');
+      const { first, last } = splitName(contact.name || "");
       setFormData({
         firstName: first,
         lastName: last,
-        role: contact.role || '',
-        location: contact.location || '',
-        email: contact.email || '',
-        phone: contact.phone || '',
-        stage: contact.stage || '',
-        status: contact.status || '',
+        role: contact.role || "",
+        location: contact.location || "",
+        email: contact.email || "",
+        phone: contact.phone || "",
+        stage: contact.stage || "",
+        status: contact.status || "",
         tags: contact.tags || [],
-        notes: contact.notes || ''
+        notes: contact.notes || "",
       });
       setIsEditing(false);
     }
@@ -132,12 +249,15 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     if (isOpen) {
       const fetchStages = async () => {
         try {
-          const q = query(collection(db, 'stages'), orderBy('order', 'asc'));
+          const q = query(collection(db, "stages"), orderBy("order", "asc"));
           const querySnapshot = await getDocs(q);
-          const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
+          const stageData = querySnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          })) as Stage[];
           setStages(stageData);
         } catch (error) {
-          handleFirestoreError(error, OperationType.LIST, 'stages');
+          handleFirestoreError(error, OperationType.LIST, "stages");
         }
       };
       fetchStages();
@@ -146,24 +266,40 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   useEffect(() => {
     if (isOpen && contact) {
-      const interactionsRef = collection(db, 'contacts', contact.id, 'interactions');
-      const q = query(interactionsRef, orderBy('createdAt', 'asc'));
-      
+      const interactionsRef = collection(
+        db,
+        "contacts",
+        contact.id,
+        "interactions",
+      );
+      const q = query(interactionsRef, orderBy("createdAt", "asc"));
+
       setInteractionsLoading(true);
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const interactionData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
-          } as Interaction;
-        });
-        setInteractions(interactionData);
-        setInteractionsLoading(false);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `contacts/${contact.id}/interactions`);
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const interactionData = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt:
+                data.createdAt instanceof Timestamp
+                  ? data.createdAt.toDate().toISOString()
+                  : data.createdAt,
+            } as Interaction;
+          });
+          setInteractions(interactionData);
+          setInteractionsLoading(false);
+        },
+        (error) => {
+          handleFirestoreError(
+            error,
+            OperationType.LIST,
+            `contacts/${contact.id}/interactions`,
+          );
+        },
+      );
 
       return () => unsubscribe();
     }
@@ -171,24 +307,35 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   useEffect(() => {
     if (isOpen && contact) {
-      const commentsRef = collection(db, 'contacts', contact.id, 'comments');
-      const q = query(commentsRef, orderBy('createdAt', 'asc'));
-      
+      const commentsRef = collection(db, "contacts", contact.id, "comments");
+      const q = query(commentsRef, orderBy("createdAt", "asc"));
+
       setCommentsLoading(true);
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const commentData = snapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate().toISOString() : data.createdAt
-          } as Comment;
-        });
-        setComments(commentData);
-        setCommentsLoading(false);
-      }, (error) => {
-        handleFirestoreError(error, OperationType.LIST, `contacts/${contact.id}/comments`);
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const commentData = snapshot.docs.map((doc) => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              createdAt:
+                data.createdAt instanceof Timestamp
+                  ? data.createdAt.toDate().toISOString()
+                  : data.createdAt,
+            } as Comment;
+          });
+          setComments(commentData);
+          setCommentsLoading(false);
+        },
+        (error) => {
+          handleFirestoreError(
+            error,
+            OperationType.LIST,
+            `contacts/${contact.id}/comments`,
+          );
+        },
+      );
 
       return () => unsubscribe();
     }
@@ -197,25 +344,29 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
   useEffect(() => {
     if (isOpen && contact) {
       const q = query(
-        collection(db, 'activities'), 
-        where('targetId', '==', contact.id),
-        orderBy('createdAt', 'desc'),
-        limit(50)
+        collection(db, "activities"),
+        where("targetId", "==", contact.id),
+        orderBy("createdAt", "desc"),
+        limit(50),
       );
-      
+
       setActivitiesLoading(true);
-      const unsubscribe = onSnapshot(q, (snapshot) => {
-        const activityData = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setActivities(activityData);
-        setActivitiesLoading(false);
-      }, (error) => {
-        // activities might not have index yet or permission issues
-        console.error("Activities listener error:", error);
-        setActivitiesLoading(false);
-      });
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const activityData = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+          setActivities(activityData);
+          setActivitiesLoading(false);
+        },
+        (error) => {
+          // activities might not have index yet or permission issues
+          console.error("Activities listener error:", error);
+          setActivitiesLoading(false);
+        },
+      );
 
       return () => unsubscribe();
     }
@@ -225,16 +376,20 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     const triggerAI = async () => {
       if (!isOpen || !contact || isAnalyzing) return;
       if (interactionsLoading || commentsLoading) return;
-      
-      const lastAnalysis = contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt) : null;
+
+      const lastAnalysis = contact.lastAiAnalysisAt
+        ? new Date(contact.lastAiAnalysisAt)
+        : null;
       const now = new Date();
       const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
       const fifteenMinsAgo = new Date(now.getTime() - 15 * 60 * 1000);
-      
+
       const hasNewDataPostAnalysis = (data: (Interaction | Comment)[]) => {
         if (!lastAnalysis) return data.length > 0;
-        return data.some(item => {
-          const createdAt = item.createdAt ? new Date(item.createdAt) : new Date(0);
+        return data.some((item) => {
+          const createdAt = item.createdAt
+            ? new Date(item.createdAt)
+            : new Date(0);
           return createdAt > lastAnalysis;
         });
       };
@@ -243,28 +398,34 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       // 1. Never analyzed before
       // 2. Last analysis was over 4 hours ago (automatic refresh)
       // 3. New interaction/comment added AND last analysis was over 15 mins ago (smart update)
-      const needsAnalysis = !lastAnalysis || 
-                           lastAnalysis < fourHoursAgo || 
-                           ((hasNewDataPostAnalysis(interactions) || hasNewDataPostAnalysis(comments)) && lastAnalysis < fifteenMinsAgo);
+      const needsAnalysis =
+        !lastAnalysis ||
+        lastAnalysis < fourHoursAgo ||
+        ((hasNewDataPostAnalysis(interactions) ||
+          hasNewDataPostAnalysis(comments)) &&
+          lastAnalysis < fifteenMinsAgo);
 
       if (needsAnalysis && (interactions.length > 0 || comments.length > 0)) {
-        console.log('Triggering automatic AI activity analysis for', contact.name);
+        console.log(
+          "Triggering automatic AI activity analysis for",
+          contact.name,
+        );
         handleAIAnalyze();
       }
     };
 
     triggerAI();
   }, [
-    isOpen, 
-    contact?.id, 
-    interactionsLoading, 
-    commentsLoading, 
-    interactions.length, 
+    isOpen,
+    contact?.id,
+    interactionsLoading,
+    commentsLoading,
+    interactions.length,
     comments.length,
     contact?.notes,
     contact?.status,
     contact?.stage,
-    contact?.lastAiAnalysisAt
+    contact?.lastAiAnalysisAt,
   ]);
 
   if (!contact) return null;
@@ -275,14 +436,14 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
       return;
     }
     const formatted = formatPhoneNumber(formData.phone);
-    setFormData(f => ({ ...f, phone: formatted }));
-    
+    setFormData((f) => ({ ...f, phone: formatted }));
+
     if (!validatePhoneNumber(formData.phone)) {
-      const digits = formData.phone.replace(/[^\d]/g, '');
+      const digits = formData.phone.replace(/[^\d]/g, "");
       if (digits.length < 10) {
-        setPhoneError('Phone number too short (need 10 digits)');
+        setPhoneError("Phone number too short (need 10 digits)");
       } else if (digits.length > 10) {
-        setPhoneError('Phone number too long (need 10 digits)');
+        setPhoneError("Phone number too long (need 10 digits)");
       } else {
         setPhoneError(null);
       }
@@ -296,17 +457,28 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     if (phoneError) return;
     setLoading(true);
     try {
-      const contactRef = doc(db, 'contacts', contact.id);
+      const contactRef = doc(db, "contacts", contact.id);
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
-      
+
       const changes: string[] = [];
-      if (fullName !== contact.name) changes.push(`name: "${contact.name}" → "${fullName}"`);
-      if (formData.email !== contact.email) changes.push(`email: "${contact.email}" → "${formData.email}"`);
-      if (formData.phone !== contact.phone) changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.location !== contact.location) changes.push(`first met: "${contact.location}" → "${formData.location}"`);
-      if (formData.role !== contact.role) changes.push(`group: "${contact.role}" → "${formData.role}"`);
-      if (formData.stage !== contact.stage) changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
-      if (formData.status !== contact.status) changes.push(`interaction status: "${contact.status}" → "${formData.status}"`);
+      if (fullName !== contact.name)
+        changes.push(`name: "${contact.name}" → "${fullName}"`);
+      if (formData.email !== contact.email)
+        changes.push(`email: "${contact.email}" → "${formData.email}"`);
+      if (formData.phone !== contact.phone)
+        changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
+      if (formData.location !== contact.location)
+        changes.push(
+          `first met: "${contact.location}" → "${formData.location}"`,
+        );
+      if (formData.role !== contact.role)
+        changes.push(`group: "${contact.role}" → "${formData.role}"`);
+      if (formData.stage !== contact.stage)
+        changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
+      if (formData.status !== contact.status)
+        changes.push(
+          `interaction status: "${contact.status}" → "${formData.status}"`,
+        );
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
 
       const updateData: any = {
@@ -317,55 +489,87 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
-        status: formData.status as Contact['status'],
+        status: formData.status as Contact["status"],
         tags: formData.tags,
         notes: formData.notes,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+        updatedByName:
+          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
       };
 
       await updateDoc(contactRef, updateData);
-      
+
       logActivity({
-        action: changes.length > 0 ? `updated ${changes.join(', ')} for` : 'updated contact details for',
+        action:
+          changes.length > 0
+            ? `updated ${changes.join(", ")} for`
+            : "updated contact details for",
         targetId: contact.id,
         targetName: fullName,
-        targetType: 'contact',
-        type: 'edit',
-        userName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
-        description: changes.join('\n')
+        targetType: "contact",
+        type: "edit",
+        userName:
+          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+        description: changes.join("\n"),
       } as any);
 
       setIsEditing(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
+      handleFirestoreError(
+        error,
+        OperationType.UPDATE,
+        `contacts/${contact.id}`,
+      );
     } finally {
       setLoading(false);
     }
   };
 
-
   const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this contact?')) return;
+    if (!confirm("Are you sure you want to delete this contact?")) return;
     setLoading(true);
     try {
       const contactId = contact.id;
       const contactName = contact.name;
-      
-      await deleteDoc(doc(db, 'contacts', contactId));
+
+      // Fetch subcollections to capture their count before deleting
+      const interactionsSnap = await getDocs(
+        collection(db, "contacts", contactId, "interactions"),
+      );
+      const commentsSnap = await getDocs(
+        collection(db, "contacts", contactId, "comments"),
+      );
+
+      const fieldsLog = [
+        `Group: ${contact.role}`,
+        `Stage: ${contact.stage}`,
+        `Location: ${contact.location}`,
+        `Email: ${contact.email || "N/A"}`,
+        `Phone: ${contact.phone || "N/A"}`,
+        `Total Interactions: ${interactionsSnap.size}`,
+        `Total Comments: ${commentsSnap.size}`,
+        `Status: ${contact.status || "N/A"}`,
+      ].join("\\n");
+
+      await deleteDoc(doc(db, "contacts", contactId));
 
       logActivity({
-        action: 'deleted contact',
+        action: "deleted contact",
         targetId: contactId,
         targetName: contactName,
-        targetType: 'contact',
-        type: 'alert'
+        targetType: "contact",
+        type: "alert",
+        description: fieldsLog,
       });
 
       onClose();
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `contacts/${contact.id}`);
+      handleFirestoreError(
+        error,
+        OperationType.DELETE,
+        `contacts/${contact.id}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -373,40 +577,106 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
   const handleAddInteraction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newInteraction.content.trim() || !newInteraction.dateTime || !user || !contact) return;
+    if (
+      !newInteraction.content.trim() ||
+      !newInteraction.dateTime ||
+      !user ||
+      !contact
+    )
+      return;
 
     setSubmittingInteraction(true);
     try {
-      const interactionsRef = collection(db, 'contacts', contact.id, 'interactions');
+      const interactionsRef = collection(
+        db,
+        "contacts",
+        contact.id,
+        "interactions",
+      );
       const docRef = await addDoc(interactionsRef, {
         userId: user.uid,
-        userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
-        userPhoto: user.photoURL || '',
+        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+        userPhoto: user.photoURL || "",
         content: newInteraction.content.trim(),
         dateTime: newInteraction.dateTime,
-        duration: newInteraction.duration.trim() || null,
-        createdAt: serverTimestamp()
+        type: newInteraction.type,
+        createdAt: serverTimestamp(),
       });
 
       logActivity({
-        action: 'logged an interaction for',
+        action: "logged an interaction for",
         targetId: contact.id,
         targetName: contact.name,
-        targetType: 'contact',
-        type: 'call', // or derive from duration? let's stick to call as default
-        description: newInteraction.content.trim()
+        targetType: "contact",
+        type:
+          newInteraction.type === "meeting"
+            ? "event"
+            : newInteraction.type === "chat"
+              ? "comment"
+              : newInteraction.type,
+        description: newInteraction.content.trim(),
       });
 
       setNewInteraction({
-        content: '',
+        content: "",
         dateTime: new Date().toISOString().slice(0, 16),
-        duration: ''
+        duration: "",
+        type: "interaction",
       });
       setIsLoggingInteraction(false);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/interactions`);
+      handleFirestoreError(
+        error,
+        OperationType.CREATE,
+        `contacts/${contact.id}/interactions`,
+      );
     } finally {
       setSubmittingInteraction(false);
+    }
+  };
+
+  const handleUpdateInteraction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (
+      !editInteractionData.content.trim() ||
+      !contact ||
+      !editingInteractionId
+    )
+      return;
+
+    setIsUpdatingInteraction(true);
+    try {
+      const interactionRef = doc(
+        db,
+        "contacts",
+        contact.id,
+        "interactions",
+        editingInteractionId,
+      );
+      await updateDoc(interactionRef, {
+        content: editInteractionData.content.trim(),
+        dateTime: editInteractionData.dateTime,
+        type: editInteractionData.type,
+      });
+
+      logActivity({
+        action: "updated an interaction for",
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: "contact",
+        type: "edit",
+        description: editInteractionData.content.trim(),
+      });
+
+      setEditingInteractionId(null);
+    } catch (error) {
+      handleFirestoreError(
+        error,
+        OperationType.UPDATE,
+        `contacts/${contact.id}/interactions/${editingInteractionId}`,
+      );
+    } finally {
+      setIsUpdatingInteraction(false);
     }
   };
 
@@ -416,39 +686,43 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
 
     setSubmittingComment(true);
     try {
-      const commentsRef = collection(db, 'contacts', contact.id, 'comments');
+      const commentsRef = collection(db, "contacts", contact.id, "comments");
       const docRef = await addDoc(commentsRef, {
         userId: user.uid,
-        userName: user.displayName || user.email?.split('@')[0] || 'Anonymous',
-        userPhoto: user.photoURL || '',
+        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+        userPhoto: user.photoURL || "",
         text: newComment.trim(),
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
       });
 
       logActivity({
-        action: 'left a comment on',
+        action: "left a comment on",
         targetId: contact.id,
         targetName: contact.name,
-        targetType: 'contact',
-        type: 'comment',
-        description: newComment.trim()
+        targetType: "contact",
+        type: "comment",
+        description: newComment.trim(),
       });
 
       // Send notification to contact creator if it's not the current user
       if (contact.createdBy && contact.createdBy !== user.uid) {
         await sendNotification({
           userId: contact.createdBy,
-          title: 'New Comment',
-          message: `${user.displayName || user.email} commented on ${contact.name}: "${newComment.trim().substring(0, 50)}${newComment.length > 50 ? '...' : ''}"`,
-          type: 'info',
+          title: "New Comment",
+          message: `${user.displayName || user.email} commented on ${contact.name}: "${newComment.trim().substring(0, 50)}${newComment.length > 50 ? "..." : ""}"`,
+          type: "info",
           link: `/directory`, // Focus on directory for now, or just notify
-          targetId: contact.id
+          targetId: contact.id,
         });
       }
 
-      setNewComment('');
+      setNewComment("");
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `contacts/${contact.id}/comments`);
+      handleFirestoreError(
+        error,
+        OperationType.CREATE,
+        `contacts/${contact.id}/comments`,
+      );
     } finally {
       setSubmittingComment(true); // Keep spinner until next tick or just reset
       setSubmittingComment(false);
@@ -459,23 +733,29 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     if (!contact || isAnalyzing) return;
     setIsAnalyzing(true);
     try {
-      const analysis = await aiService.analyzeContact(contact, interactions, comments);
-      
-      const contactRef = doc(db, 'contacts', contact.id);
+      const analysis = await aiService.analyzeContact(
+        contact,
+        interactions,
+        comments,
+      );
+
+      const contactRef = doc(db, "contacts", contact.id);
       const now = new Date().toISOString();
-      
+
       // If AI suggests Needs Contact and we aren't already there or explicitly follow up
-      const shouldUpdateStage = analysis.needsContact.suggested && contact.stage !== 'Needs Contact';
-      
+      const shouldUpdateStage =
+        analysis.needsContact.suggested && contact.stage !== "Needs Contact";
+
       await updateDoc(contactRef, {
         lastSeen: new Date(analysis.lastSeen.timestamp).toLocaleDateString(),
         updatedAt: now,
         lastAiAnalysisAt: now,
         lastSeenAiReason: `${analysis.lastSeen.reasoning} (${analysis.lastSeen.source})`,
-        needsContactAiReason: analysis.needsContact.suggested ? analysis.needsContact.reasoning : null,
-        ...(shouldUpdateStage ? { stage: 'Needs Contact' } : {})
+        needsContactAiReason: analysis.needsContact.suggested
+          ? analysis.needsContact.reasoning
+          : null,
+        ...(shouldUpdateStage ? { stage: "Needs Contact" } : {}),
       });
-
     } catch (error) {
       console.error("AI Analysis Error:", error);
     } finally {
@@ -483,7 +763,13 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
     }
   };
 
-  const statusOptions = ['Needs Contact', 'Email Sent', 'Qualified Lead', 'Follow Up Required', 'Meeting Scheduled'];
+  const statusOptions = [
+    "Needs Contact",
+    "Email Sent",
+    "Qualified Lead",
+    "Follow Up Required",
+    "Meeting Scheduled",
+  ];
 
   return (
     <AnimatePresence>
@@ -496,7 +782,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
             onClick={onClose}
             className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1]"
           />
-          
+
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -510,13 +796,19 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   {contact.initials}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-on-surface line-clamp-1">{isEditing ? 'Edit Contact' : contact.name}</h2>
-                  {!isEditing && <p className="text-sm text-on-surface-variant font-medium">{contact.role}</p>}
+                  <h2 className="text-xl font-bold text-on-surface line-clamp-1">
+                    {isEditing ? "Edit Contact" : contact.name}
+                  </h2>
+                  {!isEditing && (
+                    <p className="text-sm text-on-surface-variant font-medium">
+                      {contact.role}
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 {!isEditing && (
-                  <button 
+                  <button
                     onClick={() => setIsEditing(true)}
                     className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
                     title="Edit Contact"
@@ -524,7 +816,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     <Edit3 className="w-5 h-5" />
                   </button>
                 )}
-                <button 
+                <button
                   onClick={onClose}
                   className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
                 >
@@ -536,45 +828,73 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
             {/* Content Tab Switcher */}
             {!isEditing && (
               <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0">
-                <button 
-                  onClick={() => setActiveTab('info')}
+                <button
+                  onClick={() => setActiveTab("info")}
                   className={cn(
                     "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === 'info' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                    activeTab === "info"
+                      ? "text-primary"
+                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
                   )}
                 >
                   General Info
-                  {activeTab === 'info' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                  {activeTab === "info" && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
+                    />
+                  )}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('interactions')}
+                <button
+                  onClick={() => setActiveTab("interactions")}
                   className={cn(
                     "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === 'interactions' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                    activeTab === "interactions"
+                      ? "text-primary"
+                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
                   )}
                 >
                   Interactions ({interactions.length})
-                  {activeTab === 'interactions' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                  {activeTab === "interactions" && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
+                    />
+                  )}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('comments')}
+                <button
+                  onClick={() => setActiveTab("comments")}
                   className={cn(
                     "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === 'comments' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                    activeTab === "comments"
+                      ? "text-primary"
+                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
                   )}
                 >
                   Discussion ({comments.length})
-                  {activeTab === 'comments' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                  {activeTab === "comments" && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
+                    />
+                  )}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('history')}
+                <button
+                  onClick={() => setActiveTab("history")}
                   className={cn(
                     "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === 'history' ? "text-primary" : "text-on-surface-variant/60 hover:text-on-surface-variant"
+                    activeTab === "history"
+                      ? "text-primary"
+                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
                   )}
                 >
                   Audit History
-                  {activeTab === 'history' && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                  {activeTab === "history" && (
+                    <motion.div
+                      layoutId="activeTab"
+                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
+                    />
+                  )}
                 </button>
               </div>
             )}
@@ -582,7 +902,11 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
               {isEditing ? (
-                <form id="edit-contact-form" onSubmit={handleUpdate} className="space-y-6">
+                <form
+                  id="edit-contact-form"
+                  onSubmit={handleUpdate}
+                  className="space-y-6"
+                >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* First Name */}
                     <div className="space-y-1.5">
@@ -593,7 +917,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         required
                         type="text"
                         value={formData.firstName}
-                        onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            firstName: capitalize(e.target.value),
+                          }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder="e.g. Alex"
                       />
@@ -606,7 +935,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       <input
                         type="text"
                         value={formData.lastName}
-                        onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            lastName: capitalize(e.target.value),
+                          }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder="e.g. Johnson"
                       />
@@ -620,7 +954,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         required
                         type="text"
                         value={formData.role}
-                        onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, role: e.target.value }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder="e.g. Student, Faculty"
                       />
@@ -633,7 +969,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         required
                         type="text"
                         value={formData.location}
-                        onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            location: e.target.value,
+                          }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder="e.g. Campus Coffee"
                       />
@@ -647,7 +988,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         required
                         type="email"
                         value={formData.email}
-                        onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, email: e.target.value }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder="alex@campus.edu"
                       />
@@ -659,14 +1002,16 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       <input
                         type="tel"
                         value={formData.phone}
-                        onChange={e => {
-                          setFormData(f => ({ ...f, phone: e.target.value }));
+                        onChange={(e) => {
+                          setFormData((f) => ({ ...f, phone: e.target.value }));
                           if (phoneError) setPhoneError(null);
                         }}
                         onBlur={handlePhoneBlur}
                         className={cn(
                           "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm",
-                          phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
+                          phoneError
+                            ? "border-error focus:border-error focus:ring-1 focus:ring-error"
+                            : "border-outline focus:border-primary focus:ring-1 focus:ring-primary",
                         )}
                         placeholder="(555) 000-0000"
                       />
@@ -674,7 +1019,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         {phoneError && (
                           <motion.p
                             initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
                             className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
                           >
@@ -689,26 +1034,35 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       </label>
                       <select
                         value={formData.stage}
-                        onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, stage: e.target.value }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
                       >
-                        {stages.map(s => (
-                          <option key={s.id} value={s.label}>{s.label}</option>
+                        {stages.map((s) => (
+                          <option key={s.id} value={s.label}>
+                            {s.label}
+                          </option>
                         ))}
                       </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION STATUS
+                        <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION
+                        STATUS
                       </label>
                       <select
                         value={formData.status}
-                        onChange={e => setFormData(f => ({ ...f, status: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, status: e.target.value }))
+                        }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
                       >
                         <option value="">Select Status</option>
-                        {statusOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                        {statusOptions.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -719,13 +1073,21 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       </label>
                       <input
                         type="text"
-                        value={formData.tags.join(', ')}
-                        onChange={e => setFormData(f => ({ ...f, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
+                        value={formData.tags.join(", ")}
+                        onChange={(e) =>
+                          setFormData((f) => ({
+                            ...f,
+                            tags: e.target.value
+                              .split(",")
+                              .map((t) => t.trim())
+                              .filter(Boolean),
+                          }))
+                        }
                         placeholder="e.g. Lead, Fall2023"
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                       />
                     </div>
-                  {/* Notes Field */}
+                    {/* Notes Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
                         <MessageSquare className="w-3.5 h-3.5" /> NOTES
@@ -733,7 +1095,9 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       <textarea
                         required
                         value={formData.notes}
-                        onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, notes: e.target.value }))
+                        }
                         className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
                         placeholder="Add some context about this contact..."
                       />
@@ -742,8 +1106,8 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                 </form>
               ) : (
                 <div className="min-h-[400px]">
-                  {activeTab === 'info' && (
-                    <motion.div 
+                  {activeTab === "info" && (
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-8"
@@ -755,8 +1119,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                             <Mail className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Email Address</p>
-                            <p className="text-sm font-bold text-on-surface break-all">{contact.email}</p>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                              Email Address
+                            </p>
+                            <p className="text-sm font-bold text-on-surface break-all">
+                              {contact.email}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-start gap-4">
@@ -764,8 +1132,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                             <Phone className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Phone Number</p>
-                            <p className="text-sm font-bold text-on-surface">{contact.phone || 'Not provided'}</p>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                              Phone Number
+                            </p>
+                            <p className="text-sm font-bold text-on-surface">
+                              {contact.phone || "Not provided"}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-start gap-4">
@@ -773,8 +1145,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                             <MapPin className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">First Met</p>
-                            <p className="text-sm font-bold text-on-surface">{contact.location || 'Not recorded'}</p>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                              First Met
+                            </p>
+                            <p className="text-sm font-bold text-on-surface">
+                              {contact.location || "Not recorded"}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-start gap-4">
@@ -782,16 +1158,19 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                             <Briefcase className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Pipeline Stage</p>
+                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                              Pipeline Stage
+                            </p>
                             <div className="flex flex-col gap-1 mt-1">
                               <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight w-fit">
                                 {contact.stage}
                               </span>
-                              {contact.status && contact.status !== contact.stage && (
-                                <span className="text-[9px] text-on-surface-variant font-bold uppercase italic opacity-70 ml-1">
-                                  {contact.status}
-                                </span>
-                              )}
+                              {contact.status &&
+                                contact.status !== contact.stage && (
+                                  <span className="text-[9px] text-on-surface-variant font-bold uppercase italic opacity-70 ml-1">
+                                    {contact.status}
+                                  </span>
+                                )}
                             </div>
                           </div>
                         </div>
@@ -801,10 +1180,15 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                               <Tag className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">Tags</p>
+                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                                Tags
+                              </p>
                               <div className="flex flex-wrap gap-2 mt-1">
-                                {contact.tags.map(tag => (
-                                  <span key={tag} className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20">
+                                {contact.tags.map((tag) => (
+                                  <span
+                                    key={tag}
+                                    className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20"
+                                  >
                                     #{tag}
                                   </span>
                                 ))}
@@ -817,10 +1201,12 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       {/* Notes Section */}
                       <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
                         <h3 className="text-sm font-black text-on-surface uppercase tracking-widest flex items-center gap-2 mb-4">
-                          <MessageSquare className="w-4 h-4 text-primary" /> Contact Notes
+                          <MessageSquare className="w-4 h-4 text-primary" />{" "}
+                          Contact Notes
                         </h3>
                         <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                          {contact.notes || "No notes recorded for this contact yet."}
+                          {contact.notes ||
+                            "No notes recorded for this contact yet."}
                         </div>
                       </div>
 
@@ -829,24 +1215,40 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
-                              Last Analysis: {contact.lastAiAnalysisAt ? new Date(contact.lastAiAnalysisAt).toLocaleDateString() : contact.lastSeen}
-                              {isAnalyzing && <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />}
+                              Last Analysis:{" "}
+                              {contact.lastAiAnalysisAt
+                                ? new Date(
+                                    contact.lastAiAnalysisAt,
+                                  ).toLocaleDateString()
+                                : contact.lastSeen}
+                              {isAnalyzing && (
+                                <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />
+                              )}
                             </span>
                           </div>
                           {contact.lastSeenAiReason && (
-                            <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">activity: {contact.lastSeenAiReason}</span>
+                            <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">
+                              activity: {contact.lastSeenAiReason}
+                            </span>
                           )}
                           {contact.needsContactAiReason && (
-                            <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">attention: {contact.needsContactAiReason}</span>
+                            <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">
+                              attention: {contact.needsContactAiReason}
+                            </span>
                           )}
-                          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Added: {new Date(contact.createdAt || '').toLocaleDateString()}</span>
+                          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                            Added:{" "}
+                            {new Date(
+                              contact.createdAt || "",
+                            ).toLocaleDateString()}
+                          </span>
                         </div>
                       </div>
                     </motion.div>
                   )}
 
-                  {activeTab === 'interactions' && (
-                    <motion.div 
+                  {activeTab === "interactions" && (
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
@@ -856,25 +1258,31 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                           Interaction Log ({interactions.length})
                         </h3>
                         <button
-                          onClick={() => setIsLoggingInteraction(!isLoggingInteraction)}
+                          onClick={() =>
+                            setIsLoggingInteraction(!isLoggingInteraction)
+                          }
                           className="p-1 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
                         >
-                          {isLoggingInteraction ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                          {isLoggingInteraction ? 'Cancel' : 'Log Interaction'}
+                          {isLoggingInteraction ? (
+                            <X className="w-3 h-3" />
+                          ) : (
+                            <Plus className="w-3 h-3" />
+                          )}
+                          {isLoggingInteraction ? "Cancel" : "Log Interaction"}
                         </button>
                       </div>
-                      
+
                       {/* Log Interaction Form */}
                       <AnimatePresence>
                         {isLoggingInteraction && (
                           <motion.form
                             initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
+                            animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
                             onSubmit={handleAddInteraction}
                             className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
                           >
-                            <div className="grid grid-cols-2 gap-3">
+                            <div className="grid grid-cols-2 gap-3 pb-3">
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
                                   <Calendar className="w-3 h-3" /> Date & Time
@@ -883,21 +1291,34 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                                   required
                                   type="datetime-local"
                                   value={newInteraction.dateTime}
-                                  onChange={e => setNewInteraction(prev => ({ ...prev, dateTime: e.target.value }))}
+                                  onChange={(e) =>
+                                    setNewInteraction((prev) => ({
+                                      ...prev,
+                                      dateTime: e.target.value,
+                                    }))
+                                  }
                                   className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
                                 />
                               </div>
                               <div className="space-y-1">
                                 <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
-                                  <Clock className="w-3 h-3" /> Duration (e.g. 15m)
+                                  <MessageSquare className="w-3 h-3" /> Type
                                 </label>
-                                <input
-                                  type="text"
-                                  placeholder="Optional"
-                                  value={newInteraction.duration}
-                                  onChange={e => setNewInteraction(prev => ({ ...prev, duration: e.target.value }))}
+                                <select
+                                  value={newInteraction.type}
+                                  onChange={(e) =>
+                                    setNewInteraction((prev) => ({
+                                      ...prev,
+                                      type: e.target.value,
+                                    }))
+                                  }
                                   className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
-                                />
+                                >
+                                  <option value="chat">Chat / Message</option>
+                                  <option value="call">Phone Call</option>
+                                  <option value="meeting">Meeting</option>
+                                  <option value="email">Email</option>
+                                </select>
                               </div>
                             </div>
                             <div className="space-y-1">
@@ -908,14 +1329,22 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                                 required
                                 placeholder="Describe the interaction..."
                                 value={newInteraction.content}
-                                onChange={e => setNewInteraction(prev => ({ ...prev, content: e.target.value }))}
+                                onChange={(e) =>
+                                  setNewInteraction((prev) => ({
+                                    ...prev,
+                                    content: e.target.value,
+                                  }))
+                                }
                                 className="w-full min-h-[80px] p-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs resize-none"
                               />
                             </div>
                             <div className="flex justify-end gap-2 pt-1">
                               <button
                                 type="submit"
-                                disabled={submittingInteraction || !newInteraction.content.trim()}
+                                disabled={
+                                  submittingInteraction ||
+                                  !newInteraction.content.trim()
+                                }
                                 className="px-4 h-9 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
                               >
                                 {submittingInteraction ? (
@@ -933,7 +1362,7 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {interactionsLoading ? (
                           <div className="space-y-3">
-                            {[1, 2, 3].map(i => (
+                            {[1, 2, 3].map((i) => (
                               <div key={i} className="flex gap-3">
                                 <Skeleton className="w-8 h-8 rounded-full shrink-0" />
                                 <div className="flex-1 space-y-2">
@@ -946,46 +1375,189 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         ) : interactions.length === 0 ? (
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">No interactions logged yet.</p>
+                            <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                              No interactions logged yet.
+                            </p>
                           </div>
                         ) : (
-                          [...interactions].reverse().map(interaction => (
-                            <div key={interaction.id} className="flex gap-3 group">
+                          [...interactions].reverse().map((interaction) => (
+                            <div
+                              key={interaction.id}
+                              className="flex gap-3 group"
+                            >
                               <div className="shrink-0 mt-0.5">
                                 {interaction.userPhoto ? (
-                                  <img src={interaction.userPhoto} alt={interaction.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                                  <img
+                                    src={interaction.userPhoto}
+                                    alt={interaction.userName}
+                                    className="w-8 h-8 rounded-full border border-outline-variant"
+                                    referrerPolicy="no-referrer"
+                                  />
                                 ) : (
                                   <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
                                     <UserCircle className="w-5 h-5" />
                                   </div>
                                 )}
                               </div>
-                              <div className="flex-1">
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-black text-on-surface uppercase tracking-tight">{interaction.userName}</span>
-                                    <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                      {new Date(interaction.dateTime).toLocaleDateString()}
-                                    </span>
-                                  </div>
-                                  {interaction.duration && (
-                                    <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
-                                      <Clock className="w-3 h-3" /> {interaction.duration}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                  {interaction.content}
-                                </div>
-                                <div className="mt-1 flex items-center gap-2">
-                                  <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
-                                    {interaction.createdAt ? (
-                                      `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                    ) : (
-                                      'Logging...'
-                                    )}
-                                  </span>
-                                </div>
+                              <div className="flex-1 min-w-0">
+                                {editingInteractionId === interaction.id ? (
+                                  <form
+                                    onSubmit={handleUpdateInteraction}
+                                    className="space-y-3 p-3 rounded-2xl bg-surface-container-high border border-primary/20"
+                                  >
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                          Date
+                                        </label>
+                                        <input
+                                          type="datetime-local"
+                                          required
+                                          value={editInteractionData.dateTime}
+                                          onChange={(e) =>
+                                            setEditInteractionData((prev) => ({
+                                              ...prev,
+                                              dateTime: e.target.value,
+                                            }))
+                                          }
+                                          className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
+                                        />
+                                      </div>
+                                      <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                          Type
+                                        </label>
+                                        <select
+                                          value={editInteractionData.type}
+                                          onChange={(e) =>
+                                            setEditInteractionData((prev) => ({
+                                              ...prev,
+                                              type: e.target.value,
+                                            }))
+                                          }
+                                          className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
+                                        >
+                                          <option value="chat">
+                                            Chat / Message
+                                          </option>
+                                          <option value="call">
+                                            Phone Call
+                                          </option>
+                                          <option value="meeting">
+                                            Meeting
+                                          </option>
+                                          <option value="email">Email</option>
+                                          <option value="interaction">
+                                            Other
+                                          </option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                        Content
+                                      </label>
+                                      <textarea
+                                        required
+                                        value={editInteractionData.content}
+                                        onChange={(e) =>
+                                          setEditInteractionData((prev) => ({
+                                            ...prev,
+                                            content: e.target.value,
+                                          }))
+                                        }
+                                        className="w-full min-h-[60px] p-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs resize-none"
+                                      />
+                                    </div>
+                                    <div className="flex justify-end gap-2 pt-1 border-t border-outline-variant/30">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setEditingInteractionId(null)
+                                        }
+                                        className="h-7 px-3 text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        type="submit"
+                                        disabled={
+                                          isUpdatingInteraction ||
+                                          !editInteractionData.content.trim()
+                                        }
+                                        className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-bold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
+                                      >
+                                        {isUpdatingInteraction ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          "Save"
+                                        )}
+                                      </button>
+                                    </div>
+                                  </form>
+                                ) : (
+                                  <>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+                                          {interaction.userName}
+                                        </span>
+                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                          {new Date(
+                                            interaction.dateTime,
+                                          ).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {user?.uid === interaction.userId && (
+                                          <button
+                                            onClick={() => {
+                                              setEditingInteractionId(
+                                                interaction.id,
+                                              );
+                                              setEditInteractionData({
+                                                content: interaction.content,
+                                                dateTime: interaction.dateTime,
+                                                type:
+                                                  interaction.type ||
+                                                  "interaction",
+                                              });
+                                            }}
+                                            className="text-[10px] font-bold text-primary hover:text-primary-variant uppercase tracking-widest focus:outline-none"
+                                          >
+                                            Edit
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
+                                      {interaction.content}
+                                    </div>
+                                    <div className="mt-1 flex items-center justify-between gap-2">
+                                      <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                                        {interaction.createdAt
+                                          ? `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                          : "Logging..."}
+                                      </span>
+                                      {(interaction.duration ||
+                                        interaction.type) && (
+                                        <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest flex items-center gap-1">
+                                          {interaction.type && (
+                                            <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
+                                              {interaction.type}
+                                            </span>
+                                          )}
+                                          {interaction.duration && (
+                                            <span className="flex items-center gap-0.5">
+                                              <Clock className="w-3 h-3" />
+                                              {interaction.duration}
+                                            </span>
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
                               </div>
                             </div>
                           ))
@@ -994,20 +1566,20 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </motion.div>
                   )}
 
-                  {activeTab === 'comments' && (
-                    <motion.div 
+                  {activeTab === "comments" && (
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
                     >
                       <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
-                         Team Discussion ({comments.length})
+                        Team Discussion ({comments.length})
                       </h3>
-                      
+
                       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {commentsLoading ? (
                           <div className="space-y-3">
-                            {[1, 2, 3].map(i => (
+                            {[1, 2, 3].map((i) => (
                               <div key={i} className="flex gap-3">
                                 <Skeleton className="w-8 h-8 rounded-full shrink-0" />
                                 <div className="flex-1 space-y-2">
@@ -1020,14 +1592,21 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         ) : comments.length === 0 ? (
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No comments yet. Start the conversation.</p>
+                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                              No comments yet. Start the conversation.
+                            </p>
                           </div>
                         ) : (
-                          comments.map(comment => (
+                          comments.map((comment) => (
                             <div key={comment.id} className="flex gap-3 group">
                               <div className="shrink-0 mt-0.5">
                                 {comment.userPhoto ? (
-                                  <img src={comment.userPhoto} alt={comment.userName} className="w-8 h-8 rounded-full border border-outline-variant" referrerPolicy="no-referrer" />
+                                  <img
+                                    src={comment.userPhoto}
+                                    alt={comment.userName}
+                                    className="w-8 h-8 rounded-full border border-outline-variant"
+                                    referrerPolicy="no-referrer"
+                                  />
                                 ) : (
                                   <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
                                     <UserCircle className="w-5 h-5" />
@@ -1036,13 +1615,13 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                               </div>
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{comment.userName}</span>
+                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+                                    {comment.userName}
+                                  </span>
                                   <span className="text-[10px] font-bold text-on-surface-variant/40">
-                                    {comment.createdAt ? (
-                                      `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-                                    ) : (
-                                      'Sending...'
-                                    )}
+                                    {comment.createdAt
+                                      ? `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                      : "Sending..."}
                                   </span>
                                 </div>
                                 <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
@@ -1055,14 +1634,17 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       </div>
 
                       {/* New Comment Input */}
-                      <form onSubmit={handleAddComment} className="relative mt-2">
+                      <form
+                        onSubmit={handleAddComment}
+                        className="relative mt-2"
+                      >
                         <div className="relative group">
                           <textarea
                             placeholder="Add a comment to the discussion..."
                             value={newComment}
-                            onChange={e => setNewComment(e.target.value)}
+                            onChange={(e) => setNewComment(e.target.value)}
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && !e.shiftKey) {
+                              if (e.key === "Enter" && !e.shiftKey) {
                                 e.preventDefault();
                                 handleAddComment(e);
                               }
@@ -1085,20 +1667,20 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                     </motion.div>
                   )}
 
-                  {activeTab === 'history' && (
-                    <motion.div 
+                  {activeTab === "history" && (
+                    <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
                     >
                       <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
-                         Audit History Log ({activities.length})
+                        Audit History Log ({activities.length})
                       </h3>
-                      
+
                       <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                         {activitiesLoading ? (
                           <div className="space-y-4">
-                            {[1, 2, 3, 4].map(i => (
+                            {[1, 2, 3, 4].map((i) => (
                               <div key={i} className="flex gap-4">
                                 <Skeleton className="w-10 h-10 rounded-full shrink-0" />
                                 <div className="flex-1 space-y-2">
@@ -1111,52 +1693,17 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                         ) : activities.length === 0 ? (
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <Clock className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">No audit history found for this contact.</p>
+                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                              No audit history found for this contact.
+                            </p>
                           </div>
                         ) : (
                           activities.map((activity, idx) => (
-                            <div key={activity.id || idx} className="relative pl-8 pb-4 last:pb-0 group">
-                              {/* Timeline line */}
-                              {idx !== activities.length - 1 && (
-                                <div className="absolute left-4 top-10 bottom-0 w-[1px] bg-outline-variant group-hover:bg-primary/30 transition-colors" />
-                              )}
-                              
-                              {/* Icon Bubble */}
-                              <div className={cn(
-                                "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 shadow-sm",
-                                activity.type === 'edit' ? "bg-tertiary-container text-on-tertiary-container" :
-                                activity.type === 'create' ? "bg-primary-container text-on-primary-container" :
-                                activity.type === 'comment' ? "bg-secondary-container text-on-secondary-container" :
-                                activity.type === 'call' ? "bg-primary-fixed text-on-primary-fixed" :
-                                "bg-surface-container-highest text-on-surface-variant"
-                              )}>
-                                {activity.type === 'edit' && <Edit3 className="w-4 h-4" />}
-                                {activity.type === 'create' && <UserCircle className="w-4 h-4" />}
-                                {activity.type === 'comment' && <MessageSquare className="w-4 h-4" />}
-                                {activity.type === 'call' && <Phone className="w-4 h-4" />}
-                                {!['edit', 'create', 'comment', 'call'].includes(activity.type) && <Calendar className="w-4 h-4" />}
-                              </div>
-
-                              <div className="flex-1">
-                                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">{activity.userName}</span>
-                                  <span className="text-xs text-on-surface-variant">{activity.action}</span>
-                                  <span className="text-[10px] font-bold text-on-surface-variant/40 ml-auto uppercase tracking-widest whitespace-nowrap">
-                                    {new Date(activity.createdAt).toLocaleDateString()} at {new Date(activity.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                                {activity.description && activity.type === 'edit' && (
-                                  <div className="p-3 rounded-xl bg-surface-container-high border border-outline-variant/30 text-[11px] font-mono leading-relaxed text-on-surface-variant whitespace-pre-wrap">
-                                    {activity.description}
-                                  </div>
-                                )}
-                                {activity.description && activity.type !== 'edit' && (
-                                  <div className="text-xs text-on-surface-variant italic line-clamp-2 px-1">
-                                    "{activity.description}"
-                                  </div>
-                                )}
-                              </div>
-                            </div>
+                            <AuditActivityItem
+                              key={activity.id || idx}
+                              activity={activity}
+                              isLast={idx === activities.length - 1}
+                            />
                           ))
                         )}
                       </div>
@@ -1175,10 +1722,14 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   className="flex items-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm hover:bg-error/10 transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
-                  {loading ? <span className="animate-pulse">Deleting...</span> : 'Delete Contact'}
+                  {loading ? (
+                    <span className="animate-pulse">Deleting...</span>
+                  ) : (
+                    "Delete Contact"
+                  )}
                 </button>
               </div>
-              
+
               <div className="flex gap-3 w-full sm:w-auto">
                 {isEditing ? (
                   <>
@@ -1195,7 +1746,11 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                       disabled={loading}
                       className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                     >
-                      {loading ? <span className="animate-pulse">Saving...</span> : 'Save Changes'}
+                      {loading ? (
+                        <span className="animate-pulse">Saving...</span>
+                      ) : (
+                        "Save Changes"
+                      )}
                     </button>
                   </>
                 ) : (
@@ -1208,17 +1763,21 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                 )}
               </div>
             </div>
-            
+
             {/* Mobile-only delete button */}
             <div className="sm:hidden px-6 pb-6 pt-0">
-               <button
-                  onClick={handleDelete}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  {loading ? <span className="animate-pulse">Deleting...</span> : 'Delete Contact'}
-                </button>
+              <button
+                onClick={handleDelete}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                {loading ? (
+                  <span className="animate-pulse">Deleting...</span>
+                ) : (
+                  "Delete Contact"
+                )}
+              </button>
             </div>
 
             {/* Footer for Edit Mode */}
@@ -1237,7 +1796,11 @@ export default function ContactDetailsModal({ isOpen, onClose, contact }: Contac
                   type="submit"
                   className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70 cursor-pointer"
                 >
-                  {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Changes'}
+                  {loading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    "Save Changes"
+                  )}
                 </button>
                 <button
                   type="button"

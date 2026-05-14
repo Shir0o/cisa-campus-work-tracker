@@ -90,6 +90,7 @@ export interface Interaction {
   content: string;
   dateTime: string;
   duration?: string;
+  type?: string;
   createdAt: string;
 }
 

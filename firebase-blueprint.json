@@ -181,6 +181,23 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["summary", "activityIds", "createdAt"]
+    },
+    "tasks": {
+      "title": "Task",
+      "description": "A follow-up task related to a contact.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "contactId": { "type": "string" },
+        "contactName": { "type": "string" },
+        "assigneeId": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "sourceInteractionId": { "type": "string" }
+      },
+      "required": ["title", "priority", "contactId", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -231,6 +248,10 @@
     "ai_summaries/{cacheKey}": {
       "schema": "ai_summaries",
       "description": "Cached summaries of community activity."
+    },
+    "tasks/{taskId}": {
+      "schema": "tasks",
+      "description": "Follow-up tasks associated with contacts."
     }
   }
 }

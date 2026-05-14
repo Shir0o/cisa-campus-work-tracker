@@ -29,6 +29,8 @@ export interface CampaignStrategy {
   suggestedFocus: string;
 }
 
+let humanizeQueue: Promise<void> = Promise.resolve();
+
 export const aiService = {
   async analyzeContact(
     contact: Contact,
@@ -280,39 +282,90 @@ export const aiService = {
 
   async humanizeActivity(activity: Activity): Promise<string> {
     const prompt = `
-      Convert the following community activity into a short, natural, and friendly sentence for a community dashboard.
-      A community manager will read this to stay updated on their members.
-
-      Activity Data:
-      - User who performed action: ${activity.user}
-      - Type of Action: ${activity.action}
-      - Person targeted/affected: ${activity.target}
-      - Event Type: ${activity.type}
-      - Technical Details (often shows changes or raw input): ${activity.description || 'N/A'}
-
-      Special Instructions for Technical Details:
-      - If you see patterns like "field: 'old' -> 'new'", translate it into a human update (e.g., "John updated Sarah's phone number").
-      - If it's a 'call', 'email', or 'event', emphasize the interaction based on the notes (e.g., "John shared a warm phone conversation with Sarah").
-      - If it's a comment, mention that a thought or note was shared.
-      - **CRITICAL**: If the details imply a follow-up action (e.g., "will call back", "send info next week", "needs prayer for X"), concisely include it as a next step (e.g., "...and will follow up next Tuesday").
+      You are an AI generating a single human-readable sentence for an activity feed.
       
-      General Rules:
-      - Max 18 words.
-      - Use active voice.
-      - Sound professional yet warm.
-      - Output ONLY the humanized sentence. No quotes, no intro.
+      Activity Context:
+      - User: ${activity.user}
+      - Action: ${activity.action}
+      - Target: ${activity.target}
+      - Type: ${activity.type}
+      - Details: ${activity.description || 'N/A'}
+
+      Write exactly ONE short, natural sentence summarizing this activity in the past tense.
+      
+      Examples:
+      - "John Doe updated Sarah's profile details."
+      - "Alice called Bob to discuss the upcoming project."
+      - "Michael left a comment: 'Great job!'"
+      - "Admin added a new status tag to Mark's profile."
+      
+      CRITICAL RULES:
+      - Do NOT output any raw data like 'email: "" -> "..."' or 'status: "Lead"'.
+      - Describe the change conceptually. E.g., if emails or phone numbers changed, say "(User) updated contact information for (Target)."
+      - Keep it under 20 words.
+      - Output ONLY the sentence itself. No conversational filler. No quotes.
     `;
 
+    // Queue the request
+    const currentQueue = humanizeQueue;
+    let resolveQueue: () => void;
+    humanizeQueue = new Promise<void>(resolve => {
+      resolveQueue = resolve;
+    });
+
     try {
+      await currentQueue;
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.1-flash-lite",
         contents: prompt
       });
 
       return response.text.trim().replace(/^"|"$/g, '') || `${activity.user} ${activity.action} ${activity.target}`;
     } catch (error) {
-      console.error("AI Humanization Failed:", error);
+      console.error("AI Humanization Failed:", JSON.stringify(error));
       return `${activity.user} ${activity.action} ${activity.target}`;
+    } finally {
+      resolveQueue!();
+    }
+  },
+
+  async generateTasksFromInteraction(interactionContext: string): Promise<Pick<import('../types').Task, 'title' | 'dueDate' | 'priority'>[]> {
+    const prompt = `
+      Analyze the following interaction notes and identify any potential follow-up tasks or actions required.
+      
+      Interaction Notes:
+      ${interactionContext}
+      
+      Extract clear, actionable tasks. If someone says "I will call back next week", create a task for that. 
+      If no actionable tasks are found, return an empty array.
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING },
+                dueDate: { type: Type.STRING },
+                priority: { type: Type.STRING, enum: ['low', 'medium', 'high'] }
+              },
+              required: ['title', 'dueDate', 'priority']
+            }
+          }
+        }
+      });
+
+      const result = JSON.parse(response.text || '[]');
+      return result;
+    } catch (error) {
+      console.error("AI Task Generation Failed:", error);
+      return [];
     }
   }
 };
