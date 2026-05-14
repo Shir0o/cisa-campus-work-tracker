@@ -13,14 +13,19 @@ const PROJECT_ID = 'campus-hub-security-test';
 
 describe('Firestore Security Rules', () => {
   beforeAll(async () => {
-    testEnv = await initializeTestEnvironment({
-      projectId: PROJECT_ID,
-      firestore: {
-        rules: fs.readFileSync('firestore.rules', 'utf8'),
-        host: 'localhost',
-        port: 8080,
-      },
-    });
+    try {
+      testEnv = await initializeTestEnvironment({
+        projectId: PROJECT_ID,
+        firestore: {
+          rules: fs.readFileSync('firestore.rules', 'utf8'),
+          host: 'localhost',
+          port: 8080,
+        },
+      });
+    } catch (e: any) {
+      console.error('INIT ERR:', e.message, e.response?.body, e);
+      throw e;
+    }
   });
 
   afterAll(async () => {

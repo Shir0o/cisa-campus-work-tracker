@@ -127,19 +127,21 @@ service cloud.firestore {
       match /interactions/{interactionId} {
         function isValidInteraction(data) {
           return data.keys().hasAll(['userId', 'userName', 'content', 'dateTime', 'createdAt']) &&
-                 data.userId == request.auth.uid &&
                  data.userName is string && data.userName.size() <= 128 &&
-                 data.content is string && data.content.size() <= 5000 &&
-                 data.createdAt == request.time;
+                 data.content is string && data.content.size() <= 5000;
         }
 
         allow list: if isApprovedUser();
         allow get: if isValidId(interactionId) && isApprovedUser();
-        allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && isValidInteraction(incoming());
+        allow create: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
+                        isValidInteraction(incoming()) && 
+                        incoming().userId == request.auth.uid && 
+                        incoming().createdAt == request.time;
         allow update: if isValidId(interactionId) && isApprovedUser() && isOperator() && 
                         isValidInteraction(incoming()) && 
                         incoming().userId == existing().userId &&
-                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'dateTime', 'userName', 'userPhoto']);
+                        (existing().userId == request.auth.uid || isAdmin()) &&
+                        incoming().diff(existing()).affectedKeys().hasOnly(['content', 'dateTime', 'type', 'userName', 'userPhoto']);
         allow delete: if isValidId(interactionId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
       }
 
@@ -147,17 +149,19 @@ service cloud.firestore {
       match /comments/{commentId} {
         function isValidComment(data) {
           return data.keys().hasAll(['userId', 'userName', 'text', 'createdAt']) &&
-                 data.userId == request.auth.uid &&
                  data.userName is string && data.userName.size() <= 128 &&
-                 data.text is string && data.text.size() <= 2000 &&
-                 data.createdAt == request.time;
+                 data.text is string && data.text.size() <= 2000;
         }
 
         allow read: if isApprovedUser();
-        allow create: if isValidId(commentId) && isApprovedUser() && isOperator() && isValidComment(incoming());
+        allow create: if isValidId(commentId) && isApprovedUser() && isOperator() && 
+                        isValidComment(incoming()) && 
+                        incoming().userId == request.auth.uid && 
+                        incoming().createdAt == request.time;
         allow update: if isValidId(commentId) && isApprovedUser() && isOperator() && 
                         isValidComment(incoming()) && 
-                        existing().userId == request.auth.uid &&
+                        incoming().userId == existing().userId &&
+                        (existing().userId == request.auth.uid || isAdmin()) &&
                         incoming().diff(existing()).affectedKeys().hasOnly(['text']);
         allow delete: if isValidId(commentId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
       }
