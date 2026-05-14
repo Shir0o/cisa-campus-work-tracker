@@ -98,6 +98,7 @@ export default function Dashboard() {
           return {
             id: docSnapshot.id,
             user: data.userName || data.createdByName || 'Unknown',
+            userPhoto: data.userPhoto,
             action: "logged an interaction for",
             target: "a contact",
             contactId: contactId,
@@ -138,6 +139,7 @@ export default function Dashboard() {
           return {
             id: docSnapshot.id,
             user: data.userName,
+            userPhoto: data.userPhoto,
             action: "left a comment on",
             target: "a contact",
             contactId: contactId,

@@ -42,6 +42,7 @@ export interface Metric {
 export interface Activity {
   id: string;
   user: string;
+  userPhoto?: string;
   action: string;
   target: string;
   contactId?: string;
