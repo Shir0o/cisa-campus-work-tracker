@@ -42,7 +42,6 @@ import {
 } from "../types";
 import { ActivityItem } from "../components/ActivityItem";
 import { Skeleton } from "../components/ui/Skeleton";
-import { aiService } from "../services/aiService";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import LogInteractionModal from "../components/modals/LogInteractionModal";
 

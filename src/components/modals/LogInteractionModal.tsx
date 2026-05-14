@@ -24,7 +24,6 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
-import { aiService } from '../../services/aiService';
 
 interface LogInteractionModalProps {
   isOpen: boolean;
@@ -44,13 +43,12 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
 
-  // AI Tasks State
-  const [generatedTasks, setGeneratedTasks] = useState<Partial<Task>[]>([]);
-  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+  // Tasks State
+  const [tasks, setTasks] = useState<Partial<Task>[]>([]);
 
   useEffect(() => {
     if (!isOpen) {
-      setGeneratedTasks([]);
+      setTasks([]);
       setNotes('');
       setType('chat');
       setSelectedContactIds(new Set());
@@ -86,25 +84,12 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
 
   const selectedContacts = contacts.filter(c => selectedContactIds.has(c.id));
 
-  const handleGenerateTasks = async () => {
-    if (!notes.trim() || isGeneratingTasks) return;
-    setIsGeneratingTasks(true);
-    try {
-      const tasks = await aiService.generateTasksFromInteraction(notes);
-      setGeneratedTasks(tasks);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsGeneratingTasks(false);
-    }
-  };
-
   const removeTask = (index: number) => {
-    setGeneratedTasks(prev => prev.filter((_, i) => i !== index));
+    setTasks(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleTaskChange = (index: number, field: keyof Task, value: any) => {
-    setGeneratedTasks(prev => {
+    setTasks(prev => {
       const updated = [...prev];
       updated[index] = { ...updated[index], [field]: value };
       return updated;
@@ -112,7 +97,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
   };
 
   const addTask = () => {
-    setGeneratedTasks(prev => [...prev, { title: '', dueDate: date, priority: 'medium' }]);
+    setTasks(prev => [...prev, { title: '', dueDate: date, priority: 'medium' }]);
   };
 
   const handleLogInteraction = async () => {
@@ -145,8 +130,8 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
         });
 
         // Create tasks
-        if (generatedTasks.length > 0) {
-          generatedTasks.forEach(task => {
+        if (tasks.length > 0) {
+          tasks.forEach(task => {
             if (task.title?.trim()) {
               const taskRef = doc(collection(db, 'tasks'));
               batch.set(taskRef, {
@@ -387,18 +372,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between px-1">
-                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant block">Notes / Content</label>
-                      <button
-                        type="button"
-                        onClick={handleGenerateTasks}
-                        disabled={isGeneratingTasks || !notes.trim()}
-                        className="text-[10px] font-bold text-primary flex items-center gap-1 hover:text-primary-variant disabled:opacity-50 transition-colors"
-                      >
-                        {isGeneratingTasks ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
-                        Generate Follow-up Tasks
-                      </button>
-                    </div>
+                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1 block">Notes / Content</label>
                     <textarea 
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
@@ -407,7 +381,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                     />
                   </div>
 
-                  {generatedTasks.length > 0 && (
+                  {tasks.length > 0 && (
                     <div className="space-y-3 bg-surface-container-low p-4 rounded-3xl border border-primary/20">
                       <div className="flex items-center justify-between px-1">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
@@ -422,7 +396,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                         </button>
                       </div>
                       <div className="space-y-2">
-                        {generatedTasks.map((task, i) => (
+                        {tasks.map((task, i) => (
                           <div key={i} className="flex gap-2 items-start bg-surface-container rounded-xl p-2 border border-outline-variant/30">
                            <input
                               type="text"

@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSpreadsheet, RefreshCw, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '../AuthProvider';
 import { fetchSheetData, extractSpreadsheetId } from '../../services/sheetsService';
-import { aiService } from '../../services/aiService';
 import { collection, doc, updateDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
@@ -21,7 +20,6 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
   const [tabName, setTabName] = useState('Sheet1');
   const [range, setRange] = useState('A1:Z100');
   const [loading, setLoading] = useState(false);
-  const [isMapping, setIsMapping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   
@@ -54,13 +52,9 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
       const headers = rows[0];
       const dataRows = rows.slice(1);
 
-      setIsMapping(true);
       const existingEventsSnapshot = await getDocs(collection(db, 'events'));
       const existingEvents = existingEventsSnapshot.docs.map(d => ({ id: d.id, name: d.data().name }));
       const existingEventNames = existingEvents.map(e => e.name);
-
-      const aiMapping = await aiService.mapSheetColumnsToEvents(headers, existingEventNames);
-      setIsMapping(false);
 
       const eventMappings: Record<string, string> = {};
       const colToEventId: Record<number, string> = {};
@@ -69,7 +63,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
       for (let i = 0; i < eventHeaders.length; i++) {
         const colIdx = i + 1;
         const header = eventHeaders[i];
-        const matchedName = aiMapping[colIdx] || header;
+        const matchedName = header;
         const existing = existingEvents.find(e => e.name.toLowerCase() === matchedName.toLowerCase());
         
         eventMappings[header] = existing ? `Matches: ${existing.name}` : `Will create new event: ${matchedName}`;
@@ -122,7 +116,6 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
       setError(err.message || 'Validation failed');
     } finally {
       setLoading(false);
-      setIsMapping(false);
     }
   };
 
@@ -330,12 +323,12 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
               <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
                 <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
                   <Sparkles className="w-3 h-3 text-primary" />
-                  AI Sync Protocol
+                  Sync Protocol
                 </h4>
                 <ul className="text-[11px] text-on-surface-variant space-y-1.5 list-disc pl-4 leading-relaxed">
                   <li><strong>Auto-Creation</strong>: New people will be added as "Leads".</li>
                   <li><strong>Dry Run</strong>: Validate row-by-row before any database changes.</li>
-                  <li><strong>Intelligent Matching</strong>: AI correlates column names to existing events.</li>
+                  <li><strong>Exact Matching</strong>: Maps columns using exact name matches.</li>
                 </ul>
               </div>
 
@@ -373,20 +366,11 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 {loading ? (
                   <div className="flex flex-col items-center">
                     <RefreshCw className="w-5 h-5 animate-spin" />
-                    {isMapping && (
-                      <motion.span 
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-[10px] mt-1 font-medium animate-pulse"
-                      >
-                        AI Analysis...
-                      </motion.span>
-                    )}
                   </div>
                 ) : (
                   <>
                     <RefreshCw className="w-5 h-5" />
-                    {dryRunData ? `Confirm & Commit (${dryRunData.newContacts.length + dryRunData.updates.length} rows)` : 'Run AI Dry Run'}
+                    {dryRunData ? `Confirm & Commit (${dryRunData.newContacts.length + dryRunData.updates.length} rows)` : 'Run Dry Run'}
                   </>
                 )}
               </button>
