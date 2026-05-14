@@ -96,9 +96,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } else {
           // Document exists, set initial state before listener starts
           const data = userDoc.data();
+
+          if (isSuperAdminEmail && (data.role !== 'admin' || !data.approved)) {
+            try {
+              const { updateDoc } = await import('firebase/firestore');
+              await updateDoc(userDocRef, {
+                role: 'admin',
+                approved: true
+              });
+            } catch(e) {
+              console.error('Failed to auto-upgrade super admin', e);
+            }
+          }
+
           const currentRole = data.role as string;
           setIsApproved(data.approved || isSuperAdminEmail);
-          const effectiveRole = isSuperAdminEmail ? (currentRole || 'admin') : currentRole;
+          const effectiveRole = isSuperAdminEmail ? 'admin' : currentRole;
           setRole(effectiveRole);
           setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
           setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);
@@ -110,7 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = doc.data();
             setIsApproved(data.approved || isSuperAdminEmail);
             const currentRole = data.role as string;
-            const effectiveRole = isSuperAdminEmail ? (currentRole || 'admin') : currentRole;
+            const effectiveRole = isSuperAdminEmail ? 'admin' : currentRole;
             setRole(effectiveRole);
             setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
             setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);

@@ -152,7 +152,7 @@ export default function ContactDetailsModal({
   onClose,
   contact,
 }: ContactDetailsModalProps) {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [interactionsLoading, setInteractionsLoading] = useState(true);
@@ -1398,8 +1398,8 @@ export default function ContactDetailsModal({
                                           ).toLocaleDateString()}
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {user?.uid === interaction.userId && (
+                                      <div className="flex items-center gap-2 transition-opacity">
+                                        {(user?.uid === interaction.userId || isAdmin) && (
                                           <button
                                             onClick={() => {
                                               setEditingInteractionId(
