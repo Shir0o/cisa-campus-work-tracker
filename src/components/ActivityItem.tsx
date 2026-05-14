@@ -33,7 +33,7 @@ export function ActivityItem({
     >
       <div
         className={cn(
-          "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105 group-hover:-rotate-3 mt-0.5",
+          "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105 group-hover:-rotate-3 mt-0.5 overflow-hidden",
           activity.type === "call"
             ? "bg-primary-container text-primary"
             : activity.type === "email"
@@ -48,15 +48,13 @@ export function ActivityItem({
                       ? "bg-primary-container text-primary"
                       : "bg-error-container text-on-error-container",
         )}
-        title={activity.type}
+        title={activity.user}
       >
-        {activity.type === "call" && <Phone className="w-4 h-4" />}
-        {activity.type === "email" && <Mail className="w-4 h-4" />}
-        {activity.type === "event" && <Calendar className="w-4 h-4" />}
-        {activity.type === "comment" && <MessageSquare className="w-4 h-4" />}
-        {activity.type === "edit" && <RefreshCw className="w-4 h-4" />}
-        {activity.type === "create" && <Users className="w-4 h-4" />}
-        {activity.type === "alert" && <AlertTriangle className="w-4 h-4" />}
+        {activity.userPhoto ? (
+          <img src={activity.userPhoto} alt={activity.user} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+        ) : (
+          <span className="text-[16px] font-bold uppercase">{activity.user?.charAt(0) || '?'}</span>
+        )}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-4">
