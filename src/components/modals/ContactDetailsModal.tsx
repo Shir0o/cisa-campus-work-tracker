@@ -46,7 +46,6 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { Contact, Stage, Interaction, Comment } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
-import { aiService } from "../../services/aiService";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -185,7 +184,6 @@ export default function ContactDetailsModal({
     type: "interaction",
   });
   const [isUpdatingInteraction, setIsUpdatingInteraction] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -371,62 +369,6 @@ export default function ContactDetailsModal({
       return () => unsubscribe();
     }
   }, [isOpen, contact]);
-
-  useEffect(() => {
-    const triggerAI = async () => {
-      if (!isOpen || !contact || isAnalyzing) return;
-      if (interactionsLoading || commentsLoading) return;
-
-      const lastAnalysis = contact.lastAiAnalysisAt
-        ? new Date(contact.lastAiAnalysisAt)
-        : null;
-      const now = new Date();
-      const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
-      const fifteenMinsAgo = new Date(now.getTime() - 15 * 60 * 1000);
-
-      const hasNewDataPostAnalysis = (data: (Interaction | Comment)[]) => {
-        if (!lastAnalysis) return data.length > 0;
-        return data.some((item) => {
-          const createdAt = item.createdAt
-            ? new Date(item.createdAt)
-            : new Date(0);
-          return createdAt > lastAnalysis;
-        });
-      };
-
-      // Smart trigger logic:
-      // 1. Never analyzed before
-      // 2. Last analysis was over 4 hours ago (automatic refresh)
-      // 3. New interaction/comment added AND last analysis was over 15 mins ago (smart update)
-      const needsAnalysis =
-        !lastAnalysis ||
-        lastAnalysis < fourHoursAgo ||
-        ((hasNewDataPostAnalysis(interactions) ||
-          hasNewDataPostAnalysis(comments)) &&
-          lastAnalysis < fifteenMinsAgo);
-
-      if (needsAnalysis && (interactions.length > 0 || comments.length > 0)) {
-        console.log(
-          "Triggering automatic AI activity analysis for",
-          contact.name,
-        );
-        handleAIAnalyze();
-      }
-    };
-
-    triggerAI();
-  }, [
-    isOpen,
-    contact?.id,
-    interactionsLoading,
-    commentsLoading,
-    interactions.length,
-    comments.length,
-    contact?.notes,
-    contact?.status,
-    contact?.stage,
-    contact?.lastAiAnalysisAt,
-  ]);
 
   if (!contact) return null;
 
@@ -726,40 +668,6 @@ export default function ContactDetailsModal({
     } finally {
       setSubmittingComment(true); // Keep spinner until next tick or just reset
       setSubmittingComment(false);
-    }
-  };
-
-  const handleAIAnalyze = async () => {
-    if (!contact || isAnalyzing) return;
-    setIsAnalyzing(true);
-    try {
-      const analysis = await aiService.analyzeContact(
-        contact,
-        interactions,
-        comments,
-      );
-
-      const contactRef = doc(db, "contacts", contact.id);
-      const now = new Date().toISOString();
-
-      // If AI suggests Needs Contact and we aren't already there or explicitly follow up
-      const shouldUpdateStage =
-        analysis.needsContact.suggested && contact.stage !== "Needs Contact";
-
-      await updateDoc(contactRef, {
-        lastSeen: new Date(analysis.lastSeen.timestamp).toLocaleDateString(),
-        updatedAt: now,
-        lastAiAnalysisAt: now,
-        lastSeenAiReason: `${analysis.lastSeen.reasoning} (${analysis.lastSeen.source})`,
-        needsContactAiReason: analysis.needsContact.suggested
-          ? analysis.needsContact.reasoning
-          : null,
-        ...(shouldUpdateStage ? { stage: "Needs Contact" } : {}),
-      });
-    } catch (error) {
-      console.error("AI Analysis Error:", error);
-    } finally {
-      setIsAnalyzing(false);
     }
   };
 
@@ -1215,27 +1123,9 @@ export default function ContactDetailsModal({
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
-                              Last Analysis:{" "}
-                              {contact.lastAiAnalysisAt
-                                ? new Date(
-                                    contact.lastAiAnalysisAt,
-                                  ).toLocaleDateString()
-                                : contact.lastSeen}
-                              {isAnalyzing && (
-                                <Loader2 className="w-2.5 h-2.5 animate-spin text-primary" />
-                              )}
+                              Last Seen: {contact.lastSeen || "Never"}
                             </span>
                           </div>
-                          {contact.lastSeenAiReason && (
-                            <span className="text-[9px] text-primary/60 italic leading-tight max-w-xs">
-                              activity: {contact.lastSeenAiReason}
-                            </span>
-                          )}
-                          {contact.needsContactAiReason && (
-                            <span className="text-[9px] text-error/70 italic leading-tight max-w-xs">
-                              attention: {contact.needsContactAiReason}
-                            </span>
-                          )}
                           <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
                             Added:{" "}
                             {new Date(
