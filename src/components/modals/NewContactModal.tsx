@@ -122,13 +122,23 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
 
       const docRef = await addDoc(collection(db, 'contacts'), contactData);
       
+      const fieldsLog = [
+        `Group: ${formData.role}`,
+        `Stage: ${formData.stage}`,
+        `First Met: ${formData.location}`,
+        formData.email ? `Email: ${formData.email}` : '',
+        formData.phone ? `Phone: ${formData.phone}` : '',
+        formData.tags.length > 0 ? `Tags: ${formData.tags.join(', ')}` : '',
+        formData.notes ? `Notes: ${formData.notes}` : ''
+      ].filter(Boolean).join('\n');
+
       logActivity({
         action: 'created a new contact',
         targetId: docRef.id,
         targetName: fullName,
         targetType: 'contact',
         type: 'create',
-        description: `Group: ${formData.role}\nStage: ${formData.stage}\nFirst Met: ${formData.location}`
+        description: fieldsLog
       });
 
       if (user) {

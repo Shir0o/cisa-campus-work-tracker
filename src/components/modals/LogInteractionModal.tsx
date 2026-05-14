@@ -14,13 +14,17 @@ import {
   Coffee,
   Info,
   CalendarDays,
-  HeartHandshake
+  HeartHandshake,
+  Sparkles,
+  Trash2,
+  Plus
 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
-import { Contact } from '../../types';
+import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
+import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { aiService } from '../../services/aiService';
 
 interface LogInteractionModalProps {
   isOpen: boolean;
@@ -40,8 +44,19 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
 
+  // AI Tasks State
+  const [generatedTasks, setGeneratedTasks] = useState<Partial<Task>[]>([]);
+  const [isGeneratingTasks, setIsGeneratingTasks] = useState(false);
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setGeneratedTasks([]);
+      setNotes('');
+      setType('chat');
+      setSelectedContactIds(new Set());
+      setSearchQuery('');
+      return;
+    }
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Contact[];
@@ -71,6 +86,35 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
 
   const selectedContacts = contacts.filter(c => selectedContactIds.has(c.id));
 
+  const handleGenerateTasks = async () => {
+    if (!notes.trim() || isGeneratingTasks) return;
+    setIsGeneratingTasks(true);
+    try {
+      const tasks = await aiService.generateTasksFromInteraction(notes);
+      setGeneratedTasks(tasks);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsGeneratingTasks(false);
+    }
+  };
+
+  const removeTask = (index: number) => {
+    setGeneratedTasks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleTaskChange = (index: number, field: keyof Task, value: any) => {
+    setGeneratedTasks(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addTask = () => {
+    setGeneratedTasks(prev => [...prev, { title: '', dueDate: date, priority: 'medium' }]);
+  };
+
   const handleLogInteraction = async () => {
     if (selectedContactIds.size === 0 || !notes.trim() || isSubmitting) return;
     
@@ -93,20 +137,61 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
           contactName: contact?.name || 'Unknown'
         });
 
-        // Also update contact's last seen/activity
+        // Update contact's last seen/activity
         const contactRef = doc(db, 'contacts', contactId);
         batch.update(contactRef, {
           lastSeen: date,
           updatedAt: serverTimestamp()
         });
+
+        // Create tasks
+        if (generatedTasks.length > 0) {
+          generatedTasks.forEach(task => {
+            if (task.title?.trim()) {
+              const taskRef = doc(collection(db, 'tasks'));
+              batch.set(taskRef, {
+                title: task.title,
+                dueDate: task.dueDate || date,
+                priority: task.priority || 'medium',
+                contactId: contactId,
+                contactName: contact?.name || 'Unknown',
+                assigneeId: user?.uid || null,
+                status: 'pending',
+                sourceInteractionId: interactionRef.id,
+                createdAt: serverTimestamp()
+              });
+            }
+          });
+        }
       }
 
       await batch.commit();
+
+      // Log system activity outside batch (helper adds its own doc)
+      if (selectedContactIds.size === 1) {
+        const contact = contacts.find(c => c.id === Array.from(selectedContactIds)[0]);
+        if (contact) {
+          logActivity({
+            action: 'logged an interaction for',
+            targetId: contact.id,
+            targetName: contact.name,
+            targetType: 'contact',
+            type: type === 'meeting' ? 'event' : type === 'chat' ? 'comment' : type,
+            description: notes
+          });
+        }
+      } else {
+        logActivity({
+          action: 'logged a batch interaction for',
+          targetId: 'multiple',
+          targetName: `${selectedContactIds.size} contacts`,
+          targetType: 'interaction',
+          type: type === 'meeting' ? 'event' : type === 'chat' ? 'comment' : type,
+          description: notes
+        });
+      }
+
       onClose();
-      // Reset form
-      setSelectedContactIds(new Set());
-      setNotes('');
-      setSearchQuery('');
     } catch (error) {
       console.error('Error logging batch interaction:', error);
       handleFirestoreError(error, OperationType.WRITE, 'batch/interactions');
@@ -302,7 +387,18 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1 block">Notes / Content</label>
+                    <div className="flex items-center justify-between px-1">
+                      <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant block">Notes / Content</label>
+                      <button
+                        type="button"
+                        onClick={handleGenerateTasks}
+                        disabled={isGeneratingTasks || !notes.trim()}
+                        className="text-[10px] font-bold text-primary flex items-center gap-1 hover:text-primary-variant disabled:opacity-50 transition-colors"
+                      >
+                        {isGeneratingTasks ? <Loader2 className="w-3 h-3 animate-spin"/> : <Sparkles className="w-3 h-3"/>}
+                        Generate Follow-up Tasks
+                      </button>
+                    </div>
                     <textarea 
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
@@ -310,6 +406,49 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                       className="w-full h-32 bg-surface-container-low border border-outline/20 rounded-2xl p-4 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed placeholder:text-on-surface-variant/30 shadow-sm"
                     />
                   </div>
+
+                  {generatedTasks.length > 0 && (
+                    <div className="space-y-3 bg-surface-container-low p-4 rounded-3xl border border-primary/20">
+                      <div className="flex items-center justify-between px-1">
+                        <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
+                          Follow-Up Tasks
+                        </label>
+                        <button
+                          type="button"
+                          onClick={addTask}
+                          className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1 hover:text-on-surface transition-colors"
+                        >
+                          <Plus className="w-3 h-3"/> Add Manual
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {generatedTasks.map((task, i) => (
+                          <div key={i} className="flex gap-2 items-start bg-surface-container rounded-xl p-2 border border-outline-variant/30">
+                           <input
+                              type="text"
+                              value={task.title || ''}
+                              onChange={(e) => handleTaskChange(i, 'title', e.target.value)}
+                              placeholder="Task description"
+                              className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-on-surface px-2 py-1"
+                            />
+                            <input
+                              type="date"
+                              value={task.dueDate || ''}
+                              onChange={(e) => handleTaskChange(i, 'dueDate', e.target.value)}
+                              className="w-32 bg-transparent border-none focus:ring-0 text-xs text-on-surface-variant px-2 py-1.5"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeTask(i)}
+                              className="p-1.5 text-on-surface-variant/50 hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {selectedContactIds.size > 0 && (
                     <motion.div 

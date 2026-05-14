@@ -257,6 +257,23 @@ service cloud.firestore {
       allow update, delete: if isManager();
     }
 
+    // 11. Tasks Collection
+    match /tasks/{taskId} {
+      function isValidTask(data) {
+        return data.title is string && data.title.size() <= 500 &&
+               data.dueDate is string && data.dueDate.size() <= 20 &&
+               data.status in ['pending', 'completed', 'canceled'] &&
+               data.priority in ['low', 'medium', 'high'] &&
+               (data.contactId == null || (data.contactId is string && data.contactId.size() <= 128)) &&
+               (data.contactName == null || (data.contactName is string && data.contactName.size() <= 128)) &&
+               (data.assigneeId == null || (data.assigneeId is string && data.assigneeId.size() <= 128)) &&
+               (data.sourceInteractionId == null || (data.sourceInteractionId is string && data.sourceInteractionId.size() <= 128));
+      }
+      allow list, get: if isApprovedUser();
+      allow create, update: if isApprovedUser() && isOperator() && isValidTask(incoming());
+      allow delete: if isManager() || isSuperAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();
