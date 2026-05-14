@@ -55,11 +55,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [recentFollowUpsCount, setRecentFollowUpsCount] = useState(0);
 
-  const [systemActivities, setSystemActivities] = useState<Activity[]>([]);
   const [legacyInteractions, setLegacyInteractions] = useState<Activity[]>([]);
   const [legacyComments, setLegacyComments] = useState<Activity[]>([]);
-  const [legacyCreations, setLegacyCreations] = useState<Activity[]>([]);
-  const [legacyEdits, setLegacyEdits] = useState<Activity[]>([]);
 
   const [tasks, setTasks] = useState<any[]>([]);
 
@@ -78,34 +75,6 @@ export default function Dashboard() {
           ...doc.data(),
         })) as Contact[];
         setContacts(contactData);
-
-        const creationEvents = contactData
-          .filter((c) => c.createdAt)
-          .map((c) => {
-            // Check if we have a system activity for this contact creation
-            // We can't easily check 'systemActivities' here because it's a separate state that updates independently
-            // So we'll keep the ID consistent so we can filter duplicates in the useMemo
-            return {
-              id: `create-contact-${c.id}`, // Constant ID format for creations
-              user: c.createdByName || "Tony Wang", // Prefer actual creator, fallback to Tony Wang
-              action: "added a new contact",
-              target: c.name,
-              contactId: c.id,
-              time:
-                new Date(c.createdAt || "").toLocaleDateString() ===
-                new Date().toLocaleDateString()
-                  ? "Today"
-                  : new Date(c.createdAt || "").toLocaleDateString(),
-              type: "create",
-              rawTime: new Date(c.createdAt || "").getTime(),
-            } as Activity & { rawTime: number };
-          });
-
-        setLegacyCreations(creationEvents);
-
-        const editEvents: Activity[] = [];
-
-        setLegacyEdits(editEvents);
         setLoading(false);
       },
       (error) => {
@@ -113,53 +82,7 @@ export default function Dashboard() {
       },
     );
 
-    // 2. Fetch New Activities (The ones we just started logging)
-    const qActivities = query(
-      collection(db, "activities"),
-      orderBy("createdAt", "desc"),
-      limit(15),
-    );
-    const unsubscribeActivities = onSnapshot(
-      qActivities,
-      (snapshot) => {
-        const activities = snapshot.docs.map((doc) => {
-          const data = doc.data() as SystemActivity;
-          let activityId = doc.id;
-
-          // Use a consistent ID for creations and updates to deduplicate with legacy fallback
-          if (data.targetType === "contact") {
-            if (data.type === "create") {
-              activityId = `create-contact-${data.targetId}`;
-            } else if (data.type === "edit") {
-              activityId = `edit-contact-${data.targetId}`;
-            }
-          }
-
-          return {
-            id: activityId,
-            user: data.userName,
-            action: data.action,
-            target: data.targetName,
-            contactId:
-              data.targetType === "contact" ? data.targetId : undefined,
-            time:
-              new Date(data.createdAt).toLocaleDateString() ===
-              new Date().toLocaleDateString()
-                ? "Today"
-                : new Date(data.createdAt).toLocaleDateString(),
-            type: data.type,
-            description: data.description,
-            rawTime: new Date(data.createdAt).getTime(),
-          } as Activity & { rawTime: number };
-        });
-        setSystemActivities(activities);
-      },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "activities");
-      },
-    );
-
-    // 3. Fetch Legacy Interactions (For backward parse)
+    // 2. Fetch Legacy Interactions (For backward parse)
     const qInteractions = query(
       collectionGroup(db, "interactions"),
       orderBy("createdAt", "desc"),
@@ -174,7 +97,7 @@ export default function Dashboard() {
 
           return {
             id: docSnapshot.id,
-            user: data.userName,
+            user: data.userName || data.createdByName || 'Unknown',
             action: "logged an interaction for",
             target: "a contact",
             contactId: contactId,
@@ -183,7 +106,7 @@ export default function Dashboard() {
               new Date().toLocaleDateString()
                 ? "Today"
                 : new Date(data.dateTime).toLocaleDateString(),
-            type: "call",
+            type: data.type === 'meeting' ? 'event' : data.type === 'chat' ? 'comment' : (data.type || "call"),
             description: data.content,
             rawTime: new Date(data.dateTime).getTime(),
           } as Activity & { rawTime: number };
@@ -199,7 +122,7 @@ export default function Dashboard() {
       },
     );
 
-    // 4. Fetch Legacy Comments (For backward parse)
+    // 3. Fetch Legacy Comments (For backward parse)
     const qComments = query(
       collectionGroup(db, "comments"),
       orderBy("createdAt", "desc"),
@@ -239,7 +162,7 @@ export default function Dashboard() {
       },
     );
 
-    // 5. Recent Follow-ups Count
+    // 4. Recent Follow-ups Count
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     const qRecentFollowUps = query(
@@ -283,7 +206,6 @@ export default function Dashboard() {
 
     return () => {
       unsubscribeContacts();
-      unsubscribeActivities();
       unsubscribeInteractions();
       unsubscribeComments();
       unsubscribeFollowUps();
@@ -294,14 +216,23 @@ export default function Dashboard() {
   // Since unifiedActivities depends on states, let's use useMemo instead of another state
   const activities = React.useMemo(() => {
     const merged = [
-      ...systemActivities,
       ...legacyInteractions,
       ...legacyComments,
-      ...legacyCreations,
-      ...legacyEdits,
     ]
       .sort((a: any, b: any) => b.rawTime - a.rawTime)
-      .filter((v, i, a) => a.findIndex((t) => t.id === v.id) === i)
+      .filter((v, i, a) => {
+        // filter out exact same IDs
+        if (a.findIndex((t) => t.id === v.id) !== i) return false;
+        
+        // Deduplicate overlapping legacy and system records by checking contactId, action, and description
+        const firstMatchIndex = a.findIndex((t) => 
+          t.contactId === v.contactId && 
+          t.action === v.action &&
+          t.description === v.description &&
+          Math.abs(t.rawTime - v.rawTime) < 1000 * 60 * 60 * 24 * 365 // Within a year, helps if they date it historically
+        );
+        return firstMatchIndex === i;
+      })
       .slice(0, 15);
 
     // Resolve contact names if we have the IDs
@@ -318,11 +249,8 @@ export default function Dashboard() {
       return activity;
     });
   }, [
-    systemActivities,
     legacyInteractions,
     legacyComments,
-    legacyCreations,
-    legacyEdits,
     contacts,
   ]);
 

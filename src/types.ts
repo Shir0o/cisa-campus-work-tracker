@@ -84,8 +84,12 @@ export interface Comment {
 
 export interface Interaction {
   id: string;
-  userId: string;
-  userName: string;
+  userId?: string;
+  userName?: string;
+  createdById?: string;
+  createdByName?: string;
+  contactId?: string;
+  contactName?: string;
   userPhoto?: string;
   content: string;
   dateTime: string;
