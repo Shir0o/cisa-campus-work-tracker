@@ -114,8 +114,7 @@ service cloud.firestore {
                (data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
                (data.role == null || (data.role is string && data.role.size() <= 64)) &&
                (data.location == null || (data.location is string && data.location.size() <= 128)) &&
-               (data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
-               (data.status == null || (data.status is string && data.status.size() <= 32));
+               (data.stage == null || (data.stage is string && data.stage.size() <= 64));
       }
 
       allow read: if true;

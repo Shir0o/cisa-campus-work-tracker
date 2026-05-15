@@ -193,7 +193,6 @@ export default function ContactDetailsModal({
     email: "",
     phone: "",
     stage: "",
-    status: "",
     tags: [] as string[],
     notes: "",
   });
@@ -235,7 +234,6 @@ export default function ContactDetailsModal({
         email: contact.email || "",
         phone: contact.phone || "",
         stage: contact.stage || "",
-        status: contact.status || "",
         tags: contact.tags || [],
         notes: contact.notes || "",
       });
@@ -417,10 +415,6 @@ export default function ContactDetailsModal({
         changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
         changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
-      if (formData.status !== contact.status)
-        changes.push(
-          `interaction status: "${contact.status}" → "${formData.status}"`,
-        );
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
 
       const updateData: any = {
@@ -431,7 +425,6 @@ export default function ContactDetailsModal({
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
-        status: formData.status as Contact["status"],
         tags: formData.tags,
         notes: formData.notes,
         updatedAt: new Date().toISOString(),
@@ -491,7 +484,6 @@ export default function ContactDetailsModal({
         `Phone: ${contact.phone || "N/A"}`,
         `Total Interactions: ${interactionsSnap.size}`,
         `Total Comments: ${commentsSnap.size}`,
-        `Status: ${contact.status || "N/A"}`,
       ].join("\\n");
 
       await deleteDoc(doc(db, "contacts", contactId));
@@ -671,13 +663,6 @@ export default function ContactDetailsModal({
     }
   };
 
-  const statusOptions = [
-    "Needs Contact",
-    "Email Sent",
-    "Qualified Lead",
-    "Follow Up Required",
-    "Meeting Scheduled",
-  ];
 
   return (
     <AnimatePresence>
@@ -954,26 +939,6 @@ export default function ContactDetailsModal({
                         ))}
                       </select>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION
-                        STATUS
-                      </label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, status: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
-                      >
-                        <option value="">Select Status</option>
-                        {statusOptions.map((opt) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
 
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
@@ -1073,12 +1038,6 @@ export default function ContactDetailsModal({
                               <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight w-fit">
                                 {contact.stage}
                               </span>
-                              {contact.status &&
-                                contact.status !== contact.stage && (
-                                  <span className="text-[9px] text-on-surface-variant font-bold uppercase italic opacity-70 ml-1">
-                                    {contact.status}
-                                  </span>
-                                )}
                             </div>
                           </div>
                         </div>

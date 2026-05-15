@@ -9,7 +9,6 @@ export interface Contact {
   lastSeen: string;
   avatar?: string;
   initials: string;
-  status?: 'Needs Contact' | 'Email Sent' | 'Qualified Lead' | 'Follow Up Required' | 'Meeting Scheduled';
   attendance?: Record<string, boolean | 'absent'>;
   notes?: string;
   tags?: string[];
