@@ -17,7 +17,6 @@
         "lastSeen": { "type": "string" },
         "avatar": { "type": "string" },
         "initials": { "type": "string" },
-        "status": { "type": "string" },
         "attendance": { "type": "object" },
         "approved": { "type": "boolean" }
       },

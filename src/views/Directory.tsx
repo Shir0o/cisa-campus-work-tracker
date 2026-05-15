@@ -67,7 +67,6 @@ export default function Directory() {
 
   const [filterStage, setFilterStage] = useState<string>('All');
   const [filterRole, setFilterRole] = useState<string>('All');
-  const [filterStatus, setFilterStatus] = useState<string>('All');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
@@ -108,11 +107,6 @@ export default function Directory() {
     // Filter by Role
     if (filterRole !== 'All') {
       result = result.filter(c => c.role === filterRole);
-    }
-
-    // Filter by Status
-    if (filterStatus !== 'All') {
-      result = result.filter(c => c.status === filterStatus);
     }
 
     // Filter by Tags
@@ -174,7 +168,6 @@ export default function Directory() {
 
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
   const filterRoles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
-  const filterStatuses = useMemo(() => ['All', 'Needs Contact', 'Email Sent', 'Qualified Lead', 'Follow Up Required', 'Meeting Scheduled'], []);
   const allTags = useMemo(() => [...new Set(contacts.flatMap(c => c.tags || []))], [contacts]);
 
   const toggleTagFilter = (tag: string) => {
@@ -187,11 +180,10 @@ export default function Directory() {
     setSearchQuery('');
     setFilterStage('All');
     setFilterRole('All');
-    setFilterStatus('All');
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterStatus !== 'All' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || selectedTags.length > 0;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredAndSortedContacts.length) {
@@ -379,17 +371,6 @@ export default function Directory() {
                           className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
                         >
                           {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? 'All Stages' : s}</option>)}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Status</label>
-                        <select 
-                          value={filterStatus}
-                          onChange={(e) => setFilterStatus(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
-                        >
-                          {filterStatuses.map(s => <option key={s} value={s}>{s === 'All' ? 'All Statuses' : s}</option>)}
                         </select>
                       </div>
 
@@ -634,11 +615,6 @@ export default function Directory() {
                         )}>
                           <span className="max-w-[100px] truncate">{contact.stage}</span>
                         </span>
-                        {contact.status && contact.status !== contact.stage && (
-                          <span className="text-[9px] text-on-surface-variant font-bold uppercase italic tracking-tight opacity-60 ml-0.5">
-                            {contact.status}
-                          </span>
-                        )}
                       </div>
                     </td>
                     <td className={cn(

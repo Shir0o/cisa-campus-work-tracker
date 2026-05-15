@@ -24,7 +24,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
     email: '',
     phone: '',
     stage: '',
-    status: 'Needs Contact' as Contact['status'],
     tags: [] as string[],
     notes: ''
   });
@@ -107,7 +106,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
-        status: formData.status,
         tags: formData.tags,
         notes: formData.notes,
         initials: getInitials(formData.firstName, formData.lastName),
@@ -162,7 +160,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         email: '',
         phone: '',
         stage: formData.stage,
-        status: 'Needs Contact',
         tags: [],
         notes: ''
       });
@@ -172,8 +169,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
       setLoading(false);
     }
   };
-
-  const statusOptions = ['Needs Contact', 'Email Sent', 'Qualified Lead', 'Follow Up Required', 'Meeting Scheduled'];
 
   return (
     <AnimatePresence>
@@ -335,22 +330,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   >
                     {stages.map(s => (
                       <option key={s.id} value={s.label}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Interaction Status */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <X className="w-3.5 h-3.5 rotate-45" /> INTERACTION STATUS
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={e => setFormData(f => ({ ...f, status: e.target.value as Contact['status'] }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
-                  >
-                    {statusOptions.map(opt => (
-                      <option key={opt} value={opt}>{opt}</option>
                     ))}
                   </select>
                 </div>

@@ -805,24 +805,10 @@ function InternalKanbanCard({
       </div>
 
       {contact.notes && (
-        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic">
+        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic mb-2">
           {contact.notes}
         </p>
       )}
-
-      <div className="flex items-center justify-between gap-2">
-        {contact.status && (
-          <div className="flex">
-            <span className={cn(
-              "px-2 py-0.5 rounded text-[10px] font-bold flex items-center gap-1",
-              contact.status === 'Email Sent' ? "bg-secondary-container text-on-secondary-container" : "bg-error-container text-on-error-container"
-            )}>
-              {contact.status === 'Email Sent' ? <Mail className="w-3 h-3" /> : <CalendarCheck className="w-3 h-3" />}
-              {contact.status}
-            </span>
-          </div>
-        )}
-      </div>
 
     </div>
   );
