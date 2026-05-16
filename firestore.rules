@@ -220,18 +220,22 @@ service cloud.firestore {
                data.createdAt == request.time;
       }
 
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin() || (resource.data.userId == 'ALL_ADMINS'));
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin() || (resource.data.userId == 'ALL_ADMINS'));
       
-      allow create: if isValidId(notificationId) && isApprovedUser() && isOperator() && isValidNotification(incoming());
+      allow create: if isValidId(notificationId) && isValidNotification(incoming()) && (
+                      (isApprovedUser() && isOperator()) ||
+                      (incoming().userId == 'ALL_ADMINS' && incoming().type == 'event')
+                    );
       
       allow update: if isValidId(notificationId) && isSignedIn() && (
                       (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
+                      (resource.data.userId == 'ALL_ADMINS' && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
                       isSuperAdmin() ||
                       isManager()
                     );
       
-      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager());
+      allow delete: if isValidId(notificationId) && (isOwner(resource.data.userId) || isManager() || resource.data.userId == 'ALL_ADMINS');
     }
 
     // 9. Prayers Collection
