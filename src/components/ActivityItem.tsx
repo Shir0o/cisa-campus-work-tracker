@@ -72,13 +72,20 @@ export function ActivityItem({
                       : activity.type === "comment"
                         ? "left a note for"
                         : "interacted with"
-                : activity.action.startsWith("updated") &&
-                    activity.type === "edit" &&
-                    activity.description
+                : activity.action === "updated an interaction for"
+                  ? "updated an interaction for"
+                  : activity.action.startsWith("updated") &&
+                      activity.action !== "updated an interaction for" &&
+                      activity.type === "edit" &&
+                      activity.description
                   ? `updated the ${activity.description
                       .split("\n")
-                      .map((line) => line.split(":")[0])
-                      .filter((v, i, a) => a.indexOf(v) === i)
+                      .map((line) => {
+                        const field = line.includes(":") ? line.split(":")[0].trim() : line.trim();
+                        if (field.toLowerCase() === "notes updated") return "Notes";
+                        return field.charAt(0).toUpperCase() + field.slice(1).toLowerCase();
+                      })
+                      .filter((v, i, a) => v && a.indexOf(v) === i)
                       .join(", ")} for`
                   : activity.action}
             </span>{" "}
