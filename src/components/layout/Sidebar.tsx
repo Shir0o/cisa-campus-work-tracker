@@ -9,7 +9,9 @@ import {
   Plus,
   ChevronLeft,
   ChevronRight,
-  HeartHandshake
+  HeartHandshake,
+  History as HistoryIcon,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -28,8 +30,10 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Contact, label: 'Contacts', href: '/directory' },
+    { icon: HistoryIcon, label: 'History', href: '/history' },
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
     { icon: HeartHandshake, label: 'Prayer List', href: '/prayer' },
+    { icon: SettingsIcon, label: 'Settings', href: '/settings' },
   ];
 
   const getRoleLabel = (r: string | null) => {
