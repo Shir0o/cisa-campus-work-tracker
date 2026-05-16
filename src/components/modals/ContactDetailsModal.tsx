@@ -416,10 +416,12 @@ export default function ContactDetailsModal({
         changes.push(`email: "${contact.email}" → "${formData.email}"`);
       if (formData.phone !== contact.phone)
         changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.location !== contact.location)
+      if (formData.location !== contact.location) {
+        const locLabel = formData.tags?.includes('New Sign Up') ? 'residence hall' : 'first met';
         changes.push(
-          `first met: "${contact.location}" → "${formData.location}"`,
+          `${locLabel}: "${contact.location}" → "${formData.location}"`,
         );
+      }
       if (formData.role !== contact.role)
         changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
@@ -873,7 +875,7 @@ export default function ContactDetailsModal({
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                        <MapPin className="w-3.5 h-3.5" /> FIRST MET
+                        <MapPin className="w-3.5 h-3.5" /> {formData.tags?.includes('New Sign Up') ? 'RESIDENCE HALL' : 'FIRST MET'}
                       </label>
                       <input
                         required
@@ -1056,7 +1058,7 @@ export default function ContactDetailsModal({
                           </div>
                           <div>
                             <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
-                              First Met
+                              {contact?.tags?.includes('New Sign Up') ? 'Residence Hall' : 'First Met'}
                             </p>
                             <p className="text-sm font-bold text-on-surface">
                               {contact.location || "Not recorded"}

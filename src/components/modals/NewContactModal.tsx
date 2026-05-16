@@ -125,7 +125,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
       const fieldsLog = [
         `Group: ${formData.role}`,
         `Stage: ${formData.stage}`,
-        `First Met: ${formData.location}`,
+        `Location/Residence: ${formData.location}`,
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
@@ -259,20 +259,19 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                   />
                 </div>
 
-                {/* First Met (location) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <MapPin className="w-3.5 h-3.5" /> FIRST MET
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.location}
-                    onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                    placeholder="e.g. Campus Coffee"
-                  />
-                </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={formData.location}
+                      onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                      className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                      placeholder="e.g. Campus Coffee, Miller Hall"
+                    />
+                  </div>
 
                 {/* Email */}
                 <div className="space-y-1.5">
