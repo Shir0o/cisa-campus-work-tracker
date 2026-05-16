@@ -16,6 +16,8 @@ export class ErrorBoundary extends Component<Props, State> {
     error: null,
   };
 
+  declare props: Readonly<Props>;
+
   public static getDerivedStateFromError(error: Error): State {
     // Update state so the next render will show the fallback UI.
     return { hasError: true, error };
