@@ -26,12 +26,38 @@ export default function SignUp() {
     email: '',
     phone: '',
     residenceHall: '',
-    spiritualBackground: ''
+    spiritualBackground: '',
+    botField: '' // Honeypot
   });
+  
+  // Anti-abuse math challenge
+  const [mathChallenge, setMathChallenge] = useState({ a: 0, b: 0 });
+  const [mathAnswer, setMathAnswer] = useState('');
+
+  // Initialize math challenge
+  React.useEffect(() => {
+    setMathChallenge({
+      a: Math.floor(Math.random() * 10) + 1,
+      b: Math.floor(Math.random() * 10) + 1
+    });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    // Anti-abuse: Honeypot check
+    // If botField is filled, silently succeed without writing to db
+    if (formData.botField) {
+      setSubmitted(true);
+      return;
+    }
+
+    // Anti-abuse: Math Challenge
+    if (parseInt(mathAnswer) !== mathChallenge.a + mathChallenge.b) {
+      setError("Incorrect math answer. Are you human?");
+      return;
+    }
 
     // Client-side validation
     if (!formData.name.trim()) {
@@ -249,6 +275,38 @@ export default function SignUp() {
                 <option value="None">None</option>
               </select>
               <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant rotate-90 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Anti-abuse: Honeypot (visually hidden but accessible to bots) */}
+          <div className="absolute left-[-9999px] top-auto w-1 h-1 overflow-hidden" aria-hidden="true">
+            <label htmlFor="botField">Leave this field blank</label>
+            <input
+              id="botField"
+              name="botField"
+              type="text"
+              tabIndex={-1}
+              autoComplete="off"
+              value={formData.botField}
+              onChange={e => setFormData({ ...formData, botField: e.target.value })}
+            />
+          </div>
+
+          {/* Anti-abuse: Math Challenge */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1" htmlFor="math">Human verification: {mathChallenge.a} + {mathChallenge.b} = ?</label>
+            <div className="relative group">
+              <Sparkles className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant group-focus-within:text-primary transition-colors" />
+              <input 
+                required
+                id="math"
+                type="number"
+                min="0"
+                value={mathAnswer}
+                onChange={e => setMathAnswer(e.target.value)}
+                placeholder="Enter the result"
+                className="w-full pl-12 pr-4 h-14 bg-surface-container rounded-2xl border border-transparent focus:border-primary focus:bg-surface-container-highest transition-all outline-none text-on-surface font-medium placeholder:text-on-surface-variant/40"
+              />
             </div>
           </div>
 

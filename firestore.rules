@@ -118,6 +118,9 @@ service cloud.firestore {
       }
 
       allow read: if isApprovedUser();
+      // Anti-abuse Note: Without App Check or an authenticated backend function,
+      // this allows unauthenticated creates. Mitigated partially by client-side 
+      // honeypot and math captcha on the public form. Acceptable for low-traffic.
       allow create: if isValidId(contactId) && isValidContact(incoming());
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
       allow delete: if isValidId(contactId) && isManager();
