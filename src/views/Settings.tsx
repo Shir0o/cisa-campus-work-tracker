@@ -309,8 +309,9 @@ export default function Settings() {
         </div>
       </div>
 
-      <div className="bg-surface-container rounded-[2.5rem] border border-outline-variant/40 overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
+      <div className="bg-surface-container rounded-[1.5rem] sm:rounded-[2.5rem] border border-outline-variant/40 overflow-hidden shadow-sm">
+        {/* Desktop Table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-outline-variant/20 bg-surface-container-high/50">
@@ -474,6 +475,149 @@ export default function Settings() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile App Cards */}
+        <div className="sm:hidden flex flex-col gap-4 p-4 bg-surface-container">
+          <AnimatePresence initial={false}>
+            {loading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <motion.div key={`m-skeleton-${i}`} className="bg-surface-container-high border border-outline-variant/40 rounded-2xl p-4 flex flex-col gap-4">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-10 h-10 rounded-full shrink-0" />
+                    <div className="space-y-2 flex-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center gap-4">
+                    <Skeleton className="h-8 w-1/2 rounded-full" />
+                    <Skeleton className="h-8 w-1/3 rounded-full" />
+                  </div>
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </motion.div>
+              ))
+            ) : (
+              [
+                ...filteredInvites.map((invite) => (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    key={`m-invite-${invite.email}`}
+                    className="bg-primary/5 border border-primary/20 rounded-2xl p-4 flex flex-col gap-4 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary font-bold shadow-sm shrink-0">
+                        <Mail className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-on-surface leading-tight italic truncate">Pending Activation</p>
+                        <p className="text-xs text-on-surface-variant truncate">{invite.email}</p>
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center bg-surface-container px-3 py-2 rounded-xl">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded bg-surface-variant/50 border border-outline-variant/50 text-on-surface-variant">
+                        {invite.role.replace('_', ' ')}
+                      </span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+                        Invited
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => revokeInvitation(invite.email)}
+                      className="w-full py-3 bg-error-container/30 text-error rounded-xl text-sm font-bold flex items-center justify-center gap-2 active:scale-95 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" /> Revoke Invitation
+                    </button>
+                  </motion.div>
+                )),
+                ...filteredUsers.map((u) => (
+                  <motion.div
+                    layout
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    key={`m-${u.uid}`}
+                    className="bg-surface-container-high border border-outline-variant/40 rounded-2xl p-4 flex flex-col gap-4 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant/50 relative shadow-sm shrink-0">
+                        {u.photoURL ? (
+                          <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full bg-secondary-container flex items-center justify-center text-secondary font-bold">
+                            {u.displayName?.[0] || u.email[0].toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-on-surface leading-tight truncate">
+                          {u.displayName || 'Unnamed User'}
+                          {u.uid === currentUser?.uid && (
+                            <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-md uppercase tracking-wider">You</span>
+                          )}
+                        </p>
+                        <p className="text-xs text-on-surface-variant truncate">{u.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center justify-between gap-4 bg-surface-container px-3 py-2 rounded-xl">
+                      <div className="flex flex-col gap-1 flex-1">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Role</label>
+                        <select 
+                          value={u.role || 'viewer'} 
+                          onChange={(e) => changeRole(u.uid, e.target.value as any)}
+                          disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
+                          className="w-full text-xs font-bold px-2 py-1.5 rounded-lg bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer"
+                        >
+                          <option value="viewer">Viewer</option>
+                          <option value="operator">Operator</option>
+                          <option value="manager">Manager</option>
+                          {isAdmin && <option value="admin">Administrator</option>}
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1 items-end">
+                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Status</label>
+                        <div className={cn(
+                          "inline-flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-bold",
+                          u.approved 
+                            ? "bg-success-container/30 text-success border border-success/20" 
+                            : "bg-warning-container/30 text-warning border border-warning/20"
+                        )}>
+                          {u.approved ? (
+                            <><CheckCircle2 className="w-3.5 h-3.5" /> Approved</>
+                          ) : (
+                            <><XCircle className="w-3.5 h-3.5" /> Pending</>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => toggleApproval(u.uid, u.approved)}
+                      disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isManager}
+                      className={cn(
+                        "w-full py-3 rounded-xl text-sm font-bold transition-all disabled:opacity-50 active:scale-95",
+                        u.approved 
+                          ? "bg-error-container/20 text-error hover:bg-error-container/40" 
+                          : "bg-primary text-on-primary shadow-lg shadow-primary/20 hover:opacity-90"
+                      )}
+                    >
+                      {u.approved ? 'Revoke Access' : 'Approve User'}
+                    </button>
+                  </motion.div>
+                ))
+              ]
+            )}
+          </AnimatePresence>
+
+          {(!loading && filteredUsers.length === 0 && filteredInvites.length === 0) && (
+            <div className="p-8 text-center text-on-surface-variant border border-dashed border-outline-variant/30 rounded-2xl">
+              No team members or invitations found matching your search.
+            </div>
+          )}
         </div>
       </div>
 
