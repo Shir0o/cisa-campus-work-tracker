@@ -231,7 +231,7 @@ export default function Dashboard() {
           t.contactId === v.contactId && 
           t.action === v.action &&
           t.description === v.description &&
-          Math.abs(t.rawTime - v.rawTime) < 1000 * 60 * 60 * 24 * 365 // Within a year, helps if they date it historically
+          Math.abs(t.rawTime - v.rawTime) < 1000 * 60 // Within 1 minute, helps prevent double inserts
         );
         return firstMatchIndex === i;
       })
