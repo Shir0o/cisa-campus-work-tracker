@@ -27,6 +27,7 @@ import { Contact } from "./types";
 import ContactDetailsModal from "./components/modals/ContactDetailsModal";
 import LogInteractionModal from "./components/modals/LogInteractionModal";
 import Toaster from "./components/Toaster";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -255,94 +256,96 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
-      <Router>
-        <AuthProvider>
-          <Routes>
-            <Route path="/signup" element={<SignUp />} />
+    <ErrorBoundary>
+      <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
+        <Router>
+          <AuthProvider>
+            <Routes>
+              <Route path="/signup" element={<SignUp />} />
 
-            <Route
-              path="/"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Dashboard />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Dashboard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/attendance"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Attendance />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/attendance"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Attendance />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/board"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <OutreachBoard />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/board"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <OutreachBoard />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/directory"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Directory />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/directory"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Directory />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <History />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <History />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/prayer"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <PrayerList />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/prayer"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <PrayerList />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <DashboardLayout>
-                    <Settings />
-                  </DashboardLayout>
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                path="/settings"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <Settings />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
 
-            {/* Redirect unknown routes */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+              {/* Redirect unknown routes */}
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </AuthProvider>
+        </Router>
+      </ThemeProvider>
+    </ErrorBoundary>
   );
 }
