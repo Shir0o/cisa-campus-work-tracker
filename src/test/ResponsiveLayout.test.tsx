@@ -49,11 +49,11 @@ describe('Responsive Layout Components', () => {
     expect(mobileNav.className).toContain('lg:hidden');
   });
 
-  it('Accessibility: Sidebar has a visible "New Contact" button', () => {
+  it('Accessibility: Sidebar has a visible "Log Interaction" button', () => {
     renderWithRouter(<Sidebar />);
-    const newContactBtn = screen.getByText(/New Contact/i);
-    expect(newContactBtn).toBeInTheDocument();
-    expect(newContactBtn.closest('button')).toBeInTheDocument();
+    const logInteractionBtn = screen.getByText(/Log Interaction/i);
+    expect(logInteractionBtn).toBeInTheDocument();
+    expect(logInteractionBtn.closest('button')).toBeInTheDocument();
   });
 
   it('Accessibility: MobileNav has navigation links with labels', () => {
