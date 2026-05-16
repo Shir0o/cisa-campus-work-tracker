@@ -202,6 +202,7 @@ export default function ContactDetailsModal({
     stage: "",
     tags: [] as string[],
     notes: "",
+    spiritualBackground: "",
   });
 
   const capitalize = (str: string) => {
@@ -243,6 +244,7 @@ export default function ContactDetailsModal({
         stage: contact.stage || "",
         tags: contact.tags || [],
         notes: contact.notes || "",
+        spiritualBackground: contact.spiritualBackground || "",
       });
       setIsEditing(false);
     }
@@ -422,6 +424,8 @@ export default function ContactDetailsModal({
         changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
         changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
+      if (formData.spiritualBackground !== contact.spiritualBackground)
+        changes.push(`spiritualBackground: "${contact.spiritualBackground || ''}" → "${formData.spiritualBackground}"`);
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
 
       const updateData: any = {
@@ -434,6 +438,7 @@ export default function ContactDetailsModal({
         stage: formData.stage,
         tags: formData.tags,
         notes: formData.notes,
+        spiritualBackground: formData.spiritualBackground,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
         updatedByName:
@@ -972,6 +977,26 @@ export default function ContactDetailsModal({
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                       />
                     </div>
+                    {/* Spiritual Background Field */}
+                    <div className="space-y-1.5 md:col-span-2">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Sparkles className="w-3.5 h-3.5" /> SPIRITUAL BACKGROUND
+                      </label>
+                      <select
+                        value={formData.spiritualBackground}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, spiritualBackground: e.target.value }))
+                        }
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
+                      >
+                        <option value="">Select background...</option>
+                        <option value="Exploring">Exploring Faith</option>
+                        <option value="Christian">Christian</option>
+                        <option value="Catholic">Catholic</option>
+                        <option value="Other">Other Religion / Background</option>
+                        <option value="None">None</option>
+                      </select>
+                    </div>
                     {/* Notes Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
@@ -1053,6 +1078,21 @@ export default function ContactDetailsModal({
                             </div>
                           </div>
                         </div>
+                        {contact.spiritualBackground && (
+                          <div className="flex items-start gap-4">
+                            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                              <Sparkles className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                                Spiritual Background
+                              </p>
+                              <p className="text-sm font-bold text-on-surface">
+                                {contact.spiritualBackground}
+                              </p>
+                            </div>
+                          </div>
+                        )}
                         {contact.tags && contact.tags.length > 0 && (
                           <div className="flex items-start gap-4 md:col-span-2">
                             <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">

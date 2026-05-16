@@ -18,7 +18,9 @@
         "avatar": { "type": "string" },
         "initials": { "type": "string" },
         "attendance": { "type": "object" },
-        "approved": { "type": "boolean" }
+        "approved": { "type": "boolean" },
+        "spiritualBackground": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["name", "email", "stage"]
     },
