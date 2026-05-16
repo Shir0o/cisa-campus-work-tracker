@@ -10,11 +10,30 @@ import * as firestore from 'firebase/firestore';
 vi.mock('firebase/firestore', () => {
   const mockDoc = { id: 'mock-id' };
   const mockCollection = { id: 'mock-collection' };
+  class MockTimestamp {
+    seconds: number;
+    nanoseconds: number;
+    constructor(seconds: number, nanoseconds: number) {
+      this.seconds = seconds;
+      this.nanoseconds = nanoseconds;
+    }
+    toDate() {
+      return new Date(this.seconds * 1000);
+    }
+    static now() {
+      return new MockTimestamp(Math.floor(Date.now() / 1000), 0);
+    }
+    static fromDate(date: Date) {
+      return new MockTimestamp(Math.floor(date.getTime() / 1000), 0);
+    }
+  }
+
   return {
     collection: vi.fn(() => mockCollection),
     onSnapshot: vi.fn(),
     query: vi.fn(),
     orderBy: vi.fn(),
+    where: vi.fn(),
     addDoc: vi.fn(),
     updateDoc: vi.fn(),
     deleteDoc: vi.fn(),
@@ -26,6 +45,7 @@ vi.mock('firebase/firestore', () => {
       delete: vi.fn(),
       commit: vi.fn(),
     })),
+    Timestamp: MockTimestamp,
   };
 });
 
@@ -124,10 +144,11 @@ describe('Contact Management', () => {
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Builder' } });
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
     fireEvent.change(screen.getByPlaceholderText(/e.g. Student/i), { target: { value: 'Contractor' } });
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Campus Coffee/i), { target: { value: 'Library' } });
 
     // Submit
-    const submitBtn = screen.getByText('Add Contact');
-    fireEvent.click(submitBtn);
+    const form = document.getElementById('new-contact-form');
+    fireEvent.submit(form!);
 
     await waitFor(() => {
       expect(firestore.addDoc).toHaveBeenCalledWith(
@@ -160,8 +181,8 @@ describe('Contact Management', () => {
     fireEvent.change(roleInput, { target: { value: 'Alumni' } });
 
     // Save
-    const saveBtn = screen.getByText('Save Changes');
-    fireEvent.click(saveBtn);
+    const form = document.getElementById('edit-contact-form');
+    fireEvent.submit(form!);
 
     await waitFor(() => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
