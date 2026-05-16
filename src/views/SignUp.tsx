@@ -49,7 +49,7 @@ export default function SignUp() {
         notes: `Spiritual Background: ${formData.spiritualBackground}\nCampus/Residence: ${formData.residenceHall}`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        lastSeen: new Date().toISOString(),
+        lastSeen: new Date().toLocaleDateString(),
         tags: ['New Sign Up']
       };
 
