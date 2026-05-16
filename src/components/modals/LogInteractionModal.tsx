@@ -24,6 +24,7 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { format } from 'date-fns';
 
 interface LogInteractionModalProps {
   isOpen: boolean;
@@ -40,7 +41,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
   
   // Form State
   const [type, setType] = useState<'chat' | 'email' | 'call' | 'meeting'>('chat');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [notes, setNotes] = useState('');
 
   // Tasks State
