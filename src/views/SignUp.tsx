@@ -24,7 +24,7 @@ export default function SignUp() {
     name: '',
     email: '',
     phone: '',
-    location: '',
+    residenceHall: '',
     spiritualBackground: ''
   });
 
@@ -42,11 +42,11 @@ export default function SignUp() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
-        location: formData.location,
+        location: 'Online Form',
         role: 'Student',
         stage: firstStage,
         initials: getUserInitials(formData.name),
-        notes: `Spiritual Background: ${formData.spiritualBackground}`,
+        notes: `Spiritual Background: ${formData.spiritualBackground}\nCampus/Residence: ${formData.residenceHall}`,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastSeen: new Date().toISOString(),
@@ -181,8 +181,8 @@ export default function SignUp() {
               <input 
                 id="location"
                 type="text" 
-                value={formData.location}
-                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                value={formData.residenceHall}
+                onChange={e => setFormData({ ...formData, residenceHall: e.target.value })}
                 placeholder="e.g. North Campus, Miller Hall"
                 className="w-full pl-12 pr-4 h-14 bg-surface-container rounded-2xl border border-transparent focus:border-primary focus:bg-surface-container-highest transition-all outline-none text-on-surface font-medium placeholder:text-on-surface-variant/40"
               />
