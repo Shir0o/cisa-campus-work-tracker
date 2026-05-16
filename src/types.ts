@@ -19,9 +19,6 @@ export interface Contact {
   updatedBy?: string;
   updatedByName?: string;
   hasNewActivity?: boolean;
-  lastAiAnalysisAt?: string;
-  lastSeenAiReason?: string;
-  needsContactAiReason?: string;
 }
 
 export interface Stage {
@@ -48,7 +45,6 @@ export interface Activity {
   time: string;
   description?: string;
   type: 'call' | 'email' | 'event' | 'alert' | 'edit' | 'create' | 'comment';
-  aiSummary?: string;
 }
 
 export interface SystemActivity {
@@ -63,7 +59,6 @@ export interface SystemActivity {
   description?: string;
   type: Activity['type'];
   createdAt: string;
-  aiSummary?: string;
 }
 
 export interface Task {

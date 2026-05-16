@@ -254,18 +254,7 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
-    // 10. AI Summaries Cache
-    match /ai_summaries/{cacheKey} {
-      function isValidSummary(data) {
-        return data.summary is string && data.summary.size() <= 2000 &&
-               data.activityIds is list && data.activityIds.size() <= 20;
-      }
-      allow read: if isApprovedUser();
-      allow create: if isApprovedUser() && isOperator() && isValidSummary(incoming());
-      allow update, delete: if isManager();
-    }
-
-    // 11. Tasks Collection
+    // 10. Tasks Collection
     match /tasks/{taskId} {
       function isValidTask(data) {
         return data.title is string && data.title.size() <= 500 &&
