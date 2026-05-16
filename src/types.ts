@@ -19,6 +19,7 @@ export interface Contact {
   updatedBy?: string;
   updatedByName?: string;
   hasNewActivity?: boolean;
+  spiritualBackground?: string;
 }
 
 export interface Stage {

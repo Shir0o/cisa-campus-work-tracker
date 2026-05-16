@@ -67,6 +67,7 @@ export default function Directory() {
 
   const [filterStage, setFilterStage] = useState<string>('All');
   const [filterRole, setFilterRole] = useState<string>('All');
+  const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
@@ -95,6 +96,7 @@ export default function Directory() {
         c.name.toLowerCase().includes(lowerQuery) || 
         c.email.toLowerCase().includes(lowerQuery) ||
         c.role.toLowerCase().includes(lowerQuery) ||
+        (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
         (c.tags && c.tags.some(t => t.toLowerCase().includes(lowerQuery)))
       );
     }
@@ -107,6 +109,11 @@ export default function Directory() {
     // Filter by Role
     if (filterRole !== 'All') {
       result = result.filter(c => c.role === filterRole);
+    }
+    
+    // Filter by Spiritual Background
+    if (filterSpiritualBackground !== 'All') {
+      result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
     // Filter by Tags
@@ -126,7 +133,7 @@ export default function Directory() {
     });
 
     return result;
-  }, [contacts, searchQuery, sortField, sortDirection, filterStage, filterRole]);
+  }, [contacts, searchQuery, sortField, sortDirection, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
 
   const handleBulkTag = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,6 +175,7 @@ export default function Directory() {
 
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
   const filterRoles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
+  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(contacts.map(c => c.spiritualBackground).filter(Boolean))], [contacts]);
   const allTags = useMemo(() => [...new Set(contacts.flatMap(c => c.tags || []))], [contacts]);
 
   const toggleTagFilter = (tag: string) => {
@@ -180,10 +188,11 @@ export default function Directory() {
     setSearchQuery('');
     setFilterStage('All');
     setFilterRole('All');
+    setFilterSpiritualBackground('All');
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || selectedTags.length > 0;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredAndSortedContacts.length) {
@@ -382,6 +391,17 @@ export default function Directory() {
                           className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
                         >
                           {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? 'All Groups' : r}</option>)}
+                        </select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Spiritual Background</label>
+                        <select 
+                          value={filterSpiritualBackground}
+                          onChange={(e) => setFilterSpiritualBackground(e.target.value)}
+                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
+                        >
+                          {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? 'All Backgrounds' : sb}</option>)}
                         </select>
                       </div>
                     </div>

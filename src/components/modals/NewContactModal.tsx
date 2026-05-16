@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Briefcase, MapPin, Mail, Phone, Loader2, Calendar, Tag, MessageSquare } from 'lucide-react';
+import { X, User, Briefcase, MapPin, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
@@ -25,7 +25,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
     phone: '',
     stage: '',
     tags: [] as string[],
-    notes: ''
+    notes: '',
+    spiritualBackground: ''
   });
   const [stages, setStages] = useState<Stage[]>([]);
 
@@ -108,6 +109,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         stage: formData.stage,
         tags: formData.tags,
         notes: formData.notes,
+        spiritualBackground: formData.spiritualBackground,
         initials: getInitials(formData.firstName, formData.lastName),
         lastSeen: 'Just now',
         createdAt: new Date().toISOString(),
@@ -126,6 +128,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         `First Met: ${formData.location}`,
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
+        formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
         formData.tags.length > 0 ? `Tags: ${formData.tags.join(', ')}` : '',
         formData.notes ? `Notes: ${formData.notes}` : ''
       ].filter(Boolean).join('\n');
@@ -161,7 +164,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
         phone: '',
         stage: formData.stage,
         tags: [],
-        notes: ''
+        notes: '',
+        spiritualBackground: ''
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'contacts');
@@ -349,6 +353,27 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     placeholder="e.g. Lead, Fall2023"
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                   />
+                </div>
+
+                {/* Spiritual Background Field */}
+                <div className="space-y-1.5 md:col-span-2">
+                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <Sparkles className="w-3.5 h-3.5" /> SPIRITUAL BACKGROUND
+                  </label>
+                  <select
+                    value={formData.spiritualBackground}
+                    onChange={(e) =>
+                      setFormData((f) => ({ ...f, spiritualBackground: e.target.value }))
+                    }
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
+                  >
+                    <option value="">Select background...</option>
+                    <option value="Exploring">Exploring Faith</option>
+                    <option value="Christian">Christian</option>
+                    <option value="Catholic">Catholic</option>
+                    <option value="Other">Other Religion / Background</option>
+                    <option value="None">None</option>
+                  </select>
                 </div>
 
                 {/* Notes */}
