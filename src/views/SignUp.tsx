@@ -55,14 +55,20 @@ export default function SignUp() {
 
       const docRef = await addDoc(collection(db, 'contacts'), contactData);
 
-      // Notify admins/managers
-      // We don't have a list of admins here, but we can notify the user who created the hub if we had that info.
-      // For now, let's assume we want a persistent record for the managers to see in their notification center.
-      // We'll filter notifications by userId, but since this is public, we can't easily target a specific manager
-      // without extra lookup. However, we'll log it and creators can check the activity log.
-      
-      // If we want to target "all admins", we might needs a more complex notification system.
-      // For now, let's just focus on the contact creation.
+      // Notify admins/managers about the new public sign-up
+      try {
+        const notificationData = {
+          userId: 'ALL_ADMINS',
+          title: 'New Student Sign-up',
+          message: `${formData.name} has signed up via the public form.`,
+          type: 'event' as const,
+          read: false,
+          createdAt: serverTimestamp()
+        };
+        await addDoc(collection(db, 'notifications'), notificationData);
+      } catch (notifyError) {
+        console.error('Failed to broadcast admin notification:', notifyError);
+      }
 
       setSubmitted(true);
     } catch (error) {

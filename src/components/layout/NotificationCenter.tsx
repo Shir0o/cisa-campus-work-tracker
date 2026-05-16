@@ -16,28 +16,59 @@ export default function NotificationCenter() {
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    const q = query(
+    let localNotifs: Notification[] = [];
+    let globalNotifs: Notification[] = [];
+
+    const updateCombined = () => {
+      // Merge, sort by date descending, take top 20
+      const combined = [...localNotifs, ...globalNotifs]
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 20);
+      
+      setNotifications(combined);
+      setUnreadCount(combined.filter(n => !n.read).length);
+    };
+
+    const qPersonal = query(
       collection(db, 'notifications'),
       where('userId', '==', auth.currentUser.uid),
       orderBy('createdAt', 'desc'),
       limit(20)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({
+    const qGlobal = query(
+      collection(db, 'notifications'),
+      where('userId', '==', 'ALL_ADMINS'),
+      orderBy('createdAt', 'desc'),
+      limit(20)
+    );
+
+    const unsubPersonal = onSnapshot(qPersonal, (snapshot) => {
+      localNotifs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
-        // Handle serverTimestamp
         createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
       })) as Notification[];
-      
-      setNotifications(data);
-      setUnreadCount(data.filter(n => !n.read).length);
+      updateCombined();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
     });
 
-    return () => unsubscribe();
+    const unsubGlobal = onSnapshot(qGlobal, (snapshot) => {
+      globalNotifs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+      })) as Notification[];
+      updateCombined();
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'notifications');
+    });
+
+    return () => {
+      unsubPersonal();
+      unsubGlobal();
+    };
   }, []);
 
   useEffect(() => {
