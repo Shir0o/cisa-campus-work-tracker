@@ -167,6 +167,7 @@ export default function ContactDetailsModal({
   >("info");
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [newInteraction, setNewInteraction] = useState({
     content: "",
     dateTime: new Date().toISOString().slice(0, 16),
@@ -621,13 +622,17 @@ export default function ContactDetailsModal({
     setSubmittingComment(true);
     try {
       const commentsRef = collection(db, "contacts", contact.id, "comments");
-      const docRef = await addDoc(commentsRef, {
+      const commentData: any = {
         userId: user.uid,
         userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
         userPhoto: user.photoURL || "",
         text: newComment.trim(),
         createdAt: serverTimestamp(),
-      });
+      };
+      if (replyingTo) {
+        commentData.parentId = replyingTo;
+      }
+      const docRef = await addDoc(commentsRef, commentData);
 
       logActivity({
         action: "left a comment on",
@@ -651,6 +656,7 @@ export default function ContactDetailsModal({
       }
 
       setNewComment("");
+      setReplyingTo(null);
     } catch (error) {
       handleFirestoreError(
         error,
@@ -1446,37 +1452,87 @@ export default function ContactDetailsModal({
                             </p>
                           </div>
                         ) : (
-                          comments.map((comment) => (
-                            <div key={comment.id} className="flex gap-3 group">
-                              <div className="shrink-0 mt-0.5">
-                                {comment.userPhoto ? (
-                                  <img
-                                    src={comment.userPhoto}
-                                    alt={comment.userName}
-                                    className="w-8 h-8 rounded-full border border-outline-variant"
-                                    referrerPolicy="no-referrer"
-                                  />
-                                ) : (
-                                  <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                    <UserCircle className="w-5 h-5" />
+                          comments.filter((c) => !c.parentId).map((comment) => (
+                            <div key={comment.id} className="space-y-3">
+                              <div className="flex gap-3 group">
+                                <div className="shrink-0 mt-0.5">
+                                  {comment.userPhoto ? (
+                                    <img
+                                      src={comment.userPhoto}
+                                      alt={comment.userName}
+                                      className="w-8 h-8 rounded-full border border-outline-variant"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  ) : (
+                                    <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                      <UserCircle className="w-5 h-5" />
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+                                      {comment.userName}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-on-surface-variant/40">
+                                      {comment.createdAt
+                                        ? `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                        : "Sending..."}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-xs font-black text-on-surface uppercase tracking-tight">
-                                    {comment.userName}
-                                  </span>
-                                  <span className="text-[10px] font-bold text-on-surface-variant/40">
-                                    {comment.createdAt
-                                      ? `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                                      : "Sending..."}
-                                  </span>
-                                </div>
-                                <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                  {comment.text}
+                                  <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                    {comment.text}
+                                  </div>
+                                  <div className="mt-1 flex items-center gap-4">
+                                    <button
+                                      type="button"
+                                      onClick={() => setReplyingTo(comment.id)}
+                                      className="text-[10px] font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
+                                    >
+                                      <MessageSquare className="w-3 h-3" /> Reply
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
+                              
+                              {/* Replies */}
+                              {comments.filter(c => c.parentId === comment.id).length > 0 && (
+                                <div className="ml-11 space-y-3 pl-4 border-l-2 border-outline-variant/30">
+                                  {comments.filter(c => c.parentId === comment.id).map(reply => (
+                                    <div key={reply.id} className="flex gap-3 group">
+                                      <div className="shrink-0 mt-0.5">
+                                        {reply.userPhoto ? (
+                                          <img
+                                            src={reply.userPhoto}
+                                            alt={reply.userName}
+                                            className="w-6 h-6 rounded-full border border-outline-variant"
+                                            referrerPolicy="no-referrer"
+                                          />
+                                        ) : (
+                                          <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
+                                            <UserCircle className="w-4 h-4" />
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="text-[11px] font-black text-on-surface uppercase tracking-tight">
+                                            {reply.userName}
+                                          </span>
+                                          <span className="text-[9px] font-bold text-on-surface-variant/40">
+                                            {reply.createdAt
+                                              ? `${new Date(reply.createdAt).toLocaleDateString()} at ${new Date(reply.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                                              : "Sending..."}
+                                          </span>
+                                        </div>
+                                        <div className="p-2.5 rounded-2xl rounded-tl-none bg-surface-container text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
+                                          {reply.text}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))
                         )}
@@ -1487,9 +1543,24 @@ export default function ContactDetailsModal({
                         onSubmit={handleAddComment}
                         className="relative mt-2"
                       >
+                        {replyingTo && (
+                          <div className="flex items-center justify-between bg-surface-container px-4 py-2 rounded-t-[20px] mb-[-10px] pb-[14px]">
+                            <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1.5">
+                              <MessageSquare className="w-3 h-3" />
+                              Replying to {comments.find(c => c.id === replyingTo)?.userName}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setReplyingTo(null)}
+                              className="text-[10px] font-bold text-error hover:opacity-80"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        )}
                         <div className="relative group">
                           <textarea
-                            placeholder="Add a comment to the discussion..."
+                            placeholder={replyingTo ? "Type your reply..." : "Add a comment to the discussion..."}
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             onKeyDown={(e) => {
@@ -1628,39 +1699,6 @@ export default function ContactDetailsModal({
                 )}
               </button>
             </div>
-
-            {/* Footer for Edit Mode */}
-            {isEditing && (
-              <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low/50">
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(false)}
-                  className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  form="edit-contact-form"
-                  disabled={loading}
-                  type="submit"
-                  className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70 cursor-pointer"
-                >
-                  {loading ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    "Save Changes"
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="p-3 rounded-full text-error hover:bg-error/10 transition-all shrink-0 cursor-pointer"
-                  title="Delete Contact"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
-              </div>
-            )}
           </motion.div>
         </div>
       )}

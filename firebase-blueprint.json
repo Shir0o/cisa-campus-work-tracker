@@ -117,6 +117,7 @@
         "userName": { "type": "string" },
         "userPhoto": { "type": "string" },
         "text": { "type": "string" },
+        "parentId": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "userName", "text", "createdAt"]
