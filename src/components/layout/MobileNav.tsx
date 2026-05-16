@@ -5,7 +5,9 @@ import {
   Kanban, 
   Contact, 
   CalendarCheck,
-  HeartHandshake
+  HeartHandshake,
+  History as HistoryIcon,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -16,18 +18,21 @@ export default function MobileNav() {
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
     { icon: Kanban, label: 'Stage', href: '/board' },
     { icon: Contact, label: 'Contacts', href: '/directory' },
+    { icon: HistoryIcon, label: 'History', href: '/history' },
     { icon: HeartHandshake, label: 'Prayer', href: '/prayer' },
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
+    { icon: SettingsIcon, label: 'Settings', href: '/settings' },
   ];
 
   return (
-    <nav aria-label="Mobile Navigation" className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-low border-t border-outline-variant flex items-center justify-around px-2 z-50 animate-in slide-in-from-bottom duration-300">
+    <nav aria-label="Mobile Navigation" className="lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-surface-container-low border-t border-outline-variant flex items-center z-50 animate-in slide-in-from-bottom duration-300 overflow-x-auto no-scrollbar">
+      <div className="flex w-max min-w-full justify-around space-x-2 px-2">
       {navItems.map((item) => (
         <NavLink
           key={item.href}
           to={item.href}
           className={({ isActive }) => cn(
-            "flex flex-col items-center gap-1 min-w-[64px] transition-all",
+            "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
             isActive ? "text-primary" : "text-on-surface-variant"
           )}
         >
@@ -44,6 +49,7 @@ export default function MobileNav() {
           )}
         </NavLink>
       ))}
+      </div>
     </nav>
   );
 }
