@@ -213,7 +213,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           <TopBar />
-          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto">
+          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 lg:pb-8">
             {children}
           </main>
         </div>
