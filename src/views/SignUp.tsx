@@ -20,6 +20,7 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, limit } fro
 export default function SignUp() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -30,6 +31,26 @@ export default function SignUp() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    // Client-side validation
+    if (!formData.name.trim()) {
+      setError("Please enter your full name.");
+      return;
+    }
+    if (!formData.email.trim() || !/^\S+@\S+\.\S+$/.test(formData.email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (!formData.phone.trim()) {
+      setError("Please enter your phone number.");
+      return;
+    }
+    if (!formData.spiritualBackground) {
+      setError("Please select your interest/background.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -132,6 +153,19 @@ export default function SignUp() {
         </div>
 
         <form onSubmit={handleSubmit} className="px-8 pb-10 flex flex-col gap-5">
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                animate={{ opacity: 1, height: 'auto', scale: 1 }}
+                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                className="bg-error/10 text-error p-4 rounded-2xl text-sm font-medium origin-top"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant px-1" htmlFor="name">Full Name</label>
             <div className="relative group">
