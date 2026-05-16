@@ -840,7 +840,7 @@ function InternalKanbanCard({
       </div>
 
       {contact.notes && (
-        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic mb-2">
+        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic mb-2 whitespace-pre-wrap">
           {contact.notes}
         </p>
       )}

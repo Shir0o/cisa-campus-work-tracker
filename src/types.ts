@@ -145,6 +145,8 @@ export interface Notification {
   message: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'assignment' | 'event';
   read: boolean;
+  readBy?: string[];
+  dismissedBy?: string[];
   createdAt: string;
   link?: string;
   targetId?: string;
