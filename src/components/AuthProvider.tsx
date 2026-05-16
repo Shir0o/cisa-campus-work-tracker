@@ -137,10 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsApproved(false);
       }
       
-      // Only delay if we have a user to show the skeleton nicely
-      if (authUser) {
-        await sleep(1000);
-      }
       setLoading(false);
     });
 
