@@ -11,7 +11,7 @@ import {
   deleteDoc,
   serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { AppUser, Invitation } from '../types';
 import { useAuth } from '../components/AuthProvider';
 import { 
@@ -116,7 +116,7 @@ export default function Settings() {
           createdAt: serverTimestamp()
         });
       } catch (error) {
-        handleFirestoreError(error, 'CREATE', invitationPath);
+        handleFirestoreError(error, OperationType.CREATE, invitationPath);
       }
       
       setInviteEmail('');
@@ -148,7 +148,7 @@ export default function Settings() {
         updatedAt: serverTimestamp()
       });
     } catch (error) {
-      handleFirestoreError(error, 'UPDATE', userPath);
+      handleFirestoreError(error, OperationType.UPDATE, userPath);
     } finally {
       setUpdatingId(null);
     }
@@ -163,7 +163,7 @@ export default function Settings() {
         updatedAt: serverTimestamp()
       });
     } catch (error) {
-      handleFirestoreError(error, 'UPDATE', userPath);
+      handleFirestoreError(error, OperationType.UPDATE, userPath);
     } finally {
       setUpdatingId(null);
     }
@@ -181,21 +181,6 @@ export default function Settings() {
     const matchesSearch = invite.email.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
-
-  const handleFirestoreError = (error: unknown, operationType: string, path: string | null) => {
-    const errInfo = {
-      error: error instanceof Error ? error.message : String(error),
-      authInfo: {
-        userId: currentUser?.uid,
-        email: currentUser?.email,
-        emailVerified: currentUser?.emailVerified,
-      },
-      operationType,
-      path
-    };
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
-    throw new Error(JSON.stringify(errInfo));
-  };
 
   const ThemeSection = () => (
     <div className="mt-8">
