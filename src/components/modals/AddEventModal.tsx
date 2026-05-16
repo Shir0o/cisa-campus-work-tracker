@@ -31,10 +31,10 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     isRecurring: false,
     recurrenceType: 'weekly' as RecurrenceType,
-    recurrenceEndDate: addMonths(new Date(), 1).toISOString().split('T')[0],
+    recurrenceEndDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
     recurrenceDays: [] as number[],
     monthlyType: 'same-day' as MonthlyType
   });
@@ -201,10 +201,10 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
       
       setFormData({ 
         name: '', 
-        date: new Date().toISOString().split('T')[0],
+        date: format(new Date(), 'yyyy-MM-dd'),
         isRecurring: false,
         recurrenceType: 'weekly',
-        recurrenceEndDate: addMonths(new Date(), 1).toISOString().split('T')[0],
+        recurrenceEndDate: format(addMonths(new Date(), 1), 'yyyy-MM-dd'),
         recurrenceDays: [getDay(new Date())],
         monthlyType: 'same-day'
       });

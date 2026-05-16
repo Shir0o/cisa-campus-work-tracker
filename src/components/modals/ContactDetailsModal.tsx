@@ -43,6 +43,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
+import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Comment } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
@@ -170,7 +171,7 @@ export default function ContactDetailsModal({
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [newInteraction, setNewInteraction] = useState({
     content: "",
-    dateTime: new Date().toISOString().slice(0, 16),
+    dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
     duration: "",
     type: "interaction",
   });
@@ -554,7 +555,7 @@ export default function ContactDetailsModal({
 
       setNewInteraction({
         content: "",
-        dateTime: new Date().toISOString().slice(0, 16),
+        dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         duration: "",
         type: "interaction",
       });

@@ -6,6 +6,7 @@ import { fetchSheetData, extractSpreadsheetId } from '../../services/sheetsServi
 import { collection, doc, updateDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { cn } from '../../lib/utils';
+import { format } from 'date-fns';
 import { Contact, Event } from '../../types';
 
 interface SyncSheetModalProps {
@@ -138,7 +139,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
           } else {
             const ref = await addDoc(collection(db, 'events'), {
               name,
-              date: new Date().toISOString().split('T')[0],
+              date: format(new Date(), 'yyyy-MM-dd'),
               createdAt: new Date().toISOString()
             });
             finalEventMap[`new:${name}`] = ref.id;
