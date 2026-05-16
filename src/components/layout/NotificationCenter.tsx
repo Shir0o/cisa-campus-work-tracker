@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, X, AlertCircle, Info, CheckCircle2, UserPlus, Calendar as CalendarIcon, MessageSquare } from 'lucide-react';
-import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit, doc, updateDoc, deleteDoc, writeBatch, arrayUnion } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { Notification } from '../../types';
 import { cn } from '../../lib/utils';
@@ -44,22 +44,30 @@ export default function NotificationCenter() {
     );
 
     const unsubPersonal = onSnapshot(qPersonal, (snapshot) => {
-      localNotifs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
-      })) as Notification[];
+      localNotifs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          read: data.readBy?.includes(auth.currentUser?.uid) ?? data.read,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        };
+      }).filter((n: any) => !n.dismissedBy?.includes(auth.currentUser?.uid)) as Notification[];
       updateCombined();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
     });
 
     const unsubGlobal = onSnapshot(qGlobal, (snapshot) => {
-      globalNotifs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
-      })) as Notification[];
+      globalNotifs = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          read: data.readBy?.includes(auth.currentUser?.uid) ?? data.read,
+          createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString()
+        };
+      }).filter((n: any) => !n.dismissedBy?.includes(auth.currentUser?.uid)) as Notification[];
       updateCombined();
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'notifications');
@@ -82,8 +90,12 @@ export default function NotificationCenter() {
   }, []);
 
   const markAsRead = async (id: string) => {
+    if (!auth.currentUser) return;
     try {
-      await updateDoc(doc(db, 'notifications', id), { read: true });
+      await updateDoc(doc(db, 'notifications', id), { 
+        read: true,
+        readBy: arrayUnion(auth.currentUser.uid)
+      });
     } catch (error) {
       console.error('Error marking as read:', error);
     }
@@ -93,14 +105,29 @@ export default function NotificationCenter() {
     if (!auth.currentUser) return;
     const batch = writeBatch(db);
     notifications.filter(n => !n.read).forEach(n => {
-      batch.update(doc(db, 'notifications', n.id), { read: true });
+      batch.update(doc(db, 'notifications', n.id), { 
+        read: true,
+        readBy: arrayUnion(auth.currentUser!.uid)
+      });
     });
     await batch.commit();
   };
 
   const deleteNotification = async (id: string) => {
+    if (!auth.currentUser) return;
+    const notification = notifications.find(n => n.id === id);
+    if (!notification) return;
+
     try {
-      await deleteDoc(doc(db, 'notifications', id));
+      if (notification.userId === 'ALL_ADMINS') {
+        // Just hide it for the current user
+        await updateDoc(doc(db, 'notifications', id), {
+          dismissedBy: arrayUnion(auth.currentUser.uid)
+        });
+      } else {
+        // Actually delete if personal
+        await deleteDoc(doc(db, 'notifications', id));
+      }
     } catch (error) {
       console.error('Error deleting notification:', error);
     }
