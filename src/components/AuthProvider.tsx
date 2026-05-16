@@ -46,11 +46,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (authUser) {
+        const idTokenResult = await authUser.getIdTokenResult();
+        const isAdminClaim = !!idTokenResult.claims.admin;
         const userEmail = authUser.email?.toLowerCase();
         if (!userEmail) return;
 
-        const isSuperAdminEmail = userEmail === 'yilongwang05@gmail.com';
-        
         // Initial setup/check
         const userDocRef = doc(db, 'users', authUser.uid);
         const userDoc = await getDoc(userDocRef);
@@ -60,8 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const inviteRef = doc(db, 'invitations', userEmail);
           const inviteDoc = await getDoc(inviteRef);
           
-          let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isSuperAdminEmail ? 'admin' : 'viewer';
-          let initialApproved = isSuperAdminEmail;
+          let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isAdminClaim ? 'admin' : 'viewer';
+          let initialApproved = isAdminClaim;
 
           if (inviteDoc.exists()) {
             const inviteData = inviteDoc.data();
@@ -97,7 +97,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Document exists, set initial state before listener starts
           const data = userDoc.data();
 
-          if (isSuperAdminEmail && (data.role !== 'admin' || !data.approved)) {
+          if (isAdminClaim && (data.role !== 'admin' || !data.approved)) {
             try {
               const { updateDoc } = await import('firebase/firestore');
               await updateDoc(userDocRef, {
@@ -105,28 +105,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 approved: true
               });
             } catch(e) {
-              console.error('Failed to auto-upgrade super admin', e);
+              console.error('Failed to auto-upgrade custom claim admin', e);
             }
           }
 
           const currentRole = data.role as string;
-          setIsApproved(data.approved || isSuperAdminEmail);
-          const effectiveRole = isSuperAdminEmail ? 'admin' : currentRole;
+          setIsApproved(data.approved || isAdminClaim);
+          const effectiveRole = isAdminClaim ? 'admin' : currentRole;
           setRole(effectiveRole);
-          setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
-          setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);
+          setIsAdmin(effectiveRole === 'admin' || isAdminClaim);
+          setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isAdminClaim);
         }
 
         // Listen for real-time changes to the user's record
         userDocUnsubscribe = onSnapshot(userDocRef, (doc) => {
           if (doc.exists()) {
             const data = doc.data();
-            setIsApproved(data.approved || isSuperAdminEmail);
+            setIsApproved(data.approved || isAdminClaim);
             const currentRole = data.role as string;
-            const effectiveRole = isSuperAdminEmail ? 'admin' : currentRole;
+            const effectiveRole = isAdminClaim ? 'admin' : currentRole;
             setRole(effectiveRole);
-            setIsAdmin(effectiveRole === 'admin' || isSuperAdminEmail);
-            setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isSuperAdminEmail);
+            setIsAdmin(effectiveRole === 'admin' || isAdminClaim);
+            setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isAdminClaim);
           }
         });
 
