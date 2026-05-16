@@ -633,7 +633,7 @@ export default function Directory() {
                           "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider w-fit",
                           stagesData.find(s => s.label === contact.stage)?.color || "bg-surface-variant text-on-surface-variant"
                         )}>
-                          <span className="max-w-[100px] truncate">{contact.stage}</span>
+                          <span className="max-w-[100px] truncate">{stagesData.some(s => s.label === contact.stage) ? contact.stage : 'Unassigned'}</span>
                         </span>
                       </div>
                     </td>

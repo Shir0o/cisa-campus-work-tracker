@@ -945,12 +945,13 @@ export default function ContactDetailsModal({
                         <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
                       </label>
                       <select
-                        value={formData.stage}
+                        value={stages.some(s => s.label === formData.stage) ? formData.stage : "Unassigned"}
                         onChange={(e) =>
                           setFormData((f) => ({ ...f, stage: e.target.value }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
                       >
+                        <option value="Unassigned">Unassigned</option>
                         {stages.map((s) => (
                           <option key={s.id} value={s.label}>
                             {s.label}
@@ -1075,7 +1076,7 @@ export default function ContactDetailsModal({
                             </p>
                             <div className="flex flex-col gap-1 mt-1">
                               <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight w-fit">
-                                {contact.stage}
+                                {stages.some(s => s.label === contact.stage) ? contact.stage : "Unassigned"}
                               </span>
                             </div>
                           </div>

@@ -269,6 +269,11 @@ export default function OutreachBoard() {
 
   const getStageContactsArr = (stageLabel: string) => filteredContacts.filter(c => c.stage === stageLabel);
 
+  const activeStageLabels = useMemo(() => new Set(stages.map((s) => s.label)), [stages]);
+  const unmappedContacts = useMemo(() => {
+    return filteredContacts.filter((c) => !c.stage || !activeStageLabels.has(c.stage));
+  }, [filteredContacts, activeStageLabels]);
+
   const activeContact = useMemo(() => 
     boardContacts.find(c => c.id === activeId),
     [activeId, boardContacts]
@@ -294,11 +299,16 @@ export default function OutreachBoard() {
     const overContact = boardContacts.find((c) => c.id === overId);
     
     if (overContact) {
-      overStageLabel = overContact.stage;
+      const isValidStage = stages.some(s => s.label === overContact.stage);
+      overStageLabel = isValidStage ? overContact.stage : 'Unassigned';
     } else {
       // It might be the stage ID or label
       const maybeStage = stages.find(s => s.id === overId || s.label === overId);
-      if (maybeStage) overStageLabel = maybeStage.label;
+      if (maybeStage) {
+        overStageLabel = maybeStage.label;
+      } else if (overId === 'uncategorized') {
+        overStageLabel = 'Unassigned';
+      }
     }
 
     if (overStageLabel && activeContact.stage !== overStageLabel) {
@@ -461,22 +471,47 @@ export default function OutreachBoard() {
         {/* Kanban Board */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
           <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
-            {stages.length > 0 ? stages.map((stageInfo) => (
-              <KanbanColumn 
-                key={stageInfo.id}
-                stageInfo={stageInfo}
-                isAdmin={isAdmin}
-                contacts={getStageContactsArr(stageInfo.label)}
-                stages={stages}
-                onDeleteStage={handleDeleteStage}
-                onEditStage={handleEditStage}
-                onEditContact={(contact) => {
-                  setSelectedContact(contact);
-                }}
-                onDeleteContact={handleDeleteContact}
-                onUpdateContactStage={handleUpdateContactStage}
-              />
-            )) : !loading && (
+            {stages.length > 0 ? (
+              <>
+                {unmappedContacts.length > 0 && (
+                  <KanbanColumn
+                    key="uncategorized"
+                    stageInfo={{
+                      id: 'uncategorized',
+                      label: 'Unassigned',
+                      color: 'bg-surface-variant',
+                      order: -1
+                    }}
+                    isAdmin={isAdmin}
+                    contacts={unmappedContacts}
+                    stages={stages}
+                    onDeleteStage={handleDeleteStage}
+                    onEditStage={handleEditStage}
+                    onEditContact={(contact) => {
+                      setSelectedContact(contact);
+                    }}
+                    onDeleteContact={handleDeleteContact}
+                    onUpdateContactStage={handleUpdateContactStage}
+                  />
+                )}
+                {stages.map((stageInfo) => (
+                  <KanbanColumn 
+                    key={stageInfo.id}
+                    stageInfo={stageInfo}
+                    isAdmin={isAdmin}
+                    contacts={getStageContactsArr(stageInfo.label)}
+                    stages={stages}
+                    onDeleteStage={handleDeleteStage}
+                    onEditStage={handleEditStage}
+                    onEditContact={(contact) => {
+                      setSelectedContact(contact);
+                    }}
+                    onDeleteContact={handleDeleteContact}
+                    onUpdateContactStage={handleUpdateContactStage}
+                  />
+                ))}
+              </>
+            ) : !loading && (
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
                 <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
                 <h3 className="text-lg font-bold text-on-surface">No stages configured</h3>
@@ -640,7 +675,7 @@ function KanbanColumn({
   onUpdateContactStage 
 }: KanbanColumnProps) {
   const { setNodeRef } = useDroppable({
-    id: stageInfo.label,
+    id: stageInfo.id,
   });
 
   const [showMenu, setShowMenu] = useState(false);
@@ -709,7 +744,7 @@ function KanbanColumn({
 
       {/* Column Content */}
       <SortableContext 
-        id={stageInfo.label}
+        id={stageInfo.id}
         items={contacts.map(c => c.id)}
         strategy={verticalListSortingStrategy}
       >
