@@ -34,12 +34,20 @@ import { Skeleton } from '../components/ui/Skeleton';
 const PRAYER_DATES = [
   '2026-02-10', '2026-02-17', '2026-02-24', 
   '2026-03-03', '2026-03-10', '2026-03-17', '2026-03-24', '2026-03-31',
-  '2026-04-14', '2026-04-21', '2026-04-28', '2026-05-05'
+  '2026-04-14', '2026-04-21', '2026-04-28', '2026-05-05', '2026-05-12',
+  '2026-05-19', '2026-05-26', '2026-06-02'
 ];
+
+const getInitialDate = () => {
+  const today = new Date();
+  const todayStr = today.toISOString().split('T')[0];
+  const pastDates = PRAYER_DATES.filter(d => d <= todayStr);
+  return pastDates.length > 0 ? pastDates[pastDates.length - 1] : PRAYER_DATES[PRAYER_DATES.length - 1];
+};
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' });
+  return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
 };
 
 export default function PrayerList() {
@@ -48,8 +56,22 @@ export default function PrayerList() {
   const [prayers, setPrayers] = useState<Record<string, Record<string, PrayerRecord>>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState(PRAYER_DATES[0]);
+  const [selectedDate, setSelectedDate] = useState(getInitialDate());
   const [saving, setSaving] = useState<string | null>(null);
+
+  // Scroll to selected date when loading is finished
+  useEffect(() => {
+    if (!loading || contacts.length > 0) {
+      // Small timeout to ensure DOM has updated
+      const timeoutId = setTimeout(() => {
+        const selectedBtn = document.getElementById(`date-btn-${selectedDate}`);
+        if (selectedBtn) {
+          selectedBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+        }
+      }, 0);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [loading, contacts.length, selectedDate]);
 
   // Load Contacts
   useEffect(() => {
@@ -207,6 +229,7 @@ export default function PrayerList() {
           {PRAYER_DATES.map((date) => (
             <button
               key={date}
+              id={`date-btn-${date}`}
               onClick={() => setSelectedDate(date)}
               className={cn(
                 "px-5 h-10 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all flex items-center gap-2",
