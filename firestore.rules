@@ -117,7 +117,7 @@ service cloud.firestore {
                (data.stage == null || (data.stage is string && data.stage.size() <= 64));
       }
 
-      allow read: if true;
+      allow read: if isApprovedUser();
       allow create: if isValidId(contactId) && isValidContact(incoming());
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
       allow delete: if isValidId(contactId) && isManager();
@@ -149,7 +149,8 @@ service cloud.firestore {
         function isValidComment(data) {
           return data.keys().hasAll(['userId', 'userName', 'text', 'createdAt']) &&
                  data.userName is string && data.userName.size() <= 128 &&
-                 data.text is string && data.text.size() <= 2000;
+                 data.text is string && data.text.size() <= 2000 &&
+                 (data.parentId == null || (data.parentId is string && data.parentId.size() <= 128));
         }
 
         allow read: if isApprovedUser();

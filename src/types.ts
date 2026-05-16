@@ -80,6 +80,7 @@ export interface Comment {
   userPhoto?: string;
   text: string;
   createdAt: string;
+  parentId?: string;
 }
 
 export interface Interaction {
