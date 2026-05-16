@@ -167,6 +167,10 @@ export default function Dashboard() {
     // 4. Recent Follow-ups Count
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    let interactionsCount = 0;
+    let commentsCount = 0;
+
     const qRecentFollowUps = query(
       collectionGroup(db, "interactions"),
       where("createdAt", ">=", sevenDaysAgo.toISOString()),
@@ -174,13 +178,33 @@ export default function Dashboard() {
     const unsubscribeFollowUps = onSnapshot(
       qRecentFollowUps,
       (snapshot) => {
-        setRecentFollowUpsCount(snapshot.size);
+        interactionsCount = snapshot.size;
+        setRecentFollowUpsCount(interactionsCount + commentsCount);
       },
       (error) => {
         handleFirestoreError(
           error,
           OperationType.LIST,
           "interactions count (collectionGroup)",
+        );
+      },
+    );
+
+    const qRecentComments = query(
+      collectionGroup(db, "comments"),
+      where("createdAt", ">=", sevenDaysAgo.toISOString()),
+    );
+    const unsubscribeRecentComments = onSnapshot(
+      qRecentComments,
+      (snapshot) => {
+        commentsCount = snapshot.size;
+        setRecentFollowUpsCount(interactionsCount + commentsCount);
+      },
+      (error) => {
+        handleFirestoreError(
+          error,
+          OperationType.LIST,
+          "comments count (collectionGroup)",
         );
       },
     );
@@ -211,6 +235,7 @@ export default function Dashboard() {
       unsubscribeInteractions();
       unsubscribeComments();
       unsubscribeFollowUps();
+      unsubscribeRecentComments();
       unsubscribeTasks();
     };
   }, []);
