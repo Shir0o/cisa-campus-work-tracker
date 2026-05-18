@@ -48,18 +48,9 @@ export default function History() {
       (snapshot) => {
         const fetchedActivities = snapshot.docs.map((doc) => {
           const data = doc.data() as SystemActivity;
-          let activityId = doc.id;
-
-          if (data.targetType === "contact") {
-            if (data.type === "create") {
-              activityId = `create-contact-${data.targetId}`;
-            } else if (data.type === "edit") {
-              activityId = `edit-contact-${data.targetId}`;
-            }
-          }
 
           return {
-            id: activityId,
+            id: doc.id,
             user: data.userName,
             action: data.action,
             target: data.targetName,

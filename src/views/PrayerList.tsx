@@ -15,63 +15,28 @@ import { Contact, PrayerRecord } from '../types';
 import { 
   MessageSquare, 
   CheckCircle2, 
-  Save, 
-  ChevronLeft, 
-  ChevronRight,
+  Save,
   Search,
   Filter,
   User,
   Clock,
   Loader2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Heart
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
 
-const PRAYER_DATES = [
-  '2026-02-10', '2026-02-17', '2026-02-24', 
-  '2026-03-03', '2026-03-10', '2026-03-17', '2026-03-24', '2026-03-31',
-  '2026-04-14', '2026-04-21', '2026-04-28', '2026-05-05', '2026-05-12',
-  '2026-05-19', '2026-05-26', '2026-06-02'
-];
-
-const getInitialDate = () => {
-  const today = new Date();
-  const todayStr = today.toISOString().split('T')[0];
-  const pastDates = PRAYER_DATES.filter(d => d <= todayStr);
-  return pastDates.length > 0 ? pastDates[pastDates.length - 1] : PRAYER_DATES[PRAYER_DATES.length - 1];
-};
-
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'UTC' });
-};
-
 export default function PrayerList() {
   const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
-  const [prayers, setPrayers] = useState<Record<string, Record<string, PrayerRecord>>>({});
+  const [prayers, setPrayers] = useState<Record<string, PrayerRecord>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedDate, setSelectedDate] = useState(getInitialDate());
   const [saving, setSaving] = useState<string | null>(null);
-
-  // Scroll to selected date when loading is finished
-  useEffect(() => {
-    if (!loading || contacts.length > 0) {
-      // Small timeout to ensure DOM has updated
-      const timeoutId = setTimeout(() => {
-        const selectedBtn = document.getElementById(`date-btn-${selectedDate}`);
-        if (selectedBtn) {
-          selectedBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-        }
-      }, 0);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [loading, contacts.length, selectedDate]);
 
   // Load Contacts
   useEffect(() => {
@@ -90,14 +55,13 @@ export default function PrayerList() {
   useEffect(() => {
     const q = query(collection(db, 'prayers'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const prayerData: Record<string, Record<string, PrayerRecord>> = {};
+      const prayerData: Record<string, PrayerRecord> = {};
       snapshot.docs.forEach(doc => {
         const data = doc.data() as PrayerRecord;
-        const id = doc.id;
-        if (!prayerData[data.contactId]) {
-          prayerData[data.contactId] = {};
+        // Load only general un-dated docs or standard docs
+        if (doc.id === data.contactId) {
+          prayerData[data.contactId] = { ...data, id: doc.id };
         }
-        prayerData[data.contactId][data.date] = { ...data, id };
       });
       setPrayers(prayerData);
       setLoading(false);
@@ -113,22 +77,17 @@ export default function PrayerList() {
     );
   }, [contacts, searchQuery]);
 
-  const handleUpdatePrayer = async (contactId: string, date: string, field: 'burden' | 'answer', value: string) => {
-    const prayerId = `${contactId}_${date}`;
-    const prayerRef = doc(db, 'prayers', prayerId);
+  const handleUpdatePrayer = async (contactId: string, field: 'prayedFor' | 'unanswered', value: string) => {
+    const prayerRef = doc(db, 'prayers', contactId);
     
-    setSaving(prayerId);
+    setSaving(contactId);
     try {
-      const existing = prayers[contactId]?.[date];
       await setDoc(prayerRef, {
         contactId,
-        date,
         [field]: value,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0],
-        burden: field === 'burden' ? value : (existing?.burden || ''),
-        answer: field === 'answer' ? value : (existing?.answer || '')
+        updatedByName: user?.displayName || user?.email?.split('@')[0]
       }, { merge: true });
     } catch (error) {
       console.error("Error updating prayer:", error);
@@ -151,15 +110,6 @@ export default function PrayerList() {
               <Skeleton className="h-4 w-96 ml-13" />
             </div>
             <Skeleton className="h-11 w-64 rounded-xl" />
-          </div>
-
-          {/* Date Bar Skeleton */}
-          <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-2">
-            {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-              <div key={i} className="flex-shrink-0">
-                <Skeleton className="h-10 w-24 rounded-full" />
-              </div>
-            ))}
           </div>
         </div>
 
@@ -223,26 +173,6 @@ export default function PrayerList() {
              </div>
           </div>
         </div>
-
-        {/* Date Selection Bar */}
-        <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {PRAYER_DATES.map((date) => (
-            <button
-              key={date}
-              id={`date-btn-${date}`}
-              onClick={() => setSelectedDate(date)}
-              className={cn(
-                "px-5 h-10 rounded-full text-xs font-black uppercase tracking-widest whitespace-nowrap transition-all flex items-center gap-2",
-                selectedDate === date 
-                  ? "bg-primary text-on-primary shadow-lg shadow-primary/20" 
-                  : "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-              )}
-            >
-              {formatDate(date)}
-              {selectedDate === date && <Clock className="w-3 h-3" />}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Table Container */}
@@ -256,14 +186,14 @@ export default function PrayerList() {
                 </th>
                 <th className="text-left p-4 border-b border-outline-variant/30 min-w-[300px]">
                   <div className="flex items-center gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-primary" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Prayer Burden ({formatDate(selectedDate)})</span>
+                    <Heart className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Prayed For</span>
                   </div>
                 </th>
                 <th className="text-left p-4 border-b border-outline-variant/30 min-w-[300px]">
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 text-tertiary" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Answered Prayer ({formatDate(selectedDate)})</span>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-on-surface-variant">Unanswered</span>
                   </div>
                 </th>
                 <th className="text-right p-4 border-b border-outline-variant/30">
@@ -274,8 +204,8 @@ export default function PrayerList() {
             <tbody>
               <AnimatePresence mode="popLayout">
                 {filteredContacts.map((contact) => {
-                  const prayer = prayers[contact.id]?.[selectedDate];
-                  const isSaving = saving === `${contact.id}_${selectedDate}`;
+                  const prayer = prayers[contact.id];
+                  const isSaving = saving === contact.id;
                   const yearTag = contact.tags?.find(t => t.toLowerCase().includes('year'));
                   const shepherdingTag = contact.role || 'Unassigned';
 
@@ -305,25 +235,25 @@ export default function PrayerList() {
                       </td>
                       <td className="p-4">
                         <textarea
-                          placeholder={`Enter burden for ${formatDate(selectedDate)}...`}
-                          value={prayer?.burden || ''}
-                          onChange={(e) => handleUpdatePrayer(contact.id, selectedDate, 'burden', e.target.value)}
+                          placeholder="What did we pray for?"
+                          value={prayer?.prayedFor || ''}
+                          onChange={(e) => handleUpdatePrayer(contact.id, 'prayedFor', e.target.value)}
                           className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low border border-outline-variant focus:border-primary focus:bg-surface outline-none transition-all text-xs font-medium resize-none shadow-sm group-hover:shadow-md"
                         />
                       </td>
                       <td className="p-4">
                         <textarea
-                          placeholder="How did God answer?"
-                          value={prayer?.answer || ''}
-                          onChange={(e) => handleUpdatePrayer(contact.id, selectedDate, 'answer', e.target.value)}
-                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low/50 border border-outline-variant focus:border-tertiary focus:bg-surface outline-none transition-all text-xs font-medium italic text-on-surface-variant resize-none shadow-sm group-hover:shadow-md"
+                          placeholder="What is still unanswered?"
+                          value={prayer?.unanswered || ''}
+                          onChange={(e) => handleUpdatePrayer(contact.id, 'unanswered', e.target.value)}
+                          className="w-full min-h-[80px] p-4 rounded-2xl bg-surface-container-low/50 border border-outline-variant focus:border-tertiary focus:bg-surface outline-none transition-all text-xs font-medium text-on-surface-variant resize-none shadow-sm group-hover:shadow-md"
                         />
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end px-4">
                           {isSaving ? (
                             <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          ) : prayer?.burden || prayer?.answer ? (
+                          ) : prayer?.prayedFor || prayer?.unanswered ? (
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                               <Save className="w-4 h-4" />
                             </div>

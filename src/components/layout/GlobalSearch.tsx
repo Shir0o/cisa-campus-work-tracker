@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, User, Calendar, Loader2, X } from 'lucide-react';
+import { Search, User, Calendar, Loader2, X, UserPlus, MessageSquarePlus, Command } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { collection, onSnapshot, query, limit } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
@@ -13,15 +13,14 @@ export default function GlobalSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { setSelectedContact } = useLayout();
+  const { setSelectedContact, openNewContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!auth.currentUser) return;
 
-    // Listen to contacts and events for searching
     const unsubContacts = onSnapshot(
       collection(db, 'contacts'), 
       (snapshot) => {
@@ -56,6 +55,22 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsOpen(true);
+        inputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        inputRef.current?.blur();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const results = React.useMemo(() => {
     if (!query_str.trim() || query_str.length < 2) return { contacts: [], events: [] };
     
@@ -83,7 +98,6 @@ export default function GlobalSearch() {
   };
 
   const handleSelectEvent = (event: Event) => {
-    // Navigate to attendance page and maybe highlight or just go there
     navigate('/attendance');
     setQueryStr('');
     setIsOpen(false);
@@ -92,13 +106,14 @@ export default function GlobalSearch() {
   return (
     <div className="relative w-full max-w-xl" ref={containerRef}>
       <div className={cn(
-        "relative flex items-center w-full h-10 rounded-full transition-all group",
+        "relative flex items-center w-full h-10 rounded-full transition-all group cursor-text",
         isOpen ? "bg-surface shadow-lg ring-1 ring-outline-variant" : "bg-surface-container-high hover:bg-surface-container-highest"
-      )}>
+      )} onClick={() => { setIsOpen(true); inputRef.current?.focus(); }}>
         <div className="grid place-items-center h-full w-10 sm:w-12 text-on-surface-variant group-focus-within:text-primary">
           <Search className="w-4 h-4 sm:w-5 h-5" />
         </div>
         <input
+          ref={inputRef}
           type="text"
           value={query_str}
           onFocus={() => setIsOpen(true)}
@@ -106,14 +121,21 @@ export default function GlobalSearch() {
             setQueryStr(e.target.value);
             setIsOpen(true);
           }}
-          className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-10 font-medium"
-          placeholder="Search contacts, events..."
+          className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium"
+          placeholder="Search or quick actions..."
         />
-        {query_str && (
+        {!isOpen && (
+          <div className="absolute right-3 hidden sm:flex items-center gap-1 opacity-50 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-bold text-on-surface-variant pointer-events-none">
+            <Command className="w-3 h-3" />
+            <span>K</span>
+          </div>
+        )}
+        {query_str && isOpen && (
           <button 
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               setQueryStr('');
-              setIsOpen(false);
+              inputRef.current?.focus();
             }}
             className="absolute right-3 p-1 rounded-full hover:bg-surface-variant text-on-surface-variant"
           >
@@ -123,7 +145,7 @@ export default function GlobalSearch() {
       </div>
 
       <AnimatePresence>
-        {isOpen && query_str.length >= 2 && (
+        {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 4, scale: 0.99 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -131,7 +153,43 @@ export default function GlobalSearch() {
             transition={{ duration: 0.1 }}
             className="absolute top-12 left-0 right-0 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50 py-2"
           >
-            {!hasResults ? (
+            {!query_str.trim() || query_str.length < 2 ? (
+              <div className="px-2 pb-2">
+                <p className="px-3 py-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest mt-1">Quick Actions</p>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      openNewContact();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+                      <UserPlus className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">New Contact</p>
+                      <p className="text-xs text-on-surface-variant">Add a new person to the directory</p>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      openLogInteraction();
+                    }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
+                      <MessageSquarePlus className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Log Interaction</p>
+                      <p className="text-xs text-on-surface-variant">Record a meeting, email, or context</p>
+                    </div>
+                  </button>
+                </div>
+              </div>
+            ) : !hasResults ? (
               <div className="px-5 py-8 text-center">
                 <Search className="w-8 h-8 text-on-surface-variant mx-auto mb-2 opacity-20" />
                 <p className="text-sm font-bold text-on-surface">No results found for "{query_str}"</p>
@@ -190,7 +248,7 @@ export default function GlobalSearch() {
             )}
             
             <div className="px-5 py-2 border-t border-outline-variant/30 mt-1 bg-surface-container-highest/50">
-                <p className="text-[10px] text-on-surface-variant text-center font-medium">Tip: Search by name, email, or group</p>
+                <p className="text-[10px] text-on-surface-variant text-center font-medium">Tip: Use <kbd className="font-sans px-1 rounded bg-surface-variant">⌘K</kbd> to open anytime</p>
             </div>
           </motion.div>
         )}
