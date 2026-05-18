@@ -113,11 +113,9 @@ export interface Event {
 export interface PrayerRecord {
   id: string;
   contactId: string;
-  date?: string; // Legacy feature
-  prayedFor?: string;
-  unanswered?: string;
-  burden?: string; // Legacy
-  answer?: string; // Legacy
+  date: string; 
+  burden: string;
+  status: 'pending' | 'answered' | 'ongoing' | 'unanswered';
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;
