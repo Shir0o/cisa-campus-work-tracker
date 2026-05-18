@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Settings, LogOut } from 'lucide-react';
+import { Search, Bell, Settings, LogOut, Menu } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
@@ -10,7 +10,7 @@ import NotificationCenter from './NotificationCenter';
 
 export default function TopBar() {
   const { user, logOut } = useAuth();
-  const { isSidebarCollapsed } = useLayout();
+  const { isSidebarCollapsed, setIsMobileMenuOpen } = useLayout();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -28,7 +28,13 @@ export default function TopBar() {
     <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
       {/* Mobile Logo/Title */}
       <div className="flex lg:hidden items-center gap-2 ml-1">
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <button 
+          onClick={() => setIsMobileMenuOpen(true)}
+          className="p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full focus:outline-none transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <Link to="/" className="hidden items-center gap-2 hover:opacity-80 transition-opacity">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
             <img 
               src="/logo.svg" 
@@ -43,7 +49,7 @@ export default function TopBar() {
               }}
             />
           </div>
-          <span className="font-black text-primary text-sm tracking-tight hidden sm:inline">Campus Hub</span>
+          <span className="font-black text-primary text-sm tracking-tight sm:inline">Campus Hub</span>
         </Link>
       </div>
 

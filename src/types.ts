@@ -113,9 +113,11 @@ export interface Event {
 export interface PrayerRecord {
   id: string;
   contactId: string;
-  date: string; // Format: "YYYY-MM-DD"
-  burden: string;
-  answer: string;
+  date?: string; // Legacy feature
+  prayedFor?: string;
+  unanswered?: string;
+  burden?: string; // Legacy
+  answer?: string; // Legacy
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;

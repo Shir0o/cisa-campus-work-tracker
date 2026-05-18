@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   LayoutDashboard, 
   Kanban, 
@@ -11,11 +11,13 @@ import {
   ChevronRight,
   HeartHandshake,
   History as HistoryIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
+import { useLayout } from '../../App';
 
 interface SidebarProps {
   isCollapsed?: boolean;
@@ -25,6 +27,16 @@ interface SidebarProps {
 
 export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
   const { logOut, isAdmin, role } = useAuth();
+  const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
+  const [isDesktop, setIsDesktop] = React.useState(window.innerWidth >= 1024);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const effectiveIsCollapsed = isDesktop ? isCollapsed : false;
   
   const navItems = [
     { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
@@ -48,23 +60,39 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
   };
 
   return (
-    <motion.nav 
-      aria-label="Main Navigation"
-      initial={false}
-      animate={{ 
-        width: isCollapsed ? 80 : 288
-      }}
-      transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={cn(
-        "bg-surface-container-low h-screen sticky top-0 flex-col border-r border-outline-variant z-50 pt-4 pb-6 transition-colors duration-300 hidden lg:flex px-3 overflow-hidden shrink-0"
-      )}
-    >
-      {/* Brand Header */}
+    <>
+      {/* Mobile Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="fixed inset-0 bg-scrim/50 z-[60] lg:hidden"
+          />
+        )}
+      </AnimatePresence>
+
+      <motion.nav 
+        aria-label="Main Navigation"
+        initial={false}
+        animate={{ 
+          width: effectiveIsCollapsed ? 80 : 288,
+        }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className={cn(
+          "bg-surface-container-low h-screen fixed lg:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-6 px-3 overflow-hidden shrink-0",
+          "lg:transition-none transition-transform duration-300 ease-in-out",
+          isMobileMenuOpen ? "translate-x-0 shadow-2xl flex" : "-translate-x-full lg:translate-x-0 flex shadow-none"
+        )}
+      >
+        {/* Brand Header */}
         <div className={cn(
           "mb-8 flex items-center px-3 transition-all h-10",
-          isCollapsed ? "justify-center md:px-0" : "justify-between"
+          effectiveIsCollapsed ? "justify-center md:px-0" : "justify-between"
         )}>
-          <NavLink to="/" className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity">
+          <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity">
             <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center shadow-md overflow-hidden shrink-0">
               <img 
                 src="/logo.svg" 
@@ -82,7 +110,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             </div>
             <motion.div 
               initial={false}
-              animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 12 }}
+              animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
               transition={{ duration: 0.2 }}
               className="whitespace-nowrap overflow-hidden"
             >
@@ -90,27 +118,15 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
               <p className="text-xs text-on-surface-variant opacity-80">{getRoleLabel(role)}</p>
             </motion.div>
           </NavLink>
-        </div>
-
-        {/* Log Interaction Button */}
-        <div className="mb-6 px-1">
-          <button 
-            onClick={onLogInteraction}
-            className={cn(
-              "bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center transition-all active:scale-95 shadow-sm px-0 h-12 overflow-hidden w-full cursor-pointer",
-              isCollapsed ? "px-0" : "px-6"
-            )}
-          >
-            <Plus className="w-5 h-5 shrink-0" />
-            <motion.span 
-              initial={false}
-              animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 8 }}
-              transition={{ duration: 0.2 }}
-              className="whitespace-nowrap overflow-hidden"
+          
+          {!effectiveIsCollapsed && (
+            <button 
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="lg:hidden p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
             >
-              Log Interaction
-            </motion.span>
-          </button>
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         {/* Main Nav Items */}
@@ -119,19 +135,20 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             <NavLink
               key={item.href}
               to={item.href}
+              onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => cn(
                 "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium h-12",
-                isCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4",
+                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4",
                 isActive 
                   ? "bg-secondary-container text-on-secondary-container" 
                   : "text-on-surface-variant hover:bg-surface-container-high"
               )}
-              title={isCollapsed ? item.label : undefined}
+              title={effectiveIsCollapsed ? item.label : undefined}
             >
               <item.icon className={cn("w-5 h-5 min-w-[20px] shrink-0", item.href === window.location.pathname ? "fill-current" : "")} />
               <motion.span 
                 initial={false}
-                animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 0 : 'auto', marginLeft: isCollapsed ? 0 : 12 }}
+                animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
                 transition={{ duration: 0.2 }}
                 className="whitespace-nowrap overflow-hidden"
               >
@@ -147,16 +164,16 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           <button
             onClick={onToggleCollapse}
             className="hidden lg:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left h-12 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 cursor-pointer gap-0"
-            style={{ paddingLeft: isCollapsed ? '0' : undefined, paddingRight: isCollapsed ? '0' : undefined, justifyContent: isCollapsed ? 'center' : undefined }}
+            style={{ paddingLeft: effectiveIsCollapsed ? '0' : undefined, paddingRight: effectiveIsCollapsed ? '0' : undefined, justifyContent: effectiveIsCollapsed ? 'center' : undefined }}
           >
-            {isCollapsed ? (
+            {effectiveIsCollapsed ? (
               <ChevronRight className="w-5 h-5 min-w-[20px] shrink-0" />
             ) : (
               <div className="flex items-center gap-3">
                 <ChevronLeft className="w-5 h-5 min-w-[20px] shrink-0" />
                 <motion.span 
                   initial={false}
-                  animate={{ opacity: isCollapsed ? 0 : 1, width: isCollapsed ? 'auto' : 'auto' }}
+                  animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 'auto' : 'auto' }}
                   className="whitespace-nowrap overflow-hidden"
                 >
                   Collapse Menu
@@ -166,5 +183,6 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           </button>
         </div>
       </motion.nav>
+    </>
   );
 }

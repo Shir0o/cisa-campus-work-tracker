@@ -497,7 +497,7 @@ export default function Directory() {
         </div>
 
         {/* Scrollable Area */}
-        <div className="flex-1 overflow-auto no-scrollbar pb-32">
+        <div className="flex-1 overflow-auto no-scrollbar">
           {filteredAndSortedContacts.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center">
               <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4">

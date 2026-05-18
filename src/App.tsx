@@ -32,6 +32,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
   setIsSidebarCollapsed: (value: boolean) => void;
+  isMobileMenuOpen: boolean;
+  setIsMobileMenuOpen: (value: boolean) => void;
   openNewContact: () => void;
   openLogInteraction: () => void;
   setSelectedContact: (contact: Contact | null) => void;
@@ -175,6 +177,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
@@ -196,6 +199,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       value={{
         isSidebarCollapsed,
         setIsSidebarCollapsed,
+        isMobileMenuOpen,
+        setIsMobileMenuOpen,
         openNewContact: () => setIsNewContactModalOpen(true),
         openLogInteraction: () => setIsLogInteractionOpen(true),
         setSelectedContact: (contact: Contact | null) =>
@@ -217,17 +222,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 lg:pb-8">
             {children}
           </main>
-        </div>
-
-        {/* Mobile FAB for Hero Action (Log Interaction) */}
-        <div className="fixed bottom-20 right-6 z-[60] lg:hidden">
-          <button
-            onClick={() => setIsLogInteractionOpen(true)}
-            className="w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl shadow-primary/25 flex items-center justify-center active:scale-95 transition-all"
-            title="Log Interaction"
-          >
-            <Plus className="w-6 h-6" />
-          </button>
         </div>
 
         <MobileNav />
