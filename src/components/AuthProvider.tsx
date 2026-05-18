@@ -67,6 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const inviteData = inviteDoc.data();
             initialRole = inviteData.role;
             initialApproved = inviteData.approved;
+          } else if (!isAdminClaim && userEmail !== 'yilongwang05@gmail.com') {
+            // Uninvited user attempting to log in
+            await signOut(auth);
+            setUser(null);
+            setLoading(false);
+            alert("Access Denied: Your account has not been added by an administrator yet.");
+            return;
           }
 
           const initialData = {
