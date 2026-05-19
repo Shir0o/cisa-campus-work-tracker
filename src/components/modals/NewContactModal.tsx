@@ -250,7 +250,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                   </label>
                   <input
-                    required
                     type="text"
                     value={formData.role}
                     onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
@@ -264,7 +263,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                       <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
                     </label>
                     <input
-                      required
                       type="text"
                       value={formData.location}
                       onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
@@ -279,7 +277,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     <Mail className="w-3.5 h-3.5" /> EMAIL
                   </label>
                   <input
-                    required
                     type="email"
                     value={formData.email}
                     onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
@@ -331,6 +328,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
                   >
+                    <option value="Unassigned">Unassigned</option>
                     {stages.map(s => (
                       <option key={s.id} value={s.label}>{s.label}</option>
                     ))}
@@ -349,7 +347,7 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                       ...f, 
                       tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) 
                     }))}
-                    placeholder="e.g. Lead, Fall2023"
+                    placeholder="e.g. Gospel, Fall2023"
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                   />
                 </div>
@@ -367,7 +365,6 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
                   >
                     <option value="">Select background...</option>
-                    <option value="Exploring">Exploring Faith</option>
                     <option value="Christian">Christian</option>
                     <option value="Catholic">Catholic</option>
                     <option value="Other">Other Religion / Background</option>
