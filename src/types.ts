@@ -151,3 +151,14 @@ export interface Notification {
   link?: string;
   targetId?: string;
 }
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  userEmail: string;
+  userName: string;
+  type: 'bug' | 'enhancement';
+  message: string;
+  status: 'new' | 'in_progress' | 'resolved';
+  createdAt: string;
+}

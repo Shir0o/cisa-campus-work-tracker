@@ -12,6 +12,9 @@ import {
   HeartHandshake,
   History as HistoryIcon,
   Settings as SettingsIcon,
+  MessageSquareText,
+  MessageSquarePlus,
+  LogOut,
   X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -46,6 +49,8 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
     { icon: HeartHandshake, label: 'Prayer List', href: '/prayer' },
     { icon: SettingsIcon, label: 'Settings', href: '/settings' },
+    { icon: MessageSquarePlus, label: 'Submit Feedback', href: '/feedback' },
+    ...(isAdmin ? [{ icon: MessageSquareText, label: 'Review Feedback', href: '/admin/feedback' }] : []),
   ];
 
   const getRoleLabel = (r: string | null) => {
@@ -159,7 +164,27 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         </div>
 
         {/* Footer Nav */}
-        <div className="mt-auto border-t border-outline-variant pt-4 space-y-1 overflow-hidden">
+        <div className="mt-auto border-t border-outline-variant pt-2 space-y-1 overflow-hidden">
+          {/* Log Out button */}
+          <button
+            onClick={logOut}
+            className={cn(
+              "flex items-center rounded-full transition-all duration-200 ease-in-out font-semibold w-full text-left h-12 text-error hover:bg-error/10 px-4 cursor-pointer gap-0",
+              effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4"
+            )}
+            title={effectiveIsCollapsed ? "Log out" : undefined}
+          >
+            <LogOut className="w-5 h-5 min-w-[20px] shrink-0" />
+            <motion.span
+              initial={false}
+              animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+              transition={{ duration: 0.2 }}
+              className="whitespace-nowrap overflow-hidden"
+            >
+              Log out
+            </motion.span>
+          </button>
+
           {/* Collapse Toggle Button - Desktop Only */}
           <button
             onClick={onToggleCollapse}
