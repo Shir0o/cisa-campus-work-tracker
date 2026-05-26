@@ -2,5 +2,7 @@
   "name": "Campus Hub",
   "description": "A comprehensive community management system for tracking student engagement, campus events, and organizational progress.",
   "requestFramePermissions": [],
-  "majorCapabilities": []
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

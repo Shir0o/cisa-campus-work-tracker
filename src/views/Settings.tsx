@@ -30,8 +30,14 @@ import {
   Info,
   Moon,
   Sun,
-  Monitor
-} from 'lucide-react';
+  Monitor,
+  Sparkles,
+  Zap,
+  Terminal,
+  Smartphone,
+  Copy,
+  MessageSquare
+} from "lucide-react";
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -217,6 +223,266 @@ export default function Settings() {
     </div>
   );
 
+  const QuickAddSection = () => {
+    const [text, setText] = useState("");
+    const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+    const [result, setResult] = useState<any>(null);
+    const [errorMsg, setErrorMsg] = useState("");
+    const [copiedCurl, setCopiedCurl] = useState(false);
+    const [copiedUrl, setCopiedUrl] = useState(false);
+    const [copiedGroupMe, setCopiedGroupMe] = useState(false);
+
+    const appUrl = typeof window !== "undefined" ? window.location.origin : "https://campus-hub.app";
+    const curlCommand = `curl -X POST "${appUrl}/api/quick-add" \\
+  -H "Content-Type: application/json" \\
+  -d '{"text": "Met Sarah Doe yesterday at Campus Coffee. She is a freshman majoring in biology and can be reached at sarah12@campus.edu or (555) 789-0123. Interested in study group."}'`;
+
+    const smsWebhookUrl = `${appUrl}/api/webhook/sms`;
+    const groupMeWebhookUrl = `${appUrl}/api/webhook/groupme`;
+
+    const handleCopy = (txt: string, setCopied: (v: boolean) => void) => {
+      navigator.clipboard.writeText(txt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    const handleQuickAdd = async () => {
+      if (!text.trim()) return;
+      setStatus("loading");
+      setResult(null);
+      setErrorMsg("");
+
+      try {
+        const response = await fetch("/api/quick-add", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          setStatus("success");
+          setResult(data.contact);
+          setText("");
+        } else {
+          setStatus("error");
+          setErrorMsg(data.error || "Failed to process descriptions.");
+        }
+      } catch (err: any) {
+        setStatus("error");
+        setErrorMsg(err.message || "An error occurred connecting to server API.");
+      }
+    };
+
+    return (
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center gap-2">
+          <Sparkles className="w-5 h-5 text-primary" /> AI Quick Add &amp; SMS Integration
+        </h2>
+        <div className="bg-surface-container rounded-[2rem] border border-outline-variant/50 p-6 shadow-sm space-y-6">
+          
+          <div>
+            <h3 className="font-bold text-on-surface">AI Natural Language Playground</h3>
+            <p className="text-sm text-on-surface-variant mb-4">
+              Type or paste a raw description of someone you met (as if we texted or voice-entered it).
+              The server will parse it using Gemini and add them as a formatted contact instantly!
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                placeholder="e.g., Met John Doe at Miller Hall. Sophomore philosophy student, phone is 555-1234. Interested in Friday discussions."
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                disabled={status === "loading"}
+                className="flex-1 px-4 py-3 bg-surface-container-high rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface placeholder:text-on-surface-variant/50"
+              />
+              <button
+                onClick={handleQuickAdd}
+                disabled={status === "loading" || !text.trim()}
+                className="px-6 py-3 bg-primary text-on-primary font-bold rounded-xl hover:opacity-90 active:scale-95 transition-all text-sm shrink-0 flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              >
+                {status === "loading" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Parsing Text...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4" />
+                    <span>Try Quick Add</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {status === "success" && result && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="mt-4 p-4 bg-success/10 border border-success/30 rounded-xl text-sm"
+                >
+                  <div className="flex items-center gap-2 text-success font-bold mb-2">
+                    <CheckCircle2 className="w-4 h-4" /> Successfully Created Contact!
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs bg-surface-container-high/60 p-3 rounded-lg border border-outline-variant/30">
+                    <div>
+                      <span className="text-on-surface-variant block uppercase font-bold text-[10px]">Name</span>
+                      <span className="font-bold text-on-surface">{result.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-on-surface-variant block uppercase font-bold text-[10px]">Role / Group</span>
+                      <span className="text-on-surface">{result.role}</span>
+                    </div>
+                    <div>
+                      <span className="text-on-surface-variant block uppercase font-bold text-[10px]">Location</span>
+                      <span className="text-on-surface">{result.location || "N/A"}</span>
+                    </div>
+                    <div>
+                      <span className="text-on-surface-variant block uppercase font-bold text-[10px]">Pipeline Stage</span>
+                      <span className="font-bold text-primary">{result.stage}</span>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs">
+                    <span className="text-on-surface-variant block uppercase font-bold text-[10px]">Extracted Notes</span>
+                    <p className="text-on-surface mt-0.5">{result.notes}</p>
+                  </div>
+                </motion.div>
+              )}
+
+              {status === "error" && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  className="mt-4 p-4 bg-error/10 border border-error/30 rounded-xl text-sm flex items-start gap-2 text-error"
+                >
+                  <XCircle className="w-5 h-5 shrink-0" />
+                  <div>
+                    <span className="font-bold">Error Processing Quick Add:</span>
+                    <p className="mt-1 text-xs opacity-90">{errorMsg}</p>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <hr className="border-outline-variant/30" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* iOS Shortcuts / REST API CARD */}
+            <div className="space-y-3 bg-surface-container-low/40 p-4 rounded-2xl border border-outline-variant/20 flex flex-col justify-between">
+              <div className="space-y-2">
+                <h4 className="font-bold text-on-surface text-sm flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-primary" /> Siri &amp; Developers API
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Add contacts via iOS Shortcuts, Siri, or customized automation pipelines. Say "Hey Siri, Quick Add..." and pass raw descriptions.
+                </p>
+              </div>
+              
+              <div className="relative bg-surface-container-high rounded-xl p-3 border border-outline-variant/40 font-mono text-[10px] text-on-surface mt-3">
+                <button
+                  onClick={() => handleCopy(curlCommand, setCopiedCurl)}
+                  className="absolute top-2 right-2 p-1.5 hover:bg-surface-variant rounded-md transition-colors text-on-surface-variant cursor-pointer"
+                  title="Copy curl command"
+                >
+                  {copiedCurl ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <span className="text-[9px] text-primary font-bold block mb-1">CURL REQUEST TEMPLATE:</span>
+                <pre className="overflow-x-auto whitespace-pre-wrap pr-6 select-all font-sans">{curlCommand}</pre>
+              </div>
+            </div>
+
+            {/* Twilio SMS & WhatsApp CARD */}
+            <div className="space-y-3 bg-surface-container-low/40 p-4 rounded-2xl border border-outline-variant/20 flex flex-col justify-between">
+              <div className="space-y-2">
+                <h4 className="font-bold text-on-surface text-sm flex items-center gap-2">
+                  <Smartphone className="w-4 h-4 text-primary" /> SMS &amp; WhatsApp Webhook
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Submit contacts straight from standard SMS text messages or official WhatsApp messages using a single Twilio number coordinate!
+                </p>
+              </div>
+
+              <div className="relative bg-surface-container-high rounded-xl p-3 border border-outline-variant/40 font-mono text-[10px] text-on-surface mt-3">
+                <button
+                  onClick={() => handleCopy(smsWebhookUrl, setCopiedUrl)}
+                  className="absolute top-2 right-2 p-1.5 hover:bg-surface-variant rounded-md transition-colors text-on-surface-variant cursor-pointer"
+                  title="Copy Twilio webhook"
+                >
+                  {copiedUrl ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <span className="text-[9px] text-primary font-bold block mb-1">TWILIO CLOUD WEBHOOK URL:</span>
+                <span className="select-all block truncate font-bold text-on-surface-variant pr-6 text-[10px]">{smsWebhookUrl}</span>
+              </div>
+
+              <div className="p-3 bg-secondary-container/10 border border-secondary/10 rounded-xl text-[10px] text-on-secondary-container mt-2">
+                <span className="font-bold block uppercase text-[9px] mb-1">Easy WhatsApp/SMS Set Up:</span>
+                <ol className="list-decimal pl-4 space-y-1 opacity-90 leading-tight">
+                  <li>In Twilio, define your phone or sandbox number.</li>
+                  <li>Under Messaging webhook settings, paste this Web Address.</li>
+                  <li>Choose <strong>HTTP POST</strong> and press Save!</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* GroupMe Bot CARD */}
+            <div className="space-y-3 bg-surface-container-low/40 p-4 rounded-2xl border border-outline-variant/20 flex flex-col justify-between">
+              <div className="space-y-2">
+                <h4 className="font-bold text-on-surface text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-primary" /> GroupMe Chat Bot
+                </h4>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Collaborate in GroupMe! Everyone in the group can text new contacts using prefix trigger lines (e.g. <span className="font-mono bg-surface-variant px-1 rounded text-red-400">!add</span>).
+                </p>
+              </div>
+
+              <div className="relative bg-surface-container-high rounded-xl p-3 border border-outline-variant/40 font-mono text-[10px] text-on-surface mt-3">
+                <button
+                  onClick={() => handleCopy(groupMeWebhookUrl, setCopiedGroupMe)}
+                  className="absolute top-2 right-2 p-1.5 hover:bg-surface-variant rounded-md transition-colors text-on-surface-variant cursor-pointer"
+                  title="Copy GroupMe callback url"
+                >
+                  {copiedGroupMe ? (
+                    <CheckCircle2 className="w-3.5 h-3.5 text-success" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
+                </button>
+                <span className="text-[9px] text-primary font-bold block mb-1">GROUPME BOT CALLBACK URL:</span>
+                <span className="select-all block truncate font-bold text-on-surface-variant pr-6 text-[10px]">{groupMeWebhookUrl}</span>
+              </div>
+
+              <div className="p-3 bg-secondary-container/10 border border-secondary/10 rounded-xl text-[10px] text-on-secondary-container mt-2">
+                <span className="font-bold block uppercase text-[9px] mb-1">GroupMe Bot Set-Up:</span>
+                <ol className="list-decimal pl-4 space-y-1 opacity-90 leading-tight">
+                  <li>Go to dev.groupme.com &rarr; click on <strong>Bots</strong> menu.</li>
+                  <li>Click <strong>Create Bot</strong>, link your group chat.</li>
+                  <li>Paste this <strong>Callback URL</strong> and click Submit!</li>
+                  <li>Type <code className="font-bold bg-surface-variant px-1 rounded">!add Met Jerry today...</code> in chat.</li>
+                </ol>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    );
+  };
+
   if (!isManager) {
     // ... (rest of the non-admin view remains same)
     return (
@@ -257,6 +523,7 @@ export default function Settings() {
         </div>
 
         <ThemeSection />
+        <QuickAddSection />
 
         <div className="mt-12 text-center py-6 px-4 bg-surface-variant/5 rounded-[2rem] border border-dashed border-outline-variant/30">
           <p className="text-xs text-on-surface-variant italic">More account settings will be available in future updates.</p>
@@ -729,6 +996,7 @@ export default function Settings() {
         )}
       </AnimatePresence>
       <ThemeSection />
+      <QuickAddSection />
 
       <div className="mt-8 p-6 bg-secondary-container/20 rounded-[2rem] border border-secondary/10 flex items-start gap-4">
         <div className="p-2 bg-secondary/10 rounded-xl text-secondary">
