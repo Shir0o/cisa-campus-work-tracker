@@ -28,6 +28,9 @@ import ContactDetailsModal from "./components/modals/ContactDetailsModal";
 import LogInteractionModal from "./components/modals/LogInteractionModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import FeedbackFAB from "./components/FeedbackFAB";
+import FeedbackList from "./views/FeedbackList";
+import SubmitFeedback from "./views/SubmitFeedback";
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -242,6 +245,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           contact={selectedContact}
         />
 
+        <FeedbackFAB />
         <Toaster />
       </div>
     </LayoutContext.Provider>
@@ -329,6 +333,28 @@ export default function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <Settings />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/feedback"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <SubmitFeedback />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/admin/feedback"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <FeedbackList />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }

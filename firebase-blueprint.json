@@ -189,6 +189,22 @@
         "sourceInteractionId": { "type": "string" }
       },
       "required": ["title", "priority", "contactId", "status", "createdAt"]
+    },
+    "feedback": {
+      "title": "Feedback",
+      "description": "User feedback containing bug reports or enhancement needs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userName": { "type": "string" },
+        "type": { "type": "string", "enum": ["bug", "enhancement"] },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "in_progress", "resolved"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "userEmail", "type", "message", "status", "createdAt"]
     }
   },
   "firestore": {
@@ -239,6 +255,10 @@
     "tasks/{taskId}": {
       "schema": "tasks",
       "description": "Follow-up tasks associated with contacts."
+    },
+    "feedback/{feedbackId}": {
+      "schema": "feedback",
+      "description": "User submit bug reports and enhancement suggestions."
     }
   }
 }

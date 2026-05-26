@@ -277,6 +277,26 @@ service cloud.firestore {
       allow delete: if isManager() || isSuperAdmin();
     }
 
+    // 11. Feedback Collection
+    match /feedback/{feedbackId} {
+      function isValidFeedback(data) {
+        return data.keys().hasAll(['userId', 'userEmail', 'type', 'message', 'status', 'createdAt']) &&
+               data.userId == request.auth.uid &&
+               data.userEmail is string && data.userEmail.size() <= 128 &&
+               data.type in ['bug', 'enhancement'] &&
+               data.message is string && data.message.size() <= 5000 &&
+               data.status in ['new', 'in_progress', 'resolved'] &&
+               data.createdAt == request.time;
+      }
+
+      allow list, get: if isAdmin();
+      allow create: if isValidId(feedbackId) && isApprovedUser() && isValidFeedback(incoming());
+      allow update: if isValidId(feedbackId) && isAdmin() &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
+                      incoming().status in ['new', 'in_progress', 'resolved'];
+      allow delete: if isValidId(feedbackId) && isAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();
