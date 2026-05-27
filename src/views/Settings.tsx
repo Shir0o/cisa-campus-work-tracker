@@ -42,6 +42,7 @@ import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
+import FeedbackList from './FeedbackList';
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
@@ -714,6 +715,12 @@ export default function Settings() {
         {isDev && <QuickAddSection />}
         {isDev && <WebhookLogsSection />}
 
+        {currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com' && (
+          <div className="mt-8 border-t border-outline-variant/30 pt-8" id="settings-feedback-list-me">
+            <FeedbackList />
+          </div>
+        )}
+
         <div className="mt-12 text-center py-6 px-4 bg-surface-variant/5 rounded-[2rem] border border-dashed border-outline-variant/30">
           <p className="text-xs text-on-surface-variant italic">More account settings will be available in future updates.</p>
         </div>
@@ -1187,6 +1194,12 @@ export default function Settings() {
       <ThemeSection />
       {isDev && <QuickAddSection />}
       {isDev && <WebhookLogsSection />}
+
+      {currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com' && (
+        <div className="mt-8 border-t border-outline-variant/30 pt-8" id="settings-feedback-list-manager-me">
+          <FeedbackList />
+        </div>
+      )}
 
       <div className="mt-8 p-6 bg-secondary-container/20 rounded-[2rem] border border-secondary/10 flex items-start gap-4">
         <div className="p-2 bg-secondary/10 rounded-xl text-secondary">

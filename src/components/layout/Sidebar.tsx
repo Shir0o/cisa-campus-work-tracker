@@ -12,8 +12,6 @@ import {
   HeartHandshake,
   History as HistoryIcon,
   Settings as SettingsIcon,
-  MessageSquareText,
-  MessageSquarePlus,
   LogOut,
   X
 } from 'lucide-react';
@@ -49,8 +47,6 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
     { icon: HeartHandshake, label: 'Prayer List', href: '/prayer' },
     { icon: SettingsIcon, label: 'Settings', href: '/settings' },
-    { icon: MessageSquarePlus, label: 'Submit Feedback', href: '/feedback' },
-    ...(isAdmin ? [{ icon: MessageSquareText, label: 'Review Feedback', href: '/admin/feedback' }] : []),
   ];
 
   const getRoleLabel = (r: string | null) => {
