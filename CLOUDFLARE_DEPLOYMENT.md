@@ -1,60 +1,55 @@
-# Cloudflare Pages Deployment & Callback URL Guide
+# Cloudflare Pages Unified Deployment Strategy
 
-This guide describes how to deploy the **Campus Hub** community management system to Cloudflare Pages, configure Callback URLs for external triggers (like the GroupMe bot or Twilio SMS), and manage backend API routing using the prebuilt **Cloudflare Pages Function**.
+Your full-stack application (frontend static web assets + backend webhook API routes) has been completely unified to run natively and at no cost on **Cloudflare's serverless edge networks** (via Cloudflare Pages Functions). 
 
----
-
-## 1. How API Routing Works on Cloudflare Edge
-
-Cloudflare Pages natively hosts your static React assets (HTML, JS, CSS). Because the application relies on dynamic backend services (such as Firebase Admin SDK, Firebase Auth, and Google Gemini AI) which require secure server credentials:
-* We have created a Cloudflare Pages Function at `/functions/api/[[path]].ts`.
-* Any incoming request to `https://<your-subdomain>.pages.dev/api/*` is intercepted by Cloudflare Edge and proxied securely to your live app container backend.
-* This allows you to deploy the frontend to Cloudflare safely without breaking callbacks or exposing secrets in client-side code!
+All backend logic (Gemini Parsing, Firestore administrative reads/writes, Twilio SMS Webhook, and GroupMe Webhooks) has been successfully migrated to high-performance, edge-optimized JavaScript / TypeScript handlers using Cloudflare Pages.
 
 ---
 
-## 2. Which Callback URLs to Use for GroupMe & Twilio
+## 🚀 Step 1: Export Google Cloud Service Account Credentials
+Since Cloudflare does not run inside Google Cloud, your serverless Workers must utilize a Google Cloud Service Account key to authenticate administrative requests to your Firestore database.
 
-When configuring third-party webhooks, use your Cloudflare Pages domain name followed by the specific endpoint path.
-
-### 🤖 GroupMe Bot Callback URL
-* **URL to use in GroupMe Developer Console**:  
-  `https://<your-subdomain>.pages.dev/api/webhook/groupme`
-* **Trigger Prefix**: `!add <note>`, `add: <note>`, or `/add <note>`
-
-### 📞 Twilio SMS/WhatsApp Webhook URL
-* **URL to use in Twilio Console (A Message Comes In)**:  
-  `https://<your-subdomain>.pages.dev/api/webhook/sms`
-* **HTTP Method**: Should be set to `HTTP POST`
-
----
-
-## 3. Configuring Environment Variables in Cloudflare
-
-To ensure the proxy routes calls to the correct backend server containing your active database connection:
-1. Open the [Cloudflare Dashboard](https://dash.cloudflare.com/) and navigate to your **Pages** application.
-2. Go to **Settings** -> **Environment variables**.
-3. Under **Production** (and **Preview** if desired), click **Add variable** and configure the target backend target:
-   * **Variable Name**: `BACKEND_API_URL`
-   * **Value**: `https://ais-pre-ziirfaj5atjrwm6w4t7gn4-82064505754.us-east1.run.app` *(or your developer specific backend url)*
-4. Click **Save**.
+1. Open the [Google Cloud Console (IAM & Admin)](https://console.cloud.google.com/iam-admin/serviceaccounts).
+2. Ensure you have the correct project selected (`sac-campus-hub`).
+3. Click **Create Service Account**:
+   - **Name**: `cloudflare-pages-api`
+   - **Service account ID**: `cloudflare-pages-api`
+4. Assign the following roles to the service account to authorize database reads, writes, and logging:
+   - **Cloud Datastore Owner** (or **Firebase Doc/Firestore Admin**)
+5. Click **Done** to save the account.
+6. Find your newly created Service Account under the service account inventory list, click the **three dots** (Actions) on the far right, and select **Manage Keys**.
+7. Click **Add Key** -> **Create New Key**, verify that **JSON** is selected, and click **Create**.
+8. A `.json` file containing your login key will be automatically saved to your computer. Open this file using any text editor (e.g., VS Code or Notepad) and copy the entire text content.
 
 ---
 
-## 4. Deploying via Git or CLI
+## ⚙️ Step 2: Configure Environment Secret Strings on Cloudflare Pages
+Once your project has been imported and connected to Cloudflare Pages via GitHub/Gitlab, add the following variables under **Project Settings > Environment Variables > Production**:
 
-### Option A: Connected Git Repository
-If you connect your GitHub repository directly to Cloudflare Pages:
-* **Build command**: `npm run build`
-* **Build output directory**: `dist`
-* **Node.js compatibility limit**: Ensure Node.js version is configured to `18+` or `20+` in your Cloudflare settings if specified.
+| Variable Name | Description/Value | Type |
+| :--- | :--- | :--- |
+| `GEMINI_API_KEY` | Your Google Gemini API Key | Encrypted Secret |
+| `FIREBASE_SERVICE_ACCOUNT` | The **entire raw content** of your downloaded Service Account `.json` file. | Encrypted Secret |
+| `FIREBASE_PROJECT_ID` | `sac-campus-hub` | Text |
+| `FIREBASE_DATABASE_ID` | `ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897` | Text |
 
-### Option B: Direct Upload via Wrangler CLI
-You can also build and publish manually:
-```bash
-# 1. Build client-side bundle
-npm run build
+---
 
-# 2. Deploy dist folder containing functions/ to Pages
-npx wrangler pages deploy dist/ --project-name=campus-hub
-```
+## 🧪 Step 3: Deployment Setup on Cloudflare
+By using Cloudflare Pages, your framework configuration is automatically discovered during deployment. Use the following build settings in Cloudflare Dashboard:
+
+- **Framework Preset**: `Vite` (or None)
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+
+Our customized build command natively copies compiled HTML, JS, CSS assets, alongside our custom API gateway logic, automatically. When you press deploy, Cloudflare builds and serves your full stack concurrently.
+
+---
+
+## 🔗 Step 4: Update Webhook Targets (Twilio / GroupMe)
+Once deployed, Cloudflare will provide a production preview domain (e.g., `https://my-app.pages.dev`). You can now point your trigger integrations directly to your edge backend endpoints:
+
+- **Verification Endpoint (GET)**: `https://my-app.pages.dev/api/quick-add/status`
+- **Twilio SMS Webhook (POST)**: `https://my-app.pages.dev/api/webhook/sms`
+- **GroupMe Callback (POST)**: `https://my-app.pages.dev/api/webhook/groupme`
+- **Manual POST Trigger**: `https://my-app.pages.dev/api/quick-add` (Headers: `Content-Type: application/json` Body: `{ "text": "Met John Doe at Miller Hall..." }`)
