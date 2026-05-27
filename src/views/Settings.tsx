@@ -45,7 +45,7 @@ import { useTheme } from '../components/ThemeProvider';
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
-  const isDev = currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com';
+  const isDev = currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com' || isAdmin || isManager;
   const { theme, setTheme } = useTheme();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
