@@ -75,18 +75,7 @@ describe('OutreachBoard Features', () => {
 
   it('shows "Add Stage" button for admin users', async () => {
     render(<OutreachBoard />);
-    const addStageBtn = await screen.findByTitle(/Add New Stage/i);
+    const addStageBtn = await screen.findByRole('button', { name: /Add Stage/i });
     expect(addStageBtn).toBeInTheDocument();
-  });
-});
-
-describe('OutreachBoard Responsiveness', () => {
-  it('has correct fixed positioning for the FAB', async () => {
-    render(<OutreachBoard />);
-    const addStageBtn = await screen.findByTitle(/Add New Stage/i);
-    const container = addStageBtn.parentElement;
-    expect(container).toHaveClass('fixed');
-    expect(container).toHaveClass('bottom-44'); // mobile
-    expect(container).toHaveClass('lg:bottom-8'); // desktop
   });
 });

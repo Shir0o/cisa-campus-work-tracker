@@ -259,13 +259,23 @@ export default function Attendance() {
         </div>
         <div className="flex items-center gap-3">
           {isAdmin && (
-            <button 
-              onClick={() => setIsSyncModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Sync Sheet
-            </button>
+            <>
+              <button 
+                onClick={() => setIsAddEventModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-colors"
+                title="Add New Event"
+              >
+                <Plus className="w-4 h-4" />
+                Add Event
+              </button>
+              <button 
+                onClick={() => setIsSyncModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Sync Sheet
+              </button>
+            </>
           )}
           <button 
             onClick={handleExport}
@@ -392,17 +402,7 @@ export default function Attendance() {
         </div>
       </div>
 
-      {/* Add Event FAB */}
-      <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
-        <button 
-          onClick={() => setIsAddEventModalOpen(true)}
-          className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
-          title="Add New Event"
-        >
-          <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-          <span className="hidden sm:inline">Add Event</span>
-        </button>
-      </div>
+
     </motion.div>
       <SyncSheetModal 
         isOpen={isSyncModalOpen}

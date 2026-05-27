@@ -411,6 +411,15 @@ export default function OutreachBoard() {
             <p className="text-xs sm:text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            {isAdmin && (
+              <button 
+                onClick={() => setShowAddStage(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-colors shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                Add Stage
+              </button>
+            )}
             <div className="relative flex-1 sm:flex-initial">
               <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
               <input 
@@ -522,19 +531,7 @@ export default function OutreachBoard() {
             )}
           </div>
 
-          {/* Add Stage FAB */}
-          {isAdmin && (
-            <div className="fixed bottom-44 sm:bottom-24 md:bottom-24 lg:bottom-8 right-6 lg:right-8 z-40 lg:z-50 transition-all">
-              <button 
-                onClick={() => setShowAddStage(true)}
-                className="flex items-center gap-2 px-6 h-14 bg-primary text-on-primary rounded-2xl shadow-xl hover:shadow-primary/25 hover:translate-y-[-2px] active:translate-y-[2px] transition-all font-bold group"
-                title="Add New Stage"
-              >
-                <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
-                <span className="hidden sm:inline">Add Stage</span>
-              </button>
-            </div>
-          )}
+
         </div>
 
         {/* Add Stage Modal */}
