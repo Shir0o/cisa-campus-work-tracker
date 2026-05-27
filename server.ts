@@ -144,6 +144,46 @@ Analyze the input text carefully and extract the following:
     }
   }
 
+  // Core Service: Parses subsequent/follow-up meeting details specifically for the interaction subcommand
+  async function parseInteractionFromText(rawText: string) {
+    try {
+      const prompt = `Extract interaction details from this description: "${rawText}"`;
+      
+      const response = await getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: `You are an expert utility designed to parse raw subsequent logs, meeting summaries, or prayer updates of conversations with existing contacts and format them into structured JSON.
+Analyze the input text carefully and extract the following:
+1. contactName: string (Strictly required. The name of the contact being met/interacted with. Extract the full name if available).
+2. content: string (Strictly required. A concise, polished summary of what was discussed, updates shared, prayer burdens, or key discussion items).
+3. type: string (The type of interaction, e.g., 'Chat', 'Coffee', 'Prayer', 'Bible Study', 'Call', 'Meeting', or 'General Discussion'. Default to 'Chat' if not specified).
+4. dateOffset: string (Optional. When it happened if mentioned, e.g., 'yesterday', 'today', 'last Friday', etc., otherwise defaults to empty).`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              contactName: { type: Type.STRING, description: "Extracted full name of the contact." },
+              content: { type: Type.STRING, description: "Polished context description of what was chatted or shared." },
+              type: { type: Type.STRING, description: "Type of interaction logged: Chat, Coffee, Prayer, Bible Study, Call, Meeting, etc." },
+              dateOffset: { type: Type.STRING, description: "Indicated timing of the interaction." }
+            },
+            required: ["contactName", "content"]
+          }
+        }
+      });
+
+      if (!response.text) {
+        throw new Error("No response returned from the Gemini API.");
+      }
+
+      return JSON.parse(response.text.trim());
+    } catch (error) {
+      console.error("Gemini Interaction Parsing Error: ", error);
+      throw error;
+    }
+  }
+
   // Helper: Find an existing contact based on name overlap, email, or telephone number
   async function findExistingContact(parsedName: string, parsedEmail: string, parsedPhone: string) {
     const db = getAdminDb();
@@ -221,168 +261,372 @@ Analyze the input text carefully and extract the following:
     }
   }
 
-  // Core Endpoint: Creates contact, or if already exists, updates contact details & logs interaction
-  async function performQuickAdd(text: string) {
-    const parsed = await parseContactFromText(text);
-
-    if (!parsed.name) {
-      throw new Error("Failed to extract a valid name from the text description.");
+  // Helper: Extract optional subcommand and remaining text, handling optional !add prefixes
+  function extractSubcommandAndText(rawText: string) {
+    let text = rawText.trim();
+    
+    // 1. Remove standard command prefix if present (e.g. !add, /add, add:, add) followed by space
+    const prefixRegex = /^(?:!add|\/add|add:|add)\s+/i;
+    if (prefixRegex.test(text)) {
+      text = text.replace(prefixRegex, "").trim();
     }
-
-    // Check if contact already exists
-    const existingContact = await findExistingContact(parsed.name, parsed.email, parsed.phone);
-
-    if (existingContact) {
-      const updatePayload: any = {
-        lastSeen: "Just now",
-        updatedAt: new Date().toISOString(),
-        updatedBy: "system-quick-add",
-        updatedByName: "Quick Add AI Service",
-        hasNewActivity: true
+    
+    // 2. Identify subcommand option (contact or interaction)
+    const contactSubcommandRegex = /^(?:contact|contacts)(?:\s+|:\s*|-\s*)/i;
+    const interactionSubcommandRegex = /^(?:interaction|interactions)(?:\s+|:\s*|-\s*)/i;
+    
+    if (contactSubcommandRegex.test(text)) {
+      return {
+        subcommand: "contact" as const,
+        remainingText: text.replace(contactSubcommandRegex, "").trim()
       };
+    } else if (interactionSubcommandRegex.test(text)) {
+      return {
+        subcommand: "interaction" as const,
+        remainingText: text.replace(interactionSubcommandRegex, "").trim()
+      };
+    }
+    
+    // Default fallback to "contact" if no option matched explicitly
+    return {
+      subcommand: "contact" as const,
+      remainingText: text
+    };
+  }
 
-      // Merge fields cleanly if they are empty on the existing contact record
-      if (!existingContact.email && parsed.email) updatePayload.email = parsed.email;
-      if (!existingContact.phone && parsed.phone) updatePayload.phone = parsed.phone;
-      if (!existingContact.location && parsed.location) updatePayload.location = parsed.location;
-      if (!existingContact.spiritualBackground && parsed.spiritualBackground) {
-        updatePayload.spiritualBackground = parsed.spiritualBackground;
+  // Core Endpoint Router: Dispatches to either contact addition/updating or specific interaction logging
+  async function performQuickAdd(text: string, operatorInfo?: { userId?: string, userName?: string }) {
+    const opUserId = operatorInfo?.userId || "system-quick-add";
+    const opUserName = operatorInfo?.userName || "Quick Add AI Service";
+
+    const { subcommand, remainingText } = extractSubcommandAndText(text);
+
+    if (subcommand === "interaction") {
+      const parsed = await parseInteractionFromText(remainingText);
+
+      if (!parsed.contactName) {
+        throw new Error("Failed to extract a valid contact name for committing subsequent interaction.");
       }
-      if (parsed.role && parsed.role !== "Student" && existingContact.role === "Student") {
-        updatePayload.role = parsed.role;
-      }
 
-      const existingTags = existingContact.tags || [];
-      const newTags = parsed.tags || [];
-      const combinedTags = Array.from(new Set([...existingTags, ...newTags]));
-      if (combinedTags.length > existingTags.length) {
-        updatePayload.tags = combinedTags;
-      }
+      // Find if contact exists
+      const existingContact = await findExistingContact(parsed.contactName, "", "");
 
-      // Update the contact in Firebase
-      await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
+      if (existingContact) {
+        // Update contact lastSeen and metadata
+        const updatePayload: any = {
+          lastSeen: "Just now",
+          updatedAt: new Date().toISOString(),
+          updatedBy: opUserId,
+          updatedByName: opUserName,
+          hasNewActivity: true
+        };
 
-      // Add to contact's interactions subcollection
-      await getAdminDb()
-        .collection("contacts")
-        .doc(existingContact.id)
-        .collection("interactions")
-        .add({
-          createdById: "system-quick-add",
-          createdByName: "Quick Add AI Service",
-          contactId: existingContact.id,
-          contactName: existingContact.name,
-          content: parsed.notes || `Interaction logged via Quick Add: "${text}"`,
-          type: "Quick Add Note",
-          dateTime: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+        await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
+
+        // Add to interactions collection
+        await getAdminDb()
+          .collection("contacts")
+          .doc(existingContact.id)
+          .collection("interactions")
+          .add({
+            createdById: opUserId,
+            createdByName: opUserName,
+            contactId: existingContact.id,
+            contactName: existingContact.name,
+            content: parsed.content || `Interaction logged: "${remainingText}"`,
+            type: parsed.type || "Quick Add Note",
+            dateTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+        const detailedLog = [
+          `Logged interaction with existing contact: ${existingContact.name}`,
+          parsed.content ? `Details: ${parsed.content}` : "",
+          `Type: ${parsed.type || "Quick Add Note"}`
+        ].filter(Boolean).join("\n");
+
+        // Log the action in activities
+        await getAdminDb().collection("activities").add({
+          userId: opUserId,
+          userName: opUserName,
+          userPhoto: "",
+          action: "logged an interaction with existing contact",
+          targetId: existingContact.id,
+          targetName: existingContact.name,
+          targetType: "contact",
+          type: "comment",
+          description: detailedLog,
+          createdAt: new Date().toISOString()
         });
 
-      // Format description logging message
-      const hasUpdates = Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).length > 0;
-      const changeSummary = hasUpdates 
-        ? `Filled details: ${Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).join(", ")}` 
-        : "No additional empty fields were present to fill.";
+        // Notify admins
+        await getAdminDb().collection("notifications").add({
+          userId: "ALL_ACTIVE",
+          title: "📝 Interaction Logged via Quick Add",
+          message: `Logged a text interaction of type "${parsed.type || "Quick Add Note"}" for existing contact "${existingContact.name}".`,
+          type: "info",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          link: "/directory",
+          targetId: existingContact.id
+        });
 
-      const detailedLog = [
-        `Logged interaction with existing contact: ${existingContact.name}`,
-        parsed.notes ? `Interaction details: ${parsed.notes}` : "",
-        changeSummary
+        return {
+          id: existingContact.id,
+          isExisting: true,
+          name: existingContact.name,
+          role: existingContact.role,
+          location: existingContact.location,
+          stage: existingContact.stage,
+          notes: parsed.content || ""
+        };
+      } else {
+        // Contact doesn't exist, create minimal contact and append interaction
+        const contactData = {
+          name: parsed.contactName,
+          role: "Student",
+          location: "",
+          email: "",
+          phone: "",
+          stage: "First Contact",
+          tags: ["Auto-Created"],
+          notes: `Created automatically via incoming interaction log: "${parsed.content}"`,
+          spiritualBackground: "",
+          initials: getInitials(parsed.contactName),
+          lastSeen: "Just now",
+          createdAt: new Date().toISOString(),
+          serverCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdBy: opUserId,
+          createdByName: opUserName,
+          hasNewActivity: true,
+          attendance: {}
+        };
+
+        const docRef = await getAdminDb().collection("contacts").add(contactData);
+
+        // Add interaction
+        await getAdminDb()
+          .collection("contacts")
+          .doc(docRef.id)
+          .collection("interactions")
+          .add({
+            createdById: opUserId,
+            createdByName: opUserName,
+            contactId: docRef.id,
+            contactName: contactData.name,
+            content: parsed.content || `Initial interaction logged.`,
+            type: parsed.type || "Quick Add Note",
+            dateTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+        const detailedLog = [
+          `Auto-created contact during interaction log: ${contactData.name}`,
+          parsed.content ? `Details: ${parsed.content}` : "",
+          `Type: ${parsed.type || "Quick Add Note"}`
+        ].filter(Boolean).join("\n");
+
+        // Log in activities
+        await getAdminDb().collection("activities").add({
+          userId: opUserId,
+          userName: opUserName,
+          userPhoto: "",
+          action: "created a new contact via external trigger",
+          targetId: docRef.id,
+          targetName: contactData.name,
+          targetType: "contact",
+          type: "create",
+          description: detailedLog,
+          createdAt: new Date().toISOString()
+        });
+
+        // Notify admins
+        await getAdminDb().collection("notifications").add({
+          userId: "ALL_ACTIVE",
+          title: "📞 New Contact Added via Quick Add",
+          message: `Successfully created ${contactData.name} (Student) and logged initial interaction ("${parsed.type || "Quick Add Note"}").`,
+          type: "success",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          link: "/directory",
+          targetId: docRef.id
+        });
+
+        return {
+          id: docRef.id,
+          isExisting: false,
+          name: contactData.name,
+          role: contactData.role,
+          location: contactData.location,
+          stage: contactData.stage,
+          notes: parsed.content || ""
+        };
+      }
+    } else {
+      // subcommand === "contact"
+      const parsed = await parseContactFromText(remainingText);
+
+      if (!parsed.name) {
+        throw new Error("Failed to extract a valid name from the text description.");
+      }
+
+      // Check if contact already exists
+      const existingContact = await findExistingContact(parsed.name, parsed.email, parsed.phone);
+
+      if (existingContact) {
+        const updatePayload: any = {
+          lastSeen: "Just now",
+          updatedAt: new Date().toISOString(),
+          updatedBy: opUserId,
+          updatedByName: opUserName,
+          hasNewActivity: true
+        };
+
+        // Merge fields cleanly if they are empty on the existing contact record
+        if (!existingContact.email && parsed.email) updatePayload.email = parsed.email;
+        if (!existingContact.phone && parsed.phone) updatePayload.phone = parsed.phone;
+        if (!existingContact.location && parsed.location) updatePayload.location = parsed.location;
+        if (!existingContact.spiritualBackground && parsed.spiritualBackground) {
+          updatePayload.spiritualBackground = parsed.spiritualBackground;
+        }
+        if (parsed.role && parsed.role !== "Student" && existingContact.role === "Student") {
+          updatePayload.role = parsed.role;
+        }
+
+        const existingTags = existingContact.tags || [];
+        const newTags = parsed.tags || [];
+        const combinedTags = Array.from(new Set([...existingTags, ...newTags]));
+        if (combinedTags.length > existingTags.length) {
+          updatePayload.tags = combinedTags;
+        }
+
+        // Update the contact in Firebase
+        await getAdminDb().collection("contacts").doc(existingContact.id).update(updatePayload);
+
+        // Add to contact's interactions subcollection
+        await getAdminDb()
+          .collection("contacts")
+          .doc(existingContact.id)
+          .collection("interactions")
+          .add({
+            createdById: opUserId,
+            createdByName: opUserName,
+            contactId: existingContact.id,
+            contactName: existingContact.name,
+            content: parsed.notes || `Interaction logged via Quick Add: "${remainingText}"`,
+            type: "Quick Add Note",
+            dateTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+
+        // Format description logging message
+        const hasUpdates = Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).length > 0;
+        const changeSummary = hasUpdates 
+          ? `Filled details: ${Object.keys(updatePayload).filter(k => !["lastSeen", "updatedAt", "updatedBy", "updatedByName", "hasNewActivity"].includes(k)).join(", ")}` 
+          : "No additional empty fields were present to fill.";
+
+        const detailedLog = [
+          `Logged interaction with existing contact: ${existingContact.name}`,
+          parsed.notes ? `Interaction details: ${parsed.notes}` : "",
+          changeSummary
+        ].filter(Boolean).join("\n");
+
+        // Log the action in activities
+        await getAdminDb().collection("activities").add({
+          userId: opUserId,
+          userName: opUserName,
+          userPhoto: "",
+          action: "logged an interaction with existing contact",
+          targetId: existingContact.id,
+          targetName: existingContact.name,
+          targetType: "contact",
+          type: "comment",
+          description: detailedLog,
+          createdAt: new Date().toISOString()
+        });
+
+        // Notify all system admins/operators
+        await getAdminDb().collection("notifications").add({
+          userId: "ALL_ACTIVE",
+          title: "📝 Interaction Logged via Quick Add",
+          message: `Logged a text interaction and updated fields for existing contact "${existingContact.name}".`,
+          type: "info",
+          read: false,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          link: "/directory",
+          targetId: existingContact.id
+        });
+
+        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", role: existingContact.role, location: existingContact.location, stage: existingContact.stage };
+      }
+
+      // Creating new contact
+      const contactData = {
+        name: parsed.name,
+        role: parsed.role || "Student",
+        location: parsed.location || "",
+        email: parsed.email || "",
+        phone: parsed.phone || "",
+        stage: parsed.stage || "First Contact",
+        tags: parsed.tags || [],
+        notes: parsed.notes || "",
+        spiritualBackground: parsed.spiritualBackground || "",
+        initials: getInitials(parsed.name),
+        lastSeen: "Just now",
+        createdAt: new Date().toISOString(),
+        serverCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdBy: opUserId,
+        createdByName: opUserName,
+        hasNewActivity: true,
+        attendance: {}
+      };
+
+      // Add directly to contacts collection using admin privileges
+      const docRef = await getAdminDb().collection("contacts").add(contactData);
+
+      // Document formatted log message
+      const fieldsLog = [
+        `Group: ${contactData.role}`,
+        `Stage: ${contactData.stage}`,
+        `First Met: ${contactData.location}`,
+        contactData.email ? `Email: ${contactData.email}` : "",
+        contactData.phone ? `Phone: ${contactData.phone}` : "",
+        contactData.spiritualBackground ? `Spiritual Background: ${contactData.spiritualBackground}` : "",
+        contactData.tags.length > 0 ? `Tags: ${contactData.tags.join(", ")}` : "",
+        contactData.notes ? `Quick Add Notes: ${contactData.notes}` : "Added via speech/text parsed quick-add description."
       ].filter(Boolean).join("\n");
 
       // Log the action in activities
       await getAdminDb().collection("activities").add({
-        userId: "system-quick-add",
-        userName: "Quick Add AI Service",
+        userId: opUserId,
+        userName: opUserName,
         userPhoto: "",
-        action: "logged an interaction with existing contact",
-        targetId: existingContact.id,
-        targetName: existingContact.name,
+        action: "created a new contact via external trigger",
+        targetId: docRef.id,
+        targetName: contactData.name,
         targetType: "contact",
-        type: "comment",
-        description: detailedLog,
+        type: "create",
+        description: fieldsLog,
         createdAt: new Date().toISOString()
       });
 
       // Notify all system admins/operators
       await getAdminDb().collection("notifications").add({
         userId: "ALL_ACTIVE",
-        title: "📝 Interaction Logged via Quick Add",
-        message: `Logged a text interaction and updated fields for existing contact "${existingContact.name}".`,
-        type: "info",
+        title: "📞 New Contact Added via Quick Add",
+        message: `Successfully created ${contactData.name} (${contactData.role}) from text description.`,
+        type: "success",
         read: false,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         link: "/directory",
-        targetId: existingContact.id
+        targetId: docRef.id
       });
 
-      return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", role: existingContact.role, location: existingContact.location, stage: existingContact.stage };
+      return { id: docRef.id, isExisting: false, ...contactData };
     }
-
-    // Creating new contact
-    const contactData = {
-      name: parsed.name,
-      role: parsed.role || "Student",
-      location: parsed.location || "",
-      email: parsed.email || "",
-      phone: parsed.phone || "",
-      stage: parsed.stage || "First Contact",
-      tags: parsed.tags || [],
-      notes: parsed.notes || "",
-      spiritualBackground: parsed.spiritualBackground || "",
-      initials: getInitials(parsed.name),
-      lastSeen: "Just now",
-      createdAt: new Date().toISOString(),
-      serverCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      createdBy: "system-quick-add",
-      createdByName: "Quick Add Service",
-      hasNewActivity: true,
-      attendance: {}
-    };
-
-    // Add directly to contacts collection using admin privileges
-    const docRef = await getAdminDb().collection("contacts").add(contactData);
-
-    // Document formatted log message
-    const fieldsLog = [
-      `Group: ${contactData.role}`,
-      `Stage: ${contactData.stage}`,
-      `First Met: ${contactData.location}`,
-      contactData.email ? `Email: ${contactData.email}` : "",
-      contactData.phone ? `Phone: ${contactData.phone}` : "",
-      contactData.spiritualBackground ? `Spiritual Background: ${contactData.spiritualBackground}` : "",
-      contactData.tags.length > 0 ? `Tags: ${contactData.tags.join(", ")}` : "",
-      contactData.notes ? `Quick Add Notes: ${contactData.notes}` : "Added via speech/text parsed quick-add description."
-    ].filter(Boolean).join("\n");
-
-    // Log the action in activities
-    await getAdminDb().collection("activities").add({
-      userId: "system-quick-add",
-      userName: "Quick Add AI Service",
-      userPhoto: "",
-      action: "created a new contact via external trigger",
-      targetId: docRef.id,
-      targetName: contactData.name,
-      targetType: "contact",
-      type: "create",
-      description: fieldsLog,
-      createdAt: new Date().toISOString()
-    });
-
-    // Notify all system admins/operators
-    await getAdminDb().collection("notifications").add({
-      userId: "ALL_ACTIVE",
-      title: "📞 New Contact Added via Quick Add",
-      message: `Successfully created ${contactData.name} (${contactData.role}) from text description.`,
-      type: "success",
-      read: false,
-      createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      link: "/directory",
-      targetId: docRef.id
-    });
-
-    return { id: docRef.id, isExisting: false, ...contactData };
   }
 
   // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
@@ -410,7 +654,7 @@ Analyze the input text carefully and extract the following:
   // Endpoint 1: Direct JSON API endpoint for custom clients, Siri, Android Shortcuts, or browser tools
   app.post("/api/quick-add", async (req, res) => {
     try {
-      const { text } = req.body;
+      const { text, userId, userName } = req.body;
       if (!text || typeof text !== "string") {
         const errMsg = "No text description provided. Please include a 'text' property.";
         await logApiCall("Quick Add API", req.body, req.headers, "error", errMsg, "Missing required 'text' parameter.");
@@ -418,7 +662,7 @@ Analyze the input text carefully and extract the following:
       }
 
       console.log(`Processing Quick Add Request: "${text}"`);
-      const contact = await performQuickAdd(text) as any;
+      const contact = await performQuickAdd(text, { userId, userName }) as any;
       const outcome = contact.isExisting 
         ? `Matched existing contact "${contact.name}" and logged interaction.`
         : `Created new contact "${contact.name}".`;
@@ -449,7 +693,10 @@ Analyze the input text carefully and extract the following:
       }
 
       console.log(`Processing Webhook Trigger from ${smsFrom}: "${smsBody}"`);
-      const contact = await performQuickAdd(smsBody) as any;
+      const contact = await performQuickAdd(smsBody, {
+        userId: smsFrom ? `sms-${smsFrom}` : "system-sms",
+        userName: smsFrom ? `SMS: ${smsFrom}` : "SMS User"
+      }) as any;
       const outcome = contact.isExisting 
         ? `SMS from ${smsFrom} matched existing contact "${contact.name}" and logged interaction.`
         : `SMS from ${smsFrom} created new contact "${contact.name}".`;
@@ -486,7 +733,7 @@ Error: ${error.message || "Internal server processing error."}
   // Endpoint 2.5: GroupMe Bot Callback Endpoint to add contacts dynamically from GroupMe chats
   app.post("/api/webhook/groupme", async (req, res) => {
     try {
-      const { text, sender_type, name } = req.body;
+      const { text, sender_type, name, sender_id } = req.body;
 
       if (sender_type === "bot") {
         await logApiCall("GroupMe", req.body, req.headers, "ignored", `Ignored message from bot: "${text || ""}"`);
@@ -522,7 +769,10 @@ Error: ${error.message || "Internal server processing error."}
       }
 
       console.log(`Processing GroupMe Bot incoming trigger from user "${name}": "${textToParse}"`);
-      const contact = await performQuickAdd(textToParse) as any;
+      const contact = await performQuickAdd(textToParse, {
+        userId: sender_id ? `groupme-${sender_id}` : "system-groupme",
+        userName: name ? `${name} (GroupMe)` : "GroupMe User"
+      }) as any;
       const outcome = contact.isExisting 
         ? `GroupMe trigger from "${name}" matched existing contact "${contact.name}" and logged interaction.`
         : `GroupMe trigger from "${name}" created new contact "${contact.name}".`;

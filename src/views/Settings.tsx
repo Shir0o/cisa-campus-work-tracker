@@ -259,7 +259,11 @@ export default function Settings() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ 
+            text,
+            userId: currentUser?.uid,
+            userName: currentUser?.displayName || currentUser?.email || "Unknown User"
+          }),
         });
 
         const data = await response.json();
