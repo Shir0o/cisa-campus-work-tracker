@@ -449,6 +449,7 @@ Error: ${error.message || "Internal server processing error."}
       const { text, sender_type, name } = req.body;
 
       if (sender_type === "bot") {
+        await logApiCall("GroupMe", req.body, req.headers, "ignored", `Ignored message from bot: "${text || ""}"`);
         return res.status(200).json({ status: "ignored_bot_sender" });
       }
 
