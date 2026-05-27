@@ -13,6 +13,24 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Terminal Request Logging Middleware to easily track incoming webhook/API requests in dev stdout console
+  app.use((req, res, next) => {
+    if (req.path.startsWith("/api/webhook") || req.path.startsWith("/api/quick-add")) {
+      console.log(`\n============== [INCOMING WEBHOOK/API REQUEST] ==============`);
+      console.log(`Timestamp   : ${new Date().toISOString()}`);
+      console.log(`Method      : ${req.method}`);
+      console.log(`URL         : ${req.originalUrl}`);
+      console.log(`Headers     : ${JSON.stringify({
+        host: req.headers.host,
+        "content-type": req.headers["content-type"],
+        "user-agent": req.headers["user-agent"]
+      }, null, 2)}`);
+      console.log(`Body/Payload: ${JSON.stringify(req.body, null, 2)}`);
+      console.log(`============================================================\n`);
+    }
+    next();
+  });
+
   // Global lazy-initialized variables
   let adminDbInstance: ReturnType<typeof getFirestore> | null = null;
   let aiClientInstance: GoogleGenAI | null = null;
@@ -366,6 +384,28 @@ Analyze the input text carefully and extract the following:
 
     return { id: docRef.id, isExisting: false, ...contactData };
   }
+
+  // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
+  app.get("/api/webhook/logs", async (req, res) => {
+    try {
+      const limitVal = Math.min(parseInt(req.query.limit as string) || 10, 50);
+      const snapshot = await getAdminDb()
+        .collection("webhook_logs")
+        .orderBy("timestamp", "desc")
+        .limit(limitVal)
+        .get();
+      
+      const logs = snapshot.docs.map(doc => ({
+        dbId: doc.id,
+        ...doc.data()
+      }));
+      
+      res.status(200).json({ logs });
+    } catch (error: any) {
+      console.error("Error retrieving webhook logs via API: ", error);
+      res.status(500).json({ error: error.message || "Failed to retrieve webhook logs" });
+    }
+  });
 
   // Endpoint 1: Direct JSON API endpoint for custom clients, Siri, Android Shortcuts, or browser tools
   app.post("/api/quick-add", async (req, res) => {
