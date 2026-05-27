@@ -205,6 +205,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "userEmail", "type", "message", "status", "createdAt"]
+    },
+    "webhook_logs": {
+      "title": "Webhook Log",
+      "description": "Incoming API and webhook logs for debugging purposes.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "source": { "type": "string" },
+        "payload": { "type": "string" },
+        "headers": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "error", "ignored"] },
+        "result": { "type": "string" },
+        "error": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "source", "payload", "headers", "status", "result"]
     }
   },
   "firestore": {
@@ -259,6 +275,10 @@
     "feedback/{feedbackId}": {
       "schema": "feedback",
       "description": "User submit bug reports and enhancement suggestions."
+    },
+    "webhook_logs/{logId}": {
+      "schema": "webhook_logs",
+      "description": "Incoming webhook delivery logs."
     }
   }
 }
