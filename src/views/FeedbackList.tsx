@@ -19,7 +19,9 @@ import {
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function FeedbackList() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
+  const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
+  const hasAccess = isAdmin || isMe;
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -27,7 +29,7 @@ export default function FeedbackList() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
 
   useEffect(() => {
-    if (!isAdmin) {
+    if (!hasAccess) {
       setLoading(false);
       return;
     }
@@ -78,7 +80,7 @@ export default function FeedbackList() {
   };
 
   // Guard: Admin Check
-  if (!isAdmin) {
+  if (!hasAccess) {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center" id="feedback-admin-guard">
         <div className="bg-error-container/10 border border-error-container/30 rounded-3xl p-12 max-w-xl mx-auto my-12 flex flex-col items-center">
