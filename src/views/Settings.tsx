@@ -45,6 +45,7 @@ import { useTheme } from '../components/ThemeProvider';
 
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
+  const isDev = currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   const { theme, setTheme } = useTheme();
   const [users, setUsers] = useState<AppUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -483,6 +484,189 @@ export default function Settings() {
     );
   };
 
+  const WebhookLogsSection = () => {
+    const [logs, setLogs] = useState<any[]>([]);
+    const [loadingLogs, setLoadingLogs] = useState(true);
+    const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+    const [isClearing, setIsClearing] = useState(false);
+
+    useEffect(() => {
+      const q = query(
+        collection(db, "webhook_logs"),
+        orderBy("timestamp", "desc")
+      );
+
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const logsData = snapshot.docs.map(doc => ({
+          dbId: doc.id,
+          ...doc.data()
+        }));
+        setLogs(logsData);
+        setLoadingLogs(false);
+      }, (error) => {
+        console.error("Error setting up webhook_logs listener:", error);
+        setLoadingLogs(false);
+        handleFirestoreError(error, OperationType.LIST, "webhook_logs");
+      });
+
+      return () => unsubscribe();
+    }, []);
+
+    const handleClearLogs = async () => {
+      if (!confirm("Are you sure you want to clear all webhook debugging logs?")) return;
+      setIsClearing(true);
+      try {
+        const snapshot = await getDocs(collection(db, "webhook_logs"));
+        const deletePromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
+        await Promise.all(deletePromises);
+      } catch (err) {
+        console.error("Failed to clear webhook logs:", err);
+        handleFirestoreError(err, OperationType.DELETE, "webhook_logs");
+      } finally {
+        setIsClearing(false);
+      }
+    };
+
+    const toggleExpand = (id: string) => {
+      setExpandedLogId(expandedLogId === id ? null : id);
+    };
+
+    return (
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-on-surface mb-4 flex items-center justify-between">
+          <span className="flex items-center gap-2">
+            <Terminal className="w-5 h-5 text-primary" /> API &amp; Webhook Debugger Console
+          </span>
+          {logs.length > 0 && (
+            <button
+              onClick={handleClearLogs}
+              disabled={isClearing}
+              className="px-3 py-1.5 text-xs bg-error/10 hover:bg-error/20 text-error font-medium rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear Logs</span>
+            </button>
+          )}
+        </h2>
+
+        <div className="bg-surface-container rounded-[2rem] border border-outline-variant/50 p-6 shadow-sm space-y-4">
+          <p className="text-xs text-on-surface-variant leading-relaxed">
+            Verify callback formats from <strong>GroupMe Bots</strong> or <strong>Twilio SMS</strong> in real time. 
+            When your webhooks receive requests, they appear here instantly so you can verify payloads, headers, and AI translation results.
+          </p>
+
+          {loadingLogs ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-xs">Listening for incoming API &amp; webhooks...</p>
+            </div>
+          ) : logs.length === 0 ? (
+            <div className="py-12 text-center bg-surface-container-low/30 rounded-2xl border border-dashed border-outline-variant/50">
+              <Sparkles className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-2" />
+              <p className="text-sm font-semibold text-on-surface-variant">No Hook Activity Yet</p>
+              <p className="text-xs text-on-surface-variant/70 mt-1">Send a message to your GroupMe bot or try quick add to see webhooks in action.</p>
+            </div>
+          ) : (
+            <div className="space-y-3.5 max-h-[600px] overflow-y-auto pr-1">
+              {logs.map((log) => {
+                const isSelected = expandedLogId === log.dbId;
+                
+                const sourceColor = 
+                  log.source === "GroupMe" ? "bg-[#33a3fc]/10 text-[#33a3fc] border-[#33a3fc]/20" :
+                  log.source === "Twilio SMS" ? "bg-success/10 text-success border-success/20" : 
+                  "bg-primary/10 text-primary border-primary/20";
+
+                const statusColor = 
+                  log.status === "success" ? "bg-success text-on-success" :
+                  log.status === "error" ? "bg-error text-on-error" : 
+                  "bg-outline text-on-surface-variant";
+
+                return (
+                  <div 
+                    key={log.dbId} 
+                    className={cn(
+                      "rounded-2xl border border-outline-variant/35 bg-surface-container-low/50 hover:bg-surface-container-low transition-all duration-200 overflow-hidden",
+                      isSelected ? "ring-1 ring-primary/45 border-primary/40 bg-surface-container-high/40" : ""
+                    )}
+                  >
+                    <div 
+                      onClick={() => toggleExpand(log.dbId)}
+                      className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className={cn("px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase border rounded-full shrink-0", sourceColor)}>
+                          {log.source || "Callback"}
+                        </span>
+                        <span className={cn("px-2 py-0.5 text-[9px] font-extrabold tracking-widest uppercase rounded shrink-0", statusColor)}>
+                          {log.status}
+                        </span>
+                        <span className="text-xs text-on-surface font-semibold line-clamp-1">
+                          {log.result}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-on-surface-variant text-[10px] opacity-75 shrink-0 self-end md:self-auto font-mono">
+                        <span>{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                        <span className="text-on-surface-variant/40">|</span>
+                        <span>{new Date(log.timestamp).toLocaleDateString()}</span>
+                        <span className="text-xs text-primary font-bold ml-1">{isSelected ? "▲" : "▼"}</span>
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {isSelected && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          className="border-t border-outline-variant/25 bg-surface-container-high/60"
+                        >
+                          <div className="p-4 space-y-4 text-xs font-mono">
+                            {log.error && (
+                              <div className="p-3 bg-error/10 border border-error/20 rounded-xl text-error font-sans text-xs">
+                                <span className="font-bold uppercase tracking-wider block text-[9px] mb-1">Execution Failure detail:</span>
+                                {log.error}
+                              </div>
+                            )}
+
+                            <div>
+                              <span className="text-[10px] font-black tracking-widest text-primary uppercase block mb-1">Raw Callback Payload (POST Body):</span>
+                              <pre className="bg-surface-container-low border border-outline-variant/40 p-3 rounded-xl overflow-x-auto text-[10.5px] text-on-surface-variant whitespace-pre-wrap select-all">
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(JSON.parse(log.payload), null, 2);
+                                  } catch (e) {
+                                    return log.payload;
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+
+                            <div>
+                              <span className="text-[10px] font-black tracking-widest text-primary uppercase block mb-1">Request Headers:</span>
+                              <pre className="bg-surface-container-low border border-outline-variant/40 p-3 rounded-xl overflow-x-auto text-[10.5px] text-on-surface-variant whitespace-pre-wrap select-all">
+                                {(() => {
+                                  try {
+                                    return JSON.stringify(JSON.parse(log.headers), null, 2);
+                                  } catch (e) {
+                                    return log.headers || "{}";
+                                  }
+                                })()}
+                              </pre>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (!isManager) {
     // ... (rest of the non-admin view remains same)
     return (
@@ -523,7 +707,8 @@ export default function Settings() {
         </div>
 
         <ThemeSection />
-        <QuickAddSection />
+        {isDev && <QuickAddSection />}
+        {isDev && <WebhookLogsSection />}
 
         <div className="mt-12 text-center py-6 px-4 bg-surface-variant/5 rounded-[2rem] border border-dashed border-outline-variant/30">
           <p className="text-xs text-on-surface-variant italic">More account settings will be available in future updates.</p>
@@ -541,7 +726,7 @@ export default function Settings() {
         </div>
         <button 
           onClick={() => setShowInviteDialog(true)}
-          className="md:static fixed bottom-24 right-6 z-40 bg-primary text-on-primary md:px-6 md:py-3 p-4 rounded-full md:rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-xl shadow-primary/30 md:shadow-lg md:shadow-primary/20"
+          className="hidden md:flex md:static bg-primary text-on-primary md:px-6 md:py-3 p-4 rounded-2xl font-bold flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all md:shadow-lg md:shadow-primary/20"
         >
           <UserPlus className="w-6 h-6 md:w-5 md:h-5" />
           <span className="hidden md:inline">Add Member</span>
@@ -996,7 +1181,8 @@ export default function Settings() {
         )}
       </AnimatePresence>
       <ThemeSection />
-      <QuickAddSection />
+      {isDev && <QuickAddSection />}
+      {isDev && <WebhookLogsSection />}
 
       <div className="mt-8 p-6 bg-secondary-container/20 rounded-[2rem] border border-secondary/10 flex items-start gap-4">
         <div className="p-2 bg-secondary/10 rounded-xl text-secondary">

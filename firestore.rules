@@ -297,6 +297,12 @@ service cloud.firestore {
       allow delete: if isValidId(feedbackId) && isAdmin();
     }
 
+    // 12. Webhook Logs Collection
+    match /webhook_logs/{logId} {
+      allow get, delete: if isValidId(logId) && isManager();
+      allow list: if isManager();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();
