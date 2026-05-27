@@ -28,6 +28,7 @@ RUN npm ci --only=production
 
 # Copy built React frontend assets and the bundled Express CommonJS server
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/firebase-applet-config.json* ./
 
 # Standardize Cloud Run port binding
 EXPOSE 3000
