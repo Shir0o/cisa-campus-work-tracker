@@ -232,7 +232,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
             initial={{ opacity: 0, scale: 0.95, y: -20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -20 }}
-            className="relative w-full max-w-sm bg-surface-container rounded-3xl shadow-2xl border border-outline-variant overflow-hidden"
+            className="relative w-full max-w-sm bg-surface-container rounded-3xl shadow-2xl border border-outline-variant"
           >
             {/* Header */}
             <div className="px-5 py-3 border-b border-outline-variant flex items-center justify-between pointer-events-auto">
