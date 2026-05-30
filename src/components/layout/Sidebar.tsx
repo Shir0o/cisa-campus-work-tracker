@@ -97,14 +97,14 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center shadow-md overflow-hidden shrink-0">
               <img 
                 src="/logo.svg" 
-                alt="Campus Hub" 
+                alt="CISA Campus Work Tracker" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   if (target.parentElement) {
                     target.parentElement.classList.add('bg-primary-container');
-                    target.parentElement.innerHTML = '<span class="text-[10px] text-primary font-bold">CH</span>';
+                    target.parentElement.innerHTML = '<span class="text-[10px] text-primary font-bold">CCWT</span>';
                   }
                 }}
               />
@@ -115,7 +115,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
               transition={{ duration: 0.2 }}
               className="whitespace-nowrap overflow-hidden"
             >
-              <h2 className="text-lg font-black text-primary leading-tight">Campus Hub</h2>
+              <h2 className="text-sm font-black text-primary leading-tight">CISA Campus<br />Work Tracker</h2>
               <p className="text-xs text-on-surface-variant opacity-80">{getRoleLabel(role)}</p>
             </motion.div>
           </NavLink>

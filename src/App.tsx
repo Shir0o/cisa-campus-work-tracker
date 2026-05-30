@@ -118,7 +118,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
         <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant shadow-lg">
-          <h2 className="text-3xl font-regular mb-4">Welcome to Campus Hub</h2>
+          <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
           <p className="text-on-surface-variant mb-8">
             Please sign in with your Google account to continue.
           </p>

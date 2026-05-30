@@ -104,7 +104,7 @@ export default function FeedbackFAB() {
               <div className="flex justify-between items-center mb-5">
                 <div>
                   <h3 className="text-xl font-bold text-on-surface">Leave Feedback</h3>
-                  <p className="text-xs text-on-surface-variant">Help us improve the Campus Hub experience</p>
+                  <p className="text-xs text-on-surface-variant">Help us improve the CISA Campus Work Tracker experience</p>
                 </div>
                 <button
                   onClick={() => setIsOpen(false)}

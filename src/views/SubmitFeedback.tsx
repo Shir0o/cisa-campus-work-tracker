@@ -72,7 +72,7 @@ export default function SubmitFeedback() {
       <div>
         <h1 className="text-3xl font-regular tracking-tight text-on-background">Submit Feedback</h1>
         <p className="text-sm text-on-surface-variant">
-          Spotted an issue or have an idea to make Campus Hub better? Send it directly to our administration team.
+          Spotted an issue or have an idea to make CISA Campus Work Tracker better? Send it directly to our administration team.
         </p>
       </div>
 
@@ -197,7 +197,7 @@ export default function SubmitFeedback() {
             <div className="space-y-2">
               <h3 className="text-2xl font-bold text-on-surface">Feedback Received!</h3>
               <p className="text-sm text-on-surface-variant max-w-md leading-relaxed mx-auto">
-                Thank you for contributing to the betterment of Campus Hub. Your feedback has been registered and 
+                Thank you for contributing to the betterment of CISA Campus Work Tracker. Your feedback has been registered and 
                 our administrators will review it shortly.
               </p>
             </div>

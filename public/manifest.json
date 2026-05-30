@@ -1,7 +1,7 @@
 {
-  "name": "Contact Manager Pro",
-  "short_name": "ContactPro",
-  "description": "Manage your contacts and outreach campaigns efficiently.",
+  "name": "CISA Campus Work Tracker",
+  "short_name": "CISA Tracker",
+  "description": "A comprehensive community management system for tracking student engagement, campus events, and organizational progress.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
