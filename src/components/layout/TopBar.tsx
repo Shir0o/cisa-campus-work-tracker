@@ -38,18 +38,18 @@ export default function TopBar() {
           <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
             <img 
               src="/logo.svg" 
-              alt="CH" 
+              alt="CCWT" 
               className="w-full h-full object-contain"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.style.display = 'none';
                 if (target.parentElement) {
-                  target.parentElement.innerHTML = '<span class="text-[8px] text-primary font-bold">CH</span>';
+                  target.parentElement.innerHTML = '<span class="text-[8px] text-primary font-bold">CCWT</span>';
                 }
               }}
             />
           </div>
-          <span className="font-black text-primary text-sm tracking-tight sm:inline">Campus Hub</span>
+          <span className="font-black text-primary text-sm tracking-tight sm:inline">CISA Campus Work Tracker</span>
         </Link>
       </div>
 

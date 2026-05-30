@@ -1,4 +1,4 @@
-# Multi-stage Dockerfile for Campus Hub (React + Express Full-Stack App)
+# Multi-stage Dockerfile for CISA Campus Work Tracker (React + Express Full-Stack App)
 # Optimized for Google Cloud Run (Serverless Container Platform)
 
 # ==========================================

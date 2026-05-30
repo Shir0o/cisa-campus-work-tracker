@@ -157,7 +157,7 @@ export default function FeedbackList() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-regular tracking-tight text-on-background">User Feedback</h1>
-          <p className="text-sm text-on-surface-variant">Review bug reports and feature requests submitted by Campus Hub users.</p>
+          <p className="text-sm text-on-surface-variant">Review bug reports and feature requests submitted by CISA Campus Work Tracker users.</p>
         </div>
         
         {/* Metric counts */}
