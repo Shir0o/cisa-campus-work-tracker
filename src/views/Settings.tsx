@@ -233,6 +233,8 @@ export default function Settings() {
     const [copiedCurl, setCopiedCurl] = useState(false);
     const [copiedUrl, setCopiedUrl] = useState(false);
     const [copiedGroupMe, setCopiedGroupMe] = useState(false);
+    const [copiedContactCmd, setCopiedContactCmd] = useState(false);
+    const [copiedInteractionCmd, setCopiedInteractionCmd] = useState(false);
 
     const appUrl = typeof window !== "undefined" ? window.location.origin : "https://campus-hub.app";
     const curlCommand = `curl -X POST "${appUrl}/api/quick-add" \\
@@ -478,8 +480,89 @@ export default function Settings() {
                   <li>Go to dev.groupme.com &rarr; click on <strong>Bots</strong> menu.</li>
                   <li>Click <strong>Create Bot</strong>, link your group chat.</li>
                   <li>Paste this <strong>Callback URL</strong> and click Submit!</li>
-                  <li>Type <code className="font-bold bg-surface-variant px-1 rounded">!add Met Jerry today...</code> in chat.</li>
+                  <li>Type a quick command prefix (e.g. <code className="font-bold bg-surface-variant px-1 rounded">!add Jerry...</code>) to begin.</li>
                 </ol>
+              </div>
+
+              {/* GroupMe Message Parsing Options & Cheat Sheet */}
+              <div className="mt-4 border-t border-outline-variant/30 pt-3.5 space-y-3 shrink-0">
+                <div>
+                  <span className="font-bold block uppercase text-[9px] text-primary mb-1.5">1. Prefix Triggers</span>
+                  <p className="text-[10px] text-on-surface-variant leading-relaxed">
+                    Start your messages in the GroupMe chat with one of these recognized prefixes to let the AI bot parse it:
+                  </p>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {["!add ", "/add ", "add: "].map((pref) => (
+                      <code key={pref} className="px-1.5 py-0.5 bg-surface-container-high text-on-surface hover:text-primary transition-colors font-mono rounded text-[9px] border border-outline-variant/20">
+                        {pref}
+                      </code>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <span className="font-bold block uppercase text-[9px] text-primary">2. Command Parsing Options</span>
+                  <p className="text-[10px] text-on-surface-variant leading-relaxed mb-1">
+                    Direct the AI Parser using optional keywords directly after your prefix:
+                  </p>
+
+                  {/* Add Contact Card Option */}
+                  <div className="bg-surface-container-high rounded-xl p-2.5 border border-outline-variant/40 space-y-1.5 relative group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <span className="px-1.5 py-0.5 bg-primary/10 text-primary font-mono rounded text-[8px] uppercase tracking-wider">
+                          contact
+                        </span>
+                        <span className="text-[9px] text-on-surface-variant/80 italic font-medium">(Default choice)</span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy("!add contact Jerry Doe is a sophomore majoring in history, phone is 555-0192, met at cafeteria.", setCopiedContactCmd)}
+                        className="p-1 hover:bg-surface-variant rounded transition-colors text-on-surface-variant cursor-pointer"
+                        title="Copy contact example"
+                      >
+                        {copiedContactCmd ? (
+                          <CheckCircle2 className="w-3 h-3 text-success" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[9.5px] text-on-surface leading-normal">
+                      Parses name, role, details, contact info, and creates or merges with a directory card.
+                    </p>
+                    <div className="bg-surface-container-low p-1.5 rounded border border-outline-variant/20 font-mono text-[8.5px] text-on-surface-variant whitespace-pre-wrap select-all">
+                      !add contact Jerry Doe is a sophomore majoring in history, phone is 555-0192, met at cafeteria.
+                    </div>
+                  </div>
+
+                  {/* Add Interaction Option */}
+                  <div className="bg-surface-container-high rounded-xl p-2.5 border border-outline-variant/40 space-y-1.5 relative group">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <span className="px-1.5 py-0.5 bg-success/10 text-success font-mono rounded text-[8px] uppercase tracking-wider">
+                          interaction
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => handleCopy("!add interaction Jerry Doe and I studied Romans today, shared about exams and prayed together.", setCopiedInteractionCmd)}
+                        className="p-1 hover:bg-surface-variant rounded transition-colors text-on-surface-variant cursor-pointer"
+                        title="Copy interaction example"
+                      >
+                        {copiedInteractionCmd ? (
+                          <CheckCircle2 className="w-3 h-3 text-success" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </div>
+                    <p className="text-[9.5px] text-on-surface leading-normal">
+                      Logs a follow-up conversation event or prayer update in the history list of an existing contact.
+                    </p>
+                    <div className="bg-surface-container-low p-1.5 rounded border border-outline-variant/20 font-mono text-[8.5px] text-on-surface-variant whitespace-pre-wrap select-all">
+                      !add interaction Jerry Doe and I studied Romans today, shared about exams and prayed together.
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
