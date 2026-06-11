@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { addDoc } from 'firebase/firestore';
 import NewContactModal from '../components/modals/NewContactModal';
 import { useAuth } from '../components/AuthProvider';
 import React from 'react';
@@ -24,7 +25,7 @@ vi.mock('firebase/firestore', () => ({
   }),
 }));
 
-vi.mock('../../lib/firebase', () => ({
+vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
   OperationType: { LIST: 'LIST', CREATE: 'CREATE' },
@@ -37,6 +38,7 @@ describe('NewContactModal', () => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-id', displayName: 'Test User' },
+      role: 'operator',
     });
   });
 
@@ -75,8 +77,7 @@ describe('NewContactModal', () => {
 
     await waitFor(() => {
       expect(onClose).toHaveBeenCalled();
-      const { addDoc } = require('firebase/firestore');
-      expect(addDoc).toHaveBeenCalled();
+      expect(vi.mocked(addDoc)).toHaveBeenCalled();
     });
   });
 });
