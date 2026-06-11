@@ -39,16 +39,16 @@ describe('Sidebar Role Label', () => {
 
   const baseAuth = { isAdmin: false, logOut: vi.fn() };
 
-  it('displays "Administrator" for admin role', () => {
+  it('displays "Full-timer" for admin role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
     renderSidebar();
-    expect(screen.getByText('Administrator')).toBeInTheDocument();
+    expect(screen.getByText('Full-timer')).toBeInTheDocument();
   });
 
-  it('displays "Manager" for manager role', () => {
+  it('displays "Trainee" for manager role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'manager' });
     renderSidebar();
-    expect(screen.getByText('Manager')).toBeInTheDocument();
+    expect(screen.getByText('Trainee')).toBeInTheDocument();
   });
 
   it('displays "Guest" when role is null', () => {
@@ -57,10 +57,10 @@ describe('Sidebar Role Label', () => {
     expect(screen.getByText('Guest')).toBeInTheDocument();
   });
 
-  it('displays capitalized role for unknown roles', () => {
+  it('displays "Student" for operator role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'operator' });
     renderSidebar();
-    expect(screen.getByText('Operator')).toBeInTheDocument();
+    expect(screen.getByText('Student')).toBeInTheDocument();
   });
 
   it('shows only permitted nav items for viewer role', () => {

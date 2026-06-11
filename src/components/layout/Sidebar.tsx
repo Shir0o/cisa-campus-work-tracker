@@ -19,7 +19,7 @@ import { cn } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
-import { NAV_ITEMS, canAccessRoute, AppRole } from '../../lib/permissions';
+import { NAV_ITEMS, canAccessRoute, roleLabel, AppRole } from '../../lib/permissions';
 
 interface SidebarProps {
   isCollapsed?: boolean;
@@ -54,16 +54,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     .filter(item => canAccessRoute(role as AppRole, item.href))
     .map(item => ({ ...item, icon: NAV_ICONS[item.href] ?? LayoutDashboard }));
 
-  const getRoleLabel = (r: string | null) => {
-    if (!r) return 'Guest';
-    switch (r) {
-      case 'admin': return 'Administrator';
-      case 'manager': return 'Manager';
-      case 'operator': return 'Operator';
-      case 'viewer': return 'Viewer';
-      default: return r.charAt(0).toUpperCase() + r.slice(1);
-    }
-  };
+  const getRoleLabel = (r: string | null) => roleLabel(r);
 
   return (
     <>

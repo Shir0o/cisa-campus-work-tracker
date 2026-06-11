@@ -13,7 +13,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, NAV_ITEMS } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS } from '../lib/permissions';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -141,6 +141,18 @@ describe('defaultRouteForRole()', () => {
   it('sends viewer to attendance', () => {
     expect(defaultRouteForRole('viewer')).toBe('/attendance');
     expect(defaultRouteForRole(null)).toBe('/attendance');
+  });
+});
+
+// ─── 3b. roleLabel() display names ───────────────────────────────────────────
+
+describe('roleLabel()', () => {
+  it('maps internal role keys to the campus-facing names', () => {
+    expect(roleLabel('admin')).toBe('Full-timer');
+    expect(roleLabel('manager')).toBe('Trainee');
+    expect(roleLabel('operator')).toBe('Student');
+    expect(roleLabel('viewer')).toBe('Community');
+    expect(roleLabel(null)).toBe('Guest');
   });
 });
 

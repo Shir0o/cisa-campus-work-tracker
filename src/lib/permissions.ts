@@ -7,6 +7,22 @@ export const ROLE_LEVEL: Record<AppRole, number> = {
   admin: 3,
 };
 
+/**
+ * User-facing display names. The internal role keys (admin/manager/operator/
+ * viewer) are unchanged — these only affect what's shown in the UI.
+ */
+export const ROLE_LABELS: Record<AppRole, string> = {
+  admin: 'Full-timer',
+  manager: 'Trainee',
+  operator: 'Student',
+  viewer: 'Community',
+};
+
+export function roleLabel(role: AppRole | string | null): string {
+  if (!role) return 'Guest';
+  return ROLE_LABELS[role as AppRole] ?? role.charAt(0).toUpperCase() + role.slice(1);
+}
+
 const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'operator',
   '/board': 'manager',

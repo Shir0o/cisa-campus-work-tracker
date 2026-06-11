@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# E2E test user credentials (real Firebase email/password logins) — never commit
+.test-credentials.json
+**/.test-credentials.json
+e2e/.auth/
+playwright-report/
+test-results/
