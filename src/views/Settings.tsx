@@ -27,7 +27,6 @@ import {
   Mail,
   Trash2,
   Loader2,
-  Info,
   Moon,
   Sun,
   Monitor,
@@ -44,6 +43,106 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
 import FeedbackList from './FeedbackList';
 
+type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
+
+const ROLE_CARDS: {
+  key: AppRole;
+  label: string;
+  initials: string;
+  description: string;
+  access: string[];
+}[] = [
+  {
+    key: 'admin',
+    label: 'Administrator',
+    initials: 'AD',
+    description: 'Full-time staff. Sees the whole work — every person, the team board, and all admin tools.',
+    access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History', 'Settings'],
+  },
+  {
+    key: 'manager',
+    label: 'Manager',
+    initials: 'MG',
+    description: 'Walks alongside the team. Manages users and accesses all data surfaces, minus dev-only admin.',
+    access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History'],
+  },
+  {
+    key: 'operator',
+    label: 'Operator',
+    initials: 'OP',
+    description: 'Can add and update people, log interactions, and mark attendance.',
+    access: ['Today', 'People', 'Gatherings', 'Prayer'],
+  },
+  {
+    key: 'viewer',
+    label: 'Viewer',
+    initials: 'VW',
+    description: 'A read-only window — can see gatherings and prayers, nothing else.',
+    access: ['Gatherings', 'Prayer'],
+  },
+];
+
+function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
+  return (
+    <div className="flex flex-col gap-2.5 max-w-2xl">
+      {ROLE_CARDS.map(card => {
+        const isActive = card.key === currentRole;
+        return (
+          <div
+            key={card.key}
+            className={cn(
+              'flex gap-4 items-start p-4 rounded-2xl border transition-colors',
+              isActive
+                ? 'border-primary/30 bg-primary/5'
+                : 'bg-surface-container border-outline-variant/30'
+            )}
+          >
+            {/* Avatar */}
+            <div className={cn(
+              'flex-none w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
+              isActive
+                ? 'bg-primary/20 text-primary'
+                : 'bg-surface-container-high text-on-surface-variant'
+            )}>
+              {card.initials}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <span style={{ fontFamily: 'var(--font-serif, Georgia, serif)' }} className="text-[16.5px] font-semibold text-on-surface leading-tight">
+                  {card.label}
+                </span>
+                {isActive && (
+                  <span className="text-[11px] font-semibold text-primary uppercase tracking-wide border border-primary/30 bg-surface-container rounded-full px-2 py-0.5 leading-none">
+                    your role
+                  </span>
+                )}
+              </div>
+              <p className="text-[13px] text-on-surface-variant mt-0.5 leading-none">
+                {card.access.length} section{card.access.length !== 1 ? 's' : ''} accessible
+              </p>
+              <p className="text-[13.5px] text-on-surface/75 leading-relaxed mt-2 max-w-prose">
+                {card.description}
+              </p>
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {card.access.map(section => (
+                  <span
+                    key={section}
+                    className="text-[12px] text-on-surface-variant bg-surface-container-high border border-outline-variant/40 rounded-full px-2.5 py-0.5"
+                  >
+                    {section}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Settings() {
   const { user: currentUser, isAdmin, isManager } = useAuth();
   const isDev = currentUser?.email?.toLowerCase() === 'yilongwang05@gmail.com' || isAdmin || isManager;
@@ -54,19 +153,10 @@ export default function Settings() {
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [showRoleInfo, setShowRoleInfo] = useState(false);
-  
   // Member Form state
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<'admin' | 'manager' | 'operator' | 'viewer'>('operator');
   const [isInviting, setIsInviting] = useState(false);
-
-  const roleDefinitions = [
-    { name: 'Admin', desc: 'Full control over settings, users, and data management.' },
-    { name: 'Manager', desc: 'Can manage users and access all directory features.' },
-    { name: 'Operator', desc: 'Can add and edit directory/attendance records.' },
-    { name: 'Viewer', desc: 'Read-only access to view data and dashboards.' }
-  ];
 
   useEffect(() => {
     if (!isManager) return;
@@ -794,6 +884,14 @@ export default function Settings() {
           </div>
         </div>
 
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold text-on-surface mb-1">Roles &amp; access</h2>
+          <p className="text-sm text-on-surface-variant mb-4">
+            Roles are labels — a way to know who carries what, and what each person sees.
+          </p>
+          <RolesReference currentRole={(users.find(u => u.uid === currentUser?.uid)?.role ?? null) as AppRole | null} />
+        </div>
+
         <ThemeSection />
         {isDev && <QuickAddSection />}
         {isDev && <WebhookLogsSection />}
@@ -1209,37 +1307,6 @@ export default function Settings() {
                 <div className="space-y-1.5 relative">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-black text-on-surface-variant uppercase tracking-widest ml-1">Assigned Role</label>
-                    <div className="relative">
-                      <button 
-                        type="button"
-                        onMouseEnter={() => setShowRoleInfo(true)}
-                        onMouseLeave={() => setShowRoleInfo(false)}
-                        onClick={() => setShowRoleInfo(!showRoleInfo)}
-                        className="p-1 text-on-surface-variant hover:text-primary transition-colors"
-                      >
-                        <Info className="w-4 h-4" />
-                      </button>
-                      
-                      <AnimatePresence>
-                        {showRoleInfo && (
-                          <motion.div 
-                            initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                            animate={{ opacity: 1, y: 0, scale: 1 }}
-                            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                            className="absolute bottom-full right-0 mb-2 w-64 bg-surface-container-high border border-outline-variant rounded-2xl p-4 shadow-xl z-[110]"
-                          >
-                            <div className="space-y-3">
-                              {roleDefinitions.map(role => (
-                                <div key={role.name}>
-                                  <h4 className="text-[10px] font-black text-primary uppercase">{role.name}</h4>
-                                  <p className="text-[10px] text-on-surface-variant leading-tight">{role.desc}</p>
-                                </div>
-                              ))}
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
                   </div>
                   <select 
                     value={inviteRole}
@@ -1274,6 +1341,14 @@ export default function Settings() {
           </div>
         )}
       </AnimatePresence>
+      <div className="mt-8 border-t border-outline-variant/30 pt-8">
+        <h2 className="text-lg font-semibold text-on-surface mb-1">Roles &amp; access</h2>
+        <p className="text-sm text-on-surface-variant mb-4">
+          Roles are labels — a way to know who carries what, and what each person sees.
+        </p>
+        <RolesReference currentRole={(currentUser ? (users.find(u => u.uid === currentUser.uid)?.role ?? null) : null) as AppRole | null} />
+      </div>
+
       <ThemeSection />
       {isDev && <QuickAddSection />}
       {isDev && <WebhookLogsSection />}
