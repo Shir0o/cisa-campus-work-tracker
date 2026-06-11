@@ -29,7 +29,11 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       VITE_E2E_MODE: 'true',
-      VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY ?? '',
+      // If exported in the shell, use it; otherwise the dev server loads
+      // VITE_FIREBASE_API_KEY from the worktree's .env file (gitignored).
+      ...(process.env.VITE_FIREBASE_API_KEY
+        ? { VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY }
+        : {}),
     },
   },
 });

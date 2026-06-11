@@ -26,7 +26,18 @@ The actual login emails/passwords live in `e2e/.test-credentials.json` (gitignor
    # edit e2e/.test-credentials.json — this file is gitignored
    ```
 2. Make sure the four users exist in Firebase Auth (email/password) **and** have an
-   approved `/users/{uid}` doc with the matching `role`.
+   approved `/users/{uid}` doc with the matching `role`. The app signs out any
+   authenticated user without an approved doc, so this step is required. Two ways:
+
+   - **In-app (no service account):** sign in to the app as an admin →
+     Settings → Add Member → invite each of the four emails with the right role
+     (Full-timer / Trainee / Student / Community). The approved `/users` doc is
+     created automatically on each user's first sign-in.
+   - **Seed script (service account):**
+     ```bash
+     GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json npm run seed:e2e-users
+     ```
+     Looks up each UID by email and writes an approved user doc directly.
 
 ## Running
 
