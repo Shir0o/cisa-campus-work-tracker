@@ -13,7 +13,8 @@ interface NewContactModalProps {
 }
 
 export default function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [formData, setFormData] = useState({

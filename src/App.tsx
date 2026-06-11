@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { cn } from "./lib/utils";
 import Sidebar from "./components/layout/Sidebar";
@@ -31,6 +32,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
+import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -176,6 +178,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.ReactNode }) {
+  const { role } = useAuth();
+  const { pathname } = useLocation();
+  if (!canAccessRoute(role, pathname)) {
+    return <Navigate to={defaultRouteForRole(role)} replace />;
+  }
+  return <>{children}</>;
+}
+
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
@@ -265,9 +276,11 @@ export default function App() {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Dashboard />
-                    </DashboardLayout>
+                    <RoleGuard minRole="operator">
+                      <DashboardLayout>
+                        <Dashboard />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -287,9 +300,11 @@ export default function App() {
                 path="/board"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <OutreachBoard />
-                    </DashboardLayout>
+                    <RoleGuard minRole="manager">
+                      <DashboardLayout>
+                        <OutreachBoard />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -298,9 +313,11 @@ export default function App() {
                 path="/directory"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Directory />
-                    </DashboardLayout>
+                    <RoleGuard minRole="operator">
+                      <DashboardLayout>
+                        <Directory />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -309,9 +326,11 @@ export default function App() {
                 path="/history"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <History />
-                    </DashboardLayout>
+                    <RoleGuard minRole="manager">
+                      <DashboardLayout>
+                        <History />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -353,9 +372,11 @@ export default function App() {
                 path="/admin/feedback"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <FeedbackList />
-                    </DashboardLayout>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <FeedbackList />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
