@@ -1,9 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Newsreader", Georgia, serif;
-  
+  --font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-serif: "Newsreader", Georgia, "Times New Roman", serif;
+  /* Field Notes removes visible monospace — alias font-mono to the sans stack.
+     Genuine code blocks (webhook URLs / payloads) may opt into --font-code. */
+  --font-mono: var(--font-sans);
+  --font-code: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
   --color-primary-container: var(--primary-container);
@@ -24,16 +28,29 @@
   --color-error-container: var(--error-container);
   --color-on-error-container: var(--on-error-container);
 
-  /* Custom Board Colors */
-  --color-board-indigo: #3949ab;
-  --color-board-teal: #00897b;
-  --color-board-emerald: #2e7d32;
-  --color-board-amber: #ff8f00;
-  --color-board-crimson: #c62828;
-  --color-board-plum: #8e24aa;
-  --color-board-ocean: #0277bd;
-  --color-board-rose: #d81b60;
-  
+  /* Field Notes stage tones — slate-blue / terracotta / sage / plum at matched
+     chroma. Light/dark values come from the per-theme blocks below. */
+  --color-stage-accent: var(--stage-accent);
+  --color-stage-accent-soft: var(--stage-accent-soft);
+  --color-stage-amber: var(--stage-amber);
+  --color-stage-amber-soft: var(--stage-amber-soft);
+  --color-stage-teal: var(--stage-teal);
+  --color-stage-teal-soft: var(--stage-teal-soft);
+  --color-stage-violet: var(--stage-violet);
+  --color-stage-violet-soft: var(--stage-violet-soft);
+
+  /* Legacy board colors — kept (stage colors are persisted in Firestore as
+     these class names). Re-tinted toward the warm stage family until #12
+     migrates the board to the stage-* tokens above. */
+  --color-board-indigo: #3a5a82;
+  --color-board-teal: #5d8071;
+  --color-board-emerald: #5d8071;
+  --color-board-amber: #c0823f;
+  --color-board-crimson: #b5503f;
+  --color-board-plum: #7d5a86;
+  --color-board-ocean: #3a5a82;
+  --color-board-rose: #b5503f;
+
   --color-background: var(--background);
   --color-on-background: var(--on-background);
   
@@ -59,95 +76,124 @@
 
 @layer base {
   :root {
-    --primary: #4f378a;
+    /* Field Notes — warm paper (light), the default. Source: docs/design/project/styles.css [data-theme="light"]. */
+    --primary: #3a5a82;
     --on-primary: #ffffff;
-    --primary-container: #6750a4;
-    --on-primary-container: #e0d2ff;
+    --primary-container: #dbe3ee;
+    --on-primary-container: #233a55;
 
-    --secondary: #625b71;
+    --secondary: #5c6675;
     --on-secondary: #ffffff;
-    --secondary-container: #e8def9;
-    --on-secondary-container: #686177;
+    --secondary-container: #e1e7f0;
+    --on-secondary-container: #3b424d;
 
-    --tertiary: #633b48;
+    --tertiary: #5d8071;
     --on-tertiary: #ffffff;
-    --tertiary-container: #7d5260;
-    --on-tertiary-container: #ffcbda;
+    --tertiary-container: #dde7e1;
+    --on-tertiary-container: #36473f;
 
-    --error: #ba1a1a;
+    --error: #b5503f;
     --on-error: #ffffff;
-    --error-container: #ffdad6;
-    --on-error-container: #93000a;
+    --error-container: #f4ddd8;
+    --on-error-container: #6e2c20;
 
-    --background: #fdf7ff;
-    --on-background: #1d1b20;
+    --background: #eaeef4;
+    --on-background: #232b38;
 
-    --surface: #fdf7ff;
-    --on-surface: #1d1b20;
-    --surface-variant: #e6e0e9;
-    --on-surface-variant: #494551;
+    --surface: #ffffff;
+    --on-surface: #232b38;
+    --surface-variant: #e7ebf3;
+    --on-surface-variant: #5c6675;
 
-    --outline: #7a7582;
-    --outline-variant: #cbc4d2;
+    --outline: #8f98a8;
+    --outline-variant: #d6dde9;
 
     --surface-container-lowest: #ffffff;
-    --surface-container-low: #f8f2fa;
-    --surface-container: #f2ecf4;
-    --surface-container-high: #ece6ee;
-    --surface-container-highest: #e6e0e9;
+    --surface-container-low: #f4f6fb;
+    --surface-container: #f4f6fb;
+    --surface-container-high: #e1e7f0;
+    --surface-container-highest: #e1e7f0;
 
-    --success: #2e7d32;
-    --success-container: #c8e6c9;
-    --warning: #f57c00;
-    --warning-container: #ffe0b2;
+    --success: #5d8071;
+    --success-container: #dde7e1;
+    --warning: #b0833a;
+    --warning-container: #f0e3cd;
+
+    /* stage tones (light) */
+    --stage-accent: #3a5a82;
+    --stage-accent-soft: rgba(58, 90, 130, 0.09);
+    --stage-amber: #c0823f;
+    --stage-amber-soft: rgba(192, 130, 63, 0.11);
+    --stage-teal: #5d8071;
+    --stage-teal-soft: rgba(93, 128, 113, 0.11);
+    --stage-violet: #7d5a86;
+    --stage-violet-soft: rgba(125, 90, 134, 0.10);
   }
 
   .dark {
-    --primary: #d0bcff;
-    --on-primary: #381e72;
-    --primary-container: #4f378a;
-    --on-primary-container: #eaddff;
+    /* Field Notes — warm slate (dark). Source: docs/design/project/styles.css :root. */
+    --primary: #7aa0cc;
+    --on-primary: #15191f;
+    --primary-container: #2b3a4d;
+    --on-primary-container: #cdddef;
 
-    --secondary: #ccc2dc;
-    --on-secondary: #332d41;
-    --secondary-container: #4a4458;
-    --on-secondary-container: #e8def8;
+    --secondary: #a6afbe;
+    --on-secondary: #15191f;
+    --secondary-container: #2b333f;
+    --on-secondary-container: #d7dde6;
 
-    --tertiary: #efb8c8;
-    --on-tertiary: #492532;
-    --tertiary-container: #633b48;
-    --on-tertiary-container: #ffd8e4;
+    --tertiary: #8bae9d;
+    --on-tertiary: #15191f;
+    --tertiary-container: #2f3d37;
+    --on-tertiary-container: #d2e0d8;
 
-    --error: #f2b8b5;
-    --on-error: #601410;
-    --error-container: #8c1d18;
-    --on-error-container: #f9dedc;
+    --error: #d77c64;
+    --on-error: #15191f;
+    --error-container: #46261f;
+    --on-error-container: #f2ccc1;
 
-    --background: #141218;
-    --on-background: #e6e1e5;
+    --background: #15191f;
+    --on-background: #e7ebf2;
 
-    --surface: #141218;
-    --on-surface: #e6e1e5;
-    --surface-variant: #49454f;
-    --on-surface-variant: #cac4d0;
+    --surface: #1f252e;
+    --on-surface: #e7ebf2;
+    --surface-variant: #262d37;
+    --on-surface-variant: #a6afbe;
 
-    --outline: #938f99;
-    --outline-variant: #49454f;
+    --outline: #717c8d;
+    --outline-variant: #364150;
 
-    --surface-container-lowest: #0f0d11;
-    --surface-container-low: #1d1b20;
-    --surface-container: #211f26;
-    --surface-container-high: #2b2930;
-    --surface-container-highest: #36343b;
+    --surface-container-lowest: #1f252e;
+    --surface-container-low: #1b2027;
+    --surface-container: #1b2027;
+    --surface-container-high: #2b333f;
+    --surface-container-highest: #2b333f;
 
-    --success: #81c784;
-    --success-container: #00390a;
-    --warning: #ffb74d;
-    --warning-container: #4c2800;
+    --success: #8fae9d;
+    --success-container: #2f3d37;
+    --warning: #d6ac63;
+    --warning-container: #443615;
+
+    /* stage tones (dark) */
+    --stage-accent: #7aa0cc;
+    --stage-accent-soft: rgba(122, 160, 204, 0.16);
+    --stage-amber: #d39e68;
+    --stage-amber-soft: rgba(211, 158, 104, 0.16);
+    --stage-teal: #8bae9d;
+    --stage-teal-soft: rgba(139, 174, 157, 0.16);
+    --stage-violet: #b58cc4;
+    --stage-violet-soft: rgba(181, 140, 196, 0.16);
   }
 
   body {
     @apply bg-background text-on-background font-sans antialiased transition-colors duration-300;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, .serif {
+    font-family: var(--font-serif);
+    font-weight: 500;
   }
 
   button, 
