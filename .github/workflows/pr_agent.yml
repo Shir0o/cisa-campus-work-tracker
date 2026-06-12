@@ -8,7 +8,10 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number }}
-  cancel-in-progress: true
+  # Only let pull_request events cancel an in-flight run. issue_comment events
+  # (incl. bot deploy/security comments) otherwise preempt and cancel a running
+  # review, which then gets skipped by the sender.type != 'Bot' guard below.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

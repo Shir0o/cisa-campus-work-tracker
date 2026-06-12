@@ -331,7 +331,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
+      <ThemeProvider defaultTheme="light" storageKey="campus-hub-theme">
         <Router>
           <AuthProvider>
             <Routes>
