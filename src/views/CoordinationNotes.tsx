@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -15,6 +15,7 @@ import { useAuth } from '../components/AuthProvider';
 import { handleFirestoreError, OperationType } from '../lib/firebase';
 import { motion, AnimatePresence } from 'motion/react';
 import Markdown from 'react-markdown';
+import TurndownService from 'turndown';
 import { 
   FileText, 
   CheckSquare, 
@@ -36,7 +37,16 @@ import {
   ChevronDown, 
   CheckCircle,
   HelpCircle,
-  AlertCircle
+  AlertCircle,
+  Bold,
+  Italic,
+  Heading,
+  List,
+  Quote,
+  Code,
+  Link,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -88,6 +98,118 @@ const MARKDOWN_CHEATSHEET = [
   { syntax: '`code`', result: 'Inline monospace' }
 ];
 
+interface EditableMarkdownPreviewProps {
+  content: string;
+  isEditingPreview: boolean;
+  setIsEditingPreview: (editing: boolean) => void;
+  onChange: (newMarkdown: string) => void;
+  isSaving?: boolean;
+}
+
+const EditableMarkdownPreview = React.memo(({
+  content,
+  isEditingPreview,
+  setIsEditingPreview,
+  onChange,
+  isSaving
+}: EditableMarkdownPreviewProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize TurndownService once
+  const turndownService = useMemo(() => {
+    const service = new TurndownService({
+      headingStyle: 'atx',
+      bulletListMarker: '-',
+      emDelimiter: '*',
+      strongDelimiter: '**',
+      codeBlockStyle: 'fenced'
+    });
+
+    // Handle standard anchor links without stripping protocols
+    service.addRule('links', {
+      filter: 'a',
+      replacement: (content, node) => {
+        const href = (node as HTMLAnchorElement).getAttribute('href');
+        return href ? `[${content}](${href})` : content;
+      }
+    });
+
+    return service;
+  }, []);
+
+  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
+    const html = e.currentTarget.innerHTML;
+    try {
+      const markdown = turndownService.turndown(html);
+      onChange(markdown);
+    } catch (err) {
+      console.warn("Turndown parsing failed: ", err);
+    }
+  };
+
+  const handleFocus = () => {
+    setIsEditingPreview(true);
+  };
+
+  const handleBlur = () => {
+    setIsEditingPreview(false);
+    // Sync one last time from elements to make sure parent has the absolute newest data
+    if (containerRef.current) {
+      try {
+        const html = containerRef.current.innerHTML;
+        const markdown = turndownService.turndown(html);
+        onChange(markdown);
+      } catch (err) {
+        console.warn("Turndown backup parse on blur failed: ", err);
+      }
+    }
+  };
+
+  const displayContent = content || (isEditingPreview ? '' : '*No content yet. Click here to start typing meeting planning notes directly...*');
+
+  return (
+    <div
+      ref={containerRef}
+      contentEditable={!isSaving}
+      suppressContentEditableWarning
+      onInput={handleInput}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      className="markdown-body focus:outline-none min-h-[300px] outline-none select-text cursor-text relative"
+      style={{ minHeight: '300px' }}
+    >
+      <Markdown
+        components={{
+          h1: ({node, ...props}) => <h1 className="text-2xl font-bold tracking-tight text-on-surface mt-6 mb-3 first:mt-0 border-b border-outline-variant/30 pb-2" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-xl font-bold tracking-tight text-on-surface mt-5 mb-2.5 border-b border-outline-variant/20 pb-1" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-lg font-bold tracking-tight text-on-surface mt-4 mb-2" {...props} />,
+          p: ({node, ...props}) => <p className="text-sm text-on-surface-variant leading-relaxed mb-4 font-normal" {...props} />,
+          ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
+          ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
+          li: ({node, ...props}) => <li className="pl-1" {...props} />,
+          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary bg-primary/5 pl-4 py-3 italic my-4 rounded-r-1xl text-on-surface" {...props} />,
+          code: ({node, ...props}) => <code className="font-mono text-xs bg-surface-container-high px-1.5 py-0.5 rounded text-primary" {...props} />,
+          strong: ({node, ...props}) => <strong className="font-bold text-on-surface" {...props} />,
+          em: ({node, ...props}) => <em className="italic text-on-surface" {...props} />,
+          a: ({node, ...props}) => <a className="text-primary underline font-medium hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />,
+        }}
+      >
+        {displayContent}
+      </Markdown>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  // If editing preview state is changing, re-render to clear/restore placeholder
+  if (prevProps.isEditingPreview !== nextProps.isEditingPreview) {
+    return false;
+  }
+  // While editing, ignore external content updates to prevent cursor jumps
+  if (nextProps.isEditingPreview) {
+    return true;
+  }
+  return prevProps.content === nextProps.content && prevProps.isSaving === nextProps.isSaving;
+});
+
 export default function CoordinationNotes() {
   const { isAdmin, user } = useAuth();
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
@@ -106,10 +228,14 @@ export default function CoordinationNotes() {
   const [editCategory, setEditCategory] = useState<CoordinationNote['category']>('general');
   const [editContent, setEditContent] = useState('');
   const [editTodos, setEditTodos] = useState<TodoItem[]>([]);
+  const [editDirectly, setEditDirectly] = useState(false);
+  const [isEditingPreview, setIsEditingPreview] = useState(false);
   
   const [activeTab, setActiveTab] = useState<'notes' | 'todos'>('notes');
   const [isSaving, setIsSaving] = useState(false);
   const [showCheatsheet, setShowCheatsheet] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Todo Inline input states (keyed by item ID, or 'root' for master list)
   const [todoInputMap, setTodoInputMap] = useState<Record<string, string>>({});
@@ -166,6 +292,71 @@ export default function CoordinationNotes() {
     setEditContent(note.content);
     setEditTodos(note.todos || []);
     setActiveTab('notes');
+  };
+
+  const insertMarkdown = (prefix: string, suffix: string = '') => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const text = textarea.value;
+      const selectedText = text.substring(start, end);
+
+      const replacement = prefix + (selectedText || '') + suffix;
+      const newContent = text.substring(0, start) + replacement + text.substring(end);
+
+      setEditContent(newContent);
+
+      // Refocus and preserve selection
+      setTimeout(() => {
+        textarea.focus();
+        const newStart = start + prefix.length;
+        const newEnd = newStart + (selectedText || '').length;
+        textarea.setSelectionRange(newStart, newEnd);
+      }, 0);
+    } else {
+      // In live preview mode without a raw textarea
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        // Ensure the selection is actually inside the active editable preview element
+        const editableContainer = document.querySelector('[contenteditable="true"]');
+        if (editableContainer && editableContainer.contains(range.commonAncestorContainer)) {
+          const selectedText = selection.toString();
+          const repl = prefix + (selectedText || 'Text') + suffix;
+          range.deleteContents();
+          range.insertNode(document.createTextNode(repl));
+
+          try {
+            const turndownService = new TurndownService({
+              headingStyle: 'atx',
+              bulletListMarker: '-',
+              emDelimiter: '*',
+              strongDelimiter: '**',
+              codeBlockStyle: 'fenced'
+            });
+            turndownService.addRule('links', {
+              filter: 'a',
+              replacement: (content, node) => {
+                const href = (node as HTMLAnchorElement).getAttribute('href');
+                return href ? `[${content}](${href})` : content;
+              }
+            });
+            const markdown = turndownService.turndown(editableContainer.innerHTML);
+            setEditContent(markdown);
+          } catch (e) {
+            console.warn("Turndown parsing layout failed: ", e);
+          }
+          return;
+        }
+      }
+
+      // Fallback: simply append the syntax with placeholder
+      setEditContent(prev => {
+        const separator = prev && !prev.endsWith('\n') ? '\n' : '';
+        return prev + separator + prefix + (suffix ? 'Text' : '') + suffix;
+      });
+    }
   };
 
   const handleCreateNewNote = async () => {
@@ -811,22 +1002,131 @@ export default function CoordinationNotes() {
                         className="space-y-4"
                       >
                         {isEditing ? (
-                          <div className="space-y-3 text-left">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold text-on-surface-variant uppercase">Markdown Raw Document Content</span>
-                              
-                              {/* Markdown Guide help trigger */}
-                              <button
-                                type="button"
-                                onClick={() => setShowCheatsheet(!showCheatsheet)}
-                                className="text-xs text-primary font-bold flex items-center gap-1 border-none bg-transparent hover:underline cursor-pointer"
-                              >
-                                <HelpCircle className="w-3.5 h-3.5" />
-                                {showCheatsheet ? 'Hide formatting guide' : 'Formatting Help'}
-                              </button>
-                            </div>
+                          <div className="space-y-4 text-left font-sans">
+                            {/* Toolbar or Switch Zone */}
+                            {!editDirectly ? (
+                              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-2.5 rounded-2xl border border-outline-variant/30 shadow-xs">
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('**', '**')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Bold text (**bold**)"
+                                  >
+                                    <Bold className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('*', '*')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Italic text (*italic*)"
+                                  >
+                                    <Italic className="w-4 h-4" />
+                                  </button>
+                                  <div className="h-4 w-[1px] bg-outline-variant/40 mx-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('# ', '')}
+                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
+                                    title="Heading 1"
+                                  >
+                                    H1
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('## ', '')}
+                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
+                                    title="Heading 2"
+                                  >
+                                    H2
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('### ', '')}
+                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
+                                    title="Heading 3"
+                                  >
+                                    H3
+                                  </button>
+                                  <div className="h-4 w-[1px] bg-outline-variant/40 mx-1" />
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('- ', '')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Bullet List"
+                                  >
+                                    <List className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('> ', '')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Blockquote"
+                                  >
+                                    <Quote className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('`', '`')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Inline Code"
+                                  >
+                                    <Code className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => insertMarkdown('[', '](url)')}
+                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
+                                    title="Insert Link"
+                                  >
+                                    <Link className="w-4 h-4" />
+                                  </button>
+                                </div>
 
-                            {showCheatsheet && (
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditDirectly(true)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-xl hover:opacity-95 transition-all cursor-pointer border-none text-xs font-bold shadow-xs hover:shadow-sm"
+                                    title="Switch to full-width raw editor"
+                                  >
+                                    <Code className="w-3.5 h-3.5" />
+                                    <span>Edit Directly</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-2.5 rounded-2xl border border-outline-variant/30 shadow-xs">
+                                <div className="flex items-center gap-2 pl-2">
+                                  <Code className="w-4 h-4 text-primary" />
+                                  <span className="text-sm font-semibold text-on-surface">Raw Markdown Editor</span>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                  {/* Help tool */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowCheatsheet(!showCheatsheet)}
+                                    className="text-xs text-on-surface-variant hover:text-primary font-medium flex items-center gap-1 border border-outline-variant/20 bg-transparent px-2.5 py-1 rounded-xl hover:bg-surface-variant/25 transition-all cursor-pointer"
+                                  >
+                                    <HelpCircle className="w-3.5 h-3.5" />
+                                    <span>{showCheatsheet ? 'Hide Help' : 'Formatting Help'}</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setEditDirectly(false)}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-surface-variant text-on-surface-variant border border-outline-variant/20 rounded-xl hover:bg-surface-variant/40 transition-all cursor-pointer text-xs font-bold"
+                                    title="Switch back to interactive live preview editor"
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                    <span>Show Live Preview</span>
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {showCheatsheet && editDirectly && (
                               <motion.div 
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
@@ -841,13 +1141,36 @@ export default function CoordinationNotes() {
                               </motion.div>
                             )}
 
-                            <textarea
-                              value={editContent}
-                              onChange={(e) => setEditContent(e.target.value)}
-                              rows={15}
-                              placeholder="Type in markdown content. You can write tables, checkmarks, bullet items, blockquotes, and links."
-                              className="w-full bg-surface text-on-surface rounded-2xl border border-outline-variant/50 p-4 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
-                            />
+                            {/* Dual panel split preview zone vs raw zone */}
+                            {!editDirectly ? (
+                              <div className="flex flex-col gap-2 min-h-[350px]">
+                                <div className="flex items-center justify-between">
+                                  <label className="text-[11.5px] font-bold text-on-surface-variant/80 uppercase">Interactive Live Preview & Editor</label>
+                                  <span className="text-xs text-on-surface-variant/50">Changes are converted to formatted markdown automatically</span>
+                                </div>
+                                <div className="flex-1 bg-surface/40 rounded-[1.5rem] border border-outline-variant/30 p-5 sm:p-7 text-left prose dark:prose-invert max-w-none shadow-inner overflow-y-auto min-h-[300px] max-h-[500px]">
+                                  <EditableMarkdownPreview
+                                    content={editContent}
+                                    isEditingPreview={isEditingPreview}
+                                    setIsEditingPreview={setIsEditingPreview}
+                                    onChange={setEditContent}
+                                    isSaving={isSaving}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-2">
+                                <label className="text-[11.5px] font-bold text-on-surface-variant/80 uppercase">Markdown Content (Raw Editor)</label>
+                                <textarea
+                                  ref={textareaRef}
+                                  value={editContent}
+                                  onChange={(e) => setEditContent(e.target.value)}
+                                  rows={15}
+                                  placeholder="Type in markdown content. You can write tables, checkmarks, bullet items, blockquotes, and links."
+                                  className="w-full bg-surface text-on-surface rounded-2xl border border-outline-variant/50 p-4 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
+                                />
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <div className="bg-surface/40 rounded-[1.5rem] border border-outline-variant/30 p-5 sm:p-7 text-left prose dark:prose-invert max-w-none shadow-inner">
@@ -863,6 +1186,9 @@ export default function CoordinationNotes() {
                                   li: ({node, ...props}) => <li className="pl-1" {...props} />,
                                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary bg-primary/5 pl-4 py-3 italic my-4 rounded-r-2xl text-on-surface" {...props} />,
                                   code: ({node, ...props}) => <code className="font-mono text-xs bg-surface-container-high px-1.5 py-0.5 rounded text-primary" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-bold text-on-surface" {...props} />,
+                                  em: ({node, ...props}) => <em className="italic text-on-surface" {...props} />,
+                                  a: ({node, ...props}) => <a className="text-primary underline font-medium hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />,
                                 }}
                               >
                                 {selectedNote.content || '*No content provided. Click Edit to add meeting planning notes.*'}
