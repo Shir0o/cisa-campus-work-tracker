@@ -13,5 +13,19 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/test/**', 'src/**/*.d.ts'],
+      // Current baseline: ~27% lines, ~19% branches/functions.
+      // Raise these numbers as coverage improves toward the 90% goal.
+      thresholds: {
+        lines: 25,
+        branches: 15,
+        functions: 15,
+        statements: 25,
+      },
+    },
   },
 });

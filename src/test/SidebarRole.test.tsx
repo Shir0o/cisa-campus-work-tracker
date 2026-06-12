@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Sidebar from '../components/layout/Sidebar';
@@ -17,6 +18,15 @@ vi.mock('../App', () => ({
   }),
 }));
 
+vi.mock('motion/react', () => ({
+  motion: {
+    nav: ({ children, ...props }: any) => <nav {...props}>{children}</nav>,
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
+
 describe('Sidebar Role Label', () => {
   const mockToggleCollapse = vi.fn();
   const mockLogInteraction = vi.fn();
@@ -28,10 +38,10 @@ describe('Sidebar Role Label', () => {
   const renderSidebar = () => {
     return render(
       <BrowserRouter>
-        <Sidebar 
-          isCollapsed={false} 
-          onToggleCollapse={mockToggleCollapse} 
-          onLogInteraction={mockLogInteraction} 
+        <Sidebar
+          isCollapsed={false}
+          onToggleCollapse={mockToggleCollapse}
+          onLogInteraction={mockLogInteraction}
         />
       </BrowserRouter>
     );
