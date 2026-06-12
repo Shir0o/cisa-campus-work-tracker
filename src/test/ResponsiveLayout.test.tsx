@@ -20,6 +20,8 @@ vi.mock('../App', () => ({
   useLayout: () => ({
     isMobileMenuOpen: false,
     setIsMobileMenuOpen: vi.fn(),
+    openNewContact: vi.fn(),
+    openLogInteraction: vi.fn(),
   }),
 }));
 
@@ -52,9 +54,11 @@ describe('Responsive Layout Components', () => {
     expect(mobileNav.className).toContain('lg:hidden');
   });
 
-  it('Accessibility: Sidebar has a Log out button', () => {
+  it('Accessibility: Sidebar has a visible "Log out" button', () => {
     renderWithRouter(<Sidebar />);
-    expect(screen.getByText(/Log out/i)).toBeInTheDocument();
+    const logOutBtn = screen.getByText(/Log out/i);
+    expect(logOutBtn).toBeInTheDocument();
+    expect(logOutBtn.closest('button')).toBeInTheDocument();
   });
 
   it('Accessibility: MobileNav shows Dashboard and Contacts links for admin', () => {
