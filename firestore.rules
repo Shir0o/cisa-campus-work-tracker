@@ -316,7 +316,8 @@ service cloud.firestore {
                data.date is string && data.date.size() <= 64 &&
                data.content is string && data.content.size() <= 100000 &&
                data.category is string && data.category.size() <= 64 &&
-               data.todos is list;
+               data.todos is list &&
+               (!('archived' in data) || data.archived is bool);
       }
 
       allow get, list: if isAdmin();

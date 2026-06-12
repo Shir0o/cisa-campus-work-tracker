@@ -46,7 +46,8 @@ import {
   Code,
   Link,
   Eye,
-  EyeOff
+  EyeOff,
+  Archive
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
@@ -70,6 +71,7 @@ interface CoordinationNote {
   updatedAt?: any;
   updatedBy?: string;
   updatedByName?: string;
+  archived?: boolean;
 }
 
 const CATEGORY_LABELS: Record<CoordinationNote['category'], string> = {
@@ -220,6 +222,7 @@ export default function CoordinationNotes() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [showArchived, setShowArchived] = useState(false);
   
   // Editor state
   const [isEditing, setIsEditing] = useState(false);
@@ -234,6 +237,8 @@ export default function CoordinationNotes() {
   const [activeTab, setActiveTab] = useState<'notes' | 'todos'>('notes');
   const [isSaving, setIsSaving] = useState(false);
   const [showCheatsheet, setShowCheatsheet] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -426,14 +431,55 @@ export default function CoordinationNotes() {
     }
   };
 
-  const handleDeleteNote = async (id: string) => {
-    if (!window.confirm('Are you sure you want to permanently delete these meeting notes?')) return;
+  const handleDeleteNote = (id: string) => {
+    setDeletingNoteId(id);
+    setShowDeleteConfirm(true);
+  };
+
+  const executeDeleteNote = async () => {
+    if (!deletingNoteId) return;
     try {
-      await deleteDoc(doc(db, 'coordination_notes', id));
+      await deleteDoc(doc(db, 'coordination_notes', deletingNoteId));
       setSelectedNote(null);
       setIsEditing(false);
+      setShowDeleteConfirm(false);
+      setDeletingNoteId(null);
     } catch (error) {
-      console.error('Failed to delete meeting note:', error);
+      handleFirestoreError(error, OperationType.DELETE, `coordination_notes/${deletingNoteId}`);
+    }
+  };
+
+  const executeArchiveNote = async () => {
+    if (!deletingNoteId) return;
+    try {
+      const docRef = doc(db, 'coordination_notes', deletingNoteId);
+      await updateDoc(docRef, {
+        archived: true,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid || '',
+        updatedByName: user?.displayName || user?.email || ''
+      });
+      setSelectedNote(null);
+      setIsEditing(false);
+      setShowDeleteConfirm(false);
+      setDeletingNoteId(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `coordination_notes/${deletingNoteId}`);
+    }
+  };
+
+  const handleRestoreNote = async (id: string) => {
+    try {
+      const docRef = doc(db, 'coordination_notes', id);
+      await updateDoc(docRef, {
+        archived: false,
+        updatedAt: serverTimestamp(),
+        updatedBy: user?.uid || '',
+        updatedByName: user?.displayName || user?.email || ''
+      });
+      setSelectedNote(prev => prev ? { ...prev, archived: false } : null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `coordination_notes/${id}`);
     }
   };
 
@@ -543,6 +589,9 @@ export default function CoordinationNotes() {
   // Searching and Filtering
   const filteredNotes = useMemo(() => {
     return notes.filter((item) => {
+      const isArchived = !!item.archived;
+      if (showArchived !== isArchived) return false;
+
       const matchesSearch = 
         item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.content?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -551,7 +600,7 @@ export default function CoordinationNotes() {
 
       return matchesSearch && matchesCategory;
     });
-  }, [notes, searchQuery, categoryFilter]);
+  }, [notes, searchQuery, categoryFilter, showArchived]);
 
   // Handle Guard Authorization
   if (!hasAccess) {
@@ -708,6 +757,40 @@ export default function CoordinationNotes() {
           <div className="space-y-4">
             <h3 className="text-md font-bold tracking-tight text-on-surface">Documents Directory</h3>
             
+            {/* Active / Archived sub-navigation tabs */}
+            <div className="flex border border-outline-variant/30 p-1 bg-surface-container-low rounded-xl">
+              <button
+                type="button"
+                onClick={() => setShowArchived(false)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 ${
+                  !showArchived
+                    ? 'bg-primary text-on-primary shadow-xs font-semibold'
+                    : 'text-on-surface-variant hover:bg-surface-container-high font-medium'
+                }`}
+              >
+                <span>Active</span>
+                <span className={`px-1.5 py-0.25 rounded-full text-[10px] ${!showArchived ? 'bg-on-primary/25 text-on-primary' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  {notes.filter(n => !n.archived).length}
+                </span>
+              </button>
+              <button
+                type="button"
+                id="view-archived-notes-btn"
+                onClick={() => setShowArchived(true)}
+                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 ${
+                  showArchived
+                    ? 'bg-primary text-on-primary shadow-xs font-semibold'
+                    : 'text-on-surface-variant hover:bg-surface-container-high font-medium'
+                }`}
+              >
+                <Archive className="w-3.5 h-3.5" />
+                <span>Archived</span>
+                <span className={`px-1.5 py-0.25 rounded-full text-[10px] ${showArchived ? 'bg-on-primary/25 text-on-primary' : 'bg-surface-variant text-on-surface-variant'}`}>
+                  {notes.filter(n => !!n.archived).length}
+                </span>
+              </button>
+            </div>
+
             {/* Search items filter */}
             <div className="relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
@@ -911,7 +994,24 @@ export default function CoordinationNotes() {
 
                   {/* Top Header Actions (Edit / Save / Cancel / Delete) */}
                   <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                    {isEditing ? (
+                    {selectedNote.archived ? (
+                      <>
+                        <button
+                          onClick={() => handleRestoreNote(selectedNote.id)}
+                          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary/10 text-primary rounded-xl font-bold text-xs hover:bg-primary/20 hover:text-primary active:scale-95 transition-all cursor-pointer border-none"
+                        >
+                          <Archive className="w-4 h-4" />
+                          <span>Restore Document</span>
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNote(selectedNote.id)}
+                          className="p-2 bg-transparent text-on-surface-variant hover:text-error hover:bg-error/10 border-none transition-colors duration-200 rounded-lg cursor-pointer"
+                          title="Delete meeting document permanently"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    ) : isEditing ? (
                       <>
                         <button
                           onClick={handleSaveChanges}
@@ -963,6 +1063,13 @@ export default function CoordinationNotes() {
                     )}
                   </div>
                 </div>
+
+                {selectedNote.archived && (
+                  <div className="bg-amber-500/10 border border-amber-500/20 text-orange-700 dark:text-amber-400 p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold">
+                    <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <span>This coordination note is currently archived. It will not appear in the active documents directory list. You can restore it to resume editing.</span>
+                  </div>
+                )}
 
                 {/* Main Tabs Selection */}
                 <div className="flex border-b border-outline-variant/30 p-1 bg-surface rounded-2xl max-w-md">
@@ -1271,6 +1378,92 @@ export default function CoordinationNotes() {
         </div>
 
       </div>
+
+      {/* Custom Material 3 Delete Confirmation Dialog */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Background Backdrop overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowDeleteConfirm(false);
+                setDeletingNoteId(null);
+              }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
+            />
+
+            {/* Modal Dialog container Card */}
+            {(() => {
+              const deletingNote = notes.find(n => n.id === deletingNoteId);
+              const isAlreadyArchived = deletingNote ? !!deletingNote.archived : false;
+              
+              return (
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0, y: 15 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.95, opacity: 0, y: 15 }}
+                  className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-surface-container-high border border-outline-variant p-6 md:p-8 shadow-2xl flex flex-col gap-4 text-left z-10"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isAlreadyArchived ? 'bg-error-container text-error' : 'bg-primary-container text-primary'}`}>
+                      {isAlreadyArchived ? <Trash2 className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
+                    </div>
+                    <h3 className="text-xl font-bold text-on-surface">
+                      {isAlreadyArchived ? 'Delete Note Permanently?' : 'Archive or Delete Note?'}
+                    </h3>
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
+                    {isAlreadyArchived 
+                      ? 'This note is already archived. Are you sure you want to permanently delete it? This action cannot be reverted and will delete it from Firestore.'
+                      : 'You can archive this document to hide it from your active directory while preserving all checklists and meeting learnings, or permanently erase it from the cloud.'
+                    }
+                  </p>
+
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDeleteConfirm(false);
+                        setDeletingNoteId(null);
+                      }}
+                      className="px-4 py-2 bg-surface hover:bg-surface-container-highest border border-outline-variant rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer h-10 flex items-center justify-center"
+                      id="cancel-delete-note-btn"
+                    >
+                      Cancel
+                    </button>
+                    
+                    {!isAlreadyArchived && (
+                      <button
+                        type="button"
+                        onClick={executeArchiveNote}
+                        className="px-4 py-2.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 h-10"
+                        id="archive-note-btn"
+                      >
+                        <Archive className="w-3.5 h-3.5" />
+                        <span>Archive Note</span>
+                      </button>
+                    )}
+                    
+                    <button
+                      type="button"
+                      onClick={executeDeleteNote}
+                      className="px-4 py-2.5 bg-error text-on-error rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 h-10"
+                      id="confirm-delete-note-btn"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Permanently</span>
+                    </button>
+                  </div>
+                </motion.div>
+              );
+            })()}
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
