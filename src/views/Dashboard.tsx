@@ -1,21 +1,8 @@
-import React, { useEffect, useState } from "react";
-import {
-  Sparkles,
-  Phone,
-  Mail,
-  Calendar,
-  ChevronRight,
-  MessageSquare,
-  ExternalLink,
-  Users,
-  CheckCircle2,
-  AlertTriangle,
-  TrendingUp,
-  Clock,
-  RefreshCw,
-} from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import React, { useEffect, useMemo, useState } from "react";
+import { ArrowRight, Plus, HeartHandshake, Mail } from "lucide-react";
+import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
+import { format, parseISO, isValid } from "date-fns";
 import {
   collection,
   onSnapshot,
@@ -23,529 +10,541 @@ import {
   orderBy,
   limit,
   collectionGroup,
-  where,
-  getDoc,
-  setDoc,
-  doc,
-  serverTimestamp,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { cn } from "../lib/utils";
+import { cn, getUserInitials } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
 import { useLayout } from "../App";
-import {
-  Contact,
-  Activity,
-  Interaction,
-  Comment,
-  SystemActivity,
-} from "../types";
-import { ActivityItem } from "../components/ActivityItem";
+import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
-import LogInteractionModal from "../components/modals/LogInteractionModal";
+
+const DAY_MS = 86_400_000;
+
+// ── small inline helpers (mirror the docs mock's daysOpen / connectedLabel / truncate) ──
+const parseMs = (s?: string | null): number | null => {
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+};
+const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
+const connectedLabel = (d: number) =>
+  d === 0 ? "Connected today" : d === 1 ? "Last connected yesterday" : `Last connected ${d} days ago`;
+const truncate = (s: string | undefined, n: number) =>
+  s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s || "";
+
+function Avatar({ contact, size = "md" }: { contact: Contact; size?: "sm" | "md" }) {
+  const dim = size === "sm" ? "w-8 h-8 text-xs" : "w-11 h-11 text-sm";
+  const initials = contact.initials || getUserInitials(contact.name);
+  if (contact.avatar) {
+    return (
+      <img
+        src={contact.avatar}
+        alt={contact.name}
+        className={cn(dim, "rounded-full object-cover shrink-0")}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        dim,
+        "rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0",
+      )}
+    >
+      {initials}
+    </div>
+  );
+}
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const { isSidebarCollapsed } = useLayout();
+  const { openNewContact } = useLayout();
   const navigate = useNavigate();
-  const firstName = user?.displayName?.split(" ")[0] || "Campaigner";
+  const firstName = user?.displayName?.split(" ")[0] || "friend";
 
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [stages, setStages] = useState<Stage[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
+  const [touches, setTouches] = useState<
+    { contactId: string; ms: number; note: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
-  const [recentFollowUpsCount, setRecentFollowUpsCount] = useState(0);
-
-  const [legacyInteractions, setLegacyInteractions] = useState<Activity[]>([]);
-  const [legacyComments, setLegacyComments] = useState<Activity[]>([]);
-
-  const [tasks, setTasks] = useState<any[]>([]);
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
-  const [isLogInteractionOpen, setIsLogInteractionOpen] = useState(false);
 
   useEffect(() => {
-    // 1. Fetch Contacts
-    const qContacts = query(collection(db, "contacts"));
-    const unsubscribeContacts = onSnapshot(
-      qContacts,
-      (snapshot) => {
-        const contactData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Contact[];
-        setContacts(contactData);
+    const unsubContacts = onSnapshot(
+      query(collection(db, "contacts")),
+      (snap) => {
+        setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);
       },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "contacts");
-      },
+      (e) => handleFirestoreError(e, OperationType.LIST, "contacts"),
     );
 
-    // 2. Fetch Legacy Interactions (For backward parse)
-    const qInteractions = query(
-      collectionGroup(db, "interactions"),
-      orderBy("createdAt", "desc"),
-      limit(15),
-    );
-    const unsubscribeInteractions = onSnapshot(
-      qInteractions,
-      (snapshot) => {
-        const activities = snapshot.docs.map((docSnapshot) => {
-          const data = docSnapshot.data() as Interaction;
-          const contactId = docSnapshot.ref.path.split("/")[1];
-
-          return {
-            id: docSnapshot.id,
-            user: data.userName || data.createdByName || 'Unknown',
-            userPhoto: data.userPhoto,
-            action: "logged an interaction for",
-            target: "a contact",
-            contactId: contactId,
-            time:
-              new Date(data.dateTime).toLocaleDateString() ===
-              new Date().toLocaleDateString()
-                ? "Today"
-                : new Date(data.dateTime).toLocaleDateString(),
-            type: data.type === 'meeting' ? 'event' : data.type === 'chat' ? 'comment' : (data.type || "call"),
-            description: data.content,
-            rawTime: new Date(data.dateTime).getTime(),
-          } as Activity & { rawTime: number };
-        });
-        setLegacyInteractions(activities);
-      },
-      (error) => {
-        handleFirestoreError(
-          error,
-          OperationType.LIST,
-          "interactions (collectionGroup)",
-        );
-      },
+    const unsubStages = onSnapshot(
+      query(collection(db, "stages"), orderBy("order", "asc")),
+      (snap) => setStages(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Stage[]),
+      (e) => handleFirestoreError(e, OperationType.LIST, "stages"),
     );
 
-    // 3. Fetch Legacy Comments (For backward parse)
-    const qComments = query(
-      collectionGroup(db, "comments"),
-      orderBy("createdAt", "desc"),
-      limit(15),
-    );
-    const unsubscribeComments = onSnapshot(
-      qComments,
-      (snapshot) => {
-        const activities = snapshot.docs.map((docSnapshot) => {
-          const data = docSnapshot.data() as Comment;
-          const contactId = docSnapshot.ref.path.split("/")[1];
-
-          return {
-            id: docSnapshot.id,
-            user: data.userName,
-            userPhoto: data.userPhoto,
-            action: "left a comment on",
-            target: "a contact",
-            contactId: contactId,
-            time:
-              new Date(data.createdAt).toLocaleDateString() ===
-              new Date().toLocaleDateString()
-                ? "Today"
-                : new Date(data.createdAt).toLocaleDateString(),
-            type: "comment",
-            description: data.text,
-            rawTime: new Date(data.createdAt).getTime(),
-          } as Activity & { rawTime: number };
-        });
-        setLegacyComments(activities);
-      },
-      (error) => {
-        handleFirestoreError(
-          error,
-          OperationType.LIST,
-          "comments (collectionGroup)",
-        );
-      },
+    const unsubEvents = onSnapshot(
+      query(collection(db, "events")),
+      (snap) => setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]),
+      (e) => handleFirestoreError(e, OperationType.LIST, "events"),
     );
 
-    // 4. Recent Follow-ups Count
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
-    let interactionsCount = 0;
-    let commentsCount = 0;
-
-    const qRecentFollowUps = query(
-      collectionGroup(db, "interactions"),
-      where("createdAt", ">=", sevenDaysAgo.toISOString()),
-    );
-    const unsubscribeFollowUps = onSnapshot(
-      qRecentFollowUps,
-      (snapshot) => {
-        interactionsCount = snapshot.size;
-        setRecentFollowUpsCount(interactionsCount + commentsCount);
-      },
-      (error) => {
-        handleFirestoreError(
-          error,
-          OperationType.LIST,
-          "interactions count (collectionGroup)",
-        );
-      },
+    const unsubPrayers = onSnapshot(
+      query(collection(db, "prayers")),
+      (snap) => setPrayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PrayerRecord[]),
+      (e) => handleFirestoreError(e, OperationType.LIST, "prayers"),
     );
 
-    const qRecentComments = query(
-      collectionGroup(db, "comments"),
-      where("createdAt", ">=", sevenDaysAgo.toISOString()),
-    );
-    const unsubscribeRecentComments = onSnapshot(
-      qRecentComments,
-      (snapshot) => {
-        commentsCount = snapshot.size;
-        setRecentFollowUpsCount(interactionsCount + commentsCount);
+    // Last-touch signal: most recent interaction/comment per contact (createdAt is ISO).
+    const ingest = (
+      snap: { docs: { id: string; data: () => unknown; ref: { path: string } }[] },
+      noteKey: "content" | "text",
+    ) =>
+      snap.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        return {
+          contactId: d.ref.path.split("/")[1],
+          ms: new Date((data.createdAt as string) ?? "").getTime(),
+          note: ((data[noteKey] as string) ?? "").trim(),
+        };
+      });
+
+    let interactionTouches: { contactId: string; ms: number; note: string }[] = [];
+    let commentTouches: { contactId: string; ms: number; note: string }[] = [];
+    const publish = () =>
+      setTouches(
+        [...interactionTouches, ...commentTouches].filter((t) => !Number.isNaN(t.ms)),
+      );
+
+    const unsubInteractions = onSnapshot(
+      query(collectionGroup(db, "interactions"), orderBy("createdAt", "desc"), limit(500)),
+      (snap) => {
+        interactionTouches = ingest(snap as never, "content");
+        publish();
       },
-      (error) => {
-        handleFirestoreError(
-          error,
-          OperationType.LIST,
-          "comments count (collectionGroup)",
-        );
-      },
+      (e) => handleFirestoreError(e, OperationType.LIST, "interactions (collectionGroup)"),
     );
 
-    // 6. Fetch Tasks
-    const qTasks = query(
-      collection(db, "tasks"),
-      where("status", "==", "pending"),
-      orderBy("dueDate", "asc"),
-      limit(10),
-    );
-    const unsubscribeTasks = onSnapshot(
-      qTasks,
-      (snapshot) => {
-        const taskData = snapshot.docs.map((docSnapshot) => ({
-          id: docSnapshot.id,
-          ...docSnapshot.data(),
-        }));
-        setTasks(taskData);
+    const unsubComments = onSnapshot(
+      query(collectionGroup(db, "comments"), orderBy("createdAt", "desc"), limit(500)),
+      (snap) => {
+        commentTouches = ingest(snap as never, "text");
+        publish();
       },
-      (error) => {
-        handleFirestoreError(error, OperationType.LIST, "tasks");
-      },
+      (e) => handleFirestoreError(e, OperationType.LIST, "comments (collectionGroup)"),
     );
 
     return () => {
-      unsubscribeContacts();
-      unsubscribeInteractions();
-      unsubscribeComments();
-      unsubscribeFollowUps();
-      unsubscribeRecentComments();
-      unsubscribeTasks();
+      unsubContacts();
+      unsubStages();
+      unsubEvents();
+      unsubPrayers();
+      unsubInteractions();
+      unsubComments();
     };
   }, []);
 
-  // Since unifiedActivities depends on states, let's use useMemo instead of another state
-  const activities = React.useMemo(() => {
-    const merged = [
-      ...legacyInteractions,
-      ...legacyComments,
-    ]
-      .sort((a: any, b: any) => b.rawTime - a.rawTime)
-      .filter((v: any, i: number, a: any[]) => {
-        // filter out exact same IDs
-        if (a.findIndex((t) => t.id === v.id) !== i) return false;
-        
-        // Deduplicate overlapping legacy and system records by checking contactId, action, and description
-        const firstMatchIndex = a.findIndex((t) => 
-          t.contactId === v.contactId && 
-          t.action === v.action &&
-          t.description === v.description &&
-          Math.abs(t.rawTime - v.rawTime) < 1000 * 60 // Within 1 minute, helps prevent double inserts
-        );
-        return firstMatchIndex === i;
+  const stageColor = (label?: string) =>
+    stages.find((s) => s.label === label)?.color ||
+    "bg-surface-variant text-on-surface-variant";
+
+  // most-recent touch (+ its note) per contact
+  const lastTouchByContact = useMemo(() => {
+    const map = new Map<string, { ms: number; note: string }>();
+    for (const t of touches) {
+      const cur = map.get(t.contactId);
+      if (!cur || t.ms > cur.ms) map.set(t.contactId, { ms: t.ms, note: t.note });
+    }
+    return map;
+  }, [touches]);
+
+  // People to reach out to — last touch (interaction/comment, else createdAt) ≥ 5 days ago
+  const needsFollowup = useMemo(() => {
+    return contacts
+      .map((c) => {
+        const touch = lastTouchByContact.get(c.id);
+        const ms = touch?.ms ?? parseMs(c.createdAt);
+        if (ms == null) return null;
+        return { contact: c, days: daysSince(ms), note: touch?.note || c.notes || "" };
       })
-      .slice(0, 15);
+      .filter((x): x is { contact: Contact; days: number; note: string } => !!x && x.days >= 5)
+      .sort((a, b) => b.days - a.days);
+  }, [contacts, lastTouchByContact]);
 
-    // Resolve contact names if we have the IDs
-    return merged.map((activity) => {
-      if (activity.contactId) {
-        const contact = contacts.find((c) => c.id === activity.contactId);
-        if (contact) {
-          return {
-            ...activity,
-            target: contact.name,
-          };
-        }
+  // New faces — created within the last 14 days, newest first
+  const newFaces = useMemo(() => {
+    return contacts
+      .map((c) => ({ contact: c, ms: parseMs(c.createdAt) }))
+      .filter((x): x is { contact: Contact; ms: number } => x.ms != null)
+      .filter((x) => daysSince(x.ms) <= 14)
+      .sort((a, b) => b.ms - a.ms);
+  }, [contacts]);
+
+  // This week — events dated within the next 7 days
+  const thisWeek = useMemo(() => {
+    const now = Date.now();
+    const horizon = now + 7 * DAY_MS;
+    return events
+      .map((ev) => ({ ev, ms: parseMs(ev.date) }))
+      .filter((x): x is { ev: Event; ms: number } => x.ms != null)
+      .filter((x) => x.ms >= now - DAY_MS && x.ms <= horizon)
+      .sort((a, b) => a.ms - b.ms || (a.ev.order ?? 0) - (b.ev.order ?? 0));
+  }, [events]);
+
+  // Prayers we're carrying — open = pending | ongoing
+  const openPrayers = useMemo(
+    () => prayers.filter((p) => p.status === "pending" || p.status === "ongoing"),
+    [prayers],
+  );
+  const carrying = useMemo(
+    () =>
+      openPrayers
+        .filter((p) => p.contactId)
+        .sort((a, b) => (parseMs(a.date) ?? 0) - (parseMs(b.date) ?? 0))
+        .slice(0, 4),
+    [openPrayers],
+  );
+
+  const contactById = (id?: string) => contacts.find((c) => c.id === id);
+
+  // Quiet figures
+  const attendanceRate = useMemo(() => {
+    let present = 0;
+    let total = 0;
+    for (const c of contacts) {
+      if (!c.attendance) continue;
+      for (const v of Object.values(c.attendance)) {
+        total++;
+        if (v === true) present++;
       }
-      return activity;
-    });
-  }, [
-    legacyInteractions,
-    legacyComments,
-    contacts,
-  ]);
-
-  const metrics = [
-    {
-      label: "Total Contacts",
-      value: contacts.length.toString(),
-      trend: "0%",
-      icon: Users,
-      color: "primary",
-    },
-    {
-      label: "Recent Follow-ups",
-      value: recentFollowUpsCount.toString(),
-      trend: "Past 7 Days",
-      icon: CheckCircle2,
-      color: "secondary",
-    },
-  ];
+    }
+    return total > 0 ? Math.round((present / total) * 100) : null;
+  }, [contacts]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good Morning";
-    if (hour < 18) return "Good Afternoon";
-    return "Good Evening";
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const openContact = (c: Contact | undefined | null) => {
+    if (!c) return;
+    setSelectedContact(c);
+    setIsDetailsModalOpen(true);
   };
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 space-y-8 animate-pulse">
-        {/* Header Skeleton */}
-        <div>
-          <Skeleton className="h-10 w-2/3 max-w-sm mb-2" />
-          <Skeleton className="h-6 w-1/2 max-w-md opacity-70" />
+      <div className="p-6 md:p-8 space-y-8 animate-pulse max-w-5xl">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-64 opacity-70" />
+          <Skeleton className="h-10 w-72" />
+          <Skeleton className="h-16 w-full max-w-2xl opacity-70" />
         </div>
-
-        {/* Metrics Row Skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="bg-surface-container/50 rounded-3xl p-6 h-48 border border-outline-variant/30 flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-              <Skeleton className="w-12 h-12 rounded-full" />
-              <Skeleton className="w-20 h-6 rounded-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-10 w-16" />
-            </div>
-          </div>
-          <div className="bg-surface-container/50 rounded-3xl p-6 h-48 border border-outline-variant/30 flex flex-col justify-between">
-            <div className="flex justify-between items-start">
-              <Skeleton className="w-12 h-12 rounded-full" />
-              <Skeleton className="w-28 h-6 rounded-full" />
-            </div>
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-10 w-20" />
-            </div>
-          </div>
-        </div>
-
-        {/* Main Content Skeleton */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Recent Activity Skeleton */}
-          <div className="lg:col-span-2 bg-surface-container/50 rounded-3xl p-6 border border-outline-variant/30">
-            <div className="flex justify-between items-center mb-8">
-              <Skeleton className="h-7 w-40" />
-              <Skeleton className="h-5 w-20" />
-            </div>
-            <div className="space-y-6">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex gap-4">
-                  <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
-                  <div className="space-y-2 flex-grow">
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-1/2 opacity-70" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Priority Tasks Skeleton */}
-          <div className="bg-surface-container/50 rounded-3xl p-6 border border-outline-variant/30">
-            <Skeleton className="h-7 w-40 mb-8" />
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div
-                  key={i}
-                  className="flex gap-4 items-center p-4 bg-surface-container-lowest/50 rounded-xl border border-outline-variant/50"
-                >
-                  <Skeleton className="w-6 h-6 rounded flex-shrink-0" />
-                  <div className="space-y-2 flex-grow">
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-3 w-1/2 opacity-70" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     );
   }
+
+  const SectionHead = ({
+    title,
+    sub,
+    linkLabel,
+    onLink,
+  }: {
+    title: string;
+    sub?: string;
+    linkLabel?: string;
+    onLink?: () => void;
+  }) => (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
+      <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
+      {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
+      {linkLabel && (
+        <button
+          onClick={onLink}
+          className="ml-auto text-sm font-medium text-primary hover:underline inline-flex items-center gap-1"
+        >
+          {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
+        </button>
+      )}
+    </div>
+  );
+
+  const StageChip = ({ stage }: { stage?: string }) =>
+    stage ? (
+      <span
+        className={cn(
+          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
+          stageColor(stage),
+        )}
+      >
+        {stage}
+      </span>
+    ) : null;
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="p-6 md:p-8 space-y-8"
+      className="p-6 md:p-8 max-w-5xl"
     >
-      <div>
-        <h2 className="text-3xl font-normal text-on-surface mb-2">
-          {getGreeting()}, {firstName}
-        </h2>
-      </div>
-
-      {/* Metrics Row */}
-      <div
-        className={cn(
-          "grid gap-4 sm:gap-6 items-start",
-          "grid-cols-1 sm:grid-cols-2",
-        )}
-      >
-        {metrics.map((metric, idx) => (
-          <div
-            key={idx}
-            className="bg-surface-container rounded-3xl p-5 sm:p-6 flex flex-col justify-between min-h-[170px] sm:h-48 border border-outline-variant/30 overflow-hidden group"
+      {/* ── Greeting + state of things, in prose ── */}
+      <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+        <div className="flex-1">
+          <p className="text-sm text-on-surface-variant">
+            {format(new Date(), "EEEE, MMMM d")}
+          </p>
+          <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">
+            {getGreeting()}, {firstName}.
+          </h1>
+          <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
+            <b className="text-on-surface font-semibold">
+              {contacts.length} {contacts.length === 1 ? "person" : "people"}
+            </b>{" "}
+            in your care
+            {newFaces.length > 0 && (
+              <>
+                {" "}
+                — <span className="text-on-surface font-medium">{newFaces.length}</span> new in
+                the last two weeks
+              </>
+            )}
+            . You haven't connected with{" "}
+            <span className="text-on-surface font-medium">{needsFollowup.length}</span> of them in
+            over a week, and{" "}
+            <span className="text-on-surface font-medium">{openPrayers.length}</span>{" "}
+            {openPrayers.length === 1 ? "prayer is" : "prayers are"} still open across the team.
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button
+            onClick={() => navigate("/prayer")}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
           >
-            <div className="flex items-start justify-between">
+            <HeartHandshake className="w-4 h-4" /> Pray together
+          </button>
+          <button
+            onClick={openNewContact}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus className="w-4 h-4" /> Add someone
+          </button>
+        </div>
+      </header>
+
+      {/* ── People to reach out to (the heart of the page) ── */}
+      <section className="mt-12">
+        <SectionHead
+          title="People to reach out to"
+          sub="It's been a little while since you last connected."
+          linkLabel="See everyone"
+          onLink={() => navigate("/directory")}
+        />
+        {needsFollowup.length > 0 ? (
+          <div className="space-y-3">
+            {needsFollowup.slice(0, 4).map(({ contact, days, note }) => (
               <div
-                className={cn(
-                  "w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center transition-transform group-hover:scale-105",
-                  metric.color === "primary"
-                    ? "bg-primary-container text-on-primary-container"
-                    : metric.color === "secondary"
-                      ? "bg-secondary-container text-on-secondary-container"
-                      : "bg-tertiary-container text-on-tertiary-container",
-                )}
+                key={contact.id}
+                onClick={() => openContact(contact)}
+                className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
               >
-                <metric.icon className="w-5 h-5 sm:w-6 sm:h-6" />
+                <div className="flex gap-4 min-w-0">
+                  <Avatar contact={contact} />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-on-surface">{contact.name}</span>
+                      <StageChip stage={contact.stage} />
+                    </div>
+                    <div className="text-sm text-primary font-medium mt-0.5">
+                      {connectedLabel(days)}
+                    </div>
+                    {note && (
+                      <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
+                        {truncate(note, 120)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div
+                  className="flex sm:flex-col gap-2 items-start sm:items-end"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {contact.email && (
+                    <a
+                      href={`mailto:${contact.email}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email
+                    </a>
+                  )}
+                  <button
+                    onClick={() => openContact(contact)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Open
+                  </button>
+                </div>
               </div>
-              {metric.trend && (
-                <span
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-on-surface-variant py-2">
+            No one's overdue for a hello — you're all caught up.
+          </p>
+        )}
+      </section>
+
+      {/* ── New faces + This week ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+        <section>
+          <SectionHead title="New faces" sub="Joined in the last two weeks" />
+          <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+            {newFaces.length > 0 ? (
+              newFaces.slice(0, 5).map(({ contact, ms }, i) => (
+                <div
+                  key={contact.id}
+                  onClick={() => openContact(contact)}
                   className={cn(
-                    "px-2 sm:px-3 py-1 rounded-full text-[10px] sm:text-xs font-semibold flex items-center gap-1",
-                    metric.color === "primary"
-                      ? "bg-primary-fixed-dim text-primary"
-                      : "bg-secondary-fixed-dim text-secondary",
+                    "flex items-center gap-3.5 py-4 cursor-pointer",
+                    i > 0 && "border-t border-outline-variant/40",
                   )}
                 >
-                  {metric.trend === "12%" && <TrendingUp className="w-3 h-3" />}
-                  {metric.trend === "Past 7 Days" && (
-                    <Clock className="w-3 h-3" />
-                  )}
-                  {metric.trend}
-                </span>
-              )}
-            </div>
-            <div className="mt-auto pt-4 sm:pt-0">
-              <p className="text-label-sm sm:text-label-lg text-on-surface-variant mb-1">
-                {metric.label}
-              </p>
-              <h3 className="text-3xl sm:text-4xl xl:text-5xl font-regular text-on-surface truncate">
-                {metric.value}
-              </h3>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Main Content Grid */}
-      <div className={cn("grid gap-6 md:gap-8", "grid-cols-1 lg:grid-cols-3")}>
-        {/* Recent Activity Feed */}
-        <div
-          className={cn(
-            "bg-surface-container rounded-3xl border border-outline-variant/30 flex flex-col",
-            "lg:col-span-2",
-          )}
-        >
-          <div className="p-5 sm:p-6 pb-0 flex justify-between items-center mb-4">
-            <h3 className="text-xl font-medium text-on-surface">Contact Log</h3>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate("/history")}
-                className="text-primary font-semibold text-sm hover:underline flex items-center gap-1"
-              >
-                Recent <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="px-5 sm:px-6 pb-6 space-y-4 flex-1 overflow-y-auto">
-            {activities.length > 0 ? (
-              activities.map((activity) => (
-                <ActivityItem
-                  key={activity.id}
-                  activity={activity}
-                  contacts={contacts}
-                  onOpenContact={(contact) => {
-                    setSelectedContact(contact);
-                    setIsDetailsModalOpen(true);
-                  }}
-                />
+                  <Avatar contact={contact} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-on-surface truncate">{contact.name}</div>
+                    <div className="text-xs text-on-surface-variant mt-0.5 truncate">
+                      {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                      {(contact.role || contact.location) && " · "}
+                      joined {daysSince(ms)}d ago
+                    </div>
+                  </div>
+                  <StageChip stage={contact.stage} />
+                </div>
               ))
             ) : (
-              <div className="text-center py-12">
-                <p className="text-on-surface-variant">
-                  No recent activity to show.
-                </p>
-              </div>
+              <p className="text-sm text-on-surface-variant py-5">
+                No new faces in the last two weeks.
+              </p>
             )}
           </div>
-        </div>
+        </section>
 
-        {/* Priority Tasks & Info */}
-        <div className="space-y-6">
-          <div className="bg-surface-container rounded-3xl p-6 border border-outline-variant/30 h-full flex flex-col">
-            <h3 className="text-xl font-medium text-on-surface mb-6 flex items-center justify-between">
-              Follow-up Queue
-            </h3>
-            <div className="space-y-3 flex-1 overflow-y-auto">
-              {tasks.length > 0 ? (
-                tasks.map((task) => (
+        <section>
+          <SectionHead
+            title="This week"
+            linkLabel="Calendar"
+            onLink={() => navigate("/attendance")}
+          />
+          <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+            {thisWeek.length > 0 ? (
+              thisWeek.slice(0, 4).map(({ ev, ms }, i) => {
+                const d = new Date(ms);
+                return (
                   <div
-                    key={task.id}
-                    onClick={() => {
-                      if (task.contactId) {
-                        const contact = contacts.find(
-                          (c) => c.id === task.contactId,
-                        );
-                        if (contact) {
-                          setSelectedContact(contact);
-                          setIsDetailsModalOpen(true);
-                        }
-                      }
-                    }}
-                    className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant hover:border-primary/30 transition-colors flex items-center gap-4 cursor-pointer group"
+                    key={ev.id}
+                    className={cn(
+                      "flex items-center gap-4 py-4",
+                      i > 0 && "border-t border-outline-variant/40",
+                    )}
                   >
-                    <div className="w-6 h-6 rounded border-2 border-outline group-hover:border-primary transition-colors flex-shrink-0"></div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-on-surface truncate">
-                        {task.title}
-                      </p>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        {task.contactName && (
-                          <span className="text-xs text-primary font-medium">
-                            {task.contactName}
-                          </span>
-                        )}
-                        <span className="text-[10px] text-on-surface-variant flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {task.dueDate}
-                        </span>
+                    <div className="text-center w-11 shrink-0">
+                      <div className="font-serif text-2xl text-on-surface leading-none">
+                        {isValid(d) ? format(d, "d") : "–"}
+                      </div>
+                      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                        {isValid(d) ? format(d, "MMM") : ""}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-on-surface truncate">{ev.name}</div>
+                      <div className="text-xs text-on-surface-variant mt-0.5">
+                        {isValid(d) ? format(d, "EEEE") : ""}
                       </div>
                     </div>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-on-surface-variant text-sm">
-                    No pending tasks.
-                  </p>
-                </div>
-              )}
-            </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-on-surface-variant py-5">
+                Nothing on the calendar this week yet.
+              </p>
+            )}
           </div>
+        </section>
+      </div>
+
+      {/* ── Prayers we're carrying ── */}
+      <section className="mt-12">
+        <SectionHead
+          title="Prayers we're carrying"
+          sub="Held by the team this week"
+          linkLabel="All prayers"
+          onLink={() => navigate("/prayer")}
+        />
+        <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+          {carrying.length > 0 ? (
+            carrying.map((p, i) => {
+              const c = contactById(p.contactId);
+              const heldMs = parseMs(p.date);
+              return (
+                <div
+                  key={p.id}
+                  className={cn(
+                    "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 py-4",
+                    i > 0 && "border-t border-outline-variant/40",
+                  )}
+                >
+                  <div className="min-w-0">
+                    {c && (
+                      <button
+                        onClick={() => openContact(c)}
+                        className="text-sm font-medium text-primary hover:underline"
+                      >
+                        for {c.name}
+                      </button>
+                    )}
+                    <p className="text-sm text-on-surface-variant leading-relaxed mt-1">
+                      {truncate(p.burden, 150)}
+                    </p>
+                  </div>
+                  {heldMs != null && (
+                    <span className="text-xs text-on-surface-variant whitespace-nowrap shrink-0 sm:pt-0.5">
+                      held {daysSince(heldMs)} days
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <p className="text-sm text-on-surface-variant py-5">No open prayers right now.</p>
+          )}
         </div>
+      </section>
+
+      {/* ── Quiet figures: present, but never the headline ── */}
+      <div className="mt-14 pt-6 border-t border-outline-variant/50 flex flex-wrap items-end gap-x-10 gap-y-4">
+        <Figure n={contacts.length} label="in our care" />
+        <Figure n={newFaces.length} label="newly arrived" />
+        {attendanceRate != null && <Figure n={`${attendanceRate}%`} label="showing up" />}
+        <Figure n={openPrayers.length} label="prayers open" />
+        <span className="text-sm text-on-surface-variant italic ml-auto">
+          Numbers are just a way of noticing people.
+        </span>
       </div>
 
       <ContactDetailsModal
@@ -553,10 +552,15 @@ export default function Dashboard() {
         onClose={() => setIsDetailsModalOpen(false)}
         contact={selectedContact}
       />
-      <LogInteractionModal
-        isOpen={isLogInteractionOpen}
-        onClose={() => setIsLogInteractionOpen(false)}
-      />
     </motion.div>
+  );
+}
+
+function Figure({ n, label }: { n: number | string; label: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-serif text-2xl text-on-surface leading-none">{n}</span>
+      <span className="text-xs text-on-surface-variant">{label}</span>
+    </div>
   );
 }

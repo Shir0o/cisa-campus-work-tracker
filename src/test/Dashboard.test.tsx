@@ -58,6 +58,7 @@ describe('Dashboard', () => {
     });
     (useLayout as any).mockReturnValue({
       isSidebarCollapsed: false,
+      openNewContact: vi.fn(),
     });
   });
 
@@ -68,23 +69,40 @@ describe('Dashboard', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
-  it('renders dashboard with greeted user', async () => {
+  it('renders the warm greeting, care sections and quiet figures footer', async () => {
     render(<Dashboard />);
 
     await waitFor(() => {
-      expect(screen.queryByText(/Good/)).toBeInTheDocument();
-      expect(screen.getByText(/Test/)).toBeInTheDocument();
-      expect(screen.getByText('Total Contacts')).toBeInTheDocument();
-      expect(screen.getByText('Recent Follow-ups')).toBeInTheDocument();
-      expect(screen.getByText('Contact Log')).toBeInTheDocument();
+      expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
+      expect(screen.getByText('People to reach out to')).toBeInTheDocument();
+      expect(screen.getByText('New faces')).toBeInTheDocument();
+      expect(screen.getByText('This week')).toBeInTheDocument();
+      expect(screen.getByText("Prayers we're carrying")).toBeInTheDocument();
+      expect(
+        screen.getByText('Numbers are just a way of noticing people.'),
+      ).toBeInTheDocument();
     });
   });
 
-  it('shows no recent activity when empty', async () => {
+  it('does not surface KPI cards, sparklines or DB ids', async () => {
     render(<Dashboard />);
     await waitFor(() => {
-      expect(screen.getByText('No recent activity to show.')).toBeInTheDocument();
-      expect(screen.getByText('No pending tasks.')).toBeInTheDocument();
+      expect(screen.getByText('People to reach out to')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Total Contacts')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recent Follow-ups')).not.toBeInTheDocument();
+    expect(screen.queryByText('Contact Log')).not.toBeInTheDocument();
+  });
+
+  it('shows warm empty states when there is no data', async () => {
+    render(<Dashboard />);
+    await waitFor(() => {
+      expect(
+        screen.getByText("No one's overdue for a hello — you're all caught up."),
+      ).toBeInTheDocument();
+      expect(screen.getByText('No new faces in the last two weeks.')).toBeInTheDocument();
+      expect(screen.getByText('Nothing on the calendar this week yet.')).toBeInTheDocument();
+      expect(screen.getByText('No open prayers right now.')).toBeInTheDocument();
     });
   });
 });
