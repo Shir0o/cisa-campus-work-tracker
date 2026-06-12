@@ -221,6 +221,29 @@
         "error": { "type": "string" }
       },
       "required": ["id", "timestamp", "source", "payload", "headers", "status", "result"]
+    },
+    "coordination_notes": {
+      "title": "Coordination Note",
+      "description": "Meeting coordination note containing rich content (markdown), learnings, regular event category, and nested todo tasks.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "todos": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "createdBy": { "type": "string" },
+        "createdByName": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "updatedBy": { "type": "string" },
+        "updatedByName": { "type": "string" }
+      },
+      "required": ["title", "date", "content", "category", "todos"]
     }
   },
   "firestore": {
@@ -279,6 +302,10 @@
     "webhook_logs/{logId}": {
       "schema": "webhook_logs",
       "description": "Incoming webhook delivery logs."
+    },
+    "coordination_notes/{noteId}": {
+      "schema": "coordination_notes",
+      "description": "Shared documents of meeting notes and actions for administrators with categories of regularity."
     }
   }
 }

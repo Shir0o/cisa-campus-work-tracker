@@ -89,8 +89,8 @@ export default function FeedbackList() {
           </div>
           <h2 className="text-2xl font-bold mb-4 text-on-background">Access Denied</h2>
           <p className="text-on-surface-variant leading-relaxed mb-6">
-            You must be a Full-timer to view and manage user feedback submissions.
-            If you believe this is an error, please get in touch with a Full-timer.
+            You must be an Administrator to view and manage user feedback submissions. 
+            If you believe this is an error, please get in touch with an administrator.
           </p>
         </div>
       </div>

@@ -11,15 +11,20 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function emailVerified() { return request.auth.token.email_verified == true; }
-    function getAuthEmail() { return request.auth.token.get('email', '').lower(); }
+    function getAuthEmail() { 
+      return request.auth.token.get('email', '').lower(); 
+    }
 
     function isValidId(id) { 
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
 
-    // Super Admin: Explicitly whitelisted email
+    // Super Admin: Explicitly whitelisted email and UID
     function isSuperAdmin() {
-      return isSignedIn() && emailVerified() && getAuthEmail() == 'yilongwang05@gmail.com';
+      return isSignedIn() && (
+        request.auth.uid == 'DFvSL8pbc2VaCWVO8px1aEPOMzd2' ||
+        getAuthEmail() == 'yilongwang05@gmail.com'
+      );
     }
 
     // Role detection via trusted document lookup
@@ -301,6 +306,23 @@ service cloud.firestore {
     match /webhook_logs/{logId} {
       allow get, delete: if isValidId(logId) && isManager();
       allow list: if isManager();
+    }
+
+    // 13. Coordination Notes Collection
+    match /coordination_notes/{noteId} {
+      function isValidCoordinationNote(data) {
+        return data.keys().hasAll(['title', 'date', 'content', 'category', 'todos']) &&
+               data.title is string && data.title.size() <= 200 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.content is string && data.content.size() <= 100000 &&
+               data.category is string && data.category.size() <= 64 &&
+               data.todos is list;
+      }
+
+      allow get, list: if isAdmin();
+      allow create: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
+      allow update: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
+      allow delete: if isValidId(noteId) && isAdmin();
     }
 
     // Collection Group helpers

@@ -55,8 +55,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [recentFollowUpsCount, setRecentFollowUpsCount] = useState(0);
 
-  const [legacyInteractions, setLegacyInteractions] = useState<Activity[]>([]);
-  const [legacyComments, setLegacyComments] = useState<Activity[]>([]);
+  const [legacyInteractions, setLegacyInteractions] = useState<(Activity & { rawTime?: number })[]>([]);
+  const [legacyComments, setLegacyComments] = useState<(Activity & { rawTime?: number })[]>([]);
 
   const [tasks, setTasks] = useState<any[]>([]);
 

@@ -2,7 +2,6 @@
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Newsreader", Georgia, serif;
   
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);

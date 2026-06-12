@@ -556,12 +556,13 @@ export default function ContactDetailsModal({
         targetId: contact.id,
         targetName: contact.name,
         targetType: "contact",
-        type:
+        type: (
           newInteraction.type === "meeting"
             ? "event"
             : newInteraction.type === "chat"
               ? "comment"
-              : newInteraction.type,
+              : newInteraction.type
+        ) as any,
         description: newInteraction.content.trim(),
       });
 
