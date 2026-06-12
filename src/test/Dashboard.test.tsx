@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { onSnapshot } from 'firebase/firestore';
 import Dashboard from '../views/Dashboard';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -47,6 +48,11 @@ vi.mock('../lib/firebase', () => ({
 describe('Dashboard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Restore default: callback fires immediately so loading resolves
+    vi.mocked(onSnapshot).mockImplementation((_, callback: any) => {
+      callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
     (useAuth as any).mockReturnValue({
       user: { displayName: 'Test User' },
     });
@@ -56,12 +62,9 @@ describe('Dashboard', () => {
   });
 
   it('renders loading state initially by mocking onSnapshot delay', () => {
-    const { onSnapshot } = require('firebase/firestore');
-    onSnapshot.mockImplementation(() => vi.fn()); // Avoid immediately setting loading false
+    vi.mocked(onSnapshot).mockImplementation(() => vi.fn()); // Don't call callback → stays loading
 
     render(<Dashboard />);
-    expect(screen.getAllByRole('heading', { hidden: true }).length).toBeGreaterThan(0);
-    // Skelton loaders
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 

@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
   useNavigate,
+  useLocation,
 } from "react-router-dom";
 import { cn } from "./lib/utils";
 import Sidebar from "./components/layout/Sidebar";
@@ -32,6 +33,7 @@ import FeedbackFAB from "./components/FeedbackFAB";
 import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
 import CoordinationNotes from "./views/CoordinationNotes";
+import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -51,6 +53,62 @@ export function useLayout() {
     throw new Error("useLayout must be used within a LayoutProvider");
   }
   return context;
+}
+
+function EmailPasswordForm() {
+  const { signInWithEmail } = useAuth();
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await signInWithEmail(email, password);
+    } catch (err: any) {
+      const code = err?.code ?? "";
+      setError(
+        code.includes("invalid-credential") || code.includes("wrong-password") || code.includes("user-not-found")
+          ? "Incorrect email or password."
+          : "Sign-in failed. Please try again.",
+      );
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="mt-6 space-y-3 text-left">
+      <input
+        type="email"
+        autoComplete="username"
+        placeholder="Email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        required
+      />
+      <input
+        type="password"
+        autoComplete="current-password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="w-full px-4 py-3 rounded-2xl bg-surface border border-outline-variant focus:border-primary outline-none text-on-surface"
+        required
+      />
+      {error && <p className="text-sm text-error px-1">{error}</p>}
+      <button
+        type="submit"
+        disabled={busy}
+        className="w-full py-3 bg-primary text-on-primary rounded-full font-bold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+      >
+        {busy ? "Signing in…" : "Sign in with email"}
+      </button>
+    </form>
+  );
 }
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -134,6 +192,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             />
             Sign in with Google
           </button>
+
+          <div className="flex items-center gap-3 my-6">
+            <div className="flex-1 h-px bg-outline-variant" />
+            <span className="text-xs text-on-surface-variant uppercase tracking-wider">or</span>
+            <div className="flex-1 h-px bg-outline-variant" />
+          </div>
+
+          <EmailPasswordForm />
         </div>
       </div>
     );
@@ -174,6 +240,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     );
   }
 
+  return <>{children}</>;
+}
+
+function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.ReactNode }) {
+  const { role } = useAuth();
+  const { pathname } = useLocation();
+  if (!canAccessRoute(role, pathname)) {
+    return <Navigate to={defaultRouteForRole(role)} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -266,9 +341,11 @@ export default function App() {
                 path="/"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Dashboard />
-                    </DashboardLayout>
+                    <RoleGuard minRole="operator">
+                      <DashboardLayout>
+                        <Dashboard />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -288,9 +365,11 @@ export default function App() {
                 path="/board"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <OutreachBoard />
-                    </DashboardLayout>
+                    <RoleGuard minRole="manager">
+                      <DashboardLayout>
+                        <OutreachBoard />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -299,9 +378,11 @@ export default function App() {
                 path="/directory"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Directory />
-                    </DashboardLayout>
+                    <RoleGuard minRole="operator">
+                      <DashboardLayout>
+                        <Directory />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -310,9 +391,11 @@ export default function App() {
                 path="/history"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <History />
-                    </DashboardLayout>
+                    <RoleGuard minRole="manager">
+                      <DashboardLayout>
+                        <History />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -354,9 +437,11 @@ export default function App() {
                 path="/admin/feedback"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <FeedbackList />
-                    </DashboardLayout>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <FeedbackList />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -365,9 +450,11 @@ export default function App() {
                 path="/coordination"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <CoordinationNotes />
-                    </DashboardLayout>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <CoordinationNotes />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />

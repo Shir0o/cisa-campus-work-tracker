@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  onAuthStateChanged, 
-  User, 
-  signInWithPopup, 
-  GoogleAuthProvider, 
-  signOut 
+import {
+  onAuthStateChanged,
+  User,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  signInWithEmailAndPassword
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -19,6 +20,7 @@ interface AuthContextType {
   loading: boolean;
   authorizeSheets: () => Promise<string | null>;
   signIn: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
   logOut: () => Promise<void>;
 }
 
@@ -76,10 +78,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
 
+          // Email/password accounts have no displayName/photoURL; the Firestore
+          // rules require displayName to be a non-null string, so fall back to
+          // the local part of the email (or a default) when the provider has none.
+          const fallbackName = authUser.email?.split('@')[0] || 'Member';
           const initialData = {
             email: authUser.email,
-            displayName: authUser.displayName,
-            photoURL: authUser.photoURL,
+            displayName: authUser.displayName || fallbackName,
+            photoURL: authUser.photoURL || '',
             approved: initialApproved,
             role: initialRole,
             createdAt: serverTimestamp(),
@@ -174,13 +180,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await signInWithPopup(auth, provider);
   };
 
+  const signInWithEmail = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email.trim(), password);
+  };
+
   const logOut = async () => {
     await signOut(auth);
     setAccessToken(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, authorizeSheets, signIn, logOut }}>
+    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, authorizeSheets, signIn, signInWithEmail, logOut }}>
       {children}
     </AuthContext.Provider>
   );

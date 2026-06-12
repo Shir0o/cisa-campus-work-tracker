@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -11,6 +11,15 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 const app = initializeApp(finalConfig);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// E2E-only email/password sign-in helper. Exposed on window ONLY when
+// VITE_E2E_MODE=true so it never ships in the production bundle. Lets
+// Playwright authenticate as the real test users (Full-timer / Trainee /
+// Student / Community) without going through the Google OAuth popup.
+if (import.meta.env.VITE_E2E_MODE === 'true' && typeof window !== 'undefined') {
+  (window as any).__e2eSignIn = (email: string, password: string) =>
+    signInWithEmailAndPassword(auth, email, password);
+}
 
 export enum OperationType {
   CREATE = 'create',

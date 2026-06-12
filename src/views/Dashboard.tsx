@@ -55,8 +55,8 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [recentFollowUpsCount, setRecentFollowUpsCount] = useState(0);
 
-  const [legacyInteractions, setLegacyInteractions] = useState<(Activity & { rawTime?: number })[]>([]);
-  const [legacyComments, setLegacyComments] = useState<(Activity & { rawTime?: number })[]>([]);
+  const [legacyInteractions, setLegacyInteractions] = useState<Activity[]>([]);
+  const [legacyComments, setLegacyComments] = useState<Activity[]>([]);
 
   const [tasks, setTasks] = useState<any[]>([]);
 
@@ -247,7 +247,7 @@ export default function Dashboard() {
       ...legacyComments,
     ]
       .sort((a: any, b: any) => b.rawTime - a.rawTime)
-      .filter((v, i, a) => {
+      .filter((v: any, i: number, a: any[]) => {
         // filter out exact same IDs
         if (a.findIndex((t) => t.id === v.id) !== i) return false;
         

@@ -11,20 +11,15 @@ service cloud.firestore {
     function incoming() { return request.resource.data; }
     function existing() { return resource.data; }
     function emailVerified() { return request.auth.token.email_verified == true; }
-    function getAuthEmail() { 
-      return request.auth.token.get('email', '').lower(); 
-    }
+    function getAuthEmail() { return request.auth.token.get('email', '').lower(); }
 
     function isValidId(id) { 
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); 
     }
 
-    // Super Admin: Explicitly whitelisted email and UID
+    // Super Admin: Explicitly whitelisted email
     function isSuperAdmin() {
-      return isSignedIn() && (
-        request.auth.uid == 'DFvSL8pbc2VaCWVO8px1aEPOMzd2' ||
-        getAuthEmail() == 'yilongwang05@gmail.com'
-      );
+      return isSignedIn() && emailVerified() && getAuthEmail() == 'yilongwang05@gmail.com';
     }
 
     // Role detection via trusted document lookup

@@ -32,7 +32,8 @@ interface LogInteractionModalProps {
 }
 
 export default function LogInteractionModal({ isOpen, onClose }: LogInteractionModalProps) {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  if (role === 'viewer') return null;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
