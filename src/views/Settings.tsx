@@ -54,29 +54,29 @@ const ROLE_CARDS: {
 }[] = [
   {
     key: 'admin',
-    label: 'Administrator',
-    initials: 'AD',
+    label: 'Full-timer',
+    initials: 'FT',
     description: 'Full-time staff. Sees the whole work — every person, the team board, and all admin tools.',
     access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History', 'Settings'],
   },
   {
     key: 'manager',
-    label: 'Manager',
-    initials: 'MG',
+    label: 'Trainee',
+    initials: 'TR',
     description: 'Walks alongside the team. Manages users and accesses all data surfaces, minus dev-only admin.',
     access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History'],
   },
   {
     key: 'operator',
-    label: 'Operator',
-    initials: 'OP',
+    label: 'Student',
+    initials: 'ST',
     description: 'Can add and update people, log interactions, and mark attendance.',
     access: ['Today', 'People', 'Gatherings', 'Prayer'],
   },
   {
     key: 'viewer',
-    label: 'Viewer',
-    initials: 'VW',
+    label: 'Community',
+    initials: 'CM',
     description: 'A read-only window — can see gatherings and prayers, nothing else.',
     access: ['Gatherings', 'Prayer'],
   },
@@ -1055,10 +1055,10 @@ export default function Settings() {
                             disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
                             className="text-xs font-bold px-3 py-1.5 rounded-full bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer hover:bg-surface-variant"
                           >
-                            <option value="viewer">Viewer</option>
-                            <option value="operator">Operator</option>
-                            <option value="manager">Manager</option>
-                            {isAdmin && <option value="admin">Administrator</option>}
+                            <option value="viewer">Community</option>
+                            <option value="operator">Student</option>
+                            <option value="manager">Trainee</option>
+                            {isAdmin && <option value="admin">Full-timer</option>}
                           </select>
                         </td>
                         <td className="px-6 py-4">
@@ -1201,10 +1201,10 @@ export default function Settings() {
                           disabled={updatingId === u.uid || u.uid === currentUser?.uid || !isAdmin}
                           className="w-full text-xs font-bold px-2 py-1.5 rounded-lg bg-surface-variant/50 border border-outline-variant focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 cursor-pointer"
                         >
-                          <option value="viewer">Viewer</option>
-                          <option value="operator">Operator</option>
-                          <option value="manager">Manager</option>
-                          {isAdmin && <option value="admin">Administrator</option>}
+                          <option value="viewer">Community</option>
+                          <option value="operator">Student</option>
+                          <option value="manager">Trainee</option>
+                          {isAdmin && <option value="admin">Full-timer</option>}
                         </select>
                       </div>
                       <div className="flex flex-col gap-1 items-end">
@@ -1313,10 +1313,10 @@ export default function Settings() {
                     onChange={(e) => setInviteRole(e.target.value as any)}
                     className="w-full px-4 py-4 bg-surface-container-high rounded-2xl border border-outline-variant focus:border-primary outline-none transition-all text-sm font-bold appearance-none cursor-pointer"
                   >
-                    <option value="viewer">Viewer</option>
-                    <option value="operator">Operator</option>
-                    <option value="manager">Manager</option>
-                    <option value="admin">Administrator</option>
+                    <option value="viewer">Community</option>
+                    <option value="operator">Student</option>
+                    <option value="manager">Trainee</option>
+                    <option value="admin">Full-timer</option>
                   </select>
                 </div>
 

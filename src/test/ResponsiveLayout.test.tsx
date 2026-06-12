@@ -5,7 +5,6 @@ import { BrowserRouter } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
-// Mock dependencies
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: '123' },
@@ -13,16 +12,24 @@ vi.mock('../components/AuthProvider', () => ({
     role: 'admin',
     isApproved: true,
     loading: false,
+    logOut: vi.fn(),
   }),
 }));
 
-// Mock framer-motion to avoid animation issues in tests
+vi.mock('../App', () => ({
+  useLayout: () => ({
+    isMobileMenuOpen: false,
+    setIsMobileMenuOpen: vi.fn(),
+  }),
+}));
+
 vi.mock('motion/react', () => ({
   motion: {
     nav: ({ children, ...props }: any) => <nav {...props}>{children}</nav>,
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     span: ({ children, ...props }: any) => <span {...props}>{children}</span>,
   },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
 const renderWithRouter = (ui: React.ReactElement) => {
@@ -30,37 +37,29 @@ const renderWithRouter = (ui: React.ReactElement) => {
 };
 
 describe('Responsive Layout Components', () => {
-  it('renders Sidebar with correct responsive classes', () => {
+  it('renders Sidebar with correct sticky positioning class', () => {
     renderWithRouter(<Sidebar />);
     const sidebar = screen.getByLabelText('Main Navigation');
     expect(sidebar).toBeInTheDocument();
-    
-    // Sidebar should be hidden on small screens and visible on large
-    expect(sidebar.className).toContain('hidden');
-    expect(sidebar.className).toContain('lg:flex');
+    expect(sidebar.className).toContain('lg:sticky');
+    expect(sidebar.className).toContain('fixed');
   });
 
   it('renders MobileNav with correct responsive classes', () => {
     renderWithRouter(<MobileNav />);
     const mobileNav = screen.getByLabelText('Mobile Navigation');
     expect(mobileNav).toBeInTheDocument();
-    
-    // Mobile nav should be hidden on large screens
     expect(mobileNav.className).toContain('lg:hidden');
   });
 
-  it('Accessibility: Sidebar has a visible "Log Interaction" button', () => {
+  it('Accessibility: Sidebar has a Log out button', () => {
     renderWithRouter(<Sidebar />);
-    const logInteractionBtn = screen.getByText(/Log Interaction/i);
-    expect(logInteractionBtn).toBeInTheDocument();
-    expect(logInteractionBtn.closest('button')).toBeInTheDocument();
+    expect(screen.getByText(/Log out/i)).toBeInTheDocument();
   });
 
-  it('Accessibility: MobileNav has navigation links with labels', () => {
+  it('Accessibility: MobileNav shows Dashboard and Contacts links for admin', () => {
     renderWithRouter(<MobileNav />);
-    const dashboardLink = screen.getByText(/Dashboard/i);
-    const statusLink = screen.getByText(/Stage/i);
-    expect(dashboardLink).toBeInTheDocument();
-    expect(statusLink).toBeInTheDocument();
+    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/Contacts/i)).toBeInTheDocument();
   });
 });

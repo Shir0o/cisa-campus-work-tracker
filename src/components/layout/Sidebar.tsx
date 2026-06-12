@@ -19,6 +19,7 @@ import { cn } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
+import { NAV_ITEMS, canAccessRoute, roleLabel, AppRole } from '../../lib/permissions';
 
 interface SidebarProps {
   isCollapsed?: boolean;
@@ -38,27 +39,22 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
   }, []);
 
   const effectiveIsCollapsed = isDesktop ? isCollapsed : false;
-  
-  const navItems = [
-    { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
-    { icon: Kanban, label: 'Stage', href: '/board' },
-    { icon: Contact, label: 'Contacts', href: '/directory' },
-    { icon: HistoryIcon, label: 'History', href: '/history' },
-    { icon: CalendarCheck, label: 'Attendance', href: '/attendance' },
-    { icon: HeartHandshake, label: 'Prayer List', href: '/prayer' },
-    { icon: SettingsIcon, label: 'Settings', href: '/settings' },
-  ];
 
-  const getRoleLabel = (r: string | null) => {
-    if (!r) return 'Guest';
-    switch (r) {
-      case 'admin': return 'Administrator';
-      case 'manager': return 'Manager';
-      case 'operator': return 'Operator';
-      case 'viewer': return 'Viewer';
-      default: return r.charAt(0).toUpperCase() + r.slice(1);
-    }
+  const NAV_ICONS: Record<string, React.ElementType> = {
+    '/': LayoutDashboard,
+    '/board': Kanban,
+    '/directory': Contact,
+    '/history': HistoryIcon,
+    '/attendance': CalendarCheck,
+    '/prayer': HeartHandshake,
+    '/settings': SettingsIcon,
   };
+
+  const navItems = NAV_ITEMS
+    .filter(item => canAccessRoute(role as AppRole, item.href))
+    .map(item => ({ ...item, icon: NAV_ICONS[item.href] ?? LayoutDashboard }));
+
+  const getRoleLabel = (r: string | null) => roleLabel(r);
 
   return (
     <>
