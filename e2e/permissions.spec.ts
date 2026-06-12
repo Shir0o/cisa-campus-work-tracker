@@ -32,28 +32,28 @@ const EXPECT: Record<Role, {
   fab: boolean;
 }> = {
   community: { // viewer
-    nav: { present: ['Attendance', 'Prayer List', 'Settings'], absent: ['Dashboard', 'Stage', 'Contacts', 'History'] },
+    nav: { present: ['Gatherings', 'Prayer', 'Settings'], absent: ['Today', 'The Journey', 'People', 'Looking back'] },
     allowed: ['/attendance', '/prayer', '/settings'],
     denied: ['/', '/board', '/directory', '/history', '/admin/feedback'],
     fallback: '/attendance',
     fab: false,
   },
   student: { // operator
-    nav: { present: ['Dashboard', 'Contacts', 'Attendance', 'Prayer List', 'Settings'], absent: ['Stage', 'History'] },
+    nav: { present: ['Today', 'People', 'Gatherings', 'Prayer', 'Settings'], absent: ['The Journey', 'Looking back'] },
     allowed: ['/', '/directory', '/attendance', '/prayer', '/settings'],
     denied: ['/board', '/history', '/admin/feedback'],
     fallback: '/',
     fab: true,
   },
   trainee: { // manager
-    nav: { present: ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Settings'], absent: [] },
+    nav: { present: ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Settings'], absent: [] },
     allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings'],
     denied: ['/admin/feedback'],
     fallback: '/',
     fab: true,
   },
   fulltimer: { // admin
-    nav: { present: ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Settings'], absent: [] },
+    nav: { present: ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Settings'], absent: [] },
     allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings', '/admin/feedback'],
     denied: [],
     fallback: '/',

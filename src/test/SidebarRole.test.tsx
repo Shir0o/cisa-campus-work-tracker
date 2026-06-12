@@ -76,31 +76,31 @@ describe('Sidebar Role Label', () => {
   it('shows only permitted nav items for viewer role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'viewer' });
     renderSidebar();
-    expect(screen.getByText('Attendance')).toBeInTheDocument();
-    expect(screen.getByText('Prayer List')).toBeInTheDocument();
-    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-    expect(screen.queryByText('Stage')).not.toBeInTheDocument();
-    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.queryByText('Today')).not.toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('shows Dashboard and Contacts but not Stage or History for operator role', () => {
+  it('shows Today and People but not The Journey or Looking back for operator role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'operator' });
     renderSidebar();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.queryByText('Stage')).not.toBeInTheDocument();
-    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
   it('shows all nav items for admin role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
     renderSidebar();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Stage')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.getByText('History')).toBeInTheDocument();
-    expect(screen.getByText('Attendance')).toBeInTheDocument();
-    expect(screen.getByText('Prayer List')).toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.getByText('Looking back')).toBeInTheDocument();
+    expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 });

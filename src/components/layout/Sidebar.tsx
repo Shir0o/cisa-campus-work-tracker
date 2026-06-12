@@ -16,7 +16,7 @@ import {
   LogOut,
   X
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getUserAvatar } from '../../lib/utils';
 
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
@@ -29,7 +29,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
-  const { logOut, isAdmin, role } = useAuth();
+  const { logOut, isAdmin, role, user } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
   const [isDesktop, setIsDesktop] = React.useState(window.innerWidth >= 1024);
 
@@ -81,7 +81,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "bg-surface-container-low h-screen fixed lg:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-6 px-3 overflow-hidden shrink-0",
+          "bg-surface h-screen fixed lg:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-4 px-3 overflow-hidden shrink-0",
           "lg:transition-none transition-transform duration-300 ease-in-out",
           isMobileMenuOpen ? "translate-x-0 shadow-2xl flex" : "-translate-x-full lg:translate-x-0 flex shadow-none"
         )}
@@ -92,29 +92,29 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           effectiveIsCollapsed ? "justify-center md:px-0" : "justify-between"
         )}>
           <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity">
-            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center shadow-md overflow-hidden shrink-0">
-              <img 
-                src="/logo.svg" 
-                alt="CISA Campus Work Tracker" 
+            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+              <img
+                src="/logo.svg"
+                alt="CISA Campus Work Tracker"
                 className="w-full h-full object-contain"
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.style.display = 'none';
                   if (target.parentElement) {
-                    target.parentElement.classList.add('bg-primary-container');
-                    target.parentElement.innerHTML = '<span class="text-[10px] text-primary font-bold">CCWT</span>';
+                    target.parentElement.classList.add('font-serif', 'text-lg', 'font-semibold', 'text-on-primary');
+                    target.parentElement.textContent = 'C';
                   }
                 }}
               />
             </div>
-            <motion.div 
+            <motion.div
               initial={false}
               animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
               transition={{ duration: 0.2 }}
               className="whitespace-nowrap overflow-hidden"
             >
-              <h2 className="text-sm font-black text-primary leading-tight">CISA Campus<br />Work Tracker</h2>
-              <p className="text-xs text-on-surface-variant opacity-80">{getRoleLabel(role)}</p>
+              <h2 className="font-serif text-base font-semibold text-on-surface leading-tight">CISA Campus</h2>
+              <p className="text-xs text-on-surface-variant mt-0.5">Work Tracker</p>
             </motion.div>
           </NavLink>
           
@@ -129,46 +129,75 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         </div>
 
         {/* Main Nav Items */}
-        <div className="flex-1 space-y-1 overflow-hidden">
+        <div className="flex-1 space-y-0.5 overflow-hidden">
           {navItems.map((item) => (
             <NavLink
               key={item.href}
               to={item.href}
               onClick={() => setIsMobileMenuOpen(false)}
               className={({ isActive }) => cn(
-                "flex items-center rounded-full transition-all duration-200 ease-in-out font-medium h-12",
-                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4",
-                isActive 
-                  ? "bg-secondary-container text-on-secondary-container" 
-                  : "text-on-surface-variant hover:bg-surface-container-high"
+                "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
+                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
+                isActive
+                  ? "bg-stage-accent-soft text-on-surface font-medium"
+                  : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
               )}
               title={effectiveIsCollapsed ? item.label : undefined}
             >
-              <item.icon className={cn("w-5 h-5 min-w-[20px] shrink-0", item.href === window.location.pathname ? "fill-current" : "")} />
-              <motion.span 
-                initial={false}
-                animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
-                transition={{ duration: 0.2 }}
-                className="whitespace-nowrap overflow-hidden"
-              >
-                {item.label}
-              </motion.span>
+              {({ isActive }) => (
+                <>
+                  {/* Accent left-rail on the active item */}
+                  {isActive && !effectiveIsCollapsed && (
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
+                  )}
+                  <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                  <motion.span
+                    initial={false}
+                    animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                    transition={{ duration: 0.2 }}
+                    className="whitespace-nowrap overflow-hidden"
+                  >
+                    {item.label}
+                  </motion.span>
+                </>
+              )}
             </NavLink>
           ))}
         </div>
 
         {/* Footer Nav */}
-        <div className="mt-auto border-t border-outline-variant pt-2 space-y-1 overflow-hidden">
+        <div className="mt-auto border-t border-outline-variant pt-3 space-y-1 overflow-hidden">
+          {/* Signed-in user — avatar + name + role */}
+          <div className={cn(
+            "flex items-center mb-1 pb-2",
+            effectiveIsCollapsed ? "justify-center px-0" : "px-2"
+          )}>
+            <img
+              src={getUserAvatar(user?.photoURL)}
+              alt={user?.displayName || 'Signed-in user'}
+              className="w-9 h-9 min-w-[36px] rounded-full object-cover border border-outline-variant shrink-0"
+            />
+            <motion.div
+              initial={false}
+              animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 10 }}
+              transition={{ duration: 0.2 }}
+              className="whitespace-nowrap overflow-hidden min-w-0"
+            >
+              <div className="text-sm font-medium text-on-surface leading-tight truncate">{user?.displayName || 'Signed in'}</div>
+              <div className="text-xs text-on-surface-variant mt-0.5 truncate">{getRoleLabel(role)}</div>
+            </motion.div>
+          </div>
+
           {/* Log Out button */}
           <button
             onClick={logOut}
             className={cn(
-              "flex items-center rounded-full transition-all duration-200 ease-in-out font-semibold w-full text-left h-12 text-error hover:bg-error/10 px-4 cursor-pointer gap-0",
-              effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "gap-0 px-4"
+              "flex items-center rounded-xl transition-all duration-200 ease-in-out font-medium w-full text-left h-11 text-error hover:bg-error/10 cursor-pointer gap-0",
+              effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3"
             )}
             title={effectiveIsCollapsed ? "Log out" : undefined}
           >
-            <LogOut className="w-5 h-5 min-w-[20px] shrink-0" />
+            <LogOut className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
             <motion.span
               initial={false}
               animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
@@ -182,14 +211,14 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           {/* Collapse Toggle Button - Desktop Only */}
           <button
             onClick={onToggleCollapse}
-            className="hidden lg:flex items-center rounded-full transition-all duration-200 ease-in-out font-medium w-full text-left h-12 text-on-surface-variant hover:bg-surface-container-highest mt-1 px-4 cursor-pointer gap-0"
+            className="hidden lg:flex items-center rounded-xl transition-all duration-200 ease-in-out font-normal w-full text-left h-11 text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface mt-0.5 px-3 cursor-pointer gap-0"
             style={{ paddingLeft: effectiveIsCollapsed ? '0' : undefined, paddingRight: effectiveIsCollapsed ? '0' : undefined, justifyContent: effectiveIsCollapsed ? 'center' : undefined }}
           >
             {effectiveIsCollapsed ? (
-              <ChevronRight className="w-5 h-5 min-w-[20px] shrink-0" />
+              <ChevronRight className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
             ) : (
               <div className="flex items-center gap-3">
-                <ChevronLeft className="w-5 h-5 min-w-[20px] shrink-0" />
+                <ChevronLeft className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
                 <motion.span 
                   initial={false}
                   animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 'auto' : 'auto' }}
