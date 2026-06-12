@@ -33,6 +33,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/settings': 'viewer',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
+  '/coordination': 'admin',
 };
 
 export interface NavItem {
@@ -48,6 +49,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/history', label: 'History', minRole: 'manager' },
   { href: '/attendance', label: 'Attendance', minRole: 'viewer' },
   { href: '/prayer', label: 'Prayer List', minRole: 'viewer' },
+  { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 

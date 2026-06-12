@@ -303,6 +303,24 @@ service cloud.firestore {
       allow list: if isManager();
     }
 
+    // 13. Coordination Notes Collection
+    match /coordination_notes/{noteId} {
+      function isValidCoordinationNote(data) {
+        return data.keys().hasAll(['title', 'date', 'content', 'category', 'todos']) &&
+               data.title is string && data.title.size() <= 200 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.content is string && data.content.size() <= 100000 &&
+               data.category is string && data.category.size() <= 64 &&
+               data.todos is list &&
+               (!('archived' in data) || data.archived is bool);
+      }
+
+      allow get, list: if isAdmin();
+      allow create: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
+      allow update: if isValidId(noteId) && isAdmin() && isValidCoordinationNote(incoming());
+      allow delete: if isValidId(noteId) && isAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

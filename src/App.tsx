@@ -32,6 +32,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
+import CoordinationNotes from "./views/CoordinationNotes";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 
 interface LayoutContextType {
@@ -439,6 +440,19 @@ export default function App() {
                     <RoleGuard minRole="admin">
                       <DashboardLayout>
                         <FeedbackList />
+                      </DashboardLayout>
+                    </RoleGuard>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/coordination"
+                element={
+                  <ProtectedRoute>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <CoordinationNotes />
                       </DashboardLayout>
                     </RoleGuard>
                   </ProtectedRoute>

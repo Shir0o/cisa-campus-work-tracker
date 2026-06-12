@@ -247,7 +247,7 @@ export default function Dashboard() {
       ...legacyComments,
     ]
       .sort((a: any, b: any) => b.rawTime - a.rawTime)
-      .filter((v, i, a) => {
+      .filter((v: any, i: number, a: any[]) => {
         // filter out exact same IDs
         if (a.findIndex((t) => t.id === v.id) !== i) return false;
         

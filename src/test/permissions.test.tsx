@@ -77,7 +77,7 @@ describe('canAccessRoute()', () => {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory'],
     manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -194,10 +194,10 @@ describe('Sidebar nav items', () => {
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
-  it('admin: sees all 7 nav items', () => {
+  it('admin: sees all 8 nav items', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Settings'];
+    const labels = ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Coordination Notes', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

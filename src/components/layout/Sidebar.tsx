@@ -12,6 +12,7 @@ import {
   HeartHandshake,
   History as HistoryIcon,
   Settings as SettingsIcon,
+  FileText,
   LogOut,
   X
 } from 'lucide-react';
@@ -47,6 +48,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     '/history': HistoryIcon,
     '/attendance': CalendarCheck,
     '/prayer': HeartHandshake,
+    '/coordination': FileText,
     '/settings': SettingsIcon,
   };
 

@@ -44,7 +44,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Comment } from "../../types";
+import { Contact, Stage, Interaction, Comment, Activity } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
 
@@ -561,7 +561,7 @@ export default function ContactDetailsModal({
             ? "event"
             : newInteraction.type === "chat"
               ? "comment"
-              : newInteraction.type,
+              : (newInteraction.type as Activity["type"]),
         description: newInteraction.content.trim(),
       });
 
