@@ -42,13 +42,15 @@ export interface NavItem {
   minRole: AppRole;
 }
 
+// Field Notes (#10) — warm, human nav labels. Route hrefs are unchanged; only
+// the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Dashboard', minRole: 'operator' },
-  { href: '/board', label: 'Stage', minRole: 'manager' },
-  { href: '/directory', label: 'Contacts', minRole: 'operator' },
-  { href: '/history', label: 'History', minRole: 'manager' },
-  { href: '/attendance', label: 'Attendance', minRole: 'viewer' },
-  { href: '/prayer', label: 'Prayer List', minRole: 'viewer' },
+  { href: '/', label: 'Today', minRole: 'operator' },
+  { href: '/board', label: 'The Journey', minRole: 'manager' },
+  { href: '/directory', label: 'People', minRole: 'operator' },
+  { href: '/history', label: 'Looking back', minRole: 'manager' },
+  { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
+  { href: '/prayer', label: 'Prayer', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];

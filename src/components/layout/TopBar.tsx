@@ -1,16 +1,43 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Search, Bell, Settings, LogOut, Menu } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Settings, LogOut, Menu } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
-import { getUserAvatar, cn } from '../../lib/utils';
+import { getUserAvatar } from '../../lib/utils';
 import { useLayout } from '../../App';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 
+/**
+ * Warm, human page titles shown in the topbar crumbs. Route hrefs are unchanged;
+ * this only maps a path to its Field Notes label (epic #8 / #10).
+ */
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Today',
+  '/board': 'The Journey',
+  '/directory': 'People',
+  '/attendance': 'Gatherings',
+  '/prayer': 'Prayer',
+  '/history': 'Looking back',
+  '/settings': 'Settings',
+  '/coordination': 'Coordination Notes',
+  '/feedback': 'Feedback',
+  '/admin/feedback': 'Feedback',
+};
+
+function pageTitleFor(pathname: string): string {
+  if (PAGE_TITLES[pathname]) return PAGE_TITLES[pathname];
+  const match = Object.keys(PAGE_TITLES)
+    .filter((k) => k !== '/' && pathname.startsWith(k))
+    .sort((a, b) => b.length - a.length)[0];
+  return match ? PAGE_TITLES[match] : 'Workspace';
+}
+
 export default function TopBar() {
   const { user, logOut } = useAuth();
-  const { isSidebarCollapsed, setIsMobileMenuOpen } = useLayout();
+  const { setIsMobileMenuOpen } = useLayout();
+  const { pathname } = useLocation();
+  const pageTitle = pageTitleFor(pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -25,41 +52,39 @@ export default function TopBar() {
   }, []);
 
   return (
-    <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-4 sticky top-0 z-30">
-      {/* Mobile Logo/Title */}
-      <div className="flex lg:hidden items-center gap-2 ml-1">
-        <button 
-          onClick={() => setIsMobileMenuOpen(true)}
-          className="p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full focus:outline-none transition-colors"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-        <Link to="/" className="hidden items-center gap-2 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
-            <img 
-              src="/logo.svg" 
-              alt="CCWT" 
-              className="w-full h-full object-contain"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-                if (target.parentElement) {
-                  target.parentElement.innerHTML = '<span class="text-[8px] text-primary font-bold">CCWT</span>';
-                }
-              }}
-            />
-          </div>
-          <span className="font-black text-primary text-sm tracking-tight sm:inline">CISA Campus Work Tracker</span>
-        </Link>
-      </div>
+    <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
+      {/* Mobile menu trigger */}
+      <button
+        onClick={() => setIsMobileMenuOpen(true)}
+        className="lg:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full focus:outline-none transition-colors shrink-0"
+        aria-label="Open navigation"
+      >
+        <Menu className="w-5 h-5" />
+      </button>
 
-      {/* Search Bar - Now responsive instead of hidden */}
-      <GlobalSearch />
+      {/* Page title / breadcrumbs — serif, warm (desktop) */}
+      <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-2 min-w-0">
+        <Link to="/" className="text-sm text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
+          Workspace
+        </Link>
+        <span className="text-on-surface-variant/50 select-none" aria-hidden="true">/</span>
+        <h1 className="font-serif text-lg font-medium text-on-surface leading-none truncate">{pageTitle}</h1>
+      </nav>
+
+      {/* Mobile page title — serif */}
+      <h1 className="lg:hidden font-serif text-lg font-medium text-on-surface leading-none truncate min-w-0">{pageTitle}</h1>
 
       <div className="flex-1" />
 
-      {/* Notifications & Profile */}
-      <div className="flex items-center gap-1 sm:gap-2 lg:gap-4">
+      {/* Right cluster: Global Search (#11) · Notifications (#12) · profile.
+          Search + bell are owned by their own issues; the topbar just leaves
+          room and renders the hooks. */}
+      <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 shrink-0">
+        {/* Global Search field — behavior lives in GlobalSearch (#11) */}
+        <div className="w-full max-w-[200px] sm:max-w-xs lg:max-w-sm">
+          <GlobalSearch />
+        </div>
+
         <NotificationCenter />
         
         <div className="relative" ref={dropdownRef}>

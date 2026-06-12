@@ -161,43 +161,43 @@ describe('roleLabel()', () => {
 describe('Sidebar nav items', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows only Attendance, Prayer, Settings', () => {
+  it('viewer: shows only Gatherings, Prayer, Settings', () => {
     currentUser = TEST_USERS.viewer;
     renderSidebar();
-    expect(screen.getByText('Attendance')).toBeInTheDocument();
-    expect(screen.getByText('Prayer List')).toBeInTheDocument();
+    expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
-    expect(screen.queryByText('Stage')).not.toBeInTheDocument();
-    expect(screen.queryByText('Contacts')).not.toBeInTheDocument();
-    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    expect(screen.queryByText('Today')).not.toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('People')).not.toBeInTheDocument();
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('operator: adds Dashboard and Contacts, still no Stage or History', () => {
+  it('operator: adds Today and People, still no The Journey or Looking back', () => {
     currentUser = TEST_USERS.operator;
     renderSidebar();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.queryByText('Stage')).not.toBeInTheDocument();
-    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: adds Stage and History, everything except Settings admin-tools', () => {
+  it('manager: adds The Journey and Looking back, everything except Settings admin-tools', () => {
     currentUser = TEST_USERS.manager;
     renderSidebar();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
-    expect(screen.getByText('Stage')).toBeInTheDocument();
-    expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.getByText('History')).toBeInTheDocument();
-    expect(screen.getByText('Attendance')).toBeInTheDocument();
-    expect(screen.getByText('Prayer List')).toBeInTheDocument();
+    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.getByText('Looking back')).toBeInTheDocument();
+    expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
   it('admin: sees all 8 nav items', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Coordination Notes', 'Settings'];
+    const labels = ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }
