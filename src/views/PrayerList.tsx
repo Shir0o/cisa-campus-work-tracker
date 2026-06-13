@@ -1,30 +1,89 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  collection, 
-  onSnapshot, 
-  query, 
-  orderBy, 
+import {
+  collection,
+  onSnapshot,
+  query,
+  orderBy,
   doc,
   addDoc,
-  updateDoc
+  updateDoc,
 } from 'firebase/firestore';
 import { db, logActivity } from '../lib/firebase';
 import { Contact, PrayerRecord } from '../types';
-import { 
-  CheckCircle2, 
-  Search,
-  Clock,
-  Loader2,
-  Calendar,
-  AlertCircle,
-  Heart,
-  Plus,
-  MessageSquare
-} from 'lucide-react';
+import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+
+// ── week math, relative to today (Monday = start of week) ──────────────
+const DAY_MS = 86_400_000;
+function weekStartOf(date: Date) {
+  const x = new Date(date);
+  const off = (x.getDay() + 6) % 7; // Monday = 0
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - off);
+  return x;
+}
+const THIS_WEEK_START = weekStartOf(new Date()).getTime();
+const THIS_WEEK_END = THIS_WEEK_START + 7 * DAY_MS;
+const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
+
+const EARLIER_CAP = 4;
+
+type Status = PrayerRecord['status']; // 'pending' | 'answered' | 'ongoing' | 'unanswered'
+
+// The three marks you can set; the unmarked default is 'pending'.
+const MARK_ORDER: Status[] = ['ongoing', 'answered', 'unanswered'];
+const STATUS_LABEL: Record<Status, string> = {
+  pending: 'Unmarked',
+  ongoing: 'Ongoing',
+  answered: 'Answered',
+  unanswered: 'Still waiting',
+};
+
+// Warm tone for a status label (text only).
+const STATUS_TONE: Record<Status, string> = {
+  pending: 'text-on-surface-variant',
+  ongoing: 'text-stage-accent',
+  answered: 'text-success',
+  unanswered: 'text-error',
+};
+
+// Full static class strings for the mark pills so Tailwind's scanner keeps them.
+const MARK_ON: Record<Status, string> = {
+  pending: '',
+  ongoing: 'bg-stage-accent-soft text-stage-accent border-stage-accent/40',
+  answered: 'bg-success/10 text-success border-success/40',
+  unanswered: 'bg-error/10 text-error border-error/40',
+};
+
+const firstNameOf = (name: string) => name.split(' ')[0];
+
+function formatDate(isoString: string) {
+  const d = new Date(isoString);
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+}
+
+// ── shared avatar (matches Directory / Dashboard) ──────────────────────
+function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' | 'lg' }) {
+  const dim = size === 'sm' ? 'w-9 h-9 text-xs' : size === 'lg' ? 'w-14 h-14 text-base' : 'w-12 h-12 text-sm';
+  const initials = contact.initials || getUserInitials(contact.name);
+  if (contact.avatar) {
+    return <img src={contact.avatar} alt={contact.name} className={cn(dim, 'rounded-full object-cover shrink-0')} />;
+  }
+  return (
+    <div
+      className={cn(
+        dim,
+        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
+      )}
+    >
+      {initials}
+    </div>
+  );
+}
 
 export default function PrayerList() {
   const { user } = useAuth();
@@ -32,44 +91,44 @@ export default function PrayerList() {
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
-  const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
-  const [newBurden, setNewBurden] = useState('');
-  const [addingStatus, setAddingStatus] = useState(false);
 
-  // Load Contacts
+  // Contacts we've started carrying this session that have no prayer yet.
+  const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
+  // A contact whose this-week compose should auto-open (just started carrying).
+  const [composeFor, setComposeFor] = useState<string | null>(null);
+  // Contact whose full profile/history is open in the modal.
+  const [profileContact, setProfileContact] = useState<Contact | null>(null);
+
+  // Load contacts
   useEffect(() => {
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const contactData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Contact[];
+      const contactData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
       setContacts(contactData);
     });
     return () => unsubscribe();
   }, []);
 
-  // Load Prayers History
+  // Load prayers (with legacy mapping)
   useEffect(() => {
     const q = query(collection(db, 'prayers'), orderBy('date', 'desc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prayerData: PrayerRecord[] = [];
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
+      snapshot.docs.forEach((d) => {
+        const data = d.data();
         if (data.date && data.burden) {
-          prayerData.push({ id: doc.id, ...data } as PrayerRecord);
+          prayerData.push({ id: d.id, ...data } as PrayerRecord);
         } else if (data.prayedFor) {
           // Legacy mapping
           prayerData.push({
-            id: doc.id,
+            id: d.id,
             contactId: data.contactId,
             date: data.updatedAt || new Date().toISOString(),
             burden: data.prayedFor,
             status: data.unanswered ? 'unanswered' : 'pending',
             updatedAt: data.updatedAt || new Date().toISOString(),
             updatedBy: data.updatedBy,
-            updatedByName: data.updatedByName
+            updatedByName: data.updatedByName,
           } as PrayerRecord);
         }
       });
@@ -79,325 +138,598 @@ export default function PrayerList() {
     return () => unsubscribe();
   }, []);
 
-  const filteredContacts = useMemo(() => {
-    return contacts.filter(c => 
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.role?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.tags?.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }, [contacts, searchQuery]);
+  const contactName = (contactId: string) => contacts.find((c) => c.id === contactId)?.name || 'someone';
 
-  const selectedContact = useMemo(() => 
-    contacts.find(c => c.id === selectedContactId), 
-  [contacts, selectedContactId]);
+  const stamp = () => ({
+    updatedAt: new Date().toISOString(),
+    updatedBy: user?.uid,
+    updatedByName: user?.displayName || user?.email?.split('@')[0],
+  });
 
-  const selectedContactPrayers = useMemo(() => 
-    prayers.filter(p => p.contactId === selectedContactId).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-  [prayers, selectedContactId]);
-
-  const handleAddBurden = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedContactId || !newBurden.trim()) return;
-
-    setAddingStatus(true);
+  const handleAddBurden = async (contactId: string, burden: string) => {
+    const text = burden.trim();
+    if (!contactId || !text) return;
     try {
-      const newRecord: Omit<PrayerRecord, 'id'> = {
-        contactId: selectedContactId,
+      await addDoc(collection(db, 'prayers'), {
+        contactId,
         date: new Date().toISOString(),
-        burden: newBurden.trim(),
+        burden: text,
         status: 'pending',
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0]
-      };
-      
-      await addDoc(collection(db, 'prayers'), newRecord);
-      
+        ...stamp(),
+      } as Omit<PrayerRecord, 'id'>);
       logActivity({
-        action: "added a prayer burden for",
-        targetId: selectedContactId,
-        targetName: selectedContact.name,
-        targetType: "contact",
-        type: "comment",
-        description: newBurden.trim(),
+        action: 'added a prayer burden for',
+        targetId: contactId,
+        targetName: contactName(contactId),
+        targetType: 'contact',
+        type: 'comment',
+        description: text,
       });
-      
-      setNewBurden('');
     } catch (error) {
-      console.error("Error adding burden:", error);
-    } finally {
-      setAddingStatus(false);
+      console.error('Error adding burden:', error);
     }
   };
 
-  const handleUpdateStatus = async (prayerId: string, newStatus: PrayerRecord['status']) => {
+  const handleUpdateStatus = async (prayer: PrayerRecord, newStatus: Status) => {
     try {
-      const ref = doc(db, 'prayers', prayerId);
-      await updateDoc(ref, {
-        status: newStatus,
-        updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0]
+      await updateDoc(doc(db, 'prayers', prayer.id), { status: newStatus, ...stamp() });
+      logActivity({
+        action: `marked a prayer burden as ${newStatus} for`,
+        targetId: prayer.contactId,
+        targetName: contactName(prayer.contactId),
+        targetType: 'contact',
+        type: 'edit',
+        description: `Status changed to ${newStatus}`,
       });
-      
-      if (selectedContact) {
-        logActivity({
-          action: `marked a prayer burden as ${newStatus} for`,
-          targetId: selectedContact.id,
-          targetName: selectedContact.name,
-          targetType: "contact",
-          type: "edit",
-          description: `Status changed to ${newStatus}`,
-        });
-      }
     } catch (error) {
-      console.error("Error updating status:", error);
+      console.error('Error updating status:', error);
     }
   };
 
-  const formatDate = (isoString: string) => {
-    const d = new Date(isoString);
-    return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(d);
+  const handleUpdateBurden = async (prayer: PrayerRecord, burden: string) => {
+    const text = burden.trim();
+    if (!text || text === prayer.burden) return;
+    try {
+      await updateDoc(doc(db, 'prayers', prayer.id), { burden: text, ...stamp() });
+      logActivity({
+        action: 'edited a prayer burden for',
+        targetId: prayer.contactId,
+        targetName: contactName(prayer.contactId),
+        targetType: 'contact',
+        type: 'edit',
+        description: text,
+      });
+    } catch (error) {
+      console.error('Error editing burden:', error);
+    }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'answered': return 'text-green-600 bg-green-500/10 border-green-500/20';
-      case 'ongoing': return 'text-blue-600 bg-blue-500/10 border-blue-500/20';
-      case 'unanswered': return 'text-red-600 bg-red-500/10 border-red-500/20';
-      default: return 'text-orange-600 bg-orange-500/10 border-orange-500/20';
-    }
+  // Most recent prayer dated before this week — the one "last week" surfaces.
+  const lastBeforeThisWeek = (ps: PrayerRecord[]) =>
+    ps
+      .filter((p) => prayerMs(p) < THIS_WEEK_START)
+      .sort((a, b) => prayerMs(b) - prayerMs(a))[0] || null;
+
+  // One entry per person we're carrying (has a prayer, or we just started).
+  const entries = useMemo(() => {
+    const ids = new Set<string>();
+    prayers.forEach((p) => ids.add(p.contactId));
+    startedIds.forEach((id) => ids.add(id));
+
+    const list: { contact: Contact; prayers: PrayerRecord[] }[] = [];
+    ids.forEach((id) => {
+      const contact = contacts.find((c) => c.id === id);
+      if (!contact) return;
+      list.push({ contact, prayers: prayers.filter((p) => p.contactId === id) });
+    });
+
+    // Needs-attention first (last-week prayer still unmarked), then most recent.
+    list.sort((a, b) => {
+      const aNeeds = lastBeforeThisWeek(a.prayers)?.status === 'pending' ? 1 : 0;
+      const bNeeds = lastBeforeThisWeek(b.prayers)?.status === 'pending' ? 1 : 0;
+      if (aNeeds !== bNeeds) return bNeeds - aNeeds;
+      const aRecent = a.prayers.length ? Math.max(...a.prayers.map(prayerMs)) : Infinity;
+      const bRecent = b.prayers.length ? Math.max(...b.prayers.map(prayerMs)) : Infinity;
+      return bRecent - aRecent;
+    });
+    return list;
+  }, [prayers, contacts, startedIds]);
+
+  const filteredEntries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return entries;
+    return entries.filter(
+      (e) =>
+        e.contact.name.toLowerCase().includes(q) ||
+        e.contact.role?.toLowerCase().includes(q) ||
+        e.contact.tags?.some((t) => t.toLowerCase().includes(q)),
+    );
+  }, [entries, searchQuery]);
+
+  // Contacts not yet carried that match the search — offer to start carrying them.
+  const suggestions = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return [];
+    const carried = new Set(entries.map((e) => e.contact.id));
+    return contacts
+      .filter((c) => !carried.has(c.id) && c.name.toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [contacts, entries, searchQuery]);
+
+  const answeredThisYear = useMemo(() => {
+    const year = new Date().getFullYear();
+    return prayers.filter((p) => {
+      if (p.status !== 'answered') return false;
+      const when = new Date(p.updatedAt || p.date);
+      return when.getFullYear() === year;
+    }).length;
+  }, [prayers]);
+
+  const awaiting = useMemo(
+    () => entries.filter((e) => lastBeforeThisWeek(e.prayers)?.status === 'pending').length,
+    [entries],
+  );
+
+  const startCarrying = (contact: Contact) => {
+    setStartedIds((prev) => new Set(prev).add(contact.id));
+    setComposeFor(contact.id);
+    setSearchQuery('');
   };
 
   if (loading && contacts.length === 0) {
     return (
-      <div className="h-full flex flex-col bg-surface-container-lowest/30 animate-pulse p-8">
-        <Skeleton className="h-10 w-64 mb-8" />
-        <div className="flex gap-6 h-full">
-          <Skeleton className="w-1/3 h-full rounded-[32px]" />
-          <Skeleton className="flex-1 h-full rounded-[32px]" />
+      <div className="p-6 md:p-8 max-w-5xl flex flex-col gap-8">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-5 w-full max-w-md opacity-70" />
+        <div className="flex flex-col gap-4">
+          {[0, 1, 2].map((i) => (
+            <Skeleton key={i} className="h-40 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full flex flex-col bg-surface-container-lowest/30 overflow-hidden">
-      {/* Header Area */}
-      <div className="px-8 pt-8 pb-6 bg-surface border-b border-outline-variant/50 flex-shrink-0 z-10">
-        <div className="flex flex-col gap-6 md:flex-row md:items-end justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-on-primary shadow-lg shadow-primary/20">
-                <Heart className="w-6 h-6" />
-              </div>
-              <h1 className="text-3xl font-black text-on-surface tracking-tight uppercase">Prayer Log History</h1>
+    <div className="p-6 md:p-8 max-w-5xl">
+      {/* Header */}
+      <header className="mb-8">
+        <h1 className="font-serif text-3xl text-on-surface">Prayer Log</h1>
+        <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
+          <span className="text-success font-medium">{answeredThisYear}</span>{' '}
+          {answeredThisYear === 1 ? 'prayer' : 'prayers'} answered this year.
+          {awaiting > 0 && (
+            <span className="text-on-surface-variant/70">
+              {' '}
+              {awaiting} from last week {awaiting === 1 ? 'still needs' : 'still need'} an update below.
+            </span>
+          )}
+        </p>
+      </header>
+
+      {/* Search */}
+      <div className="relative mb-6 max-w-sm">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+        <input
+          type="text"
+          placeholder="Find someone…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+        />
+      </div>
+
+      {/* Start carrying suggestions */}
+      {suggestions.length > 0 && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {suggestions.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => startCarrying(c)}
+              className="inline-flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full bg-surface border border-outline-variant hover:border-primary transition-colors text-sm text-on-surface"
+            >
+              <Avatar contact={c} size="sm" />
+              <span>Start carrying {firstNameOf(c.name)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* People we're carrying */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant">
+          People we&rsquo;re carrying
+        </span>
+        <span className="font-serif text-sm text-on-surface-variant">{filteredEntries.length}</span>
+        <span className="flex-1 h-px bg-outline-variant" />
+      </div>
+
+      {filteredEntries.length === 0 ? (
+        <div className="text-center py-16">
+          <h3 className="font-serif text-xl text-on-surface mb-1">
+            {searchQuery ? 'No one matches that just yet' : 'No one to carry yet'}
+          </h3>
+          <p className="text-sm text-on-surface-variant">
+            {searchQuery
+              ? 'Try another name, or start carrying someone above.'
+              : 'Find a person above to begin praying for them.'}
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-4">
+          <AnimatePresence initial={false}>
+            {filteredEntries.map((e) => (
+              <PrayerThread
+                key={e.contact.id}
+                contact={e.contact}
+                prayers={e.prayers}
+                autoCompose={composeFor === e.contact.id}
+                onAddBurden={handleAddBurden}
+                onUpdateStatus={handleUpdateStatus}
+                onUpdateBurden={handleUpdateBurden}
+                onOpenProfile={() => setProfileContact(e.contact)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+
+      <ContactDetailsModal
+        isOpen={!!profileContact}
+        onClose={() => setProfileContact(null)}
+        contact={profileContact}
+      />
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────
+//  One person: this week, last week, and everything earlier folded away
+// ─────────────────────────────────────────────────────────────────────
+function PrayerThread({
+  contact,
+  prayers,
+  autoCompose,
+  onAddBurden,
+  onUpdateStatus,
+  onUpdateBurden,
+  onOpenProfile,
+}: {
+  contact: Contact;
+  prayers: PrayerRecord[];
+  autoCompose: boolean;
+  onAddBurden: (contactId: string, text: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
+  onUpdateBurden: (prayer: PrayerRecord, text: string) => void;
+  onOpenProfile: () => void;
+}) {
+  const [showEarlier, setShowEarlier] = useState(false);
+
+  const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
+  const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
+  const rest = sorted.filter((p) => p !== weekItem);
+  const lastItem = rest[0] || null;
+  const earlier = rest.slice(1);
+
+  const ongoingCount = prayers.filter((p) => p.status === 'ongoing').length;
+  const needsMark = !!lastItem && lastItem.status === 'pending';
+  const firstName = firstNameOf(contact.name);
+
+  return (
+    <motion.article
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      className="bg-surface border border-outline-variant rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+    >
+      {/* Header: person + a quiet count of what's still open */}
+      <div className="flex items-start gap-4">
+        <button
+          onClick={onOpenProfile}
+          className="flex items-center gap-3 text-left group min-w-0"
+          title="Open profile"
+        >
+          <Avatar contact={contact} size="lg" />
+          <div className="min-w-0">
+            <div className="font-serif text-lg text-on-surface leading-tight group-hover:text-primary transition-colors truncate">
+              {contact.name}
             </div>
-            <p className="text-on-surface-variant/70 text-sm font-medium ml-13">
-              Track weekly burdens, review past requests, and log answered prayers.
-            </p>
+            <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
+              {contact.role || 'Unassigned'}
+              {contact.tags?.find((t) => t.toLowerCase().includes('year')) && (
+                <>
+                  <span className="mx-1.5 opacity-50">·</span>
+                  {contact.tags.find((t) => t.toLowerCase().includes('year'))}
+                </>
+              )}
+            </div>
+          </div>
+        </button>
+        <div className="ml-auto text-right shrink-0">
+          <div className={cn('font-serif text-[15px] leading-tight', ongoingCount > 0 ? 'text-stage-accent' : 'text-success')}>
+            {ongoingCount > 0 ? `${ongoingCount} ongoing` : 'At rest'}
+          </div>
+          <div className="text-[11.5px] text-on-surface-variant">
+            {prayers.length} {prayers.length === 1 ? 'prayer' : 'prayers'} in all
           </div>
         </div>
       </div>
 
-      {/* Split View Container */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* Left: Contact List */}
-        <div className="w-[380px] flex-shrink-0 flex flex-col bg-surface-container-lowest border-r border-outline-variant/30 relative">
-          <div className="p-4 border-b border-outline-variant/30 sticky top-0 bg-surface-container-lowest/80 backdrop-blur-xl z-10">
-             <div className="relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/40 group-focus-within:text-primary transition-colors" />
-                <input 
-                  type="text"
-                  placeholder="Search Members..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 h-11 w-full rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm font-medium"
-                />
-             </div>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
-            <AnimatePresence>
-              {filteredContacts.map(contact => {
-                const isSelected = selectedContactId === contact.id;
-                const contactPrayers = prayers.filter(p => p.contactId === contact.id).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const latestPrayer = contactPrayers[0];
-                
-                return (
-                  <motion.button
-                    layout
-                    key={contact.id}
-                    onClick={() => setSelectedContactId(contact.id)}
-                    className={cn(
-                      "w-full text-left p-4 rounded-2xl mb-1 transition-all group flex gap-4 items-start",
-                      isSelected 
-                        ? "bg-primary/10 hover:bg-primary/15" 
-                        : "hover:bg-surface-container-low"
-                    )}
-                  >
-                    <div className={cn(
-                      "w-10 h-10 shrink-0 rounded-xl flex items-center justify-center font-black text-sm uppercase transition-colors",
-                      isSelected ? "bg-primary text-on-primary" : "bg-surface-container-high text-primary group-hover:bg-primary/20"
-                    )}>
-                      {contact.initials}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm text-on-surface truncate">{contact.name}</div>
-                      {latestPrayer ? (
-                        <div className="flex items-center gap-2 mt-1 truncate">
-                          <span className={cn(
-                            "w-2 h-2 rounded-full shrink-0", 
-                            latestPrayer.status === 'answered' ? 'bg-green-500' :
-                            latestPrayer.status === 'ongoing' ? 'bg-blue-500' :
-                            latestPrayer.status === 'unanswered' ? 'bg-red-500' : 'bg-orange-500'
-                          )} />
-                          <span className="text-xs text-on-surface-variant/70 truncate">{latestPrayer.burden}</span>
-                        </div>
-                      ) : (
-                        <div className="text-xs text-on-surface-variant/40 mt-1 italic">No prayer history</div>
-                      )}
-                    </div>
-                  </motion.button>
-                )
-              })}
-            </AnimatePresence>
-          </div>
+      {/* This week */}
+      <div className="mt-5">
+        <SectionEyebrow label="This week" />
+        {weekItem ? (
+          <PrayerItem
+            prayer={weekItem}
+            variant="week"
+            onUpdateStatus={onUpdateStatus}
+            onUpdateBurden={onUpdateBurden}
+          />
+        ) : (
+          <AddThisWeek
+            firstName={firstName}
+            defaultOpen={autoCompose}
+            onAdd={(text) => onAddBurden(contact.id, text)}
+          />
+        )}
+      </div>
+
+      {/* Last week — always shown for context, with a mark to update */}
+      {lastItem && (
+        <div className="mt-5">
+          <SectionEyebrow label="Last week" nudge={needsMark ? 'Needs an update' : undefined} />
+          <PrayerItem
+            prayer={lastItem}
+            variant="last"
+            needsMark={needsMark}
+            onUpdateStatus={onUpdateStatus}
+            onUpdateBurden={onUpdateBurden}
+          />
         </div>
+      )}
 
-        {/* Right: History Log Panel */}
-        <div className="flex-1 flex flex-col bg-surface relative overflow-hidden">
-          {!selectedContact ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 opacity-50">
-              <MessageSquare className="w-16 h-16 text-on-surface-variant/30 mb-4" />
-              <h2 className="text-xl font-bold text-on-surface-variant">Select a Member</h2>
-              <p className="text-sm font-medium text-on-surface-variant/60 mt-2 max-w-sm">
-                Choose a contact from the list to view their prayer history, review past burdens, and add a new focus for this week.
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col h-full absolute inset-0">
-              
-              {/* Contact Header */}
-              <div className="flex items-center gap-4 p-6 md:px-10 border-b border-outline-variant/30 bg-surface/80 backdrop-blur-sm z-10 shrink-0">
-                <div className="w-14 h-14 rounded-2xl bg-surface-container-high flex items-center justify-center text-primary font-black text-xl uppercase">
-                  {selectedContact.initials}
+      {/* Earlier — folded away, expands inline (capped) */}
+      {earlier.length > 0 && (
+        <div className="mt-5">
+          <button
+            onClick={() => setShowEarlier((v) => !v)}
+            className="flex items-center gap-3 w-full group"
+          >
+            <span
+              className={cn(
+                'text-on-surface-variant transition-transform text-xs',
+                showEarlier && 'rotate-90',
+              )}
+              aria-hidden
+            >
+              ▶
+            </span>
+            <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant group-hover:text-on-surface transition-colors">
+              {showEarlier ? 'Hide' : 'Earlier'} — {earlier.length} {earlier.length === 1 ? 'prayer' : 'prayers'}
+            </span>
+            <span className="flex-1 h-px bg-outline-variant" />
+          </button>
+          {showEarlier && (
+            <div className="mt-2">
+              {earlier.slice(0, EARLIER_CAP).map((p) => (
+                <PrayerItem
+                  key={p.id}
+                  prayer={p}
+                  variant="earlier"
+                  onUpdateStatus={onUpdateStatus}
+                  onUpdateBurden={onUpdateBurden}
+                />
+              ))}
+              {earlier.length > EARLIER_CAP && (
+                <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
+                  {earlier.length - EARLIER_CAP} older{' '}
+                  {earlier.length - EARLIER_CAP === 1 ? 'prayer' : 'prayers'} —{' '}
+                  <button onClick={onOpenProfile} className="text-primary hover:underline">
+                    see {firstName}&rsquo;s full history
+                  </button>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-black text-on-surface tracking-tight">{selectedContact.name}</h2>
-                  <div className="flex items-center gap-2 mt-1">
-                     <span className="text-[10px] font-black text-on-surface-variant/60 uppercase tracking-widest">{selectedContact.role || 'Unassigned'}</span>
-                     <span className="w-1 h-1 rounded-full bg-outline-variant" />
-                     <span className="text-[10px] font-black text-primary uppercase tracking-widest">{selectedContact.tags?.find(t => t.toLowerCase().includes('year')) || 'TBD'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Scrollable Feed */}
-              <div className="flex-1 overflow-y-auto p-6 md:px-10 scrollbar-thin bg-surface-container-lowest/30">
-                
-                {/* Compose New Burden */}
-                <form onSubmit={handleAddBurden} className="mb-10 bg-surface rounded-[24px] border border-outline-variant/50 p-6 shadow-xl shadow-surface-container/5 relative overflow-hidden group">
-                  <div className="absolute top-0 left-0 w-1 h-full bg-primary" />
-                  <h3 className="text-sm font-black text-on-surface uppercase tracking-widest mb-4 flex items-center gap-2">
-                    <Plus className="w-4 h-4 text-primary" />
-                    This Week's Burden
-                  </h3>
-                  <textarea
-                    placeholder={`What are we praying for ${selectedContact.name.split(' ')[0]} this week?`}
-                    value={newBurden}
-                    onChange={(e) => setNewBurden(e.target.value)}
-                    className="w-full min-h-[100px] p-4 rounded-xl bg-surface-container-lowest border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm font-medium resize-none shadow-inner"
-                  />
-                  <div className="mt-4 flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={!newBurden.trim() || addingStatus}
-                      className="px-6 py-2.5 rounded-xl bg-primary text-on-primary text-sm font-bold shadow-lg shadow-primary/25 hover:bg-primary/90 hover:shadow-primary/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                    >
-                      {addingStatus && <Loader2 className="w-4 h-4 animate-spin" />}
-                      Log Burden
-                    </button>
-                  </div>
-                </form>
-
-                {/* History Log */}
-                <div className="space-y-6 relative">
-                  {/* Timeline vertical line */}
-                  <div className="absolute left-6 top-8 bottom-0 w-px bg-outline-variant/30 -z-10" />
-
-                  <h3 className="text-sm font-black text-on-surface-variant uppercase tracking-widest mb-6 bg-surface-container-lowest/30 inline-block pr-4">
-                    Prayer History
-                  </h3>
-
-                  {selectedContactPrayers.length === 0 ? (
-                    <div className="text-center py-10 opacity-60">
-                      <Clock className="w-10 h-10 text-on-surface-variant mx-auto mb-3 opacity-50" />
-                      <p className="text-sm font-medium">No past burdens logged yet.</p>
-                    </div>
-                  ) : (
-                    selectedContactPrayers.map((prayer) => (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        key={prayer.id} 
-                        className="flex gap-6 relative"
-                      >
-                        {/* Timeline node */}
-                        <div className="mt-1.5 z-10 shrink-0">
-                          <div className={cn(
-                            "w-12 h-12 rounded-full border-4 border-surface-container-lowest flex items-center justify-center font-bold text-[10px] uppercase shadow-sm",
-                            prayer.status === 'answered' ? 'bg-green-100 text-green-700' :
-                            prayer.status === 'ongoing' ? 'bg-blue-100 text-blue-700' :
-                            prayer.status === 'unanswered' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
-                          )}>
-                            {prayer.status === 'answered' ? <CheckCircle2 className="w-5 h-5" /> : 
-                             prayer.status === 'ongoing' ? <Clock className="w-5 h-5" /> : 
-                             prayer.status === 'unanswered' ? <AlertCircle className="w-5 h-5" /> :
-                             <Calendar className="w-4 h-4" />}
-                          </div>
-                        </div>
-
-                        {/* Card */}
-                        <div className="flex-1 bg-surface border border-outline-variant/30 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-3 border-b border-outline-variant/20 pb-3">
-                            <div className="flex flex-col">
-                              <span className="text-sm font-black text-on-surface">Week of {formatDate(prayer.date)}</span>
-                              <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-wide">
-                                Logged by {prayer.updatedByName || 'Team'}
-                              </span>
-                            </div>
-                            
-                            {/* Status Switcher */}
-                            <select
-                              value={prayer.status}
-                              onChange={(e) => handleUpdateStatus(prayer.id, e.target.value as PrayerRecord['status'])}
-                              className={cn(
-                                "text-xs font-bold uppercase tracking-wider rounded-lg px-3 py-1.5 border appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/50 transition-colors",
-                                getStatusColor(prayer.status)
-                              )}
-                            >
-                              <option value="pending">Pending Review</option>
-                              <option value="ongoing">Ongoing</option>
-                              <option value="unanswered">Unanswered</option>
-                              <option value="answered">Answered 🎉</option>
-                            </select>
-                          </div>
-                          
-                          <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap font-medium">
-                            {prayer.burden}
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  )}
-                </div>
-
-              </div>
+              )}
             </div>
           )}
         </div>
+      )}
+    </motion.article>
+  );
+}
+
+function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-2">
+      <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant">{label}</span>
+      {nudge && (
+        <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-error">{nudge}</span>
+      )}
+      <span className="flex-1 h-px bg-outline-variant" />
+    </div>
+  );
+}
+
+// One individual prayer: date, status, inline edit, and a single mark (toggleable).
+function PrayerItem({
+  prayer,
+  variant,
+  needsMark,
+  onUpdateStatus,
+  onUpdateBurden,
+}: {
+  prayer: PrayerRecord;
+  variant: 'week' | 'last' | 'earlier';
+  needsMark?: boolean;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
+  onUpdateBurden: (prayer: PrayerRecord, text: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(prayer.burden);
+
+  const startEdit = () => {
+    setDraft(prayer.burden);
+    setEditing(true);
+  };
+  const save = () => {
+    onUpdateBurden(prayer, draft);
+    setEditing(false);
+  };
+
+  // Toggle: clicking the active mark clears it back to unmarked (pending).
+  const mark = (s: Status) => onUpdateStatus(prayer, prayer.status === s ? 'pending' : s);
+
+  const dimmed = prayer.status === 'answered' || variant === 'earlier';
+
+  return (
+    <div
+      className={cn(
+        'pl-3 border-l-2',
+        variant === 'week'
+          ? 'border-l-primary'
+          : prayer.status === 'answered'
+            ? 'border-l-success/50'
+            : 'border-l-outline-variant',
+      )}
+    >
+      <div className="flex items-baseline gap-3 flex-wrap">
+        <span className="text-[13px] text-on-surface-variant">{formatDate(prayer.date)}</span>
+        {prayer.status !== 'pending' ? (
+          <span className={cn('text-[10.5px] uppercase tracking-[0.1em] font-semibold', STATUS_TONE[prayer.status])}>
+            {STATUS_LABEL[prayer.status]}
+          </span>
+        ) : variant !== 'week' ? (
+          <span className="text-[10.5px] uppercase tracking-[0.1em] font-semibold text-on-surface-variant/70">
+            Unmarked
+          </span>
+        ) : null}
+        {!editing && (
+          <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-primary transition-colors ml-auto">
+            Edit
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="mt-2">
+          <textarea
+            autoFocus
+            rows={3}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            className="w-full p-3 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface resize-none"
+          />
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={save}
+              disabled={!draft.trim()}
+              className="px-4 py-1.5 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => {
+                setDraft(prayer.burden);
+                setEditing(false);
+              }}
+              className="px-4 py-1.5 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className={cn('text-sm leading-relaxed mt-1.5 whitespace-pre-wrap', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
+          {prayer.burden}
+        </p>
+      )}
+
+      {/* Mark */}
+      <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
+        <span className="text-[11.5px] text-on-surface-variant">
+          {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark'}
+        </span>
+        <div className="flex gap-1.5 flex-wrap">
+          {MARK_ORDER.map((s) => (
+            <button
+              key={s}
+              onClick={() => mark(s)}
+              className={cn(
+                'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                prayer.status === s
+                  ? MARK_ON[s]
+                  : 'border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline',
+              )}
+            >
+              {STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Empty state for the week: a quiet invitation to write what we're carrying.
+function AddThisWeek({
+  firstName,
+  defaultOpen,
+  onAdd,
+}: {
+  firstName: string;
+  defaultOpen?: boolean;
+  onAdd: (text: string) => void;
+}) {
+  const [open, setOpen] = useState(!!defaultOpen);
+  const [val, setVal] = useState('');
+
+  const save = () => {
+    const t = val.trim();
+    if (!t) return;
+    onAdd(t);
+    setVal('');
+    setOpen(false);
+  };
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border border-dashed border-outline-variant hover:border-primary text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+      >
+        <Plus className="w-4 h-4 shrink-0" />
+        <span>Write what we&rsquo;re carrying for {firstName} this week</span>
+      </button>
+    );
+  }
+
+  return (
+    <div>
+      <textarea
+        autoFocus
+        rows={3}
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        placeholder={`What are we praying for ${firstName} this week?`}
+        className="w-full p-3 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface resize-none"
+      />
+      <div className="mt-2 flex gap-2">
+        <button
+          onClick={save}
+          disabled={!val.trim()}
+          className="px-4 py-1.5 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+        >
+          Add prayer
+        </button>
+        <button
+          onClick={() => {
+            setVal('');
+            setOpen(false);
+          }}
+          className="px-4 py-1.5 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+        >
+          Cancel
+        </button>
       </div>
     </div>
   );
