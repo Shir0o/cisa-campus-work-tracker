@@ -19,6 +19,7 @@ import {
   Plus,
   Tag,
   Sparkles,
+  Heart,
 } from "lucide-react";
 import {
   db,
@@ -44,7 +45,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Comment, Activity } from "../../types";
+import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
 
@@ -168,9 +169,16 @@ export default function ContactDetailsModal({
   const [comments, setComments] = useState<Comment[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
+  const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
+  const [prayersLoading, setPrayersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "info" | "interactions" | "comments" | "history"
-  >("info");
+    "overview" | "interactions" | "prayer" | "comments" | "history"
+  >("overview");
+  const [isAddingPrayer, setIsAddingPrayer] = useState(false);
+  const [newPrayer, setNewPrayer] = useState({ burden: "", context: "" });
+  const [submittingPrayer, setSubmittingPrayer] = useState(false);
+  const [addingTag, setAddingTag] = useState(false);
+  const [tagInput, setTagInput] = useState("");
   const [newComment, setNewComment] = useState("");
   const [submittingComment, setSubmittingComment] = useState(false);
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
@@ -376,6 +384,44 @@ export default function ContactDetailsModal({
       return () => unsubscribe();
     }
   }, [isOpen, contact]);
+
+  useEffect(() => {
+    if (isOpen && contact) {
+      const q = query(
+        collection(db, "prayers"),
+        where("contactId", "==", contact.id),
+      );
+
+      setPrayersLoading(true);
+      const unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const prayerData = snapshot.docs
+            .map((doc) => ({ id: doc.id, ...doc.data() }) as PrayerRecord)
+            .sort(
+              (a, b) =>
+                new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+            );
+          setPrayers(prayerData);
+          setPrayersLoading(false);
+        },
+        (error) => {
+          handleFirestoreError(error, OperationType.LIST, "prayers");
+          setPrayersLoading(false);
+        },
+      );
+
+      return () => unsubscribe();
+    }
+  }, [isOpen, contact]);
+
+  // Reset to the Overview tab whenever a different contact opens.
+  useEffect(() => {
+    setActiveTab("overview");
+    setIsAddingPrayer(false);
+    setAddingTag(false);
+    setTagInput("");
+  }, [contact?.id]);
 
   if (!contact) return null;
 
@@ -682,6 +728,104 @@ export default function ContactDetailsModal({
     }
   };
 
+  const handleAddPrayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPrayer.burden.trim() || !contact) return;
+
+    setSubmittingPrayer(true);
+    try {
+      const burden = [newPrayer.burden.trim(), newPrayer.context.trim()]
+        .filter(Boolean)
+        .join("\n\n");
+      const now = new Date().toISOString();
+      await addDoc(collection(db, "prayers"), {
+        contactId: contact.id,
+        date: now,
+        burden,
+        status: "pending",
+        updatedAt: now,
+        updatedBy: user?.uid || "",
+        updatedByName:
+          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+      });
+
+      logActivity({
+        action: "added a prayer burden for",
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: "contact",
+        type: "comment",
+        description: newPrayer.burden.trim(),
+      });
+
+      setNewPrayer({ burden: "", context: "" });
+      setIsAddingPrayer(false);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, "prayers");
+    } finally {
+      setSubmittingPrayer(false);
+    }
+  };
+
+  // ── Inline tag add / remove (persist to the contact's tags array) ──
+  const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
+    const prevTags = formData.tags;
+    setFormData((f) => ({ ...f, tags: updatedTags }));
+    try {
+      await updateDoc(doc(db, "contacts", contact.id), {
+        tags: updatedTags,
+        updatedAt: new Date().toISOString(),
+        updatedBy: user?.uid,
+        updatedByName:
+          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+      });
+      logActivity({
+        action: `${verb} tag #${tag} ${verb === "removed" ? "from" : "to"}`,
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: "contact",
+        type: "edit",
+        description: `Tags: [${prevTags.join(", ")}] → [${updatedTags.join(", ")}]`,
+      });
+    } catch (error) {
+      setFormData((f) => ({ ...f, tags: prevTags }));
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
+    }
+  };
+
+  const commitTag = () => {
+    const val = tagInput.trim();
+    if (val && !formData.tags.includes(val)) {
+      persistTags([...formData.tags, val], "added", val);
+    }
+    setTagInput("");
+    setAddingTag(false);
+  };
+
+  const removeTag = (tag: string) => {
+    persistTags(formData.tags.filter((t) => t !== tag), "removed", tag);
+  };
+
+  // ── Contact actions: Call / Text / Email ──
+  const callContact = () => {
+    if (contact.phone) window.open(`tel:${contact.phone}`);
+  };
+  const textContact = () => {
+    if (contact.phone) window.open(`sms:${contact.phone}`);
+  };
+  const emailContact = () => {
+    if (contact.email) window.open(`mailto:${contact.email}`);
+  };
+  const startLogInteraction = () => {
+    setActiveTab("interactions");
+    setIsLoggingInteraction(true);
+  };
+  const startAddPrayer = () => {
+    setActiveTab("prayer");
+    setIsAddingPrayer(true);
+  };
+
+  const firstName = contact.name.split(" ")[0];
 
   return (
     <AnimatePresence>
@@ -702,112 +846,117 @@ export default function ContactDetailsModal({
             className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
           >
             {/* Header */}
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xl">
-                  {contact.initials}
+            <div className="px-6 py-5 border-b border-outline-variant shrink-0">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
+                    {contact.initials}
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-2xl text-on-surface leading-tight line-clamp-1">
+                      {isEditing ? "Edit details" : contact.name}
+                    </h2>
+                    {!isEditing && (
+                      <p className="text-sm text-on-surface-variant mt-0.5 truncate">
+                        {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-on-surface line-clamp-1">
-                    {isEditing ? "Edit Contact" : contact.name}
-                  </h2>
+                <div className="flex items-center gap-2 shrink-0">
                   {!isEditing && (
-                    <p className="text-sm text-on-surface-variant font-medium">
-                      {contact.role}
-                    </p>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
+                      title="Edit details"
+                    >
+                      <Edit3 className="w-5 h-5" />
+                    </button>
                   )}
+                  <button
+                    onClick={onClose}
+                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {!isEditing && (
+
+              {/* Header actions */}
+              {!isEditing && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {contact.phone && (
+                    <button
+                      onClick={callContact}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <Phone className="w-3.5 h-3.5" /> Call
+                    </button>
+                  )}
+                  {contact.phone && (
+                    <button
+                      onClick={textContact}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" /> Text
+                    </button>
+                  )}
+                  {contact.email && (
+                    <button
+                      onClick={emailContact}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email
+                    </button>
+                  )}
                   <button
-                    onClick={() => setIsEditing(true)}
-                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
-                    title="Edit Contact"
+                    onClick={startLogInteraction}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                   >
-                    <Edit3 className="w-5 h-5" />
+                    <MessageSquare className="w-3.5 h-3.5" /> Log interaction
                   </button>
-                )}
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+                  <button
+                    onClick={startAddPrayer}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                  >
+                    <Heart className="w-3.5 h-3.5" /> Add prayer
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Content Tab Switcher */}
             {!isEditing && (
-              <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0">
-                <button
-                  onClick={() => setActiveTab("info")}
-                  className={cn(
-                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === "info"
-                      ? "text-primary"
-                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
-                  )}
-                >
-                  General Info
-                  {activeTab === "info" && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
-                    />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab("interactions")}
-                  className={cn(
-                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === "interactions"
-                      ? "text-primary"
-                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
-                  )}
-                >
-                  Interactions ({interactions.length})
-                  {activeTab === "interactions" && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
-                    />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab("comments")}
-                  className={cn(
-                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === "comments"
-                      ? "text-primary"
-                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
-                  )}
-                >
-                  Discussion ({comments.length})
-                  {activeTab === "comments" && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
-                    />
-                  )}
-                </button>
-                <button
-                  onClick={() => setActiveTab("history")}
-                  className={cn(
-                    "px-4 py-3 text-xs font-black uppercase tracking-widest transition-all relative",
-                    activeTab === "history"
-                      ? "text-primary"
-                      : "text-on-surface-variant/60 hover:text-on-surface-variant",
-                  )}
-                >
-                  Audit History
-                  {activeTab === "history" && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full"
-                    />
-                  )}
-                </button>
+              <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0 overflow-x-auto no-scrollbar">
+                {([
+                  { id: "overview", label: "Overview" },
+                  { id: "interactions", label: "Conversations", count: interactions.length },
+                  { id: "prayer", label: "Prayer", count: prayers.length },
+                  { id: "comments", label: "Discussion", count: comments.length },
+                  { id: "history", label: "History" },
+                ] as const).map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setActiveTab(t.id)}
+                    className={cn(
+                      "px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap",
+                      activeTab === t.id
+                        ? "text-primary"
+                        : "text-on-surface-variant/70 hover:text-on-surface",
+                    )}
+                  >
+                    {t.label}
+                    {"count" in t && t.count != null && (
+                      <span className="ml-1.5 text-on-surface-variant/50">{t.count}</span>
+                    )}
+                    {activeTab === t.id && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
+                      />
+                    )}
+                  </button>
+                ))}
               </div>
             )}
 
@@ -1019,7 +1168,7 @@ export default function ContactDetailsModal({
                 </form>
               ) : (
                 <div className="min-h-[400px]">
-                  {activeTab === "info" && (
+                  {activeTab === "overview" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1032,7 +1181,7 @@ export default function ContactDetailsModal({
                             <Mail className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
                               Email Address
                             </p>
                             <p className="text-sm font-bold text-on-surface break-all">
@@ -1045,7 +1194,7 @@ export default function ContactDetailsModal({
                             <Phone className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
                               Phone Number
                             </p>
                             <p className="text-sm font-bold text-on-surface">
@@ -1058,7 +1207,7 @@ export default function ContactDetailsModal({
                             <MapPin className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
                               {contact?.tags?.includes('New Sign Up') ? 'Residence Hall' : 'First Met'}
                             </p>
                             <p className="text-sm font-bold text-on-surface">
@@ -1071,11 +1220,11 @@ export default function ContactDetailsModal({
                             <Briefcase className="w-5 h-5" />
                           </div>
                           <div>
-                            <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
-                              Pipeline Stage
+                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
+                              Stage
                             </p>
                             <div className="flex flex-col gap-1 mt-1">
-                              <span className="px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold uppercase tracking-tight w-fit">
+                              <span className="px-2.5 py-0.5 rounded-full bg-surface-variant text-on-surface-variant text-xs font-medium w-fit">
                                 {stages.some(s => s.label === contact.stage) ? contact.stage : "Unassigned"}
                               </span>
                             </div>
@@ -1087,7 +1236,7 @@ export default function ContactDetailsModal({
                               <Sparkles className="w-5 h-5" />
                             </div>
                             <div>
-                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
+                              <p className="text-xs font-medium text-on-surface-variant mb-0.5">
                                 Spiritual Background
                               </p>
                               <p className="text-sm font-bold text-on-surface">
@@ -1096,35 +1245,66 @@ export default function ContactDetailsModal({
                             </div>
                           </div>
                         )}
-                        {contact.tags && contact.tags.length > 0 && (
-                          <div className="flex items-start gap-4 md:col-span-2">
-                            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                              <Tag className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest mb-0.5">
-                                Tags
-                              </p>
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {contact.tags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="px-2 py-0.5 rounded bg-surface-container-highest text-on-surface-variant text-[10px] font-black uppercase tracking-wider border border-outline/20"
+                        <div className="flex items-start gap-4 md:col-span-2">
+                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+                            <Tag className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-on-surface-variant mb-1.5">
+                              Tags
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              {formData.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="group/tag inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-medium border border-outline-variant/40"
+                                >
+                                  {tag}
+                                  <button
+                                    onClick={() => removeTag(tag)}
+                                    className="text-on-surface-variant/50 hover:text-error transition-colors"
+                                    title="Remove tag"
                                   >
-                                    #{tag}
-                                  </span>
-                                ))}
-                              </div>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              ))}
+                              {addingTag ? (
+                                <input
+                                  autoFocus
+                                  value={tagInput}
+                                  onChange={(e) => setTagInput(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      commitTag();
+                                    }
+                                    if (e.key === "Escape") {
+                                      setTagInput("");
+                                      setAddingTag(false);
+                                    }
+                                  }}
+                                  onBlur={commitTag}
+                                  placeholder="new tag…"
+                                  className="h-7 px-2.5 rounded-full bg-surface border border-primary/40 text-xs text-on-surface outline-none w-28"
+                                />
+                              ) : (
+                                <button
+                                  onClick={() => setAddingTag(true)}
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" /> add
+                                </button>
+                              )}
                             </div>
                           </div>
-                        )}
+                        </div>
                       </div>
 
                       {/* Notes Section */}
                       <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
-                        <h3 className="text-sm font-black text-on-surface uppercase tracking-widest flex items-center gap-2 mb-4">
-                          <MessageSquare className="w-4 h-4 text-primary" />{" "}
-                          Contact Notes
+                        <h3 className="font-serif text-lg text-on-surface flex items-center gap-2 mb-3">
+                          <MessageSquare className="w-4 h-4 text-primary" /> What we know
                         </h3>
                         <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
                           {contact.notes ||
@@ -1133,15 +1313,13 @@ export default function ContactDetailsModal({
                       </div>
 
                       {/* Timestamps */}
-                      <div className="flex items-center justify-between px-2 pt-2 border-t border-outline-variant/30">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-on-surface-variant/60 uppercase tracking-widest flex items-center gap-1.5">
-                              Last Seen: {contact.lastSeen || "Never"}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
-                            Added:{" "}
+                      <div className="flex items-center justify-between px-2 pt-3 border-t border-outline-variant/30">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-xs text-on-surface-variant/70">
+                            Last seen {contact.lastSeen || "—"}
+                          </span>
+                          <span className="text-xs text-on-surface-variant/50">
+                            Added{" "}
                             {new Date(
                               contact.createdAt || "",
                             ).toLocaleDateString()}
@@ -1158,21 +1336,21 @@ export default function ContactDetailsModal({
                       className="space-y-4"
                     >
                       <div className="flex items-center justify-between px-2">
-                        <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2">
-                          Interaction Log ({interactions.length})
+                        <h3 className="font-serif text-lg text-on-surface">
+                          Every conversation
                         </h3>
                         <button
                           onClick={() =>
                             setIsLoggingInteraction(!isLoggingInteraction)
                           }
-                          className="p-1 px-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-all text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         >
                           {isLoggingInteraction ? (
-                            <X className="w-3 h-3" />
+                            <X className="w-3.5 h-3.5" />
                           ) : (
-                            <Plus className="w-3 h-3" />
+                            <Plus className="w-3.5 h-3.5" />
                           )}
-                          {isLoggingInteraction ? "Cancel" : "Log Interaction"}
+                          {isLoggingInteraction ? "Cancel" : "Log interaction"}
                         </button>
                       </div>
 
@@ -1470,14 +1648,164 @@ export default function ContactDetailsModal({
                     </motion.div>
                   )}
 
+                  {activeTab === "prayer" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center justify-between px-2">
+                        <h3 className="font-serif text-lg text-on-surface">
+                          Prayers we're carrying
+                        </h3>
+                        <button
+                          onClick={() => setIsAddingPrayer(!isAddingPrayer)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          {isAddingPrayer ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                          {isAddingPrayer ? "Cancel" : "Add prayer"}
+                        </button>
+                      </div>
+
+                      {/* Add Prayer Form */}
+                      <AnimatePresence>
+                        {isAddingPrayer && (
+                          <motion.form
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: "auto" }}
+                            exit={{ opacity: 0, height: 0 }}
+                            onSubmit={handleAddPrayer}
+                            className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
+                          >
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-on-surface-variant px-1">
+                                What are we praying for?
+                              </label>
+                              <input
+                                required
+                                autoFocus
+                                type="text"
+                                placeholder={`e.g. ${firstName}'s family back home`}
+                                value={newPrayer.burden}
+                                onChange={(e) =>
+                                  setNewPrayer((p) => ({ ...p, burden: e.target.value }))
+                                }
+                                className="w-full h-10 px-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-xs font-medium text-on-surface-variant px-1">
+                                More context <span className="text-on-surface-variant/60">(optional)</span>
+                              </label>
+                              <textarea
+                                placeholder="Any background worth knowing as we pray…"
+                                value={newPrayer.context}
+                                onChange={(e) =>
+                                  setNewPrayer((p) => ({ ...p, context: e.target.value }))
+                                }
+                                className="w-full min-h-[70px] p-3 rounded-lg bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm resize-none"
+                              />
+                            </div>
+                            <div className="flex justify-end pt-1">
+                              <button
+                                type="submit"
+                                disabled={submittingPrayer || !newPrayer.burden.trim()}
+                                className="inline-flex items-center gap-2 px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50"
+                              >
+                                {submittingPrayer ? (
+                                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                ) : (
+                                  <Heart className="w-3.5 h-3.5" />
+                                )}
+                                Add prayer
+                              </button>
+                            </div>
+                          </motion.form>
+                        )}
+                      </AnimatePresence>
+
+                      <div className="space-y-3 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                        {prayersLoading ? (
+                          <div className="space-y-3">
+                            {[1, 2].map((i) => (
+                              <Skeleton key={i} className="h-20 w-full rounded-2xl" />
+                            ))}
+                          </div>
+                        ) : prayers.length === 0 ? (
+                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
+                            <Heart className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
+                            <p className="text-sm text-on-surface-variant/60">
+                              No prayers recorded for {firstName} yet.
+                            </p>
+                          </div>
+                        ) : (
+                          prayers.map((p) => {
+                            const answered = p.status === "answered";
+                            const heldDays = p.date
+                              ? Math.max(
+                                  0,
+                                  Math.floor(
+                                    (Date.now() - new Date(p.date).getTime()) / 86_400_000,
+                                  ),
+                                )
+                              : null;
+                            return (
+                              <div
+                                key={p.id}
+                                className="p-4 rounded-2xl bg-surface-container-high border border-outline-variant/40"
+                              >
+                                <div className="flex items-center justify-between gap-2 mb-1.5">
+                                  <span
+                                    className={cn(
+                                      "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium",
+                                      answered
+                                        ? "bg-stage-teal-soft text-stage-teal"
+                                        : p.status === "unanswered"
+                                          ? "bg-surface-variant text-on-surface-variant"
+                                          : "bg-stage-violet-soft text-stage-violet",
+                                    )}
+                                  >
+                                    <span
+                                      className={cn(
+                                        "w-1.5 h-1.5 rounded-full",
+                                        answered
+                                          ? "bg-stage-teal"
+                                          : p.status === "unanswered"
+                                            ? "bg-on-surface-variant"
+                                            : "bg-stage-violet",
+                                      )}
+                                    />
+                                    {answered
+                                      ? "answered"
+                                      : p.status === "unanswered"
+                                        ? "closed"
+                                        : "open"}
+                                  </span>
+                                  {heldDays != null && (
+                                    <span className="text-xs text-on-surface-variant/60">
+                                      held {heldDays} {heldDays === 1 ? "day" : "days"}
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
+                                  {p.burden}
+                                </p>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+
                   {activeTab === "comments" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
                     >
-                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
-                        Team Discussion ({comments.length})
+                      <h3 className="font-serif text-lg text-on-surface px-2">
+                        Team discussion
                       </h3>
 
                       <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -1642,8 +1970,8 @@ export default function ContactDetailsModal({
                       animate={{ opacity: 1, y: 0 }}
                       className="space-y-4"
                     >
-                      <h3 className="text-xs font-black text-on-surface-variant uppercase tracking-widest flex items-center gap-2 px-2">
-                        Audit History Log ({activities.length})
+                      <h3 className="font-serif text-lg text-on-surface px-2">
+                        Looking back
                       </h3>
 
                       <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">

@@ -30,6 +30,7 @@ vi.mock('firebase/firestore', () => {
 
   return {
     collection: vi.fn(() => mockCollection),
+    collectionGroup: vi.fn(() => mockCollection),
     onSnapshot: vi.fn(),
     query: vi.fn(),
     orderBy: vi.fn(),
@@ -72,6 +73,8 @@ vi.mock('../components/AuthProvider', () => ({
 vi.mock('../App', () => ({
   useLayout: () => ({
     isSidebarCollapsed: false,
+    setSelectedContact: vi.fn(),
+    openNewContact: vi.fn(),
   }),
 }));
 
@@ -120,6 +123,7 @@ describe('Contact Management', () => {
       successCallback({
         docs: mockContacts.map(c => ({
           id: c.id,
+          ref: { path: `contacts/${c.id}/interactions/x` },
           data: () => {
             const { id, ...data } = c;
             return data;
@@ -131,9 +135,11 @@ describe('Contact Management', () => {
 
     render(<Directory />, { wrapper: BrowserRouter });
 
+    // People-first cards: names + meta render (emails live behind a mailto button).
     expect(await screen.findByText('John Doe')).toBeInTheDocument();
     expect(await screen.findByText('Jane Smith')).toBeInTheDocument();
-    expect(await screen.findByText('john@example.com')).toBeInTheDocument();
+    expect(await screen.findByText(/Student · Campus Hub/)).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: /Email/i }).length).toBeGreaterThan(0);
   });
 
   it('Adding a Contact: calls addDoc with correct data', async () => {
@@ -173,7 +179,7 @@ describe('Contact Management', () => {
     );
 
     // Enter edit mode
-    const editBtn = screen.getByTitle(/Edit Contact/i);
+    const editBtn = screen.getByTitle(/Edit details/i);
     fireEvent.click(editBtn);
 
     // Change role
