@@ -39,7 +39,7 @@ const TYPE_BLURB: Record<string, string> = {
   Outreach: 'Out on campus, meeting people',
 };
 
-const TYPE_FILTERS = ['All', 'Weekly', 'Small Group', 'Special'] as const;
+const TYPE_FILTERS = ['All', 'Weekly', 'Small Group', 'Special', 'Outreach'] as const;
 
 // ── shared warm bits (mirror Dashboard.tsx) ──
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
