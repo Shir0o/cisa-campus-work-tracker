@@ -1,21 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  Users, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Filter, 
-  Download,
-  CalendarDays,
-  X,
+import React, { useState, useEffect, useMemo } from 'react';
+import {
   Plus,
+  Download,
+  FileSpreadsheet,
+  Mail,
   Trash2,
-  FileSpreadsheet
+  CalendarDays,
+  ChevronDown,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, doc, updateDoc, addDoc, getDocs, limit, deleteDoc } from 'firebase/firestore';
+import { motion } from 'motion/react';
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { cn, sleep } from '../lib/utils';
-import { useLayout } from '../App';
+import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -24,8 +20,65 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
 import { format, parseISO, isValid } from 'date-fns';
 
+const DAY_MS = 86_400_000;
+
+// Event dates are date-only ('yyyy-MM-dd'); parseISO reads them as LOCAL midnight
+// (new Date(...) would treat them as UTC and shift a day in negative-offset zones).
+const evtDate = (s?: string | null): Date | null => {
+  if (!s) return null;
+  const d = parseISO(s);
+  return isValid(d) ? d : null;
+};
+const evtMs = (s?: string | null): number | null => evtDate(s)?.getTime() ?? null;
+
+// blurbs by gathering type — falls back to the raw type for anything custom
+const TYPE_BLURB: Record<string, string> = {
+  Weekly: 'Friday night, the whole fellowship',
+  'Small Group': 'A handful, around a table',
+  Special: 'A one-off worship gathering',
+  Outreach: 'Out on campus, meeting people',
+};
+
+const TYPE_FILTERS = ['All', 'Weekly', 'Small Group', 'Special', 'Outreach'] as const;
+
+// ── shared warm bits (mirror Dashboard.tsx) ──
+function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
+  const dim = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-11 h-11 text-sm';
+  const initials = contact.initials || getUserInitials(contact.name);
+  if (contact.avatar) {
+    return (
+      <img src={contact.avatar} alt={contact.name} className={cn(dim, 'rounded-full object-cover shrink-0')} />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        dim,
+        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
+      )}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function Figure({ n, label }: { n: number | string; label: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="font-serif text-2xl text-on-surface leading-none">{n}</span>
+      <span className="text-xs text-on-surface-variant">{label}</span>
+    </div>
+  );
+}
+
+const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
+  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
+    <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
+    {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
+  </div>
+);
+
 export default function Attendance() {
-  const { isSidebarCollapsed } = useLayout();
   const { user, isAdmin } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -33,32 +86,30 @@ export default function Attendance() {
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]>('All');
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
-    // Fetch Contacts
-    const unsubscribeContacts = onSnapshot(collection(db, 'contacts'), (snapshot) => {
-      const contactData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Contact[];
-      setContacts(contactData);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'contacts');
-    });
+    const unsubscribeContacts = onSnapshot(
+      collection(db, 'contacts'),
+      (snapshot) => {
+        setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
+      },
+      (error) => handleFirestoreError(error, OperationType.LIST, 'contacts'),
+    );
 
-    // Fetch Events
     const qEvents = query(collection(db, 'events'), orderBy('date', 'asc'), orderBy('order', 'asc'));
-    const unsubscribeEvents = onSnapshot(qEvents, (snapshot) => {
-      const eventData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as Event[];
-      setEvents(eventData);
-      setTimeout(() => setLoading(false), 800);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'events');
-      setTimeout(() => setLoading(false), 800);
-    });
+    const unsubscribeEvents = onSnapshot(
+      qEvents,
+      (snapshot) => {
+        setEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]);
+        setTimeout(() => setLoading(false), 600);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.LIST, 'events');
+        setTimeout(() => setLoading(false), 600);
+      },
+    );
 
     return () => {
       unsubscribeContacts();
@@ -66,33 +117,20 @@ export default function Attendance() {
     };
   }, []);
 
-  const formatEventDate = (dateStr: string) => {
-    try {
-      const date = parseISO(dateStr);
-      if (!isValid(date)) return dateStr;
-      return format(date, 'MMM d');
-    } catch {
-      return dateStr;
-    }
-  };
-
   const handleExport = () => {
     if (contacts.length === 0 || events.length === 0) return;
 
-    const headers = ['Name', 'Role', ...events.map(e => `${e.name} (${e.date})`)];
-    const rows = contacts.map(c => [
+    const headers = ['Name', 'Role', ...events.map((e) => `${e.name} (${e.date})`)];
+    const rows = contacts.map((c) => [
       c.name,
       c.role,
-      ...events.map(e => {
+      ...events.map((e) => {
         const s = c.attendance?.[e.id];
-        return s === true ? 'Present' : s === 'absent' ? 'Absent' : 'None';
-      })
+        return s === true ? 'Present' : s === 'late' ? 'Late' : s === 'absent' ? 'Absent' : 'None';
+      }),
     ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(r => r.map(v => `"${v}"`).join(','))
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((r) => r.map((v) => `"${v}"`).join(','))].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -106,137 +144,131 @@ export default function Attendance() {
   };
 
   const handleDeleteEvent = async (eventId: string, eventName: string) => {
-    if (!isAdmin || !window.confirm(`Are you sure you want to delete event "${eventName}"? This will also remove all associated attendance records for this event.`)) return;
+    if (
+      !isAdmin ||
+      !window.confirm(
+        `Remove the gathering "${eventName}"? This also clears who was marked present or absent for it.`,
+      )
+    )
+      return;
 
     try {
       await deleteDoc(doc(db, 'events', eventId));
-      
-      // Cleanup attendance from contacts
-      // Note: In a production app, this should ideally be done via a Cloud Function or batch
-      // But here we'll just let the UI reflect it since we filter by current events anyway
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `events/${eventId}`);
     }
   };
 
-  const toggleAttendance = async (contactId: string, eventId: string, currentStatus: boolean | 'absent' | undefined) => {
+  // here = present or late
+  const here = (c: Contact, eventId: string) => {
+    const s = c.attendance?.[eventId];
+    return s === true || s === 'late';
+  };
+
+  // Tapping a name cycles present → late → absent → present.
+  // Anyone "missed" (absent or unmarked) jumps to present on first tap.
+  const cycleAttendance = async (contact: Contact, eventId: string) => {
     try {
-      const contactRef = doc(db, 'contacts', contactId);
-      const contact = contacts.find(c => c.id === contactId);
-      if (!contact) return;
+      const current = contact.attendance?.[eventId];
+      let next: boolean | 'late' | 'absent';
+      if (current === true) next = 'late';
+      else if (current === 'late') next = 'absent';
+      else next = true; // 'absent' or undefined → present
 
       const newAttendance = { ...(contact.attendance || {}) };
-      
-      if (currentStatus === true) {
-        newAttendance[eventId] = 'absent';
-      } else if (currentStatus === 'absent') {
-        delete newAttendance[eventId];
-      } else {
-        newAttendance[eventId] = true;
-      }
+      newAttendance[eventId] = next;
 
-      const newStatus = newAttendance[eventId];
-      const event = events.find(e => e.id === eventId);
-      const statusText = newStatus === true ? 'Present' : newStatus === 'absent' ? 'Absent' : 'None';
-      const prevStatusText = currentStatus === true ? 'Present' : currentStatus === 'absent' ? 'Absent' : 'None';
+      const event = events.find((e) => e.id === eventId);
+      const label = (v: boolean | 'late' | 'absent' | undefined) =>
+        v === true ? 'Present' : v === 'late' ? 'Late' : v === 'absent' ? 'Absent' : 'None';
 
-      await updateDoc(contactRef, {
+      await updateDoc(doc(db, 'contacts', contact.id), {
         attendance: newAttendance,
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
       });
 
       logActivity({
-        action: `updated attendance for event "${event?.name || 'Unknown Event'}" to ${statusText} for`,
-        targetId: contactId,
+        action: `updated attendance for "${event?.name || 'a gathering'}" to ${label(next)} for`,
+        targetId: contact.id,
         targetName: contact.name,
         targetType: 'contact',
         type: 'edit',
-        description: `Attendance [${event?.name}]: ${prevStatusText} → ${statusText}`
+        description: `Attendance [${event?.name}]: ${label(current)} → ${label(next)}`,
       });
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contactId}`);
+      handleFirestoreError(error, OperationType.UPDATE, `contacts/${contact.id}`);
     }
   };
 
-  const calculateAvgAttendance = () => {
-    if (contacts.length === 0 || events.length === 0) return 0;
-    let totalPresent = 0;
-    let totalChecked = 0;
-    contacts.forEach(c => {
-      events.forEach(e => {
-        const status = c.attendance?.[e.id];
-        if (status === true) {
-          totalPresent++;
-          totalChecked++;
-        } else if (status === 'absent') {
-          totalChecked++;
-        }
-      });
-    });
-    if (totalChecked === 0) return 0;
-    return Math.round((totalPresent / totalChecked) * 100);
-  };
+  // newest gatherings first
+  const sessionsNewestFirst = useMemo(
+    () =>
+      [...events].sort((a, b) => {
+        const am = evtMs(a.date) ?? 0;
+        const bm = evtMs(b.date) ?? 0;
+        return bm - am || (b.order ?? 0) - (a.order ?? 0);
+      }),
+    [events],
+  );
 
-  const atRiskCount = contacts.filter(c => {
-    if (events.length === 0) return false;
-    let present = 0;
-    let checked = 0;
-    events.forEach(e => {
-      const status = c.attendance?.[e.id];
-      if (status === true) {
-        present++;
-        checked++;
-      } else if (status === 'absent') {
-        checked++;
+  // Who we've missed: attended before, but not in the most recent gatherings.
+  const missed = useMemo(() => {
+    const out: { contact: Contact; since: number; lastSeen: Event }[] = [];
+    contacts.forEach((c) => {
+      let since = 0;
+      let lastSeen: Event | null = null;
+      for (const s of sessionsNewestFirst) {
+        if (here(c, s.id)) {
+          lastSeen = s;
+          break;
+        }
+        since++;
       }
+      if (lastSeen && since >= 2) out.push({ contact: c, since, lastSeen });
     });
-    if (checked === 0) return false;
-    return (present / checked) < 0.5;
-  }).length;
+    return out.sort((a, b) => b.since - a.since).slice(0, 4);
+  }, [contacts, sessionsNewestFirst]);
+
+  // gatherings to mark / review — newest first, filtered by type
+  const sessions = useMemo(
+    () => sessionsNewestFirst.filter((s) => typeFilter === 'All' || s.type === typeFilter),
+    [sessionsNewestFirst, typeFilter],
+  );
+
+  // coming up — today or later, soonest first
+  const upcoming = useMemo(() => {
+    const now = Date.now() - DAY_MS;
+    return [...events]
+      .map((ev) => ({ ev, ms: evtMs(ev.date) }))
+      .filter((x): x is { ev: Event; ms: number } => x.ms != null && x.ms >= now)
+      .sort((a, b) => a.ms - b.ms)
+      .slice(0, 3);
+  }, [events]);
+
+  // quiet figures
+  const avgPer = useMemo(() => {
+    if (events.length === 0) return 0;
+    let slots = 0;
+    contacts.forEach((c) => events.forEach((e) => { if (here(c, e.id)) slots++; }));
+    return Math.round(slots / events.length);
+  }, [contacts, events]);
+
+  const openContact = (c: Contact) => setSelectedContact(c);
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 space-y-6 flex flex-col h-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-4 w-48" />
-          </div>
-          <div className="flex gap-3">
-            <Skeleton className="h-10 w-32 rounded-xl" />
-            <Skeleton className="h-10 w-32 rounded-xl" />
-          </div>
+      <div className="p-6 md:p-8 space-y-8 animate-pulse max-w-5xl">
+        <div className="space-y-3">
+          <Skeleton className="h-4 w-64 opacity-70" />
+          <Skeleton className="h-10 w-72" />
+          <Skeleton className="h-16 w-full max-w-2xl opacity-70" />
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Skeleton className="h-24 rounded-2xl" />
-          <Skeleton className="h-24 rounded-2xl" />
-          <Skeleton className="h-24 rounded-2xl" />
-        </div>
-
-        <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 border border-outline-variant/30">
-          <div className="h-16 px-6 border-b border-outline-variant flex items-center">
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <div className="p-6 space-y-4">
-            {[...Array(6)].map((_, i) => (
-              <div key={i} className="flex items-center gap-6 py-4 border-b border-outline-variant/30 last:border-0">
-                <Skeleton className="h-10 w-10 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="h-3 w-32" />
-                </div>
-                <div className="flex gap-4">
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     );
@@ -244,181 +276,369 @@ export default function Attendance() {
 
   return (
     <>
-      <motion.div 
-      initial={{ opacity: 0, scale: 0.98 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="p-6 md:p-8 space-y-6 flex flex-col h-full"
-    >
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 shrink-0">
-        <div>
-          <h1 className="text-3xl font-normal text-on-surface mb-1">Attendance Tracker</h1>
-          <p className="text-sm text-on-surface-variant flex items-center gap-2">
-            <CalendarDays className="w-4 h-4" />
-            Active Outreach • {contacts.length} Contacts
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {isAdmin && (
-            <>
-              <button 
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        className="p-6 md:p-8 max-w-5xl"
+      >
+        {/* ── Greeting + state of things ── */}
+        <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
+          <div className="flex-1">
+            <p className="text-sm text-on-surface-variant">{format(new Date(), 'EEEE, MMMM d')}</p>
+            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">Gatherings</h1>
+            <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
+              We've come together{' '}
+              <b className="text-on-surface font-semibold">
+                {events.length} {events.length === 1 ? 'time' : 'times'}
+              </b>
+              {events.length > 0 && (
+                <>
+                  {' '}— about <span className="text-on-surface font-medium">{avgPer}</span>{' '}
+                  {avgPer === 1 ? 'person' : 'people'} each time
+                </>
+              )}
+              .
+              {missed.length > 0 && ' A few faces have gone quiet lately; they’re the first thing below.'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2 shrink-0">
+            {isAdmin && (
+              <button
                 onClick={() => setIsAddEventModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-colors"
-                title="Add New Event"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
               >
-                <Plus className="w-4 h-4" />
-                Add Event
+                <Plus className="w-4 h-4" /> Log a gathering
               </button>
-              <button 
-                onClick={() => setIsSyncModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 text-primary font-bold text-sm hover:bg-primary/20 transition-colors"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                Sync Sheet
-              </button>
-            </>
+            )}
+          </div>
+        </header>
+
+        {/* quiet admin actions */}
+        <div className="flex flex-wrap gap-2 mt-4">
+          {isAdmin && (
+            <button
+              onClick={() => setIsSyncModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Sync sheet
+            </button>
           )}
-          <button 
+          <button
             onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary-container text-on-secondary-container font-bold text-sm hover:opacity-80 transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
           >
-            <Download className="w-4 h-4" />
-            Export
+            <Download className="w-3.5 h-3.5" /> Export
           </button>
         </div>
-      </div>
 
-      {/* Stats Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 shrink-0">
-        <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
-          <div className="w-12 h-12 rounded-full bg-tertiary-fixed flex items-center justify-center text-on-tertiary-fixed">
-            <CheckCircle2 className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">Avg Attendance</p>
-            <p className="text-2xl font-bold text-on-surface">{calculateAvgAttendance()}%</p>
-          </div>
-        </div>
-        <div className="bg-surface-container rounded-2xl p-4 flex items-center gap-4 border border-outline-variant/30">
-          <div className="w-12 h-12 rounded-full bg-error-container flex items-center justify-center text-on-error-container">
-            <AlertTriangle className="w-6 h-6" />
-          </div>
-          <div>
-            <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-black">At Risk (&lt; 50%)</p>
-            <p className="text-2xl font-bold text-on-surface">{atRiskCount}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Attendance Table */}
-      <div className="bg-surface-container rounded-2xl border border-outline-variant/50 flex flex-col overflow-hidden shadow-sm flex-1">
-        <div className="overflow-auto no-scrollbar h-full">
-          {events.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center bg-surface-container-low">
-               <CalendarDays className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
-               <h3 className="text-lg font-bold text-on-surface mb-1">No events added yet</h3>
-               <p className="text-sm text-on-surface-variant max-w-xs">Start tracking attendance by adding your first event (e.g. Kickoff Event, Workshop A).</p>
+        {/* ── Who we've missed lately ── */}
+        {missed.length > 0 && (
+          <section className="mt-12">
+            <SectionHead
+              title="Who we've missed lately"
+              sub="They used to come, but it's been a few gatherings."
+            />
+            <div className="space-y-3">
+              {missed.map(({ contact, since, lastSeen }) => (
+                <div
+                  key={contact.id}
+                  onClick={() => openContact(contact)}
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+                >
+                  <div className="flex gap-4 min-w-0">
+                    <Avatar contact={contact} />
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-on-surface">{contact.name}</span>
+                        <StageChip stage={contact.stage} />
+                      </div>
+                      <div className="text-sm text-primary font-medium mt-0.5">
+                        Last with us at {lastSeen.name} · {formatEventDate(lastSeen.date)} — {since} gatherings ago
+                      </div>
+                      {(contact.role || contact.location) && (
+                        <p className="text-sm text-on-surface-variant mt-1">
+                          {[contact.role, contact.location].filter(Boolean).join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div
+                    className="flex sm:flex-col gap-2 items-start sm:items-end"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {contact.email && (
+                      <a
+                        href={`mailto:${contact.email}`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <Mail className="w-3.5 h-3.5" /> Reach out
+                      </a>
+                    )}
+                    <button
+                      onClick={() => openContact(contact)}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
+                    >
+                      Open
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : (
-            <table className="w-full text-left border-collapse table-auto min-w-[600px]">
-              <thead className="sticky top-0 z-30">
-                <tr className="bg-surface-container-high border-b border-outline-variant">
-                  <th className="p-3 sm:p-4 sticky left-0 z-40 bg-surface-container-high border-r border-outline-variant w-64 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                    <div className="text-xs font-black uppercase tracking-widest text-on-surface-variant">Contact</div>
-                  </th>
-                  {events.map((event) => (
-                    <th key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/50 min-w-[120px] relative group/header">
-                      <div className="text-xs font-bold text-on-surface truncate">
-                        {event.name}
+          </section>
+        )}
+
+        {/* ── When we met ── */}
+        <section className="mt-12">
+          <SectionHead
+            title="When we met"
+            sub="Tap a gathering to see who came — and mark anyone you remember."
+          />
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {TYPE_FILTERS.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTypeFilter(t)}
+                className={cn(
+                  'h-9 px-4 rounded-full border text-sm font-medium transition-colors',
+                  typeFilter === t
+                    ? 'bg-primary text-on-primary border-primary'
+                    : 'border-outline-variant text-on-surface hover:bg-surface-variant',
+                )}
+              >
+                {t === 'Weekly' ? 'Friday Gatherings' : t === 'Small Group' ? 'Small Groups' : t}
+              </button>
+            ))}
+          </div>
+
+          {sessions.length > 0 ? (
+            <div className="space-y-3">
+              {sessions.map((s) => {
+                const present = contacts.filter((c) => c.attendance?.[s.id] === true);
+                const late = contacts.filter((c) => c.attendance?.[s.id] === 'late');
+                const absent = contacts.filter((c) => !here(c, s.id));
+                const cameAll = [...present, ...late];
+                const isOpen = openId === s.id;
+                const d = evtDate(s.date);
+                return (
+                  <div
+                    key={s.id}
+                    className="bg-surface rounded-2xl border border-outline-variant/60 overflow-hidden"
+                  >
+                    <button
+                      onClick={() => setOpenId(isOpen ? null : s.id)}
+                      className="w-full flex items-center gap-4 p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
+                    >
+                      <div className="text-center w-12 shrink-0">
+                        <div className="text-[11px] uppercase tracking-wide text-on-surface-variant">
+                          {d ? format(d, 'EEE') : ''}
+                        </div>
+                        <div className="font-serif text-2xl text-on-surface leading-none">
+                          {d ? format(d, 'd') : '–'}
+                        </div>
+                        <div className="text-[11px] uppercase tracking-wide text-on-surface-variant">
+                          {d ? format(d, 'MMM') : ''}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-primary font-medium mt-0.5 leading-tight truncate">
-                        {formatEventDate(event.date)}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-on-surface truncate">{s.name}</div>
+                        <div className="text-sm text-on-surface-variant truncate">
+                          {(s.type && TYPE_BLURB[s.type]) || s.type || 'A time together'}
+                        </div>
                       </div>
+                      <div className="hidden sm:flex items-center -space-x-2 mr-1">
+                        {cameAll.slice(0, 6).map((c) => (
+                          <div key={c.id} className="ring-2 ring-surface rounded-full">
+                            <Avatar contact={c} size="sm" />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
+                        <b className="text-on-surface font-semibold">{cameAll.length}</b> came
+                        {late.length > 0 ? ` · ${late.length} late` : ''}
+                      </div>
+                      <ChevronDown
+                        className={cn(
+                          'w-4 h-4 text-on-surface-variant transition-transform shrink-0',
+                          isOpen && 'rotate-180',
+                        )}
+                      />
                       {isAdmin && (
-                        <button 
+                        <span
+                          role="button"
+                          tabIndex={0}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteEvent(event.id, event.name);
+                            handleDeleteEvent(s.id, s.name);
                           }}
-                          className="absolute -top-1 -right-1 p-1 bg-error text-white rounded-full opacity-0 group-header/header:opacity-100 transition-opacity shadow-lg scale-75 hover:scale-100"
-                          title="Delete Event"
+                          className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-error-container hover:text-on-error-container transition-all shrink-0"
+                          title="Remove gathering"
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </span>
                       )}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
-                {contacts.length === 0 ? (
-                  <tr>
-                    <td colSpan={events.length + 1} className="p-12 text-center text-on-surface-variant text-sm italic">
-                      No contacts found. Add contacts in the Directory first.
-                    </td>
-                  </tr>
-                ) : (
-                  contacts.map((contact) => (
-                    <tr key={contact.id} className="hover:bg-surface-container-low transition-colors group cursor-pointer" onClick={() => setSelectedContact(contact)}>
-                      <td className="sticky left-0 z-20 bg-surface-container-lowest group-hover:bg-surface-container-low border-r border-outline-variant p-3 sm:p-4 transition-colors shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold shrink-0 text-xs sm:text-base bg-secondary-container text-on-secondary-container">
-                            {contact.initials}
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant mb-4">
+                          <span className="inline-flex items-center gap-1.5">
+                            <i className="w-2 h-2 rounded-full bg-primary inline-block" /> here
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <i className="w-2 h-2 rounded-full bg-tertiary inline-block" /> came late
+                          </span>
+                          <span className="inline-flex items-center gap-1.5">
+                            <i className="w-2 h-2 rounded-full bg-outline inline-block" /> missed
+                          </span>
+                          <span className="italic">Tap a name to update who was there.</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                          <div>
+                            <div className="text-xs font-semibold text-on-surface uppercase tracking-wide mb-2">
+                              Attended <span className="text-on-surface-variant">{cameAll.length}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {cameAll.length === 0 && (
+                                <span className="text-sm text-on-surface-variant italic">No one marked yet.</span>
+                              )}
+                              {cameAll.map((c) => {
+                                const isLate = c.attendance?.[s.id] === 'late';
+                                return (
+                                  <button
+                                    key={c.id}
+                                    onClick={() => cycleAttendance(c, s.id)}
+                                    className={cn(
+                                      'inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors',
+                                      isLate
+                                        ? 'bg-tertiary-container/60 border-tertiary/40 text-on-tertiary-container'
+                                        : 'bg-primary-container/50 border-primary/30 text-on-surface',
+                                    )}
+                                  >
+                                    <Avatar contact={c} size="sm" />
+                                    <span className="text-sm">{c.name}</span>
+                                    {isLate && (
+                                      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
+                                        late
+                                      </span>
+                                    )}
+                                  </button>
+                                );
+                              })}
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <p className="text-xs sm:text-sm font-bold text-on-surface truncate">
-                              {contact.name}
-                            </p>
-                            <p className="text-[10px] text-on-surface-variant truncate uppercase tracking-tighter opacity-70">{contact.role}</p>
+                          <div>
+                            <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">
+                              We missed <span>{absent.length}</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {absent.length === 0 && (
+                                <span className="text-sm text-on-surface-variant italic">Everyone came.</span>
+                              )}
+                              {absent.map((c) => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => cycleAttendance(c, s.id)}
+                                  className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/40 transition-colors"
+                                >
+                                  <Avatar contact={c} size="sm" />
+                                  <span className="text-sm">{c.name}</span>
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                      </td>
-                      {events.map((event) => {
-                        const status = contact.attendance?.[event.id];
-                        return (
-                          <td key={event.id} className="p-2 sm:p-4 text-center border-r border-outline-variant/30" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex justify-center">
-                              <button
-                                onClick={() => toggleAttendance(contact.id, event.id, status)}
-                                className={cn(
-                                  "w-6 h-6 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center transition-all active:scale-95 cursor-pointer",
-                                  status === true ? "bg-primary text-on-primary shadow-sm hover:brightness-110" : 
-                                  status === 'absent' ? "bg-error-container text-on-error-container shadow-sm hover:brightness-110" : 
-                                  "border-2 border-outline/30 hover:border-primary/50 bg-transparent"
-                                )}
-                              >
-                                {status === true && <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5" />}
-                                {status === 'absent' && <X className="w-4 h-4 sm:w-5 sm:h-5" />}
-                              </button>
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="bg-surface rounded-2xl border border-outline-variant/60 p-10 text-center">
+              <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
+              <p className="text-sm text-on-surface-variant">
+                {events.length === 0
+                  ? 'No gatherings recorded yet. Log your first one to start keeping the record.'
+                  : 'No gatherings of this kind yet.'}
+              </p>
+            </div>
           )}
+        </section>
+
+        {/* ── Coming up ── */}
+        {upcoming.length > 0 && (
+          <section className="mt-12">
+            <SectionHead title="Coming up" sub="What we can invite people to next." />
+            <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+              {upcoming.map(({ ev, ms }, i) => {
+                const d = new Date(ms);
+                return (
+                  <div
+                    key={ev.id}
+                    className={cn(
+                      'flex items-center gap-4 py-4',
+                      i > 0 && 'border-t border-outline-variant/40',
+                    )}
+                  >
+                    <div className="text-center w-11 shrink-0">
+                      <div className="font-serif text-2xl text-on-surface leading-none">
+                        {isValid(d) ? format(d, 'd') : '–'}
+                      </div>
+                      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                        {isValid(d) ? format(d, 'MMM') : ''}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium text-on-surface truncate">{ev.name}</div>
+                      <div className="text-xs text-on-surface-variant mt-0.5 truncate">
+                        {[isValid(d) ? format(d, 'EEEE') : '', ev.location].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Quiet figures ── */}
+        <div className="mt-14 pt-6 border-t border-outline-variant/50 flex flex-wrap items-end gap-x-10 gap-y-4">
+          <Figure n={events.length} label="gatherings" />
+          <Figure n={avgPer} label="come, on average" />
+          <Figure n={missed.length} label="gone quiet" />
+          <span className="text-sm text-on-surface-variant italic ml-auto">
+            Counting heads is just a way of noticing who's missing.
+          </span>
         </div>
-      </div>
+      </motion.div>
 
-
-    </motion.div>
-      <SyncSheetModal 
-        isOpen={isSyncModalOpen}
-        onClose={() => setIsSyncModalOpen(false)}
-        contacts={contacts}
-      />
-      <AddEventModal 
+      <SyncSheetModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} contacts={contacts} />
+      <AddEventModal
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         currentEventCount={events.length}
       />
-      <ContactDetailsModal 
+      <ContactDetailsModal
         isOpen={selectedContact !== null}
         onClose={() => setSelectedContact(null)}
         contact={selectedContact}
       />
     </>
+  );
+
+  function formatEventDate(dateStr: string) {
+    const d = evtDate(dateStr);
+    return d ? format(d, 'MMM d') : dateStr;
+  }
+}
+
+function StageChip({ stage }: { stage?: string }) {
+  if (!stage) return null;
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap bg-surface-variant text-on-surface-variant">
+      {stage}
+    </span>
   );
 }

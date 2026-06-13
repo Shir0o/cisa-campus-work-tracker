@@ -9,7 +9,7 @@ export interface Contact {
   lastSeen: string;
   avatar?: string;
   initials: string;
-  attendance?: Record<string, boolean | 'absent'>;
+  attendance?: Record<string, boolean | 'absent' | 'late'>;
   notes?: string;
   tags?: string[];
   createdAt?: string;
@@ -100,6 +100,8 @@ export interface Event {
   name: string;
   date: string;
   order: number;
+  type?: string;
+  location?: string;
   isRecurring?: boolean;
   recurrenceType?: 'none' | 'daily' | 'weekly' | 'monthly';
   recurrenceCount?: number;
