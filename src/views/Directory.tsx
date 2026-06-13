@@ -1,36 +1,145 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MoreVertical, 
-  Mail, 
-  Phone,
+import {
+  Search,
+  Filter,
+  Mail,
   Tag,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
-  ArrowDown,
+  Check,
   Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc, writeBatch } from 'firebase/firestore';
+import {
+  collection,
+  collectionGroup,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  doc,
+  writeBatch
+} from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { cn, sleep } from '../lib/utils';
+import { cn, getUserInitials } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 
+// ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
+const DAY_MS = 86_400_000;
+const parseMs = (s?: string | null): number | null => {
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+};
+const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
+const connectedLabel = (d: number) =>
+  d === 0 ? 'Connected today' : d === 1 ? 'Last connected yesterday' : `Last connected ${d} days ago`;
+const truncate = (s: string | undefined, n: number) =>
+  s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s || '';
+
+type Touch = { ms: number; note: string };
+type TouchMap = Map<string, Touch>;
+
+// The four warm stage tones. Stored stage colors (bg-board-*) map onto these.
+type Tone = 'accent' | 'amber' | 'teal' | 'violet';
+const TONES: Tone[] = ['accent', 'amber', 'teal', 'violet'];
+
+const TONE_BY_COLOR: Record<string, Tone> = {
+  'bg-board-indigo': 'accent',
+  'bg-board-ocean': 'accent',
+  'bg-primary': 'accent',
+  'bg-primary-fixed-dim': 'accent',
+  'bg-board-amber': 'amber',
+  'bg-board-teal': 'teal',
+  'bg-board-emerald': 'teal',
+  'bg-secondary': 'teal',
+  'bg-board-plum': 'violet',
+  'bg-board-crimson': 'violet',
+  'bg-board-rose': 'violet',
+};
+
+// Full static class strings so Tailwind's scanner keeps them.
+const TONE_CLASSES: Record<
+  Tone,
+  { chipBg: string; chipText: string; dot: string; cardHoverBorder: string; tagBg: string; tagText: string }
+> = {
+  accent: {
+    chipBg: 'bg-stage-accent-soft',
+    chipText: 'text-stage-accent',
+    dot: 'bg-stage-accent',
+    cardHoverBorder: 'hover:border-stage-accent',
+    tagBg: 'bg-stage-accent-soft',
+    tagText: 'text-stage-accent',
+  },
+  amber: {
+    chipBg: 'bg-stage-amber-soft',
+    chipText: 'text-stage-amber',
+    dot: 'bg-stage-amber',
+    cardHoverBorder: 'hover:border-stage-amber',
+    tagBg: 'bg-stage-amber-soft',
+    tagText: 'text-stage-amber',
+  },
+  teal: {
+    chipBg: 'bg-stage-teal-soft',
+    chipText: 'text-stage-teal',
+    dot: 'bg-stage-teal',
+    cardHoverBorder: 'hover:border-stage-teal',
+    tagBg: 'bg-stage-teal-soft',
+    tagText: 'text-stage-teal',
+  },
+  violet: {
+    chipBg: 'bg-stage-violet-soft',
+    chipText: 'text-stage-violet',
+    dot: 'bg-stage-violet',
+    cardHoverBorder: 'hover:border-stage-violet',
+    tagBg: 'bg-stage-violet-soft',
+    tagText: 'text-stage-violet',
+  },
+};
+
+const toneFor = (color: string | undefined, index: number): Tone =>
+  (color && TONE_BY_COLOR[color]) || TONES[index % TONES.length];
+
+const peopleCount = (n: number) =>
+  n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
+
+function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
+  const dim = size === 'sm' ? 'w-9 h-9 text-xs' : 'w-12 h-12 text-sm';
+  const initials = contact.initials || getUserInitials(contact.name);
+  if (contact.avatar) {
+    return (
+      <img
+        src={contact.avatar}
+        alt={contact.name}
+        className={cn(dim, 'rounded-full object-cover shrink-0')}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        dim,
+        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
+      )}
+    >
+      {initials}
+    </div>
+  );
+}
+
 export default function Directory() {
-  const { isSidebarCollapsed, openNewContact, setSelectedContact } = useLayout();
+  const { openNewContact, setSelectedContact } = useLayout();
   const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<keyof Contact>('name');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // ── Last-connected signal: most recent interaction/comment per contact ──
+  const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
 
   useEffect(() => {
     const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -51,7 +160,7 @@ export default function Directory() {
         ...doc.data()
       })) as Stage[];
       setStagesData(stages);
-      
+
       // Delay first loading=false after both are loaded or after contacts if stages are empty
       setTimeout(() => setLoading(false), 800);
     }, (error) => {
@@ -64,6 +173,58 @@ export default function Directory() {
       unsubscribeStages();
     };
   }, []);
+
+  useEffect(() => {
+    const ingest = (
+      snap: { docs: { data: () => unknown; ref: { path: string } }[] },
+      noteKey: 'content' | 'text',
+    ) =>
+      snap.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        return {
+          contactId: d.ref.path.split('/')[1],
+          ms: new Date((data.createdAt as string) ?? '').getTime(),
+          note: ((data[noteKey] as string) ?? '').trim(),
+        };
+      });
+
+    let interactionTouches: { contactId: string; ms: number; note: string }[] = [];
+    let commentTouches: { contactId: string; ms: number; note: string }[] = [];
+    const publish = () =>
+      setTouches([...interactionTouches, ...commentTouches].filter((t) => !Number.isNaN(t.ms)));
+
+    const unsubInteractions = onSnapshot(
+      query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
+      (snap) => {
+        interactionTouches = ingest(snap as never, 'content');
+        publish();
+      },
+      (e) => handleFirestoreError(e, OperationType.LIST, 'interactions (collectionGroup)'),
+    );
+
+    const unsubComments = onSnapshot(
+      query(collectionGroup(db, 'comments'), orderBy('createdAt', 'desc'), limit(500)),
+      (snap) => {
+        commentTouches = ingest(snap as never, 'text');
+        publish();
+      },
+      (e) => handleFirestoreError(e, OperationType.LIST, 'comments (collectionGroup)'),
+    );
+
+    return () => {
+      unsubInteractions();
+      unsubComments();
+    };
+  }, []);
+
+  const lastTouchByContact = useMemo(() => {
+    const map: TouchMap = new Map();
+    for (const t of touches) {
+      const cur = map.get(t.contactId);
+      if (!cur || t.ms > cur.ms) map.set(t.contactId, { ms: t.ms, note: t.note });
+    }
+    return map;
+  }, [touches]);
 
   const [filterStage, setFilterStage] = useState<string>('All');
   const [filterRole, setFilterRole] = useState<string>('All');
@@ -86,16 +247,23 @@ export default function Directory() {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isTagModalOpen, showFilterMenu]);
 
-  const filteredAndSortedContacts = useMemo(() => {
+  // Days since last connected (interaction/comment, else createdAt) for a contact.
+  const daysFor = (c: Contact): number | null => {
+    const ms = lastTouchByContact.get(c.id)?.ms ?? parseMs(c.createdAt);
+    return ms != null ? daysSince(ms) : null;
+  };
+
+  const filteredContacts = useMemo(() => {
     let result = [...contacts];
 
     // Search
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(c => 
-        c.name.toLowerCase().includes(lowerQuery) || 
+      result = result.filter(c =>
+        c.name.toLowerCase().includes(lowerQuery) ||
         c.email.toLowerCase().includes(lowerQuery) ||
         c.role.toLowerCase().includes(lowerQuery) ||
+        (c.location && c.location.toLowerCase().includes(lowerQuery)) ||
         (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
         (c.tags && c.tags.some(t => t.toLowerCase().includes(lowerQuery)))
       );
@@ -110,7 +278,7 @@ export default function Directory() {
     if (filterRole !== 'All') {
       result = result.filter(c => c.role === filterRole);
     }
-    
+
     // Filter by Spiritual Background
     if (filterSpiritualBackground !== 'All') {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
@@ -118,22 +286,20 @@ export default function Directory() {
 
     // Filter by Tags
     if (selectedTags.length > 0) {
-      result = result.filter(c => 
+      result = result.filter(c =>
         c.tags && selectedTags.every(tag => c.tags?.includes(tag))
       );
     }
 
-    // Sort
-    result.sort((a: any, b: any) => {
-      const valA = a[sortField] || '';
-      const valB = b[sortField] || '';
-      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-
     return result;
-  }, [contacts, searchQuery, sortField, sortDirection, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
+  }, [contacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
+
+  // Tone per stage label, keyed off the stage's stored colour (or its order).
+  const toneByStage = useMemo(() => {
+    const map = new Map<string, Tone>();
+    stagesData.forEach((s, i) => map.set(s.label, toneFor(s.color, i)));
+    return map;
+  }, [stagesData]);
 
   const handleBulkTag = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,7 +308,7 @@ export default function Directory() {
     try {
       const batch = writeBatch(db);
       const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
-      
+
       selectedContacts.forEach(contact => {
         const currentTags = contact.tags || [];
         if (!currentTags.includes(newTag)) {
@@ -178,8 +344,23 @@ export default function Directory() {
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(contacts.map(c => c.spiritualBackground).filter(Boolean))], [contacts]);
   const allTags = useMemo(() => [...new Set(contacts.flatMap(c => c.tags || []))], [contacts]);
 
+  const newCount = useMemo(
+    () => contacts.filter(c => {
+      const ms = parseMs(c.createdAt);
+      return ms != null && daysSince(ms) <= 14;
+    }).length,
+    [contacts],
+  );
+  const overdueCount = useMemo(
+    () => contacts.filter(c => {
+      const d = daysFor(c);
+      return d != null && d >= 7;
+    }).length,
+    [contacts, lastTouchByContact],
+  );
+
   const toggleTagFilter = (tag: string) => {
-    setSelectedTags(prev => 
+    setSelectedTags(prev =>
       prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
     );
   };
@@ -195,10 +376,10 @@ export default function Directory() {
   const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || selectedTags.length > 0;
 
   const toggleSelectAll = () => {
-    if (selectedIds.size === filteredAndSortedContacts.length) {
+    if (selectedIds.size === filteredContacts.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredAndSortedContacts.map(c => c.id)));
+      setSelectedIds(new Set(filteredContacts.map(c => c.id)));
     }
   };
 
@@ -224,7 +405,7 @@ export default function Directory() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Are you sure you want to delete ${selectedIds.size} contacts?`)) return;
+    if (!confirm(`Are you sure you want to remove ${selectedIds.size} ${selectedIds.size === 1 ? 'person' : 'people'}?`)) return;
 
     try {
       const batch = writeBatch(db);
@@ -232,7 +413,7 @@ export default function Directory() {
 
       selectedContacts.forEach(contact => {
         batch.delete(doc(db, 'contacts', contact.id));
-        
+
         logActivity({
           action: 'deleted contact',
           targetId: contact.id,
@@ -248,442 +429,382 @@ export default function Directory() {
     }
   };
 
-  const handleSort = (field: keyof Contact) => {
-    if (sortField === field) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDirection('asc');
-    }
-  };
+  const allSelected = selectedIds.size > 0 && selectedIds.size === filteredContacts.length;
 
   if (loading) {
     return (
-      <div className="p-4 sm:p-6 md:p-8 flex flex-col gap-6 h-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-48" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-          <div className="flex gap-3">
-            <Skeleton className="h-10 w-48 rounded-xl" />
-            <Skeleton className="h-10 w-24 rounded-xl" />
-            <Skeleton className="h-10 w-24 rounded-xl" />
-            <Skeleton className="h-10 w-24 rounded-xl" />
-          </div>
+      <div className="p-6 md:p-8 flex flex-col gap-8 max-w-5xl">
+        <div className="space-y-3">
+          <Skeleton className="h-9 w-40" />
+          <Skeleton className="h-5 w-full max-w-xl opacity-70" />
         </div>
-        <div className="flex gap-2 mb-2">
-          <Skeleton className="h-6 w-16 rounded-full" />
-          <Skeleton className="h-6 w-20 rounded-full" />
-          <Skeleton className="h-6 w-14 rounded-full" />
+        <div className="flex gap-3">
+          <Skeleton className="h-10 w-full max-w-xs rounded-full" />
+          <Skeleton className="h-10 w-10 rounded-full" />
         </div>
-        
-        <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 border border-outline-variant/30">
-          <div className="h-16 px-6 flex items-center border-b border-outline-variant">
-            <Skeleton className="h-5 w-32" />
-          </div>
-          <div className="p-6 space-y-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="flex items-center gap-4 py-3 border-b border-outline-variant/30 last:border-0">
-                <Skeleton className="h-5 w-5 rounded" />
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-1/4" />
-                  <Skeleton className="h-3 w-1/6" />
-                </div>
-                <Skeleton className="h-4 w-24 hidden md:block" />
-                <Skeleton className="h-6 w-32 rounded-full" />
-                <Skeleton className="h-4 w-24 hidden sm:block" />
-              </div>
-            ))}
-          </div>
+        <div className="space-y-3">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full rounded-2xl" />
+          ))}
         </div>
       </div>
     );
   }
 
   return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 flex flex-col gap-4 sm:gap-6 h-full min-w-0 max-w-[1600px] mx-auto w-full"
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-6 md:p-8 max-w-5xl"
     >
-      {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-normal text-on-background mb-1">Contacts</h2>
+      {/* ── Header: serif title + prose summary ── */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="font-serif text-3xl text-on-surface">People</h1>
+          <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
+            <b className="text-on-surface font-semibold">
+              {contacts.length} {contacts.length === 1 ? 'person' : 'people'}
+            </b>{' '}
+            you're walking with
+            {newCount > 0 && (
+              <>
+                {' '}— <span className="text-on-surface font-medium">{newCount}</span> new in the
+                last two weeks
+              </>
+            )}
+            {overdueCount > 0 && (
+              <>
+                , and <span className="text-on-surface font-medium">{overdueCount}</span> you
+                haven't connected with in over a week
+              </>
+            )}
+            .
+          </p>
         </div>
-        <div className="flex flex-wrap gap-3 w-full md:w-auto items-center">
-          <button 
-            onClick={openNewContact}
-            className="h-10 px-4 bg-primary text-on-primary rounded-xl font-bold flex items-center gap-2 shadow-sm hover:translate-y-[-1px] transition-all"
+        <button
+          onClick={openNewContact}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+        >
+          <Plus className="w-4 h-4" /> Add someone
+        </button>
+      </header>
+
+      {/* ── Search + filters ── */}
+      <div className="flex flex-wrap items-center gap-3 mt-8">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input
+            type="text"
+            placeholder="Find someone by name…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-11 pl-10 pr-4 rounded-full border border-outline-variant bg-surface focus:border-primary outline-none text-sm transition-colors"
+          />
+        </div>
+        <div className="relative">
+          <button
+            onClick={() => setShowFilterMenu(!showFilterMenu)}
+            className={cn(
+              "h-11 px-4 rounded-full border text-sm font-medium transition-colors inline-flex items-center gap-2",
+              hasActiveFilters
+                ? "border-primary text-primary bg-primary/5"
+                : "border-outline-variant text-on-surface-variant hover:bg-surface-variant"
+            )}
           >
-            <Plus className="w-4 h-4" />
-            <span className="text-sm">New Contact</span>
+            <Filter className="w-4 h-4" />
+            Filters
+            {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
           </button>
-          <div className="relative flex-1 md:w-48 lg:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-            <input 
-              type="text"
-              placeholder="Search contacts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 rounded-xl border border-outline bg-surface-container focus:border-primary outline-none text-sm transition-all shadow-sm"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2 relative">
-            <button 
-              onClick={() => setShowFilterMenu(!showFilterMenu)}
-              className={cn(
-                "p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors flex items-center gap-2",
-                hasActiveFilters && "text-primary bg-primary/5"
-              )}
-              title="Filters"
-            >
-              <Filter className="w-5 h-5" />
-              {hasActiveFilters && (
-                <span className="flex-none w-2 h-2 rounded-full bg-primary" />
-              )}
-            </button>
 
-            <AnimatePresence>
-              {showFilterMenu && (
-                <>
-                  <div 
-                    className="fixed inset-0 z-30" 
-                    onClick={() => setShowFilterMenu(false)}
-                  />
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-2xl p-4 min-w-[240px] space-y-4"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Filters</span>
-                      {hasActiveFilters && (
-                        <button 
-                          onClick={clearFilters}
-                          className="text-[10px] font-bold text-primary hover:underline"
-                        >
-                          Clear all
-                        </button>
-                      )}
+          <AnimatePresence>
+            {showFilterMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowFilterMenu(false)}
+                />
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-4 min-w-[240px] space-y-4"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-on-surface">Narrow it down</span>
+                    {hasActiveFilters && (
+                      <button
+                        onClick={clearFilters}
+                        className="text-xs font-medium text-primary hover:underline"
+                      >
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">Stage</label>
+                      <select
+                        value={filterStage}
+                        onChange={(e) => setFilterStage(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                      >
+                        {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? 'All stages' : s}</option>)}
+                      </select>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Stage</label>
-                        <select 
-                          value={filterStage}
-                          onChange={(e) => setFilterStage(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
-                        >
-                          {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? 'All Stages' : s}</option>)}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Group</label>
-                        <select 
-                          value={filterRole}
-                          onChange={(e) => setFilterRole(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
-                        >
-                          {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? 'All Groups' : r}</option>)}
-                        </select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <label className="text-[9px] font-black text-on-surface-variant uppercase tracking-wider px-1">Spiritual Background</label>
-                        <select 
-                          value={filterSpiritualBackground}
-                          onChange={(e) => setFilterSpiritualBackground(e.target.value)}
-                          className="w-full h-10 px-3 rounded-xl border border-outline bg-surface-container-highest text-xs font-bold text-on-surface-variant outline-none focus:border-primary cursor-pointer"
-                        >
-                          {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? 'All Backgrounds' : sb}</option>)}
-                        </select>
-                      </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">Group</label>
+                      <select
+                        value={filterRole}
+                        onChange={(e) => setFilterRole(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                      >
+                        {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? 'All groups' : r}</option>)}
+                      </select>
                     </div>
-                  </motion.div>
-                </>
-              )}
-            </AnimatePresence>
-          </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">Spiritual background</label>
+                      <select
+                        value={filterSpiritualBackground}
+                        onChange={(e) => setFilterSpiritualBackground(e.target.value)}
+                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                      >
+                        {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? 'All backgrounds' : sb}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
-      {/* Tag Chips Filter */}
+      {/* ── Tag chips filter ── */}
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 overflow-x-auto pb-1 max-h-24 no-scrollbar">
+        <div className="flex flex-wrap gap-2 mt-4">
           {allTags.map(tag => (
             <button
               key={tag}
               onClick={() => toggleTagFilter(tag)}
               className={cn(
-                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all shrink-0",
-                selectedTags.includes(tag) 
-                  ? "bg-primary text-on-primary border-primary shadow-sm shadow-primary/20" 
-                  : "bg-surface-container-high text-on-surface-variant border-outline/30 hover:border-outline"
+                "px-3 py-1 rounded-full text-xs font-medium border transition-colors shrink-0",
+                selectedTags.includes(tag)
+                  ? "bg-primary text-on-primary border-primary"
+                  : "bg-surface text-on-surface-variant border-outline-variant hover:border-outline"
               )}
             >
-              #{tag}
+              {tag}
             </button>
           ))}
         </div>
       )}
 
-      {/* Table Surface */}
-      <div className="bg-surface-container rounded-2xl overflow-hidden flex-1 flex flex-col border border-outline-variant/30 shadow-sm min-w-0">
-        {/* Controls */}
-        <div className="h-16 px-4 sm:px-6 flex items-center justify-between border-b border-surface-variant bg-surface-container-low/50">
-          <div className="flex items-center gap-3 sm:gap-6">
-            <label 
-              className="flex items-center gap-2 sm:gap-3 cursor-pointer group"
-              onClick={toggleSelectAll}
-            >
-              <div className={cn(
-                "w-4 h-4 sm:w-5 sm:h-5 rounded border-2 transition-colors flex items-center justify-center",
-                selectedIds.size > 0 && selectedIds.size === filteredAndSortedContacts.length 
-                  ? "bg-primary border-primary" 
-                  : "border-outline group-hover:border-primary"
-              )}>
-                {selectedIds.size > 0 && selectedIds.size === filteredAndSortedContacts.length && (
-                  <div className="w-2 h-2 bg-white rounded-sm" />
-                )}
-                {selectedIds.size > 0 && selectedIds.size < filteredAndSortedContacts.length && (
-                  <div className="w-2 h-0.5 bg-primary" />
-                )}
-              </div>
-              <span className="text-xs sm:text-sm font-bold text-on-surface-variant select-none">
-                {selectedIds.size > 0 ? `${selectedIds.size} Selected` : 'Select All'}
-              </span>
-            </label>
-            
-            {selectedIds.size > 0 && (
-              <>
-                <div className="h-6 w-px bg-outline-variant"></div>
-                <div className="flex items-center gap-2 sm:gap-4 text-on-surface-variant">
-                  <button 
-                    onClick={() => setIsTagModalOpen(true)}
-                    className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" 
-                    title="Tag Selected"
-                  >
-                    <Tag className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-                  <button 
-                    onClick={handleBulkEmail}
-                    className="hover:text-primary transition-colors p-1.5 rounded-full hover:bg-surface-container-highest" 
-                    title="Email Selected"
-                  >
-                    <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-                  <button 
-                    onClick={handleBulkDelete}
-                    className="hover:text-error transition-colors p-1.5 rounded-full hover:bg-error-container" 
-                    title="Delete Selected"
-                  >
-                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 text-on-surface-variant">
-            <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest">
-              {filteredAndSortedContacts.length} Contacts
-            </span>
-          </div>
-        </div>
+      {/* ── Select bar / count ── */}
+      <div className="flex items-center justify-between gap-3 mt-8 mb-4">
+        <label className="flex items-center gap-2.5 cursor-pointer group select-none" onClick={toggleSelectAll}>
+          <span className={cn(
+            "w-5 h-5 rounded-md border-2 transition-colors flex items-center justify-center",
+            allSelected ? "bg-primary border-primary" :
+              selectedIds.size > 0 ? "border-primary" : "border-outline group-hover:border-primary"
+          )}>
+            {allSelected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
+            {selectedIds.size > 0 && !allSelected && <span className="w-2 h-0.5 bg-primary rounded" />}
+          </span>
+          <span className="text-sm text-on-surface-variant">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selected`
+              : `${peopleCount(filteredContacts.length)}${filteredContacts.length === contacts.length ? '' : ` of ${contacts.length}`}`}
+          </span>
+        </label>
 
-        {/* Scrollable Area */}
-        <div className="flex-1 overflow-auto no-scrollbar">
-          {filteredAndSortedContacts.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center">
-              <div className="w-16 h-16 rounded-full bg-surface-container-highest flex items-center justify-center mb-4">
-                <Search className="w-8 h-8 text-on-surface-variant opacity-20" />
-              </div>
-              <h3 className="text-lg font-bold text-on-surface mb-1">No contacts found</h3>
-              <p className="text-sm text-on-surface-variant">Try adjusting your search or filters.</p>
-            </div>
-          ) : (
-            <table className="w-full text-left border-collapse table-auto min-w-[700px]">
-              <thead className="bg-surface-container-low sticky top-0 z-10 border-b border-surface-variant shadow-sm text-on-surface-variant">
-                <tr>
-                  <th className="py-4 px-3 sm:px-4 w-12 text-center"></th>
-                  <th 
-                    className="py-4 px-2 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap"
-                    onClick={() => handleSort('name')}
-                  >
-                    Name <ArrowDown className={cn(
-                      "w-3 h-3 inline-block ml-1 transition-all",
-                      sortField === 'name' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
-                    )} />
-                  </th>
-                  <th 
-                    className={cn(
-                      "py-4 px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap",
-                      isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
-                    )}
-                    onClick={() => handleSort('location')}
-                  >
-                    Location <ArrowDown className={cn(
-                      "w-3 h-3 inline-block ml-1 transition-all",
-                      sortField === 'location' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
-                    )} />
-                  </th>
-                  <th 
-                    className={cn(
-                      "py-4 px-4 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group whitespace-nowrap",
-                      "hidden lg:table-cell"
-                    )}
-                    onClick={() => handleSort('email')}
-                  >
-                    Contact Info <ArrowDown className={cn(
-                      "w-3 h-3 inline-block ml-1 transition-all",
-                      sortField === 'email' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
-                    )} />
-                  </th>
-                  <th 
-                    className="py-4 px-2 text-xs font-black uppercase tracking-wider cursor-pointer hover:text-on-surface group w-32"
-                    onClick={() => handleSort('stage')}
-                  >
-                    Stage <ArrowDown className={cn(
-                      "w-3 h-3 inline-block ml-1 transition-all",
-                      sortField === 'stage' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
-                    )} />
-                  </th>
-                  <th 
-                    className={cn(
-                      "py-4 px-4 sm:px-6 text-xs font-black uppercase tracking-wider text-right w-36 cursor-pointer hover:text-on-surface group",
-                      isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
-                    )}
-                    onClick={() => handleSort('lastSeen')}
-                  >
-                    Last Seen <ArrowDown className={cn(
-                      "w-3 h-3 inline-block ml-1 transition-all",
-                      sortField === 'lastSeen' ? (sortDirection === 'desc' ? 'rotate-180' : 'opacity-100') : 'opacity-0 group-hover:opacity-100'
-                    )} />
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-outline-variant/30 bg-surface-container-lowest">
-                {filteredAndSortedContacts.map((contact) => (
-                    <tr 
-                    key={contact.id} 
-                    onClick={() => setSelectedContact(contact)}
-                    className={cn(
-                      "hover:bg-surface-container-low transition-colors group cursor-pointer",
-                      selectedIds.has(contact.id) && "bg-primary/5"
-                    )}
-                  >
-                    <td className="py-4 px-3 sm:px-4">
-                      <div 
-                        onClick={(e) => toggleSelect(contact.id, e)}
-                        className={cn(
-                          "w-4 h-4 rounded border-2 transition-colors flex items-center justify-center mx-auto",
-                          selectedIds.has(contact.id) 
-                            ? "bg-primary border-primary opacity-100" 
-                            : "border-outline opacity-40 group-hover:opacity-100 group-hover:border-primary"
-                        )}
-                      >
-                        {selectedIds.has(contact.id) && (
-                          <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-2 max-w-[200px]">
-                      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                        {contact.avatar ? (
-                          <img src={contact.avatar} alt={contact.name} className="w-10 h-10 rounded-full border border-outline-variant shrink-0 object-cover shadow-sm" />
-                        ) : (
-                          <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold shrink-0 text-sm">
-                            {contact.initials}
-                          </div>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <p className="text-sm font-bold text-on-surface truncate">{contact.name}</p>
-                          </div>
-                          <p className="text-[10px] text-on-surface-variant font-bold uppercase tracking-tight opacity-70 truncate">{contact.role}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className={cn(
-                      "py-4 px-4",
-                      isSidebarCollapsed ? "table-cell" : "hidden md:table-cell"
-                    )}>
-                      <p className="text-sm font-medium text-on-surface truncate">{contact.location}</p>
-                    </td>
-                    <td className="py-4 px-4 hidden lg:table-cell">
-                      <div className="space-y-1 max-w-[180px]">
-                        <div className="flex items-center gap-2 text-on-surface-variant overflow-hidden">
-                          <Mail className="w-3 h-3 opacity-60 shrink-0" />
-                          <span className="text-xs truncate">{contact.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-on-surface-variant overflow-hidden">
-                          <Phone className="w-3 h-3 opacity-60 shrink-0" />
-                          <span className="text-xs truncate">{contact.phone}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-2">
-                      <div className="flex flex-col gap-1">
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider w-fit",
-                          stagesData.find(s => s.label === contact.stage)?.color || "bg-surface-variant text-on-surface-variant"
-                        )}>
-                          <span className="max-w-[100px] truncate">{stagesData.some(s => s.label === contact.stage) ? contact.stage : 'Unassigned'}</span>
-                        </span>
-                      </div>
-                    </td>
-                    <td className={cn(
-                      "py-4 px-4 sm:px-6 text-right",
-                      isSidebarCollapsed ? "table-cell" : "hidden sm:table-cell"
-                    )}>
-                      <p className="text-xs whitespace-nowrap text-on-surface-variant font-medium">{contact.lastSeen}</p>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, x: 8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 8 }}
+              className="flex items-center gap-1"
+            >
+              <button
+                onClick={() => setIsTagModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                title="Tag selected"
+              >
+                <Tag className="w-4 h-4" /> Tag
+              </button>
+              <button
+                onClick={handleBulkEmail}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                title="Email selected"
+              >
+                <Mail className="w-4 h-4" /> Email
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-error hover:bg-error/10 transition-colors"
+                title="Remove selected"
+              >
+                <Trash2 className="w-4 h-4" /> Remove
+              </button>
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
       </div>
 
-      {/* Tag Modal */}
+      {/* ── People cards ── */}
+      {filteredContacts.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-14 h-14 rounded-full bg-surface-variant flex items-center justify-center mb-4">
+            <Search className="w-7 h-7 text-on-surface-variant opacity-40" />
+          </div>
+          <h3 className="font-serif text-xl text-on-surface mb-1">No one matches that just yet</h3>
+          <p className="text-sm text-on-surface-variant">Try a different search or clear your filters.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredContacts.map((contact) => {
+            const tone = toneByStage.get(contact.stage);
+            const toneCx = tone ? TONE_CLASSES[tone] : null;
+            const isStage = stagesData.some(s => s.label === contact.stage);
+            const touch = lastTouchByContact.get(contact.id);
+            const ms = touch?.ms ?? parseMs(contact.createdAt);
+            const days = ms != null ? daysSince(ms) : null;
+            const overdue = days != null && days >= 7;
+            const note = (touch?.note || contact.notes || '').trim();
+            const sub = [contact.role, contact.location].filter(Boolean).join(' · ');
+            const tags = (contact.tags || []).filter(Boolean);
+            const selected = selectedIds.has(contact.id);
+
+            return (
+              <div
+                key={contact.id}
+                onClick={() => setSelectedContact(contact)}
+                className={cn(
+                  "group relative bg-surface rounded-2xl border border-outline-variant/60 p-5 transition-colors cursor-pointer",
+                  toneCx ? toneCx.cardHoverBorder : "hover:border-primary/40",
+                  selected && "border-primary bg-primary/5"
+                )}
+              >
+                <div className="flex gap-4 min-w-0">
+                  {/* Select checkbox */}
+                  <button
+                    onClick={(e) => toggleSelect(contact.id, e)}
+                    className={cn(
+                      "mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all",
+                      selected
+                        ? "bg-primary border-primary opacity-100"
+                        : "border-outline opacity-40 group-hover:opacity-100 hover:border-primary"
+                    )}
+                    title={selected ? 'Deselect' : 'Select'}
+                  >
+                    {selected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
+                  </button>
+
+                  <Avatar contact={contact} />
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
+                          toneCx && isStage ? cn(toneCx.chipBg, toneCx.chipText) : "bg-surface-variant text-on-surface-variant"
+                        )}
+                      >
+                        {isStage ? contact.stage : 'Unassigned'}
+                      </span>
+                    </div>
+                    {sub && (
+                      <div className="text-sm text-on-surface-variant mt-0.5 truncate">{sub}</div>
+                    )}
+                    {days != null ? (
+                      <div className={cn(
+                        "flex items-center gap-1.5 text-sm mt-1",
+                        overdue ? "text-stage-amber font-medium" : "text-on-surface-variant"
+                      )}>
+                        {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0" aria-hidden />}
+                        {connectedLabel(days)}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-on-surface-variant/70 italic mt-1">No contact logged yet.</div>
+                    )}
+                    {note && (
+                      <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
+                        <span className="text-on-surface-variant/70">Lately:</span> {truncate(note, 120)}
+                      </p>
+                    )}
+                    {tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {tags.map((t) => (
+                          <span
+                            key={t}
+                            className={cn(
+                              "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+                              toneCx ? cn(toneCx.tagBg, toneCx.tagText) : "bg-surface-variant text-on-surface-variant"
+                            )}
+                          >
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Quick email */}
+                  {contact.email && (
+                    <a
+                      href={`mailto:${contact.email}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="self-start hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors shrink-0"
+                    >
+                      <Mail className="w-3.5 h-3.5" /> Email
+                    </a>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Tag Modal ── */}
       <AnimatePresence>
         {isTagModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsTagModalOpen(false)}
               className="absolute inset-0 bg-black/40 backdrop-blur-sm"
             />
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
             >
-              <div className="p-6 border-b border-outline-variant bg-surface/50 backdrop-blur-md">
-                <h2 className="text-xl font-bold text-on-surface">Add Tag</h2>
-                <p className="text-xs text-on-surface-variant">Tag {selectedIds.size} selected contacts</p>
+              <div className="p-6 border-b border-outline-variant">
+                <h2 className="font-serif text-2xl text-on-surface">Add a tag</h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  For {selectedIds.size} selected {selectedIds.size === 1 ? 'person' : 'people'}
+                </p>
               </div>
 
               <form onSubmit={handleBulkTag} className="p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-on-surface-variant uppercase tracking-widest px-1">Tag Name</label>
+                  <label className="text-sm font-medium text-on-surface-variant px-1">Tag</label>
                   <input
                     required
                     autoFocus
                     type="text"
                     value={newTag}
                     onChange={e => setNewTag(e.target.value)}
-                    className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                    placeholder="e.g. Fall2023"
+                    className="w-full h-12 px-4 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-on-surface"
+                    placeholder="e.g. leader-track"
                   />
                 </div>
 
@@ -691,15 +812,15 @@ export default function Directory() {
                   <button
                     type="button"
                     onClick={() => setIsTagModalOpen(false)}
-                    className="flex-1 h-12 rounded-xl font-bold text-on-surface-variant hover:bg-surface-variant transition-all"
+                    className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-2 h-12 bg-primary text-on-primary rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl transition-all"
+                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
                   >
-                    Add Tag
+                    Add tag
                   </button>
                 </div>
               </form>
