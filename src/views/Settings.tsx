@@ -874,14 +874,18 @@ function InviteRow({ invite, onCancel }: { invite: Invitation; onCancel: () => v
 
 function EditRoleModal({
   user,
+  isAdmin,
   onClose,
   onSave,
 }: {
   user: AppUser;
+  isAdmin: boolean;
   onClose: () => void;
   onSave: (uid: string, role: AppRole) => void;
 }) {
   const [role, setRole] = useState<AppRole>(user.role || 'viewer');
+  // RBAC: only an admin can grant the Full-timer (admin) role.
+  const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div
@@ -911,7 +915,7 @@ function EditRoleModal({
           onChange={(e) => setRole(e.target.value as AppRole)}
           className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface mb-6 cursor-pointer"
         >
-          {ROLE_OPTIONS.map((o) => (
+          {options.map((o) => (
             <option key={o.value} value={o.value}>
               {o.label}
             </option>
@@ -997,6 +1001,7 @@ function InviteModal({
   setEmail,
   role,
   setRole,
+  isAdmin,
   isInviting,
   onSubmit,
   onClose,
@@ -1005,10 +1010,13 @@ function InviteModal({
   setEmail: (v: string) => void;
   role: AppRole;
   setRole: (v: AppRole) => void;
+  isAdmin: boolean;
   isInviting: boolean;
   onSubmit: (e: React.FormEvent) => void;
   onClose: () => void;
 }) {
+  // RBAC: only an admin can pre-add someone as a Full-timer (admin).
+  const options = ROLE_OPTIONS.filter((o) => isAdmin || o.value !== 'admin');
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <motion.div
@@ -1064,7 +1072,7 @@ function InviteModal({
               onChange={(e) => setRole(e.target.value as AppRole)}
               className="w-full px-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface cursor-pointer"
             >
-              {ROLE_OPTIONS.map((o) => (
+              {options.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
@@ -1458,6 +1466,7 @@ export default function Settings() {
             setEmail={setInviteEmail}
             role={inviteRole}
             setRole={setInviteRole}
+            isAdmin={isAdmin}
             isInviting={isInviting}
             onClose={() => setShowInviteDialog(false)}
             onSubmit={async (e) => {
@@ -1469,6 +1478,7 @@ export default function Settings() {
         {editTarget && (
           <EditRoleModal
             user={editTarget}
+            isAdmin={isAdmin}
             onClose={() => setEditTarget(null)}
             onSave={(uid, newRole) => {
               changeRole(uid, newRole);
