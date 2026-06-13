@@ -77,7 +77,7 @@ describe('canAccessRoute()', () => {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory'],
     manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/my-day'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -168,6 +168,7 @@ describe('Sidebar nav items', () => {
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
+    expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('People')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
@@ -178,6 +179,7 @@ describe('Sidebar nav items', () => {
     renderSidebar();
     expect(screen.getByText('Today')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
@@ -192,12 +194,13 @@ describe('Sidebar nav items', () => {
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('admin: sees all 8 nav items', () => {
+  it('admin: sees all 9 nav items', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Settings'];
+    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

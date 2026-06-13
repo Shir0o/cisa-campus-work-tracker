@@ -25,6 +25,7 @@ export function roleLabel(role: AppRole | string | null): string {
 
 const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'operator',
+  '/my-day': 'admin',
   '/board': 'manager',
   '/directory': 'operator',
   '/history': 'manager',
@@ -46,6 +47,7 @@ export interface NavItem {
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Today', minRole: 'operator' },
+  { href: '/my-day', label: 'My Day', minRole: 'admin' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
