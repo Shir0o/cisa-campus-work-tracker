@@ -1,28 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Mail, 
-  History,
-  AlertCircle,
-  CalendarCheck,
+import {
+  Search,
+  Filter,
+  MoreHorizontal,
   Plus,
   Settings2,
   X,
-  Palette,
-  GripVertical,
   Edit3,
-  Trash2
+  Trash2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  DndContext, 
-  DragOverlay, 
-  closestCorners, 
-  KeyboardSensor, 
-  PointerSensor, 
-  useSensor, 
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
   useSensors,
   DragStartEvent,
   DragOverEvent,
@@ -31,7 +25,6 @@ import {
   DropAnimation
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -39,18 +32,19 @@ import {
 } from '@dnd-kit/sortable';
 import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { CONTACTS } from '../constants';
-import { cn } from '../lib/utils';
+import { cn, getUserInitials } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
-import { 
-  collection, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  addDoc, 
-  doc, 
+import {
+  collection,
+  collectionGroup,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+  addDoc,
+  doc,
   deleteDoc,
   updateDoc,
   writeBatch
@@ -58,27 +52,139 @@ import {
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
 
+// ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
+const DAY_MS = 86_400_000;
+const parseMs = (s?: string | null): number | null => {
+  if (!s) return null;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+};
+const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
+const connectedLabel = (d: number) =>
+  d === 0 ? 'Connected today' : d === 1 ? 'Last connected yesterday' : `Last connected ${d} days ago`;
+const truncate = (s: string | undefined, n: number) =>
+  s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s || '';
+
+type Touch = { ms: number; note: string };
+type TouchMap = Map<string, Touch>;
+
+// Warm one-line captions for the four default stages (display-only; no schema).
+const STAGE_CAPTION: Record<string, string> = {
+  'first contact': "We've only just met — a name, a face, a first hello.",
+  'second contact': 'Following up — a coffee, a text, learning who they are.',
+  regular: 'Part of the rhythm now, around most weeks.',
+  church: 'Finding a church family to belong to.',
+};
+const captionFor = (label?: string) =>
+  (label && STAGE_CAPTION[label.trim().toLowerCase()]) || '';
+
+// The four warm stage tones. Stored stage colors (bg-board-*) map onto these.
+type Tone = 'accent' | 'amber' | 'teal' | 'violet';
+const TONES: Tone[] = ['accent', 'amber', 'teal', 'violet'];
+
+const TONE_BY_COLOR: Record<string, Tone> = {
+  'bg-board-indigo': 'accent',
+  'bg-board-ocean': 'accent',
+  'bg-primary': 'accent',
+  'bg-primary-fixed-dim': 'accent',
+  'bg-board-amber': 'amber',
+  'bg-board-teal': 'teal',
+  'bg-board-emerald': 'teal',
+  'bg-secondary': 'teal',
+  'bg-board-plum': 'violet',
+  'bg-board-crimson': 'violet',
+  'bg-board-rose': 'violet',
+};
+
+// Full static class strings so Tailwind's scanner keeps them.
+const TONE_CLASSES: Record<
+  Tone,
+  { topBorder: string; countText: string; cardHoverBorder: string; dot: string; tagBg: string; tagText: string }
+> = {
+  accent: {
+    topBorder: 'border-t-stage-accent',
+    countText: 'text-stage-accent',
+    cardHoverBorder: 'hover:border-stage-accent',
+    dot: 'bg-stage-accent',
+    tagBg: 'bg-stage-accent-soft',
+    tagText: 'text-stage-accent',
+  },
+  amber: {
+    topBorder: 'border-t-stage-amber',
+    countText: 'text-stage-amber',
+    cardHoverBorder: 'hover:border-stage-amber',
+    dot: 'bg-stage-amber',
+    tagBg: 'bg-stage-amber-soft',
+    tagText: 'text-stage-amber',
+  },
+  teal: {
+    topBorder: 'border-t-stage-teal',
+    countText: 'text-stage-teal',
+    cardHoverBorder: 'hover:border-stage-teal',
+    dot: 'bg-stage-teal',
+    tagBg: 'bg-stage-teal-soft',
+    tagText: 'text-stage-teal',
+  },
+  violet: {
+    topBorder: 'border-t-stage-violet',
+    countText: 'text-stage-violet',
+    cardHoverBorder: 'hover:border-stage-violet',
+    dot: 'bg-stage-violet',
+    tagBg: 'bg-stage-violet-soft',
+    tagText: 'text-stage-violet',
+  },
+};
+
+const toneFor = (color: string | undefined, index: number): Tone =>
+  (color && TONE_BY_COLOR[color]) || TONES[index % TONES.length];
+
+const peopleCount = (n: number) =>
+  n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
+
+function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
+  const dim = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-11 h-11 text-sm';
+  const initials = contact.initials || getUserInitials(contact.name);
+  if (contact.avatar) {
+    return (
+      <img
+        src={contact.avatar}
+        alt={contact.name}
+        className={cn(dim, 'rounded-full object-cover shrink-0')}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(
+        dim,
+        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
+      )}
+    >
+      {initials}
+    </div>
+  );
+}
+
 export default function OutreachBoard() {
-  const { isSidebarCollapsed, setSelectedContact } = useLayout();
+  const { setSelectedContact, openNewContact } = useLayout();
   const { isAdmin, user } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
-  
+
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('bg-board-indigo');
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  // Warm tone swatches for the stage editor (stored as bg-board-* class values).
   const colors = [
-    { name: 'Indigo', class: 'bg-board-indigo' },
-    { name: 'Teal', class: 'bg-board-teal' },
-    { name: 'Emerald', class: 'bg-board-emerald' },
-    { name: 'Amber', class: 'bg-board-amber' },
-    { name: 'Crimson', class: 'bg-board-crimson' },
+    { name: 'Slate', class: 'bg-board-indigo' },
+    { name: 'Terracotta', class: 'bg-board-amber' },
+    { name: 'Sage', class: 'bg-board-teal' },
     { name: 'Plum', class: 'bg-board-plum' },
+    { name: 'Clay', class: 'bg-board-crimson' },
     { name: 'Ocean', class: 'bg-board-ocean' },
-    { name: 'Rose', class: 'bg-board-rose' },
   ];
 
   const sensors = useSensors(
@@ -109,7 +215,7 @@ export default function OutreachBoard() {
         id: doc.id,
         ...doc.data()
       })) as Stage[];
-      
+
       if (stagesData.length === 0 && isAdmin) {
         setLoading(true);
         const defaultStages = [
@@ -117,7 +223,7 @@ export default function OutreachBoard() {
           { label: 'Second Contact', color: 'bg-primary', order: 1 },
           { label: 'Regular', color: 'bg-secondary', order: 2 },
         ];
-        
+
         const createStages = async () => {
           try {
             await Promise.all(defaultStages.map(s => addDoc(collection(db, 'stages'), s)));
@@ -129,7 +235,7 @@ export default function OutreachBoard() {
         };
         createStages();
       }
-      
+
       setStages(stagesData);
       setTimeout(() => setLoading(false), 800);
     }, (error) => {
@@ -148,7 +254,7 @@ export default function OutreachBoard() {
       if (editingStage) {
         const oldLabel = editingStage.label;
         const newLabel = newStageName.trim();
-        
+
         await updateDoc(doc(db, 'stages', editingStage.id), {
           label: newLabel,
           color: newStageColor,
@@ -206,6 +312,60 @@ export default function OutreachBoard() {
   const [boardContacts, setBoardContacts] = useState<Contact[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Last-connected signal: most recent interaction/comment per contact ──
+  const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
+  useEffect(() => {
+    const ingest = (
+      snap: { docs: { data: () => unknown; ref: { path: string } }[] },
+      noteKey: 'content' | 'text',
+    ) =>
+      snap.docs.map((d) => {
+        const data = d.data() as Record<string, unknown>;
+        return {
+          contactId: d.ref.path.split('/')[1],
+          ms: new Date((data.createdAt as string) ?? '').getTime(),
+          note: ((data[noteKey] as string) ?? '').trim(),
+        };
+      });
+
+    let interactionTouches: { contactId: string; ms: number; note: string }[] = [];
+    let commentTouches: { contactId: string; ms: number; note: string }[] = [];
+    const publish = () =>
+      setTouches([...interactionTouches, ...commentTouches].filter((t) => !Number.isNaN(t.ms)));
+
+    const unsubInteractions = onSnapshot(
+      query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
+      (snap) => {
+        interactionTouches = ingest(snap as never, 'content');
+        publish();
+      },
+      (e) => handleFirestoreError(e, OperationType.LIST, 'interactions (collectionGroup)'),
+    );
+
+    const unsubComments = onSnapshot(
+      query(collectionGroup(db, 'comments'), orderBy('createdAt', 'desc'), limit(500)),
+      (snap) => {
+        commentTouches = ingest(snap as never, 'text');
+        publish();
+      },
+      (e) => handleFirestoreError(e, OperationType.LIST, 'comments (collectionGroup)'),
+    );
+
+    return () => {
+      unsubInteractions();
+      unsubComments();
+    };
+  }, []);
+
+  const lastTouchByContact = useMemo(() => {
+    const map: TouchMap = new Map();
+    for (const t of touches) {
+      const cur = map.get(t.contactId);
+      if (!cur || t.ms > cur.ms) map.set(t.contactId, { ms: t.ms, note: t.note });
+    }
+    return map;
+  }, [touches]);
+
   const handleUpdateContactStage = async (contactId: string, newStageLabel: string) => {
     try {
       const contact = boardContacts.find(c => c.id === contactId);
@@ -235,7 +395,7 @@ export default function OutreachBoard() {
   };
 
   const handleDeleteStage = async (stageId: string) => {
-    if (!isAdmin || !window.confirm('Are you sure you want to delete this stage? Contacts in this stage will remain but won\'t be visible on the board until reassigned.')) return;
+    if (!isAdmin || !window.confirm('Remove this step from the journey? People in it stay, but won\'t show on the board until they\'re moved to another step.')) return;
     try {
       await deleteDoc(doc(db, 'stages', stageId));
     } catch (error) {
@@ -244,7 +404,7 @@ export default function OutreachBoard() {
   };
 
   const handleDeleteContact = async (contactId: string) => {
-    if (!window.confirm('Are you sure you want to delete this lead?')) return;
+    if (!window.confirm('Are you sure you want to delete this person?')) return;
     try {
       await deleteDoc(doc(db, 'contacts', contactId));
     } catch (error) {
@@ -259,9 +419,9 @@ export default function OutreachBoard() {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     const matchesRole = filterRole === 'All' || c.role === filterRole;
-    
+
     return matchesSearch && matchesRole;
   });
 
@@ -274,7 +434,7 @@ export default function OutreachBoard() {
     return filteredContacts.filter((c) => !c.stage || !activeStageLabels.has(c.stage));
   }, [filteredContacts, activeStageLabels]);
 
-  const activeContact = useMemo(() => 
+  const activeContact = useMemo(() =>
     boardContacts.find(c => c.id === activeId),
     [activeId, boardContacts]
   );
@@ -297,7 +457,7 @@ export default function OutreachBoard() {
     // Identify target stage
     let overStageLabel = '';
     const overContact = boardContacts.find((c) => c.id === overId);
-    
+
     if (overContact) {
       const isValidStage = stages.some(s => s.label === overContact.stage);
       overStageLabel = isValidStage ? overContact.stage : 'Unassigned';
@@ -326,11 +486,11 @@ export default function OutreachBoard() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
     const dragId = active.id as string;
-    
+
     // We get the final stage from the contact in our local state
     // because handleDragOver has been updating it.
     const finalContact = boardContacts.find(c => c.id === dragId);
-    
+
     setActiveId(null);
     if (!over || !finalContact) return;
 
@@ -351,34 +511,28 @@ export default function OutreachBoard() {
   if (loading) {
     return (
       <div className="flex flex-col h-full bg-background overflow-hidden">
-        <div className="px-8 py-6 border-b border-surface-variant flex items-center justify-between">
-          <div className="space-y-2">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-4 w-96" />
-          </div>
-          <div className="flex gap-4">
-            <Skeleton className="h-10 w-64 rounded-full" />
-            <Skeleton className="h-10 w-10 rounded-full" />
-          </div>
+        <div className="px-6 py-6 lg:px-8 border-b border-outline-variant/40 space-y-3">
+          <Skeleton className="h-9 w-56" />
+          <Skeleton className="h-4 w-96 max-w-full opacity-70" />
         </div>
-        <div className="flex-1 overflow-x-auto p-8">
+        <div className="flex-1 overflow-x-auto p-6 lg:p-8">
           <div className="flex gap-6 h-full">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-80 bg-surface-container rounded-2xl border border-outline-variant/20 flex flex-col">
-                <div className="p-4 border-b border-surface-variant flex justify-between">
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-3 w-3 rounded-full" />
-                    <Skeleton className="h-4 w-24" />
-                  </div>
-                  <Skeleton className="h-5 w-5" />
+              <div key={i} className="w-80 bg-surface-container rounded-2xl border-t-2 border border-outline-variant/20 flex flex-col">
+                <div className="p-4 space-y-2">
+                  <Skeleton className="h-5 w-28" />
+                  <Skeleton className="h-3 w-40 opacity-70" />
                 </div>
                 <div className="p-3 space-y-3">
                   {[...Array(3)].map((_, j) => (
                     <div key={j} className="bg-surface-container-lowest p-4 rounded-xl space-y-3">
-                      <div className="flex justify-between">
-                        <Skeleton className="h-4 w-24" />
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-11 w-11 rounded-full" />
+                        <div className="space-y-1.5 flex-1">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-32 opacity-70" />
+                        </div>
                       </div>
-                      <Skeleton className="h-3 w-full" />
                       <Skeleton className="h-3 w-2/3" />
                     </div>
                   ))}
@@ -399,42 +553,59 @@ export default function OutreachBoard() {
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         className="flex flex-col h-full bg-background overflow-hidden"
       >
-        {/* Header */}
-        <div className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 border-b border-surface-variant flex flex-col sm:flex-row sm:items-center justify-between shrink-0 bg-surface/50 backdrop-blur-md sticky top-0 z-20 gap-4">
-          <div>
-            <h2 className="text-2xl sm:text-3xl font-normal text-on-surface">Stage</h2>
-            <p className="text-xs sm:text-sm text-on-surface-variant mt-1">Manage contact progression and relationship stages.</p>
+        {/* Header — the journey, in prose */}
+        <div className="px-4 py-5 sm:px-6 lg:px-8 border-b border-outline-variant/40 flex flex-col lg:flex-row lg:items-end justify-between shrink-0 bg-surface/60 backdrop-blur-md sticky top-0 z-20 gap-4">
+          <div className="min-w-0">
+            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">The Journey</h1>
+            <p className="text-sm sm:text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
+              <b className="text-on-surface font-semibold">
+                {filteredContacts.length} {filteredContacts.length === 1 ? 'person' : 'people'}
+              </b>{' '}
+              walking it
+              {stages.length > 0 && (
+                <>
+                  {' — '}
+                  {stages.map((s, i) => (
+                    <React.Fragment key={s.id}>
+                      <span className="text-on-surface font-medium">{getStageContactsArr(s.label).length}</span>{' '}
+                      {s.label.toLowerCase()}
+                      {i < stages.length - 1 ? ', ' : '.'}
+                    </React.Fragment>
+                  ))}
+                </>
+              )}
+            </p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {isAdmin && (
-              <button 
-                onClick={() => setShowAddStage(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary font-bold text-sm hover:opacity-90 transition-colors shrink-0"
+              <button
+                onClick={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors shrink-0"
               >
-                <Plus className="w-4 h-4" />
-                Add Stage
+                <Settings2 className="w-4 h-4" />
+                Shape the journey
               </button>
             )}
             <div className="relative flex-1 sm:flex-initial">
-              <Search className="w-4 h-4 sm:w-5 sm:h-5 absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
-              <input 
-                type="text" 
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant" />
+              <input
+                type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-xs sm:text-sm w-full sm:w-64"
-                placeholder="Search board..."
+                className="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
+                placeholder="Find someone…"
               />
             </div>
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 className={cn(
-                  "p-2 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0",
+                  "p-2.5 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0 transition-colors",
                   filterRole !== 'All' && "text-primary bg-primary/10"
                 )}
               >
@@ -451,7 +622,7 @@ export default function OutreachBoard() {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-3 min-w-[180px] space-y-2"
                     >
-                      <p className="text-[10px] font-black uppercase tracking-widest text-on-surface-variant px-2">Filter by Role</p>
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-on-surface-variant px-2">Filter by role</p>
                       <div className="space-y-1">
                         {filterRoles.map(role => (
                           <button
@@ -461,7 +632,7 @@ export default function OutreachBoard() {
                               setShowFilterMenu(false);
                             }}
                             className={cn(
-                              "w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition-colors",
+                              "w-full text-left px-3 py-2 rounded-xl text-sm font-medium transition-colors",
                               filterRole === role ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-variant"
                             )}
                           >
@@ -477,7 +648,7 @@ export default function OutreachBoard() {
           </div>
         </div>
 
-        {/* Kanban Board */}
+        {/* The board */}
         <div className="flex-1 overflow-x-auto overflow-y-hidden p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
           <div className="flex gap-4 sm:gap-6 items-start h-full pr-8">
             {stages.length > 0 ? (
@@ -493,75 +664,71 @@ export default function OutreachBoard() {
                     }}
                     isAdmin={isAdmin}
                     contacts={unmappedContacts}
-                    stages={stages}
+                    lastTouchByContact={lastTouchByContact}
                     onDeleteStage={handleDeleteStage}
                     onEditStage={handleEditStage}
-                    onEditContact={(contact) => {
-                      setSelectedContact(contact);
-                    }}
+                    onEditContact={setSelectedContact}
                     onDeleteContact={handleDeleteContact}
-                    onUpdateContactStage={handleUpdateContactStage}
+                    onAddContact={openNewContact}
                   />
                 )}
-                {stages.map((stageInfo) => (
-                  <KanbanColumn 
+                {stages.map((stageInfo, i) => (
+                  <KanbanColumn
                     key={stageInfo.id}
                     stageInfo={stageInfo}
+                    tone={toneFor(stageInfo.color, i)}
+                    isFirst={i === 0}
                     isAdmin={isAdmin}
                     contacts={getStageContactsArr(stageInfo.label)}
-                    stages={stages}
+                    lastTouchByContact={lastTouchByContact}
                     onDeleteStage={handleDeleteStage}
                     onEditStage={handleEditStage}
-                    onEditContact={(contact) => {
-                      setSelectedContact(contact);
-                    }}
+                    onEditContact={setSelectedContact}
                     onDeleteContact={handleDeleteContact}
-                    onUpdateContactStage={handleUpdateContactStage}
+                    onAddContact={openNewContact}
                   />
                 ))}
               </>
             ) : !loading && (
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
                 <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
-                <h3 className="text-lg font-bold text-on-surface">No stages configured</h3>
-                <p className="text-sm text-on-surface-variant mt-1">
-                  {isAdmin ? 'Click the button below to start building your workflow.' : 'Workflow stages haven\'t been set up yet.'}
+                <h3 className="font-serif text-xl text-on-surface">The journey hasn't been mapped yet</h3>
+                <p className="text-sm text-on-surface-variant mt-1 max-w-sm">
+                  {isAdmin ? 'Shape the steps people walk through — from a first hello toward a church home.' : 'The steps of the journey haven\'t been set up yet.'}
                 </p>
               </div>
             )}
           </div>
-
-
         </div>
 
-        {/* Add Stage Modal */}
+        {/* Shape the journey — add / edit a step */}
         <AnimatePresence>
           {showAddStage && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setShowAddStage(false)}
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm"
               />
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
               >
-                <div className="p-6 border-b border-outline-variant flex items-center justify-between bg-surface/50 backdrop-blur-md">
+                <div className="p-6 border-b border-outline-variant flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-primary-container text-on-primary-container flex items-center justify-center">
-                      <Plus className="w-6 h-6" />
+                      <Settings2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-bold text-on-surface">{editingStage ? 'Edit Stage' : 'New Stage'}</h2>
-                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Modify your board column' : 'Add a column to your board'}</p>
+                      <h2 className="font-serif text-xl text-on-surface">{editingStage ? 'Rename this step' : 'Shape the journey'}</h2>
+                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Give the step a new name or colour' : 'Add a step people walk through'}</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowAddStage(false)}
                     className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
                   >
@@ -571,8 +738,8 @@ export default function OutreachBoard() {
 
                 <form onSubmit={handleAddStage} className="p-6 space-y-6">
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                      <Palette className="w-4 h-4" /> STAGE NAME
+                    <label className="text-sm font-medium text-on-surface-variant px-1">
+                      Step name
                     </label>
                     <input
                       required
@@ -581,15 +748,15 @@ export default function OutreachBoard() {
                       value={newStageName}
                       onChange={e => setNewStageName(e.target.value)}
                       className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                      placeholder="e.g. Regulars"
+                      placeholder="e.g. Following up"
                     />
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-on-surface-variant flex items-center gap-2 px-1">
-                      <Palette className="w-4 h-4" /> COLOR THEME
+                    <label className="text-sm font-medium text-on-surface-variant px-1">
+                      Colour
                     </label>
-                    <div className="grid grid-cols-4 gap-3">
+                    <div className="grid grid-cols-6 gap-3">
                       {colors.map(color => (
                         <button
                           key={color.class}
@@ -610,16 +777,16 @@ export default function OutreachBoard() {
                     <button
                       type="button"
                       onClick={() => setShowAddStage(false)}
-                      className="flex-1 h-12 rounded-xl font-bold text-on-surface-variant hover:bg-surface-variant transition-all"
+                      className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={!newStageName.trim()}
-                      className="flex-3 h-12 bg-primary text-on-primary rounded-xl font-bold shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
+                      className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
                     >
-                      {editingStage ? 'Save Changes' : 'Create Stage'}
+                      {editingStage ? 'Save changes' : 'Add this step'}
                     </button>
                   </div>
                 </form>
@@ -631,13 +798,13 @@ export default function OutreachBoard() {
         <DragOverlay dropAnimation={dropAnimation}>
           {activeId && activeContact ? (
             <div className="w-[280px] sm:w-[320px] rotate-3 scale-105 pointer-events-none">
-              <InternalKanbanCard 
-                contact={activeContact} 
-                stages={stages} 
-                onUpdateStage={async () => {}} 
+              <InternalKanbanCard
+                contact={activeContact}
+                tone={toneFor(stages.find((s) => s.label === activeContact.stage)?.color, 0)}
+                lastTouchByContact={lastTouchByContact}
                 onEditContact={() => {}}
                 onDeleteContact={async () => {}}
-                isOverlay 
+                isOverlay
               />
             </div>
           ) : null}
@@ -649,48 +816,64 @@ export default function OutreachBoard() {
 
 interface KanbanColumnProps {
   stageInfo: Stage;
+  tone?: Tone;
+  isFirst?: boolean;
   contacts: Contact[];
   isAdmin: boolean;
-  stages: Stage[];
+  lastTouchByContact: TouchMap;
   onDeleteStage: (id: string) => Promise<void>;
   onEditStage: (stage: Stage) => void;
   onEditContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => Promise<void>;
-  onUpdateContactStage: (cid: string, sid: string) => Promise<void>;
+  onAddContact: () => void;
   key?: string | number;
 }
 
-function KanbanColumn({ 
-  stageInfo, 
-  contacts, 
-  isAdmin, 
-  stages, 
-  onDeleteStage, 
+function KanbanColumn({
+  stageInfo,
+  tone,
+  isFirst,
+  contacts,
+  isAdmin,
+  lastTouchByContact,
+  onDeleteStage,
   onEditStage,
   onEditContact,
   onDeleteContact,
-  onUpdateContactStage 
+  onAddContact,
 }: KanbanColumnProps) {
-  const { setNodeRef } = useDroppable({
+  const { setNodeRef, isOver } = useDroppable({
     id: stageInfo.id,
   });
 
   const [showMenu, setShowMenu] = useState(false);
+  const toneCx = tone ? TONE_CLASSES[tone] : null;
+  const caption = captionFor(stageInfo.label);
 
   return (
-    <div className="flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-outline-variant/20 max-h-full">
-      {/* Column Header */}
-      <div className="p-4 flex items-center justify-between border-b border-surface-variant relative">
-        <div className="flex items-center gap-2">
-          <span className={cn("w-3 h-3 rounded-full", stageInfo.color)}></span>
-          <h3 className="text-sm font-bold text-on-surface">{stageInfo.label}</h3>
-          <span className="bg-surface-container-highest text-on-surface-variant px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tight">
-            {contacts.length}
+    <div
+      className={cn(
+        "flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-t-2 max-h-full transition-all",
+        toneCx ? toneCx.topBorder : "border-t-outline-variant",
+        isOver ? "border-outline ring-2 ring-primary/30" : "border-outline-variant/30",
+      )}
+    >
+      {/* Column header */}
+      <div className="p-4 flex items-start justify-between relative">
+        <div className="min-w-0">
+          <div className="flex items-baseline gap-2">
+            <h3 className="font-serif text-[17px] text-on-surface truncate">{stageInfo.label}</h3>
+          </div>
+          <span className={cn("text-xs font-medium", toneCx ? toneCx.countText : "text-on-surface-variant")}>
+            {peopleCount(contacts.length)}
           </span>
+          {caption && (
+            <p className="text-xs text-on-surface-variant leading-relaxed mt-1.5 max-w-[24ch]">{caption}</p>
+          )}
         </div>
 
-        {isAdmin && (
-          <div className="relative">
+        {isAdmin && stageInfo.id !== 'uncategorized' && (
+          <div className="relative shrink-0">
             <button
               onClick={() => setShowMenu(!showMenu)}
               className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
@@ -701,8 +884,8 @@ function KanbanColumn({
             <AnimatePresence>
               {showMenu && (
                 <>
-                  <div 
-                    className="fixed inset-0 z-[60]" 
+                  <div
+                    className="fixed inset-0 z-[60]"
                     onClick={() => setShowMenu(false)}
                   />
                   <motion.div
@@ -716,20 +899,20 @@ function KanbanColumn({
                         onEditStage(stageInfo);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-surface-variant text-on-surface transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-surface-variant text-on-surface transition-colors"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-primary" />
-                      Edit Stage
+                      Rename step
                     </button>
                     <button
                       onClick={() => {
                         onDeleteStage(stageInfo.id);
                         setShowMenu(false);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-xs hover:bg-error/10 text-error transition-colors font-medium border-t border-outline-variant/30 mt-1"
+                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-error/10 text-error transition-colors font-medium border-t border-outline-variant/30 mt-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Delete Stage
+                      Remove step
                     </button>
                   </motion.div>
                 </>
@@ -739,42 +922,52 @@ function KanbanColumn({
         )}
       </div>
 
-      {/* Column Content */}
-      <SortableContext 
+      {/* Column body */}
+      <SortableContext
         id={stageInfo.id}
         items={contacts.map(c => c.id)}
         strategy={verticalListSortingStrategy}
       >
-        <div 
+        <div
           ref={setNodeRef}
-          className="p-3 overflow-y-auto space-y-3 custom-scrollbar min-h-[150px] flex-1"
+          className="px-3 overflow-y-auto space-y-2.5 custom-scrollbar min-h-[120px] flex-1"
         >
           {contacts.length > 0 ? contacts.map((contact) => (
-            <KanbanCard 
-              key={contact.id} 
-              contact={contact} 
-              stages={stages}
+            <KanbanCard
+              key={contact.id}
+              contact={contact}
+              tone={tone}
+              lastTouchByContact={lastTouchByContact}
               onEditContact={onEditContact}
               onDeleteContact={onDeleteContact}
-              onUpdateStage={onUpdateContactStage}
             />
           )) : (
-            <div className="flex-1 flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/30 rounded-xl m-1">
-              <p className="text-on-surface-variant text-[10px] italic opacity-60 text-center px-4 uppercase font-bold tracking-widest">Empty Stage</p>
+            <div className="flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/40 rounded-xl m-1">
+              <p className="text-on-surface-variant text-sm italic opacity-70 text-center px-4">No one here just now.</p>
             </div>
           )}
         </div>
       </SortableContext>
+
+      {/* Column footer */}
+      <div className="p-3">
+        <button
+          onClick={onAddContact}
+          className="w-full py-2.5 rounded-xl border border-dashed border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+        >
+          {isFirst ? 'Welcome someone new' : `Add to ${stageInfo.label}`}
+        </button>
+      </div>
     </div>
   );
 }
 
 interface KanbanCardProps {
   contact: Contact;
-  stages: Stage[];
+  tone?: Tone;
+  lastTouchByContact: TouchMap;
   onEditContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => Promise<void>;
-  onUpdateStage: (cid: string, sid: string) => Promise<void>;
   key?: string | number;
 }
 
@@ -795,10 +988,10 @@ function KanbanCard(props: KanbanCardProps) {
 
   if (isDragging) {
     return (
-      <div 
-        ref={setNodeRef} 
+      <div
+        ref={setNodeRef}
         style={style}
-        className="opacity-20 bg-surface-container p-4 rounded-xl border border-dashed border-outline-variant h-32"
+        className="opacity-20 bg-surface-container p-4 rounded-xl border border-dashed border-outline-variant h-28"
       />
     );
   }
@@ -810,38 +1003,75 @@ function KanbanCard(props: KanbanCardProps) {
   );
 }
 
-function InternalKanbanCard({ 
-  contact, 
-  stages, 
+function InternalKanbanCard({
+  contact,
+  tone,
+  lastTouchByContact,
   onEditContact,
-  onDeleteContact,
-  onUpdateStage, 
   isOverlay,
-  dragListeners 
+  dragListeners
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
+  const toneCx = tone ? TONE_CLASSES[tone] : null;
+  const touch = lastTouchByContact.get(contact.id);
+  const ms = touch?.ms ?? parseMs(contact.createdAt);
+  const days = ms != null ? daysSince(ms) : null;
+  const overdue = days != null && days >= 7;
+  const note = (touch?.note || contact.notes || '').trim();
+  const sub = [contact.role, contact.location].filter(Boolean).join(' · ');
+  const tags = (contact.tags || []).filter(Boolean);
+
   return (
-    <div 
+    <div
       onClick={() => !isOverlay && onEditContact(contact)}
       className={cn(
-        "bg-surface-container-lowest p-4 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/30 flex flex-col gap-3 group active:cursor-grabbing relative overflow-visible",
-        contact.stage === 'Regular' && "border-l-4 border-l-secondary",
-        isOverlay && "shadow-2xl border-primary/50"
+        "bg-surface-container-lowest p-3.5 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/40 flex flex-col gap-2.5 group active:cursor-grabbing",
+        toneCx?.cardHoverBorder,
+        isOverlay && "shadow-2xl",
       )}
       {...dragListeners}
     >
-      <div className="flex justify-between items-start">
-        <div className="flex flex-col gap-1">
-          <h4 className="text-sm font-bold text-on-surface leading-tight">{contact.name}</h4>
-          <p className="text-[10px] text-on-surface-variant font-medium">{contact.role}</p>
+      {/* Person */}
+      <div className="flex items-center gap-3">
+        <Avatar contact={contact} />
+        <div className="min-w-0">
+          <h4 className="font-serif text-base text-on-surface leading-tight truncate">{contact.name}</h4>
+          {sub && <p className="text-xs text-on-surface-variant truncate mt-0.5">{sub}</p>}
         </div>
       </div>
 
-      {contact.notes && (
-        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic mb-2 whitespace-pre-wrap">
-          {contact.notes}
+      {/* Last connected */}
+      {days != null ? (
+        <div className={cn("flex items-center gap-1.5 text-[12.5px]", overdue ? "text-stage-amber font-medium" : "text-on-surface-variant")}>
+          {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0" aria-hidden />}
+          {connectedLabel(days)}
+        </div>
+      ) : (
+        <div className="text-[12.5px] text-on-surface-variant italic">No contact logged yet.</div>
+      )}
+
+      {/* Last note */}
+      {note && (
+        <p className="text-[12.5px] text-on-surface-variant leading-relaxed">
+          <span className="text-on-surface-variant/70">Last:</span> {truncate(note, 100)}
         </p>
       )}
 
+      {/* Tags */}
+      {tags.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-0.5">
+          {tags.map((t) => (
+            <span
+              key={t}
+              className={cn(
+                "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
+                toneCx ? cn(toneCx.tagBg, toneCx.tagText) : "bg-surface-variant text-on-surface-variant",
+              )}
+            >
+              {t === 'leader-track' ? 'leader track' : t}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
