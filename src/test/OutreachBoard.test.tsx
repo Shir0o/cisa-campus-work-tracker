@@ -16,12 +16,14 @@ vi.mock('../components/AuthProvider', () => ({
 // Mock Firestore
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(),
+  collectionGroup: vi.fn(),
   query: vi.fn(),
   orderBy: vi.fn(),
   addDoc: vi.fn(),
   doc: vi.fn(),
   deleteDoc: vi.fn(),
   updateDoc: vi.fn(),
+  writeBatch: vi.fn(() => ({ update: vi.fn(), commit: vi.fn() })),
   onSnapshot: vi.fn((q, callback) => {
     // Immediately call callback with empty data to trigger loading=false
     callback({
@@ -47,6 +49,8 @@ vi.mock('../App', () => ({
   useLayout: () => ({
     isSidebarCollapsed: false,
     setIsSidebarCollapsed: vi.fn(),
+    setSelectedContact: vi.fn(),
+    openNewContact: vi.fn(),
   }),
 }));
 
@@ -55,27 +59,26 @@ vi.mock('../App', () => ({
 // For now, I'll mock components that might break.
 
 describe('OutreachBoard Features', () => {
-  it('renders "Stage" header and description', async () => {
+  it('renders the "The Journey" header', async () => {
     render(<OutreachBoard />);
-    expect(await screen.findByRole('heading', { name: /Stage/i, level: 2 })).toBeInTheDocument();
-    expect(screen.getByText(/Manage contact progression and relationship stages/i)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: /The Journey/i, level: 1 })).toBeInTheDocument();
   });
 
   it('renders search input with correct placeholder', async () => {
     render(<OutreachBoard />);
-    const searchInput = await screen.findByPlaceholderText(/Search board/i);
+    const searchInput = await screen.findByPlaceholderText(/Find someone/i);
     expect(searchInput).toBeInTheDocument();
   });
 
-  it('shows "No stages configured" when no stages exist', async () => {
+  it('shows the empty journey state when no stages exist', async () => {
     render(<OutreachBoard />);
     // Initial state from mock is empty docs
-    expect(await screen.findByText(/No stages configured/i)).toBeInTheDocument();
+    expect(await screen.findByText(/journey hasn't been mapped yet/i)).toBeInTheDocument();
   });
 
-  it('shows "Add Stage" button for admin users', async () => {
+  it('shows the "Shape the journey" button for admin users', async () => {
     render(<OutreachBoard />);
-    const addStageBtn = await screen.findByRole('button', { name: /Add Stage/i });
-    expect(addStageBtn).toBeInTheDocument();
+    const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+    expect(shapeBtn).toBeInTheDocument();
   });
 });
