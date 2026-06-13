@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Calendar, Tag, Plus, Loader2, RefreshCw } from 'lucide-react';
+import { X, Calendar, Tag, Plus, Loader2, RefreshCw, CalendarHeart, MapPin } from 'lucide-react';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
 import { collection, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { cn } from '../../lib/utils';
@@ -17,6 +17,8 @@ interface AddEventModalProps {
 type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
 type MonthlyType = 'same-day' | 'relative-day';
 
+const GATHERING_TYPES = ['Weekly', 'Small Group', 'Special', 'Outreach'];
+
 const DAYS = [
   { label: 'S', labelFull: 'Sunday', value: 0 },
   { label: 'M', labelFull: 'Monday', value: 1 },
@@ -31,6 +33,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
+    type: 'Weekly',
+    location: '',
     date: format(new Date(), 'yyyy-MM-dd'),
     isRecurring: false,
     recurrenceType: 'weekly' as RecurrenceType,
@@ -176,6 +180,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
           const eventRef = doc(collection(db, 'events'));
           batch.set(eventRef, {
             name: formData.name.trim(),
+            type: formData.type,
+            location: formData.location.trim() || null,
             date: format(eventDate, 'yyyy-MM-dd'),
             order: currentEventCount + i,
             isRecurring: true,
@@ -190,7 +196,9 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
         await batch.commit();
       } else {
         await addDoc(collection(db, 'events'), {
-          name: formData.name,
+          name: formData.name.trim(),
+          type: formData.type,
+          location: formData.location.trim() || null,
           date: formData.date,
           order: currentEventCount,
           isRecurring: false,
@@ -199,8 +207,10 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
         });
       }
       
-      setFormData({ 
-        name: '', 
+      setFormData({
+        name: '',
+        type: 'Weekly',
+        location: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         isRecurring: false,
         recurrenceType: 'weekly',
@@ -235,11 +245,17 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
             className="relative w-full max-w-sm bg-surface-container rounded-3xl shadow-2xl border border-outline-variant"
           >
             {/* Header */}
-            <div className="px-5 py-3 border-b border-outline-variant flex items-center justify-between pointer-events-auto">
-              <h2 className="text-sm font-black uppercase tracking-widest text-on-surface-variant">New Event</h2>
-              <button 
+            <div className="px-5 py-4 border-b border-outline-variant flex items-center gap-3 pointer-events-auto">
+              <div className="w-11 h-11 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+                <CalendarHeart className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-serif text-xl text-on-surface leading-tight">Log a gathering</h2>
+                <p className="text-sm text-on-surface-variant">Add it to the record — then mark who came.</p>
+              </div>
+              <button
                 onClick={onClose}
-                className="p-1.5 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer"
+                className="ml-auto p-1.5 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer shrink-0"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -248,10 +264,10 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
             {/* Form */}
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               <div className="space-y-4">
-                {/* Event Name */}
+                {/* Name */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Tag className="w-3 h-3" /> Event Name
+                    <Tag className="w-3 h-3" /> Name
                   </label>
                   <input
                     required
@@ -260,17 +276,53 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                     value={formData.name}
                     onChange={e => setFormData(f => ({ ...f, name: e.target.value }))}
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                    placeholder="e.g. Wednesday Workshop"
+                    placeholder="e.g. Friday Night Gathering"
                   />
                 </div>
 
+                {/* Type pills */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-on-surface-variant px-1 uppercase tracking-wider">Type</label>
+                  <div className="flex flex-wrap gap-2">
+                    {GATHERING_TYPES.map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setFormData(f => ({ ...f, type: t }))}
+                        className={cn(
+                          'px-3.5 h-9 rounded-full border text-xs font-medium transition-colors cursor-pointer',
+                          formData.type === t
+                            ? 'bg-primary text-on-primary border-primary'
+                            : 'bg-surface-container-high border-outline/40 text-on-surface-variant hover:border-outline'
+                        )}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Event Date */}
-                <DatePicker 
+                <DatePicker
                   label="Date"
                   value={formData.date}
                   onChange={val => setFormData(f => ({ ...f, date: val }))}
                   required
                 />
+
+                {/* Location (optional) */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <MapPin className="w-3 h-3" /> Location <span className="font-bold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.location}
+                    onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
+                    placeholder="e.g. Lower Common Room"
+                  />
+                </div>
 
                 {/* Recurrence Toggle */}
                 <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container-high border border-outline/30">
@@ -442,7 +494,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                   ) : (
                     <>
                       <Plus className="w-3 h-3" />
-                      {formData.isRecurring ? 'Create Schedule' : 'Create Event'}
+                      {formData.isRecurring ? 'Create schedule' : 'Log gathering'}
                     </>
                   )}
                 </button>

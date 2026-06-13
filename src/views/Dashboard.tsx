@@ -223,7 +223,7 @@ export default function Dashboard() {
       if (!c.attendance) continue;
       for (const v of Object.values(c.attendance)) {
         total++;
-        if (v === true) present++;
+        if (v === true || v === 'late') present++;
       }
     }
     return total > 0 ? Math.round((present / total) * 100) : null;
