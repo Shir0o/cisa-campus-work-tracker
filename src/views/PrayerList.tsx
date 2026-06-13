@@ -146,9 +146,9 @@ export default function PrayerList() {
     updatedByName: user?.displayName || user?.email?.split('@')[0],
   });
 
-  const handleAddBurden = async (contactId: string, burden: string) => {
+  const handleAddBurden = async (contactId: string, burden: string): Promise<boolean> => {
     const text = burden.trim();
-    if (!contactId || !text) return;
+    if (!contactId || !text) return false;
     try {
       await addDoc(collection(db, 'prayers'), {
         contactId,
@@ -165,8 +165,10 @@ export default function PrayerList() {
         type: 'comment',
         description: text,
       });
+      return true;
     } catch (error) {
       console.error('Error adding burden:', error);
+      return false;
     }
   };
 
@@ -186,9 +188,10 @@ export default function PrayerList() {
     }
   };
 
-  const handleUpdateBurden = async (prayer: PrayerRecord, burden: string) => {
+  const handleUpdateBurden = async (prayer: PrayerRecord, burden: string): Promise<boolean> => {
     const text = burden.trim();
-    if (!text || text === prayer.burden) return;
+    if (!text) return false;
+    if (text === prayer.burden) return true; // no change — fine to close the editor
     try {
       await updateDoc(doc(db, 'prayers', prayer.id), { burden: text, ...stamp() });
       logActivity({
@@ -199,8 +202,10 @@ export default function PrayerList() {
         type: 'edit',
         description: text,
       });
+      return true;
     } catch (error) {
       console.error('Error editing burden:', error);
+      return false;
     }
   };
 
@@ -398,9 +403,9 @@ function PrayerThread({
   contact: Contact;
   prayers: PrayerRecord[];
   autoCompose: boolean;
-  onAddBurden: (contactId: string, text: string) => void;
+  onAddBurden: (contactId: string, text: string) => Promise<boolean>;
   onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
-  onUpdateBurden: (prayer: PrayerRecord, text: string) => void;
+  onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
 }) {
   const [showEarlier, setShowEarlier] = useState(false);
@@ -562,18 +567,21 @@ function PrayerItem({
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
-  onUpdateBurden: (prayer: PrayerRecord, text: string) => void;
+  onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
 
   const startEdit = () => {
     setDraft(prayer.burden);
     setEditing(true);
   };
-  const save = () => {
-    onUpdateBurden(prayer, draft);
-    setEditing(false);
+  const save = async () => {
+    setSaving(true);
+    const ok = await onUpdateBurden(prayer, draft);
+    setSaving(false);
+    if (ok) setEditing(false);
   };
 
   // Toggle: clicking the active mark clears it back to unmarked (pending).
@@ -622,10 +630,10 @@ function PrayerItem({
           <div className="mt-2 flex gap-2">
             <button
               onClick={save}
-              disabled={!draft.trim()}
+              disabled={!draft.trim() || saving}
               className="px-4 py-1.5 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
             >
-              Save
+              {saving ? 'Saving…' : 'Save'}
             </button>
             <button
               onClick={() => {
@@ -678,17 +686,22 @@ function AddThisWeek({
 }: {
   firstName: string;
   defaultOpen?: boolean;
-  onAdd: (text: string) => void;
+  onAdd: (text: string) => Promise<boolean>;
 }) {
   const [open, setOpen] = useState(!!defaultOpen);
+  const [saving, setSaving] = useState(false);
   const [val, setVal] = useState('');
 
-  const save = () => {
+  const save = async () => {
     const t = val.trim();
     if (!t) return;
-    onAdd(t);
-    setVal('');
-    setOpen(false);
+    setSaving(true);
+    const ok = await onAdd(t);
+    setSaving(false);
+    if (ok) {
+      setVal('');
+      setOpen(false);
+    }
   };
 
   if (!open) {
@@ -716,10 +729,10 @@ function AddThisWeek({
       <div className="mt-2 flex gap-2">
         <button
           onClick={save}
-          disabled={!val.trim()}
+          disabled={!val.trim() || saving}
           className="px-4 py-1.5 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
         >
-          Add prayer
+          {saving ? 'Adding…' : 'Add prayer'}
         </button>
         <button
           onClick={() => {
