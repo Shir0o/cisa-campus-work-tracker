@@ -64,3 +64,16 @@ export function relTime(iso: string) {
   if (date.getFullYear() !== now.getFullYear()) options.year = "numeric";
   return date.toLocaleDateString(undefined, options);
 }
+
+/** Bidirectional relative time for notifications — handles future items (events). */
+export function ntfWhen(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff > 0) {
+    const days = Math.round(diff / 86_400_000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'tomorrow';
+    if (days < 7) return `in ${days} days`;
+    return `in ${Math.round(days / 7)} wk`;
+  }
+  return relTime(iso);
+}
