@@ -13,6 +13,7 @@ import TopBar from "./components/layout/TopBar";
 import MobileNav from "./components/layout/MobileNav";
 import NewContactModal from "./components/modals/NewContactModal";
 import Dashboard from "./views/Dashboard";
+import MyDay from "./views/MyDay";
 import Attendance from "./views/Attendance";
 import OutreachBoard from "./views/OutreachBoard";
 import Directory from "./views/Directory";
@@ -344,6 +345,19 @@ export default function App() {
                     <RoleGuard minRole="operator">
                       <DashboardLayout>
                         <Dashboard />
+                      </DashboardLayout>
+                    </RoleGuard>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/my-day"
+                element={
+                  <ProtectedRoute>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <MyDay />
                       </DashboardLayout>
                     </RoleGuard>
                   </ProtectedRoute>

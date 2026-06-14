@@ -2,10 +2,11 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  LayoutDashboard, 
-  Kanban, 
-  Contact, 
-  CalendarCheck, 
+  LayoutDashboard,
+  Sunrise,
+  Kanban,
+  Contact,
+  CalendarCheck,
   Plus,
   ChevronLeft,
   ChevronRight,
@@ -43,6 +44,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
 
   const NAV_ICONS: Record<string, React.ElementType> = {
     '/': LayoutDashboard,
+    '/my-day': Sunrise,
     '/board': Kanban,
     '/directory': Contact,
     '/history': HistoryIcon,
