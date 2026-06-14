@@ -155,12 +155,15 @@ export interface Notification {
   targetId?: string;
 }
 
+export type FeedbackKind = 'thought' | 'idea' | 'off' | 'request';
+
 export interface Feedback {
   id: string;
   userId: string;
   userEmail: string;
   userName: string;
   type: 'bug' | 'enhancement';
+  kind?: FeedbackKind;
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;

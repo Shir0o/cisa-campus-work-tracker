@@ -10,6 +10,11 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - `CHANGELOG.md` — distilled project history backfilled from git/PR log.
 
 ### Changed
+- Reskinned the feedback FAB + `/feedback` page to the warm Field Notes "Leave a
+  note" panel — four note kinds (A thought / An idea / Something's off / A
+  request), ⌘↵ to send, persona footer, and a "We got your note." success state.
+  Kinds are now stored (new `kind` field) and surfaced in the admin feedback
+  inbox; existing submissions fall back to their `type` (#21).
 - `CLAUDE.md` is now gitignored, and the worktree-sync hook mirrors it into git
   worktrees on session start so project instructions follow each worktree (#39).
 
