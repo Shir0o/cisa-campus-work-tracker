@@ -31,6 +31,8 @@ vi.mock('../App', () => ({
     setIsMobileMenuOpen: vi.fn(),
     openNewContact: vi.fn(),
     openLogInteraction: vi.fn(),
+    searchOpen: false,
+    setSearchOpen: vi.fn(),
   }),
 }));
 
@@ -212,37 +214,37 @@ describe('Sidebar nav items', () => {
 describe('MobileNav', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows Gatherings and Prayer, no FAB', () => {
+  it('viewer: shows Gatherings and Prayer, no search FAB', () => {
     currentUser = TEST_USERS.viewer;
     renderMobileNav();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
     expect(screen.queryByText('Contacts')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /quick actions/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
   });
 
-  it('operator: shows Dashboard and Contacts with Quick Actions FAB', () => {
+  it('operator: shows Dashboard and Contacts with search FAB', () => {
     currentUser = TEST_USERS.operator;
     renderMobileNav();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /quick actions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('manager: shows Dashboard and Contacts with FAB', () => {
+  it('manager: shows Dashboard and Contacts with search FAB', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /quick actions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('admin: shows Dashboard and Contacts with FAB', () => {
+  it('admin: shows Dashboard and Contacts with search FAB', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /quick actions/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 });
