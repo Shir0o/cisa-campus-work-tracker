@@ -284,6 +284,7 @@ service cloud.firestore {
                data.userId == request.auth.uid &&
                data.userEmail is string && data.userEmail.size() <= 128 &&
                data.type in ['bug', 'enhancement'] &&
+               (!('kind' in data) || data.kind in ['thought', 'idea', 'off', 'request']) &&
                data.message is string && data.message.size() <= 5000 &&
                data.status in ['new', 'in_progress', 'resolved'] &&
                data.createdAt == request.time;

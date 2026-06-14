@@ -1,192 +1,211 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquareText, Bug, Sparkles, X, Send } from 'lucide-react';
-import { doc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
+import { Pencil, X } from 'lucide-react';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
+import { roleLabel } from '../lib/permissions';
+import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
+import { FeedbackKind } from '../types';
 
 export default function FeedbackFAB() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [feedbackType, setFeedbackType] = useState<'bug' | 'enhancement'>('bug');
+  const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle');
+  const areaRef = useRef<HTMLTextAreaElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!message.trim() || !user) return;
+  // Focus the textarea shortly after the panel opens.
+  useEffect(() => {
+    if (isOpen && phase === 'idle') {
+      const t = setTimeout(() => areaRef.current?.focus(), 80);
+      return () => clearTimeout(t);
+    }
+  }, [isOpen, phase]);
 
-    setIsSubmitting(true);
+  const close = () => {
+    setIsOpen(false);
+    setTimeout(() => {
+      setKind('thought');
+      setMessage('');
+      setPhase('idle');
+    }, 320);
+  };
 
+  const canSend = message.trim().length > 0 && phase === 'idle';
+
+  const submit = async () => {
+    if (!canSend || !user) return;
+    setPhase('busy');
+
+    const type = kindToType(kind);
     const feedbackData = {
       userId: user.uid,
       userEmail: user.email?.toLowerCase() || 'anonymous',
       userName: user.displayName || 'Anonymous User',
-      type: feedbackType,
+      type,
+      kind,
       message: message.trim(),
       status: 'new' as const,
       createdAt: serverTimestamp(),
     };
 
-    // Optimistic flow: immediately close, reset, and show a beautiful toast
-    setIsOpen(false);
-    setMessage('');
-    setFeedbackType('bug');
-    setIsSubmitting(false);
-
+    // 1. Write feedback record — this is the gate for showing success.
     try {
-      // 1. Write feedback record
       await addDoc(collection(db, 'feedback'), feedbackData);
-
-      // 2. Log System Activity
-      await logActivity({
-        action: 'submitted feedback',
-        targetId: 'feedback_root',
-        targetName: feedbackType === 'bug' ? 'Bug Report' : 'Enhancement Suggestion',
-        targetType: 'contact', // nearest targetType in schema
-        description: `User submitted a ${feedbackType} feedback: "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
-        type: 'create',
-      });
-
-      // 3. Dispatch Notification for feedback confirmation (triggers Toaster toast)
-      await sendNotification({
-        userId: user.uid,
-        title: feedbackType === 'bug' ? 'Bug Report Submitted' : 'Enhancement Suggested',
-        message: 'Thank you! Your feedback has been saved and our admins have been notified.',
-        type: 'success',
-      });
     } catch (error) {
       console.error('Failed to submit feedback:', error);
-      // Try to report the issue using standard Firestore logger
+      setPhase('idle'); // let the user retry; their note is preserved
       try {
         handleFirestoreError(error, OperationType.WRITE, 'feedback');
       } catch (e) {
         // Fallback for user view
       }
+      return;
+    }
+
+    // Saved — show the warm success state, then auto-close.
+    setPhase('done');
+    setTimeout(close, 2200);
+
+    // 2. Best-effort side-effects — their failure must not revert the success.
+    try {
+      await logActivity({
+        action: 'submitted feedback',
+        targetId: 'feedback_root',
+        targetName: kindMeta(kind).label,
+        targetType: 'contact', // nearest targetType in schema
+        description: `User left a note (${kindMeta(kind).label}): "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
+        type: 'create',
+      });
+
+      await sendNotification({
+        userId: user.uid,
+        title: 'We got your note',
+        message: 'Thank you! Your note has been saved and our admins have been notified.',
+        type: 'success',
+      });
+    } catch (error) {
+      console.error('Feedback saved, but follow-up log/notify failed:', error);
     }
   };
 
   if (!user) return null;
 
+  const firstName = (user.displayName || '').trim().split(/\s+/)[0] || 'friend';
+  const activeMeta = kindMeta(kind);
+
   return (
     <>
-      {/* FAB Button */}
+      {/* FAB Button — pencil, morphs to × when open */}
       <button
         id="feedback-fab-btn"
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[100] w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center p-3 sm:p-4 border-none cursor-pointer"
-        title="Leave Feedback"
+        onClick={() => (isOpen ? close() : setIsOpen(true))}
+        className={`fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[100] w-12 h-12 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+          isOpen
+            ? 'bg-surface-container-highest text-on-surface-variant'
+            : 'bg-primary text-on-primary hover:scale-105'
+        }`}
+        title={isOpen ? 'Close' : 'Leave a note for the team'}
+        aria-label={isOpen ? 'Close feedback panel' : 'Leave a note for the team'}
+        aria-expanded={isOpen}
       >
-        <MessageSquareText className="w-6 h-6 animate-pulse" />
+        {isOpen ? <X className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
       </button>
 
-      {/* Backdrop & Modal */}
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
+            {/* Scrim (closes on outside click) */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsOpen(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[110]"
+              onClick={close}
+              className="fixed inset-0 z-[110]"
+              aria-hidden="true"
             />
 
-            {/* Modal Dialog */}
+            {/* Panel — anchored above the FAB */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="fixed inset-x-4 top-[15%] mx-auto max-w-md bg-surface-container border border-outline-variant rounded-3xl p-6 shadow-2xl z-[120] focus:outline-none"
+              initial={{ opacity: 0, y: 12, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.97 }}
+              transition={{ type: 'spring', damping: 26, stiffness: 360 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Leave a note for the team"
+              className="fixed bottom-36 right-4 lg:bottom-20 lg:right-6 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none"
             >
-              <div className="flex justify-between items-center mb-5">
-                <div>
-                  <h3 className="text-xl font-bold text-on-surface">Leave Feedback</h3>
-                  <p className="text-xs text-on-surface-variant">Help us improve the CISA Campus Work Tracker experience</p>
+              {phase === 'done' ? (
+                /* Success */
+                <div className="flex flex-col items-center text-center gap-2 py-6">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary grid place-items-center text-xl mb-1">
+                    ✦
+                  </div>
+                  <p className="font-serif text-lg text-on-surface">We got your note.</p>
+                  <p className="text-sm text-on-surface-variant">Thank you for taking the time, {firstName}.</p>
                 </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-surface-container-highest text-on-surface-variant hover:text-on-surface transition-colors border-none"
-                  aria-label="Close dialog"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
+              ) : (
+                /* Form */
+                <div className="flex flex-col gap-3.5">
+                  <div className="flex flex-col gap-0.5">
+                    <h3 className="font-serif text-lg font-medium text-on-surface leading-snug">Leave a note</h3>
+                    <p className="text-[13px] text-on-surface-variant leading-snug">
+                      Ideas, friction, appreciation — all welcome.
+                    </p>
+                  </div>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Type segment selector */}
-                <div>
-                  <label className="block text-sm font-medium text-on-surface mb-2">
-                    Feedback Type
-                  </label>
-                  <div className="grid grid-cols-2 gap-2 bg-surface p-1 rounded-2xl border border-outline-variant">
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kind of note">
+                    {FEEDBACK_KINDS.map((k) => {
+                      const on = kind === k.id;
+                      return (
+                        <button
+                          key={k.id}
+                          type="button"
+                          onClick={() => setKind(k.id)}
+                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer ${
+                            on
+                              ? `${TONE_CLASSES[k.tone].chip} border-transparent font-medium`
+                              : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
+                          }`}
+                        >
+                          {k.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <textarea
+                    ref={areaRef}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    onKeyDown={(e) => {
+                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
+                    }}
+                    rows={4}
+                    maxLength={600}
+                    placeholder={activeMeta.placeholder}
+                    aria-label="Your note"
+                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow"
+                  />
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-xs text-on-surface-variant truncate min-w-0">
+                      {user.displayName || 'You'} · {roleLabel(role)}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => setFeedbackType('bug')}
-                      className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-semibold text-xs transition-all border-none ${
-                        feedbackType === 'bug'
-                          ? 'bg-error-container text-on-error-container shadow-xs'
-                          : 'text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
+                      onClick={submit}
+                      disabled={!canSend}
+                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer"
                     >
-                      <Bug className="w-4 h-4" />
-                      Bug Report
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFeedbackType('enhancement')}
-                      className={`flex items-center justify-center gap-2 py-2 px-3 rounded-xl font-semibold text-xs transition-all border-none ${
-                        feedbackType === 'enhancement'
-                          ? 'bg-primary-container text-on-primary-container shadow-xs'
-                          : 'text-on-surface-variant hover:bg-surface-container-high'
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4" />
-                      Enhancement Needed
+                      {phase === 'busy' ? 'Sending…' : 'Send'}
                     </button>
                   </div>
                 </div>
-
-                {/* Message input */}
-                <div>
-                  <label htmlFor="feedback-message" className="block text-sm font-medium text-on-surface mb-1">
-                    Describe details below
-                  </label>
-                  <textarea
-                    id="feedback-message"
-                    required
-                    rows={4}
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={
-                      feedbackType === 'bug'
-                        ? "What went wrong? E.g., clicking the 'attendance' page freezes the browser..."
-                        : "What details would you like us to add or improve? E.g., I'd love a search filter in history..."
-                    }
-                    className="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow duration-200 resize-none"
-                  />
-                </div>
-
-                {/* Submit Panel */}
-                <div className="flex gap-3 justify-end pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="py-2.5 px-5 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="py-2.5 px-5 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
-                  >
-                    <Send className="w-3.5 h-3.5" />
-                    Submit Feedback
-                  </button>
-                </div>
-              </form>
+              )}
             </motion.div>
           </>
         )}

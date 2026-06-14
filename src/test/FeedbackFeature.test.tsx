@@ -63,6 +63,7 @@ describe('User Feedback Feature', () => {
     beforeEach(() => {
       (useAuth as any).mockReturnValue({
         user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student' },
+        role: 'operator',
         isAdmin: false,
       });
     });
@@ -73,29 +74,29 @@ describe('User Feedback Feature', () => {
       expect(fabBtn).toBeInTheDocument();
     });
 
-    it('opens modal on FAB click and can enter feedback content', async () => {
+    it('opens the warm panel on FAB click and can enter a note', async () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
 
-      const fabBtn = screen.getByTitle('Leave Feedback');
+      const fabBtn = screen.getByTitle('Leave a note for the team');
       await userAct.click(fabBtn);
 
-      // Verify leave feedback title is displayed
-      expect(screen.getByText('Leave Feedback')).toBeInTheDocument();
-      expect(screen.getByText('Bug Report')).toBeInTheDocument();
-      expect(screen.getByText('Enhancement Needed')).toBeInTheDocument();
+      // Verify the warm panel + kind pills are displayed
+      expect(screen.getByText('Leave a note')).toBeInTheDocument();
+      expect(screen.getByText('A thought')).toBeInTheDocument();
+      expect(screen.getByText("Something's off")).toBeInTheDocument();
 
-      // Enter details
-      const textarea = screen.getByRole('textbox', { name: /Describe details below/i });
+      // Enter the note
+      const textarea = screen.getByRole('textbox', { name: /Your note/i });
       await userAct.type(textarea, 'Database connection is showing delay during sync');
 
-      // Click submit
-      const submitBtn = screen.getByRole('button', { name: /Submit Feedback/i });
-      await userAct.click(submitBtn);
+      // Send it
+      const sendBtn = screen.getByRole('button', { name: 'Send' });
+      await userAct.click(sendBtn);
 
-      // After submission it should close
+      // The in-panel success state appears
       await waitFor(() => {
-        expect(screen.queryByText('Leave Feedback')).not.toBeInTheDocument();
+        expect(screen.getByText('We got your note.')).toBeInTheDocument();
       });
     });
   });
@@ -135,15 +136,17 @@ describe('User Feedback Feature', () => {
     beforeEach(() => {
       (useAuth as any).mockReturnValue({
         user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student' },
+        role: 'operator',
         isAdmin: false,
       });
     });
 
     it('renders the dedicated feedback form elements', () => {
       render(<SubmitFeedback />);
-      expect(screen.getAllByText('Submit Feedback').length).toBeGreaterThan(0);
-      expect(screen.getByText('Report a Bug')).toBeInTheDocument();
-      expect(screen.getByText('Request Enhancement')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Leave a note' })).toBeInTheDocument();
+      expect(screen.getByText('A thought')).toBeInTheDocument();
+      expect(screen.getByText('An idea')).toBeInTheDocument();
+      expect(screen.getByText('A request')).toBeInTheDocument();
     });
 
     it('submits the form successfully and displays the confirmation screen', async () => {
@@ -151,16 +154,16 @@ describe('User Feedback Feature', () => {
       render(<SubmitFeedback />);
 
       // Fill message
-      const textarea = screen.getByRole('textbox', { name: /Describe Your Suggestion or Issue/i });
+      const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
       await userAct.type(textarea, 'This is a premium suggestion for Google Material Design');
 
-      // Click submit (specifically target the submit button)
-      const submitBtn = screen.getByRole('button', { name: /Submit Feedback/i });
-      await userAct.click(submitBtn);
+      // Send it
+      const sendBtn = screen.getByRole('button', { name: 'Send' });
+      await userAct.click(sendBtn);
 
       // Verify the success text is displayed
       await waitFor(() => {
-        expect(screen.getByText('Feedback Received!')).toBeInTheDocument();
+        expect(screen.getByText('We got your note.')).toBeInTheDocument();
       });
     });
   });

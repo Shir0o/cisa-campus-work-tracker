@@ -2,21 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
-import { Feedback } from '../types';
+import { Feedback, FeedbackKind } from '../types';
+import { FEEDBACK_KINDS, kindMeta, typeToKind, TONE_CLASSES } from '../lib/feedbackKinds';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  Bug, 
-  Sparkles, 
-  Trash2, 
-  CheckCircle, 
-  Clock, 
-  Search, 
-  Filter, 
+import {
+  Trash2,
+  CheckCircle,
+  Clock,
+  Search,
+  Filter,
   ShieldAlert,
   Archive,
   RefreshCw
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
+
+/** Resolve a granular kind, falling back to the legacy `type` for older docs. */
+const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
 
 export default function FeedbackList() {
   const { isAdmin, user } = useAuth();
@@ -25,7 +27,7 @@ export default function FeedbackList() {
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'bug' | 'enhancement'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | FeedbackKind>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
 
   useEffect(() => {
@@ -104,11 +106,13 @@ export default function FeedbackList() {
       item.userName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.userEmail?.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesType = activeTab === 'all' || item.type === activeTab;
+    const matchesKind = activeTab === 'all' || resolveKind(item) === activeTab;
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
 
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesKind && matchesStatus;
   });
+
+  const kindCount = (id: FeedbackKind) => feedback.filter((f) => resolveKind(f) === id).length;
 
   const getStatusBadge = (status: Feedback['status']) => {
     switch (status) {
@@ -193,28 +197,24 @@ export default function FeedbackList() {
             >
               All Items
             </button>
-            <button
-              onClick={() => setActiveTab('bug')}
-              className={`flex items-center gap-1.5 py-1.5 px-4 rounded-xl font-bold text-xs transition-all border-none ${
-                activeTab === 'bug'
-                  ? 'bg-error-container text-on-error-container'
-                  : 'text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              <Bug className="w-3.5 h-3.5" />
-              Bugs Only ({feedback.filter(f => f.type === 'bug').length})
-            </button>
-            <button
-              onClick={() => setActiveTab('enhancement')}
-              className={`flex items-center gap-1.5 py-1.5 px-4 rounded-xl font-bold text-xs transition-all border-none ${
-                activeTab === 'enhancement'
-                  ? 'bg-primary-container text-on-primary-container'
-                  : 'text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              Enhancements ({feedback.filter(f => f.type === 'enhancement').length})
-            </button>
+            {FEEDBACK_KINDS.map((k) => {
+              const Icon = k.icon;
+              const on = activeTab === k.id;
+              return (
+                <button
+                  key={k.id}
+                  onClick={() => setActiveTab(k.id)}
+                  className={`flex items-center gap-1.5 py-1.5 px-4 rounded-xl font-bold text-xs transition-all border-none ${
+                    on
+                      ? `${TONE_CLASSES[k.tone].chip}`
+                      : 'text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {k.label} ({kindCount(k.id)})
+                </button>
+              );
+            })}
           </div>
 
           {/* Search bar & Status Select filter */}
@@ -263,7 +263,12 @@ export default function FeedbackList() {
       ) : (
         <div className="grid grid-cols-1 gap-6">
           <AnimatePresence mode="popLayout">
-            {filteredFeedback.map((item) => (
+            {filteredFeedback.map((item) => {
+              const k = resolveKind(item);
+              const meta = kindMeta(k);
+              const tone = TONE_CLASSES[meta.tone];
+              const KindIcon = meta.icon;
+              return (
               <motion.div
                 key={item.id}
                 initial={{ opacity: 0, y: 12 }}
@@ -275,9 +280,7 @@ export default function FeedbackList() {
                 }`}
               >
                 {/* Visual marker bar */}
-                <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${
-                  item.type === 'bug' ? 'bg-error' : 'bg-primary'
-                }`} />
+                <div className={`absolute top-0 left-0 bottom-0 w-1.5 ${tone.bar}`} />
 
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pl-2">
                   {/* Submitter User Details */}
@@ -287,18 +290,9 @@ export default function FeedbackList() {
                       <span className="text-xs text-on-surface-variant/80 font-mono">({item.userEmail})</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
-                      <span className="flex items-center gap-1.5">
-                        {item.type === 'bug' ? (
-                          <span className="flex items-center gap-1 text-error text-xs font-bold bg-error-container/20 py-0.5 px-2 rounded-md">
-                            <Bug className="w-3 h-3" />
-                            Bug
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-1 text-primary text-xs font-bold bg-primary-container/20 py-0.5 px-2 rounded-md">
-                            <Sparkles className="w-3 h-3" />
-                            Enhancement
-                          </span>
-                        )}
+                      <span className={`flex items-center gap-1 text-xs font-bold py-0.5 px-2 rounded-md ${tone.chip}`}>
+                        <KindIcon className="w-3 h-3" />
+                        {meta.label}
                       </span>
                       <span>•</span>
                       <span>{getFormattedDate(item.createdAt)}</span>
@@ -338,7 +332,8 @@ export default function FeedbackList() {
                   {item.message}
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </AnimatePresence>
         </div>
       )}
