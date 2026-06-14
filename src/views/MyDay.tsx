@@ -370,15 +370,15 @@ export default function MyDay() {
             {getGreeting()}, {firstName}.
           </h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-            You're walking with{" "}
+            You're working closely with{" "}
             <b className="text-on-surface font-semibold">
-              {myLeaders.length} {myLeaders.length === 1 ? "person" : "people"}
+              {myLeaders.length} {myLeaders.length === 1 ? "contact" : "contacts"}
             </b>{" "}
-            you've welcomed, and there{" "}
+            this season, and there{" "}
             {leftToDo === 1 ? "is" : "are"}{" "}
             <span className="text-on-surface font-medium">{leftToDo}</span>{" "}
             {leftToDo === 1 ? "thing" : "things"} that{" "}
-            {leftToDo === 1 ? "is" : "are"} yours to tend this week.
+            {leftToDo === 1 ? "is" : "are"} yours to tend before the week is out.
             {staleLeader && (
               <>
                 {" "}
@@ -390,7 +390,7 @@ export default function MyDay() {
               </>
             )}{" "}
             And <span className="text-on-surface font-medium">{myOpenPrayers.length}</span>{" "}
-            {myOpenPrayers.length === 1 ? "prayer is" : "prayers are"} still yours to carry.
+            {myOpenPrayers.length === 1 ? "prayer" : "prayers"} to be remembered.
           </p>
         </div>
         <div className="flex gap-2 shrink-0">
@@ -412,10 +412,10 @@ export default function MyDay() {
       {/* ── On your plate — the actionable heart of the day ── */}
       <section className="mt-12">
         <SectionHead
-          title="On your plate"
+          title="On the horizon"
           sub={
             leftToDo > 0
-              ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"}, yours to carry this week.`
+              ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"} this week.`
               : "All clear — nothing waiting on you."
           }
         />
@@ -479,7 +479,7 @@ export default function MyDay() {
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-2">
-            Nothing on your plate right now — a rare, quiet moment.
+            Nothing on the horizon right now — a rare, quiet moment.
           </p>
         )}
       </section>
@@ -487,8 +487,8 @@ export default function MyDay() {
       {/* ── The leaders you're walking with ── */}
       <section className="mt-12">
         <SectionHead
-          title="The leaders you're walking with"
-          sub="The people you've personally welcomed."
+          title="Your sheep"
+          sub="The contacts you are personally connected with."
           linkLabel="See everyone"
           onLink={() => navigate("/directory")}
         />
@@ -541,7 +541,7 @@ export default function MyDay() {
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-2">
-            No one's in your care yet — the people you welcome will gather here.
+            No one's in your care yet — the contacts you connect with will gather here.
           </p>
         )}
       </section>
@@ -630,7 +630,7 @@ export default function MyDay() {
       {/* ── Prayers you're carrying ── */}
       <section className="mt-12">
         <SectionHead
-          title="Prayers you're carrying"
+          title="Your prayers"
           sub="Held by you this week."
           linkLabel="All prayers"
           onLink={() => navigate("/prayer")}
@@ -702,9 +702,9 @@ export default function MyDay() {
 
       {/* ── Quiet figures: present, but never the headline ── */}
       <div className="mt-14 pt-6 border-t border-outline-variant/50 flex flex-wrap items-end gap-x-10 gap-y-4">
-        <Figure n={myLeaders.length} label="leaders you carry" />
-        <Figure n={myOpenPrayers.length} label="prayers you hold" />
-        <Figure n={leftToDo} label="to tend this week" />
+        <Figure n={myLeaders.length} label="contacts to care for" />
+        <Figure n={myOpenPrayers.length} label="prayers to pray for" />
+        <Figure n={leftToDo} label="tasks to carry" />
         <Figure n={thisWeek.length} label="gatherings you're part of" />
         <span className="text-sm text-on-surface-variant italic ml-auto">
           Numbers are just a way of noticing people.

@@ -103,10 +103,10 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => {
       expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
-      expect(screen.getByText('On your plate')).toBeInTheDocument();
-      expect(screen.getByText("The leaders you're walking with")).toBeInTheDocument();
+      expect(screen.getByText('On the horizon')).toBeInTheDocument();
+      expect(screen.getByText('Your sheep')).toBeInTheDocument();
       expect(screen.getByText('Your week')).toBeInTheDocument();
-      expect(screen.getByText("Prayers you're carrying")).toBeInTheDocument();
+      expect(screen.getByText('Your prayers')).toBeInTheDocument();
       expect(screen.getByText('Numbers are just a way of noticing people.')).toBeInTheDocument();
     });
   });
@@ -115,10 +115,10 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => {
       expect(
-        screen.getByText('Nothing on your plate right now — a rare, quiet moment.'),
+        screen.getByText('Nothing on the horizon right now — a rare, quiet moment.'),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("No one's in your care yet — the people you welcome will gather here."),
+        screen.getByText("No one's in your care yet — the contacts you connect with will gather here."),
       ).toBeInTheDocument();
       expect(screen.getByText('Nothing on the calendar this week yet.')).toBeInTheDocument();
       expect(screen.getByText('No prayers in your care right now.')).toBeInTheDocument();
