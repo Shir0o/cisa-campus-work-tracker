@@ -25,8 +25,9 @@ for f in "${SECRET_FILES[@]}"; do
   dst="$current_root/$f"
   if [ -f "$src" ] && [ ! -f "$dst" ]; then
     mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-    echo "[sync-worktree-secrets] copied $f from main checkout into worktree"
+    if cp "$src" "$dst"; then
+      echo "[sync-worktree-secrets] copied $f from main checkout into worktree"
+    fi
   fi
 done
 
@@ -37,15 +38,16 @@ for f in "${MIRROR_FILES[@]}"; do
   dst="$current_root/$f"
   if [ -f "$src" ]; then
     mkdir -p "$(dirname "$dst")"
-    cp "$src" "$dst"
-    echo "[sync-worktree-secrets] synced $f from main checkout into worktree"
-    # Keep it ignored locally so it doesn't show as untracked / get committed on
-    # branches whose .gitignore predates the CLAUDE.md entry. Repo-local exclude,
-    # no tracked file touched.
-    exclude_file="$(git rev-parse --git-path info/exclude 2>/dev/null)"
-    if [ -n "$exclude_file" ]; then
-      mkdir -p "$(dirname "$exclude_file")"
-      grep -qxF "$f" "$exclude_file" 2>/dev/null || echo "$f" >> "$exclude_file"
+    if cp "$src" "$dst"; then
+      echo "[sync-worktree-secrets] synced $f from main checkout into worktree"
+      # Keep it ignored locally so it doesn't show as untracked / get committed on
+      # branches whose .gitignore predates the CLAUDE.md entry. Repo-local exclude,
+      # no tracked file touched.
+      exclude_file="$(git rev-parse --git-path info/exclude 2>/dev/null)"
+      if [ -n "$exclude_file" ]; then
+        mkdir -p "$(dirname "$exclude_file")"
+        grep -qxF "$f" "$exclude_file" 2>/dev/null || echo "$f" >> "$exclude_file"
+      fi
     fi
   fi
 done
