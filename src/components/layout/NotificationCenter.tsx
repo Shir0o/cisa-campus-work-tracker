@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Heart, Sparkles, Calendar, Users, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Bell, X, Heart, Sparkles, Calendar, Users, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 import {
   collection, query, where, onSnapshot, orderBy, limit,
   doc, updateDoc, deleteDoc, writeBatch, arrayUnion,
@@ -15,11 +15,11 @@ type Tone = 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
 
 function typeToTone(type: Notification['type']): Tone {
   switch (type) {
-    case 'assignment': return 'accent';
-    case 'event':      return 'amber';
-    case 'success':    return 'sage';
-    case 'warning':    return 'amber';
-    case 'error':      return 'teal';
+    case 'assignment': return 'teal';   // new person / relationship
+    case 'event':      return 'amber';  // calendar / gathering
+    case 'success':    return 'sage';   // answered prayer / success
+    case 'warning':    return 'amber';  // caution
+    case 'error':      return 'amber';  // caution (not relationship)
     default:           return 'accent';
   }
 }
@@ -32,14 +32,17 @@ const TONE_CLASSES: Record<Tone, string> = {
   sage:   'text-[var(--success)] bg-[var(--success-soft)]',
 };
 
-function ToneIcon({ tone }: { tone: Tone }) {
+function ToneIcon({ tone, type }: { tone: Tone; type?: Notification['type'] }) {
   const cls = 'w-[15px] h-[15px]';
+  // Use type to disambiguate within a tone (e.g. amber can be calendar or caution)
+  if (type === 'warning' || type === 'error') return <AlertCircle className={cls} />;
+  if (type === 'assignment') return <Users className={cls} />;
   switch (tone) {
-    case 'violet': return <Sparkles className={cls} />;
-    case 'amber':  return <Calendar  className={cls} />;
-    case 'teal':   return <Users     className={cls} />;
+    case 'violet': return <Sparkles    className={cls} />;
+    case 'amber':  return <Calendar    className={cls} />;
+    case 'teal':   return <Users       className={cls} />;
     case 'sage':   return <CheckCircle2 className={cls} />;
-    default:       return <Heart     className={cls} />;
+    default:       return <Heart       className={cls} />;
   }
 }
 
@@ -324,7 +327,7 @@ function NtfItem({
           notif.read && 'opacity-[0.62]',
         )}
       >
-        <ToneIcon tone={tone} />
+        <ToneIcon tone={tone} type={notif.tone ? undefined : notif.type} />
       </span>
 
       {/* Content */}
