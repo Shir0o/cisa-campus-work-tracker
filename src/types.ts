@@ -146,6 +146,7 @@ export interface Notification {
   title: string;
   message: string;
   type: 'info' | 'success' | 'warning' | 'error' | 'assignment' | 'event';
+  tone?: 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
   read: boolean;
   readBy?: string[];
   dismissedBy?: string[];
