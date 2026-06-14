@@ -1,0 +1,71 @@
+# Changelog
+
+A distilled history of notable changes to CISA Campus Work Tracker, newest first.
+This project is not version-tagged; entries are grouped by month. Format loosely
+follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed).
+
+## [Unreleased]
+
+### Added
+- `CHANGELOG.md` — distilled project history backfilled from git/PR log.
+
+### Changed
+- `CLAUDE.md` is now gitignored, and the worktree-sync hook mirrors it into git
+  worktrees on session start so project instructions follow each worktree (#39).
+
+## [2026-06] — Field Notes design system, RBAC & CI
+
+### Added
+- Role-based access control enforced across routes and navigation (#3).
+- CI workflow with a 90% test coverage threshold (#6).
+- Coordination notes collection with Markdown editing and archive support.
+- Global ⌘K search with a unified command palette (#37).
+- "My Day" full-timer cockpit view (#36).
+- Notifications "What's stirring" view (#38).
+- PR Agent workflow and CODEOWNERS.
+
+### Changed
+- "Field Notes" warm design reskin rolled out across every surface: foundation
+  tokens & fonts (#25), app shell / sidebar / nav relabel (#26), Today/Dashboard
+  (#27), The Journey/Outreach Board (#28), People (#31), Gatherings/Attendance
+  (#33), Prayer (#32), Looking Back/History (#34), and Settings (#35).
+- Restored RBAC / CI / E2E setup after an AI Studio regeneration (#23).
+
+## [2026-05] — Productionization, AI & integrations
+
+### Added
+- User feedback system, with the feedback list surfaced in Settings.
+- Server-side Gemini processing with a webhook proxy and logging system.
+- Serverless functions bundled into the build and Docker image.
+- AI-powered interaction parsing.
+- GroupMe bot parsing cheat sheet in Settings.
+- Google Sheets integration and attendance export (with dry-run summary).
+- Prayer tracking feature.
+- Notifications collection and Firestore rules.
+- Signup enhancements: residence hall and spiritual-background fields,
+  client-side validation, and anti-bot measures.
+- Theming, skeleton loading states, and an ErrorBoundary component.
+
+### Changed
+- Renamed the app to **CISA Campus Work Tracker**.
+- Reworked activity/interaction tracking and added nested comments.
+- Added AI-powered activity summarization on the dashboard.
+
+### Fixed
+- Standardized date formatting with date-fns.
+
+## [2026-04] — Foundation & core CRM
+
+### Added
+- Firebase authentication with user approval and admin access control.
+- PWA features and mobile navigation.
+- Collapsible sidebar with persisted state.
+- Contact directory and New Contact modal with configurable workflow stages.
+- Outreach Board (Kanban) with drag-and-drop between stages.
+- Events collection with recurring events and a reusable DatePicker.
+- User roles & permissions, an invitation system, and Firestore security rules.
+- Real-time dashboard with metrics and a time-based greeting.
+- System activity logging.
+
+### Changed
+- Branding evolved from OutreachPro to CampusHub.
