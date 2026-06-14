@@ -51,15 +51,26 @@ export default function FeedbackFAB() {
       createdAt: serverTimestamp(),
     };
 
-    // Show the warm success state immediately, then auto-close.
+    // 1. Write feedback record — this is the gate for showing success.
+    try {
+      await addDoc(collection(db, 'feedback'), feedbackData);
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      setPhase('idle'); // let the user retry; their note is preserved
+      try {
+        handleFirestoreError(error, OperationType.WRITE, 'feedback');
+      } catch (e) {
+        // Fallback for user view
+      }
+      return;
+    }
+
+    // Saved — show the warm success state, then auto-close.
     setPhase('done');
     setTimeout(close, 2200);
 
+    // 2. Best-effort side-effects — their failure must not revert the success.
     try {
-      // 1. Write feedback record
-      await addDoc(collection(db, 'feedback'), feedbackData);
-
-      // 2. Log System Activity
       await logActivity({
         action: 'submitted feedback',
         targetId: 'feedback_root',
@@ -69,7 +80,6 @@ export default function FeedbackFAB() {
         type: 'create',
       });
 
-      // 3. Dispatch Notification confirming the note reached the team
       await sendNotification({
         userId: user.uid,
         title: 'We got your note',
@@ -77,12 +87,7 @@ export default function FeedbackFAB() {
         type: 'success',
       });
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
-      try {
-        handleFirestoreError(error, OperationType.WRITE, 'feedback');
-      } catch (e) {
-        // Fallback for user view
-      }
+      console.error('Feedback saved, but follow-up log/notify failed:', error);
     }
   };
 

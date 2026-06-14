@@ -22,7 +22,9 @@ export default function SubmitFeedback() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || !user) return;
+    // Guard re-entry: the Send button is disabled while submitting, but the ⌘↵
+    // keyboard path bypasses that, so block a second in-flight submit here too.
+    if (!message.trim() || !user || isSubmitting) return;
 
     setIsSubmitting(true);
 
