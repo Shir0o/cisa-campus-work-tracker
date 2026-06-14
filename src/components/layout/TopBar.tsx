@@ -80,8 +80,10 @@ export default function TopBar() {
           Search + bell are owned by their own issues; the topbar just leaves
           room and renders the hooks. */}
       <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 shrink-0">
-        {/* Global Search field — behavior lives in GlobalSearch (#11) */}
-        <div className="w-full max-w-[200px] sm:max-w-xs lg:max-w-sm">
+        {/* Global Search (#19) — desktop pill lives here; on mobile the search is
+            opened from the bottom-nav and renders a full-screen overlay, so the
+            pill is hidden below lg. */}
+        <div className="hidden lg:block w-full max-w-sm">
           <GlobalSearch />
         </div>
 

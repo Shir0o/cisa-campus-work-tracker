@@ -44,6 +44,8 @@ interface LayoutContextType {
   openNewContact: () => void;
   openLogInteraction: () => void;
   setSelectedContact: (contact: Contact | null) => void;
+  searchOpen: boolean;
+  setSearchOpen: (value: boolean) => void;
 }
 
 const LayoutContext = createContext<LayoutContextType | undefined>(undefined);
@@ -258,6 +260,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     React.useState(false);
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
@@ -285,6 +288,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         openLogInteraction: () => setIsLogInteractionOpen(true),
         setSelectedContact: (contact: Contact | null) =>
           setSelectedContact(contact),
+        searchOpen,
+        setSearchOpen,
       }}
     >
       <div className="flex min-h-screen bg-background pb-16 lg:pb-0 relative">

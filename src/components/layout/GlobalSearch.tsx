@@ -1,258 +1,703 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, User, Calendar, Loader2, X, UserPlus, MessageSquarePlus, Command } from 'lucide-react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Search,
+  X,
+  Command,
+  UserPlus,
+  Coffee,
+  Globe,
+  Compass,
+  User,
+  MessageSquare,
+  FileText,
+  Clock,
+  type LucideIcon,
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { collection, onSnapshot, query, limit } from 'firebase/firestore';
+import {
+  collection,
+  collectionGroup,
+  onSnapshot,
+  query,
+  orderBy,
+  limit,
+} from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
-import { Contact, Event } from '../../types';
-import { cn } from '../../lib/utils';
+import { Contact, Interaction, SystemActivity } from '../../types';
+import { cn, relTime } from '../../lib/utils';
 import { useLayout } from '../../App';
+import { useAuth } from '../AuthProvider';
+import { hasMinRole, AppRole } from '../../lib/permissions';
 import { motion, AnimatePresence } from 'motion/react';
 
+// Cap per group so the panel stays scannable.
+const GS_MAX = 4;
+
+// Tonal 28px icon nodes — slate-blue / terracotta / sage / plum, matching
+// History ("Looking back"). Static strings so Tailwind keeps the classes.
+type Tone = 'accent' | 'amber' | 'teal' | 'violet' | 'neutral';
+const TONE_NODE: Record<Tone, string> = {
+  accent: 'bg-stage-accent-soft text-stage-accent',
+  amber: 'bg-stage-amber-soft text-stage-amber',
+  teal: 'bg-stage-teal-soft text-stage-teal',
+  violet: 'bg-stage-violet-soft text-stage-violet',
+  neutral: 'bg-surface-container-highest text-on-surface-variant',
+};
+
+const CATEGORY_LABEL: Record<string, string> = {
+  annual_planning: 'Annual planning',
+  semester_kickoff: 'Semester kickoff',
+  weekly_sync: 'Weekly sync',
+  general: 'General',
+};
+
+interface BoardNote {
+  id: string;
+  title: string;
+  content: string;
+  category: string;
+  updatedByName?: string;
+  archived?: boolean;
+}
+
+interface NavItem {
+  key: string;
+  run: () => void;
+}
+
+const snippet = (text: string, max = 64) => {
+  const s = (text || '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max).trimEnd() + '…' : s;
+};
+
 export default function GlobalSearch() {
-  const [query_str, setQueryStr] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
-  const { setSelectedContact, openNewContact, openLogInteraction } = useLayout();
+  const { setSelectedContact, openNewContact, openLogInteraction, searchOpen, setSearchOpen } =
+    useLayout();
+  const { isAdmin, isManager, role } = useAuth();
   const navigate = useNavigate();
+
+  const isStaff = isManager; // Trainee+ (manager/admin)
+  const isFullStaff = isAdmin; // Full-timer
+  const isOperator = hasMinRole(role as AppRole, 'operator');
+
+  const [q, setQ] = useState('');
+  const [cursor, setCursor] = useState(-1);
+  const [inclHistory, setInclHistory] = useState(false);
+
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [interactions, setInteractions] = useState<Interaction[]>([]);
+  const [boardNotes, setBoardNotes] = useState<BoardNote[]>([]);
+  const [activities, setActivities] = useState<(SystemActivity & { id: string })[]>([]);
+
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const desktopInputRef = useRef<HTMLInputElement>(null);
+  const mobileInputRef = useRef<HTMLInputElement>(null);
+
+  const ql = q.trim().toLowerCase();
+  const hasQ = ql.length > 0;
+
+  const close = () => {
+    setSearchOpen(false);
+    setQ('');
+    setCursor(-1);
+  };
+
+  // ── data listeners (live only while the panel is open, gated by role) ──────
+  useEffect(() => {
+    if (!searchOpen || !auth.currentUser) return;
+    const unsub = onSnapshot(
+      collection(db, 'contacts'),
+      (snap) => setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]),
+      (err) => console.error('GlobalSearch contacts listener:', err),
+    );
+    return () => unsub();
+  }, [searchOpen]);
 
   useEffect(() => {
-    if (!auth.currentUser) return;
-
-    const unsubContacts = onSnapshot(
-      collection(db, 'contacts'), 
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Contact[];
-        setContacts(data);
-      },
-      (error) => console.error("GlobalSearch Contacts listener error:", error)
+    if (!searchOpen || !isStaff) return;
+    const unsub = onSnapshot(
+      collectionGroup(db, 'interactions'),
+      (snap) =>
+        setInteractions(
+          snap.docs.map((d) => ({
+            ...(d.data() as Interaction),
+            id: d.id,
+            contactId: d.ref.parent.parent?.id,
+          })),
+        ),
+      (err) => console.error('GlobalSearch interactions listener:', err),
     );
-
-    const unsubEvents = onSnapshot(
-      collection(db, 'events'), 
-      (snapshot) => {
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Event[];
-        setEvents(data);
-      },
-      (error) => console.error("GlobalSearch Events listener error:", error)
-    );
-
-    return () => {
-      unsubContacts();
-      unsubEvents();
-    };
-  }, []);
+    return () => unsub();
+  }, [searchOpen, isStaff]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
+    if (!searchOpen || !isFullStaff) return;
+    const unsub = onSnapshot(
+      collection(db, 'coordination_notes'),
+      (snap) => setBoardNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as BoardNote[]),
+      (err) => console.error('GlobalSearch board listener:', err),
+    );
+    return () => unsub();
+  }, [searchOpen, isFullStaff]);
+
+  useEffect(() => {
+    if (!searchOpen || !isStaff || !inclHistory) return;
+    const unsub = onSnapshot(
+      query(collection(db, 'activities'), orderBy('createdAt', 'desc'), limit(100)),
+      (snap) =>
+        setActivities(
+          snap.docs.map((d) => ({ ...(d.data() as SystemActivity), id: d.id })),
+        ),
+      (err) => console.error('GlobalSearch activities listener:', err),
+    );
+    return () => unsub();
+  }, [searchOpen, isStaff, inclHistory]);
+
+  // ── results ───────────────────────────────────────────────────────────────
+  const recentPeople = useMemo(() => {
+    const key = (c: Contact) => c.updatedAt || c.createdAt || c.lastSeen || '';
+    return contacts
+      .slice()
+      .sort((a, b) => key(b).localeCompare(key(a)))
+      .slice(0, GS_MAX);
+  }, [contacts]);
+
+  const peopleResults = useMemo(() => {
+    if (!hasQ) return [];
+    return contacts
+      .filter(
+        (c) =>
+          c.name?.toLowerCase().includes(ql) ||
+          (c.role || '').toLowerCase().includes(ql) ||
+          (c.location || '').toLowerCase().includes(ql) ||
+          (c.notes || '').toLowerCase().includes(ql) ||
+          (c.spiritualBackground || '').toLowerCase().includes(ql) ||
+          (c.tags || []).some((t) => t.toLowerCase().includes(ql)),
+      )
+      .slice(0, GS_MAX);
+  }, [hasQ, ql, contacts]);
+
+  const convResults = useMemo(() => {
+    if (!hasQ || !isStaff) return [];
+    return interactions
+      .filter((i) => (i.content || '').toLowerCase().includes(ql))
+      .slice(0, GS_MAX);
+  }, [hasQ, ql, isStaff, interactions]);
+
+  const boardResults = useMemo(() => {
+    if (!hasQ || !isFullStaff) return [];
+    return boardNotes
+      .filter(
+        (n) =>
+          !n.archived &&
+          ((n.title || '').toLowerCase().includes(ql) ||
+            (n.content || '').toLowerCase().includes(ql)),
+      )
+      .slice(0, GS_MAX);
+  }, [hasQ, ql, isFullStaff, boardNotes]);
+
+  const historyResults = useMemo(() => {
+    if (!hasQ || !isStaff || !inclHistory) return [];
+    return activities
+      .filter(
+        (a) =>
+          (a.action || '').toLowerCase().includes(ql) ||
+          (a.description || '').toLowerCase().includes(ql) ||
+          (a.targetName || '').toLowerCase().includes(ql),
+      )
+      .slice(0, GS_MAX);
+  }, [hasQ, ql, isStaff, inclHistory, activities]);
+
+  // ── actions ─────────────────────────────────────────────────────────────
+  const openContactById = (id?: string) => {
+    if (id) {
+      const c = contacts.find((x) => x.id === id);
+      if (c) setSelectedContact(c);
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    close();
+  };
+  const go = (path: string) => {
+    navigate(path);
+    close();
+  };
 
+  const quickActions = [
+    {
+      key: 'qa-new',
+      label: 'New contact',
+      sub: 'Add a new person',
+      icon: UserPlus,
+      tone: 'accent' as Tone,
+      show: isOperator,
+      run: () => {
+        close();
+        openNewContact();
+      },
+    },
+    {
+      key: 'qa-log',
+      label: 'Log a visit',
+      sub: 'Record a conversation',
+      icon: Coffee,
+      tone: 'amber' as Tone,
+      show: isOperator,
+      run: () => {
+        close();
+        openLogInteraction();
+      },
+    },
+    {
+      key: 'qa-signup',
+      label: 'Open sign-up form',
+      sub: 'Welcome someone new',
+      icon: Globe,
+      tone: 'teal' as Tone,
+      show: true,
+      run: () => go('/signup'),
+    },
+    {
+      key: 'qa-journey',
+      label: 'The Journey',
+      sub: 'Walk the board',
+      icon: Compass,
+      tone: 'violet' as Tone,
+      show: isStaff,
+      run: () => go('/board'),
+    },
+  ].filter((a) => a.show);
+
+  // ── flat list for keyboard nav (recomputed each render; small) ────────────
+  const navItems: NavItem[] = [];
+  if (!hasQ) {
+    recentPeople.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
+    quickActions.forEach((a) => navItems.push({ key: a.key, run: a.run }));
+  } else {
+    peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
+    convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
+    boardResults.forEach((n) => navItems.push({ key: `b:${n.id}`, run: () => go('/coordination') }));
+    historyResults.forEach((a) => navItems.push({ key: `h:${a.id}`, run: () => go('/history') }));
+  }
+  const indexByKey: Record<string, number> = {};
+  navItems.forEach((it, idx) => (indexByKey[it.key] = idx));
+
+  const hasResults = hasQ
+    ? peopleResults.length + convResults.length + boardResults.length + historyResults.length > 0
+    : true;
+
+  // Keep latest nav state in a ref so the keydown handler stays stable.
+  const navRef = useRef<{ items: NavItem[]; cursor: number }>({ items: navItems, cursor });
+  navRef.current = { items: navItems, cursor };
+
+  // ── keyboard: ⌘K opens (always on) ────────────────────────────────────────
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        setIsOpen(true);
-        inputRef.current?.focus();
-      }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        inputRef.current?.blur();
+        setSearchOpen(true);
       }
     };
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, []);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [setSearchOpen]);
 
-  const results = React.useMemo(() => {
-    if (!query_str.trim() || query_str.length < 2) return { contacts: [], events: [] };
-    
-    const lowerQuery = query_str.toLowerCase();
-    
-    const filteredContacts = contacts.filter(c => 
-      c.name.toLowerCase().includes(lowerQuery) || 
-      c.email.toLowerCase().includes(lowerQuery) || 
-      c.role.toLowerCase().includes(lowerQuery)
-    ).slice(0, 5);
+  // ── keyboard: ↑↓ navigate · ↵ open · Esc close (only while open) ──────────
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      const { items, cursor: cur } = navRef.current;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setCursor((c) => Math.min(c + 1, items.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setCursor((c) => Math.max(c - 1, -1));
+      } else if (e.key === 'Enter' && cur >= 0 && items[cur]) {
+        e.preventDefault();
+        items[cur].run();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        close();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen]);
 
-    const filteredEvents = events.filter(e => 
-      e.name.toLowerCase().includes(lowerQuery)
-    ).slice(0, 3);
+  // Reset cursor whenever the query changes.
+  useEffect(() => {
+    setCursor(-1);
+  }, [q]);
 
-    return { contacts: filteredContacts, events: filteredEvents };
-  }, [query_str, contacts, events]);
+  // Focus the visible input + lock body scroll while open.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const t = setTimeout(() => {
+      const isDesktop =
+        typeof window.matchMedia === 'function'
+          ? window.matchMedia('(min-width: 1024px)').matches
+          : true;
+      if (isDesktop) desktopInputRef.current?.focus();
+      else mobileInputRef.current?.focus();
+    }, 50);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      clearTimeout(t);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [searchOpen]);
 
-  const hasResults = results.contacts.length > 0 || results.events.length > 0;
+  // Click-away (desktop dropdown).
+  useEffect(() => {
+    if (!searchOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        close();
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen]);
 
-  const handleSelectContact = (contact: Contact) => {
-    setSelectedContact(contact);
-    setQueryStr('');
-    setIsOpen(false);
+  // ── row + group primitives ────────────────────────────────────────────────
+  const Row = ({
+    navKey,
+    tone,
+    icon: Icon,
+    title,
+    sub,
+    dim,
+    badge,
+    onClick,
+  }: {
+    navKey: string;
+    tone: Tone;
+    icon: LucideIcon;
+    title: string;
+    sub?: string;
+    dim?: boolean;
+    badge?: React.ReactNode;
+    onClick: () => void;
+  }) => {
+    const idx = indexByKey[navKey];
+    const active = idx !== undefined && idx === cursor;
+    return (
+      <button
+        type="button"
+        onMouseEnter={() => idx !== undefined && setCursor(idx)}
+        onClick={onClick}
+        className={cn(
+          'w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition-colors',
+          active ? 'bg-surface-container-highest' : 'hover:bg-surface-container-highest/60',
+        )}
+      >
+        <span
+          className={cn(
+            'w-7 h-7 rounded-full flex items-center justify-center shrink-0',
+            TONE_NODE[tone],
+          )}
+        >
+          <Icon className="w-3.5 h-3.5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span
+            className={cn(
+              'block text-[13.5px] font-semibold truncate',
+              dim ? 'text-on-surface-variant' : 'text-on-surface',
+            )}
+          >
+            {title}
+          </span>
+          {sub && <span className="block text-[12px] text-on-surface-variant truncate">{sub}</span>}
+        </span>
+        {badge}
+      </button>
+    );
   };
 
-  const handleSelectEvent = (event: Event) => {
-    navigate('/attendance');
-    setQueryStr('');
-    setIsOpen(false);
-  };
+  const GroupLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-on-surface-variant/70">
+      {children}
+    </div>
+  );
+
+  // ── panel body (shared by desktop dropdown + mobile overlay) ───────────────
+  const panelBody = (
+    <div className="px-2 pb-2">
+      {!hasQ ? (
+        <>
+          {recentPeople.length > 0 && (
+            <div>
+              <GroupLabel>Recent people</GroupLabel>
+              {recentPeople.map((c) => (
+                <Row
+                  key={c.id}
+                  navKey={`c:${c.id}`}
+                  tone="accent"
+                  icon={User}
+                  title={c.name}
+                  sub={[c.role, c.location].filter(Boolean).join(' · ') || undefined}
+                  onClick={() => openContactById(c.id)}
+                />
+              ))}
+            </div>
+          )}
+          <div>
+            <GroupLabel>Quick actions</GroupLabel>
+            {quickActions.map((a, i) => (
+              <Row
+                key={a.key}
+                navKey={a.key}
+                tone={a.tone}
+                icon={a.icon}
+                title={a.label}
+                sub={a.sub}
+                onClick={a.run}
+                badge={
+                  i === 0 ? (
+                    <kbd className="text-[11px] font-sans px-1.5 py-0.5 rounded-md border border-outline-variant text-on-surface-variant">
+                      ↵
+                    </kbd>
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
+        </>
+      ) : !hasResults ? (
+        <div className="px-3 py-10 text-center text-[13.5px] text-on-surface-variant italic">
+          Nothing came up for &ldquo;{q}&rdquo;
+        </div>
+      ) : (
+        <>
+          {peopleResults.length > 0 && (
+            <div>
+              <GroupLabel>People</GroupLabel>
+              {peopleResults.map((c) => (
+                <Row
+                  key={c.id}
+                  navKey={`c:${c.id}`}
+                  tone="accent"
+                  icon={User}
+                  title={c.name}
+                  sub={[c.role, c.location].filter(Boolean).join(' · ') || undefined}
+                  onClick={() => openContactById(c.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {convResults.length > 0 && (
+            <div>
+              <GroupLabel>Conversations</GroupLabel>
+              {convResults.map((i) => {
+                const c = contacts.find((x) => x.id === i.contactId);
+                const name = c?.name || i.contactName || '';
+                return (
+                  <Row
+                    key={i.id}
+                    navKey={`i:${i.id}`}
+                    tone="amber"
+                    icon={MessageSquare}
+                    title={snippet(i.content) || 'Conversation'}
+                    sub={[name, relTime(i.createdAt)].filter(Boolean).join(' · ') || undefined}
+                    onClick={() => openContactById(i.contactId)}
+                  />
+                );
+              })}
+            </div>
+          )}
+
+          {boardResults.length > 0 && (
+            <div>
+              <GroupLabel>The Board</GroupLabel>
+              {boardResults.map((n) => (
+                <Row
+                  key={n.id}
+                  navKey={`b:${n.id}`}
+                  tone="teal"
+                  icon={FileText}
+                  title={n.title}
+                  sub={[CATEGORY_LABEL[n.category] || 'Coordination', n.updatedByName]
+                    .filter(Boolean)
+                    .join(' · ')}
+                  onClick={() => go('/coordination')}
+                />
+              ))}
+            </div>
+          )}
+
+          {isStaff && (
+            <div className="px-2.5 pt-3 pb-1">
+              <button
+                type="button"
+                onClick={() => setInclHistory((v) => !v)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors',
+                  inclHistory
+                    ? 'border-primary/40 bg-stage-accent-soft text-primary'
+                    : 'border-outline-variant text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                <span
+                  className={cn(
+                    'w-1.5 h-1.5 rounded-full',
+                    inclHistory ? 'bg-primary' : 'bg-outline',
+                  )}
+                />
+                Search history too
+              </button>
+            </div>
+          )}
+
+          {historyResults.length > 0 && (
+            <div>
+              <GroupLabel>History</GroupLabel>
+              {historyResults.map((a) => (
+                <Row
+                  key={a.id}
+                  navKey={`h:${a.id}`}
+                  tone="violet"
+                  icon={Clock}
+                  dim
+                  title={snippet(a.description || a.action) || 'A moment'}
+                  sub={[a.userName, relTime(a.createdAt)].filter(Boolean).join(' · ') || undefined}
+                  onClick={() => go('/history')}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 
   return (
-    <div className="relative w-full max-w-xl" ref={containerRef}>
-      <div className={cn(
-        "relative flex items-center w-full h-10 rounded-full transition-all group cursor-text",
-        isOpen ? "bg-surface shadow-lg ring-1 ring-outline-variant" : "bg-surface-container-high hover:bg-surface-container-highest"
-      )} onClick={() => { setIsOpen(true); inputRef.current?.focus(); }}>
-        <div className="grid place-items-center h-full w-10 sm:w-12 text-on-surface-variant group-focus-within:text-primary">
-          <Search className="w-4 h-4 sm:w-5 h-5" />
-        </div>
-        <input
-          ref={inputRef}
-          type="text"
-          value={query_str}
-          onFocus={() => setIsOpen(true)}
-          onChange={(e) => {
-            setQueryStr(e.target.value);
-            setIsOpen(true);
+    <>
+      {/* ── Desktop: trigger pill + in-place dropdown ── */}
+      <div ref={containerRef} className="relative w-full hidden lg:block">
+        <div
+          className={cn(
+            'relative flex items-center w-full h-10 rounded-full transition-all cursor-text',
+            searchOpen
+              ? 'bg-surface shadow-lg ring-1 ring-outline-variant'
+              : 'bg-surface-container-high hover:bg-surface-container-highest',
+          )}
+          onClick={() => {
+            setSearchOpen(true);
+            desktopInputRef.current?.focus();
           }}
-          className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium"
-          placeholder="Search or quick actions..."
-        />
-        {!isOpen && (
-          <div className="absolute right-3 hidden sm:flex items-center gap-1 opacity-50 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-bold text-on-surface-variant pointer-events-none">
-            <Command className="w-3 h-3" />
-            <span>K</span>
+        >
+          <div className="grid place-items-center h-full w-11 text-on-surface-variant">
+            <Search className="w-4 h-4" />
           </div>
-        )}
-        {query_str && isOpen && (
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              setQueryStr('');
-              inputRef.current?.focus();
+          <input
+            ref={desktopInputRef}
+            type="text"
+            value={q}
+            onFocus={() => setSearchOpen(true)}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setSearchOpen(true);
             }}
-            className="absolute right-3 p-1 rounded-full hover:bg-surface-variant text-on-surface-variant"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70"
+            placeholder="Search people, notes…"
+            aria-label="Search"
+          />
+          {!searchOpen ? (
+            <div className="absolute right-3 hidden xl:flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-bold text-on-surface-variant pointer-events-none">
+              <Command className="w-3 h-3" />
+              <span>K</span>
+            </div>
+          ) : (
+            q && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setQ('');
+                  desktopInputRef.current?.focus();
+                }}
+                className="absolute right-2.5 p-1 rounded-full hover:bg-surface-variant text-on-surface-variant"
+                aria-label="Clear search"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )
+          )}
+        </div>
+
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 4, scale: 0.99 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 4, scale: 0.99 }}
+              transition={{ duration: 0.12 }}
+              className="absolute right-0 top-[calc(100%+8px)] w-[420px] max-w-[calc(100vw-2rem)] bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50"
+            >
+              <div className="max-h-[min(60vh,440px)] overflow-y-auto custom-scrollbar">
+                {panelBody}
+              </div>
+              <div className="px-4 py-2 border-t border-outline-variant/60 bg-surface-container-highest/40 text-center">
+                <p className="text-[11px] text-on-surface-variant">
+                  <kbd className="font-sans">⌘K</kbd> anywhere · ↑↓ navigate · ↵ open
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: 4, scale: 0.99 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 4, scale: 0.99 }}
-            transition={{ duration: 0.1 }}
-            className="absolute top-12 left-0 right-0 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50 py-2"
-          >
-            {!query_str.trim() || query_str.length < 2 ? (
-              <div className="px-2 pb-2">
-                <p className="px-3 py-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest mt-1">Quick Actions</p>
-                <div className="space-y-1">
+      {/* ── Mobile: full-screen overlay (portal) ── */}
+      {createPortal(
+        <AnimatePresence>
+          {searchOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="lg:hidden fixed inset-0 z-[100] bg-background flex flex-col"
+            >
+              <div className="flex items-center gap-2 h-14 px-3 border-b border-outline-variant shrink-0">
+                <Search className="w-4 h-4 text-on-surface-variant shrink-0" />
+                <input
+                  ref={mobileInputRef}
+                  type="text"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="flex-1 h-full bg-transparent outline-none text-base text-on-surface placeholder:text-on-surface-variant/70"
+                  placeholder="Search people, conversations, notes…"
+                  aria-label="Search"
+                />
+                {q && (
                   <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      openNewContact();
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
+                    type="button"
+                    onClick={() => setQ('')}
+                    className="p-1 rounded-full hover:bg-surface-container-high text-on-surface-variant"
+                    aria-label="Clear search"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
-                      <UserPlus className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">New Contact</p>
-                      <p className="text-xs text-on-surface-variant">Add a new person to the directory</p>
-                    </div>
+                    <X className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => {
-                      setIsOpen(false);
-                      openLogInteraction();
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
-                      <MessageSquarePlus className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">Log Interaction</p>
-                      <p className="text-xs text-on-surface-variant">Record a meeting, email, or context</p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            ) : !hasResults ? (
-              <div className="px-5 py-8 text-center">
-                <Search className="w-8 h-8 text-on-surface-variant mx-auto mb-2 opacity-20" />
-                <p className="text-sm font-bold text-on-surface">No results found for "{query_str}"</p>
-                <p className="text-xs text-on-surface-variant mt-1">Try searching for something else</p>
-              </div>
-            ) : (
-              <div className="max-h-[60vh] overflow-y-auto no-scrollbar">
-                {results.contacts.length > 0 && (
-                  <div className="px-2 pb-2">
-                    <p className="px-3 py-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Contacts</p>
-                    <div className="space-y-1">
-                      {results.contacts.map(contact => (
-                        <button
-                          key={contact.id}
-                          onClick={() => handleSelectContact(contact)}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-sm shrink-0">
-                            {contact.avatar ? (
-                                <img src={contact.avatar} alt={contact.name} className="w-full h-full rounded-full object-cover" />
-                            ) : contact.initials}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{contact.name}</p>
-                            <p className="text-xs text-on-surface-variant truncate">{contact.role} • {contact.email}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
                 )}
-
-                {results.events.length > 0 && (
-                  <div className={cn("px-2 pb-2", results.contacts.length > 0 && "border-t border-outline-variant/30 mt-1 pt-2")}>
-                    <p className="px-3 py-2 text-[10px] font-black text-on-surface-variant uppercase tracking-widest">Events</p>
-                    <div className="space-y-1">
-                      {results.events.map(event => (
-                        <button
-                          key={event.id}
-                          onClick={() => handleSelectEvent(event)}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-surface-container-highest text-left transition-colors group"
-                        >
-                          <div className="w-10 h-10 rounded-xl bg-secondary-container text-on-secondary-container flex items-center justify-center shrink-0">
-                            <Calendar className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{event.name}</p>
-                            <p className="text-xs text-on-surface-variant">{new Date(event.date).toLocaleDateString()}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <button
+                  type="button"
+                  onClick={close}
+                  className="text-sm font-medium text-primary px-1 shrink-0"
+                >
+                  Cancel
+                </button>
               </div>
-            )}
-            
-            <div className="px-5 py-2 border-t border-outline-variant/30 mt-1 bg-surface-container-highest/50">
-                <p className="text-[10px] text-on-surface-variant text-center font-medium">Tip: Use <kbd className="font-sans px-1 rounded bg-surface-variant">⌘K</kbd> to open anytime</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+              <div className="flex-1 overflow-y-auto">{panelBody}</div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   );
 }
