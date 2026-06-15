@@ -322,6 +322,45 @@ service cloud.firestore {
       allow delete: if isValidId(noteId) && isAdmin();
     }
 
+    // 14. The Board — coordination sessions (agenda + delegated tasks embedded)
+    match /board_sessions/{sessionId} {
+      function isValidBoardSession(data) {
+        return data.keys().hasAll(['event', 'date', 'time', 'place', 'agenda', 'assigned']) &&
+               data.event is string && data.event.size() <= 200 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.time is string && data.time.size() <= 64 &&
+               data.place is string && data.place.size() <= 200 &&
+               data.agenda is list && data.agenda.size() <= 200 &&
+               data.assigned is list && data.assigned.size() <= 200 &&
+               (!('facilitatorId' in data) || (data.facilitatorId is string && data.facilitatorId.size() <= 128));
+      }
+
+      allow get, list: if isAdmin();
+      allow create: if isValidId(sessionId) && isAdmin() && isValidBoardSession(incoming());
+      allow update: if isValidId(sessionId) && isAdmin() && isValidBoardSession(incoming());
+      allow delete: if isValidId(sessionId) && isAdmin();
+    }
+
+    // 15. The Board — notes & learnings archive
+    match /board_notes/{noteId} {
+      function isValidBoardNote(data) {
+        return data.keys().hasAll(['type', 'series', 'title', 'body', 'date', 'contributorIds', 'tags']) &&
+               data.type in ['record', 'learning'] &&
+               data.series is string && data.series.size() <= 120 &&
+               data.title is string && data.title.size() <= 200 &&
+               data.body is string && data.body.size() <= 20000 &&
+               data.date is string && data.date.size() <= 64 &&
+               data.contributorIds is list && data.contributorIds.size() <= 50 &&
+               data.tags is list && data.tags.size() <= 50 &&
+               (!('sessionId' in data) || (data.sessionId is string && data.sessionId.size() <= 128));
+      }
+
+      allow get, list: if isAdmin();
+      allow create: if isValidId(noteId) && isAdmin() && isValidBoardNote(incoming());
+      allow update: if isValidId(noteId) && isAdmin() && isValidBoardNote(incoming());
+      allow delete: if isValidId(noteId) && isAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

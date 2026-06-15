@@ -157,4 +157,65 @@ describe.skip('Firestore Security Rules', () => {
       await assertFails(getDoc(usersRef));
     });
   });
+
+  describe('The Board (board_sessions + board_notes)', () => {
+    const validSession = {
+      event: 'Friday Night Gathering',
+      date: '2026-05-15',
+      time: '7:00 PM',
+      place: 'Lower Common Room',
+      facilitatorId: 'admin1',
+      agenda: [],
+      assigned: [],
+    };
+    const validNote = {
+      type: 'record',
+      series: 'Friday Gathering',
+      title: 'Run of show',
+      body: 'Doors 6:40, worship 7:00…',
+      date: '2026-05-15',
+      contributorIds: ['admin1'],
+      tags: ['welcome'],
+    };
+
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('BD1: Admin can create and read a coordination session', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      const ref = doc(db, 'board_sessions', 'bs1');
+      await assertSucceeds(setDoc(ref, validSession));
+      await assertSucceeds(getDoc(ref));
+    });
+
+    it('BD2: Admin can create then delete a board note', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      const ref = doc(db, 'board_notes', 'bn1');
+      await assertSucceeds(setDoc(ref, validNote));
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('BD3: Viewer cannot read or write the board', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'board_sessions', 'bs1'), validSession);
+      });
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertFails(getDoc(doc(db, 'board_sessions', 'bs1')));
+      await assertFails(setDoc(doc(db, 'board_sessions', 'bs2'), validSession));
+      await assertFails(setDoc(doc(db, 'board_notes', 'bn2'), validNote));
+    });
+
+    it('BD4: Rejects a malformed session (missing required fields)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'board_sessions', 'bsX'), { event: 'Missing the rest' }));
+    });
+  });
 });
