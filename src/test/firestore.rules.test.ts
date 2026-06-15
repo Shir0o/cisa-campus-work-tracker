@@ -11,7 +11,13 @@ import * as fs from 'fs';
 let testEnv: RulesTestEnvironment;
 const PROJECT_ID = 'campus-hub-security-test';
 
-describe.skip('Firestore Security Rules', () => {
+// These tests need the Firestore emulator on port 8080. They run only when
+// FIRESTORE_EMULATOR_HOST is set — which `firebase emulators:exec` does for its
+// child process (see .github/workflows/deploy-firestore-rules.yml). Without an
+// emulator (plain `npm test`, coverage, local runs) they stay skipped.
+const describeRules = process.env.FIRESTORE_EMULATOR_HOST ? describe : describe.skip;
+
+describeRules('Firestore Security Rules', () => {
   beforeAll(async () => {
     try {
       testEnv = await initializeTestEnvironment({
