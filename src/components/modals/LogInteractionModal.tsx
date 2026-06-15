@@ -63,6 +63,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
       setContacts(data);
       setLoading(false);
     }, (error) => {
+      setLoading(false);
       handleFirestoreError(error, OperationType.LIST, 'contacts');
     });
     return () => unsubscribe();

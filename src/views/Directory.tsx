@@ -164,8 +164,8 @@ export default function Directory() {
       // Delay first loading=false after both are loaded or after contacts if stages are empty
       setTimeout(() => setLoading(false), 800);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'stages');
       setTimeout(() => setLoading(false), 800);
+      handleFirestoreError(error, OperationType.LIST, 'stages');
     });
 
     return () => {

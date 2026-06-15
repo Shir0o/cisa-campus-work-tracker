@@ -106,8 +106,8 @@ export default function Attendance() {
         setTimeout(() => setLoading(false), 600);
       },
       (error) => {
-        handleFirestoreError(error, OperationType.LIST, 'events');
         setTimeout(() => setLoading(false), 600);
+        handleFirestoreError(error, OperationType.LIST, 'events');
       },
     );
 

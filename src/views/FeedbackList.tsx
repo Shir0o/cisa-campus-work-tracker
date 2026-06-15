@@ -55,8 +55,8 @@ export default function FeedbackList() {
       setFeedback(items);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'feedback');
       setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'feedback');
     });
 
     return () => unsubscribe();
