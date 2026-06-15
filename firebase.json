@@ -6,6 +6,9 @@
       "indexes": "firestore.indexes.json"
     }
   ],
+  "database": {
+    "rules": "database.rules.json"
+  },
   "emulators": {
     "firestore": {
       "port": 8080

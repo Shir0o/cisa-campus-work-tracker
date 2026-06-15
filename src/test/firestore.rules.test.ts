@@ -223,5 +223,46 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'admin1' });
       await assertFails(setDoc(doc(db, 'board_sessions', 'bsX'), { event: 'Missing the rest' }));
     });
+
+    const validDoc = {
+      date: '2026-05-15',
+      title: 'Friday Night — run of show',
+      md: '# Friday Night\n\n- [ ] Greeters before flyers\n',
+      facilitatorId: 'admin1',
+      place: 'Lower Common Room',
+      time: '7:00 PM',
+    };
+
+    it('BD5: Admin can create, read, update and delete a board page', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      const ref = doc(db, 'board_docs', 'bd1');
+      await assertSucceeds(setDoc(ref, validDoc));
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(setDoc(ref, { ...validDoc, md: '# Friday Night\n\nUpdated.\n' }));
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('BD6: Admin can create a minimal board page (only required fields)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'board_docs', 'bd2'), { date: '2026-05-16', title: 'Quick page', md: 'notes' }));
+    });
+
+    it('BD7: Viewer cannot read or write board pages', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'board_docs', 'bd1'), validDoc);
+      });
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd1')));
+      await assertFails(setDoc(doc(db, 'board_docs', 'bd3'), validDoc));
+    });
+
+    it('BD8: Rejects a malformed page (missing required fields)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'board_docs', 'bdX'), { title: 'No date or md' }));
+    });
   });
 });

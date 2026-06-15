@@ -361,6 +361,24 @@ service cloud.firestore {
       allow delete: if isValidId(noteId) && isAdmin();
     }
 
+    // 16. The Board — dated Markdown pages (one running doc per gathering)
+    match /board_docs/{docId} {
+      function isValidBoardDoc(data) {
+        return data.keys().hasAll(['date', 'title', 'md']) &&
+               data.date is string && data.date.size() <= 64 &&
+               data.title is string && data.title.size() <= 200 &&
+               data.md is string && data.md.size() <= 100000 &&
+               (!('facilitatorId' in data) || (data.facilitatorId is string && data.facilitatorId.size() <= 128)) &&
+               (!('place' in data) || (data.place is string && data.place.size() <= 200)) &&
+               (!('time' in data) || (data.time is string && data.time.size() <= 64));
+      }
+
+      allow get, list: if isAdmin();
+      allow create: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
+      allow update: if isValidId(docId) && isAdmin() && isValidBoardDoc(incoming());
+      allow delete: if isValidId(docId) && isAdmin();
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

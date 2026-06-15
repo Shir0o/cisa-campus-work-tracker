@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getDatabase, type Database } from 'firebase/database';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const finalConfig = { ...firebaseConfig };
@@ -11,6 +12,16 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 const app = initializeApp(finalConfig);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Realtime Database — the live transport for The Board's collaborative editor.
+// Opt-in: only initialized when a database URL is configured (env or config),
+// so the app builds and runs even before RTDB is enabled on the project. When
+// it's null, The Board falls back to Firestore-only ("Tier 0") editing.
+const databaseURL =
+  (import.meta.env.VITE_FIREBASE_DATABASE_URL as string | undefined) ||
+  ((finalConfig as Record<string, unknown>).databaseURL as string | undefined) ||
+  undefined;
+export const rtdb: Database | null = databaseURL ? getDatabase(app, databaseURL) : null;
 
 // E2E-only email/password sign-in helper. Exposed on window ONLY when
 // VITE_E2E_MODE=true so it never ships in the production bundle. Lets

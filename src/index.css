@@ -234,3 +234,79 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: var(--outline);
 }
+
+/* ====================================================================
+   The Board — TipTap document content.
+   `.bdoc-prose` sits on the editable element; these style the rendered
+   Markdown. Ported from docs/design/project/styles.css (.bdoc-editor) and
+   re-themed onto the app's tokens so it follows light/dark.
+   ==================================================================== */
+.bdoc-prose {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 26px 30px 64px;
+  min-height: 420px;
+  outline: 0;
+  font-size: 15.5px;
+  line-height: 1.7;
+  color: var(--on-surface);
+}
+.bdoc-prose:focus { outline: 0; }
+.bdoc-prose h1 { font-family: var(--font-serif); font-size: 27px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.2; margin: 4px 0 10px; }
+.bdoc-prose h2 { font-family: var(--font-serif); font-size: 21px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; margin: 26px 0 8px; }
+.bdoc-prose h3 { font-family: var(--font-serif); font-size: 17px; font-weight: 600; margin: 20px 0 6px; }
+.bdoc-prose p { margin: 0 0 12px; text-wrap: pretty; }
+.bdoc-prose ul, .bdoc-prose ol { margin: 0 0 14px; padding-left: 24px; }
+.bdoc-prose li { margin: 4px 0; }
+.bdoc-prose li > p { margin: 0; }
+.bdoc-prose a { color: var(--stage-accent); text-decoration: underline; text-underline-offset: 2px; }
+.bdoc-prose code { font-family: var(--font-code); font-size: 0.86em; background: var(--surface-variant); border: 1px solid var(--outline-variant); border-radius: 5px; padding: 1px 5px; }
+.bdoc-prose pre { background: var(--surface-variant); border: 1px solid var(--outline-variant); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; overflow-x: auto; }
+.bdoc-prose pre code { background: none; border: 0; padding: 0; }
+.bdoc-prose blockquote { margin: 14px 0; padding: 6px 18px; border-left: 3px solid var(--stage-accent); color: var(--on-surface-variant); font-style: italic; background: var(--stage-accent-soft); border-radius: 0 8px 8px 0; }
+.bdoc-prose hr { border: 0; border-top: 1px solid var(--outline); margin: 22px 0; }
+
+/* task lists — TipTap TaskItem renders <li><label><input/></label><div/></li> */
+.bdoc-prose ul[data-type="taskList"] { list-style: none; padding-left: 2px; }
+.bdoc-prose ul[data-type="taskList"] li { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
+.bdoc-prose ul[data-type="taskList"] li > label { flex: none; margin-top: 3px; user-select: none; }
+.bdoc-prose ul[data-type="taskList"] li > div { min-width: 0; flex: 1; }
+.bdoc-prose ul[data-type="taskList"] input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--success); cursor: pointer; }
+.bdoc-prose li[data-checked="true"] > div { color: var(--on-surface-variant); text-decoration: line-through; }
+
+/* empty-document placeholder */
+.bdoc-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--on-surface-variant);
+  opacity: 0.5;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* remote collaboration carets (class names kept across cursor→caret rename) */
+.collaboration-cursor__caret,
+.collaboration-caret__caret {
+  border-left: 1px solid currentColor;
+  border-right: 1px solid currentColor;
+  margin-left: -1px;
+  margin-right: -1px;
+  position: relative;
+  word-break: normal;
+  pointer-events: none;
+}
+.collaboration-cursor__label,
+.collaboration-caret__label {
+  border-radius: 4px 4px 4px 0;
+  color: #fff;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 600;
+  left: -1px;
+  line-height: normal;
+  padding: 1px 6px;
+  position: absolute;
+  top: -1.4em;
+  user-select: none;
+  white-space: nowrap;
+}
