@@ -105,6 +105,8 @@ function seedData() {
       body: 'kickoff notes',
       series: 'Team',
       tags: ['kickoff'],
+      date: '2026-06-12',
+      contributorIds: ['u1'],
       updatedByName: 'Sam',
     }),
   ];

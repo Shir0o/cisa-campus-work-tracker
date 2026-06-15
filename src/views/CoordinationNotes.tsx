@@ -1161,6 +1161,13 @@ function NewSessionModal({
   const [place, setPlace] = useState('');
   const [facilitatorId, setFacilitatorId] = useState(meUid);
 
+  // Always keep the current user selectable, even if they aren't in the
+  // approved `users` list yet (e.g. super-admin), so the select value matches.
+  const teamOptions = useMemo<TeamMember[]>(() => {
+    if (team.some((m) => m.uid === meUid)) return team;
+    return [{ uid: meUid, name: 'You' }, ...team];
+  }, [team, meUid]);
+
   const field = 'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
   const label = 'text-sm text-on-surface-variant mb-1.5 block';
 
@@ -1193,8 +1200,7 @@ function NewSessionModal({
             <div className="relative">
               <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50 pointer-events-none" />
               <select value={facilitatorId} onChange={(e) => setFacilitatorId(e.target.value)} className={cn(field, 'pl-10')}>
-                {team.length === 0 && <option value={meUid}>You</option>}
-                {team.map((u) => (
+                {teamOptions.map((u) => (
                   <option key={u.uid} value={u.uid}>
                     {u.name}
                   </option>
