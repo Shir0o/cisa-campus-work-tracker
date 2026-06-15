@@ -6,7 +6,7 @@
 // record or a learning, findable by event series. Mirrors the design in
 // docs/design/project/views/board.jsx (`BoardFT`).
 
-import { format, parseISO, isValid } from 'date-fns';
+import { format, parseISO, isValid, isThisWeek } from 'date-fns';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
 export type BoardCategory = 'gathering' | 'outreach' | 'care' | 'prayer' | 'logistics';
@@ -146,3 +146,61 @@ export const todayISO = (): string => format(new Date(), 'yyyy-MM-dd');
 
 // Sort sessions chronologically (oldest → newest) for the week switcher.
 export const byDateAsc = (a: BoardSession, b: BoardSession) => a.date.localeCompare(b.date);
+
+// ── The Board (doc model) ─────────────────────────────────────────────────────
+// The redesign (design bundle `BoardFT`) replaces coordination SESSIONS with a
+// folder of dated Markdown DOCUMENTS — one running page per gathering. The
+// markdown lives in Firestore as the durable, searchable record; live editing
+// rides on a Yjs CRDT over RTDB. status/group/weekday labels are derived.
+
+// board_docs/{id}
+export interface BoardDoc {
+  id: string;
+  date: string; // yyyy-MM-dd
+  title: string;
+  md: string; // markdown body (derived from the live Y.Doc on save)
+  facilitatorId?: string;
+  place?: string;
+  time?: string;
+  createdAt?: unknown;
+  createdBy?: string;
+  createdByName?: string;
+  updatedAt?: unknown;
+  updatedBy?: string;
+  updatedByName?: string;
+}
+
+// The two list groups, in order.
+export const DOC_GROUPS = ['This week', 'Earlier'] as const;
+export type DocGroup = (typeof DOC_GROUPS)[number];
+
+// A page is "This week" if its date falls in the current week (Mon–Sun);
+// everything else is filed under "Earlier".
+export const docGroup = (date: string): DocGroup => {
+  const d = parseISO(date);
+  return isValid(d) && isThisWeek(d, { weekStartsOn: 1 }) ? 'This week' : 'Earlier';
+};
+
+// Status chip shown on the open document (reuses sessionStatus from the date).
+export const DOC_STATUS: Record<SessionStatus, { label: string; tone: Tone | '' }> = {
+  today: { label: 'Today', tone: 'accent' },
+  upcoming: { label: 'Coming up', tone: '' },
+  done: { label: 'Past', tone: 'teal' },
+};
+
+// Row date chip: short weekday + day-of-month.
+export const weekdayShort = (date: string): string => {
+  const d = parseISO(date);
+  return isValid(d) ? format(d, 'EEE') : '';
+};
+export const dayNum = (date: string): string => {
+  const d = parseISO(date);
+  return isValid(d) ? format(d, 'd') : '';
+};
+
+// Sort docs newest → oldest for the Pages list.
+export const docByDateDesc = (a: BoardDoc, b: BoardDoc) => b.date.localeCompare(a.date);
+
+// Starter body for a brand-new page.
+export const newDocMarkdown = (): string =>
+  `# Untitled page\n\nStart writing — everyone on the team sees your edits live.\n`;
