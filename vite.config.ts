@@ -5,6 +5,23 @@ import {defineConfig} from 'vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Keep the heavy collaborative-editor stack in its own chunk so it
+          // loads only with the lazy /coordination view.
+          if (
+            /node_modules\/(@tiptap\/|prosemirror-|tiptap-markdown\/|yjs\/|y-protocols\/|y-prosemirror\/|lib0\/)/.test(
+              id,
+            )
+          ) {
+            return 'board-editor';
+          }
+        },
+      },
+    },
+  },
   resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -33,8 +33,11 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
 import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
-import CoordinationNotes from "./views/CoordinationNotes";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
+
+// Lazy-loaded so the TipTap/Yjs/ProseMirror editor stack is split out of the
+// initial bundle; this view (admin-only) is the only consumer of those deps.
+const CoordinationNotes = React.lazy(() => import("./views/CoordinationNotes"));
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -481,7 +484,16 @@ export default function App() {
                   <ProtectedRoute>
                     <RoleGuard minRole="admin">
                       <DashboardLayout>
-                        <CoordinationNotes />
+                        <React.Suspense
+                          fallback={
+                            <div className="p-8 space-y-6">
+                              <Skeleton className="h-10 w-64" />
+                              <Skeleton className="h-96 w-full rounded-3xl" />
+                            </div>
+                          }
+                        >
+                          <CoordinationNotes />
+                        </React.Suspense>
                       </DashboardLayout>
                     </RoleGuard>
                   </ProtectedRoute>
