@@ -9,6 +9,10 @@ name: Deploy Firestore Rules
 # description for setup notes.
 
 on:
+  # Manual trigger — re-publish rules or validate the deploy credential without
+  # a code change. (GitHub only allows this once the workflow is on the default
+  # branch.)
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
