@@ -202,7 +202,7 @@ describe('Sidebar nav items', () => {
   it('admin: sees all 9 nav items', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Settings'];
+    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'The Board', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

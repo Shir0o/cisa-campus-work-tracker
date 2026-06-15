@@ -45,20 +45,14 @@ const TONE_NODE: Record<Tone, string> = {
   neutral: 'bg-surface-container-highest text-on-surface-variant',
 };
 
-const CATEGORY_LABEL: Record<string, string> = {
-  annual_planning: 'Annual planning',
-  semester_kickoff: 'Semester kickoff',
-  weekly_sync: 'Weekly sync',
-  general: 'General',
-};
-
 interface BoardNote {
   id: string;
+  type?: 'record' | 'learning';
   title: string;
-  content: string;
-  category: string;
+  body?: string;
+  series?: string;
+  tags?: string[];
   updatedByName?: string;
-  archived?: boolean;
 }
 
 interface NavItem {
@@ -134,7 +128,7 @@ export default function GlobalSearch() {
   useEffect(() => {
     if (!searchOpen || !isFullStaff) return;
     const unsub = onSnapshot(
-      collection(db, 'coordination_notes'),
+      collection(db, 'board_notes'),
       (snap) => setBoardNotes(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as BoardNote[]),
       (err) => console.error('GlobalSearch board listener:', err),
     );
@@ -190,9 +184,10 @@ export default function GlobalSearch() {
     return boardNotes
       .filter(
         (n) =>
-          !n.archived &&
-          ((n.title || '').toLowerCase().includes(ql) ||
-            (n.content || '').toLowerCase().includes(ql)),
+          (n.title || '').toLowerCase().includes(ql) ||
+          (n.body || '').toLowerCase().includes(ql) ||
+          (n.series || '').toLowerCase().includes(ql) ||
+          (n.tags || []).some((t) => t.toLowerCase().includes(ql)),
       )
       .slice(0, GS_MAX);
   }, [hasQ, ql, isFullStaff, boardNotes]);
@@ -521,7 +516,7 @@ export default function GlobalSearch() {
                   tone="teal"
                   icon={FileText}
                   title={n.title}
-                  sub={[CATEGORY_LABEL[n.category] || 'Coordination', n.updatedByName]
+                  sub={[n.type === 'learning' ? 'Learning' : 'Record', n.series]
                     .filter(Boolean)
                     .join(' · ')}
                   onClick={() => go('/coordination')}

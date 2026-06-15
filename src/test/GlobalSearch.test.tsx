@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
   mockData: {
     contacts: [] as any[],
     interactions: [] as any[],
-    coordination_notes: [] as any[],
+    board_notes: [] as any[],
     activities: [] as any[],
   } as Record<string, any[]>,
   mockAuth: { value: null as any },
@@ -98,11 +98,15 @@ function seedData() {
       { ref: { parent: { parent: { id: 'c1' } } } },
     ),
   ];
-  h.mockData.coordination_notes = [
+  h.mockData.board_notes = [
     docOf('b1', {
+      type: 'record',
       title: 'Semester plan',
-      content: 'kickoff notes',
-      category: 'semester_kickoff',
+      body: 'kickoff notes',
+      series: 'Team',
+      tags: ['kickoff'],
+      date: '2026-06-12',
+      contributorIds: ['u1'],
       updatedByName: 'Sam',
     }),
   ];

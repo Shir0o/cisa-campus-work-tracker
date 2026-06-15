@@ -1,608 +1,540 @@
+// The Board — the team's shared coordination surface (Field Notes overhaul, #24).
+//
+// A weekly rhythm of coordination SESSIONS, each with a running AGENDA (items to
+// talk through, with delegated sub-steps, carried forward if not covered) and a
+// standalone TASK list. Discussion becomes NOTES that live on as a record or a
+// learning, findable by event series. Admin-only. Re-derived from the design's
+// `BoardFT` (docs/design/project/views/board.jsx) onto Firestore.
+
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  onSnapshot, 
-  doc, 
-  setDoc, 
-  updateDoc, 
-  deleteDoc, 
-  serverTimestamp 
+import {
+  collection,
+  query,
+  orderBy,
+  onSnapshot,
+  doc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  writeBatch,
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
-import { handleFirestoreError, OperationType } from '../lib/firebase';
-import { motion, AnimatePresence } from 'motion/react';
-import Markdown from 'react-markdown';
-import TurndownService from 'turndown';
-import { 
-  FileText, 
-  CheckSquare, 
-  Plus, 
-  Search, 
-  Trash2, 
-  Edit, 
-  Check, 
-  Calendar, 
-  Bookmark, 
-  ChevronRight, 
-  Folder, 
-  ArrowLeft, 
-  Save, 
-  Filter, 
-  ShieldAlert, 
-  PlusCircle, 
-  X, 
-  ChevronDown, 
-  CheckCircle,
-  HelpCircle,
-  AlertCircle,
-  Bold,
-  Italic,
-  Heading,
-  List,
-  Quote,
-  Code,
-  Link,
-  Eye,
-  EyeOff,
-  Archive
-} from 'lucide-react';
+import { cn, getUserInitials } from '../lib/utils';
 import { Skeleton } from '../components/ui/Skeleton';
+import {
+  Plus,
+  Check,
+  ArrowRight,
+  Search,
+  X,
+  Tag,
+  ShieldAlert,
+  CalendarDays,
+  Clock,
+  MapPin,
+  Users,
+  Feather,
+  NotebookPen,
+  Trash2,
+} from 'lucide-react';
+import {
+  BoardSession,
+  BoardNote,
+  AgendaItem,
+  BoardCategory,
+  NoteType,
+  CATEGORY_META,
+  CATEGORY_ORDER,
+  CHIP_TONE,
+  BOARD_SERIES,
+  newId,
+  sessionStatus,
+  STATUS_LABEL,
+  weekdayOf,
+  dateLabelOf,
+  todayISO,
+  byDateAsc,
+} from '../lib/board';
 
-interface TodoItem {
-  id: string;
-  text: string;
-  completed: boolean;
-  subTasks: TodoItem[];
+// ── Team (assignees) ─────────────────────────────────────────────────────────
+interface TeamMember {
+  uid: string;
+  name: string;
+  photoURL?: string;
+  role?: string;
 }
 
-interface CoordinationNote {
-  id: string;
-  title: string;
-  date: string;
-  content: string;
-  category: 'annual_planning' | 'semester_kickoff' | 'weekly_sync' | 'general';
-  todos: TodoItem[];
-  createdAt?: any;
-  createdBy?: string;
-  createdByName?: string;
-  updatedAt?: any;
-  updatedBy?: string;
-  updatedByName?: string;
-  archived?: boolean;
-}
-
-const CATEGORY_LABELS: Record<CoordinationNote['category'], string> = {
-  annual_planning: 'Annual & regular planning',
-  semester_kickoff: 'Semester Kickoff',
-  weekly_sync: 'Weekly Sync',
-  general: 'General Note'
-};
-
-const CATEGORY_COLORS: Record<CoordinationNote['category'], string> = {
-  annual_planning: 'text-amber-700 bg-amber-500/10 border-amber-500/20 dark:text-amber-400',
-  semester_kickoff: 'text-primary bg-primary/10 border-primary/20 dark:text-primary-light',
-  weekly_sync: 'text-green-700 bg-green-500/10 border-green-500/20 dark:text-green-400',
-  general: 'text-surface-variant font-medium bg-surface-container-highest border-outline-variant'
-};
-
-// Help helper for markdown guide
-const MARKDOWN_CHEATSHEET = [
-  { syntax: '# Header 1', result: 'Large Title' },
-  { syntax: '## Header 2', result: 'Section Title' },
-  { syntax: '**bold**', result: 'Bold text' },
-  { syntax: '*italic*', result: 'Italic text' },
-  { syntax: '- Item 1', result: 'Bullet List' },
-  { syntax: '> Quote', result: 'Blockquote highlight' },
-  { syntax: '[Link](url)', result: 'Hyperlink' },
-  { syntax: '`code`', result: 'Inline monospace' }
-];
-
-interface EditableMarkdownPreviewProps {
-  content: string;
-  isEditingPreview: boolean;
-  setIsEditingPreview: (editing: boolean) => void;
-  onChange: (newMarkdown: string) => void;
-  isSaving?: boolean;
-}
-
-const EditableMarkdownPreview = React.memo(({
-  content,
-  isEditingPreview,
-  setIsEditingPreview,
-  onChange,
-  isSaving
-}: EditableMarkdownPreviewProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Initialize TurndownService once
-  const turndownService = useMemo(() => {
-    const service = new TurndownService({
-      headingStyle: 'atx',
-      bulletListMarker: '-',
-      emDelimiter: '*',
-      strongDelimiter: '**',
-      codeBlockStyle: 'fenced'
-    });
-
-    // Handle standard anchor links without stripping protocols
-    service.addRule('links', {
-      filter: 'a',
-      replacement: (content, node) => {
-        const href = (node as HTMLAnchorElement).getAttribute('href');
-        return href ? `[${content}](${href})` : content;
-      }
-    });
-
-    return service;
-  }, []);
-
-  const handleInput = (e: React.FormEvent<HTMLDivElement>) => {
-    const html = e.currentTarget.innerHTML;
-    try {
-      const markdown = turndownService.turndown(html);
-      onChange(markdown);
-    } catch (err) {
-      console.warn("Turndown parsing failed: ", err);
-    }
-  };
-
-  const handleFocus = () => {
-    setIsEditingPreview(true);
-  };
-
-  const handleBlur = () => {
-    setIsEditingPreview(false);
-    // Sync one last time from elements to make sure parent has the absolute newest data
-    if (containerRef.current) {
-      try {
-        const html = containerRef.current.innerHTML;
-        const markdown = turndownService.turndown(html);
-        onChange(markdown);
-      } catch (err) {
-        console.warn("Turndown backup parse on blur failed: ", err);
-      }
-    }
-  };
-
-  const displayContent = content || (isEditingPreview ? '' : '*No content yet. Click here to start typing meeting planning notes directly...*');
-
+function Avatar({ member, size = 'sm' }: { member?: TeamMember; size?: 'xs' | 'sm' | 'md' }) {
+  const dim = size === 'md' ? 'w-9 h-9 text-sm' : size === 'xs' ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs';
+  const name = member?.name || 'Unknown';
+  const initials = member ? getUserInitials(name) : '–';
+  if (member?.photoURL) {
+    return <img src={member.photoURL} alt={name} className={cn(dim, 'rounded-full object-cover shrink-0')} />;
+  }
   return (
     <div
-      ref={containerRef}
-      contentEditable={!isSaving}
-      suppressContentEditableWarning
-      onInput={handleInput}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      className="markdown-body focus:outline-none min-h-[300px] outline-none select-text cursor-text relative"
-      style={{ minHeight: '300px' }}
+      className={cn(
+        dim,
+        'rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0',
+      )}
+      title={name}
     >
-      <Markdown
-        components={{
-          h1: ({node, ...props}) => <h1 className="text-2xl font-bold tracking-tight text-on-surface mt-6 mb-3 first:mt-0 border-b border-outline-variant/30 pb-2" {...props} />,
-          h2: ({node, ...props}) => <h2 className="text-xl font-bold tracking-tight text-on-surface mt-5 mb-2.5 border-b border-outline-variant/20 pb-1" {...props} />,
-          h3: ({node, ...props}) => <h3 className="text-lg font-bold tracking-tight text-on-surface mt-4 mb-2" {...props} />,
-          p: ({node, ...props}) => <p className="text-sm text-on-surface-variant leading-relaxed mb-4 font-normal" {...props} />,
-          ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
-          ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
-          li: ({node, ...props}) => <li className="pl-1" {...props} />,
-          blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary bg-primary/5 pl-4 py-3 italic my-4 rounded-r-1xl text-on-surface" {...props} />,
-          code: ({node, ...props}) => <code className="font-mono text-xs bg-surface-container-high px-1.5 py-0.5 rounded text-primary" {...props} />,
-          strong: ({node, ...props}) => <strong className="font-bold text-on-surface" {...props} />,
-          em: ({node, ...props}) => <em className="italic text-on-surface" {...props} />,
-          a: ({node, ...props}) => <a className="text-primary underline font-medium hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />,
-        }}
-      >
-        {displayContent}
-      </Markdown>
+      {initials}
     </div>
   );
-}, (prevProps, nextProps) => {
-  // If editing preview state is changing, re-render to clear/restore placeholder
-  if (prevProps.isEditingPreview !== nextProps.isEditingPreview) {
-    return false;
-  }
-  // While editing, ignore external content updates to prevent cursor jumps
-  if (nextProps.isEditingPreview) {
-    return true;
-  }
-  return prevProps.content === nextProps.content && prevProps.isSaving === nextProps.isSaving;
-});
+}
+
+const SectionHead = ({ title, sub, action }: { title: string; sub?: string; action?: React.ReactNode }) => (
+  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
+    <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
+    {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
+    {action && <div className="ml-auto self-center">{action}</div>}
+  </div>
+);
+
+function CatChip({ cat }: { cat: BoardCategory }) {
+  const meta = CATEGORY_META[cat];
+  const tone = CHIP_TONE[meta.tone];
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium', tone.bg, tone.text)}>
+      <span className={cn('w-1.5 h-1.5 rounded-full', tone.dot)} />
+      {meta.label}
+    </span>
+  );
+}
+
+// Small teammate picker — anchored under whatever opens it.
+function AssigneePicker({
+  team,
+  current,
+  onPick,
+  onClose,
+}: {
+  team: TeamMember[];
+  current?: string;
+  onPick: (uid: string) => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="fixed inset-0 z-40" onClick={onClose} />
+      <div className="absolute right-0 top-full mt-1 z-50 w-56 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-1.5">
+        <div className="px-2.5 py-1.5 text-xs text-on-surface-variant">Hand this to…</div>
+        {team.length === 0 && <div className="px-2.5 py-2 text-xs text-on-surface-variant/70">No teammates yet.</div>}
+        {team.map((u) => (
+          <button
+            key={u.uid}
+            onClick={() => onPick(u.uid)}
+            className={cn(
+              'w-full flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-left transition-colors',
+              u.uid === current ? 'bg-stage-accent-soft' : 'hover:bg-surface-container-highest',
+            )}
+          >
+            <Avatar member={u} size="sm" />
+            <span className="text-sm text-on-surface truncate flex-1">{u.name}</span>
+            {u.uid === current && <Check className="w-3.5 h-3.5 text-stage-accent shrink-0" />}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
+// Checkbox button shared by agenda items, sub-steps and tasks.
+function CheckButton({
+  on,
+  onClick,
+  size = 'md',
+  title,
+}: {
+  on: boolean;
+  onClick: () => void;
+  size?: 'sm' | 'md';
+  title?: string;
+}) {
+  const dim = size === 'sm' ? 'w-4 h-4' : 'w-5 h-5';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      className={cn(
+        dim,
+        'shrink-0 rounded-md border flex items-center justify-center transition-colors',
+        on ? 'bg-tertiary border-tertiary text-on-tertiary' : 'bg-surface border-outline hover:border-tertiary',
+      )}
+    >
+      {on && <Check className={size === 'sm' ? 'w-2.5 h-2.5' : 'w-3 h-3'} strokeWidth={3} />}
+    </button>
+  );
+}
 
 export default function CoordinationNotes() {
   const { isAdmin, user } = useAuth();
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   const hasAccess = isAdmin || isMe;
+  const uid = user?.uid || '';
+  const meName = user?.displayName || user?.email || 'Someone';
 
-  const [notes, setNotes] = useState<CoordinationNote[]>([]);
-  const [selectedNote, setSelectedNote] = useState<CoordinationNote | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [showArchived, setShowArchived] = useState(false);
-  
-  // Editor state
-  const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDate, setEditDate] = useState('');
-  const [editCategory, setEditCategory] = useState<CoordinationNote['category']>('general');
-  const [editContent, setEditContent] = useState('');
-  const [editTodos, setEditTodos] = useState<TodoItem[]>([]);
-  const [editDirectly, setEditDirectly] = useState(false);
-  const [isEditingPreview, setIsEditingPreview] = useState(false);
-  
-  const [activeTab, setActiveTab] = useState<'notes' | 'todos'>('notes');
-  const [isSaving, setIsSaving] = useState(false);
-  const [showCheatsheet, setShowCheatsheet] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<BoardSession[]>([]);
+  const [notes, setNotes] = useState<BoardNote[]>([]);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(true);
+  const [loadingNotes, setLoadingNotes] = useState(true);
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [focusId, setFocusId] = useState<string | null>(null);
 
-  // Todo Inline input states (keyed by item ID, or 'root' for master list)
-  const [todoInputMap, setTodoInputMap] = useState<Record<string, string>>({});
+  // agenda composer
+  const [draft, setDraft] = useState('');
+  const [draftCat, setDraftCat] = useState<BoardCategory>('care');
+  const [targetId, setTargetId] = useState<string>('');
 
+  // sub-step composer (which agenda item is taking a new step)
+  const [subFor, setSubFor] = useState<string | null>(null);
+  const [subDraft, setSubDraft] = useState('');
+
+  // task add + assignee picker
+  const [adding, setAdding] = useState(false);
+  const [taskDraft, setTaskDraft] = useState('');
+  const [taskWho, setTaskWho] = useState('');
+  const [pickFor, setPickFor] = useState<string | null>(null);
+  const taskInputRef = useRef<HTMLInputElement>(null);
+
+  // new session
+  const [showNewSession, setShowNewSession] = useState(false);
+
+  // notes archive controls
+  const [q, setQ] = useState('');
+  const [series, setSeries] = useState('All');
+  const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
+  const [showNoteForm, setShowNoteForm] = useState(false);
+
+  const memberById = useMemo(() => {
+    const m = new Map<string, TeamMember>();
+    team.forEach((t) => m.set(t.uid, t));
+    return m;
+  }, [team]);
+
+  const stamp = () => ({ updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: meName });
+
+  // ── listeners ──────────────────────────────────────────────────────────────
   useEffect(() => {
     if (!hasAccess) {
-      setLoading(false);
+      setLoadingSessions(false);
+      setLoadingNotes(false);
       return;
     }
 
-    const q = query(
-      collection(db, 'coordination_notes'),
-      orderBy('date', 'desc')
+    const unsubSessions = onSnapshot(
+      query(collection(db, 'board_sessions'), orderBy('date', 'asc')),
+      (snap) => {
+        setSessions(
+          snap.docs.map((d) => ({ id: d.id, agenda: [], assigned: [], ...(d.data() as object) }) as BoardSession),
+        );
+        setLoadingSessions(false);
+      },
+      (err) => {
+        setLoadingSessions(false);
+        handleFirestoreError(err, OperationType.LIST, 'board_sessions');
+      },
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const items: CoordinationNote[] = [];
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        items.push({
-          id: docSnap.id,
-          ...data,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-        } as CoordinationNote);
-      });
-      setNotes(items);
-      setLoading(false);
+    const unsubNotes = onSnapshot(
+      query(collection(db, 'board_notes'), orderBy('date', 'desc')),
+      (snap) => {
+        setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as BoardNote));
+        setLoadingNotes(false);
+      },
+      (err) => {
+        setLoadingNotes(false);
+        handleFirestoreError(err, OperationType.LIST, 'board_notes');
+      },
+    );
 
-      // Keep selectedNote up-to-date with remote updates
-      if (selectedNote) {
-        const updated = items.find(n => n.id === selectedNote.id);
-        if (updated) {
-          // Only update if not actively editing to avoid clobbering input
-          if (!isEditing) {
-            setSelectedNote(updated);
-          }
-        }
-      }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'coordination_notes');
-      setLoading(false);
-    });
+    // team members for the assignee picker (admins can read the users directory)
+    const unsubUsers = onSnapshot(
+      collection(db, 'users'),
+      (snap) => {
+        setTeam(
+          snap.docs
+            .map((d) => {
+              const data = d.data() as { displayName?: string; email?: string; photoURL?: string; role?: string; approved?: boolean };
+              return {
+                member: {
+                  uid: d.id,
+                  name: data.displayName || data.email || 'Teammate',
+                  photoURL: data.photoURL,
+                  role: data.role,
+                } as TeamMember,
+                approved: data.approved,
+              };
+            })
+            .filter((u) => u.approved !== false)
+            .map((u) => u.member)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, 'users'),
+    );
 
-    return () => unsubscribe();
-  }, [isAdmin, selectedNote, isEditing]);
+    return () => {
+      unsubSessions();
+      unsubNotes();
+      unsubUsers();
+    };
+  }, [hasAccess]);
 
-  const handleSelectNote = (note: CoordinationNote) => {
-    setSelectedNote(note);
-    setIsEditing(false);
-    setEditTitle(note.title);
-    setEditDate(note.date);
-    setEditCategory(note.category);
-    setEditContent(note.content);
-    setEditTodos(note.todos || []);
-    setActiveTab('notes');
-  };
+  // keep a sensible session focused
+  useEffect(() => {
+    if (sessions.length === 0) {
+      if (focusId !== null) setFocusId(null);
+      return;
+    }
+    if (focusId && sessions.some((s) => s.id === focusId)) return;
+    const ordered = [...sessions].sort(byDateAsc);
+    const today = ordered.find((s) => sessionStatus(s.date) === 'today');
+    const upcoming = ordered.find((s) => sessionStatus(s.date) === 'upcoming');
+    setFocusId((today || upcoming || ordered[ordered.length - 1]).id);
+  }, [sessions, focusId]);
 
-  const insertMarkdown = (prefix: string, suffix: string = '') => {
-    const textarea = textareaRef.current;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const text = textarea.value;
-      const selectedText = text.substring(start, end);
+  const orderedSessions = useMemo(() => [...sessions].sort(byDateAsc), [sessions]);
+  const focus = useMemo(() => sessions.find((s) => s.id === focusId) || null, [sessions, focusId]);
+  const focusStatus = focus ? sessionStatus(focus.date) : 'upcoming';
+  const focusLocked = focusStatus === 'done';
+  const futureSessions = orderedSessions.filter((s) => sessionStatus(s.date) !== 'done');
 
-      const replacement = prefix + (selectedText || '') + suffix;
-      const newContent = text.substring(0, start) + replacement + text.substring(end);
+  // keep the agenda composer's target valid
+  useEffect(() => {
+    if (!focus) return;
+    if (!futureSessions.some((s) => s.id === targetId)) {
+      setTargetId(focus && sessionStatus(focus.date) !== 'done' ? focus.id : futureSessions[0]?.id || '');
+    }
+  }, [focus, futureSessions, targetId]);
 
-      setEditContent(newContent);
-
-      // Refocus and preserve selection
-      setTimeout(() => {
-        textarea.focus();
-        const newStart = start + prefix.length;
-        const newEnd = newStart + (selectedText || '').length;
-        textarea.setSelectionRange(newStart, newEnd);
-      }, 0);
-    } else {
-      // In live preview mode without a raw textarea
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        // Ensure the selection is actually inside the active editable preview element
-        const editableContainer = document.querySelector('[contenteditable="true"]');
-        if (editableContainer && editableContainer.contains(range.commonAncestorContainer)) {
-          const selectedText = selection.toString();
-          const repl = prefix + (selectedText || 'Text') + suffix;
-          range.deleteContents();
-          range.insertNode(document.createTextNode(repl));
-
-          try {
-            const turndownService = new TurndownService({
-              headingStyle: 'atx',
-              bulletListMarker: '-',
-              emDelimiter: '*',
-              strongDelimiter: '**',
-              codeBlockStyle: 'fenced'
-            });
-            turndownService.addRule('links', {
-              filter: 'a',
-              replacement: (content, node) => {
-                const href = (node as HTMLAnchorElement).getAttribute('href');
-                return href ? `[${content}](${href})` : content;
-              }
-            });
-            const markdown = turndownService.turndown(editableContainer.innerHTML);
-            setEditContent(markdown);
-          } catch (e) {
-            console.warn("Turndown parsing layout failed: ", e);
-          }
-          return;
-        }
-      }
-
-      // Fallback: simply append the syntax with placeholder
-      setEditContent(prev => {
-        const separator = prev && !prev.endsWith('\n') ? '\n' : '';
-        return prev + separator + prefix + (suffix ? 'Text' : '') + suffix;
-      });
+  // ── mutations ──────────────────────────────────────────────────────────────
+  const patchSession = async (sid: string, fields: Partial<BoardSession>) => {
+    try {
+      await updateDoc(doc(db, 'board_sessions', sid), { ...fields, ...stamp() });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_sessions');
     }
   };
+  const patchAgenda = (sid: string, agenda: AgendaItem[]) => patchSession(sid, { agenda });
+  const patchTasks = (sid: string, assigned: BoardSession['assigned']) => patchSession(sid, { assigned });
 
-  const handleCreateNewNote = async () => {
-    if (!hasAccess) return;
+  const createSession = async (fields: {
+    event: string;
+    date: string;
+    time: string;
+    place: string;
+    facilitatorId: string;
+  }) => {
     try {
-      const notesRef = collection(db, 'coordination_notes');
-      const newDocRef = doc(notesRef);
-      const noteId = newDocRef.id;
-
-      const dateStr = new Date().toISOString().split('T')[0];
-      const newNote: CoordinationNote = {
-        id: noteId,
-        title: 'New Meeting Coordination Notes',
-        date: dateStr,
-        content: `# Meeting Notes: ${dateStr}\n\n### Action Items\nBrief overview of topics discussed.\n\n### Learnings for Future reference\n- What worked well:\n- What could be improved:`,
-        category: 'general',
-        todos: [
-          { id: '1', text: 'Define coordination action plan', completed: false, subTasks: [] },
-          { id: '2', text: 'Set review milestone meeting', completed: false, subTasks: [] }
-        ],
+      const ref = doc(collection(db, 'board_sessions'));
+      await setDoc(ref, {
+        event: fields.event.trim() || 'Coordination session',
+        date: fields.date || todayISO(),
+        time: fields.time.trim(),
+        place: fields.place.trim(),
+        facilitatorId: fields.facilitatorId || uid,
+        agenda: [],
+        assigned: [],
         createdAt: serverTimestamp(),
-        createdBy: user?.uid || '',
-        createdByName: user?.displayName || user?.email || '',
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.uid || '',
-        updatedByName: user?.displayName || user?.email || ''
-      };
-
-      await setDoc(newDocRef, newNote);
-      handleSelectNote(newNote);
-      setIsEditing(true);
-    } catch (error) {
-      console.error('Error creating coordination notes:', error);
-    }
-  };
-
-  const handleSaveChanges = async () => {
-    if (!selectedNote || !hasAccess) return;
-    setIsSaving(true);
-    try {
-      const docRef = doc(db, 'coordination_notes', selectedNote.id);
-      await updateDoc(docRef, {
-        title: editTitle.trim() || 'Untitled Note',
-        date: editDate || new Date().toISOString().split('T')[0],
-        category: editCategory,
-        content: editContent,
-        todos: editTodos,
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.uid || '',
-        updatedByName: user?.displayName || user?.email || ''
+        createdBy: uid,
+        createdByName: meName,
+        ...stamp(),
       });
-      setIsEditing(false);
-      
-      // Update local state copy
-      setSelectedNote(prev => prev ? {
-        ...prev,
-        title: editTitle.trim() || 'Untitled Note',
-        date: editDate,
-        category: editCategory,
-        content: editContent,
-        todos: editTodos
-      } : null);
-    } catch (error) {
-      console.error('Failed saving meeting notes:', error);
-    } finally {
-      setIsSaving(false);
+      logActivity({
+        action: 'opened a coordination session',
+        targetId: ref.id,
+        targetName: fields.event || 'Coordination session',
+        targetType: 'event',
+        type: 'create',
+        description: `${fields.event} · ${fields.date}`,
+      } as never);
+      setShowNewSession(false);
+      setFocusId(ref.id);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'board_sessions');
     }
   };
 
-  const handleDeleteNote = (id: string) => {
-    setDeletingNoteId(id);
-    setShowDeleteConfirm(true);
-  };
-
-  const executeDeleteNote = async () => {
-    if (!deletingNoteId) return;
+  const removeSession = async (s: BoardSession) => {
+    if (!window.confirm(`Remove the ${weekdayOf(s.date)} session "${s.event}"? This can't be undone.`)) return;
     try {
-      await deleteDoc(doc(db, 'coordination_notes', deletingNoteId));
-      setSelectedNote(null);
-      setIsEditing(false);
-      setShowDeleteConfirm(false);
-      setDeletingNoteId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `coordination_notes/${deletingNoteId}`);
+      await deleteDoc(doc(db, 'board_sessions', s.id));
+      if (focusId === s.id) setFocusId(null);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'board_sessions');
     }
   };
 
-  const executeArchiveNote = async () => {
-    if (!deletingNoteId) return;
+  // agenda
+  const toggleCovered = (item: AgendaItem) => {
+    if (!focus) return;
+    const agenda = focus.agenda.map((a) =>
+      a.id === item.id ? { ...a, status: (a.status === 'covered' ? 'open' : 'covered') as AgendaItem['status'] } : a,
+    );
+    patchAgenda(focus.id, agenda);
+  };
+
+  const addAgendaItem = () => {
+    const text = draft.trim();
+    if (!text) return;
+    const tgt = sessions.find((s) => s.id === targetId) || focus;
+    if (!tgt) return;
+    const item: AgendaItem = { id: newId('a-'), text, cat: draftCat, raisedById: uid, status: 'open', actions: [] };
+    patchAgenda(tgt.id, [...tgt.agenda, item]);
+    setDraft('');
+  };
+
+  const addSubStep = (itemId: string) => {
+    if (!focus) return;
+    const text = subDraft.trim();
+    if (!text) return;
+    const agenda = focus.agenda.map((a) =>
+      a.id === itemId ? { ...a, actions: [...a.actions, { id: newId('g-'), text, who: uid, done: false }] } : a,
+    );
+    patchAgenda(focus.id, agenda);
+    setSubDraft('');
+  };
+
+  const toggleAction = (itemId: string, actId: string) => {
+    if (!focus) return;
+    const agenda = focus.agenda.map((a) =>
+      a.id === itemId ? { ...a, actions: a.actions.map((g) => (g.id === actId ? { ...g, done: !g.done } : g)) } : a,
+    );
+    patchAgenda(focus.id, agenda);
+  };
+
+  const pushItem = async (item: AgendaItem) => {
+    if (!focus) return;
+    const idx = orderedSessions.findIndex((s) => s.id === focus.id);
+    const next = orderedSessions.slice(idx + 1).find((s) => sessionStatus(s.date) !== 'done');
+    if (!next) {
+      window.alert('No later session to push to — open a new session first.');
+      return;
+    }
     try {
-      const docRef = doc(db, 'coordination_notes', deletingNoteId);
-      await updateDoc(docRef, {
-        archived: true,
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.uid || '',
-        updatedByName: user?.displayName || user?.email || ''
-      });
-      setSelectedNote(null);
-      setIsEditing(false);
-      setShowDeleteConfirm(false);
-      setDeletingNoteId(null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `coordination_notes/${deletingNoteId}`);
+      const batch = writeBatch(db);
+      const curAgenda = focus.agenda.map((a) =>
+        a.id === item.id ? { ...a, status: 'pushed' as const, pushedTo: weekdayOf(next.date) } : a,
+      );
+      // carry a fresh copy forward (drop the original's pushedTo to avoid undefined fields)
+      const { pushedTo: _drop, ...rest } = item;
+      const carried: AgendaItem = { ...rest, id: newId('a-'), status: 'open', carriedFrom: weekdayOf(focus.date) };
+      batch.update(doc(db, 'board_sessions', focus.id), { agenda: curAgenda, ...stamp() });
+      batch.update(doc(db, 'board_sessions', next.id), { agenda: [carried, ...next.agenda], ...stamp() });
+      await batch.commit();
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_sessions');
     }
   };
 
-  const handleRestoreNote = async (id: string) => {
+  // tasks
+  const addTask = () => {
+    if (!focus) return;
+    const text = taskDraft.trim();
+    if (!text) return;
+    const assigned = [...(focus.assigned || []), { id: newId('t-'), text, who: taskWho || uid, done: false }];
+    patchTasks(focus.id, assigned);
+    setTaskDraft('');
+    setAdding(false);
+    setPickFor(null);
+  };
+
+  const toggleTask = (taskId: string) => {
+    if (!focus) return;
+    const assigned = (focus.assigned || []).map((g) => (g.id === taskId ? { ...g, done: !g.done } : g));
+    patchTasks(focus.id, assigned);
+  };
+
+  const reassignTask = (taskId: string, who: string) => {
+    if (!focus) return;
+    const assigned = (focus.assigned || []).map((g) => (g.id === taskId ? { ...g, who } : g));
+    patchTasks(focus.id, assigned);
+    setPickFor(null);
+  };
+
+  const removeTask = (taskId: string) => {
+    if (!focus) return;
+    patchTasks(focus.id, (focus.assigned || []).filter((g) => g.id !== taskId));
+  };
+
+  // send an agenda item over to the Tasks panel — pick who carries it there
+  const sendToTasks = (item: AgendaItem) => {
+    setTaskDraft(item.text);
+    setTaskWho(item.raisedById || uid);
+    setAdding(true);
+    setPickFor(null);
+    setTimeout(() => taskInputRef.current?.focus(), 40);
+  };
+
+  // notes
+  const addNote = async (fields: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => {
     try {
-      const docRef = doc(db, 'coordination_notes', id);
-      await updateDoc(docRef, {
-        archived: false,
-        updatedAt: serverTimestamp(),
-        updatedBy: user?.uid || '',
-        updatedByName: user?.displayName || user?.email || ''
+      const ref = doc(collection(db, 'board_notes'));
+      await setDoc(ref, {
+        type: fields.type,
+        series: fields.series,
+        title: fields.title.trim() || 'Untitled note',
+        body: fields.body.trim(),
+        date: todayISO(),
+        contributorIds: [uid],
+        tags: fields.tags,
+        sessionId: focus?.id || '',
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+        createdByName: meName,
+        ...stamp(),
       });
-      setSelectedNote(prev => prev ? { ...prev, archived: false } : null);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `coordination_notes/${id}`);
+      logActivity({
+        action: fields.type === 'learning' ? 'recorded a learning' : 'saved a session record',
+        targetId: ref.id,
+        targetName: fields.title || 'Note',
+        targetType: 'comment',
+        type: 'create',
+        description: fields.series,
+      } as never);
+      setShowNoteForm(false);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'board_notes');
     }
   };
 
-  // --- RECURSIVE CHECKLIST MATH ENGINE ---
-  const addRecursiveTodo = (items: TodoItem[], parentId: string | null, text: string): TodoItem[] => {
-    if (parentId === null) {
-      return [
-        ...items,
-        { id: Date.now().toString() + Math.random().toString(36).substring(2, 5), text, completed: false, subTasks: [] }
-      ];
+  const removeNote = async (n: BoardNote) => {
+    if (!window.confirm(`Remove "${n.title}" from the archive?`)) return;
+    try {
+      await deleteDoc(doc(db, 'board_notes', n.id));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'board_notes');
     }
-    return items.map(item => {
-      if (item.id === parentId) {
-        return {
-          ...item,
-          subTasks: [
-            ...item.subTasks,
-            { id: Date.now().toString() + Math.random().toString(36).substring(2, 5), text, completed: false, subTasks: [] }
-          ]
-        };
-      } else if (item.subTasks && item.subTasks.length > 0) {
-        return {
-          ...item,
-          subTasks: addRecursiveTodo(item.subTasks, parentId, text)
-        };
-      }
-      return item;
-    });
   };
 
-  const toggleRecursiveTodo = (items: TodoItem[], id: string): TodoItem[] => {
-    return items.map(item => {
-      if (item.id === id) {
-        const nextCompleted = !item.completed;
-        const toggleAll = (tasks: TodoItem[], val: boolean): TodoItem[] => {
-          return tasks.map(t => ({
-            ...t,
-            completed: val,
-            subTasks: toggleAll(t.subTasks, val)
-          }));
-        };
-        return {
-          ...item,
-          completed: nextCompleted,
-          subTasks: toggleAll(item.subTasks, nextCompleted)
-        };
-      } else if (item.subTasks && item.subTasks.length > 0) {
-        return {
-          ...item,
-          subTasks: toggleRecursiveTodo(item.subTasks, id)
-        };
-      }
-      return item;
-    });
-  };
-
-  const deleteRecursiveTodo = (items: TodoItem[], id: string): TodoItem[] => {
-    return items
-      .filter(item => item.id !== id)
-      .map(item => {
-        if (item.subTasks && item.subTasks.length > 0) {
-          return {
-            ...item,
-            subTasks: deleteRecursiveTodo(item.subTasks, id)
-          };
-        }
-        return item;
-      });
-  };
-
-  const updateRecursiveTodoText = (items: TodoItem[], id: string, text: string): TodoItem[] => {
-    return items.map(item => {
-      if (item.id === id) {
-        return { ...item, text };
-      } else if (item.subTasks && item.subTasks.length > 0) {
-        return {
-          ...item,
-          subTasks: updateRecursiveTodoText(item.subTasks, id, text)
-        };
-      }
-      return item;
-    });
-  };
-
-  // Checklist action wrappers
-  const handleAddTodo = (parentId: string | null) => {
-    const inputKey = parentId || 'root';
-    const text = todoInputMap[inputKey];
-    if (!text || !text.trim()) return;
-
-    setEditTodos(prev => addRecursiveTodo(prev, parentId, text.trim()));
-    setTodoInputMap(prev => ({ ...prev, [inputKey]: '' }));
-  };
-
-  const handleToggleTodo = (id: string) => {
-    setEditTodos(prev => toggleRecursiveTodo(prev, id));
-  };
-
-  const handleDeleteTodo = (id: string) => {
-    setEditTodos(prev => deleteRecursiveTodo(prev, id));
-  };
-
-  const handleUpdateTodoText = (id: string, text: string) => {
-    setEditTodos(prev => updateRecursiveTodoText(prev, id, text));
-  };
-
-  // Searching and Filtering
+  // ── notes filtering ────────────────────────────────────────────────────────
+  const ql = q.trim().toLowerCase();
   const filteredNotes = useMemo(() => {
-    return notes.filter((item) => {
-      const isArchived = !!item.archived;
-      if (showArchived !== isArchived) return false;
-
-      const matchesSearch = 
-        item.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.content?.toLowerCase().includes(searchQuery.toLowerCase());
-      
-      const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
-
-      return matchesSearch && matchesCategory;
+    return notes.filter((n) => {
+      if (series !== 'All' && n.series !== series) return false;
+      if (kind === 'Records' && n.type !== 'record') return false;
+      if (kind === 'Learnings' && n.type !== 'learning') return false;
+      if (ql) {
+        const hay = `${n.title} ${n.body} ${n.series} ${(n.tags || []).join(' ')}`.toLowerCase();
+        if (!hay.includes(ql)) return false;
+      }
+      return true;
     });
-  }, [notes, searchQuery, categoryFilter, showArchived]);
+  }, [notes, series, kind, ql]);
 
-  // Handle Guard Authorization
+  const seriesOptions = useMemo(() => {
+    const set = new Set<string>(BOARD_SERIES);
+    notes.forEach((n) => n.series && set.add(n.series));
+    return ['All', ...Array.from(set)];
+  }, [notes]);
+
+  // ── access gate ─────────────────────────────────────────────────────────────
   if (!hasAccess) {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center" id="coordination-notes-guard">
@@ -610,861 +542,751 @@ export default function CoordinationNotes() {
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold mb-4 text-on-background">Access Denied</h2>
-          <p className="text-on-surface-variant leading-relaxed mb-6">
-            Meeting Coordination notes and Learnings logs are restricted to members with an Administrator role. If you believe this is in error, please contact an administrator to upgrade your access level.
+          <h2 className="font-serif text-2xl mb-3 text-on-background">A space for the core team</h2>
+          <p className="text-on-surface-variant leading-relaxed">
+            The Board is where the full-time team thinks together. It's kept to administrators. If you think you should
+            be here, ask an administrator to widen your access.
           </p>
         </div>
       </div>
     );
   }
 
-  // Helper to render nested checklist recursively
-  const RecursiveTodoRenderer = ({ items, level = 0 }: { items: TodoItem[]; level: number }) => {
-    return (
-      <ul className="space-y-3.5 w-full">
-        {items.map((item) => {
-          const hasChildren = item.subTasks && item.subTasks.length > 0;
-          return (
-            <li 
-              key={item.id} 
-              className="flex flex-col gap-2.5 p-3 rounded-2xl bg-surface/50 border border-outline-variant/30 relative"
-              style={{ paddingLeft: `${Math.min(level * 16 + 12, 64)}px` }}
-            >
-              {/* Vertical connector guide */}
-              {level > 0 && (
-                <div 
-                  className="absolute left-[16px] top-0 bottom-0 w-0.5 bg-outline-variant/30"
-                  style={{ left: `${(level - 1) * 16 + 20}px` }}
-                />
-              )}
+  const openAgendaCount = focus ? focus.agenda.filter((a) => a.status === 'open').length : 0;
 
-              <div className="flex items-center gap-3 w-full">
-                {/* Status Toggle Box */}
-                <button
-                  type="button"
-                  onClick={() => handleToggleTodo(item.id)}
-                  disabled={!isEditing}
-                  className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer ${
-                    item.completed 
-                      ? 'bg-success/20 border-success text-success' 
-                      : 'border-outline hover:border-primary'
-                  }`}
-                >
-                  {item.completed && <Check className="w-4 h-4 text-success" />}
-                </button>
+  return (
+    <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-8" id="coordination-notes-panel">
+      {/* Header */}
+      <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+        <div className="max-w-2xl">
+          <div className="text-sm text-on-surface-variant mb-1">The team · this week</div>
+          <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">The Board</h1>
+          <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
+            Where the team thinks together — every coordination session, what's been <b className="text-on-surface font-medium">assigned</b>, and
+            everything you've <b className="text-on-surface font-medium">learned</b>. Nothing important should live in one person's inbox.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowNewSession(true)}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shrink-0"
+        >
+          <Plus className="w-4 h-4" /> New session
+        </button>
+      </header>
 
-                {/* Inline Editing vs Text block */}
-                {isEditing ? (
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) => handleUpdateTodoText(item.id, e.target.value)}
-                    className={`flex-1 bg-transparent border-b border-transparent focus:border-primary focus:outline-none text-sm text-on-surface py-0.5 ${
-                      item.completed ? 'line-through text-on-surface-variant/40' : ''
-                    }`}
-                  />
-                ) : (
-                  <span className={`text-sm flex-1 font-medium ${
-                    item.completed ? 'line-through text-on-surface-variant/40' : 'text-on-surface'
-                  }`}>
-                    {item.text}
+      {/* Week switcher */}
+      {loadingSessions ? (
+        <Skeleton className="h-20 w-full rounded-2xl" />
+      ) : sessions.length === 0 ? null : (
+        <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1" role="tablist" aria-label="This week's sessions">
+          {orderedSessions.map((s) => {
+            const st = sessionStatus(s.date);
+            const n = s.agenda.filter((a) => a.status !== 'pushed').length;
+            const active = s.id === focusId;
+            return (
+              <button
+                key={s.id}
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFocusId(s.id)}
+                className={cn(
+                  'shrink-0 w-36 text-left px-3.5 py-3 rounded-2xl border transition-all',
+                  active
+                    ? 'bg-surface border-stage-accent ring-1 ring-stage-accent/30 shadow-sm'
+                    : 'bg-surface/60 border-outline-variant hover:border-outline hover:bg-surface',
+                )}
+              >
+                <div className="flex items-center gap-1.5 mb-1.5 h-4">
+                  {st === 'today' ? (
+                    <span className="text-[11px] font-medium text-stage-accent">Today</span>
+                  ) : st === 'done' ? (
+                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-tertiary/15 text-tertiary">
+                      <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                    </span>
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-outline" />
+                  )}
+                </div>
+                <div className="font-serif text-lg text-on-surface leading-tight">{weekdayOf(s.date)}</div>
+                <div className="text-xs text-on-surface-variant">{dateLabelOf(s.date)}</div>
+                <div className="text-xs text-on-surface-variant/80 mt-1">
+                  {n} item{n === 1 ? '' : 's'}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Focused session */}
+      {!loadingSessions && sessions.length === 0 ? (
+        <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-10 sm:p-14 text-center flex flex-col items-center">
+          <div className="w-14 h-14 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center mb-4">
+            <CalendarDays className="w-7 h-7" />
+          </div>
+          <h3 className="font-serif text-xl text-on-surface mb-1">No sessions yet</h3>
+          <p className="text-sm text-on-surface-variant max-w-sm mb-5">
+            Start this week's first coordination session — give it a name, a time and a place, and the team can begin
+            adding to the agenda.
+          </p>
+          <button
+            onClick={() => setShowNewSession(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 transition-all"
+          >
+            <Plus className="w-4 h-4" /> Start a session
+          </button>
+        </div>
+      ) : focus ? (
+        <section className="bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden">
+          {/* session head */}
+          <div className="flex items-start gap-4 p-5 sm:p-6 border-b border-outline-variant/60">
+            <div className="text-center shrink-0 w-14">
+              <div className="font-serif text-lg text-on-surface leading-tight">{weekdayOf(focus.date)}</div>
+              <div className="text-xs text-on-surface-variant">{dateLabelOf(focus.date)}</div>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-on-surface">{focus.event}</div>
+              <div className="text-sm text-on-surface-variant flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-0.5">
+                {focus.time && (
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5" /> {focus.time}
                   </span>
                 )}
+                {focus.place && (
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5" /> {focus.place}
+                  </span>
+                )}
+                {focus.facilitatorId && memberById.get(focus.facilitatorId) && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Avatar member={memberById.get(focus.facilitatorId)} size="xs" />
+                    {memberById.get(focus.facilitatorId)?.name.split(' ')[0]} leads
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium',
+                  focusStatus === 'today'
+                    ? 'bg-stage-accent-soft text-stage-accent'
+                    : focusStatus === 'done'
+                      ? 'bg-tertiary/15 text-tertiary'
+                      : 'bg-surface-variant text-on-surface-variant',
+                )}
+              >
+                {STATUS_LABEL[focusStatus]}
+              </span>
+              <button
+                onClick={() => removeSession(focus)}
+                title="Remove this session"
+                className="p-1.5 rounded-lg text-on-surface-variant/60 hover:text-error hover:bg-error-container/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-                {/* Clear Delete Option only when editing notes */}
-                {isEditing && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-0">
+            {/* Agenda */}
+            <div className="lg:col-span-2 p-5 sm:p-6 lg:border-r border-outline-variant/60">
+              <div className="flex items-baseline gap-2 mb-4">
+                <h3 className="font-serif text-xl text-on-surface">Agenda</h3>
+                <span className="text-sm text-on-surface-variant">{openAgendaCount} to talk through</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {focus.agenda.filter((a) => a.status !== 'pushed').length === 0 && (
+                  <p className="text-sm text-on-surface-variant/70 py-2">Nothing on the agenda yet.</p>
+                )}
+                {focus.agenda
+                  .filter((a) => a.status !== 'pushed')
+                  .map((a) => {
+                    const covered = a.status === 'covered';
+                    return (
+                      <div
+                        key={a.id}
+                        className={cn(
+                          'rounded-2xl border p-3.5 transition-colors',
+                          covered ? 'bg-surface/40 border-outline-variant/50' : 'bg-surface border-outline-variant',
+                        )}
+                      >
+                        <div className="flex items-start gap-3">
+                          <CheckButton on={covered} onClick={() => toggleCovered(a)} title={covered ? 'Covered' : 'Mark covered'} />
+                          <div className="flex-1 min-w-0">
+                            <div className={cn('text-sm text-on-surface', covered && 'line-through text-on-surface-variant')}>
+                              {a.text}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 mt-1.5">
+                              {a.carriedFrom && (
+                                <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant/80">
+                                  <ArrowRight className="w-3 h-3" /> carried from {a.carriedFrom}
+                                </span>
+                              )}
+                              <CatChip cat={a.cat} />
+                              {memberById.get(a.raisedById) && (
+                                <span className="text-xs text-on-surface-variant/80">
+                                  {memberById.get(a.raisedById)?.name.split(' ')[0]} raised this
+                                </span>
+                              )}
+                            </div>
+
+                            {/* sub-steps */}
+                            {(a.actions.length > 0 || subFor === a.id) && (
+                              <div className="mt-2.5 space-y-1.5 pl-0.5">
+                                {a.actions.map((g) => (
+                                  <div key={g.id} className="flex items-center gap-2">
+                                    <CheckButton on={g.done} size="sm" onClick={() => toggleAction(a.id, g.id)} />
+                                    <span
+                                      onClick={() => toggleAction(a.id, g.id)}
+                                      className={cn(
+                                        'text-sm cursor-pointer',
+                                        g.done ? 'line-through text-on-surface-variant/70' : 'text-on-surface-variant',
+                                      )}
+                                    >
+                                      {g.text}
+                                    </span>
+                                  </div>
+                                ))}
+                                {subFor === a.id && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="w-4 h-4 rounded-md border border-dashed border-outline shrink-0" />
+                                    <input
+                                      autoFocus
+                                      value={subDraft}
+                                      placeholder="Add a step…  (Enter to keep going)"
+                                      onChange={(e) => setSubDraft(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') addSubStep(a.id);
+                                        if (e.key === 'Escape') {
+                                          setSubFor(null);
+                                          setSubDraft('');
+                                        }
+                                      }}
+                                      className="flex-1 bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none border-b border-outline-variant focus:border-stage-accent py-0.5"
+                                    />
+                                    <button
+                                      onClick={() => {
+                                        setSubFor(null);
+                                        setSubDraft('');
+                                      }}
+                                      className="p-1 text-on-surface-variant hover:text-on-surface"
+                                      title="Done adding"
+                                    >
+                                      <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {!focusLocked && (
+                              <div className="flex flex-wrap items-center gap-3 mt-2.5">
+                                <button
+                                  onClick={() => {
+                                    setSubFor(subFor === a.id ? null : a.id);
+                                    setSubDraft('');
+                                  }}
+                                  className="inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-stage-accent transition-colors"
+                                >
+                                  <Plus className="w-3 h-3" /> Add a step
+                                </button>
+                                <button
+                                  onClick={() => sendToTasks(a)}
+                                  className="inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-stage-accent transition-colors"
+                                >
+                                  Send to tasks <ArrowRight className="w-3 h-3" />
+                                </button>
+                                {!covered && (
+                                  <button
+                                    onClick={() => pushItem(a)}
+                                    className="inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-stage-accent transition-colors ml-auto"
+                                    title="Push to the next session"
+                                  >
+                                    Push <ArrowRight className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {/* pushed-out items */}
+                {focus.agenda
+                  .filter((a) => a.status === 'pushed')
+                  .map((a) => (
+                    <div key={a.id} className="flex items-center gap-3 px-3.5 py-2 text-on-surface-variant/70">
+                      <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                      <span className="text-sm line-through">{a.text}</span>
+                      <span className="text-xs">moved to {a.pushedTo}'s session</span>
+                    </div>
+                  ))}
+              </div>
+
+              {/* composer */}
+              {!focusLocked && (
+                <div className="mt-4 pt-4 border-t border-outline-variant/60 space-y-2.5">
+                  <input
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') addAgendaItem();
+                    }}
+                    placeholder="Add something to talk through…"
+                    className="w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={draftCat}
+                      onChange={(e) => setDraftCat(e.target.value as BoardCategory)}
+                      className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent"
+                      title="Category"
+                    >
+                      {CATEGORY_ORDER.map((c) => (
+                        <option key={c} value={c}>
+                          {CATEGORY_META[c].label}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      value={targetId}
+                      onChange={(e) => setTargetId(e.target.value)}
+                      className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent"
+                      title="Which session"
+                    >
+                      {futureSessions.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.id === focus.id ? 'This session' : weekdayOf(s.date)}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={addAgendaItem}
+                      disabled={!draft.trim()}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all ml-auto"
+                    >
+                      <Plus className="w-3.5 h-3.5" /> Add to agenda
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Tasks aside */}
+            <aside className="p-5 sm:p-6 bg-surface/40">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-serif text-xl text-on-surface">Tasks</h3>
+                {!focusLocked && !adding && (
                   <button
-                    type="button"
-                    onClick={() => handleDeleteTodo(item.id)}
-                    className="p-1 px-2 border-none rounded bg-transparent text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors cursor-pointer"
-                    title="Delete item"
+                    onClick={() => {
+                      setAdding(true);
+                      setTaskWho(uid);
+                      setTimeout(() => taskInputRef.current?.focus(), 40);
+                    }}
+                    className="inline-flex items-center gap-1 text-xs text-on-surface-variant hover:text-stage-accent transition-colors"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Plus className="w-3.5 h-3.5" /> Add
                   </button>
                 )}
               </div>
 
-              {/* Recursive child lists */}
-              {hasChildren && (
-                <div className="mt-1">
-                  <RecursiveTodoRenderer items={item.subTasks} level={level + 1} />
-                </div>
-              )}
-
-              {/* Add Subtask panel when in edit mode */}
-              {isEditing && (
-                <div 
-                  className="flex items-center gap-2 mt-1 w-full pl-3 md:pl-6"
-                  style={{ paddingLeft: `${level === 0 ? 12 : 24}px` }}
-                >
-                  <PlusCircle className="w-3.5 h-3.5 text-on-surface-variant/50 shrink-0" />
+              {adding && (
+                <div className="mb-3 p-3 rounded-2xl bg-surface border border-outline-variant space-y-2.5">
                   <input
-                    type="text"
-                    placeholder="Add a nested sub-task..."
-                    value={todoInputMap[item.id] || ''}
-                    onChange={(e) => setTodoInputMap(prev => ({ ...prev, [item.id]: e.target.value }))}
+                    ref={taskInputRef}
+                    value={taskDraft}
+                    onChange={(e) => setTaskDraft(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddTodo(item.id);
+                      if (e.key === 'Enter') addTask();
+                      if (e.key === 'Escape') {
+                        setAdding(false);
+                        setTaskDraft('');
                       }
                     }}
-                    className="bg-transparent border-b border-dashed border-outline-variant text-xs py-1 focus:outline-none focus:border-primary text-on-surface placeholder:text-on-surface-variant/40 flex-1 min-w-[120px]"
+                    placeholder="What needs doing?"
+                    className="w-full bg-transparent text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none"
                   />
-                  {(todoInputMap[item.id]?.trim() || '') && (
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <button
+                        onClick={() => setPickFor(pickFor === 'tnew' ? null : 'tnew')}
+                        className="flex items-center"
+                        title="Assign"
+                      >
+                        <Avatar member={memberById.get(taskWho)} size="sm" />
+                      </button>
+                      {pickFor === 'tnew' && (
+                        <AssigneePicker
+                          team={team}
+                          current={taskWho}
+                          onPick={(who) => {
+                            setTaskWho(who);
+                            setPickFor(null);
+                          }}
+                          onClose={() => setPickFor(null)}
+                        />
+                      )}
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => handleAddTodo(item.id)}
-                      className="text-[10px] font-bold bg-primary-container text-on-primary-container px-2 py-0.5 rounded-md hover:opacity-90 border-none transition-all cursor-pointer"
+                      onClick={addTask}
+                      disabled={!taskDraft.trim()}
+                      className="px-3 py-1.5 bg-primary text-on-primary text-sm font-medium rounded-lg hover:opacity-90 disabled:opacity-40 transition-all"
                     >
                       Add
                     </button>
-                  )}
+                    <button
+                      onClick={() => {
+                        setAdding(false);
+                        setTaskDraft('');
+                        setPickFor(null);
+                      }}
+                      className="p-1.5 text-on-surface-variant hover:text-on-surface"
+                      title="Cancel"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               )}
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
 
-  return (
-    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-8" id="coordination-notes-panel">
-      
-      {/* Title & Stats Dashboard */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-regular tracking-tight text-on-background">Meeting Coordination &amp; Learnings</h1>
-          <p className="text-sm text-on-surface-variant">Review event prep notes, checklists, biannual event learnings, and regular coordination files.</p>
+              <div className="space-y-1.5">
+                {(focus.assigned || []).map((g) => (
+                  <div key={g.id} className="group flex items-center gap-2.5 py-1.5">
+                    <CheckButton on={g.done} size="sm" onClick={() => toggleTask(g.id)} />
+                    <span
+                      onClick={() => toggleTask(g.id)}
+                      className={cn(
+                        'flex-1 text-sm cursor-pointer',
+                        g.done ? 'line-through text-on-surface-variant/70' : 'text-on-surface',
+                      )}
+                    >
+                      {g.text}
+                    </span>
+                    <button
+                      onClick={() => removeTask(g.id)}
+                      className="p-1 text-on-surface-variant/0 group-hover:text-on-surface-variant/60 hover:!text-error transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <div className="relative">
+                      <button
+                        onClick={() => setPickFor(pickFor === `t:${g.id}` ? null : `t:${g.id}`)}
+                        title={`Carried by ${memberById.get(g.who)?.name || 'someone'} — tap to reassign`}
+                      >
+                        <Avatar member={memberById.get(g.who)} size="sm" />
+                      </button>
+                      {pickFor === `t:${g.id}` && (
+                        <AssigneePicker
+                          team={team}
+                          current={g.who}
+                          onPick={(who) => reassignTask(g.id, who)}
+                          onClose={() => setPickFor(null)}
+                        />
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {(focus.assigned || []).length === 0 && !adding && (
+                  <p className="text-sm text-on-surface-variant/70 py-1">Nothing being carried yet.</p>
+                )}
+              </div>
+            </aside>
+          </div>
+        </section>
+      ) : null}
+
+      {/* Notes & learnings */}
+      <section>
+        <SectionHead
+          title="Notes &amp; learnings"
+          sub="Every session becomes a record — running it again? Find last time's notes."
+          action={
+            <button
+              onClick={() => setShowNoteForm((v) => !v)}
+              className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+            >
+              <NotebookPen className="w-4 h-4" /> Add a note
+            </button>
+          }
+        />
+
+        {showNoteForm && <NoteForm seriesOptions={BOARD_SERIES} onCancel={() => setShowNoteForm(false)} onSave={addNote} />}
+
+        {/* controls */}
+        <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search notes — e.g. “Friday gathering”, “retreat”, “welcome”…"
+              className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+            />
+            {q && (
+              <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface">
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+            {(['All', 'Records', 'Learnings'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                  kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <button
-          onClick={handleCreateNewNote}
-          className="flex items-center justify-center gap-2 px-6 py-3.5 bg-primary text-on-primary font-bold rounded-full hover:opacity-90 active:scale-95 transition-all shadow-md cursor-pointer shrink-0 border-none"
-        >
-          <Plus className="w-5 h-5" />
-          <span>New Document</span>
-        </button>
-      </div>
+        {/* series chips */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {seriesOptions.map((s) => (
+            <button
+              key={s}
+              onClick={() => setSeries(s)}
+              className={cn(
+                'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+                series === s
+                  ? 'bg-stage-accent-soft border-stage-accent/40 text-stage-accent'
+                  : 'bg-surface border-outline-variant text-on-surface-variant hover:border-outline',
+              )}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        
-        {/* Left column: notes sidebar explorer */}
-        <div className="lg:col-span-4 space-y-5 bg-surface-container border border-outline-variant p-4 sm:p-5 rounded-[2rem] shadow-xs">
-          
-          <div className="space-y-4">
-            <h3 className="text-md font-bold tracking-tight text-on-surface">Documents Directory</h3>
-            
-            {/* Active / Archived sub-navigation tabs */}
-            <div className="flex border border-outline-variant/30 p-1 bg-surface-container-low rounded-xl">
-              <button
-                type="button"
-                onClick={() => setShowArchived(false)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 ${
-                  !showArchived
-                    ? 'bg-primary text-on-primary shadow-xs font-semibold'
-                    : 'text-on-surface-variant hover:bg-surface-container-high font-medium'
-                }`}
+        {/* note cards */}
+        {loadingNotes ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Skeleton className="h-40 w-full rounded-2xl" />
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          </div>
+        ) : filteredNotes.length === 0 ? (
+          <div className="bg-surface/50 border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant">
+            {notes.length === 0
+              ? 'No notes yet — wrap a session and save what you learned.'
+              : 'No notes match that yet — try a different word or series.'}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {filteredNotes.map((n) => (
+              <article
+                key={n.id}
+                className={cn(
+                  'group bg-surface rounded-2xl border p-4 flex flex-col gap-2',
+                  n.type === 'learning' ? 'border-l-2 border-l-stage-violet border-outline-variant' : 'border-outline-variant',
+                )}
               >
-                <span>Active</span>
-                <span className={`px-1.5 py-0.25 rounded-full text-[10px] ${!showArchived ? 'bg-on-primary/25 text-on-primary' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  {notes.filter(n => !n.archived).length}
-                </span>
-              </button>
-              <button
-                type="button"
-                id="view-archived-notes-btn"
-                onClick={() => setShowArchived(true)}
-                className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-1.5 ${
-                  showArchived
-                    ? 'bg-primary text-on-primary shadow-xs font-semibold'
-                    : 'text-on-surface-variant hover:bg-surface-container-high font-medium'
-                }`}
-              >
-                <Archive className="w-3.5 h-3.5" />
-                <span>Archived</span>
-                <span className={`px-1.5 py-0.25 rounded-full text-[10px] ${showArchived ? 'bg-on-primary/25 text-on-primary' : 'bg-surface-variant text-on-surface-variant'}`}>
-                  {notes.filter(n => !!n.archived).length}
-                </span>
-              </button>
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className={cn(
+                      'px-2 py-0.5 rounded-full font-medium',
+                      n.type === 'learning' ? 'bg-stage-violet-soft text-stage-violet' : 'bg-stage-accent-soft text-stage-accent',
+                    )}
+                  >
+                    {n.type === 'learning' ? 'Learning' : 'Record'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-on-surface-variant">
+                    <Tag className="w-3 h-3" /> {n.series}
+                  </span>
+                  <span className="text-on-surface-variant/70 ml-auto">{dateLabelOf(n.date)}</span>
+                  <button
+                    onClick={() => removeNote(n)}
+                    className="p-0.5 text-on-surface-variant/0 group-hover:text-on-surface-variant/50 hover:!text-error transition-colors"
+                    title="Remove from archive"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <h4 className="font-serif text-lg text-on-surface leading-snug">{n.title}</h4>
+                {n.body && <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4">{n.body}</p>}
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex -space-x-1.5">
+                    {(n.contributorIds || []).slice(0, 4).map((id) => (
+                      <div key={id} className="ring-2 ring-surface rounded-full">
+                        <Avatar member={memberById.get(id)} size="xs" />
+                      </div>
+                    ))}
+                  </div>
+                  {(n.tags || []).length > 0 && (
+                    <span className="text-xs text-on-surface-variant/70 truncate">
+                      {(n.tags || []).map((t) => `#${t}`).join(' ')}
+                    </span>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <p className="text-center text-sm text-on-surface-variant/70 pt-2 flex items-center justify-center gap-2">
+        <Feather className="w-3.5 h-3.5" /> A shared place to think together — so the team stays one mind.
+      </p>
+
+      {showNewSession && (
+        <NewSessionModal team={team} meUid={uid} onClose={() => setShowNewSession(false)} onSave={createSession} />
+      )}
+    </div>
+  );
+}
+
+// ── New session modal ─────────────────────────────────────────────────────────
+function NewSessionModal({
+  team,
+  meUid,
+  onClose,
+  onSave,
+}: {
+  team: TeamMember[];
+  meUid: string;
+  onClose: () => void;
+  onSave: (f: { event: string; date: string; time: string; place: string; facilitatorId: string }) => void;
+}) {
+  const [event, setEvent] = useState('');
+  const [date, setDate] = useState(todayISO());
+  const [time, setTime] = useState('');
+  const [place, setPlace] = useState('');
+  const [facilitatorId, setFacilitatorId] = useState(meUid);
+
+  // Always keep the current user selectable, even if they aren't in the
+  // approved `users` list yet (e.g. super-admin), so the select value matches.
+  const teamOptions = useMemo<TeamMember[]>(() => {
+    if (team.some((m) => m.uid === meUid)) return team;
+    return [{ uid: meUid, name: 'You' }, ...team];
+  }, [team, meUid]);
+
+  const field = 'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
+  const label = 'text-sm text-on-surface-variant mb-1.5 block';
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md bg-surface rounded-3xl border border-outline-variant shadow-xl p-6" onClick={(e) => e.stopPropagation()}>
+        <h3 className="font-serif text-2xl text-on-surface mb-1">A new coordination session</h3>
+        <p className="text-sm text-on-surface-variant mb-5">When the team next gathers to think together.</p>
+        <div className="space-y-3.5">
+          <div>
+            <label className={label}>What's it for</label>
+            <input autoFocus value={event} onChange={(e) => setEvent(e.target.value)} placeholder="e.g. Friday Night Gathering" className={field} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={label}>Day</label>
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
             </div>
-
-            {/* Search items filter */}
+            <div>
+              <label className={label}>Time</label>
+              <input value={time} onChange={(e) => setTime(e.target.value)} placeholder="7:00 PM" className={field} />
+            </div>
+          </div>
+          <div>
+            <label className={label}>Where</label>
+            <input value={place} onChange={(e) => setPlace(e.target.value)} placeholder="Lower Common Room" className={field} />
+          </div>
+          <div>
+            <label className={label}>Who's facilitating</label>
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search notes & learnings..."
-                className="w-full bg-surface border border-outline-variant rounded-full pl-10 pr-4 py-2.5 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-on-surface-variant/40 text-on-surface h-10"
-              />
-            </div>
-
-            {/* Category selection */}
-            <div className="flex items-center gap-2 pt-1 border-b border-outline-variant/30 pb-3">
-              <Filter className="w-3.5 h-3.5 text-on-surface-variant/85 shrink-0" />
-              <select
-                aria-label="Category filter"
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="bg-transparent border-none text-xs font-bold text-on-surface-variant focus:outline-none flex-1 truncate py-1"
-              >
-                <option value="all">All Plan categories</option>
-                <option value="annual_planning">Annual &amp; Regular Planning</option>
-                <option value="semester_kickoff">Semester Kickoff</option>
-                <option value="weekly_sync">Weekly Sync</option>
-                <option value="general">General Note</option>
+              <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50 pointer-events-none" />
+              <select value={facilitatorId} onChange={(e) => setFacilitatorId(e.target.value)} className={cn(field, 'pl-10')}>
+                {teamOptions.map((u) => (
+                  <option key={u.uid} value={u.uid}>
+                    {u.name}
+                  </option>
+                ))}
               </select>
             </div>
           </div>
-
-          {/* List items scroll area */}
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-            {loading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-                <Skeleton className="h-20 w-full rounded-2xl" />
-              </div>
-            ) : filteredNotes.length === 0 ? (
-              <div className="p-8 text-center bg-surface/40 rounded-2xl border border-dashed border-outline-variant/60">
-                <Folder className="w-8 h-8 text-on-surface-variant/30 mx-auto mb-2" />
-                <p className="text-xs font-bold text-on-surface-variant/70">No files found</p>
-                <p className="text-[10px] text-on-surface-variant/50">Try adjusting your filters or query</p>
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {filteredNotes.map((item) => {
-                  const isSelected = selectedNote?.id === item.id;
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => handleSelectNote(item)}
-                      className={`p-4 rounded-2xl border transition-all cursor-pointer text-left relative overflow-hidden flex flex-col gap-2 ${
-                        isSelected 
-                          ? 'bg-secondary-container/20 border-secondary ring-1 ring-secondary/20' 
-                          : 'bg-surface hover:bg-surface-variant/30 border-outline-variant/40'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <span className="text-xs text-on-surface-variant/70 font-bold font-mono">
-                          {item.date}
-                        </span>
-                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded border ${CATEGORY_COLORS[item.category]}`}>
-                          {item.category === 'annual_planning' ? 'Annual/Biannual' : CATEGORY_LABELS[item.category]}
-                        </span>
-                      </div>
-                      <h4 className="text-sm font-bold text-on-surface leading-snug line-clamp-2">
-                        {item.title}
-                      </h4>
-                      
-                      {/* Short excerpt */}
-                      <p className="text-xs text-on-surface-variant/70 line-clamp-1 prose leading-normal">
-                        {item.content?.replace(/[#*>\-\[\]]/g, '').substring(0, 80)}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
         </div>
-
-        {/* Right column: active document display & edit space */}
-        <div className="lg:col-span-8">
-          
-          <AnimatePresence mode="wait">
-            {!selectedNote ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="bg-surface-container border border-outline-variant p-10 sm:p-16 rounded-[2.5rem] text-center space-y-6 flex flex-col items-center justify-center min-h-[450px] shadow-sm"
-              >
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-2">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div className="space-y-2 max-w-sm">
-                  <h3 className="text-xl font-bold text-on-surface">No coordination note selected</h3>
-                  <p className="text-xs text-on-surface-variant">
-                    Review and search planning logs, event preparation, learnings and feedback notes. Select an item from the directory sidebar or generate a new document.
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg mt-4 text-left">
-                  <div className="p-4 bg-surface rounded-2xl border border-outline-variant/30 space-y-1">
-                    <span className="text-[10px] tracking-wider font-extrabold text-primary uppercase block">Annual Planning</span>
-                    <p className="text-[10px] text-on-surface-variant">Centralize periodic event logistics to streamline recurring schedules.</p>
-                  </div>
-                  <div className="p-4 bg-surface rounded-2xl border border-outline-variant/30 space-y-1">
-                    <span className="text-[10px] tracking-wider font-extrabold text-primary uppercase block">Sub-task delegation</span>
-                    <p className="text-[10px] text-on-surface-variant">Infinite-depth checklists allow delegating tasks down to detailed line items.</p>
-                  </div>
-                  <div className="p-4 bg-surface rounded-2xl border border-outline-variant/30 space-y-1">
-                    <span className="text-[10px] tracking-wider font-extrabold text-primary uppercase block">Lessons Learned</span>
-                    <p className="text-[10px] text-on-surface-variant">Rich text notes stay saved for quick review next season.</p>
-                  </div>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                key={selectedNote.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-surface-container border border-outline-variant p-5 sm:p-8 rounded-[2rem] shadow-sm space-y-6"
-              >
-                {/* Header view / editing fields */}
-                <div className="flex flex-col md:flex-row md:items-start justify-between gap-5 border-b border-outline-variant/20 pb-5">
-                  <div className="space-y-3.5 flex-1 w-full">
-                    
-                    {isEditing ? (
-                      <div className="space-y-3">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-on-surface-variant uppercase" htmlFor="notes-title-input">Document Title</label>
-                          <input
-                            id="notes-title-input"
-                            type="text"
-                            value={editTitle}
-                            onChange={(e) => setEditTitle(e.target.value)}
-                            placeholder="Enter notes title..."
-                            className="w-full text-xl font-bold bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary"
-                          />
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-on-surface-variant uppercase" htmlFor="notes-date-input">Event / Meeting Date</label>
-                            <input
-                              id="notes-date-input"
-                              type="date"
-                              value={editDate}
-                              onChange={(e) => setEditDate(e.target.value)}
-                              className="w-full text-sm bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary h-11"
-                            />
-                          </div>
-
-                          <div className="space-y-1">
-                            <label className="text-[11px] font-bold text-on-surface-variant uppercase" htmlFor="notes-category-select">Document Category</label>
-                            <select
-                              id="notes-category-select"
-                              value={editCategory}
-                              onChange={(e) => setEditCategory(e.target.value as any)}
-                              className="w-full text-sm bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary h-11"
-                            >
-                              <option value="general">General Note</option>
-                              <option value="annual_planning">Annual &amp; Regular Planning</option>
-                              <option value="semester_kickoff">Semester Kickoff</option>
-                              <option value="weekly_sync">Weekly Sync</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex flex-wrap gap-2.5 items-center">
-                          <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border ${CATEGORY_COLORS[selectedNote.category]}`}>
-                            {selectedNote.category === 'annual_planning' ? 'Annual/Biannual Planning' : CATEGORY_LABELS[selectedNote.category]}
-                          </span>
-                          <span className="flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {selectedNote.date}
-                          </span>
-                        </div>
-                        
-                        <h2 className="text-2xl font-regular tracking-tight text-on-surface">
-                          {selectedNote.title}
-                        </h2>
-
-                        <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-on-surface-variant/85 bg-surface/50 p-2.5 rounded-xl border border-outline-variant/30 w-fit">
-                          <span>Updated:</span>
-                          <strong className="font-semibold">{selectedNote.updatedByName || 'Unknown'}</strong>
-                          {selectedNote.updatedAt && (
-                            <>
-                              <span>on</span>
-                              <span className="font-mono">{new Date(selectedNote.updatedAt).toLocaleDateString()} {new Date(selectedNote.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                            </>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Top Header Actions (Edit / Save / Cancel / Delete) */}
-                  <div className="flex items-center gap-2 self-start md:self-center shrink-0">
-                    {selectedNote.archived ? (
-                      <>
-                        <button
-                          onClick={() => handleRestoreNote(selectedNote.id)}
-                          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary/10 text-primary rounded-xl font-bold text-xs hover:bg-primary/20 hover:text-primary active:scale-95 transition-all cursor-pointer border-none"
-                        >
-                          <Archive className="w-4 h-4" />
-                          <span>Restore Document</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteNote(selectedNote.id)}
-                          className="p-2 bg-transparent text-on-surface-variant hover:text-error hover:bg-error/10 border-none transition-colors duration-200 rounded-lg cursor-pointer"
-                          title="Delete meeting document permanently"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    ) : isEditing ? (
-                      <>
-                        <button
-                          onClick={handleSaveChanges}
-                          disabled={isSaving}
-                          className="flex items-center justify-center gap-1 px-4 py-2 bg-success text-on-success rounded-xl font-bold text-xs hover:opacity-90 active:scale-95 transition-all cursor-pointer border-none"
-                        >
-                          <Save className="w-3.5 h-3.5" />
-                          <span>{isSaving ? 'Saving...' : 'Save Draft'}</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            setIsEditing(false);
-                            setEditTitle(selectedNote.title);
-                            setEditDate(selectedNote.date);
-                            setEditCategory(selectedNote.category);
-                            setEditContent(selectedNote.content);
-                            setEditTodos(selectedNote.todos || []);
-                          }}
-                          className="flex items-center justify-center gap-1 px-4 py-2 bg-surface border border-outline-variant hover:bg-surface-container-high rounded-xl text-on-surface font-bold text-xs active:scale-95 transition-all cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                          <span>Cancel</span>
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setIsEditing(true);
-                            setEditTitle(selectedNote.title);
-                            setEditDate(selectedNote.date);
-                            setEditCategory(selectedNote.category);
-                            setEditContent(selectedNote.content);
-                            setEditTodos(selectedNote.todos || []);
-                          }}
-                          className="flex items-center justify-center gap-1.5 px-4 py-2.5 bg-primary/10 text-primary rounded-xl font-bold text-xs hover:bg-primary/20 hover:text-primary active:scale-95 transition-all cursor-pointer border-none"
-                        >
-                          <Edit className="w-4 h-4" />
-                          <span>Edit Document</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteNote(selectedNote.id)}
-                          className="p-2 bg-transparent text-on-surface-variant hover:text-error hover:bg-error/10 border-none transition-colors duration-200 rounded-lg cursor-pointer"
-                          title="Delete meeting document"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {selectedNote.archived && (
-                  <div className="bg-amber-500/10 border border-amber-500/20 text-orange-700 dark:text-amber-400 p-4 rounded-2xl flex items-center gap-3 text-xs font-semibold">
-                    <AlertCircle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                    <span>This coordination note is currently archived. It will not appear in the active documents directory list. You can restore it to resume editing.</span>
-                  </div>
-                )}
-
-                {/* Main Tabs Selection */}
-                <div className="flex border-b border-outline-variant/30 p-1 bg-surface rounded-2xl max-w-md">
-                  <button
-                    onClick={() => setActiveTab('notes')}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-2 ${
-                      activeTab === 'notes'
-                        ? 'bg-primary text-on-primary shadow-xs'
-                        : 'text-on-surface-variant hover:bg-surface-container-high'
-                    }`}
-                  >
-                    <FileText className="w-4 h-4" />
-                    <span>Notes &amp; Learnings</span>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('todos')}
-                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all border-none cursor-pointer flex items-center justify-center gap-2 ${
-                      activeTab === 'todos'
-                        ? 'bg-primary text-on-primary shadow-xs'
-                        : 'text-on-surface-variant hover:bg-surface-container-high'
-                    }`}
-                  >
-                    <CheckSquare className="w-4 h-4" />
-                    <span>Action Items ({editTodos?.length || 0})</span>
-                  </button>
-                </div>
-
-                {/* Tab content displays */}
-                <div>
-                  <AnimatePresence mode="wait">
-                    
-                    {activeTab === 'notes' ? (
-                      <motion.div
-                        key="notes-tab"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="space-y-4"
-                      >
-                        {isEditing ? (
-                          <div className="space-y-4 text-left font-sans">
-                            {/* Toolbar or Switch Zone */}
-                            {!editDirectly ? (
-                              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-2.5 rounded-2xl border border-outline-variant/30 shadow-xs">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('**', '**')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Bold text (**bold**)"
-                                  >
-                                    <Bold className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('*', '*')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Italic text (*italic*)"
-                                  >
-                                    <Italic className="w-4 h-4" />
-                                  </button>
-                                  <div className="h-4 w-[1px] bg-outline-variant/40 mx-1" />
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('# ', '')}
-                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
-                                    title="Heading 1"
-                                  >
-                                    H1
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('## ', '')}
-                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
-                                    title="Heading 2"
-                                  >
-                                    H2
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('### ', '')}
-                                    className="p-1 px-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent text-xs font-black font-mono"
-                                    title="Heading 3"
-                                  >
-                                    H3
-                                  </button>
-                                  <div className="h-4 w-[1px] bg-outline-variant/40 mx-1" />
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('- ', '')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Bullet List"
-                                  >
-                                    <List className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('> ', '')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Blockquote"
-                                  >
-                                    <Quote className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('`', '`')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Inline Code"
-                                  >
-                                    <Code className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => insertMarkdown('[', '](url)')}
-                                    className="p-2 hover:bg-surface-variant/40 text-on-surface-variant hover:text-on-surface rounded-lg transition-colors cursor-pointer border-none bg-transparent"
-                                    title="Insert Link"
-                                  >
-                                    <Link className="w-4 h-4" />
-                                  </button>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditDirectly(true)}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-xl hover:opacity-95 transition-all cursor-pointer border-none text-xs font-bold shadow-xs hover:shadow-sm"
-                                    title="Switch to full-width raw editor"
-                                  >
-                                    <Code className="w-3.5 h-3.5" />
-                                    <span>Edit Directly</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-2.5 rounded-2xl border border-outline-variant/30 shadow-xs">
-                                <div className="flex items-center gap-2 pl-2">
-                                  <Code className="w-4 h-4 text-primary" />
-                                  <span className="text-sm font-semibold text-on-surface">Raw Markdown Editor</span>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  {/* Help tool */}
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowCheatsheet(!showCheatsheet)}
-                                    className="text-xs text-on-surface-variant hover:text-primary font-medium flex items-center gap-1 border border-outline-variant/20 bg-transparent px-2.5 py-1 rounded-xl hover:bg-surface-variant/25 transition-all cursor-pointer"
-                                  >
-                                    <HelpCircle className="w-3.5 h-3.5" />
-                                    <span>{showCheatsheet ? 'Hide Help' : 'Formatting Help'}</span>
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => setEditDirectly(false)}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-surface-variant text-on-surface-variant border border-outline-variant/20 rounded-xl hover:bg-surface-variant/40 transition-all cursor-pointer text-xs font-bold"
-                                    title="Switch back to interactive live preview editor"
-                                  >
-                                    <Eye className="w-3.5 h-3.5" />
-                                    <span>Show Live Preview</span>
-                                  </button>
-                                </div>
-                              </div>
-                            )}
-
-                            {showCheatsheet && editDirectly && (
-                              <motion.div 
-                                initial={{ height: 0, opacity: 0 }}
-                                animate={{ height: 'auto', opacity: 1 }}
-                                className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface p-4 rounded-2xl border border-outline-variant/40"
-                              >
-                                {MARKDOWN_CHEATSHEET.map((item, i) => (
-                                  <div key={i} className="text-[11px] font-mono p-1">
-                                    <span className="text-primary font-bold">{item.syntax}</span>
-                                    <span className="text-on-surface-variant/70 block">{item.result}</span>
-                                  </div>
-                                ))}
-                              </motion.div>
-                            )}
-
-                            {/* Dual panel split preview zone vs raw zone */}
-                            {!editDirectly ? (
-                              <div className="flex flex-col gap-2 min-h-[350px]">
-                                <div className="flex items-center justify-between">
-                                  <label className="text-[11.5px] font-bold text-on-surface-variant/80 uppercase">Interactive Live Preview & Editor</label>
-                                  <span className="text-xs text-on-surface-variant/50">Changes are converted to formatted markdown automatically</span>
-                                </div>
-                                <div className="flex-1 bg-surface/40 rounded-[1.5rem] border border-outline-variant/30 p-5 sm:p-7 text-left prose dark:prose-invert max-w-none shadow-inner overflow-y-auto min-h-[300px] max-h-[500px]">
-                                  <EditableMarkdownPreview
-                                    content={editContent}
-                                    isEditingPreview={isEditingPreview}
-                                    setIsEditingPreview={setIsEditingPreview}
-                                    onChange={setEditContent}
-                                    isSaving={isSaving}
-                                  />
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex flex-col gap-2">
-                                <label className="text-[11.5px] font-bold text-on-surface-variant/80 uppercase">Markdown Content (Raw Editor)</label>
-                                <textarea
-                                  ref={textareaRef}
-                                  value={editContent}
-                                  onChange={(e) => setEditContent(e.target.value)}
-                                  rows={15}
-                                  placeholder="Type in markdown content. You can write tables, checkmarks, bullet items, blockquotes, and links."
-                                  className="w-full bg-surface text-on-surface rounded-2xl border border-outline-variant/50 p-4 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary resize-y"
-                                />
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="bg-surface/40 rounded-[1.5rem] border border-outline-variant/30 p-5 sm:p-7 text-left prose dark:prose-invert max-w-none shadow-inner">
-                            <div className="markdown-body">
-                              <Markdown
-                                components={{
-                                  h1: ({node, ...props}) => <h1 className="text-2xl font-bold tracking-tight text-on-surface mt-6 mb-3 first:mt-0 border-b border-outline-variant/30 pb-2" {...props} />,
-                                  h2: ({node, ...props}) => <h2 className="text-xl font-bold tracking-tight text-on-surface mt-5 mb-2.5 border-b border-outline-variant/20 pb-1" {...props} />,
-                                  h3: ({node, ...props}) => <h3 className="text-lg font-bold tracking-tight text-on-surface mt-4 mb-2" {...props} />,
-                                  p: ({node, ...props}) => <p className="text-sm text-on-surface-variant leading-relaxed mb-4 font-normal" {...props} />,
-                                  ul: ({node, ...props}) => <ul className="list-disc pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
-                                  ol: ({node, ...props}) => <ol className="list-decimal pl-6 mb-4 space-y-2 text-sm text-on-surface-variant" {...props} />,
-                                  li: ({node, ...props}) => <li className="pl-1" {...props} />,
-                                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-primary bg-primary/5 pl-4 py-3 italic my-4 rounded-r-2xl text-on-surface" {...props} />,
-                                  code: ({node, ...props}) => <code className="font-mono text-xs bg-surface-container-high px-1.5 py-0.5 rounded text-primary" {...props} />,
-                                  strong: ({node, ...props}) => <strong className="font-bold text-on-surface" {...props} />,
-                                  em: ({node, ...props}) => <em className="italic text-on-surface" {...props} />,
-                                  a: ({node, ...props}) => <a className="text-primary underline font-medium hover:text-primary/80" target="_blank" rel="noopener noreferrer" {...props} />,
-                                }}
-                              >
-                                {selectedNote.content || '*No content provided. Click Edit to add meeting planning notes.*'}
-                              </Markdown>
-                            </div>
-                          </div>
-                        )}
-                      </motion.div>
-                    ) : (
-                      <motion.div
-                        key="todos-tab"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="space-y-6 text-left"
-                      >
-                        <div className="bg-surface-container-high/40 rounded-2xl border border-outline-variant/20 p-4 flex items-start gap-2.5 text-xs text-on-surface-variant mb-2">
-                          <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                          <p className="leading-normal">
-                            <strong>Interactive Checklist Info:</strong> 
-                            {isEditing 
-                              ? ' You are in editing mode. You can check off tasks, change titles, add recursive sub-tasks, or delete items. Your modifications will be saved once you click "Save Draft" in the header.' 
-                              : ' You are in view-only mode. Click "Edit Document" first in the header to modify, check off, or add new items to the checklist.'
-                            }
-                          </p>
-                        </div>
-
-                        {/* Top-Level Master task adder */}
-                        {isEditing && (
-                          <div className="flex gap-2.5 pb-2">
-                            <input
-                              type="text"
-                              aria-label="New main action item"
-                              placeholder="Add a new main action item / todo..."
-                              value={todoInputMap['root'] || ''}
-                              onChange={(e) => setTodoInputMap(prev => ({ ...prev, root: e.target.value }))}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleAddTodo(null);
-                                }
-                              }}
-                              className="flex-1 bg-surface border border-outline-variant rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-on-surface"
-                            />
-                            <button
-                              type="button"
-                              onClick={() => handleAddTodo(null)}
-                              disabled={!todoInputMap['root']?.trim()}
-                              className="px-4 py-2 bg-primary text-on-primary rounded-xl font-bold text-xs hover:opacity-90 active:scale-95 disabled:opacity-50 transition-all border-none cursor-pointer flex items-center justify-center gap-1"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Add Title Task</span>
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Infinite Sub-task List renderer */}
-                        {editTodos.length === 0 ? (
-                          <div className="p-12 text-center bg-surface/30 rounded-2xl border border-dashed border-outline-variant/60">
-                            <CheckSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-3" />
-                            <h4 className="text-sm font-bold text-on-surface-variant/70">Checklist is empty</h4>
-                            <p className="text-xs text-on-surface-variant/50">
-                              {isEditing ? 'Enter a parent item above to bootstrap the checklist' : 'This workspace has no registered action items.'}
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
-                            <RecursiveTodoRenderer items={editTodos} level={0} />
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-
-                  </AnimatePresence>
-                </div>
-
-              </motion.div>
-            )}
-          </AnimatePresence>
-
+        <div className="flex gap-2.5 mt-6">
+          <button onClick={onClose} className="flex-1 px-4 py-2.5 border border-outline-variant text-on-surface-variant text-sm font-medium rounded-xl hover:bg-surface-container transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={() => onSave({ event, date, time, place, facilitatorId })}
+            disabled={!event.trim()}
+            className="flex-1 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
+          >
+            Open session
+          </button>
         </div>
-
       </div>
+    </div>
+  );
+}
 
-      {/* Custom Material 3 Delete Confirmation Dialog */}
-      <AnimatePresence>
-        {showDeleteConfirm && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Background Backdrop overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowDeleteConfirm(false);
-                setDeletingNoteId(null);
-              }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-xs"
-            />
+// ── Add-note form ─────────────────────────────────────────────────────────────
+function NoteForm({
+  seriesOptions,
+  onCancel,
+  onSave,
+}: {
+  seriesOptions: string[];
+  onCancel: () => void;
+  onSave: (f: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => void;
+}) {
+  const [type, setType] = useState<NoteType>('record');
+  const [series, setSeries] = useState(seriesOptions[0] || 'Team');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [tags, setTags] = useState('');
 
-            {/* Modal Dialog container Card */}
-            {(() => {
-              const deletingNote = notes.find(n => n.id === deletingNoteId);
-              const isAlreadyArchived = deletingNote ? !!deletingNote.archived : false;
-              
-              return (
-                <motion.div
-                  initial={{ scale: 0.95, opacity: 0, y: 15 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.95, opacity: 0, y: 15 }}
-                  className="relative w-full max-w-md overflow-hidden rounded-[2rem] bg-surface-container-high border border-outline-variant p-6 md:p-8 shadow-2xl flex flex-col gap-4 text-left z-10"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isAlreadyArchived ? 'bg-error-container text-error' : 'bg-primary-container text-primary'}`}>
-                      {isAlreadyArchived ? <Trash2 className="w-5 h-5" /> : <Archive className="w-5 h-5" />}
-                    </div>
-                    <h3 className="text-xl font-bold text-on-surface">
-                      {isAlreadyArchived ? 'Delete Note Permanently?' : 'Archive or Delete Note?'}
-                    </h3>
-                  </div>
+  const parseTags = (s: string) =>
+    Array.from(new Set(s.split(/[,\s]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean)));
 
-                  <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
-                    {isAlreadyArchived 
-                      ? 'This note is already archived. Are you sure you want to permanently delete it? This action cannot be reverted and will delete it from Firestore.'
-                      : 'You can archive this document to hide it from your active directory while preserving all checklists and meeting learnings, or permanently erase it from the cloud.'
-                    }
-                  </p>
+  const field = 'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
 
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 mt-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowDeleteConfirm(false);
-                        setDeletingNoteId(null);
-                      }}
-                      className="px-4 py-2 bg-surface hover:bg-surface-container-highest border border-outline-variant rounded-xl text-xs font-bold text-on-surface transition-all cursor-pointer h-10 flex items-center justify-center"
-                      id="cancel-delete-note-btn"
-                    >
-                      Cancel
-                    </button>
-                    
-                    {!isAlreadyArchived && (
-                      <button
-                        type="button"
-                        onClick={executeArchiveNote}
-                        className="px-4 py-2.5 bg-primary text-on-primary rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 h-10"
-                        id="archive-note-btn"
-                      >
-                        <Archive className="w-3.5 h-3.5" />
-                        <span>Archive Note</span>
-                      </button>
-                    )}
-                    
-                    <button
-                      type="button"
-                      onClick={executeDeleteNote}
-                      className="px-4 py-2.5 bg-error text-on-error rounded-xl text-xs font-bold hover:opacity-90 transition-all cursor-pointer border-none flex items-center justify-center gap-1.5 h-10"
-                      id="confirm-delete-note-btn"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete Permanently</span>
-                    </button>
-                  </div>
-                </motion.div>
-              );
-            })()}
-          </div>
-        )}
-      </AnimatePresence>
-
+  return (
+    <div className="mb-4 p-4 rounded-2xl bg-surface border border-outline-variant space-y-3">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+          {(['record', 'learning'] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setType(k)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
+                type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+        <select value={series} onChange={(e) => setSeries(e.target.value)} className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent">
+          {seriesOptions.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+      </div>
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A short title — what this was about" className={field} />
+      <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="What happened, or what you learned…" className={cn(field, 'resize-y leading-relaxed')} />
+      <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags — welcome, retreat, follow-up" className={field} />
+      <div className="flex gap-2.5 justify-end">
+        <button onClick={onCancel} className="px-3.5 py-2 border border-outline-variant text-on-surface-variant text-sm font-medium rounded-xl hover:bg-surface-container transition-colors">
+          Cancel
+        </button>
+        <button
+          onClick={() => onSave({ type, series, title, body, tags: parseTags(tags) })}
+          disabled={!title.trim()}
+          className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
+        >
+          Save to archive
+        </button>
+      </div>
     </div>
   );
 }
