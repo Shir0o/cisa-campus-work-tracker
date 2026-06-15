@@ -434,6 +434,20 @@ export default function OutreachBoard() {
     return filteredContacts.filter((c) => !c.stage || !activeStageLabels.has(c.stage));
   }, [filteredContacts, activeStageLabels]);
 
+  // Header breakdown — sums to the bold total. Includes a "not yet placed" term
+  // for the Unassigned column so the per-stage counts reconcile (see #29).
+  const breakdownParts = useMemo(() => {
+    const parts = stages.map((s) => ({
+      key: s.id,
+      count: getStageContactsArr(s.label).length,
+      label: s.label.toLowerCase(),
+    }));
+    if (unmappedContacts.length > 0) {
+      parts.push({ key: 'uncategorized', count: unmappedContacts.length, label: 'not yet placed' });
+    }
+    return parts;
+  }, [stages, filteredContacts, unmappedContacts]);
+
   const activeContact = useMemo(() =>
     boardContacts.find(c => c.id === activeId),
     [activeId, boardContacts]
@@ -570,11 +584,11 @@ export default function OutreachBoard() {
               {stages.length > 0 && (
                 <>
                   {' — '}
-                  {stages.map((s, i) => (
-                    <React.Fragment key={s.id}>
-                      <span className="text-on-surface font-medium">{getStageContactsArr(s.label).length}</span>{' '}
-                      {s.label.toLowerCase()}
-                      {i < stages.length - 1 ? ', ' : '.'}
+                  {breakdownParts.map((p, i) => (
+                    <React.Fragment key={p.key}>
+                      <span className="text-on-surface font-medium">{p.count}</span>{' '}
+                      {p.label}
+                      {i < breakdownParts.length - 1 ? ', ' : '.'}
                     </React.Fragment>
                   ))}
                 </>
@@ -825,7 +839,7 @@ interface KanbanColumnProps {
   onEditStage: (stage: Stage) => void;
   onEditContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => Promise<void>;
-  onAddContact: () => void;
+  onAddContact: (stage: string) => void;
   key?: string | number;
 }
 
@@ -952,7 +966,7 @@ function KanbanColumn({
       {/* Column footer */}
       <div className="p-3">
         <button
-          onClick={onAddContact}
+          onClick={() => onAddContact(stageInfo.label)}
           className="w-full py-2.5 rounded-xl border border-dashed border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
         >
           {isFirst ? 'Welcome someone new' : `Add to ${stageInfo.label}`}

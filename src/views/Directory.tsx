@@ -482,7 +482,7 @@ export default function Directory() {
           </p>
         </div>
         <button
-          onClick={openNewContact}
+          onClick={() => openNewContact()}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
         >
           <Plus className="w-4 h-4" /> Add someone

@@ -10,9 +10,11 @@ import { Contact, Stage } from '../../types';
 interface NewContactModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Pre-select a stage (e.g. opened from a board column's "Add to …"). */
+  initialStage?: string;
 }
 
-export default function NewContactModal({ isOpen, onClose }: NewContactModalProps) {
+export default function NewContactModal({ isOpen, onClose, initialStage }: NewContactModalProps) {
   const { user, role } = useAuth();
   if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
@@ -49,20 +51,17 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
           const querySnapshot = await getDocs(q);
           const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
           setStages(stageData);
-          
-          if (stageData.length > 0) {
-            setFormData(f => ({ ...f, stage: stageData[0].label }));
-          } else {
-            setFormData(f => ({ ...f, stage: 'First Contact' }));
-          }
+
+          const fallback = stageData.length > 0 ? stageData[0].label : 'First Contact';
+          setFormData(f => ({ ...f, stage: initialStage || fallback }));
         } catch (error) {
-          setFormData(f => ({ ...f, stage: 'First Contact' }));
+          setFormData(f => ({ ...f, stage: initialStage || 'First Contact' }));
           handleFirestoreError(error, OperationType.LIST, 'stages');
         }
       };
       fetchStages();
     }
-  }, [isOpen]);
+  }, [isOpen, initialStage]);
 
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);

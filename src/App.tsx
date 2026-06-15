@@ -41,7 +41,7 @@ interface LayoutContextType {
   setIsSidebarCollapsed: (value: boolean) => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (value: boolean) => void;
-  openNewContact: () => void;
+  openNewContact: (initialStage?: string) => void;
   openLogInteraction: () => void;
   setSelectedContact: (contact: Contact | null) => void;
   searchOpen: boolean;
@@ -258,6 +258,9 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
+  const [newContactStage, setNewContactStage] = React.useState<
+    string | undefined
+  >(undefined);
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -284,7 +287,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         setIsSidebarCollapsed,
         isMobileMenuOpen,
         setIsMobileMenuOpen,
-        openNewContact: () => setIsNewContactModalOpen(true),
+        openNewContact: (initialStage?: string) => {
+          setNewContactStage(initialStage);
+          setIsNewContactModalOpen(true);
+        },
         openLogInteraction: () => setIsLogInteractionOpen(true),
         setSelectedContact: (contact: Contact | null) =>
           setSelectedContact(contact),
@@ -313,7 +319,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <NewContactModal
           isOpen={isNewContactModalOpen}
-          onClose={() => setIsNewContactModalOpen(false)}
+          onClose={() => {
+            setIsNewContactModalOpen(false);
+            setNewContactStage(undefined);
+          }}
+          initialStage={newContactStage}
         />
 
         <LogInteractionModal
