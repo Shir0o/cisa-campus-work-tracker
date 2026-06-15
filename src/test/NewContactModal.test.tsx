@@ -50,6 +50,31 @@ describe('NewContactModal', () => {
     });
   });
 
+  it('prefills the stage select from initialStage (e.g. "Add to {stage}")', async () => {
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Unassigned" />);
+    await waitFor(() => {
+      // Stage select is the first combobox; spiritual background is the second.
+      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      expect(stageSelect.value).toBe('Unassigned');
+    });
+  });
+
+  it('defaults the stage to the first stage when no initialStage is given', async () => {
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      expect(stageSelect.value).toBe('Contacted');
+    });
+  });
+
+  it('falls back to the first stage when initialStage is not a valid option', async () => {
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Nonexistent" />);
+    await waitFor(() => {
+      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      expect(stageSelect.value).toBe('Contacted');
+    });
+  });
+
   it('submits correctly', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
