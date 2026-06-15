@@ -56,8 +56,8 @@ export default function NewContactModal({ isOpen, onClose }: NewContactModalProp
             setFormData(f => ({ ...f, stage: 'First Contact' }));
           }
         } catch (error) {
-          handleFirestoreError(error, OperationType.LIST, 'stages');
           setFormData(f => ({ ...f, stage: 'First Contact' }));
+          handleFirestoreError(error, OperationType.LIST, 'stages');
         }
       };
       fetchStages();

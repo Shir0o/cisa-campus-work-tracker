@@ -239,8 +239,8 @@ export default function OutreachBoard() {
       setStages(stagesData);
       setTimeout(() => setLoading(false), 800);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'stages');
       setTimeout(() => setLoading(false), 800);
+      handleFirestoreError(error, OperationType.LIST, 'stages');
     });
 
     return () => unsubscribe();

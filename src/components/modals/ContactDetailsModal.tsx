@@ -406,8 +406,8 @@ export default function ContactDetailsModal({
           setPrayersLoading(false);
         },
         (error) => {
-          handleFirestoreError(error, OperationType.LIST, "prayers");
           setPrayersLoading(false);
+          handleFirestoreError(error, OperationType.LIST, "prayers");
         },
       );
 
