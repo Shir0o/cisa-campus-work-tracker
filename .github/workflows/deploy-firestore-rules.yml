@@ -1,0 +1,85 @@
+name: Deploy Firestore Rules
+
+# Publishes firestore.rules to the live project on merge to main, so rules
+# changes no longer have to be published by hand (Console / `firebase deploy`).
+#
+# Auth: expects a repo secret named FIREBASE_SERVICE_ACCOUNT containing the full
+# JSON of a Google service-account key with permission to deploy Firestore rules
+# (role roles/firebaserules.admin on project sac-campus-hub). See the PR
+# description for setup notes.
+
+on:
+  # Manual trigger — re-publish rules or validate the deploy credential without
+  # a code change. (GitHub only allows this once the workflow is on the default
+  # branch.)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - firestore.rules
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-firestore-rules.yml
+
+# Never let two rule deploys race each other.
+concurrency:
+  group: deploy-firestore-rules
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Gate the deploy on the emulator-backed rules tests. These run only when the
+  # Firestore emulator is up (FIRESTORE_EMULATOR_HOST is set by emulators:exec),
+  # so they stay skipped in the normal CI / local `npm test` run.
+  test-rules:
+    name: Rules tests (Firestore emulator)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      - name: Run rules tests against the Firestore emulator
+        run: >
+          firebase emulators:exec
+          --only firestore
+          --project demo-campus-hub
+          "npx vitest run src/test/firestore.rules.test.ts"
+
+  deploy:
+    name: Deploy Firestore rules
+    needs: test-rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      # Authenticates the Firebase CLI non-interactively: this action writes the
+      # service-account key to a temp file and exports
+      # GOOGLE_APPLICATION_CREDENTIALS, which the CLI honors. Preferred over the
+      # deprecated FIREBASE_TOKEN flow.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy Firestore rules
+        run: >
+          firebase deploy
+          --only firestore:rules
+          --project sac-campus-hub
+          --non-interactive
