@@ -53,7 +53,12 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           setStages(stageData);
 
           const fallback = stageData.length > 0 ? stageData[0].label : 'First Contact';
-          setFormData(f => ({ ...f, stage: initialStage || fallback }));
+          // initialStage may be a real stage label or the hard-coded "Unassigned"
+          // option; fall back if it's neither (e.g. a stage that no longer exists),
+          // so the select never holds a value that isn't an option.
+          const validStages = new Set<string>(['Unassigned', ...stageData.map(s => s.label)]);
+          const stage = initialStage && validStages.has(initialStage) ? initialStage : fallback;
+          setFormData(f => ({ ...f, stage }));
         } catch (error) {
           setFormData(f => ({ ...f, stage: initialStage || 'First Contact' }));
           handleFirestoreError(error, OperationType.LIST, 'stages');

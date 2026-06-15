@@ -67,6 +67,14 @@ describe('NewContactModal', () => {
     });
   });
 
+  it('falls back to the first stage when initialStage is not a valid option', async () => {
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Nonexistent" />);
+    await waitFor(() => {
+      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      expect(stageSelect.value).toBe('Contacted');
+    });
+  });
+
   it('submits correctly', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
