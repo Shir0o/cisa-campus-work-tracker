@@ -30,8 +30,11 @@ jobs:
         uses: qodo-ai/pr-agent@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CONFIG__MODEL: "gemini/gemini-2.5-pro"
-          CONFIG__FALLBACK_MODELS: '["gemini/gemini-2.5-flash"]'
+          # gemini-2.5-pro has no free-tier quota on the AI Studio key (every call
+          # 429s with "limit: 0"), so flash is the primary; flash-lite is the
+          # fallback for when flash briefly 503s under load.
+          CONFIG__MODEL: "gemini/gemini-2.5-flash"
+          CONFIG__FALLBACK_MODELS: '["gemini/gemini-2.5-flash-lite"]'
           GOOGLE_AI_STUDIO__GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GITHUB_ACTION_CONFIG__AUTO_REVIEW: "false"
           GITHUB_ACTION_CONFIG__AUTO_DESCRIBE: "false"
