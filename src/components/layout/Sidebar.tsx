@@ -131,7 +131,10 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         </div>
 
         {/* Main Nav Items */}
-        <div className="flex-1 space-y-0.5 overflow-hidden">
+        <div className={cn(
+          "flex-1 space-y-0.5 overflow-y-auto",
+          effectiveIsCollapsed ? "no-scrollbar" : "custom-scrollbar pr-1"
+        )}>
           {navItems.map((item) => (
             <NavLink
               key={item.href}
