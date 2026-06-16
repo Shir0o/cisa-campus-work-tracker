@@ -155,6 +155,22 @@ describe('roleLabel()', () => {
     expect(roleLabel('operator')).toBe('Student');
     expect(roleLabel('viewer')).toBe('Community');
     expect(roleLabel(null)).toBe('Guest');
+    expect(roleLabel('')).toBe('Guest');
+    expect(roleLabel('unregistered_role')).toBe('Unregistered_role');
+  });
+
+  it('handles fallback cases for canAccessRoute, hasMinRole, and defaultRouteForRole', () => {
+    // canAccessRoute fallback for invalid role
+    expect(canAccessRoute('invalid_role', '/')).toBe(false);
+    // canAccessRoute fallback for unknown path (falls back to minRole = admin)
+    expect(canAccessRoute('viewer', '/unknown-route')).toBe(false);
+    expect(canAccessRoute('admin', '/unknown-route')).toBe(true);
+
+    // hasMinRole fallback for invalid role
+    expect(hasMinRole('invalid_role', 'viewer')).toBe(false);
+
+    // defaultRouteForRole fallback for invalid role
+    expect(defaultRouteForRole('invalid_role')).toBe('/attendance');
   });
 });
 
