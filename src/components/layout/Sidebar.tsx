@@ -133,7 +133,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         {/* Main Nav Items */}
         <div className={cn(
           "flex-1 space-y-0.5 overflow-y-auto",
-          effectiveIsCollapsed ? "no-scrollbar" : "custom-scrollbar pr-1"
+          effectiveIsCollapsed ? "no-scrollbar" : "custom-scrollbar"
         )}>
           {navItems.map((item) => (
             <NavLink
