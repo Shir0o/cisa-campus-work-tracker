@@ -18,6 +18,13 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - `CLAUDE.md` is now gitignored, and the worktree-sync hook mirrors it into git
   worktrees on session start so project instructions follow each worktree (#39).
 
+### Fixed
+- The Board live collaboration no longer fails with RTDB `permission_denied`:
+  broadened the `board_docs_rtdb` rule to any signed-in, email-verified user
+  (the previous rule required an `admin` custom claim the app never sets, so
+  Firestore-role admins were denied), and added CI auto-deploy for
+  `database.rules.json` so RTDB rule changes actually reach the live project.
+
 ## [2026-06] — Field Notes design system, RBAC & CI
 
 ### Added
