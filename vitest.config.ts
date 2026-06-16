@@ -18,15 +18,13 @@ export default defineConfig({
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/test/**', 'src/**/*.d.ts'],
-      // Current baseline (after P1 pure logic): ~34% lines/statements, ~26% branches/functions.
-      // Dipped from ~27% when the large, AI-generated CoordinationNotes view
-      // (1.4k lines, currently untested) landed — see the coordination-notes
-      // test follow-up. Raise these numbers as coverage improves toward 90%.
+      // Current baseline (after P2 providers & shared UI primitives): ~39% lines, ~31% branches, ~33% functions, ~38% statements.
+      // Raise these numbers as coverage improves toward 90%.
       thresholds: {
-        lines: 34,
-        branches: 26,
-        functions: 28,
-        statements: 33,
+        lines: 39,
+        branches: 31,
+        functions: 32,
+        statements: 38,
       },
     },
   },
