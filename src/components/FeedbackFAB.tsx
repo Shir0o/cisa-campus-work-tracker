@@ -92,11 +92,25 @@ export default function FeedbackFAB() {
 
     // 1. Write feedback record via Backend API
     try {
+      let token: string | null = null;
+      try {
+        if (user && typeof user.getIdToken === 'function') {
+          token = await user.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.error('Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/feedback', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 

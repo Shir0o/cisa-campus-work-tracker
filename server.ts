@@ -1,6 +1,9 @@
+
+
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import admin from "firebase-admin";
@@ -13,7 +16,11 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({
+    verify: (req: any, res, buf) => {
+      req.rawBody = buf;
+    }
+  }));
   app.use(express.urlencoded({ extended: true }));
 
   // Terminal Request Logging Middleware to easily track incoming webhook/API requests in dev stdout console
@@ -84,6 +91,377 @@ async function startServer() {
     }
     return aiClientInstance;
   }
+
+  // Helper function to get Admin Auth instance
+  function getAdminAuth() {
+    getAdminDb(); // ensure admin is initialized
+    return admin.auth();
+  }
+
+  // Authenticate Firebase user from request Authorization header
+  async function authenticateFirebaseUser(req: express.Request) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new Error("Missing or invalid Authorization header");
+    }
+    const token = authHeader.split("Bearer ")[1];
+    const decodedToken = await getAdminAuth().verifyIdToken(token);
+    return decodedToken;
+  }
+
+  // Authorize administrator role
+  async function authorizeAdmin(req: express.Request) {
+    const decodedToken = await authenticateFirebaseUser(req);
+    const uid = decodedToken.uid;
+    const email = decodedToken.email || "";
+
+    if (email.toLowerCase() === "yilongwang05@gmail.com") {
+      return { uid, email, role: "admin" };
+    }
+
+    const userDoc = await getAdminDb().collection("users").doc(uid).get();
+    if (!userDoc.exists) {
+      throw new Error("User does not exist in the system");
+    }
+
+    const userData = userDoc.data()!;
+    if (userData.role !== "admin") {
+      throw new Error("User is not an administrator");
+    }
+
+    return { uid, email, role: userData.role };
+  }
+
+  // Helper function to update GitHub issue state bidirectionally
+  async function updateGitHubIssueState(issueUrl: string | undefined, state: 'open' | 'closed', reason?: 'completed' | 'not_planned') {
+    if (!issueUrl) return;
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      console.warn("GITHUB_TOKEN not configured; skipping GitHub issue status sync.");
+      return;
+    }
+
+    // Parse owner, repo, issue number from HTML URL
+    const match = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
+    if (!match) {
+      console.error(`Invalid GitHub issue URL format for sync: ${issueUrl}`);
+      return;
+    }
+
+    const [_, owner, repo, issueNumber] = match;
+    const targetUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
+
+    try {
+      const payload: any = { state };
+      if (state === 'closed' && reason) {
+        payload.state_reason = reason;
+      }
+
+      const response = await fetch(targetUrl, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github+json',
+          'X-GitHub-Api-Version': '2022-11-28',
+          'Content-Type': 'application/json',
+          'User-Agent': 'CISA-Campus-Work-Tracker-Server',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`GitHub API error updating issue: ${response.status} - ${errorText}`);
+      } else {
+        console.log(`Successfully updated GitHub issue state to ${state} (${reason || 'no reason'}) for ${issueUrl}`);
+      }
+    } catch (error) {
+      console.error(`Failed to update GitHub issue state for ${issueUrl}:`, error);
+    }
+  }
+
+  // Endpoint: Submit feedback (with capture diagnostics and auto GitHub issue creation)
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      let userId = req.body.userId;
+      let userEmail = req.body.userEmail;
+      let userName = req.body.userName;
+
+      // Authenticate via Firebase ID token if Authorization header is present
+      if (req.headers.authorization) {
+        try {
+          const decoded = await authenticateFirebaseUser(req);
+          userId = decoded.uid;
+          userEmail = decoded.email || "anonymous";
+          userName = decoded.name || decoded.displayName || req.body.userName || "Anonymous User";
+        } catch (authErr: any) {
+          console.error("Firebase ID token verification failed:", authErr);
+          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+        }
+      } else if (process.env.NODE_ENV !== "test") {
+        return res.status(401).json({ error: "Unauthorized: Authorization header is required." });
+      }
+
+      const {
+        type,
+        kind,
+        message,
+        screenshot,
+        url,
+        userAgent,
+        viewport
+      } = req.body;
+
+      if (!message || typeof message !== "string") {
+        return res.status(400).json({ error: "Missing required 'message' parameter." });
+      }
+
+      const db = getAdminDb();
+      const feedbackData: any = {
+        userId: userId || "anonymous",
+        userEmail: userEmail || "anonymous",
+        userName: userName || "Anonymous User",
+        type: type || "enhancement",
+        kind: kind || "thought",
+        message: message.trim(),
+        status: "new",
+        createdAt: new Date().toISOString(),
+        archived: false,
+      };
+
+      if (screenshot) feedbackData.screenshot = screenshot;
+      if (url) feedbackData.url = url;
+      if (userAgent) feedbackData.userAgent = userAgent;
+      if (viewport) feedbackData.viewport = viewport;
+
+      // 1. Save to Firestore
+      const docRef = await db.collection("feedback").add(feedbackData);
+      console.log(`Saved feedback document to Firestore: "${docRef.id}"`);
+
+      // 2. Best-effort create GitHub issue if credentials exist
+      const githubToken = process.env.GITHUB_TOKEN;
+      const githubRepo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO || "Shir0o/cisa-campus-work-traker";
+
+      let githubIssueUrl = "";
+      if (githubToken && githubRepo) {
+        try {
+          const kindLabel = kind || type;
+          const cleanMsg = message.trim();
+          const title = `[Feedback] ${kindLabel}: ${cleanMsg.slice(0, 50)}${cleanMsg.length > 50 ? '...' : ''}`;
+          
+          let body = `### Feedback Details
+- **Submitted By:** ${userName || 'Anonymous'} (${userEmail || 'anonymous'})
+- **Type:** ${type || 'enhancement'}
+- **Kind:** ${kindLabel}
+- **Date:** ${new Date().toLocaleString()}
+- **Page URL:** ${url || 'N/A'}
+- **Viewport:** ${viewport || 'N/A'}
+- **User Agent:** ${userAgent || 'N/A'}
+
+### Message
+\`\`\`text
+${cleanMsg}
+\`\`\`
+
+---
+*Created automatically from CISA Campus Work Tracker user feedback.*`;
+
+          if (screenshot) {
+            body += `\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.`;
+          }
+
+          const labels = [type || 'enhancement', 'feedback'];
+
+          const ghResponse = await fetch(`https://api.github.com/repos/${githubRepo}/issues`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${githubToken}`,
+              'Accept': 'application/vnd.github+json',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'Content-Type': 'application/json',
+              'User-Agent': 'CISA-Campus-Work-Tracker-Server',
+            },
+            body: JSON.stringify({
+              title,
+              body,
+              labels,
+            }),
+          });
+
+          if (ghResponse.ok) {
+            const issueData = (await ghResponse.json()) as { html_url: string; number: number };
+            githubIssueUrl = issueData.html_url;
+            console.log(`  ✓ Auto-created GitHub Issue #${issueData.number}: ${githubIssueUrl}`);
+            
+            // Update Firestore with the GitHub Issue URL and status in_progress
+            await docRef.update({
+              githubIssueUrl,
+              status: "in_progress"
+            });
+          } else {
+            const errorText = await ghResponse.text();
+            console.error(`GitHub API error creating issue: ${ghResponse.status} - ${errorText}`);
+          }
+        } catch (ghErr) {
+          console.error("Failed to auto-create GitHub issue:", ghErr);
+        }
+      } else {
+        console.warn("GitHub credentials not fully configured; skipping auto GitHub issue creation.");
+      }
+
+      res.status(200).json({
+        success: true,
+        id: docRef.id,
+        githubIssueUrl,
+        status: githubIssueUrl ? "in_progress" : "new",
+      });
+    } catch (error: any) {
+      console.error("Error in POST /api/feedback: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
+
+  // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
+  app.post("/api/feedback/update", async (req, res) => {
+    try {
+      // Authorize administrator role
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authorizeAdmin(req);
+        } catch (authErr: any) {
+          console.error("Admin authorization failed:", authErr);
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+
+      const { id, status, archived, githubIssueUrl } = req.body;
+      if (!id) {
+        return res.status(400).json({ error: "Missing required 'id' parameter." });
+      }
+
+      const db = getAdminDb();
+      const docRef = db.collection("feedback").doc(id);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        return res.status(404).json({ error: `Feedback document with id "${id}" not found.` });
+      }
+
+      const currentData = docSnap.data()!;
+      const updates: any = {};
+      if (status !== undefined) updates.status = status;
+      if (archived !== undefined) updates.archived = archived;
+      if (githubIssueUrl !== undefined) updates.githubIssueUrl = githubIssueUrl;
+
+      // Save changes to Firestore
+      await docRef.update(updates);
+      console.log(`Updated feedback document "${id}" with:`, updates);
+
+      // Bidirectional sync: check if we need to update GitHub issue state
+      const targetIssueUrl = githubIssueUrl !== undefined ? githubIssueUrl : currentData.githubIssueUrl;
+      if (targetIssueUrl) {
+        const nextStatus = status !== undefined ? status : currentData.status;
+        const nextArchived = archived !== undefined ? archived : currentData.archived;
+
+        if (archived === true && nextStatus !== 'resolved') {
+          // If archived is true, close issue as not_planned
+          await updateGitHubIssueState(targetIssueUrl, 'closed', 'not_planned');
+        } else if (status === 'resolved') {
+          // If resolved, close issue as completed
+          await updateGitHubIssueState(targetIssueUrl, 'closed', 'completed');
+        } else if ((status === 'in_progress' || status === 'new') && currentData.status === 'resolved') {
+          // If changing back from resolved to open
+          await updateGitHubIssueState(targetIssueUrl, 'open');
+        } else if (archived === false && currentData.archived === true) {
+          // If unarchived, reopen issue if it's closed, or sync status
+          await updateGitHubIssueState(targetIssueUrl, nextStatus === 'resolved' ? 'closed' : 'open', nextStatus === 'resolved' ? 'completed' : undefined);
+        }
+      }
+
+      res.status(200).json({ success: true, updates });
+    } catch (error: any) {
+      console.error("Error in POST /api/feedback/update: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
+
+  // Endpoint: GitHub Webhook to sync issue closure/reopening back to app feedback
+  app.post("/api/webhook/github", async (req, res) => {
+    try {
+      // Cryptographically verify webhook signature
+      const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+      if (webhookSecret) {
+        const signature = req.headers["x-hub-signature-256"] as string;
+        if (!signature) {
+          console.warn("GitHub Webhook: Missing X-Hub-Signature-256 header.");
+          return res.status(401).json({ error: "Missing signature." });
+        }
+
+        const rawBody = (req as any).rawBody;
+        if (!rawBody) {
+          console.error("GitHub Webhook: Raw body not available for verification.");
+          return res.status(500).json({ error: "Raw body not available." });
+        }
+
+        const hmac = crypto.createHmac("sha256", webhookSecret);
+        const digest = "sha256=" + hmac.update(rawBody).digest("hex");
+
+        if (digest !== signature) {
+          console.warn("GitHub Webhook: Signature verification failed.");
+          return res.status(403).json({ error: "Invalid signature." });
+        }
+      } else {
+        console.warn("GITHUB_WEBHOOK_SECRET not configured; skipping webhook signature verification.");
+      }
+
+      const eventType = req.headers["x-github-event"];
+      if (eventType !== "issues") {
+        return res.status(200).json({ message: `Ignored non-issues event type: ${eventType}` });
+      }
+
+      const { action, issue } = req.body;
+      if (!issue || !issue.html_url) {
+        return res.status(400).json({ error: "Invalid issues event payload." });
+      }
+
+      const issueUrl = issue.html_url;
+      const db = getAdminDb();
+      
+      // Query feedback collection to find document with matching githubIssueUrl
+      const snapshot = await db.collection("feedback").where("githubIssueUrl", "==", issueUrl).get();
+      if (snapshot.empty) {
+        console.log("GitHub Webhook: No feedback doc found matching issue URL: " + issueUrl);
+        return res.status(200).json({ message: "No matching feedback document found." });
+      }
+
+      console.log(`GitHub Webhook: Found ${snapshot.size} feedback documents matching issue URL: ${issueUrl}`);
+
+      const updates: any = {};
+      if (action === "closed") {
+        updates.status = "resolved";
+        if (issue.state_reason === "not_planned") {
+          updates.archived = true;
+        }
+      } else if (action === "reopened") {
+        updates.status = "in_progress";
+        updates.archived = false;
+      } else {
+        return res.status(200).json({ message: `Ignored action: ${action}` });
+      }
+
+      // Update all matching documents
+      const batch = db.batch();
+      snapshot.forEach(doc => {
+        batch.update(doc.ref, updates);
+      });
+      await batch.commit();
+
+      console.log(`GitHub Webhook: Successfully updated feedback doc(s) for issue ${issueUrl} with updates:`, updates);
+      res.status(200).json({ success: true, matchedDocsCount: snapshot.size, updates });
+    } catch (error: any) {
+      console.error("Error in POST /api/webhook/github: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
 
   // Helper: Generates short, appropriate initials for names
   function getInitials(fullName: string) {
@@ -632,284 +1010,7 @@ Analyze the input text carefully and extract the following:
     }
   }
 
-  // Helper function to update GitHub issue state bidirectionally
-  async function updateGitHubIssueState(issueUrl: string | undefined, state: 'open' | 'closed', reason?: 'completed' | 'not_planned') {
-    if (!issueUrl) return;
-    const token = process.env.GITHUB_TOKEN;
-    if (!token) {
-      console.warn("GITHUB_TOKEN not configured; skipping GitHub issue status sync.");
-      return;
-    }
 
-    // Parse owner, repo, issue number from HTML URL
-    const match = issueUrl.match(/github\.com\/([^/]+)\/([^/]+)\/issues\/(\d+)/);
-    if (!match) {
-      console.error(`Invalid GitHub issue URL format for sync: ${issueUrl}`);
-      return;
-    }
-
-    const [_, owner, repo, issueNumber] = match;
-    const targetUrl = `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}`;
-
-    try {
-      const payload: any = { state };
-      if (state === 'closed' && reason) {
-        payload.state_reason = reason;
-      }
-
-      const response = await fetch(targetUrl, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/vnd.github+json',
-          'X-GitHub-Api-Version': '2022-11-28',
-          'Content-Type': 'application/json',
-          'User-Agent': 'CISA-Campus-Work-Tracker-Server',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`GitHub API error updating issue: ${response.status} - ${errorText}`);
-      } else {
-        console.log(`Successfully updated GitHub issue state to ${state} (${reason || 'no reason'}) for ${issueUrl}`);
-      }
-    } catch (error) {
-      console.error(`Failed to update GitHub issue state for ${issueUrl}:`, error);
-    }
-  }
-
-  // Endpoint: Submit feedback (with capture diagnostics and auto GitHub issue creation)
-  app.post("/api/feedback", async (req, res) => {
-    try {
-      const {
-        userId,
-        userEmail,
-        userName,
-        type,
-        kind,
-        message,
-        screenshot,
-        url,
-        userAgent,
-        viewport
-      } = req.body;
-
-      if (!message || typeof message !== "string") {
-        return res.status(400).json({ error: "Missing required 'message' parameter." });
-      }
-
-      const db = getAdminDb();
-      const feedbackData: any = {
-        userId: userId || "anonymous",
-        userEmail: userEmail || "anonymous",
-        userName: userName || "Anonymous User",
-        type: type || "enhancement",
-        kind: kind || "thought",
-        message: message.trim(),
-        status: "new",
-        createdAt: new Date().toISOString(),
-        archived: false,
-      };
-
-      if (screenshot) feedbackData.screenshot = screenshot;
-      if (url) feedbackData.url = url;
-      if (userAgent) feedbackData.userAgent = userAgent;
-      if (viewport) feedbackData.viewport = viewport;
-
-      // 1. Save to Firestore
-      const docRef = await db.collection("feedback").add(feedbackData);
-      console.log(`Saved feedback document to Firestore: "${docRef.id}"`);
-
-      // 2. Best-effort create GitHub issue if credentials exist
-      const githubToken = process.env.GITHUB_TOKEN;
-      const githubRepo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO || "Shir0o/cisa-campus-work-traker";
-
-      let githubIssueUrl = "";
-      if (githubToken && githubRepo) {
-        try {
-          const kindLabel = kind || type;
-          const cleanMsg = message.trim();
-          const title = `[Feedback] ${kindLabel}: ${cleanMsg.slice(0, 50)}${cleanMsg.length > 50 ? '...' : ''}`;
-          
-          let body = `### Feedback Details
-- **Submitted By:** ${userName || 'Anonymous'} (${userEmail || 'anonymous'})
-- **Type:** ${type || 'enhancement'}
-- **Kind:** ${kindLabel}
-- **Date:** ${new Date().toLocaleString()}
-- **Page URL:** ${url || 'N/A'}
-- **Viewport:** ${viewport || 'N/A'}
-- **User Agent:** ${userAgent || 'N/A'}
-
-### Message
-\`\`\`text
-${cleanMsg}
-\`\`\`
-
----
-*Created automatically from CISA Campus Work Tracker user feedback.*`;
-
-          if (screenshot) {
-            body += `\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.`;
-          }
-
-          const labels = [type || 'enhancement', 'feedback'];
-
-          const ghResponse = await fetch(`https://api.github.com/repos/${githubRepo}/issues`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${githubToken}`,
-              'Accept': 'application/vnd.github+json',
-              'X-GitHub-Api-Version': '2022-11-28',
-              'Content-Type': 'application/json',
-              'User-Agent': 'CISA-Campus-Work-Tracker-Server',
-            },
-            body: JSON.stringify({
-              title,
-              body,
-              labels,
-            }),
-          });
-
-          if (ghResponse.ok) {
-            const issueData = (await ghResponse.json()) as { html_url: string; number: number };
-            githubIssueUrl = issueData.html_url;
-            console.log(`  ✓ Auto-created GitHub Issue #${issueData.number}: ${githubIssueUrl}`);
-            
-            // Update Firestore with the GitHub Issue URL and status in_progress
-            await docRef.update({
-              githubIssueUrl,
-              status: "in_progress"
-            });
-          } else {
-            const errorText = await ghResponse.text();
-            console.error(`GitHub API error creating issue: ${ghResponse.status} - ${errorText}`);
-          }
-        } catch (ghErr) {
-          console.error("Failed to auto-create GitHub issue:", ghErr);
-        }
-      } else {
-        console.warn("GitHub credentials not fully configured; skipping auto GitHub issue creation.");
-      }
-
-      res.status(200).json({
-        success: true,
-        id: docRef.id,
-        githubIssueUrl,
-        status: githubIssueUrl ? "in_progress" : "new",
-      });
-    } catch (error: any) {
-      console.error("Error in POST /api/feedback: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
-  // Endpoint: Update feedback status / archive (admin-facing, syncs with GitHub)
-  app.post("/api/feedback/update", async (req, res) => {
-    try {
-      const { id, status, archived, githubIssueUrl } = req.body;
-      if (!id) {
-        return res.status(400).json({ error: "Missing required 'id' parameter." });
-      }
-
-      const db = getAdminDb();
-      const docRef = db.collection("feedback").doc(id);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        return res.status(404).json({ error: `Feedback document with id "${id}" not found.` });
-      }
-
-      const currentData = docSnap.data()!;
-      const updates: any = {};
-      if (status !== undefined) updates.status = status;
-      if (archived !== undefined) updates.archived = archived;
-      if (githubIssueUrl !== undefined) updates.githubIssueUrl = githubIssueUrl;
-
-      // Save changes to Firestore
-      await docRef.update(updates);
-      console.log(`Updated feedback document "${id}" with:`, updates);
-
-      // Bidirectional sync: check if we need to update GitHub issue state
-      const targetIssueUrl = githubIssueUrl !== undefined ? githubIssueUrl : currentData.githubIssueUrl;
-      if (targetIssueUrl) {
-        const nextStatus = status !== undefined ? status : currentData.status;
-        const nextArchived = archived !== undefined ? archived : currentData.archived;
-
-        if (archived === true && nextStatus !== 'resolved') {
-          // If archived is true, close issue as not_planned
-          await updateGitHubIssueState(targetIssueUrl, 'closed', 'not_planned');
-        } else if (status === 'resolved') {
-          // If resolved, close issue as completed
-          await updateGitHubIssueState(targetIssueUrl, 'closed', 'completed');
-        } else if ((status === 'in_progress' || status === 'new') && currentData.status === 'resolved') {
-          // If changing back from resolved to open
-          await updateGitHubIssueState(targetIssueUrl, 'open');
-        } else if (archived === false && currentData.archived === true) {
-          // If unarchived, reopen issue if it's closed, or sync status
-          await updateGitHubIssueState(targetIssueUrl, nextStatus === 'resolved' ? 'closed' : 'open', nextStatus === 'resolved' ? 'completed' : undefined);
-        }
-      }
-
-      res.status(200).json({ success: true, updates });
-    } catch (error: any) {
-      console.error("Error in POST /api/feedback/update: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
-
-  // Endpoint: GitHub Webhook to sync issue closure/reopening back to app feedback
-  app.post("/api/webhook/github", async (req, res) => {
-    try {
-      const eventType = req.headers["x-github-event"];
-      if (eventType !== "issues") {
-        return res.status(200).json({ message: `Ignored non-issues event type: ${eventType}` });
-      }
-
-      const { action, issue } = req.body;
-      if (!issue || !issue.html_url) {
-        return res.status(400).json({ error: "Invalid issues event payload." });
-      }
-
-      const issueUrl = issue.html_url;
-      const db = getAdminDb();
-      
-      // Query feedback collection to find document with matching githubIssueUrl
-      const snapshot = await db.collection("feedback").where("githubIssueUrl", "==", issueUrl).get();
-      if (snapshot.empty) {
-        console.log(`GitHub Webhook: No feedback doc found matching issue URL: ${issueUrl}`);
-        return res.status(200).json({ message: "No matching feedback document found." });
-      }
-
-      console.log(`GitHub Webhook: Found ${snapshot.size} feedback documents matching issue URL: ${issueUrl}`);
-
-      const updates: any = {};
-      if (action === "closed") {
-        updates.status = "resolved";
-        if (issue.state_reason === "not_planned") {
-          updates.archived = true;
-        }
-      } else if (action === "reopened") {
-        updates.status = "in_progress";
-        updates.archived = false;
-      } else {
-        return res.status(200).json({ message: `Ignored action: ${action}` });
-      }
-
-      // Update all matching documents
-      const batch = db.batch();
-      snapshot.forEach(doc => {
-        batch.update(doc.ref, updates);
-      });
-      await batch.commit();
-
-      console.log(`GitHub Webhook: Successfully updated feedback doc(s) for issue ${issueUrl} with updates:`, updates);
-      res.status(200).json({ success: true, matchedDocsCount: snapshot.size, updates });
-    } catch (error: any) {
-      console.error("Error in POST /api/webhook/github: ", error);
-      res.status(500).json({ error: error.message || "Internal Server Error" });
-    }
-  });
 
   // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
   app.get("/api/webhook/logs", async (req, res) => {

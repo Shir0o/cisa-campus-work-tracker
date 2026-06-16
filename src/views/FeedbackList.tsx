@@ -113,11 +113,25 @@ export default function FeedbackList() {
 
   const updateFeedbackBackend = async (id: string, fields: { status?: string; archived?: boolean; githubIssueUrl?: string | null }) => {
     try {
+      let token: string | null = null;
+      try {
+        if (user && typeof user.getIdToken === 'function') {
+          token = await user.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.error('Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/feedback/update', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ id, ...fields }),
       });
       if (!response.ok) {
