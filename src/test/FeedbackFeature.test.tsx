@@ -41,7 +41,7 @@ vi.mock('firebase/firestore', () => ({
     });
     return vi.fn();
   }),
-  doc: vi.fn(),
+  doc: vi.fn().mockImplementation((_db, _coll, id) => ({ id })),
   updateDoc: vi.fn().mockResolvedValue(true),
   deleteDoc: vi.fn().mockResolvedValue(true),
 }));
@@ -128,6 +128,112 @@ describe('User Feedback Feature', () => {
       await waitFor(() => {
         expect(screen.getByText('Test Undergrad')).toBeInTheDocument();
         expect(screen.getByText('Screen flickers on sidebar slide')).toBeInTheDocument();
+      });
+    });
+
+    it('displays "Create Issue" and "Link" buttons when no githubIssueUrl is present', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        isAdmin: true,
+      });
+
+      render(<FeedbackList />);
+
+      await waitFor(() => {
+        expect(screen.getByTitle('Create prefilled GitHub Issue')).toBeInTheDocument();
+        expect(screen.getByTitle('Link existing GitHub Issue')).toBeInTheDocument();
+      });
+    });
+
+    it('clicking "Create Issue" opens window and updates status', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        isAdmin: true,
+      });
+
+      const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as any);
+      const { updateDoc } = await import('firebase/firestore');
+
+      const userAct = userEvent.setup();
+      render(<FeedbackList />);
+
+      await waitFor(async () => {
+        const createBtn = screen.getByTitle('Create prefilled GitHub Issue');
+        await userAct.click(createBtn);
+      });
+
+      expect(windowOpenSpy).toHaveBeenCalled();
+      expect(updateDoc).toHaveBeenCalled();
+      
+      windowOpenSpy.mockRestore();
+    });
+
+    it('clicking "Link" opens inline input and saves the link', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        isAdmin: true,
+      });
+
+      const { updateDoc } = await import('firebase/firestore');
+
+      const userAct = userEvent.setup();
+      render(<FeedbackList />);
+
+      await waitFor(async () => {
+        const linkBtn = screen.getByTitle('Link existing GitHub Issue');
+        await userAct.click(linkBtn);
+      });
+
+      const input = screen.getByPlaceholderText('Paste issue URL or #number...');
+      expect(input).toBeInTheDocument();
+
+      await userAct.type(input, '105{enter}');
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/105'
+          })
+        );
+      });
+    });
+
+    it('displays linked issue with issue number when githubIssueUrl is present', async () => {
+      (useAuth as any).mockReturnValue({
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        isAdmin: true,
+      });
+
+      const { onSnapshot } = await import('firebase/firestore');
+      (onSnapshot as any).mockImplementationOnce((_, callback: any) => {
+        callback({
+          forEach: (snapCallback: any) => {
+            snapCallback({
+              id: 'test-f-2',
+              data: () => ({
+                userId: 'user-id-123',
+                userEmail: 'user@campus.edu',
+                userName: 'Test Undergrad',
+                type: 'bug',
+                message: 'Screen flickers on sidebar slide',
+                status: 'in_progress',
+                createdAt: '2026-05-26T18:11:00Z',
+                githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/42',
+              }),
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      render(<FeedbackList />);
+
+      await waitFor(() => {
+        expect(screen.getByText('#42')).toBeInTheDocument();
+        expect(screen.getByTitle('View GitHub Issue')).toBeInTheDocument();
+        expect(screen.getByTitle('Edit GitHub Link')).toBeInTheDocument();
+        expect(screen.getByTitle('Unlink GitHub Issue')).toBeInTheDocument();
       });
     });
   });

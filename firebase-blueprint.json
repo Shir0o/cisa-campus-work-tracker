@@ -200,9 +200,11 @@
         "userEmail": { "type": "string" },
         "userName": { "type": "string" },
         "type": { "type": "string", "enum": ["bug", "enhancement"] },
+        "kind": { "type": "string", "enum": ["thought", "idea", "off", "request"] },
         "message": { "type": "string" },
         "status": { "type": "string", "enum": ["new", "in_progress", "resolved"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "githubIssueUrl": { "type": "string" }
       },
       "required": ["userId", "userEmail", "type", "message", "status", "createdAt"]
     },
