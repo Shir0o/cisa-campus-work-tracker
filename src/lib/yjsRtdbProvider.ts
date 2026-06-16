@@ -54,7 +54,10 @@ function b64ToU8(b64: string): Uint8Array {
 
 export interface RtdbProviderOptions {
   awareness?: Awareness;
-  onSynced?: () => void;
+  // `degraded` is true when the initial RTDB read failed (e.g. permission denied, or
+  // the DB is unreachable). The consumer should fall back to a local/Firestore-only
+  // copy instead of waiting on live sync that will never arrive.
+  onSynced?: (degraded: boolean) => void;
 }
 
 export class RtdbYjsProvider {
@@ -71,7 +74,7 @@ export class RtdbYjsProvider {
   private unsubs: Unsubscribe[] = [];
   private appliedKeys = new Set<string>();
   private destroyed = false;
-  private onSynced?: () => void;
+  private onSynced?: (degraded: boolean) => void;
 
   constructor(database: Database, docId: string, doc: Y.Doc, opts: RtdbProviderOptions = {}) {
     this.doc = doc;
@@ -94,6 +97,7 @@ export class RtdbYjsProvider {
   // Load the existing log once, then listen for new updates. Re-applying an
   // already-seen update is harmless, but we track keys to avoid the churn.
   private async bootstrap() {
+    let degraded = false;
     try {
       const snap = await get(this.updatesRef);
       if (this.destroyed) return;
@@ -107,12 +111,17 @@ export class RtdbYjsProvider {
         if (merged.length) Y.applyUpdate(this.doc, Y.mergeUpdates(merged), this);
       }
     } catch (e) {
+      degraded = true;
       console.warn('[RtdbYjsProvider] initial load failed', e);
     }
     if (this.destroyed) return;
 
     this.synced = true;
-    this.onSynced?.();
+    this.onSynced?.(degraded);
+
+    // Couldn't reach RTDB (denied/offline): writes would fail too, so skip wiring up
+    // live listeners and presence — the consumer falls back to a Firestore-only copy.
+    if (degraded) return;
 
     // live document updates
     this.unsubs.push(

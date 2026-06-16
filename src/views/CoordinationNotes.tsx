@@ -712,7 +712,14 @@ function DocEditor({
     }
     const provider = new RtdbYjsProvider(rtdb, d.id, ydoc, {
       awareness,
-      onSynced: async () => {
+      onSynced: async (degraded) => {
+        if (degraded) {
+          // RTDB unreachable (e.g. rules/permission denied) — show the Firestore copy
+          // and edit single-user instead of leaving the pane blank.
+          seedFromMd();
+          setLive(false);
+          return;
+        }
         setLive(true);
         if (didSeed.current) return;
         didSeed.current = true;
