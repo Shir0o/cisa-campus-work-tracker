@@ -22,29 +22,71 @@ export default function SubmitFeedback() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Guard re-entry: the Send button is disabled while submitting, but the ⌘↵
-    // keyboard path bypasses that, so block a second in-flight submit here too.
     if (!message.trim() || !user || isSubmitting) return;
 
     setIsSubmitting(true);
 
     const type = kindToType(kind);
-    const feedbackData = {
+
+    // Auto-capture screenshot and diagnostic information
+    let screenshot = '';
+    try {
+      const fabBtn = document.getElementById('feedback-fab-btn');
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
+
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(document.body, {
+        logging: false,
+        useCORS: true,
+        scale: 0.75,
+      });
+
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
+
+      let finalCanvas = canvas;
+      const maxDim = 1000;
+      if (canvas.width > maxDim || canvas.height > maxDim) {
+        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width * scale;
+        tempCanvas.height = canvas.height * scale;
+        const ctx = tempCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+          finalCanvas = tempCanvas;
+        }
+      }
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.6);
+    } catch (err) {
+      console.error('Failed to capture screenshot:', err);
+    }
+
+    const payload = {
       userId: user.uid,
       userEmail: user.email?.toLowerCase() || 'anonymous',
       userName: user.displayName || 'Anonymous User',
       type,
       kind,
       message: message.trim(),
-      status: 'new' as const,
-      createdAt: serverTimestamp(),
+      screenshot,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,
     };
 
     try {
-      // 1. Save feedback record to firestore
-      await addDoc(collection(db, 'feedback'), feedbackData);
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-      // 2. Log Activity
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status} ${response.statusText}`);
+      }
+
       await logActivity({
         action: 'submitted feedback',
         targetId: 'feedback_root',
@@ -54,7 +96,6 @@ export default function SubmitFeedback() {
         type: 'create',
       });
 
-      // 3. Dispatch Success Notification (triggers live toaster view)
       await sendNotification({
         userId: user.uid,
         title: 'We got your note',

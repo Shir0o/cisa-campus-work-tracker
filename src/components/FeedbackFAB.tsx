@@ -40,23 +40,72 @@ export default function FeedbackFAB() {
     setPhase('busy');
 
     const type = kindToType(kind);
-    const feedbackData = {
+
+    // Auto-capture screenshot and diagnostic information
+    let screenshot = '';
+    try {
+      const fabBtn = document.getElementById('feedback-fab-btn');
+      const dialogPanel = document.querySelector('div[role="dialog"]');
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
+      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'hidden';
+
+      const html2canvas = (await import('html2canvas')).default;
+      const canvas = await html2canvas(document.body, {
+        logging: false,
+        useCORS: true,
+        scale: 0.75,
+      });
+
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
+      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'visible';
+
+      let finalCanvas = canvas;
+      const maxDim = 1000;
+      if (canvas.width > maxDim || canvas.height > maxDim) {
+        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = canvas.width * scale;
+        tempCanvas.height = canvas.height * scale;
+        const ctx = tempCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
+          finalCanvas = tempCanvas;
+        }
+      }
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.6);
+    } catch (err) {
+      console.error('Failed to capture screenshot:', err);
+    }
+
+    const payload = {
       userId: user.uid,
       userEmail: user.email?.toLowerCase() || 'anonymous',
       userName: user.displayName || 'Anonymous User',
       type,
       kind,
       message: message.trim(),
-      status: 'new' as const,
-      createdAt: serverTimestamp(),
+      screenshot,
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      viewport: `${window.innerWidth}x${window.innerHeight} (DPR: ${window.devicePixelRatio})`,
     };
 
-    // 1. Write feedback record — this is the gate for showing success.
+    // 1. Write feedback record via Backend API
     try {
-      await addDoc(collection(db, 'feedback'), feedbackData);
+      const response = await fetch('/api/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status} ${response.statusText}`);
+      }
     } catch (error) {
-      console.error('Failed to submit feedback:', error);
-      setPhase('idle'); // let the user retry; their note is preserved
+      console.error('Failed to submit feedback through API:', error);
+      setPhase('idle');
       try {
         handleFirestoreError(error, OperationType.WRITE, 'feedback');
       } catch (e) {
@@ -65,17 +114,17 @@ export default function FeedbackFAB() {
       return;
     }
 
-    // Saved — show the warm success state, then auto-close.
+    // Saved — show success state, then auto-close
     setPhase('done');
     setTimeout(close, 2200);
 
-    // 2. Best-effort side-effects — their failure must not revert the success.
+    // 2. Best-effort side-effects — their failure must not revert the success
     try {
       await logActivity({
         action: 'submitted feedback',
         targetId: 'feedback_root',
         targetName: kindMeta(kind).label,
-        targetType: 'contact', // nearest targetType in schema
+        targetType: 'contact',
         description: `User left a note (${kindMeta(kind).label}): "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
         type: 'create',
       });

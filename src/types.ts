@@ -176,4 +176,9 @@ export interface Feedback {
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;
   githubIssueUrl?: string;
+  url?: string;
+  screenshot?: string; // base64 JPEG
+  userAgent?: string;
+  viewport?: string;
+  archived?: boolean;
 }

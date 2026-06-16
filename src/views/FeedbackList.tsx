@@ -69,11 +69,13 @@ export default function FeedbackList() {
   const { isAdmin, user } = useAuth();
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   const hasAccess = isAdmin || isMe;
+
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | FeedbackKind>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
+  const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [isLinkingId, setIsLinkingId] = useState<string | null>(null);
   const [linkInput, setLinkInput] = useState('');
 
@@ -109,13 +111,30 @@ export default function FeedbackList() {
     return () => unsubscribe();
   }, [isAdmin]);
 
-  const handleUpdateStatus = async (id: string, newStatus: 'new' | 'in_progress' | 'resolved') => {
+  const updateFeedbackBackend = async (id: string, fields: { status?: string; archived?: boolean; githubIssueUrl?: string | null }) => {
     try {
-      const docRef = doc(db, 'feedback', id);
-      await updateDoc(docRef, { status: newStatus });
+      const response = await fetch('/api/feedback/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, ...fields }),
+      });
+      if (!response.ok) {
+        throw new Error(`Server returned ${response.status}`);
+      }
     } catch (error) {
-      console.error('Failed to update feedback status:', error);
+      console.error('Failed to update feedback via backend:', error);
+      alert('Failed to update feedback. Please try again.');
     }
+  };
+
+  const handleUpdateStatus = async (id: string, newStatus: 'new' | 'in_progress' | 'resolved') => {
+    await updateFeedbackBackend(id, { status: newStatus });
+  };
+
+  const handleToggleArchive = async (id: string, archived: boolean) => {
+    await updateFeedbackBackend(id, { archived });
   };
 
   const handleDeleteFeedback = async (id: string) => {
@@ -138,25 +157,16 @@ export default function FeedbackList() {
 
   const handleSaveLink = async (id: string) => {
     const resolvedUrl = resolveIssueUrl(linkInput);
-    try {
-      const docRef = doc(db, 'feedback', id);
-      await updateDoc(docRef, { githubIssueUrl: resolvedUrl || null });
-      setIsLinkingId(null);
-      setLinkInput('');
-    } catch (error) {
-      console.error('Failed to link GitHub issue:', error);
-    }
+    await updateFeedbackBackend(id, { githubIssueUrl: resolvedUrl || null });
+    setIsLinkingId(null);
+    setLinkInput('');
   };
 
   const handleUnlink = async (id: string) => {
     if (!window.confirm('Are you sure you want to unlink this GitHub issue?')) return;
-    try {
-      const docRef = doc(db, 'feedback', id);
-      await updateDoc(docRef, { githubIssueUrl: null });
-    } catch (error) {
-      console.error('Failed to unlink GitHub issue:', error);
-    }
+    await updateFeedbackBackend(id, { githubIssueUrl: null });
   };
+
 
   // Guard: Admin Check
   if (!hasAccess) {
@@ -175,7 +185,6 @@ export default function FeedbackList() {
       </div>
     );
   }
-
   // Filter & Search Logic
   const filteredFeedback = feedback.filter((item) => {
     const matchesSearch = 
@@ -186,11 +195,16 @@ export default function FeedbackList() {
     const matchesKind = activeTab === 'all' || resolveKind(item) === activeTab;
     const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
 
-    return matchesSearch && matchesKind && matchesStatus;
+    const isArchived = item.archived === true;
+    const matchesArchive = 
+      archiveFilter === 'all' ||
+      (archiveFilter === 'active' && !isArchived) ||
+      (archiveFilter === 'archived' && isArchived);
+
+    return matchesSearch && matchesKind && matchesStatus && matchesArchive;
   });
 
-  const kindCount = (id: FeedbackKind) => feedback.filter((f) => resolveKind(f) === id).length;
-
+  const kindCount = (id: FeedbackKind) => feedback.filter((f) => resolveKind(f) === id && !f.archived).length;
   const getStatusBadge = (status: Feedback['status']) => {
     switch (status) {
       case 'resolved':
@@ -318,6 +332,19 @@ export default function FeedbackList() {
                 <option value="new">New</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-on-surface-variant shrink-0" />
+              <select
+                value={archiveFilter}
+                onChange={(e) => setArchiveFilter(e.target.value as any)}
+                className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
+              >
+                <option value="active">Active Only</option>
+                <option value="archived">Archived Only</option>
+                <option value="all">All Feedback</option>
               </select>
             </div>
           </div>
@@ -477,6 +504,18 @@ export default function FeedbackList() {
                         </div>
 
                         <button
+                          onClick={() => handleToggleArchive(item.id, !item.archived)}
+                          className={`p-1.5 rounded-full transition-colors border-none cursor-pointer ${
+                            item.archived
+                              ? 'text-primary hover:bg-primary-container/20'
+                              : 'text-on-surface-variant hover:text-primary hover:bg-primary/10'
+                          }`}
+                          title={item.archived ? "Restore from Archive" : "Archive Feedback"}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </button>
+
+                        <button
                           onClick={() => handleDeleteFeedback(item.id)}
                           className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors border-none cursor-pointer"
                           title="Delete Feedback"
@@ -492,6 +531,43 @@ export default function FeedbackList() {
                 <div className="bg-surface/50 border border-outline-variant/40 rounded-2xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
                   {item.message}
                 </div>
+
+                {/* Captured Diagnostics metadata */}
+                {(item.url || item.viewport || item.userAgent) && (
+                  <div className="flex flex-col gap-1.5 text-xs text-on-surface-variant/80 border-t border-outline-variant/30 pt-3 pl-2 font-mono">
+                    {item.url && (
+                      <div className="flex items-center gap-1.5 truncate">
+                        <span className="font-bold text-on-surface">URL:</span>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary truncate">
+                          {item.url}
+                        </a>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {item.viewport && (
+                        <div>
+                          <span className="font-bold text-on-surface">Viewport:</span> {item.viewport}
+                        </div>
+                      )}
+                      {item.userAgent && (
+                        <div className="truncate max-w-md" title={item.userAgent}>
+                          <span className="font-bold text-on-surface">User Agent:</span> {item.userAgent}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {item.screenshot && (
+                  <details className="text-xs text-on-surface-variant pl-2 cursor-pointer mt-3">
+                    <summary className="font-semibold select-none hover:text-primary list-item">
+                      View Screenshot
+                    </summary>
+                    <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface shadow-xs">
+                      <img src={item.screenshot} alt="Captured Screenshot" className="w-full object-contain max-h-[400px]" />
+                    </div>
+                  </details>
+                )}
               </motion.div>
               );
             })}
