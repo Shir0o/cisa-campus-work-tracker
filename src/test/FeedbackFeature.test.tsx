@@ -57,12 +57,16 @@ vi.mock('../lib/firebase', () => ({
 describe('User Feedback Feature', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ success: true, id: 'test-feedback-id' }),
+    });
   });
 
   describe('FeedbackFAB', () => {
     beforeEach(() => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student' },
+        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         role: 'operator',
         isAdmin: false,
       });
@@ -104,7 +108,7 @@ describe('User Feedback Feature', () => {
   describe('FeedbackList (Admin View)', () => {
     it('blocks access to non-admin users', () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane' },
+        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: false,
       });
 
@@ -115,7 +119,7 @@ describe('User Feedback Feature', () => {
 
     it('registers submissions and permits access to administrators', async () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: true,
       });
 
@@ -133,7 +137,7 @@ describe('User Feedback Feature', () => {
 
     it('displays "Create Issue" and "Link" buttons when no githubIssueUrl is present', async () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: true,
       });
 
@@ -144,15 +148,13 @@ describe('User Feedback Feature', () => {
         expect(screen.getByTitle('Link existing GitHub Issue')).toBeInTheDocument();
       });
     });
-
     it('clicking "Create Issue" opens window and updates status', async () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: true,
       });
 
       const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => ({}) as any);
-      const { updateDoc } = await import('firebase/firestore');
 
       const userAct = userEvent.setup();
       render(<FeedbackList />);
@@ -163,18 +165,21 @@ describe('User Feedback Feature', () => {
       });
 
       expect(windowOpenSpy).toHaveBeenCalled();
-      expect(updateDoc).toHaveBeenCalled();
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/feedback/update',
+        expect.objectContaining({
+          body: JSON.stringify({ id: 'test-f-1', status: 'in_progress' })
+        })
+      );
       
       windowOpenSpy.mockRestore();
     });
 
     it('clicking "Link" opens inline input and saves the link', async () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: true,
       });
-
-      const { updateDoc } = await import('firebase/firestore');
 
       const userAct = userEvent.setup();
       render(<FeedbackList />);
@@ -190,18 +195,20 @@ describe('User Feedback Feature', () => {
       await userAct.type(input, '105{enter}');
 
       await waitFor(() => {
-        expect(updateDoc).toHaveBeenCalledWith(
-          expect.anything(),
+        expect(global.fetch).toHaveBeenCalledWith(
+          '/api/feedback/update',
           expect.objectContaining({
-            githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/105'
+            body: JSON.stringify({
+              id: 'test-f-1',
+              githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/105'
+            })
           })
         );
       });
     });
-
     it('displays linked issue with issue number when githubIssueUrl is present', async () => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub' },
+        user: { uid: 'admin-123', email: 'admin@campus.edu', displayName: 'Admin Hub', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         isAdmin: true,
       });
 
@@ -241,7 +248,7 @@ describe('User Feedback Feature', () => {
   describe('SubmitFeedback (Dedicated Page Form)', () => {
     beforeEach(() => {
       (useAuth as any).mockReturnValue({
-        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student' },
+        user: { uid: 'user-123', email: 'test@campus.edu', displayName: 'Jane Student', getIdToken: vi.fn().mockResolvedValue('mock-id-token') },
         role: 'operator',
         isAdmin: false,
       });

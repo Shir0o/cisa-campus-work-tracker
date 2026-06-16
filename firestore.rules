@@ -288,15 +288,21 @@ service cloud.firestore {
                data.message is string && data.message.size() <= 5000 &&
                data.status in ['new', 'in_progress', 'resolved'] &&
                data.createdAt == request.time &&
-               (!('githubIssueUrl' in data) || (data.githubIssueUrl is string && data.githubIssueUrl.size() <= 1000));
+               (!('githubIssueUrl' in data) || (data.githubIssueUrl is string && data.githubIssueUrl.size() <= 1000)) &&
+               (!('url' in data) || (data.url is string && data.url.size() <= 2000)) &&
+               (!('screenshot' in data) || (data.screenshot is string && data.screenshot.size() <= 200000)) &&
+               (!('userAgent' in data) || (data.userAgent is string && data.userAgent.size() <= 1000)) &&
+               (!('viewport' in data) || (data.viewport is string && data.viewport.size() <= 100)) &&
+               (!('archived' in data) || data.archived is bool);
       }
 
       allow list, get: if isAdmin();
       allow create: if isValidId(feedbackId) && isApprovedUser() && isValidFeedback(incoming());
       allow update: if isValidId(feedbackId) && isAdmin() &&
-                      incoming().diff(existing()).affectedKeys().hasOnly(['status', 'githubIssueUrl']) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status', 'githubIssueUrl', 'archived']) &&
                       incoming().status in ['new', 'in_progress', 'resolved'] &&
-                      (!('githubIssueUrl' in incoming()) || (incoming().githubIssueUrl is string && incoming().githubIssueUrl.size() <= 1000 || incoming().githubIssueUrl == null));
+                      (!('githubIssueUrl' in incoming()) || (incoming().githubIssueUrl is string && incoming().githubIssueUrl.size() <= 1000 || incoming().githubIssueUrl == null)) &&
+                      (!('archived' in incoming()) || incoming().archived is bool);
       allow delete: if isValidId(feedbackId) && isAdmin();
     }
 
