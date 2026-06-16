@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "sac-campus-hub"
-  }
+    "default": "sac-campus-hub",
+    "sac-campus-hub": "sac-campus-hub"
+  },
+  "targets": {},
+  "etags": {}
 }
