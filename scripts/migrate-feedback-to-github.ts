@@ -1,14 +1,25 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
+import dotenv from 'dotenv';
+
+// Load local .env variables
+dotenv.config();
 
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_REPO = process.env.GITHUB_REPO || 'Shir0o/cisa-campus-work-traker';
+const GITHUB_REPO = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO;
 
 if (!GITHUB_TOKEN) {
   console.error('ERROR: GITHUB_TOKEN environment variable is required.');
   console.error('Please run the script as:');
   console.error('  GITHUB_TOKEN="your_token" npx tsx scripts/migrate-feedback-to-github.ts');
+  process.exit(1);
+}
+
+if (!GITHUB_REPO) {
+  console.error('ERROR: GITHUB_REPO or VITE_GITHUB_REPO environment variable is required.');
+  console.error('Please define it in your .env file or run the script as:');
+  console.error('  GITHUB_REPO="owner/repo" npx tsx scripts/migrate-feedback-to-github.ts');
   process.exit(1);
 }
 

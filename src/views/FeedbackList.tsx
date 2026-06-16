@@ -23,7 +23,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
 
-const gitHubRepoUrl = 'https://github.com/Shir0o/cisa-campus-work-traker';
+const gitHubRepo = import.meta.env.VITE_GITHUB_REPO || 'Shir0o/cisa-campus-work-traker';
+const gitHubRepoUrl = `https://github.com/${gitHubRepo}`;
 
 const getGitHubIssueUrl = (item: Feedback) => {
   const kindLabel = item.kind ? kindMeta(item.kind).label : item.type;
