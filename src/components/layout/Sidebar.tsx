@@ -33,11 +33,28 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
   const { logOut, isAdmin, role, user } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
   const [isDesktop, setIsDesktop] = React.useState(window.innerWidth >= 1024);
+  const [isScrolling, setIsScrolling] = React.useState(false);
+  const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleScroll = () => {
+    setIsScrolling(true);
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    scrollTimeoutRef.current = setTimeout(() => {
+      setIsScrolling(false);
+    }, 1000);
+  };
 
   React.useEffect(() => {
     const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+    };
   }, []);
 
   const effectiveIsCollapsed = isDesktop ? isCollapsed : false;
@@ -131,7 +148,13 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         </div>
 
         {/* Main Nav Items */}
-        <div className="flex-1 space-y-0.5 overflow-hidden">
+        <div 
+          onScroll={handleScroll}
+          className={cn(
+            "flex-1 space-y-0.5 overflow-y-auto",
+            effectiveIsCollapsed ? "no-scrollbar" : (isScrolling ? "custom-scrollbar" : "no-scrollbar")
+          )}
+        >
           {navItems.map((item) => (
             <NavLink
               key={item.href}
