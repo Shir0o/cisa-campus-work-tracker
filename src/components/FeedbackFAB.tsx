@@ -49,7 +49,7 @@ export default function FeedbackFAB() {
       if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
       if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'hidden';
 
-      const html2canvas = (await import('html2canvas')).default;
+      const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,

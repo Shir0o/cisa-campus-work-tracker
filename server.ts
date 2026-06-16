@@ -1183,7 +1183,7 @@ Error: ${error.message || "Internal server processing error."}
       endpointUrl: "/api/quick-add",
       webhookUrl: "/api/webhook/sms",
       groupmeWebhookUrl: "/api/webhook/groupme",
-      appUrl: process.env.APP_URL || "https://ais-dev-...us-east1.run.app"
+      appUrl: process.env.APP_URL || "https://cisa-campus-work-traker.pages.dev"
     });
   });
 
