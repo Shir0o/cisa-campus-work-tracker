@@ -38,13 +38,13 @@ export default function SubmitFeedback() {
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
-        scale: 0.75,
+        scale: 1.5,
       });
 
       if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
 
       let finalCanvas = canvas;
-      const maxDim = 1000;
+      const maxDim = 1600;
       if (canvas.width > maxDim || canvas.height > maxDim) {
         const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
         const tempCanvas = document.createElement('canvas');
@@ -56,7 +56,7 @@ export default function SubmitFeedback() {
           finalCanvas = tempCanvas;
         }
       }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.6);
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
     }
