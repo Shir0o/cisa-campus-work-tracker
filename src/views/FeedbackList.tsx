@@ -13,12 +13,56 @@ import {
   Filter,
   ShieldAlert,
   Archive,
-  RefreshCw
+  RefreshCw,
+  Github,
+  Link,
+  Unlink
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
+
+const gitHubRepoUrl = 'https://github.com/Shir0o/cisa-campus-work-traker';
+
+const getGitHubIssueUrl = (item: Feedback) => {
+  const kindLabel = item.kind ? kindMeta(item.kind).label : item.type;
+  const title = `[Feedback] ${kindLabel}: ${item.message.slice(0, 50)}${item.message.length > 50 ? '...' : ''}`;
+  const body = `### Feedback Details
+- **Submitted By:** ${item.userName} (${item.userEmail})
+- **Type:** ${item.type}
+- **Kind:** ${kindLabel}
+- **Date:** ${item.createdAt ? new Date(item.createdAt).toLocaleString() : ''}
+- **Status:** ${item.status}
+
+### Message
+\`\`\`text
+${item.message}
+\`\`\`
+
+---
+*Created from CISA Campus Work Tracker user feedback.*`;
+
+  const labels = [item.type, 'feedback'].join(',');
+  const params = new URLSearchParams({ title, body, labels });
+  return `${gitHubRepoUrl}/issues/new?${params.toString()}`;
+};
+
+const extractIssueNumber = (url?: string) => {
+  if (!url) return '';
+  const match = url.match(/\/issues\/(\d+)/);
+  return match ? `#${match[1]}` : 'Issue';
+};
+
+const resolveIssueUrl = (input: string) => {
+  const clean = input.trim();
+  if (!clean) return '';
+  if (/^#?\d+$/.test(clean)) {
+    const num = clean.replace('#', '');
+    return `https://github.com/Shir0o/cisa-campus-work-traker/issues/${num}`;
+  }
+  return clean;
+};
 
 export default function FeedbackList() {
   const { isAdmin, user } = useAuth();
@@ -29,6 +73,8 @@ export default function FeedbackList() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | FeedbackKind>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
+  const [isLinkingId, setIsLinkingId] = useState<string | null>(null);
+  const [linkInput, setLinkInput] = useState('');
 
   useEffect(() => {
     if (!hasAccess) {
@@ -78,6 +124,36 @@ export default function FeedbackList() {
       await deleteDoc(docRef);
     } catch (error) {
       console.error('Failed to delete feedback item:', error);
+    }
+  };
+
+  const handleCreateGitHubIssue = (item: Feedback) => {
+    const url = getGitHubIssueUrl(item);
+    window.open(url, '_blank', 'noopener,noreferrer');
+    if (item.status === 'new') {
+      handleUpdateStatus(item.id, 'in_progress');
+    }
+  };
+
+  const handleSaveLink = async (id: string) => {
+    const resolvedUrl = resolveIssueUrl(linkInput);
+    try {
+      const docRef = doc(db, 'feedback', id);
+      await updateDoc(docRef, { githubIssueUrl: resolvedUrl || null });
+      setIsLinkingId(null);
+      setLinkInput('');
+    } catch (error) {
+      console.error('Failed to link GitHub issue:', error);
+    }
+  };
+
+  const handleUnlink = async (id: string) => {
+    if (!window.confirm('Are you sure you want to unlink this GitHub issue?')) return;
+    try {
+      const docRef = doc(db, 'feedback', id);
+      await updateDoc(docRef, { githubIssueUrl: null });
+    } catch (error) {
+      console.error('Failed to unlink GitHub issue:', error);
     }
   };
 
@@ -300,30 +376,114 @@ export default function FeedbackList() {
                   </div>
 
                   {/* Actions & Status Dropdown on Top Right */}
-                  <div className="flex items-center gap-2.5 self-start sm:self-center">
-                    {getStatusBadge(item.status)}
-                    
-                    {/* Select update actions */}
-                    <div className="relative">
-                      <select
-                        aria-label="Update status"
-                        value={item.status}
-                        onChange={(e) => handleUpdateStatus(item.id, e.target.value as any)}
-                        className="bg-surface border border-outline-variant text-on-surface rounded-lg py-1 px-2.5 text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-primary h-8"
-                      >
-                        <option value="new">Mark New</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                      </select>
-                    </div>
+                  <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-center">
+                    {isLinkingId === item.id ? (
+                      <div className="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl p-1.5 shadow-xs">
+                        <input
+                          type="text"
+                          placeholder="Paste issue URL or #number..."
+                          value={linkInput}
+                          onChange={(e) => setLinkInput(e.target.value)}
+                          className="bg-transparent text-[11px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none w-48 px-1.5"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleSaveLink(item.id);
+                            if (e.key === 'Escape') setIsLinkingId(null);
+                          }}
+                        />
+                        <button
+                          onClick={() => handleSaveLink(item.id)}
+                          className="px-2 py-1 bg-primary text-on-primary rounded-lg text-[10px] font-bold border-none cursor-pointer"
+                        >
+                          Link
+                        </button>
+                        <button
+                          onClick={() => setIsLinkingId(null)}
+                          className="px-2 py-1 bg-surface-container-high text-on-surface-variant rounded-lg text-[10px] font-bold border-none cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        {item.githubIssueUrl ? (
+                          <div className="flex items-center gap-1">
+                            <a
+                              href={item.githubIssueUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 py-1 px-3 bg-neutral-500/10 text-neutral-700 dark:text-neutral-400 hover:bg-neutral-500/20 font-bold text-xs rounded-full transition-all"
+                              title="View GitHub Issue"
+                            >
+                              <Github className="w-3.5 h-3.5" />
+                              {extractIssueNumber(item.githubIssueUrl)}
+                            </a>
+                            <button
+                              onClick={() => {
+                                setIsLinkingId(item.id);
+                                setLinkInput(item.githubIssueUrl || '');
+                              }}
+                              className="p-1 text-on-surface-variant hover:text-primary rounded-full transition-colors border-none cursor-pointer"
+                              title="Edit GitHub Link"
+                            >
+                              <Link className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleUnlink(item.id)}
+                              className="p-1 text-on-surface-variant hover:text-error rounded-full transition-colors border-none cursor-pointer"
+                              title="Unlink GitHub Issue"
+                            >
+                              <Unlink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleCreateGitHubIssue(item)}
+                              className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-primary hover:bg-primary/20 font-bold text-xs rounded-full transition-all border-none cursor-pointer"
+                              title="Create prefilled GitHub Issue"
+                            >
+                              <Github className="w-3.5 h-3.5" />
+                              Create Issue
+                            </button>
+                            <button
+                              onClick={() => {
+                                setIsLinkingId(item.id);
+                                setLinkInput('');
+                              }}
+                              className="p-1 text-on-surface-variant hover:text-primary rounded-full transition-colors border-none cursor-pointer"
+                              title="Link existing GitHub Issue"
+                            >
+                              <Link className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
 
-                    <button
-                      onClick={() => handleDeleteFeedback(item.id)}
-                      className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors border-none"
-                      title="Delete Feedback"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                        {getStatusBadge(item.status)}
+                        
+                        {/* Select update actions */}
+                        <div className="relative">
+                          <select
+                            aria-label="Update status"
+                            value={item.status}
+                            onChange={(e) => handleUpdateStatus(item.id, e.target.value as any)}
+                            className="bg-surface border border-outline-variant text-on-surface rounded-lg py-1 px-2.5 text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-primary h-8"
+                          >
+                            <option value="new">Mark New</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeleteFeedback(item.id)}
+                          className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors border-none cursor-pointer"
+                          title="Delete Feedback"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
 

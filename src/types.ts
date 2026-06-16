@@ -175,4 +175,5 @@ export interface Feedback {
   message: string;
   status: 'new' | 'in_progress' | 'resolved';
   createdAt: string;
+  githubIssueUrl?: string;
 }

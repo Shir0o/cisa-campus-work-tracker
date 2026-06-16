@@ -287,14 +287,16 @@ service cloud.firestore {
                (!('kind' in data) || data.kind in ['thought', 'idea', 'off', 'request']) &&
                data.message is string && data.message.size() <= 5000 &&
                data.status in ['new', 'in_progress', 'resolved'] &&
-               data.createdAt == request.time;
+               data.createdAt == request.time &&
+               (!('githubIssueUrl' in data) || (data.githubIssueUrl is string && data.githubIssueUrl.size() <= 1000));
       }
 
       allow list, get: if isAdmin();
       allow create: if isValidId(feedbackId) && isApprovedUser() && isValidFeedback(incoming());
       allow update: if isValidId(feedbackId) && isAdmin() &&
-                      incoming().diff(existing()).affectedKeys().hasOnly(['status']) &&
-                      incoming().status in ['new', 'in_progress', 'resolved'];
+                      incoming().diff(existing()).affectedKeys().hasOnly(['status', 'githubIssueUrl']) &&
+                      incoming().status in ['new', 'in_progress', 'resolved'] &&
+                      (!('githubIssueUrl' in incoming()) || (incoming().githubIssueUrl is string && incoming().githubIssueUrl.size() <= 1000 || incoming().githubIssueUrl == null));
       allow delete: if isValidId(feedbackId) && isAdmin();
     }
 
