@@ -34,7 +34,7 @@ export default function SubmitFeedback() {
       const fabBtn = document.getElementById('feedback-fab-btn');
       if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
 
-      const html2canvas = (await import('html2canvas')).default;
+      const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
