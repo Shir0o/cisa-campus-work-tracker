@@ -156,7 +156,7 @@ describe('roleLabel()', () => {
     expect(roleLabel('viewer')).toBe('Community');
     expect(roleLabel(null)).toBe('Guest');
     expect(roleLabel('')).toBe('Guest');
-    expect(roleLabel('super_admin')).toBe('Super_admin');
+    expect(roleLabel('unregistered_role')).toBe('Unregistered_role');
   });
 
   it('handles fallback cases for canAccessRoute, hasMinRole, and defaultRouteForRole', () => {
