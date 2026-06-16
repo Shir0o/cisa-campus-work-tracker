@@ -1,0 +1,58 @@
+name: Deploy Database Rules
+
+# Publishes database.rules.json (Realtime Database security rules) to the live
+# project on merge to main, mirroring deploy-firestore-rules.yml. RTDB rules
+# previously had no auto-deploy, so edits silently never reached the live DB
+# (every board live-collab write got permission_denied).
+#
+# Auth: reuses the FIREBASE_SERVICE_ACCOUNT repo secret. NOTE: deploying RTDB
+# rules needs role roles/firebasedatabase.admin on the service account — in
+# addition to the firebaserules.admin used for Firestore — or the deploy fails
+# with a permission error.
+
+on:
+  # Manual trigger — re-publish rules or validate the deploy credential without
+  # a code change. (GitHub only allows this once the workflow is on the default
+  # branch.)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - database.rules.json
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-database-rules.yml
+
+# Never let two rule deploys race each other.
+concurrency:
+  group: deploy-database-rules
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Realtime Database rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      # Authenticates the Firebase CLI non-interactively: this action writes the
+      # service-account key to a temp file and exports
+      # GOOGLE_APPLICATION_CREDENTIALS, which the CLI honors.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - name: Deploy Realtime Database rules
+        run: >
+          firebase deploy
+          --only database
+          --project sac-campus-hub
+          --non-interactive
