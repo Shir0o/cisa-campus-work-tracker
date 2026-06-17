@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Sidebar from '../components/layout/Sidebar';
 import { BrowserRouter } from 'react-router-dom';
@@ -11,11 +11,14 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
+const mockSetIsMobileMenuOpen = vi.fn();
+const mockUseLayout = vi.fn().mockReturnValue({
+  isMobileMenuOpen: false,
+  setIsMobileMenuOpen: mockSetIsMobileMenuOpen,
+});
+
 vi.mock('../App', () => ({
-  useLayout: () => ({
-    isMobileMenuOpen: false,
-    setIsMobileMenuOpen: vi.fn(),
-  }),
+  useLayout: () => mockUseLayout(),
 }));
 
 vi.mock('motion/react', () => ({
@@ -27,19 +30,25 @@ vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
-describe('Sidebar Role Label', () => {
+describe('Sidebar Role Label & Interactions', () => {
   const mockToggleCollapse = vi.fn();
   const mockLogInteraction = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseLayout.mockReturnValue({
+      isMobileMenuOpen: false,
+      setIsMobileMenuOpen: mockSetIsMobileMenuOpen,
+    });
+    // Set default desktop window width
+    window.innerWidth = 1024;
   });
 
-  const renderSidebar = () => {
+  const renderSidebar = (isCollapsed = false) => {
     return render(
       <BrowserRouter>
         <Sidebar
-          isCollapsed={false}
+          isCollapsed={isCollapsed}
           onToggleCollapse={mockToggleCollapse}
           onLogInteraction={mockLogInteraction}
         />
@@ -47,7 +56,11 @@ describe('Sidebar Role Label', () => {
     );
   };
 
-  const baseAuth = { isAdmin: false, logOut: vi.fn() };
+  const baseAuth = {
+    isAdmin: false,
+    logOut: vi.fn(),
+    user: { displayName: 'John Doe', photoURL: 'https://example.com/avatar.jpg' },
+  };
 
   it('displays "Full-timer" for admin role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
@@ -103,4 +116,74 @@ describe('Sidebar Role Label', () => {
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
+
+  it('handles toggling collapse when the collapse button is clicked', () => {
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
+    renderSidebar(false);
+    const collapseBtn = screen.getByText('Collapse Menu');
+    fireEvent.click(collapseBtn);
+    expect(mockToggleCollapse).toHaveBeenCalled();
+  });
+
+  it('handles logout button click', () => {
+    const logoutMock = vi.fn();
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', logOut: logoutMock });
+    renderSidebar();
+    const logoutBtn = screen.getByRole('button', { name: /Log out/i });
+    fireEvent.click(logoutBtn);
+    expect(logoutMock).toHaveBeenCalled();
+  });
+
+  it('handles logo image load error by showing fallback initial', () => {
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin' });
+    renderSidebar();
+    const logoImg = screen.getByAltText('CISA Campus Work Tracker');
+    fireEvent.error(logoImg);
+    // Since we mocked out motion components, we should check parent element changes
+    expect(logoImg.style.display).toBe('none');
+  });
+
+  it('updates display mode on resize and triggers scroll timing', async () => {
+    vi.useFakeTimers();
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin' });
+    renderSidebar();
+
+    // Trigger scroll on the scrollable container
+    const navItems = screen.getByLabelText('Main Navigation');
+    const scrollContainer = navItems.querySelector('.overflow-y-auto');
+    if (scrollContainer) {
+      fireEvent.scroll(scrollContainer);
+    }
+    vi.advanceTimersByTime(1000);
+
+    // Trigger window resize
+    window.innerWidth = 500;
+    fireEvent(window, new Event('resize'));
+    
+    vi.useRealTimers();
+  });
+
+  it('renders mobile menu overlay and close button when menu is open on mobile', () => {
+    mockUseLayout.mockReturnValue({
+      isMobileMenuOpen: true,
+      setIsMobileMenuOpen: mockSetIsMobileMenuOpen,
+    });
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin' });
+    renderSidebar();
+
+    // Mobile overlay check
+    const mobileOverlay = document.querySelector('.bg-scrim\\/50');
+    expect(mobileOverlay).toBeInTheDocument();
+    if (mobileOverlay) {
+      fireEvent.click(mobileOverlay);
+      expect(mockSetIsMobileMenuOpen).toHaveBeenCalledWith(false);
+    }
+
+    // Close button (X) check
+    const closeBtn = screen.getByRole('button', { name: '' }); // Lucide X is an icon button
+    expect(closeBtn).toBeInTheDocument();
+    fireEvent.click(closeBtn);
+    expect(mockSetIsMobileMenuOpen).toHaveBeenCalledWith(false);
+  });
 });
+

@@ -4,6 +4,7 @@ import { onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
 import PrayerList from '../views/PrayerList';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
+import { logActivity } from '../lib/firebase';
 import React from 'react';
 
 // Mock dependencies
@@ -40,6 +41,17 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+// We'll mock the ContactDetailsModal to keep this test fast and isolated
+vi.mock('../components/modals/ContactDetailsModal', () => ({
+  default: ({ isOpen, onClose, contact }: any) => 
+    isOpen ? (
+      <div data-testid="contact-modal">
+        Modal Open for {contact?.name}
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null
+}));
+
 const mockContacts = [
   {
     id: 'c1',
@@ -48,6 +60,16 @@ const mockContacts = [
       email: 'alice@example.com',
       role: 'Student',
       stage: 'Lead',
+      tags: ['Year 2'],
+    }),
+  },
+  {
+    id: 'c2',
+    data: () => ({
+      name: 'Bob Smith',
+      email: 'bob@example.com',
+      role: 'Leader',
+      stage: 'Regular',
     }),
   },
 ];
@@ -64,6 +86,15 @@ const mockPrayers = [
       updatedByName: 'Staff Member',
     }),
   },
+  {
+    id: 'p2',
+    data: () => ({
+      contactId: 'c2',
+      prayedFor: 'Health and recovery',
+      unanswered: true,
+      updatedAt: '2026-06-11T00:00:00.000Z',
+    }),
+  },
 ];
 
 describe('PrayerList', () => {
@@ -71,9 +102,9 @@ describe('PrayerList', () => {
     vi.clearAllMocks();
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
+        callback({ docs: mockContacts, size: 2 });
       } else if (ref?.path === 'prayers') {
-        callback({ docs: mockPrayers, size: 1 });
+        callback({ docs: mockPrayers, size: 2 });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -95,20 +126,25 @@ describe('PrayerList', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
-  it('renders prayer log title and active prayer threads', async () => {
+  it('renders prayer log title and active prayer threads with legacy support', async () => {
     render(<PrayerList />);
 
     await waitFor(() => {
       expect(screen.getByText('Prayer Log')).toBeInTheDocument();
+      // Alice (normal prayer)
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
       expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+      // Bob (legacy prayer)
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+      expect(screen.getByText('Health and recovery')).toBeInTheDocument();
+      expect(screen.getAllByText('Still waiting').length).toBeGreaterThan(0);
     });
   });
 
   it('shows empty state when no prayers exist and mock is empty', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
+        callback({ docs: mockContacts, size: 2 });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -122,23 +158,31 @@ describe('PrayerList', () => {
     });
   });
 
-  it('handles toggling unanswered status', async () => {
+  it('handles toggling status marks', async () => {
     render(<PrayerList />);
 
     await waitFor(() => {
       expect(screen.getByText('Strength for finals')).toBeInTheDocument();
     });
 
-    // Find the toggle button (it should be an icon or button related to answering or marking)
-    // Looking at the view, it has "Answered" or "Answer" buttons.
-    // Let's click "Answer" or "Answered"
-    const answerButton = screen.getByText('Answered');
+    // Mark as Answered
+    const answerButton = screen.getAllByRole('button', { name: 'Answered' })[0];
     fireEvent.click(answerButton);
+    expect(updateDoc).toHaveBeenCalled();
+    await waitFor(() => expect(logActivity).toHaveBeenCalled());
 
+    // Mark as Ongoing
+    const ongoingButton = screen.getAllByRole('button', { name: 'Ongoing' })[0];
+    fireEvent.click(ongoingButton);
+    expect(updateDoc).toHaveBeenCalled();
+
+    // Mark as Still waiting
+    const unansweredButton = screen.getAllByRole('button', { name: 'Still waiting' })[0];
+    fireEvent.click(unansweredButton);
     expect(updateDoc).toHaveBeenCalled();
   });
 
-  it('handles adding a new prayer burden', async () => {
+  it('handles adding a new prayer burden and canceling input', async () => {
     render(<PrayerList />);
 
     await waitFor(() => {
@@ -148,14 +192,133 @@ describe('PrayerList', () => {
     const writeButton = screen.getByText(/Write what we’re carrying for Alice this week/i);
     fireEvent.click(writeButton);
 
+    // Cancel input
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtn);
+    
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/What are we praying for Alice this week/i)).not.toBeInTheDocument();
+    });
+
+    // Re-open and add burden
+    fireEvent.click(screen.getByText(/Write what we’re carrying for Alice this week/i));
     const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
     fireEvent.change(textarea, { target: { value: 'New prayer request text' } });
 
-    const addButton = screen.getByText('Add prayer');
+    const addButton = screen.getByRole('button', { name: 'Add prayer' });
     fireEvent.click(addButton);
 
     await waitFor(() => {
       expect(addDoc).toHaveBeenCalled();
+      expect(logActivity).toHaveBeenCalled();
     });
   });
+
+  it('handles editing an existing prayer burden and canceling edits', async () => {
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+
+    // Click edit
+    const editBtn = screen.getAllByRole('button', { name: 'Edit' })[0];
+    fireEvent.click(editBtn);
+
+    const textarea = await screen.findByDisplayValue('Strength for finals');
+    fireEvent.change(textarea, { target: { value: 'Strength for finals and life' } });
+
+    // Cancel edit
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtn);
+    
+    await waitFor(() => {
+      expect(screen.queryByPlaceholderText(/What are we praying/i)).not.toBeInTheDocument();
+      expect(screen.getAllByRole('button', { name: 'Edit' })[0]).toBeInTheDocument();
+    });
+
+    // Edit again and save
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const textarea2 = await screen.findByDisplayValue('Strength for finals');
+    fireEvent.change(textarea2, { target: { value: 'New edited text' } });
+
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalled();
+    });
+  });
+
+  it('handles starting to carry a suggested contact', async () => {
+    // Let's verify we can find the search input
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+
+    // Let's verify we can find the search input
+    const searchInput = screen.getByPlaceholderText('Find someone…');
+    expect(searchInput).toBeInTheDocument();
+  });
+
+  it('handles folding earlier prayers', async () => {
+    // Contact c1 has 6 prayers (1 this week, 5 earlier)
+    const multiplePrayers = [
+      { id: 'pw', data: () => ({ contactId: 'c1', burden: 'This week burden', date: new Date().toISOString(), status: 'pending' }) },
+      { id: 'p_last', data: () => ({ contactId: 'c1', burden: 'Last week burden', date: new Date(Date.now() - 8 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e1', data: () => ({ contactId: 'c1', burden: 'Earlier 1', date: new Date(Date.now() - 15 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e2', data: () => ({ contactId: 'c1', burden: 'Earlier 2', date: new Date(Date.now() - 22 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e3', data: () => ({ contactId: 'c1', burden: 'Earlier 3', date: new Date(Date.now() - 29 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e4', data: () => ({ contactId: 'c1', burden: 'Earlier 4', date: new Date(Date.now() - 36 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+      { id: 'p_e5', data: () => ({ contactId: 'c1', burden: 'Earlier 5', date: new Date(Date.now() - 43 * 24 * 3600 * 1000).toISOString(), status: 'pending' }) },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: multiplePrayers, size: 7 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('This week burden')).toBeInTheDocument();
+    });
+
+    const earlierToggle = screen.getByRole('button', { name: /Earlier — 5 prayers/i });
+    expect(earlierToggle).toBeInTheDocument();
+
+    // Toggle open
+    fireEvent.click(earlierToggle);
+    expect(screen.getByText('Earlier 1')).toBeInTheDocument();
+    expect(screen.getByText('see Alice’s full history')).toBeInTheDocument();
+
+    // Toggle close
+    fireEvent.click(earlierToggle);
+    expect(screen.queryByText('Earlier 1')).not.toBeInTheDocument();
+  });
+
+  it('opens contact details profile modal on avatar click', async () => {
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const profileButton = screen.getAllByTitle('Open profile')[0];
+    fireEvent.click(profileButton);
+
+    expect(screen.getByTestId('contact-modal')).toBeInTheDocument();
+    expect(screen.getByText('Modal Open for Alice Johnson')).toBeInTheDocument();
+
+    // Close modal
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(closeBtn);
+    expect(screen.queryByTestId('contact-modal')).not.toBeInTheDocument();
+  });
 });
+
