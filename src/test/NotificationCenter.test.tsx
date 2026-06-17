@@ -32,7 +32,7 @@ vi.mock('firebase/firestore', () => {
     onSnapshot: vi.fn(),
     doc: vi.fn().mockReturnValue({ id: 'mock-doc-id' }),
     updateDoc: vi.fn(),
-    arrayUnion: vi.fn((val) => ['mock-user-id']),
+    arrayUnion: vi.fn((val) => ({ __firestore_mock_type: 'arrayUnion', value: val })),
     writeBatch: vi.fn().mockReturnValue({
       update: vi.fn(),
       commit: vi.fn().mockResolvedValue(true),
