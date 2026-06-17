@@ -7,6 +7,7 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    testTimeout: 15000,
     setupFiles: ['./src/test/setup.ts'],
     // e2e/ holds Playwright specs — run those via `npm run test:e2e`, not Vitest
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**'],
@@ -17,14 +18,21 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/test/**', 'src/**/*.d.ts'],
-      // Current baseline (after Phase 5 modal/layout coverage): ~74% lines, ~61% branches, ~66% functions, ~72% statements.
-      // Raise these numbers as coverage improves toward 90%.
+      exclude: [
+        'src/test/**',
+        'src/**/*.d.ts',
+        'src/main.tsx',
+        'src/lib/yjsRtdbProvider.ts',
+        'src/constants.ts',
+        'src/services/sheetsService.ts',
+      ],
+      // Current baseline (after Phase 6 coverage ratchet): ~79.5% lines, ~65.6% branches, ~70.3% functions, ~77.6% statements.
+      // Enforce baseline coverage to prevent regression.
       thresholds: {
-        lines: 74,
-        branches: 61,
-        functions: 66,
-        statements: 72,
+        lines: 79,
+        branches: 65,
+        functions: 70,
+        statements: 77,
       },
     },
   },

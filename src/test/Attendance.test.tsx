@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot } from 'firebase/firestore';
+import { onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
 import Attendance from '../views/Attendance';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -41,6 +41,18 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+vi.mock('../components/modals/SyncSheetModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="sync-sheet-modal">Sync with Google Sheet</div> : null,
+}));
+
+vi.mock('../components/modals/AddEventModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="add-event-modal">Add Event Modal</div> : null,
+}));
+
+vi.mock('../components/modals/ContactDetailsModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="contact-details-modal">Contact Details</div> : null,
+}));
+
 const mockContacts = [
   {
     id: 'c1',
@@ -49,6 +61,21 @@ const mockContacts = [
       email: 'alice@example.com',
       role: 'Student',
       stage: 'Lead',
+      attendance: {
+        e3: true, // Attended only event 3 (so missed event 1 and event 2)
+      },
+    }),
+  },
+  {
+    id: 'c2',
+    data: () => ({
+      name: 'Bob Lee',
+      email: 'bob@example.com',
+      role: 'Student',
+      stage: 'Lead',
+      attendance: {
+        e1: true, // Attended latest event
+      },
     }),
   },
 ];
@@ -61,21 +88,38 @@ const mockEvents = [
       date: '2026-06-12',
       type: 'Weekly',
       order: 1,
-      attendance: {
-        c1: true,
-      },
+    }),
+  },
+  {
+    id: 'e2',
+    data: () => ({
+      name: 'Friday Gathering 2',
+      date: '2026-06-05',
+      type: 'Weekly',
+      order: 2,
+    }),
+  },
+  {
+    id: 'e3',
+    data: () => ({
+      name: 'Small Group 1',
+      date: '2026-05-29',
+      type: 'Small Group',
+      order: 3,
     }),
   },
 ];
 
 describe('Attendance', () => {
+  const mockSetSelectedContact = vi.fn();
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
-        callback({ docs: mockContacts, size: 1 });
+        callback({ docs: mockContacts, size: 2 });
       } else if (ref?.path === 'events') {
-        callback({ docs: mockEvents, size: 1 });
+        callback({ docs: mockEvents, size: 3 });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -88,8 +132,11 @@ describe('Attendance', () => {
     });
 
     (useLayout as any).mockReturnValue({
-      setSelectedContact: vi.fn(),
+      setSelectedContact: mockSetSelectedContact,
     });
+
+    global.URL.createObjectURL = vi.fn(() => 'mock-url');
+    global.URL.revokeObjectURL = vi.fn();
   });
 
   it('renders loading state initially by mocking onSnapshot delay', () => {
@@ -103,7 +150,7 @@ describe('Attendance', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Gatherings')).toBeInTheDocument();
-      expect(screen.getByText('1 time')).toBeInTheDocument();
+      expect(screen.getByText('3 times')).toBeInTheDocument();
     });
   });
 
@@ -114,11 +161,12 @@ describe('Attendance', () => {
       expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
     });
 
-    // Select 'Small Group' filter
+    // Select 'Small Groups' filter
     const smallGroupsFilter = screen.getByText('Small Groups');
     fireEvent.click(smallGroupsFilter);
 
     expect(screen.queryByText('Friday Gathering 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Small Group 1')).toBeInTheDocument();
   });
 
   it('handles clicking the log gathering button to open modal', async () => {
@@ -131,7 +179,85 @@ describe('Attendance', () => {
     const logButton = screen.getByText('Log a gathering');
     fireEvent.click(logButton);
 
-    // Expect the modal to show (e.g., event name input)
-    expect(screen.getByPlaceholderText(/e.g. Friday Night Gathering/i)).toBeInTheDocument();
+    expect(screen.getByTestId('add-event-modal')).toBeInTheDocument();
+  });
+
+  it('renders the missed contacts section and allows interactions', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Who we've missed lately")).toBeInTheDocument();
+      expect(screen.getByText("Alice Johnson")).toBeInTheDocument();
+    });
+
+    // Click "Open" on Alice in the missed section
+    const openBtn = screen.getAllByRole('button', { name: 'Open' })[0];
+    fireEvent.click(openBtn);
+    
+    // Expect the ContactDetailsModal to open
+    expect(screen.getByTestId('contact-details-modal')).toBeInTheDocument();
+  });
+
+  it('handles expanding a session and cycling attendance', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    // Expand Friday Gathering 1
+    const headerBtn = screen.getByText('Friday Gathering 1');
+    fireEvent.click(headerBtn);
+
+    // Expect to see attendance lists
+    expect(screen.getByText(/Attended/i)).toBeInTheDocument();
+    expect(screen.getByText(/We missed/i)).toBeInTheDocument();
+
+    // Toggle Bob Lee (who is present for e1)
+    const bobBtn = screen.getByRole('button', { name: /Bob Lee/ });
+    fireEvent.click(bobBtn);
+
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('allows exporting to CSV', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Export')).toBeInTheDocument();
+    });
+
+    const exportBtn = screen.getByText('Export');
+    fireEvent.click(exportBtn);
+
+    expect(global.URL.createObjectURL).toHaveBeenCalled();
+  });
+
+  it('allows deleting an event', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    // Click trash icon button
+    const deleteBtn = screen.getAllByTitle('Remove gathering')[0];
+    fireEvent.click(deleteBtn);
+
+    expect(deleteDoc).toHaveBeenCalled();
+  });
+
+  it('opens sync sheet modal', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sync sheet')).toBeInTheDocument();
+    });
+
+    const syncBtn = screen.getByText('Sync sheet');
+    fireEvent.click(syncBtn);
+
+    expect(screen.getByTestId('sync-sheet-modal')).toBeInTheDocument();
   });
 });
