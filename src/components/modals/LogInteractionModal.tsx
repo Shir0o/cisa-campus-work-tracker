@@ -384,7 +384,15 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                     />
                   </div>
 
-                  {tasks.length > 0 && (
+                  {tasks.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={addTask}
+                      className="w-full py-3 border border-dashed border-outline/30 rounded-2xl text-xs font-bold text-on-surface-variant hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" /> Add Follow-Up Task
+                    </button>
+                  ) : (
                     <div className="space-y-3 bg-surface-container-low p-4 rounded-3xl border border-primary/20">
                       <div className="flex items-center justify-between px-1">
                         <label className="text-[10px] font-black uppercase tracking-[0.2em] text-primary flex items-center gap-1.5">
