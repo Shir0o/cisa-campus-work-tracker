@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- Unit test coverage for core views: `Directory`, `PrayerList`, `Attendance`, `History`, `SignUp`, and `FeedbackList`, boosting overall line coverage from ~39% to over 50% (#59).
 - `CHANGELOG.md` — distilled project history backfilled from git/PR log.
 
 ### Changed
@@ -19,6 +20,8 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   worktrees on session start so project instructions follow each worktree (#39).
 
 ### Fixed
+- Vitest configuration to exclude `.claude/**` subagent worktrees, preventing test suite conflicts.
+- Mocking setup in `OutreachBoard` tests to prevent loading real Firebase RTDB services under unit tests.
 - The Board live collaboration no longer fails with RTDB `permission_denied`:
   broadened the `board_docs_rtdb` rule to any signed-in, email-verified user
   (the previous rule required an `admin` custom claim the app never sets, so

@@ -69,8 +69,12 @@ vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
 }));
 
-vi.mock('firebase/app', () => ({ initializeApp: vi.fn(() => ({})) }));
-vi.mock('firebase/auth', () => ({ getAuth: vi.fn(() => ({})) }));
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  handleFirestoreError: vi.fn(),
+  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE', DELETE: 'DELETE' },
+  logActivity: vi.fn(),
+}));
 
 vi.mock('../App', () => ({
   useLayout: () => ({
