@@ -48,7 +48,17 @@ vi.mock('motion/react', () => ({
 }));
 
 const mockContacts = [
-  { id: 'c1', name: 'Alice', email: 'alice@example.com', role: 'Student' },
+  {
+    id: 'c1',
+    name: 'Alice',
+    email: 'alice@example.com',
+    role: 'Student',
+    location: 'Main Hall',
+    phone: '123-456-7890',
+    stage: 'Contacted',
+    lastSeen: '2026-06-17',
+    initials: 'A',
+  },
 ];
 
 describe('SyncSheetModal Component', () => {
