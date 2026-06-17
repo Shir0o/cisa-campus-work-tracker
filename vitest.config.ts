@@ -9,7 +9,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     // e2e/ holds Playwright specs — run those via `npm run test:e2e`, not Vitest
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
@@ -18,13 +18,13 @@ export default defineConfig({
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/test/**', 'src/**/*.d.ts'],
-      // Current baseline (after P2 providers & shared UI primitives): ~39% lines, ~31% branches, ~33% functions, ~38% statements.
+      // Current baseline (after P3 core views): ~50% lines, ~40% branches, ~43% functions, ~49% statements.
       // Raise these numbers as coverage improves toward 90%.
       thresholds: {
-        lines: 39,
-        branches: 31,
-        functions: 32,
-        statements: 38,
+        lines: 50,
+        branches: 40,
+        functions: 43,
+        statements: 49,
       },
     },
   },
