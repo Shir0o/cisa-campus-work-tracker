@@ -20,16 +20,16 @@ vi.mock('../App', () => ({
 }));
 
 vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(),
+  collection: vi.fn((_db: unknown, path: string) => ({ path })),
   onSnapshot: vi.fn((_, callback) => {
     callback({ docs: [], size: 0 });
     return vi.fn();
   }),
-  query: vi.fn(),
+  query: vi.fn((ref: unknown) => ref),
   orderBy: vi.fn(),
   limit: vi.fn(),
   where: vi.fn(),
-  collectionGroup: vi.fn(),
+  collectionGroup: vi.fn((_db: unknown, group: string) => ({ path: group })),
   doc: vi.fn(),
   updateDoc: vi.fn(() => Promise.resolve()),
   getDoc: vi.fn(),
@@ -146,6 +146,179 @@ describe('MyDay', () => {
     fireEvent.click(screen.getByText('I prayed'));
     await waitFor(() => {
       expect(screen.getByText('Prayed today')).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Overdue" chip for tasks with a past due date', async () => {
+    const pastISO = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const p = ref?.path;
+      if (p === 'tasks') {
+        callback({
+          docs: [
+            {
+              id: 'overdue-1',
+              ref: { path: 'tasks/overdue-1' },
+              data: () => ({
+                title: 'Call overdue contact',
+                dueDate: pastISO,
+                status: 'pending',
+                assigneeId: 'u-test',
+                contactId: 'x1',
+                contactName: 'Ana Lee',
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (p === 'contacts') {
+        // fire contacts so loading turns off
+        callback({ docs: [], size: 0 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText('Overdue')).toBeInTheDocument();
+    });
+  });
+
+  it('renders events in "Your week" section', async () => {
+    const soonEventISO = new Date(Date.now() + 1 * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const p = ref?.path;
+      if (p === 'events') {
+        callback({
+          docs: [
+            {
+              id: 'ev-1',
+              ref: { path: 'events/ev-1' },
+              data: () => ({
+                name: 'Wednesday Bible Study',
+                date: soonEventISO,
+                type: 'Bible Study',
+                location: 'Room 201',
+                order: 1,
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (p === 'contacts') {
+        callback({ docs: [], size: 0 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText('Wednesday Bible Study')).toBeInTheDocument();
+      expect(screen.getByText(/up next/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows staleLeader nudge when a contact has not been touched in >=7 days', async () => {
+    const oldDate = new Date(Date.now() - 15 * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const p = ref?.path;
+      if (p === 'contacts') {
+        callback({
+          docs: [
+            {
+              id: 'stale-1',
+              ref: { path: 'contacts/stale-1' },
+              data: () => ({
+                name: 'John Stale',
+                initials: 'JS',
+                stage: 'Regular',
+                email: 'john@example.com',
+                notes: '',
+                createdAt: oldDate,
+                createdBy: 'u-test',
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (p === 'interactions') {
+        callback({
+          docs: [
+            {
+              id: 'i-old',
+              ref: { path: 'contacts/stale-1/interactions/i-old' },
+              data: () => ({
+                content: 'had coffee',
+                createdAt: oldDate,
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<MyDay />);
+    await waitFor(() => {
+      // The nudge text is inline inside a <p> — match the paragraph by substring.
+      expect(screen.getByText(/since you sat with John/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders completed tasks with line-through styling', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const p = ref?.path;
+      if (p === 'tasks') {
+        callback({
+          docs: [
+            {
+              id: 'done-1',
+              ref: { path: 'tasks/done-1' },
+              data: () => ({
+                title: 'Already finished task',
+                dueDate: soonISO,
+                status: 'completed',
+                assigneeId: 'u-test',
+                contactId: 'x1',
+                contactName: 'Ana Lee',
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (p === 'contacts') {
+        callback({ docs: [], size: 0 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<MyDay />);
+    await waitFor(() => {
+      const taskTitle = screen.getByText('Already finished task');
+      expect(taskTitle.className).toContain('line-through');
+    });
+  });
+
+  it('renders gracefully when user has no uid (no tasks subscription)', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { displayName: 'Test User' },
+    });
+
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
+      expect(
+        screen.getByText('Nothing on the horizon right now — a rare, quiet moment.'),
+      ).toBeInTheDocument();
     });
   });
 });
