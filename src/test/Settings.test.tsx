@@ -398,4 +398,348 @@ describe('Settings', () => {
       expect(badges).toHaveLength(1);
     });
   });
+
+  // ── 11. Additional P4 Unit Tests ──
+
+  describe('User invitations validation and role management', () => {
+    it('shows an alert when trying to invite an existing user email', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+      const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Add someone')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText('Add someone'));
+
+      await waitFor(() => {
+        expect(screen.getByText('Add someone by email')).toBeInTheDocument();
+      });
+
+      const emailInput = screen.getByPlaceholderText('their@email.com');
+      fireEvent.change(emailInput, { target: { value: 'alice@test.com' } });
+
+      const form = emailInput.closest('form')!;
+      fireEvent.submit(form);
+
+      await waitFor(() => {
+        expect(alertSpy).toHaveBeenCalledWith('A user with this email already exists.');
+      });
+      alertSpy.mockRestore();
+    });
+
+    it('handles revoking/canceling invitation via revokeInvitation', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+
+      const confirmSpy = vi.spyOn(window, 'confirm');
+      
+      // Cancel scenario
+      confirmSpy.mockReturnValueOnce(false);
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('charlie@test.com')).toBeInTheDocument();
+      });
+
+      const cancelButtons = screen.getAllByRole('button', { name: /Cancel invite/i });
+      fireEvent.click(cancelButtons[0]);
+
+      expect(confirmSpy).toHaveBeenCalledWith('Cancel this invitation?');
+      expect(deleteDoc).not.toHaveBeenCalled();
+
+      // Confirm scenario
+      confirmSpy.mockReturnValueOnce(true);
+      fireEvent.click(cancelButtons[0]);
+      expect(deleteDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'charlie@test.com' })
+      );
+
+      confirmSpy.mockRestore();
+    });
+
+    it('handles role updates through EditRoleModal', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      });
+
+      // MemberCard options button
+      const optionsButtons = screen.getAllByRole('button', { name: /Member options/i });
+      // Alice is first approved member
+      fireEvent.click(optionsButtons[0]);
+
+      // Click "Edit role"
+      const editRoleButton = screen.getByText('Edit role');
+      fireEvent.click(editRoleButton);
+
+      // Verify Modal rendered
+      expect(screen.getByText('Edit role')).toBeInTheDocument();
+      expect(screen.getByText('alice@test.com')).toBeInTheDocument();
+
+      // Cancel modal
+      const cancelModalButton = screen.getByRole('button', { name: 'Cancel' });
+      fireEvent.click(cancelModalButton);
+      expect(screen.queryByText('Edit role')).not.toBeInTheDocument();
+
+      // Re-open and save
+      fireEvent.click(optionsButtons[0]);
+      fireEvent.click(screen.getByText('Edit role'));
+
+      // Change role select
+      const roleSelect = screen.getByRole('combobox');
+      fireEvent.change(roleSelect, { target: { value: 'viewer' } });
+
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/u1' }),
+          expect.objectContaining({ role: 'viewer', updatedAt: 'mock-timestamp' })
+        );
+      });
+    });
+
+    it('handles removing access through RemoveConfirmModal', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      });
+
+      // MemberCard options button
+      const optionsButtons = screen.getAllByRole('button', { name: /Member options/i });
+      fireEvent.click(optionsButtons[0]);
+
+      // Click "Remove access"
+      const removeAccessButton = screen.getByText('Remove access');
+      fireEvent.click(removeAccessButton);
+
+      // Verify Modal rendered
+      expect(screen.getByText('Remove access?')).toBeInTheDocument();
+
+      // Cancel remove
+      const cancelRemoveButton = screen.getByRole('button', { name: 'Cancel' });
+      fireEvent.click(cancelRemoveButton);
+      expect(screen.queryByText('Remove access?')).not.toBeInTheDocument();
+
+      // Re-open and confirm
+      fireEvent.click(optionsButtons[0]);
+      fireEvent.click(screen.getByText('Remove access'));
+
+      const confirmRemoveButton = screen.getByRole('button', { name: 'Remove' });
+      fireEvent.click(confirmRemoveButton);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.objectContaining({ path: 'users/u1' }),
+          expect.objectContaining({ approved: false, updatedAt: 'mock-timestamp' })
+        );
+      });
+    });
+
+    it('closes member options menu when clicking outside', async () => {
+      setupManagerAuth();
+      setupManagerSnapshot();
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      });
+
+      const optionsButtons = screen.getAllByRole('button', { name: /Member options/i });
+      fireEvent.click(optionsButtons[0]);
+
+      // Verify menu is open
+      expect(screen.getByText('Edit role')).toBeInTheDocument();
+
+      // Mousedown on document outside ref
+      fireEvent.mouseDown(document.body);
+
+      // Verify menu is closed
+      expect(screen.queryByText('Edit role')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Quick Add / Integrations Section', () => {
+    it('performs quick add with success response', async () => {
+      setupManagerAuth();
+      
+      const mockFetchResponse = {
+        success: true,
+        contact: {
+          name: 'Jane Smith',
+          role: 'Student',
+          location: 'Dorm C',
+          stage: 'Interested',
+          notes: 'Likes books'
+        }
+      };
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+        Promise.resolve({
+          json: () => Promise.resolve(mockFetchResponse),
+        } as Response)
+      );
+
+      render(<Settings />);
+
+      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
+      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
+
+      const tryItButton = screen.getByRole('button', { name: /Try it/i });
+      fireEvent.click(tryItButton);
+
+      // Wait for success screen
+      await waitFor(() => {
+        expect(screen.getByText('Parsed into a contact')).toBeInTheDocument();
+        expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+        expect(screen.getByText('Dorm C')).toBeInTheDocument();
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/quick-add',
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            text: 'Met Jane Smith at Dorm C',
+            userId: 'u-admin',
+            userName: 'Admin User'
+          })
+        })
+      );
+
+      fetchSpy.mockRestore();
+    });
+
+    it('performs quick add with failure response', async () => {
+      setupManagerAuth();
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+        Promise.resolve({
+          json: () => Promise.resolve({ success: false, error: 'AI processing failed' }),
+        } as Response)
+      );
+
+      render(<Settings />);
+
+      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
+      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
+
+      const tryItButton = screen.getByRole('button', { name: /Try it/i });
+      fireEvent.click(tryItButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+        expect(screen.getByText('AI processing failed')).toBeInTheDocument();
+      });
+      fetchSpy.mockRestore();
+    });
+
+    it('performs quick add with network exception', async () => {
+      setupManagerAuth();
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+        Promise.reject(new Error('Network offline'))
+      );
+
+      render(<Settings />);
+
+      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
+      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
+
+      const tryItButton = screen.getByRole('button', { name: /Try it/i });
+      fireEvent.click(tryItButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Something went wrong')).toBeInTheDocument();
+        expect(screen.getByText('Network offline')).toBeInTheDocument();
+      });
+      fetchSpy.mockRestore();
+    });
+  });
+
+  describe('Webhook Logs Console', () => {
+    const mockWebhookLogs = [
+      {
+        id: 'log1',
+        data: () => ({
+          source: 'GroupMe',
+          status: 'success',
+          result: 'Contact added: Jerry Doe',
+          timestamp: '2026-06-17T12:00:00Z',
+          payload: '{"text": "add contact Jerry"}',
+          headers: '{"content-type": "application/json"}',
+        }),
+      },
+      {
+        id: 'log2',
+        data: () => ({
+          source: 'SMS',
+          status: 'error',
+          result: 'Parsing failed',
+          timestamp: '2026-06-17T12:05:00Z',
+          payload: 'invalid payload',
+          headers: '{"content-type": "text/plain"}',
+          error: 'Invalid format',
+        }),
+      },
+    ];
+
+    it('renders and manages logs', async () => {
+      setupManagerAuth();
+
+      // Hook up onSnapshot to return webhook logs when path is webhook_logs
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'webhook_logs') {
+          callback({ docs: mockWebhookLogs });
+        } else if (ref?.path === 'users') {
+          callback({ docs: mockUsers });
+        } else if (ref?.path === 'invitations') {
+          callback({ docs: mockInvitations });
+        } else {
+          callback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('API & webhook console')).toBeInTheDocument();
+        expect(screen.getByText('Contact added: Jerry Doe')).toBeInTheDocument();
+        expect(screen.getByText('Parsing failed')).toBeInTheDocument();
+      });
+
+      // Expand a success log
+      fireEvent.click(screen.getByText('Contact added: Jerry Doe'));
+      expect(screen.getByText('Raw payload (POST body)')).toBeInTheDocument();
+      expect(screen.getByText('Request headers')).toBeInTheDocument();
+
+      // Expand an error log
+      fireEvent.click(screen.getByText('Parsing failed'));
+      expect(screen.getByText('Failure detail')).toBeInTheDocument();
+      expect(screen.getByText('Invalid format')).toBeInTheDocument();
+
+      // Test clearing logs
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const clearButton = screen.getByRole('button', { name: /Clear/i });
+      fireEvent.click(clearButton);
+
+      expect(confirmSpy).toHaveBeenCalledWith('Clear all webhook debugging logs?');
+      confirmSpy.mockRestore();
+    });
+  });
 });

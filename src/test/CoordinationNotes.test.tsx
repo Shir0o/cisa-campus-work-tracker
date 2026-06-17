@@ -616,4 +616,32 @@ describe('CoordinationNotes', () => {
       });
     });
   });
+
+  describe('Firestore query listener error handling', () => {
+    it('handles firestore errors when fetching board_docs', async () => {
+      const { handleFirestoreError } = await import('../lib/firebase');
+      const mockError = new Error('Permission denied');
+
+      (useAuth as any).mockReturnValue(adminAuth);
+
+      (onSnapshot as any).mockImplementation(
+        (ref: { path?: string }, callback: any, errorCallback?: any) => {
+          if (ref?.path === 'board_docs' && errorCallback) {
+            errorCallback(mockError);
+          }
+          return vi.fn();
+        }
+      );
+
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(handleFirestoreError).toHaveBeenCalledWith(
+          mockError,
+          'LIST',
+          'board_docs'
+        );
+      });
+    });
+  });
 });
