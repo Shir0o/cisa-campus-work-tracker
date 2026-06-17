@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import AddEventModal from '../components/modals/AddEventModal';
 import * as firestore from 'firebase/firestore';
 import { handleFirestoreError } from '../lib/firebase';
@@ -35,8 +35,24 @@ vi.mock('motion/react', () => ({
 describe('AddEventModal Component', () => {
   const mockOnClose = vi.fn();
 
+  let dateSpy: any;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    const RealDate = global.Date;
+    dateSpy = vi.spyOn(global, 'Date').mockImplementation(function (this: Date, ...args: any[]) {
+      if (args.length === 0) {
+        return new RealDate('2026-06-17T12:00:00Z');
+      }
+      // @ts-ignore
+      return new RealDate(...args);
+    } as any);
+    vi.spyOn(Date, 'now').mockReturnValue(new RealDate('2026-06-17T12:00:00Z').getTime());
+  });
+
+  afterEach(() => {
+    dateSpy.mockRestore();
+    vi.restoreAllMocks();
   });
 
   it('does not render when isOpen is false', () => {
