@@ -373,4 +373,130 @@ describe('OutreachBoard', () => {
 
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
+
+  // ── 14. Stage and Contact modifications ──
+  it('submits a new stage successfully', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { addDoc } = await import('firebase/firestore');
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+    fireEvent.click(shapeBtn);
+
+    const input = screen.getByPlaceholderText(/e\.g\. Following up/i);
+    fireEvent.change(input, { target: { value: 'New Test Stage' } });
+
+    // Select color button
+    const colorBtn = screen.getByTitle('Sage');
+    fireEvent.click(colorBtn);
+
+    const submitBtn = screen.getByRole('button', { name: /Add this step/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(addDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'stages' }),
+        expect.objectContaining({
+          label: 'New Test Stage',
+          color: 'bg-board-teal',
+          order: 2,
+        })
+      );
+    });
+  });
+
+  it('submits edits to an existing stage and migrates contacts', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { updateDoc, writeBatch } = await import('firebase/firestore');
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    // Wait for loading to clear
+    await screen.findByText('Alice Chen');
+
+    // Click column header menu for "First Contact"
+    const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
+    const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
+    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    fireEvent.click(menuBtn);
+
+    const renameBtn = screen.getByRole('button', { name: /Rename step/i });
+    fireEvent.click(renameBtn);
+
+    const input = screen.getByPlaceholderText(/e\.g\. Following up/i);
+    fireEvent.change(input, { target: { value: 'Updated First Contact' } });
+
+    const submitBtn = screen.getByRole('button', { name: /Save changes/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'stages/s1' }),
+        expect.objectContaining({
+          label: 'Updated First Contact',
+        })
+      );
+      expect(writeBatch).toHaveBeenCalled();
+    });
+  });
+
+  it('handles stage deletion confirmation', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { deleteDoc } = await import('firebase/firestore');
+    const confirmSpy = vi.spyOn(window, 'confirm');
+
+    // Cancel deletion
+    confirmSpy.mockReturnValueOnce(false);
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    // Wait for loading to clear
+    await screen.findByText('Alice Chen');
+
+    const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
+    const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
+    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    fireEvent.click(menuBtn);
+
+    const removeBtn = screen.getByRole('button', { name: /Remove step/i });
+    fireEvent.click(removeBtn);
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Remove this step'));
+    expect(deleteDoc).not.toHaveBeenCalled();
+
+    // Confirm deletion
+    confirmSpy.mockReturnValueOnce(true);
+    fireEvent.click(menuBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Remove step/i }));
+    
+    expect(deleteDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'stages/s1' })
+    );
+
+    confirmSpy.mockRestore();
+  });
+
+  it('handles firestore query errors for stages', async () => {
+    const { handleFirestoreError } = await import('../lib/firebase');
+    const mockError = new Error('Permission denied');
+    
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, error?: any) => {
+      if (error) {
+        error(mockError);
+      }
+      return vi.fn();
+    });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      mockError,
+      'LIST',
+      'stages'
+    );
+  });
 });

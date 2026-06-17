@@ -18,13 +18,13 @@ export default defineConfig({
       reporter: ['text', 'json-summary'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/test/**', 'src/**/*.d.ts'],
-      // Current baseline (after P3 core views): ~50% lines, ~40% branches, ~43% functions, ~49% statements.
+      // Current baseline (after P4 large views): ~63% lines, ~53% branches, ~57% functions, ~62% statements.
       // Raise these numbers as coverage improves toward 90%.
       thresholds: {
-        lines: 60,
-        branches: 50,
-        functions: 54,
-        statements: 59,
+        lines: 63,
+        branches: 53,
+        functions: 57,
+        statements: 62,
       },
     },
   },
