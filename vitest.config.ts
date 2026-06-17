@@ -21,10 +21,10 @@ export default defineConfig({
       // Current baseline (after P3 core views): ~50% lines, ~40% branches, ~43% functions, ~49% statements.
       // Raise these numbers as coverage improves toward 90%.
       thresholds: {
-        lines: 50,
-        branches: 40,
-        functions: 43,
-        statements: 49,
+        lines: 60,
+        branches: 50,
+        functions: 54,
+        statements: 59,
       },
     },
   },
