@@ -26,13 +26,13 @@ export default defineConfig({
         'src/constants.ts',
         'src/services/sheetsService.ts',
       ],
-      // Current baseline (after Phase 6 coverage ratchet): ~79.5% lines, ~65.6% branches, ~70.3% functions, ~77.6% statements.
+      // Current baseline (after Phase 6 coverage ratchet): ~83.2% lines, ~69.5% branches, ~75.5% functions, ~81.3% statements.
       // Enforce baseline coverage to prevent regression.
       thresholds: {
-        lines: 79,
-        branches: 65,
-        functions: 70,
-        statements: 77,
+        lines: 83,
+        branches: 69,
+        functions: 75,
+        statements: 81,
       },
     },
   },
