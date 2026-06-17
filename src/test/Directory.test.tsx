@@ -251,7 +251,7 @@ describe('Directory', () => {
     const emailBtn = screen.getByTitle('Email selected');
     fireEvent.click(emailBtn);
     expect(window.location.href).toBe('mailto:alice@example.com');
-    window.location = originalLocation;
+    (window as any).location = originalLocation;
 
     // Bulk Tagging Modal flow
     const tagBtn = screen.getByTitle('Tag selected');
