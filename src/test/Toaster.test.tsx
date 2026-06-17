@@ -27,7 +27,7 @@ vi.mock('../lib/firebase', () => {
   return {
     db: {},
     auth: {
-      currentUser: null, // default to null, set in tests
+      currentUser: null, // default to null, set in tests using Object.defineProperty
     },
     handleFirestoreError: vi.fn(),
     OperationType: { LIST: 'LIST' },
@@ -48,12 +48,20 @@ vi.mock('motion/react', () => {
   };
 });
 
+function setCurrentUser(user: any) {
+  Object.defineProperty(auth, 'currentUser', {
+    value: user,
+    configurable: true,
+    writable: true,
+  });
+}
+
 describe('Toaster', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockOnSnapshotCallback = null;
     (onSnapshot as any).mockErrorCallback = null;
-    auth.currentUser = null;
+    setCurrentUser(null);
     vi.useFakeTimers();
   });
 
@@ -62,19 +70,19 @@ describe('Toaster', () => {
   });
 
   it('does not register listener if user is not authenticated', () => {
-    auth.currentUser = null;
+    setCurrentUser(null);
     render(<Toaster />);
     expect(onSnapshot).not.toHaveBeenCalled();
   });
 
   it('registers listener when user is authenticated', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
     expect(onSnapshot).toHaveBeenCalled();
   });
 
   it('ignores notifications created before session start time', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
 
     // Old notification (10 seconds ago)
@@ -105,7 +113,7 @@ describe('Toaster', () => {
   });
 
   it('displays toast for new notifications and auto-removes after 5 seconds', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
 
     // Recent notification (1 second in the future relative to render time)
@@ -144,7 +152,7 @@ describe('Toaster', () => {
   });
 
   it('removes toast immediately when clicking close button', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
 
     const newChange = {
@@ -179,7 +187,7 @@ describe('Toaster', () => {
   });
 
   it('calls handleFirestoreError when firestore snapshot fails', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
 
     const mockError = new Error('Permission denied');
@@ -196,7 +204,7 @@ describe('Toaster', () => {
   });
 
   it('renders correct icons based on notification type', () => {
-    auth.currentUser = { uid: 'user-123' } as any;
+    setCurrentUser({ uid: 'user-123' });
     render(<Toaster />);
 
     const types = ['success', 'error', 'warning', 'assignment', 'event', 'default-info'];

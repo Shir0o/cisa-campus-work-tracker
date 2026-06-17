@@ -7,11 +7,14 @@ import { Activity, Contact } from '../types';
 const mockContacts: Contact[] = [
   {
     id: 'contact-123',
-    displayName: 'John Doe',
+    name: 'John Doe',
+    role: 'Student',
+    location: 'Campus',
     stage: 'lead',
     email: 'john@example.com',
     phone: '123-456-7890',
-    assignedTo: [],
+    lastSeen: 'Today',
+    initials: 'JD',
     createdAt: '',
     updatedAt: '',
   },
