@@ -745,6 +745,7 @@ export default function OutreachBoard() {
                   <button
                     onClick={() => setShowAddStage(false)}
                     className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
+                    aria-label="Close"
                   >
                     <X className="w-5 h-5" />
                   </button>

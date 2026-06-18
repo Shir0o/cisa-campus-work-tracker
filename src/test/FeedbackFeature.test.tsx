@@ -103,6 +103,79 @@ describe('User Feedback Feature', () => {
         expect(screen.getByText('We got your note.')).toBeInTheDocument();
       });
     });
+
+    it('returns null when user is not authenticated', () => {
+      (useAuth as any).mockReturnValue({
+        user: null,
+        role: null,
+        isAdmin: false,
+      });
+      const { container } = render(<FeedbackFAB />);
+      expect(container.innerHTML).toBe('');
+    });
+
+    it('Send button is disabled when message is empty', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+
+      const sendBtn = screen.getByRole('button', { name: 'Send' });
+      expect(sendBtn).toBeDisabled();
+    });
+
+    it('toggles aria-expanded attribute when FAB is clicked', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      const fabBtn = screen.getByTitle('Leave a note for the team');
+      expect(fabBtn).toHaveAttribute('aria-expanded', 'false');
+
+      await userAct.click(fabBtn);
+      // After opening, the button label changes
+      const closeBtn = screen.getByTitle('Close');
+      expect(closeBtn).toHaveAttribute('aria-expanded', 'true');
+    });
+
+    it('keeps panel in idle phase when API returns error', async () => {
+      (global.fetch as any).mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      const textarea = screen.getByRole('textbox', { name: /Your note/i });
+      await userAct.type(textarea, 'This will fail');
+      await userAct.click(screen.getByRole('button', { name: 'Send' }));
+
+      // Should NOT show success — should stay on form
+      await waitFor(() => {
+        expect(screen.queryByText('We got your note.')).not.toBeInTheDocument();
+        // Send button should be enabled again (phase reset to idle)
+        expect(screen.getByRole('button', { name: 'Send' })).not.toBeDisabled();
+      });
+    });
+
+    it('closes panel when scrim is clicked', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      expect(screen.getByText('Leave a note')).toBeInTheDocument();
+
+      // Click the scrim (the overlay div with aria-hidden)
+      const scrim = document.querySelector('[aria-hidden="true"]');
+      expect(scrim).not.toBeNull();
+      await userAct.click(scrim!);
+
+      // Panel should close — FAB title goes back to "Leave a note for the team"
+      await waitFor(() => {
+        expect(screen.getByTitle('Leave a note for the team')).toBeInTheDocument();
+      });
+    });
   });
 
   describe('FeedbackList (Admin View)', () => {

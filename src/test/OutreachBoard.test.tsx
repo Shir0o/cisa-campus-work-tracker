@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot } from 'firebase/firestore';
 import OutreachBoard from '../views/OutreachBoard';
@@ -7,6 +7,14 @@ import { useLayout } from '../App';
 import React from 'react';
 
 // ── Module-level mocks ──────────────────────────────────────────────────────
+
+vi.mock('motion/react', () => ({
+  motion: {
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
+    button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
+  },
+  AnimatePresence: ({ children }: any) => <>{children}</>,
+}));
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
@@ -67,6 +75,7 @@ const mockContacts = [
       notes: 'Met at orientation',
       phone: '',
       lastSeen: '',
+      createdAt: '2026-06-10T00:00:00.000Z',
     }),
   },
   {
@@ -81,6 +90,7 @@ const mockContacts = [
       tags: [],
       phone: '',
       lastSeen: '',
+      avatar: 'http://example.com/avatar.png',
     }),
   },
   {
@@ -498,5 +508,416 @@ describe('OutreachBoard', () => {
       'LIST',
       'stages'
     );
+  });
+
+  // ── 15. Role filter menu ─────────────────────────────────────────────
+  it('filters contacts by role using the filter menu', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    // Wait for the board to render
+    await screen.findByText('Alice Chen');
+    expect(screen.getByText('Bob Park')).toBeInTheDocument();
+
+    const searchInput = screen.getByPlaceholderText(/Find someone/i);
+    const filterBtn = searchInput.parentElement?.nextElementSibling?.querySelector('button');
+    expect(filterBtn).toBeInTheDocument();
+
+    // Open filter menu
+    fireEvent.click(filterBtn!);
+    expect(await screen.findByText('Filter by role')).toBeInTheDocument();
+
+    // Click Student role button
+    const studentFilterBtn = screen.getByRole('button', { name: 'Student' });
+    fireEvent.click(studentFilterBtn);
+
+    // Verify Bob (Leader) is filtered out, but Alice (Student) is still there
+    await waitFor(() => {
+      expect(screen.getByText('Alice Chen')).toBeInTheDocument();
+      expect(screen.queryByText('Bob Park')).not.toBeInTheDocument();
+    });
+
+    // Reopen and select 'All'
+    fireEvent.click(filterBtn!);
+    const allFilterBtn = screen.getByRole('button', { name: 'All' });
+    fireEvent.click(allFilterBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Chen')).toBeInTheDocument();
+      expect(screen.getByText('Bob Park')).toBeInTheDocument();
+    });
+  });
+
+  // ── 16. Escape key closes add-stage modal ────────────────────────────
+  it('closes the add-stage modal when Escape key is pressed', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+    fireEvent.click(shapeBtn);
+
+    // Modal title
+    expect(await screen.findByRole('heading', { name: /Shape the journey/i, level: 2 })).toBeInTheDocument();
+
+    // Advance timers so useEffect registers keydown listener
+    act(() => {
+      vi.advanceTimersByTime(100);
+    });
+
+    // Fire Escape key
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    });
+
+    // Verify modal is closed
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Shape the journey/i, level: 2 })).not.toBeInTheDocument();
+    });
+  });
+
+  // ── 17. Empty columns and footer text ────────────────────────────────
+  it('renders "No one here just now." in empty columns and correct footer text', async () => {
+    // Only Alice is in First Contact. Regular has no contacts.
+    setupOnSnapshotWith({
+      stages: mockStages,
+      contacts: [
+        {
+          id: 'c1',
+          data: () => ({
+            name: 'Alice Chen',
+            initials: 'AC',
+            stage: 'First Contact',
+            email: 'alice@example.com',
+            role: 'Student',
+            location: 'North Campus',
+            tags: ['Freshman'],
+            notes: '',
+            phone: '',
+            lastSeen: '',
+          }),
+        },
+      ],
+    });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('First Contact');
+
+    // First Contact has Alice
+    expect(screen.getByText('Alice Chen')).toBeInTheDocument();
+    // Regular has no contacts, shows empty column text
+    expect(screen.getByText('No one here just now.')).toBeInTheDocument();
+
+    // Verify footer texts
+    expect(screen.getByRole('button', { name: 'Welcome someone new' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add to Regular' })).toBeInTheDocument();
+  });
+
+  // ── 18. Default stage seeding ────────────────────────────────────────
+  it('seeds default stages when stages collection is empty and user is admin', async () => {
+    const { addDoc } = await import('firebase/firestore');
+    // Mock onSnapshot to return empty stages at first
+    setupOnSnapshotWith({ stages: [] });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await waitFor(() => {
+      expect(addDoc).toHaveBeenCalledTimes(3);
+    });
+
+    expect(addDoc).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ path: 'stages' }),
+      expect.objectContaining({ label: 'First Contact', color: 'bg-primary-fixed-dim', order: 0 })
+    );
+    expect(addDoc).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ path: 'stages' }),
+      expect.objectContaining({ label: 'Second Contact', color: 'bg-primary', order: 1 })
+    );
+    expect(addDoc).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({ path: 'stages' }),
+      expect.objectContaining({ label: 'Regular', color: 'bg-secondary', order: 2 })
+    );
+  });
+
+  // ── 19. Delete contact with confirmation via React fiber ─────────────
+  it('deletes a contact when confirmed', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { deleteDoc } = await import('firebase/firestore');
+    const confirmSpy = vi.spyOn(window, 'confirm');
+
+    // 1. User cancels
+    confirmSpy.mockReturnValueOnce(false);
+
+    const { container } = render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const cardName = await screen.findByText('Alice Chen');
+
+    // Find and call onDeleteContact prop using fiber traversal
+    const fiberKey = Object.keys(cardName).find(
+      (k) => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    );
+    expect(fiberKey).toBeDefined();
+    const fiberNode = (cardName as any)[fiberKey!];
+    
+    let onDeleteContactProp: ((id: string) => Promise<void>) | undefined;
+    let current = fiberNode;
+    while (current) {
+      if (current.memoizedProps && current.memoizedProps.onDeleteContact) {
+        onDeleteContactProp = current.memoizedProps.onDeleteContact;
+        break;
+      }
+      current = current.return;
+    }
+    expect(onDeleteContactProp).toBeDefined();
+
+    await onDeleteContactProp!('c1');
+    expect(confirmSpy).toHaveBeenCalledWith('Are you sure you want to delete this person?');
+    expect(deleteDoc).not.toHaveBeenCalled();
+
+    // 2. User confirms
+    confirmSpy.mockReturnValueOnce(true);
+    await onDeleteContactProp!('c1');
+    expect(deleteDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/c1' })
+    );
+
+    confirmSpy.mockRestore();
+  });
+
+  // ── 20. Modal backdrop, close and cancel clicks ──────────────────────
+  it('closes the add-stage modal on clicking backdrop or close/cancel buttons', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const shapeBtn = await screen.findByRole('button', { name: /Shape the journey/i });
+    
+    // 1. Test Cancel button
+    fireEvent.click(shapeBtn);
+    expect(await screen.findByRole('heading', { name: /Shape the journey/i, level: 2 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Shape the journey/i, level: 2 })).not.toBeInTheDocument();
+    });
+
+    // 2. Test Close button (X)
+    fireEvent.click(shapeBtn);
+    expect(await screen.findByRole('heading', { name: /Shape the journey/i, level: 2 })).toBeInTheDocument();
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(closeBtn);
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Shape the journey/i, level: 2 })).not.toBeInTheDocument();
+    });
+
+    // 3. Test Backdrop click
+    fireEvent.click(shapeBtn);
+    expect(await screen.findByRole('heading', { name: /Shape the journey/i, level: 2 })).toBeInTheDocument();
+    const backdrop = document.querySelector('.bg-black\\/40');
+    fireEvent.click(backdrop!);
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: /Shape the journey/i, level: 2 })).not.toBeInTheDocument();
+    });
+  });
+
+  // ── 21. Drag and drop between columns ────────────────────────────────
+  it('handles drag and drop events and updates contact stage', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { updateDoc } = await import('firebase/firestore');
+
+    const { container } = render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('Alice Chen');
+
+    // Traverse React fiber tree to find DndContext props
+    const fiberKey = Object.keys(container.firstChild as any).find(
+      (k) => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    );
+    expect(fiberKey).toBeDefined();
+    const fiberNode = (container.firstChild as any)[fiberKey!];
+
+    function findDndContextProps(node: any): any {
+      // 1. Try upwards (ancestors) since DndContext is a parent of container's child
+      let curr = node;
+      while (curr) {
+        if (curr.memoizedProps && curr.memoizedProps.onDragStart && curr.memoizedProps.onDragEnd) {
+          return curr.memoizedProps;
+        }
+        curr = curr.return;
+      }
+      // 2. Try downwards (descendants) as fallback
+      function searchDown(n: any): any {
+        if (!n) return null;
+        if (n.memoizedProps && n.memoizedProps.onDragStart && n.memoizedProps.onDragEnd) {
+          return n.memoizedProps;
+        }
+        let child = n.child;
+        while (child) {
+          const found = searchDown(child);
+          if (found) return found;
+          child = child.sibling;
+        }
+        return null;
+      }
+      return searchDown(node);
+    }
+
+    const dndProps = findDndContextProps(fiberNode);
+    expect(dndProps).not.toBeNull();
+
+    // 1. Simulate onDragStart
+    act(() => {
+      dndProps.onDragStart({ active: { id: 'c1' } });
+    });
+
+    // 2. Simulate onDragOver (drag Alice 'c1' to Regular stage 's2')
+    const dndPropsAfterStart = findDndContextProps((container.firstChild as any)[fiberKey!]);
+    act(() => {
+      dndPropsAfterStart.onDragOver({
+        active: { id: 'c1' },
+        over: { id: 's2' },
+      });
+    });
+
+    // 3. Simulate onDragEnd (drop Alice on Regular stage)
+    const dndPropsAfterOver = findDndContextProps((container.firstChild as any)[fiberKey!]);
+    await act(async () => {
+      await dndPropsAfterOver.onDragEnd({
+        active: { id: 'c1' },
+        over: { id: 's2' },
+      });
+    });
+
+    // Verify updateDoc is called to save the new stage
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/c1' }),
+      expect.objectContaining({ stage: 'Regular' })
+    );
+  });
+
+  // ── 22. Query errors ─────────────────────────────────────────────────
+  it('handles stage deletion query errors', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { deleteDoc } = await import('firebase/firestore');
+    const { handleFirestoreError } = await import('../lib/firebase');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const mockError = new Error('Delete failed');
+    vi.mocked(deleteDoc).mockRejectedValueOnce(mockError);
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('Alice Chen');
+
+    const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
+    const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
+    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    fireEvent.click(menuBtn);
+
+    const removeBtn = screen.getByRole('button', { name: /Remove step/i });
+    fireEvent.click(removeBtn);
+
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(mockError, 'DELETE', 'stages');
+    });
+
+    confirmSpy.mockRestore();
+  });
+
+  it('handles stage creation query errors', async () => {
+    const { addDoc } = await import('firebase/firestore');
+    const { handleFirestoreError } = await import('../lib/firebase');
+    setupOnSnapshotWith({ stages: [] });
+
+    const mockError = new Error('Add failed');
+    vi.mocked(addDoc).mockRejectedValueOnce(mockError);
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(mockError, 'CREATE', 'stages');
+    });
+  });
+
+  it('handles stage rename query errors', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { updateDoc } = await import('firebase/firestore');
+    const { handleFirestoreError } = await import('../lib/firebase');
+
+    const mockError = new Error('Update failed');
+    vi.mocked(updateDoc).mockRejectedValueOnce(mockError);
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('Alice Chen');
+
+    const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
+    const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
+    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    fireEvent.click(menuBtn);
+
+    const renameBtn = screen.getByRole('button', { name: /Rename step/i });
+    fireEvent.click(renameBtn);
+
+    const input = screen.getByPlaceholderText(/e\.g\. Following up/i);
+    fireEvent.change(input, { target: { value: 'Updated First Contact' } });
+
+    const submitBtn = screen.getByRole('button', { name: /Save changes/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(mockError, 'UPDATE', 'stages');
+    });
+  });
+
+  it('handles contact deletion query errors', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+    const { deleteDoc } = await import('firebase/firestore');
+    const { handleFirestoreError } = await import('../lib/firebase');
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+    const mockError = new Error('Delete contact failed');
+    vi.mocked(deleteDoc).mockRejectedValueOnce(mockError);
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    const cardName = await screen.findByText('Alice Chen');
+    const fiberKey = Object.keys(cardName).find(
+      (k) => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    );
+    const fiberNode = (cardName as any)[fiberKey!];
+    
+    let onDeleteContactProp: ((id: string) => Promise<void>) | undefined;
+    let current = fiberNode;
+    while (current) {
+      if (current.memoizedProps && current.memoizedProps.onDeleteContact) {
+        onDeleteContactProp = current.memoizedProps.onDeleteContact;
+        break;
+      }
+      current = current.return;
+    }
+    
+    await onDeleteContactProp!('c1');
+
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(mockError, 'DELETE', 'contacts');
+    });
+
+    confirmSpy.mockRestore();
   });
 });

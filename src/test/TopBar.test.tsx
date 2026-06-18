@@ -111,4 +111,58 @@ describe('TopBar Component', () => {
     
     expect(mockLogOut).toHaveBeenCalled();
   });
+
+  // ── pageTitleFor route mapping tests ───────────────────────────────
+
+  it.each([
+    ['/board', 'The Journey'],
+    ['/directory', 'People'],
+    ['/attendance', 'Gatherings'],
+    ['/prayer', 'Prayer'],
+    ['/history', 'Looking back'],
+    ['/coordination', 'The Board'],
+    ['/feedback', 'Feedback'],
+    ['/admin/feedback', 'Feedback'],
+  ])('renders %s as "%s"', (route, expectedTitle) => {
+    renderTopBar(route);
+    expect(screen.getAllByText(expectedTitle).length).toBeGreaterThan(0);
+  });
+
+  it('renders "Workspace" fallback for unknown path', () => {
+    renderTopBar('/some/unknown/path');
+    // Both the breadcrumb link "Workspace" and the page title "Workspace" should be present
+    const workspaceElements = screen.getAllByText('Workspace');
+    // Desktop breadcrumb always shows "Workspace" link, so at least 2 if the title also says Workspace
+    expect(workspaceElements.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('renders correct title for nested path via prefix match', () => {
+    renderTopBar('/board/details/123');
+    expect(screen.getAllByText('The Journey').length).toBeGreaterThan(0);
+  });
+
+  it('shows "User" fallback when displayName is null', () => {
+    (useAuth as any).mockReturnValue({
+      user: { displayName: null, photoURL: null, email: 'test@test.com' },
+      logOut: mockLogOut,
+    });
+    renderTopBar('/');
+    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    fireEvent.click(profileBtn);
+    expect(screen.getByText('User')).toBeInTheDocument();
+  });
+
+  it('closes profile dropdown when Settings link is clicked', () => {
+    renderTopBar('/');
+    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    fireEvent.click(profileBtn);
+    expect(screen.getByText('Log out')).toBeInTheDocument();
+
+    // Click Settings link
+    const settingsLink = screen.getAllByText('Settings').find(el => el.tagName === 'A' || el.closest('a'));
+    fireEvent.click(settingsLink!);
+
+    // Dropdown should close
+    expect(screen.queryByText('Log out')).not.toBeInTheDocument();
+  });
 });

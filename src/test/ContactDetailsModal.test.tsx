@@ -468,4 +468,288 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.getByText('created contact')).toBeInTheDocument();
     });
   });
+
+  // ── handleUpdateInteraction ────────────────────────────────────────
+
+  it('allows updating an existing interaction', async () => {
+    // Mock interactions snapshot
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('interactions')) {
+        successCallback({
+          docs: [
+            {
+              id: 'inter-1',
+              data: () => ({
+                userId: 'user-123',
+                userName: 'Admin Tony',
+                content: 'Old content',
+                dateTime: '2026-06-15T08:00',
+                type: 'interaction',
+              }),
+            },
+          ],
+        });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    // Click Conversations tab
+    const interactionsTab = screen.getByRole('button', { name: /Conversations/i });
+    fireEvent.click(interactionsTab);
+
+    await screen.findByText('Old content');
+
+    // Click edit button for the interaction
+    const editBtn = screen.getByRole('button', { name: /^Edit$/ });
+    fireEvent.click(editBtn);
+
+    // Update form is rendered, modify text
+    const textareas = screen.getAllByRole('textbox');
+    const textarea = textareas.find(ta => ta.innerHTML.includes('Old content') || (ta as any).value === 'Old content') || textareas[0];
+    fireEvent.change(textarea, { target: { value: 'New updated content' } });
+
+    // Submit
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          content: 'New updated content',
+        })
+      );
+    });
+  });
+
+  it('blocks contact details update when phone error is present', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    // Click edit details
+    const editBtn = screen.getByTitle('Edit details');
+    await act(async () => {
+      fireEvent.click(editBtn);
+    });
+
+    const getPhoneInput = () => screen.getByPlaceholderText('(555) 000-0000');
+
+    // Set phone to a short number to trigger phone error
+    await act(async () => {
+      fireEvent.change(getPhoneInput(), { target: { value: '123' } });
+    });
+    await act(async () => {
+      fireEvent.blur(getPhoneInput());
+    });
+
+    await screen.findByText('Phone number too short (need 10 digits)');
+
+    // Save Changes button is not disabled, but clicking it should do nothing (since phoneError prevents submit)
+    const saveBtn = screen.getByRole('button', { name: 'Save Changes' });
+    await act(async () => {
+      fireEvent.click(saveBtn);
+    });
+
+    expect(firestore.updateDoc).not.toHaveBeenCalled();
+  });
+
+  // ── Tag commit on blur ─────────────────────────────────────────────
+
+  it('commits tag on blur of input', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    // Click add tag button
+    const addTagBtn = screen.getByRole('button', { name: /^add$/i });
+    await act(async () => {
+      fireEvent.click(addTagBtn);
+    });
+
+    const getTagInput = () => screen.getByPlaceholderText(/new tag/i);
+
+    // Type tag
+    await act(async () => {
+      fireEvent.change(getTagInput(), { target: { value: 'blur-tag' } });
+    });
+
+    // Blur tag input
+    await act(async () => {
+      fireEvent.blur(getTagInput());
+    });
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          tags: expect.arrayContaining(['blur-tag']),
+        })
+      );
+    });
+  });
+
+  // ── Contact action buttons ─────────────────────────────────────────
+
+  it('calls window.open for call/text/email buttons', async () => {
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    const callBtn = screen.getByRole('button', { name: /Call/i });
+    fireEvent.click(callBtn);
+    expect(openSpy).toHaveBeenCalledWith(`tel:${mockContact.phone}`);
+
+    const textBtn = screen.getByRole('button', { name: /Text/i });
+    fireEvent.click(textBtn);
+    expect(openSpy).toHaveBeenCalledWith(`sms:${mockContact.phone}`);
+
+    const emailBtn = screen.getByRole('button', { name: /Email/i });
+    fireEvent.click(emailBtn);
+    expect(openSpy).toHaveBeenCalledWith(`mailto:${mockContact.email}`);
+  });
+
+  // ── Escape key closes modal ────────────────────────────────────────
+
+  it('closes modal on Escape key press', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  // ── null contact guard ─────────────────────────────────────────────
+
+  it('returns null and does not render when contact is null', () => {
+    const { container } = render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={null} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  // ── Comment Enter key shortcut ─────────────────────────────────────
+
+  it('submits comment on Enter key press without Shift', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    // Switch to Discussion tab
+    const commentsTab = screen.getByRole('button', { name: /Discussion/i });
+    await act(async () => {
+      fireEvent.click(commentsTab);
+    });
+
+    const getCommentInput = () => screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i);
+
+    // Type comment
+    await act(async () => {
+      fireEvent.change(getCommentInput(), { target: { value: 'Enter key comment' } });
+    });
+
+    // Press Enter with Shift -> should NOT submit
+    await act(async () => {
+      fireEvent.keyDown(getCommentInput(), { key: 'Enter', shiftKey: true });
+    });
+    expect(firestore.addDoc).not.toHaveBeenCalled();
+
+    // Press Enter without Shift -> should submit
+    await act(async () => {
+      fireEvent.keyDown(getCommentInput(), { key: 'Enter', shiftKey: false });
+    });
+
+    await waitFor(() => {
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          text: 'Enter key comment',
+        })
+      );
+    });
+  });
+
+  // ── AuditActivityItem branches ─────────────────────────────────────
+
+  it('renders various action texts in AuditActivityItem', async () => {
+    const mockActivities = [
+      {
+        id: 'act-1',
+        action: 'logged an interaction for',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'email',
+        userName: 'User A',
+        createdAt: new Date().toISOString(),
+        description: 'Email desc',
+      },
+      {
+        id: 'act-2',
+        action: 'logged an interaction for',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'event',
+        userName: 'User B',
+        createdAt: new Date().toISOString(),
+        description: 'Meeting desc',
+      },
+      {
+        id: 'act-3',
+        action: 'logged an interaction for',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'comment',
+        userName: 'User C',
+        createdAt: new Date().toISOString(),
+        description: 'Comment desc',
+      },
+      {
+        id: 'act-4',
+        action: 'logged an interaction for',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'something-else',
+        userName: 'User D',
+        createdAt: new Date().toISOString(),
+        description: 'Misc desc',
+      },
+      {
+        id: 'act-5',
+        action: 'updated details',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'edit',
+        userName: 'User E',
+        createdAt: new Date().toISOString(),
+        description: 'notes updated\\nemail: updated',
+      },
+    ];
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path === 'activities') {
+        successCallback({
+          docs: mockActivities.map(act => ({
+            id: act.id,
+            data: () => act,
+          })),
+        });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    // Click History tab
+    const historyTab = screen.getByRole('button', { name: /History/i });
+    fireEvent.click(historyTab);
+
+    // Verify all custom action strings are rendered
+    await waitFor(() => {
+      expect(screen.getByText('emailed')).toBeInTheDocument();
+      expect(screen.getByText('had a meeting with')).toBeInTheDocument();
+      expect(screen.getByText('left a note for')).toBeInTheDocument();
+      expect(screen.getByText('interacted with')).toBeInTheDocument();
+      expect(screen.getByText('updated the Notes, Email for')).toBeInTheDocument();
+    });
+  });
 });
