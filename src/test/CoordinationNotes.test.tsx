@@ -764,6 +764,7 @@ describe('CoordinationNotes', () => {
             photoURL: 'http://example.com/photo.jpg',
             role: 'admin',
             approved: true,
+            email: 'yilongwang05@gmail.com',
           }),
         },
       ];
@@ -791,6 +792,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Monday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
         {
@@ -801,6 +803,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Tuesday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
         {
@@ -811,6 +814,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Thursday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
       ];
@@ -829,6 +833,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Monday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
         {
@@ -839,6 +844,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Thursday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
       ];
@@ -857,6 +863,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Monday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
         {
@@ -867,6 +874,7 @@ describe('CoordinationNotes', () => {
             weekday: 'Tuesday',
             md: '',
             createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
           }),
         },
       ];
