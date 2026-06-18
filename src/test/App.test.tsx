@@ -1,11 +1,26 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import App from '../App';
+import App, { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 
 // Mock all views to keep tests isolated and fast
-vi.mock('../views/Dashboard', () => ({ default: () => <div data-testid="dashboard-view">Dashboard View</div> }));
+vi.mock('../views/Dashboard', () => ({
+  default: () => {
+    try {
+      const { openNewContact, setSelectedContact } = useLayout();
+      return (
+        <div data-testid="dashboard-view">
+          Dashboard View
+          <button onClick={() => openNewContact('lead')} data-testid="dashboard-add-contact-btn">Add Contact</button>
+          <button onClick={() => setSelectedContact({ id: 'c1', name: 'John Doe' } as any)} data-testid="dashboard-select-contact-btn">Select Contact</button>
+        </div>
+      );
+    } catch (_) {
+      return <div data-testid="dashboard-view">Dashboard View</div>;
+    }
+  }
+}));
 vi.mock('../views/MyDay', () => ({ default: () => <div data-testid="myday-view">MyDay View</div> }));
 vi.mock('../views/Attendance', () => ({ default: () => <div data-testid="attendance-view">Attendance View</div> }));
 vi.mock('../views/OutreachBoard', () => ({ default: () => <div data-testid="board-view">OutreachBoard View</div> }));
@@ -21,6 +36,42 @@ vi.mock('../views/CoordinationNotes', () => ({ default: () => <div data-testid="
 // Mock components that we don't need to test in App context
 vi.mock('../components/FeedbackFAB', () => ({ default: () => <div>FeedbackFAB</div> }));
 vi.mock('../components/Toaster', () => ({ default: () => <div>Toaster</div> }));
+
+vi.mock('../components/layout/Sidebar', () => ({
+  default: ({ isCollapsed, onToggleCollapse, onLogInteraction }: any) => (
+    <div data-testid="mock-sidebar">
+      <span>Collapsed: {isCollapsed ? 'true' : 'false'}</span>
+      <button onClick={onToggleCollapse} data-testid="sidebar-toggle-btn">Toggle</button>
+      <button onClick={onLogInteraction} data-testid="sidebar-log-btn">Log Interaction</button>
+    </div>
+  ),
+}));
+
+vi.mock('../components/modals/NewContactModal', () => ({
+  default: ({ isOpen, onClose, initialStage }: any) => isOpen ? (
+    <div data-testid="mock-new-contact-modal">
+      <span>Stage: {initialStage || 'none'}</span>
+      <button onClick={onClose} data-testid="close-new-contact">Close</button>
+    </div>
+  ) : null,
+}));
+
+vi.mock('../components/modals/LogInteractionModal', () => ({
+  default: ({ isOpen, onClose }: any) => isOpen ? (
+    <div data-testid="mock-log-interaction-modal">
+      <button onClick={onClose} data-testid="close-log-interaction">Close</button>
+    </div>
+  ) : null,
+}));
+
+vi.mock('../components/modals/ContactDetailsModal', () => ({
+  default: ({ isOpen, onClose, contact }: any) => isOpen ? (
+    <div data-testid="mock-contact-details-modal">
+      <span>Contact: {contact?.name || 'none'}</span>
+      <button onClick={onClose} data-testid="close-contact-details">Close</button>
+    </div>
+  ) : null,
+}));
 
 // Mock auth provider
 const mockSignIn = vi.fn();
@@ -69,7 +120,7 @@ describe('App Component', () => {
     mockAuthValue.loading = false;
     mockAuthValue.role = 'viewer';
     window.location.hash = '';
-    window.location.pathname = '/';
+    window.history.replaceState(null, '', '/');
   });
 
   it('renders loading state with skeletons', () => {
@@ -144,5 +195,134 @@ describe('App Component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
     });
+  });
+
+  it('throws error when useLayout is used outside LayoutProvider', () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const TestComponent = () => {
+      useLayout();
+      return null;
+    };
+    expect(() => render(<TestComponent />)).toThrow('useLayout must be used within a LayoutProvider');
+    consoleSpy.mockRestore();
+  });
+
+  it('redirects viewer to attendance when trying to access admin page', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'viewer';
+    window.history.replaceState(null, '', '/my-day');
+    
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('attendance-view')).toBeInTheDocument();
+    });
+  });
+
+  it('allows admin to access admin-only routes', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    window.history.replaceState(null, '', '/my-day');
+    
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('myday-view')).toBeInTheDocument();
+    });
+  });
+
+  it('toggles sidebar collapse state and persists to localStorage', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+    
+    localStorage.clear();
+    render(<App />);
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-sidebar')).toBeInTheDocument();
+    });
+    
+    expect(screen.getByText('Collapsed: false')).toBeInTheDocument();
+    
+    const toggleBtn = screen.getByTestId('sidebar-toggle-btn');
+    fireEvent.click(toggleBtn);
+    
+    expect(screen.getByText('Collapsed: true')).toBeInTheDocument();
+    expect(localStorage.getItem('sidebar_collapsed')).toBe('true');
+    
+    fireEvent.click(toggleBtn);
+    expect(screen.getByText('Collapsed: false')).toBeInTheDocument();
+    expect(localStorage.getItem('sidebar_collapsed')).toBe('false');
+  });
+
+  it('shows generic error message on email password sign-in failure with other codes', async () => {
+    mockSignInWithEmail.mockRejectedValue({ code: 'auth/network-request-failed' });
+    render(<App />);
+    
+    const emailInput = screen.getByPlaceholderText('Email');
+    const passwordInput = screen.getByPlaceholderText('Password');
+    const submitBtn = screen.getByRole('button', { name: /Sign in with email/i });
+
+    fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+    fireEvent.change(passwordInput, { target: { value: 'password123' } });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Sign-in failed. Please try again.')).toBeInTheDocument();
+    });
+  });
+
+  it('redirects unknown route to dashboard', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+    window.history.replaceState(null, '', '/unknown-path-xyz');
+    
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+  });
+
+  it('toggles modals via layout context', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+    
+    render(<App />);
+    
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+
+    // 1. Open and close NewContactModal
+    const openContactBtn = screen.getByTestId('dashboard-add-contact-btn');
+    fireEvent.click(openContactBtn);
+    expect(screen.getByTestId('mock-new-contact-modal')).toBeInTheDocument();
+    expect(screen.getByText('Stage: lead')).toBeInTheDocument();
+    
+    const closeContactBtn = screen.getByTestId('close-new-contact');
+    fireEvent.click(closeContactBtn);
+    expect(screen.queryByTestId('mock-new-contact-modal')).not.toBeInTheDocument();
+
+    // 2. Open and close LogInteractionModal via Sidebar
+    const openLogBtn = screen.getByTestId('sidebar-log-btn');
+    fireEvent.click(openLogBtn);
+    expect(screen.getByTestId('mock-log-interaction-modal')).toBeInTheDocument();
+
+    const closeLogBtn = screen.getByTestId('close-log-interaction');
+    fireEvent.click(closeLogBtn);
+    expect(screen.queryByTestId('mock-log-interaction-modal')).not.toBeInTheDocument();
+
+    // 3. Open and close ContactDetailsModal
+    const selectContactBtn = screen.getByTestId('dashboard-select-contact-btn');
+    fireEvent.click(selectContactBtn);
+    expect(screen.getByTestId('mock-contact-details-modal')).toBeInTheDocument();
+    expect(screen.getByText('Contact: John Doe')).toBeInTheDocument();
+
+    const closeDetailsBtn = screen.getByTestId('close-contact-details');
+    fireEvent.click(closeDetailsBtn);
+    expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
   });
 });

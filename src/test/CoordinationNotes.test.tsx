@@ -1,7 +1,7 @@
 import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, setDoc, deleteDoc, doc, collection } from 'firebase/firestore';
+import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
@@ -644,4 +644,264 @@ describe('CoordinationNotes', () => {
       });
     });
   });
+
+  // ── 14. Additional Coverage ──────────────────────────────────────────────
+  describe('additional coverage for CoordinationNotes', () => {
+    it('renders DocRow "Today" badge and unchecked tasks badge correctly', async () => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayDate = `${yyyy}-${mm}-${dd}`;
+      const customDocs = [
+        {
+          id: `doc-${todayDate}`,
+          data: () => ({
+            title: 'Today Doc',
+            date: todayDate,
+            weekday: 'Monday',
+            md: '- [ ] Todo 1\n- [ ] Todo 2\n- [x] Done task',
+            createdBy: 'u-admin',
+            updatedAt: 'mock-ts',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: customDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText('Today Doc');
+      expect(screen.getAllByText('Today')[0]).toBeInTheDocument();
+      expect(screen.getByText('2 to do')).toBeInTheDocument();
+    });
+
+    it('renders NoteCard with old recall badge (>300 days), contributor avatars, and tags', async () => {
+      const oldDate = new Date(Date.now() - 310 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const customNotes = [
+        {
+          id: 'old-note',
+          data: () => ({
+            type: 'record',
+            series: 'Weekly sync',
+            title: 'Old Planning',
+            body: 'Old roadmap details',
+            tags: ['planning', 'q3'],
+            date: oldDate,
+            contributorIds: ['u-admin'],
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: customNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText('Old Planning');
+      // "1 yr" recall badge should be visible
+      expect(screen.getByText('1 yr')).toBeInTheDocument();
+      // Tag string should be rendered as "#planning #q3"
+      expect(screen.getByText('#planning #q3')).toBeInTheDocument();
+      // Contributor initials or title should be rendered inside Avatar
+      expect(screen.getByTitle('Tony Wang')).toBeInTheDocument();
+    });
+
+    it('toggles NoteForm type and parses tags with deduplication and hash removal', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Open Form
+      const addBtn = screen.getByRole('button', { name: /add a note/i });
+      fireEvent.click(addBtn);
+
+      await screen.findByPlaceholderText(/a short title/i);
+
+      // Toggle type
+      const learningBtn = screen.getByRole('button', { name: 'learning' });
+      fireEvent.click(learningBtn);
+
+      // Fill in details
+      fireEvent.change(screen.getByPlaceholderText(/a short title/i), {
+        target: { value: 'Deduplication Note' },
+      });
+      fireEvent.change(screen.getByPlaceholderText(/tags/i), {
+        target: { value: '#welcome, retreat, #retreat, welcome' },
+      });
+
+      const saveBtn = screen.getByRole('button', { name: /save to archive/i });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            type: 'learning',
+            tags: ['welcome', 'retreat'], // Deduplicated, hashes removed
+          })
+        );
+      });
+    });
+
+    it('renders Avatar with photoURL when present, initials fallback otherwise', () => {
+      const customNotes = [
+        {
+          id: 'note-avatar-photo',
+          data: () => ({
+            type: 'record',
+            series: 'Weekly sync',
+            title: 'Avatar Photo Title',
+            body: 'body',
+            tags: [],
+            date: '2026-06-10',
+            contributorIds: ['u-admin'],
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      const customTeam = [
+        {
+          id: 'u-admin',
+          data: () => ({
+            uid: 'u-admin',
+            displayName: 'Tony Wang',
+            photoURL: 'http://example.com/photo.jpg',
+            role: 'admin',
+            approved: true,
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: customNotes, team: customTeam });
+      render(<CoordinationNotes />);
+
+      const img = screen.getByAltText('Tony Wang');
+      expect(img).toBeInTheDocument();
+      expect(img).toHaveAttribute('src', 'http://example.com/photo.jpg');
+    });
+
+    it('auto-selects today first when present', () => {
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      const todayDate = `${yyyy}-${mm}-${dd}`;
+
+      const docsList = [
+        {
+          id: 'doc-past',
+          data: () => ({
+            title: 'Past Doc',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+        {
+          id: 'doc-today',
+          data: () => ({
+            title: 'Today Doc',
+            date: todayDate,
+            weekday: 'Tuesday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+        {
+          id: 'doc-upcoming',
+          data: () => ({
+            title: 'Upcoming Doc',
+            date: '2026-12-31',
+            weekday: 'Thursday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: docsList, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+      expect(screen.getByPlaceholderText('Untitled page')).toHaveValue('Today Doc');
+    });
+
+    it('auto-selects soonest upcoming when no today is present', () => {
+      const docsList = [
+        {
+          id: 'doc-past',
+          data: () => ({
+            title: 'Past Doc',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+        {
+          id: 'doc-upcoming',
+          data: () => ({
+            title: 'Upcoming Doc',
+            date: '2026-12-31',
+            weekday: 'Thursday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: docsList, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+      expect(screen.getByPlaceholderText('Untitled page')).toHaveValue('Upcoming Doc');
+    });
+
+    it('auto-selects most recent past when no today/upcoming is present', () => {
+      const docsList = [
+        {
+          id: 'doc-past-old',
+          data: () => ({
+            title: 'Older Past Doc',
+            date: '2026-05-01',
+            weekday: 'Monday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+        {
+          id: 'doc-past-new',
+          data: () => ({
+            title: 'Newer Past Doc',
+            date: '2026-06-01',
+            weekday: 'Tuesday',
+            md: '',
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: docsList, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+      expect(screen.getByPlaceholderText('Untitled page')).toHaveValue('Newer Past Doc');
+    });
+
+    it('supports markdown toggle and title edits with save status indicator', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText(`${today} — Monday`);
+
+      vi.useFakeTimers();
+      // Type new title in input
+      const titleInput = screen.getByPlaceholderText('Untitled page');
+      fireEvent.change(titleInput, { target: { value: 'New Doc Title' } });
+
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ title: 'New Doc Title' })
+      );
+      vi.useRealTimers();
+
+      // Toggle Markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+      // Textarea source view should appear
+      expect(screen.getByTitle('Markdown source is read-only while live editing is on')).toBeInTheDocument();
+    });
+  });
 });
+

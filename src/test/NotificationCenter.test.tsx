@@ -7,8 +7,9 @@ import * as firestore from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 
 // Mock Auth
+const mockUseAuth = vi.fn().mockReturnValue({ role: 'admin' });
 vi.mock('../components/AuthProvider', () => ({
-  useAuth: () => ({ role: 'admin' }),
+  useAuth: () => mockUseAuth(),
 }));
 
 // Mock Router Navigation
@@ -32,6 +33,7 @@ vi.mock('firebase/firestore', () => {
     onSnapshot: vi.fn(),
     doc: vi.fn().mockReturnValue({ id: 'mock-doc-id' }),
     updateDoc: vi.fn(),
+    deleteDoc: vi.fn().mockResolvedValue(true),
     arrayUnion: vi.fn((val) => ({ __firestore_mock_type: 'arrayUnion', value: val })),
     writeBatch: vi.fn().mockReturnValue({
       update: vi.fn(),
@@ -64,6 +66,7 @@ vi.mock('motion/react', () => ({
 describe('NotificationCenter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ role: 'admin' });
   });
 
   const triggerOnSnapshotCallbacks = (notificationsData: any[]) => {
@@ -243,5 +246,263 @@ describe('NotificationCenter Component', () => {
 
     // Should call updateDoc
     expect(firestore.updateDoc).toHaveBeenCalled();
+  });
+
+  // ── Empty panel state ──────────────────────────────────────────────
+
+  it('shows "Nothing needs you right now" when panel open with no notifications', () => {
+    triggerOnSnapshotCallbacks([]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText('Nothing needs you right now')).toBeInTheDocument();
+  });
+
+  // ── Escape key closes panel ────────────────────────────────────────
+
+  it('closes panel on Escape key press', async () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Test',
+        body: 'Test body',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText("What's stirring")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByText("What's stirring")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Click outside closes panel ─────────────────────────────────────
+
+  it('closes panel on click outside', async () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Test',
+        body: 'Test body',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText("What's stirring")).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    await waitFor(() => {
+      expect(screen.queryByText("What's stirring")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Bell toggle closes when already open ───────────────────────────
+
+  it('toggles panel closed when bell is clicked while open', async () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Test',
+        body: 'body',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    const bell = screen.getByLabelText(/notifications/i);
+    fireEvent.click(bell);
+    expect(screen.getByText("What's stirring")).toBeInTheDocument();
+
+    // Click bell again to close
+    fireEvent.click(bell);
+    await waitFor(() => {
+      expect(screen.queryByText("What's stirring")).not.toBeInTheDocument();
+    });
+  });
+
+  // ── 9+ badge ──────────────────────────────────────────────────────
+
+  it('displays 9+ badge when unread count exceeds 9', () => {
+    const mockNotifs = Array.from({ length: 12 }, (_, i) => ({
+      id: `n${i}`,
+      userId: 'mock-user-id',
+      title: `Notification ${i}`,
+      body: 'body',
+      type: 'success' as const,
+      read: false,
+      createdAt: { toDate: () => new Date(Date.now() - i * 60000) },
+    }));
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('9+')).toBeInTheDocument();
+  });
+
+  // ── Earlier section for read notifications ─────────────────────────
+
+  it('renders "Earlier" section for read notifications', () => {
+    const mockNotifs = [
+      {
+        id: 'n-unread',
+        userId: 'mock-user-id',
+        title: 'Unread Item',
+        body: 'new stuff',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+      {
+        id: 'n-read',
+        userId: 'mock-user-id',
+        title: 'Read Item',
+        body: 'old stuff',
+        type: 'event',
+        read: true,
+        createdAt: { toDate: () => new Date(Date.now() - 86400000) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(screen.getByText('Worth a look')).toBeInTheDocument();
+    expect(screen.getByText('Earlier')).toBeInTheDocument();
+    expect(screen.getByText('Unread Item')).toBeInTheDocument();
+    expect(screen.getByText('Read Item')).toBeInTheDocument();
+  });
+
+  // ── setAside personal vs global ────────────────────────────────────
+
+  it('dismisses personal notification via deleteDoc', async () => {
+    const mockNotifs = [
+      {
+        id: 'n-personal',
+        userId: 'mock-user-id',
+        title: 'Personal Note',
+        body: 'body',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const setAsideBtn = screen.getByLabelText('Set aside');
+    fireEvent.click(setAsideBtn);
+
+    await waitFor(() => {
+      expect(firestore.deleteDoc).toHaveBeenCalled();
+    });
+  });
+
+  it('dismisses global notification via arrayUnion dismissedBy', async () => {
+    const mockNotifs = [
+      {
+        id: 'n-global',
+        userId: 'ALL_ADMINS',
+        title: 'Global Note',
+        body: 'body',
+        type: 'event',
+        readBy: [],
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const setAsideBtn = screen.getByLabelText('Set aside');
+    fireEvent.click(setAsideBtn);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalled();
+      expect(firestore.arrayUnion).toHaveBeenCalledWith('mock-user-id');
+    });
+  });
+
+  // ── Non-staff footer ───────────────────────────────────────────────
+
+  it('non-staff user sees "Open Prayer" footer and navigates to /prayer', () => {
+    mockUseAuth.mockReturnValue({ role: 'operator' });
+
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Test',
+        body: 'body',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const footerBtn = screen.getByRole('button', { name: /Open Prayer/i });
+    fireEvent.click(footerBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
   });
 });

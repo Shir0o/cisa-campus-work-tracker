@@ -16,7 +16,7 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary'],
+      reporter: ['text', 'json-summary', 'json'],
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/test/**',
@@ -26,13 +26,13 @@ export default defineConfig({
         'src/constants.ts',
         'src/services/sheetsService.ts',
       ],
-      // Current baseline (after Phase 6 coverage ratchet): ~83.2% lines, ~69.5% branches, ~75.5% functions, ~81.3% statements.
+      // Current baseline (after Phase 7 coverage ratchet): ~88.7% lines, ~77.6% branches, ~82.1% functions, ~87.1% statements.
       // Enforce baseline coverage to prevent regression.
       thresholds: {
-        lines: 83,
-        branches: 69,
-        functions: 75,
-        statements: 81,
+        lines: 88,
+        branches: 77,
+        functions: 82,
+        statements: 87,
       },
     },
   },

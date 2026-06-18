@@ -105,4 +105,141 @@ describe('NewContactModal', () => {
       expect(vi.mocked(addDoc)).toHaveBeenCalled();
     });
   });
+
+  // ── Viewer role guard ──────────────────────────────────────────────
+
+  it('returns null for viewer role', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-id', displayName: 'Test User' },
+      role: 'viewer',
+    });
+    const { container } = render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    expect(container.innerHTML).toBe('');
+  });
+
+  // ── Escape key closes modal ────────────────────────────────────────
+
+  it('closes modal on Escape key press', async () => {
+    const onClose = vi.fn();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  // ── Phone validation branches ──────────────────────────────────────
+
+  it('shows "Phone number too short" for short phone numbers', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
+    await user.type(phoneInput, '12345');
+    // Trigger blur to run validation
+    phoneInput.blur();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Phone number too short/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows "Phone number too long" for long phone numbers', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
+    await user.type(phoneInput, '123456789012345');
+    phoneInput.blur();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Phone number too long/)).toBeInTheDocument();
+    });
+  });
+
+  it('clears phone error when phone is empty', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
+    // Type and then clear
+    await user.type(phoneInput, '123');
+    phoneInput.blur();
+    await waitFor(() => {
+      expect(screen.getByText(/Phone number too short/)).toBeInTheDocument();
+    });
+
+    await user.clear(phoneInput);
+    phoneInput.blur();
+    await waitFor(() => {
+      expect(screen.queryByText(/Phone number too short/)).not.toBeInTheDocument();
+    });
+  });
+
+  // ── phoneError blocks submission ───────────────────────────────────
+
+  it('does not submit form when phoneError exists', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    // Fill in a name
+    const firstName = await screen.findByPlaceholderText('e.g. Alex');
+    await user.type(firstName, 'John');
+
+    // Create a phone error
+    const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
+    await user.type(phoneInput, '123');
+    phoneInput.blur();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Phone number too short/)).toBeInTheDocument();
+    });
+
+    // Try to submit
+    const submitBtn = screen.getByRole('button', { name: /Add Contact/i });
+    await user.click(submitBtn);
+
+    // addDoc should NOT have been called
+    expect(vi.mocked(addDoc)).not.toHaveBeenCalled();
+  });
+
+  // ── Cancel and backdrop close ──────────────────────────────────────
+
+  it('cancel button calls onClose', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole('button', { name: /Cancel/i }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  // ── Modal not rendered when closed ─────────────────────────────────
+
+  it('does not render when isOpen is false', () => {
+    const { container } = render(<NewContactModal isOpen={false} onClose={vi.fn()} />);
+    expect(screen.queryByText('New Contact')).not.toBeInTheDocument();
+  });
 });
