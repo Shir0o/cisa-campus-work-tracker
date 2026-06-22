@@ -429,7 +429,10 @@ export default function CoordinationNotes() {
             </button>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-[300px_1fr] lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:h-[calc(100vh-6rem)]">
+          <div
+            data-testid="coordination-notes-workspace"
+            className="grid lg:grid-cols-[300px_1fr] lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)]"
+          >
             {/* Pages list */}
             <aside className="flex flex-col min-w-0 bg-surface-container-low lg:border-r border-b lg:border-b-0 border-outline-variant">
               <div className="flex items-center justify-between px-4 pt-4 pb-3">

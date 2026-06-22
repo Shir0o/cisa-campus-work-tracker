@@ -916,17 +916,16 @@ describe('CoordinationNotes', () => {
   describe('documents workspace layout', () => {
     it('bounds the editor workspace height so the canvas scrolls internally and the toolbar stays pinned (#65)', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
-      const { container } = render(<CoordinationNotes />);
+      render(<CoordinationNotes />);
 
-      const workspace = [...container.querySelectorAll('div')].find((el) =>
-        el.className.includes('grid-cols-[300px_1fr]'),
-      );
-      expect(workspace).toBeTruthy();
+      const workspace = screen.getByTestId('coordination-notes-workspace');
       // Without a bounded height the whole page scrolls and the `sticky` toolbar
       // scrolls away; these classes make the inner `overflow-y-auto` canvas the
-      // scroller instead, keeping the formatting toolbar in view.
-      expect(workspace!.className).toContain('lg:h-[calc(100vh-6rem)]');
-      expect(workspace!.className).toContain('lg:grid-rows-1');
+      // scroller instead, keeping the formatting toolbar in view. `lg:min-h-0`
+      // lets the calc strictly bound the height on short desktop windows.
+      expect(workspace.className).toContain('lg:h-[calc(100vh-6rem)]');
+      expect(workspace.className).toContain('lg:grid-rows-1');
+      expect(workspace.className).toContain('lg:min-h-0');
     });
   });
 });
