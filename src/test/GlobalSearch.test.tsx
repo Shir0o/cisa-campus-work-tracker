@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TEST_USERS } from './fixtures/users';
@@ -242,7 +242,7 @@ describe('GlobalSearch', () => {
     expect(desktopInput.value).toBe('alice');
 
     // Click clear button
-    const clearBtn = desktopInput.closest('div')!.querySelector('button[aria-label="Clear search"]')!;
+    const clearBtn = within(desktopInput.closest('div')!).getByRole('button', { name: 'Clear search' });
     fireEvent.click(clearBtn);
     expect(desktopInput.value).toBe('');
   });
@@ -258,7 +258,7 @@ describe('GlobalSearch', () => {
     expect(screen.getAllByText('Bob Lee').length).toBeGreaterThan(0);
 
     // Click clear button on mobile overlay
-    const mobileClearBtn = mobileInput.closest('div')!.querySelector('button[aria-label="Clear search"]')!;
+    const mobileClearBtn = within(mobileInput.closest('div')!).getByRole('button', { name: 'Clear search' });
     fireEvent.click(mobileClearBtn);
     expect(mobileInput.value).toBe('');
 

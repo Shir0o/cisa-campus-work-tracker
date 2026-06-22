@@ -70,13 +70,13 @@ const textareaCls =
 // ── Small local form primitives (no shared form lib exists) ────────────
 function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-[13px] font-medium text-on-surface-variant">
+    <label className="flex flex-col gap-1.5 cursor-pointer">
+      <span className="text-[13px] font-medium text-on-surface-variant">
         {label}
         {optional && <span className="text-on-surface-variant/60"> (optional)</span>}
-      </label>
+      </span>
       {children}
-    </div>
+    </label>
   );
 }
 
