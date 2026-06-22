@@ -43,7 +43,9 @@ describe('Responsive Layout Components', () => {
     renderWithRouter(<Sidebar />);
     const sidebar = screen.getByLabelText('Main Navigation');
     expect(sidebar).toBeInTheDocument();
-    expect(sidebar.className).toContain('lg:sticky');
+    // Persistent nav now appears from the md breakpoint (tablet icon rail);
+    // below md it's a fixed overlay drawer.
+    expect(sidebar.className).toContain('md:sticky');
     expect(sidebar.className).toContain('fixed');
   });
 
@@ -51,7 +53,8 @@ describe('Responsive Layout Components', () => {
     renderWithRouter(<MobileNav />);
     const mobileNav = screen.getByLabelText('Mobile Navigation');
     expect(mobileNav).toBeInTheDocument();
-    expect(mobileNav.className).toContain('lg:hidden');
+    // Bottom nav hides once the tablet rail appears (md), not lg.
+    expect(mobileNav.className).toContain('md:hidden');
   });
 
   it('Accessibility: Sidebar has a visible "Log out" button', () => {
