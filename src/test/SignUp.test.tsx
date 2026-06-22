@@ -122,6 +122,20 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
+    
+    // Fill optional inputs
+    fireEvent.change(screen.getByPlaceholderText('she / her'), { target: { value: 'she/her' } });
+    fireEvent.change(screen.getByPlaceholderText('@handle'), { target: { value: '@jane_doe' } });
+
+    const yearSelect = screen.getByText('Year').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(yearSelect, { target: { value: 'Freshman' } });
+
+    const majorSelect = screen.getByText('Major').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(majorSelect, { target: { value: 'Computer Science' } });
+
+    const hallSelect = screen.getByText('Where do you live?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    fireEvent.change(hallSelect, { target: { value: 'Whitman Hall' } });
+
     const spiritualSelect = screen.getByText('Where are you with faith right now?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'None' } });
 

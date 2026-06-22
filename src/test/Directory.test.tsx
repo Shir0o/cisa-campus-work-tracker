@@ -270,7 +270,9 @@ describe('Directory', () => {
     });
 
     // Select all
-    const selectAllLabel = screen.getByText('3 people', { selector: 'span' }).closest('label')!;
+    const selectAllLabel = screen.getByText((_content, element) => {
+      return element?.tagName.toLowerCase() === 'span' && element.textContent?.includes('3 people') === true;
+    }).closest('label')!;
     fireEvent.click(selectAllLabel);
     expect(screen.getByText('3 selected')).toBeInTheDocument();
 

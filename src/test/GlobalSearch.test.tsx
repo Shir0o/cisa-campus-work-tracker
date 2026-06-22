@@ -217,4 +217,54 @@ describe('GlobalSearch', () => {
     fireEvent.click(screen.getByRole('button', { name: /search/i }));
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
   });
+
+  it('handles desktop input focus and clear functionality', () => {
+    // Test container click when search is closed
+    h.mockLayout.searchOpen = false;
+    const { rerender } = render(<GlobalSearch />);
+    const desktopInput = screen.getByPlaceholderText('Search people, notes…') as HTMLInputElement;
+    const container = desktopInput.closest('.relative.w-full.h-10')!;
+    
+    fireEvent.click(container);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
+
+    // Test focus behavior when search is closed
+    vi.clearAllMocks();
+    fireEvent.focus(desktopInput);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
+
+    // Re-render with searchOpen = true to test clear button
+    h.mockLayout.searchOpen = true;
+    rerender(<GlobalSearch />);
+    
+    // Type query
+    typeDesktop('alice');
+    expect(desktopInput.value).toBe('alice');
+
+    // Click clear button
+    const clearBtn = desktopInput.closest('div')!.querySelector('button[aria-label="Clear search"]')!;
+    fireEvent.click(clearBtn);
+    expect(desktopInput.value).toBe('');
+  });
+
+  it('handles mobile overlay input, clear, and cancel functionality', () => {
+    render(<GlobalSearch />);
+    
+    const mobileInput = screen.getByPlaceholderText('Search people, conversations, notes…') as HTMLInputElement;
+    
+    // Type query in mobile input
+    fireEvent.change(mobileInput, { target: { value: 'bob' } });
+    expect(mobileInput.value).toBe('bob');
+    expect(screen.getAllByText('Bob Lee').length).toBeGreaterThan(0);
+
+    // Click clear button on mobile overlay
+    const mobileClearBtn = mobileInput.closest('div')!.querySelector('button[aria-label="Clear search"]')!;
+    fireEvent.click(mobileClearBtn);
+    expect(mobileInput.value).toBe('');
+
+    // Click cancel button on mobile overlay
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtn);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
 });
