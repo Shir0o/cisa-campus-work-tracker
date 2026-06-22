@@ -46,6 +46,8 @@ import {
   Check,
   Clock,
   MapPin,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -75,7 +77,7 @@ import {
   docByDateDesc,
   newDocMarkdown,
 } from '../lib/board';
-import { mdPreview, mdOpenTasks } from '../lib/markdown';
+import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 interface TeamMember {
@@ -119,8 +121,14 @@ const colorFor = (uid: string) =>
   CURSOR_COLORS[Array.from(uid).reduce((a, c) => a + c.charCodeAt(0), 0) % CURSOR_COLORS.length];
 
 // tiptap-markdown augments editor.storage with a `markdown` namespace.
-type MarkdownStorage = { markdown: { getMarkdown: () => string } };
+type MarkdownStorage = {
+  markdown: { getMarkdown: () => string; parser: { parse: (md: string) => string } };
+};
 const editorMarkdown = (ed: Editor): string => (ed.storage as unknown as MarkdownStorage).markdown.getMarkdown();
+// Render a Markdown string to the editor's own clean HTML — used to normalize
+// rich (HTML) pastes through Markdown so they match the page's formatting.
+const editorMdToHtml = (ed: Editor, md: string): string =>
+  (ed.storage as unknown as MarkdownStorage).markdown.parser.parse(md);
 
 const STATUS_CHIP: Record<string, string> = {
   accent: 'bg-stage-accent-soft text-stage-accent',
@@ -142,6 +150,20 @@ export default function CoordinationNotes() {
   const [loadingNotes, setLoadingNotes] = useState(true);
 
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Pages panel collapse (desktop) — mirrors the main sidebar's persisted toggle.
+  const [pagesCollapsed, setPagesCollapsed] = useState(() => localStorage.getItem('board_pages_collapsed') === 'true');
+  const togglePages = () =>
+    setPagesCollapsed((v) => {
+      localStorage.setItem('board_pages_collapsed', String(!v));
+      return !v;
+    });
+
+  // Live Markdown of the page currently being edited, so its Pages-list row
+  // (preview + "to do" count) reflects edits immediately rather than waiting for
+  // the debounced Firestore save. Reset when switching pages.
+  const [liveActiveMd, setLiveActiveMd] = useState<string | null>(null);
+  useEffect(() => setLiveActiveMd(null), [activeId]);
 
   // notes archive controls
   const [q, setQ] = useState('');
@@ -431,19 +453,37 @@ export default function CoordinationNotes() {
         ) : (
           <div
             data-testid="coordination-notes-workspace"
-            className="grid lg:grid-cols-[300px_1fr] lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)]"
+            className={cn(
+              'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)]',
+              pagesCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[300px_1fr]',
+            )}
           >
             {/* Pages list */}
-            <aside className="flex flex-col min-w-0 bg-surface-container-low lg:border-r border-b lg:border-b-0 border-outline-variant">
+            <aside
+              className={cn(
+                'flex flex-col min-w-0 bg-surface-container-low lg:border-r border-b lg:border-b-0 border-outline-variant',
+                pagesCollapsed && 'lg:hidden',
+              )}
+            >
               <div className="flex items-center justify-between px-4 pt-4 pb-3">
                 <span className="font-serif text-[17px] text-on-surface">Pages</span>
-                <button
-                  onClick={createDoc}
-                  title="New page"
-                  className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={createDoc}
+                    title="New page"
+                    className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={togglePages}
+                    title="Collapse pages"
+                    aria-label="Collapse pages"
+                    className="hidden lg:grid w-7 h-7 place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+                  >
+                    <PanelLeftClose className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar px-2 pb-3 lg:block flex gap-2 lg:gap-0 overflow-x-auto">
                 {DOC_GROUPS.map((g) => {
@@ -456,7 +496,13 @@ export default function CoordinationNotes() {
                       </div>
                       <div className="flex lg:block gap-2 lg:gap-0">
                         {items.map((d) => (
-                          <DocRow key={d.id} d={d} active={d.id === activeId} onClick={() => setActiveId(d.id)} />
+                          <DocRow
+                            key={d.id}
+                            d={d}
+                            active={d.id === activeId}
+                            liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
+                            onClick={() => setActiveId(d.id)}
+                          />
                         ))}
                       </div>
                     </div>
@@ -472,6 +518,9 @@ export default function CoordinationNotes() {
                 doc={active}
                 meUid={uid}
                 meName={meName}
+                pagesCollapsed={pagesCollapsed}
+                onTogglePages={togglePages}
+                onLiveMarkdownChange={setLiveActiveMd}
                 onSaveMarkdown={saveMarkdown}
                 onSaveTitle={saveTitle}
                 onDelete={deleteBoardDoc}
@@ -579,8 +628,9 @@ export default function CoordinationNotes() {
 }
 
 // ── Pages list row ────────────────────────────────────────────────────────────
-function DocRow({ d, active, onClick }: { d: BoardDoc; active: boolean; onClick: () => void }) {
-  const open = mdOpenTasks(d.md);
+function DocRow({ d, active, liveMd, onClick }: { d: BoardDoc; active: boolean; liveMd?: string; onClick: () => void }) {
+  const md = liveMd ?? d.md;
+  const open = mdOpenTasks(md);
   const isToday = sessionStatus(d.date) === 'today';
   return (
     <button
@@ -600,7 +650,7 @@ function DocRow({ d, active, onClick }: { d: BoardDoc; active: boolean; onClick:
       </span>
       <span className="min-w-0 flex flex-col gap-0.5">
         <span className="text-sm font-semibold text-on-surface leading-snug truncate">{d.title}</span>
-        <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{mdPreview(d.md)}</span>
+        <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{mdPreview(md)}</span>
         <span className="flex items-center gap-2 mt-1">
           {isToday && (
             <span className="text-[10.5px] font-bold tracking-wide uppercase text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
@@ -623,6 +673,9 @@ function DocEditor({
   doc: d,
   meUid,
   meName,
+  pagesCollapsed,
+  onTogglePages,
+  onLiveMarkdownChange,
   onSaveMarkdown,
   onSaveTitle,
   onDelete,
@@ -630,6 +683,9 @@ function DocEditor({
   doc: BoardDoc;
   meUid: string;
   meName: string;
+  pagesCollapsed: boolean;
+  onTogglePages: () => void;
+  onLiveMarkdownChange: (md: string) => void;
   onSaveMarkdown: (id: string, md: string) => void;
   onSaveTitle: (id: string, title: string) => void;
   onDelete: (d: BoardDoc) => void;
@@ -649,7 +705,9 @@ function DocEditor({
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didSeed = useRef(false);
+  const edRef = useRef<Editor | null>(null);
 
   const scheduleSave = (md: string) => {
     setSaved(false);
@@ -658,6 +716,14 @@ function DocEditor({
       onSaveMarkdown(d.id, md);
       setSaved(true);
     }, 1200);
+  };
+
+  // Push the live Markdown up so this page's Pages-list row (preview + "to do"
+  // count) updates as you type — more frequent than the Firestore save, but still
+  // throttled to spare parent re-renders.
+  const scheduleLivePreview = (md: string) => {
+    if (liveTimer.current) clearTimeout(liveTimer.current);
+    liveTimer.current = setTimeout(() => onLiveMarkdownChange(md), 300);
   };
 
   const editor = useEditor({
@@ -670,10 +736,27 @@ function DocEditor({
       Collaboration.configure({ document: ydoc }),
       CollaborationCaret.configure({ provider: { awareness }, user: { name: meName, color: meColor } }),
     ],
-    editorProps: { attributes: { class: 'bdoc-prose', spellcheck: 'false' } },
+    editorProps: {
+      attributes: { class: 'bdoc-prose', spellcheck: 'false' },
+      // Match rich (HTML) pastes — Google Docs, Notion, a webpage, a rendered AI
+      // reply — to the page's own formatting by routing them through Markdown
+      // (turndown → editor's Markdown parser), dropping the source's foreign
+      // markup and inline styles. Internal copy/paste is left to ProseMirror.
+      transformPastedHTML: (html) => {
+        if (html.includes('data-pm-slice')) return html;
+        const ed = edRef.current;
+        if (!ed) return html;
+        return editorMdToHtml(ed, htmlToBoardMarkdown(html));
+      },
+    },
+    onCreate: ({ editor }) => {
+      edRef.current = editor;
+    },
     onUpdate: ({ editor, transaction }) => {
       if (!transaction.docChanged) return;
-      scheduleSave(editorMarkdown(editor));
+      const md = editorMarkdown(editor);
+      scheduleSave(md);
+      scheduleLivePreview(md);
     },
   });
 
@@ -738,6 +821,11 @@ function DocEditor({
   // tear down the Y.Doc when leaving the page
   useEffect(() => () => ydoc.destroy(), [ydoc]);
 
+  // Cancel a pending live-preview push on unmount — a page switch resets the
+  // parent's live Markdown, so a late fire would wrongly stamp it onto the next
+  // page's row. (Save/title timers are intentionally left to flush.)
+  useEffect(() => () => { if (liveTimer.current) clearTimeout(liveTimer.current); }, []);
+
   const onTitleChange = (v: string) => {
     setTitle(v);
     if (titleTimer.current) clearTimeout(titleTimer.current);
@@ -780,6 +868,17 @@ function DocEditor({
       {/* head */}
       <div className="flex items-center justify-between gap-3 flex-wrap px-5 lg:px-8 pt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
+          {pagesCollapsed && (
+            <button
+              type="button"
+              onClick={onTogglePages}
+              title="Show pages"
+              aria-label="Show pages"
+              className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+            >
+              <PanelLeftOpen className="w-[18px] h-[18px]" />
+            </button>
+          )}
           {st && (
             <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
               {st.label}

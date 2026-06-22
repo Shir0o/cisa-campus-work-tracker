@@ -912,6 +912,56 @@ describe('CoordinationNotes', () => {
     });
   });
 
+  // ── 15a. Collapsible Pages panel (#70) ────────────────────────────────────
+  describe('collapsible pages panel', () => {
+    beforeEach(() => {
+      localStorage.clear();
+    });
+
+    it('collapses the Pages panel and reveals a "Show pages" control, then restores it', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const workspace = screen.getByTestId('coordination-notes-workspace');
+      const aside = workspace.querySelector('aside') as HTMLElement;
+
+      // Expanded by default: two-column grid, sidebar visible, no "Show pages".
+      expect(workspace.className).toContain('lg:grid-cols-[300px_1fr]');
+      expect(aside.className).not.toContain('lg:hidden');
+      expect(screen.queryByRole('button', { name: /show pages/i })).not.toBeInTheDocument();
+
+      // Collapse.
+      fireEvent.click(screen.getByRole('button', { name: /collapse pages/i }));
+
+      await waitFor(() => {
+        expect(workspace.className).toContain('lg:grid-cols-1');
+        expect(aside.className).toContain('lg:hidden');
+      });
+      expect(localStorage.getItem('board_pages_collapsed')).toBe('true');
+      const showPages = screen.getByRole('button', { name: /show pages/i });
+      expect(showPages).toBeInTheDocument();
+
+      // Restore from the editor-head control.
+      fireEvent.click(showPages);
+
+      await waitFor(() => {
+        expect(workspace.className).toContain('lg:grid-cols-[300px_1fr]');
+        expect(aside.className).not.toContain('lg:hidden');
+      });
+      expect(localStorage.getItem('board_pages_collapsed')).toBe('false');
+    });
+
+    it('starts collapsed when the persisted preference is set', () => {
+      localStorage.setItem('board_pages_collapsed', 'true');
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const workspace = screen.getByTestId('coordination-notes-workspace');
+      expect(workspace.className).toContain('lg:grid-cols-1');
+      expect(screen.getByRole('button', { name: /show pages/i })).toBeInTheDocument();
+    });
+  });
+
   // ── 15. Workspace layout (regression for #65) ─────────────────────────────
   describe('documents workspace layout', () => {
     it('bounds the editor workspace height so the canvas scrolls internally and the toolbar stays pinned (#65)', () => {
