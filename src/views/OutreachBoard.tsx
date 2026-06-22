@@ -51,6 +51,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
+import { DataLoadError } from '../components/ui/DataLoadError';
 
 // ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
 const DAY_MS = 86_400_000;
@@ -175,7 +176,16 @@ export default function OutreachBoard() {
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('bg-board-indigo');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Clear state before handleFirestoreError (which throws), so the skeleton always
+  // clears and the failure surfaces instead of a stuck/partial view.
+  const onLoadError = (e: unknown, path: string) => {
+    setError('the board');
+    setLoading(false);
+    handleFirestoreError(e, OperationType.LIST, path);
+  };
 
   // Warm tone swatches for the stage editor (stored as bg-board-* class values).
   const colors = [
@@ -238,10 +248,7 @@ export default function OutreachBoard() {
 
       setStages(stagesData);
       setTimeout(() => setLoading(false), 800);
-    }, (error) => {
-      setTimeout(() => setLoading(false), 800);
-      handleFirestoreError(error, OperationType.LIST, 'stages');
-    });
+    }, (e) => onLoadError(e, 'stages'));
 
     return () => unsubscribe();
   }, [isAdmin]);
@@ -302,9 +309,7 @@ export default function OutreachBoard() {
       if (!activeId) {
         setBoardContacts(contactData);
       }
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'contacts');
-    });
+    }, (e) => onLoadError(e, 'contacts'));
 
     return () => unsubscribe();
   }, [activeId]);
@@ -339,7 +344,7 @@ export default function OutreachBoard() {
         interactionTouches = ingest(snap as never, 'content');
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, 'interactions (collectionGroup)'),
+      (e) => onLoadError(e, 'interactions (collectionGroup)'),
     );
 
     const unsubComments = onSnapshot(
@@ -348,7 +353,7 @@ export default function OutreachBoard() {
         commentTouches = ingest(snap as never, 'text');
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, 'comments (collectionGroup)'),
+      (e) => onLoadError(e, 'comments (collectionGroup)'),
     );
 
     return () => {
@@ -521,6 +526,10 @@ export default function OutreachBoard() {
       },
     }),
   };
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading) {
     return (

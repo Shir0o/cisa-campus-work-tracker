@@ -131,6 +131,17 @@ describe('History View', () => {
     expect(screen.getByText('Gathering the last few days…')).toBeInTheDocument();
   });
 
+  it('surfaces a load error when a listener fails', async () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, onError?: any) => {
+      onError?.(new Error('permission-denied'));
+      return vi.fn();
+    });
+
+    render(<HistoryView />);
+
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
   it('renders Looking back header and loaded activities list', async () => {
     render(<HistoryView />);
 

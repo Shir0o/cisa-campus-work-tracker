@@ -19,6 +19,7 @@ import { cn, getUserInitials } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
 import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
+import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 
 const DAY_MS = 86_400_000;
@@ -100,6 +101,15 @@ export default function MyDay() {
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Clear state before handleFirestoreError (which throws), so the skeleton always
+  // clears and the failure surfaces instead of a stuck/partial view.
+  const onLoadError = (e: unknown, path: string) => {
+    setError("your day");
+    setLoading(false);
+    handleFirestoreError(e, OperationType.LIST, path);
+  };
 
   const [prayedToday, setPrayedToday] = useState<Record<string, boolean>>({});
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -112,25 +122,25 @@ export default function MyDay() {
         setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "contacts"),
+      (e) => onLoadError(e, "contacts"),
     );
 
     const unsubStages = onSnapshot(
       query(collection(db, "stages"), orderBy("order", "asc")),
       (snap) => setStages(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Stage[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "stages"),
+      (e) => onLoadError(e, "stages"),
     );
 
     const unsubEvents = onSnapshot(
       query(collection(db, "events")),
       (snap) => setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "events"),
+      (e) => onLoadError(e, "events"),
     );
 
     const unsubPrayers = onSnapshot(
       query(collection(db, "prayers")),
       (snap) => setPrayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PrayerRecord[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "prayers"),
+      (e) => onLoadError(e, "prayers"),
     );
 
     // Last-touch signal: most recent interaction/comment per contact (createdAt is ISO).
@@ -158,7 +168,7 @@ export default function MyDay() {
         interactionTouches = ingest(snap as never, "content");
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "interactions (collectionGroup)"),
+      (e) => onLoadError(e, "interactions (collectionGroup)"),
     );
 
     const unsubComments = onSnapshot(
@@ -167,7 +177,7 @@ export default function MyDay() {
         commentTouches = ingest(snap as never, "text");
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "comments (collectionGroup)"),
+      (e) => onLoadError(e, "comments (collectionGroup)"),
     );
 
     return () => {
@@ -186,7 +196,7 @@ export default function MyDay() {
     const unsub = onSnapshot(
       query(collection(db, "tasks"), where("assigneeId", "==", uid)),
       (snap) => setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as MyTask[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "tasks"),
+      (e) => onLoadError(e, "tasks"),
     );
     return () => unsub();
   }, [uid]);
@@ -291,6 +301,10 @@ export default function MyDay() {
       handleFirestoreError(e, OperationType.UPDATE, "tasks");
     }
   };
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading) {
     return (

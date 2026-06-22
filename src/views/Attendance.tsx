@@ -15,6 +15,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
+import { DataLoadError } from '../components/ui/DataLoadError';
 import AddEventModal from '../components/modals/AddEventModal';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
@@ -83,6 +84,7 @@ export default function Attendance() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
@@ -90,12 +92,20 @@ export default function Attendance() {
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
+    // Clear state before handleFirestoreError (which throws), so the skeleton always
+    // clears and the failure surfaces instead of a stuck/partial view.
+    const onLoadError = (e: unknown, path: string) => {
+      setError('attendance');
+      setLoading(false);
+      handleFirestoreError(e, OperationType.LIST, path);
+    };
+
     const unsubscribeContacts = onSnapshot(
       collection(db, 'contacts'),
       (snapshot) => {
         setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
       },
-      (error) => handleFirestoreError(error, OperationType.LIST, 'contacts'),
+      (e) => onLoadError(e, 'contacts'),
     );
 
     const qEvents = query(collection(db, 'events'), orderBy('date', 'asc'), orderBy('order', 'asc'));
@@ -105,10 +115,7 @@ export default function Attendance() {
         setEvents(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]);
         setTimeout(() => setLoading(false), 600);
       },
-      (error) => {
-        setTimeout(() => setLoading(false), 600);
-        handleFirestoreError(error, OperationType.LIST, 'events');
-      },
+      (e) => onLoadError(e, 'events'),
     );
 
     return () => {
@@ -256,6 +263,10 @@ export default function Attendance() {
   }, [contacts, events]);
 
   const openContact = (c: Contact) => setSelectedContact(c);
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading) {
     return (

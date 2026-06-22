@@ -341,6 +341,7 @@ describe('Directory', () => {
 
     render(<Directory />);
     expect(handleFirestoreError).toHaveBeenCalled();
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
     consoleErrorSpy.mockRestore();
   });
 });

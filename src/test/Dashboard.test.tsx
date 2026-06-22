@@ -166,6 +166,17 @@ describe('Dashboard', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('surfaces a load error when a listener fails', async () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, onError?: any) => {
+      onError?.(new Error('permission-denied'));
+      return vi.fn();
+    });
+
+    render(<Dashboard />);
+
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
   it('renders the warm greeting, care sections and quiet figures footer', async () => {
     render(<Dashboard />);
 
