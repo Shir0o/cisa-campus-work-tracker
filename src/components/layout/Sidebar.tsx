@@ -151,7 +151,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         <div 
           onScroll={handleScroll}
           className={cn(
-            "flex-1 space-y-0.5 overflow-y-auto",
+            "flex-1 min-h-0 space-y-0.5 overflow-y-auto",
             effectiveIsCollapsed ? "no-scrollbar" : (isScrolling ? "custom-scrollbar" : "no-scrollbar")
           )}
         >
@@ -191,7 +191,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         </div>
 
         {/* Footer Nav */}
-        <div className="mt-auto border-t border-outline-variant pt-3 space-y-1 overflow-hidden">
+        <div className="mt-auto shrink-0 border-t border-outline-variant pt-3 space-y-1 overflow-hidden">
           {/* Signed-in user — avatar + name + role */}
           <div className={cn(
             "flex items-center mb-1 pb-2",
