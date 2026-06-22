@@ -911,5 +911,23 @@ describe('CoordinationNotes', () => {
       expect(screen.getByTitle('Markdown source is read-only while live editing is on')).toBeInTheDocument();
     });
   });
+
+  // ── 15. Workspace layout (regression for #65) ─────────────────────────────
+  describe('documents workspace layout', () => {
+    it('bounds the editor workspace height so the canvas scrolls internally and the toolbar stays pinned (#65)', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      const { container } = render(<CoordinationNotes />);
+
+      const workspace = [...container.querySelectorAll('div')].find((el) =>
+        el.className.includes('grid-cols-[300px_1fr]'),
+      );
+      expect(workspace).toBeTruthy();
+      // Without a bounded height the whole page scrolls and the `sticky` toolbar
+      // scrolls away; these classes make the inner `overflow-y-auto` canvas the
+      // scroller instead, keeping the formatting toolbar in view.
+      expect(workspace!.className).toContain('lg:h-[calc(100vh-6rem)]');
+      expect(workspace!.className).toContain('lg:grid-rows-1');
+    });
+  });
 });
 

@@ -24,6 +24,10 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   worktrees on session start so project instructions follow each worktree (#39).
 
 ### Fixed
+- The Board's Markdown formatting toolbar no longer disappears when scrolling a
+  long page: the editor workspace now has a bounded height on desktop
+  (`lg:h-[calc(100vh-6rem)]` + `lg:grid-rows-1`), so the page list and document
+  canvas scroll internally and the `sticky` toolbar stays pinned (#65).
 - Vitest configuration to exclude `.claude/**` subagent worktrees, preventing test suite conflicts.
 - Mocking setup in `OutreachBoard` tests to prevent loading real Firebase RTDB services under unit tests.
 - The Board live collaboration no longer fails with RTDB `permission_denied`:
