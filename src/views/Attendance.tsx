@@ -19,6 +19,7 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import AddEventModal from '../components/modals/AddEventModal';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
+import PageContainer from '../components/layout/PageContainer';
 import { format, parseISO, isValid } from 'date-fns';
 
 const DAY_MS = 86_400_000;
@@ -270,7 +271,7 @@ export default function Attendance() {
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 space-y-8 animate-pulse max-w-5xl">
+      <PageContainer variant="wide" className="space-y-8 animate-pulse">
         <div className="space-y-3">
           <Skeleton className="h-4 w-64 opacity-70" />
           <Skeleton className="h-10 w-72" />
@@ -281,17 +282,17 @@ export default function Attendance() {
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
     <>
+      <PageContainer variant="wide">
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}
-        className="p-6 md:p-8 max-w-5xl"
       >
         {/* ── Greeting + state of things ── */}
         <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
@@ -350,7 +351,7 @@ export default function Attendance() {
               title="Who we've missed lately"
               sub="They used to come, but it's been a few gatherings."
             />
-            <div className="space-y-3">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
               {missed.map(({ contact, since, lastSeen }) => (
                 <div
                   key={contact.id}
@@ -439,7 +440,7 @@ export default function Attendance() {
                   >
                     <button
                       onClick={() => setOpenId(isOpen ? null : s.id)}
-                      className="w-full flex items-center gap-4 p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
+                      className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
                     >
                       <div className="text-center w-12 shrink-0">
                         <div className="text-[11px] uppercase tracking-wide text-on-surface-variant">
@@ -624,6 +625,7 @@ export default function Attendance() {
           </span>
         </div>
       </motion.div>
+      </PageContainer>
 
       <SyncSheetModal isOpen={isSyncModalOpen} onClose={() => setIsSyncModalOpen(false)} contacts={contacts} />
       <AddEventModal

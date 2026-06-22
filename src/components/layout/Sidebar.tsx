@@ -32,7 +32,9 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
   const { logOut, isAdmin, role, user } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
-  const [isDesktop, setIsDesktop] = React.useState(window.innerWidth >= 1024);
+  const [viewportWidth, setViewportWidth] = React.useState(
+    typeof window !== 'undefined' ? window.innerWidth : 1280,
+  );
   const [isScrolling, setIsScrolling] = React.useState(false);
   const scrollTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -47,7 +49,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
   };
 
   React.useEffect(() => {
-    const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+    const handleResize = () => setViewportWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => {
       window.removeEventListener('resize', handleResize);
@@ -57,7 +59,12 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     };
   }, []);
 
-  const effectiveIsCollapsed = isDesktop ? isCollapsed : false;
+  // Desktop (>=lg) honors the user's collapse preference. The tablet band
+  // (md–lg) is always a collapsed icon rail. Below md the sidebar is an overlay
+  // drawer shown at full width.
+  const isDesktop = viewportWidth >= 1024;
+  const isTabletRail = viewportWidth >= 768 && viewportWidth < 1024;
+  const effectiveIsCollapsed = isDesktop ? !!isCollapsed : isTabletRail;
 
   const NAV_ICONS: Record<string, React.ElementType> = {
     '/': LayoutDashboard,
@@ -87,7 +94,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setIsMobileMenuOpen(false)}
-            className="fixed inset-0 bg-scrim/50 z-[60] lg:hidden"
+            className="fixed inset-0 bg-scrim/50 z-[60] md:hidden"
           />
         )}
       </AnimatePresence>
@@ -100,9 +107,9 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "bg-surface h-screen fixed lg:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-4 px-3 overflow-hidden shrink-0",
-          "lg:transition-none transition-transform duration-300 ease-in-out",
-          isMobileMenuOpen ? "translate-x-0 shadow-2xl flex" : "-translate-x-full lg:translate-x-0 flex shadow-none"
+          "bg-surface h-screen fixed md:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-4 px-3 overflow-hidden shrink-0",
+          "md:transition-none transition-transform duration-300 ease-in-out",
+          isMobileMenuOpen ? "translate-x-0 shadow-2xl flex" : "-translate-x-full md:translate-x-0 flex shadow-none"
         )}
       >
         {/* Brand Header */}
@@ -140,7 +147,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           {!effectiveIsCollapsed && (
             <button 
               onClick={() => setIsMobileMenuOpen(false)}
-              className="lg:hidden p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
+              className="md:hidden p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
             >
               <X className="w-5 h-5" />
             </button>

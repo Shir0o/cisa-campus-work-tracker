@@ -26,6 +26,7 @@ import { useAuth } from '../components/AuthProvider';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
+import PageContainer from '../components/layout/PageContainer';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -442,7 +443,7 @@ export default function Directory() {
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 flex flex-col gap-8 max-w-5xl">
+      <PageContainer variant="wide" className="flex flex-col gap-8">
         <div className="space-y-3">
           <Skeleton className="h-9 w-40" />
           <Skeleton className="h-5 w-full max-w-xl opacity-70" />
@@ -456,20 +457,20 @@ export default function Directory() {
             <Skeleton key={i} className="h-24 w-full rounded-2xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
+    <PageContainer variant="wide">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-6 md:p-8 max-w-5xl"
     >
       {/* ── Header: serif title + prose summary ── */}
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-serif text-3xl text-on-surface">People</h1>
+          <h1 className="font-serif page-title text-on-surface">People</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
             <b className="text-on-surface font-semibold">
               {contacts.length} {contacts.length === 1 ? 'person' : 'people'}
@@ -536,7 +537,7 @@ export default function Directory() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-4 min-w-[240px] space-y-4"
+                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-4 min-w-[240px] max-w-[calc(100vw-2rem)] space-y-4"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-on-surface">Narrow it down</span>
@@ -673,7 +674,7 @@ export default function Directory() {
           <p className="text-sm text-on-surface-variant">Try a different search or clear your filters.</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {filteredContacts.map((contact) => {
             const tone = toneByStage.get(contact.stage);
             const toneCx = tone ? TONE_CLASSES[tone] : null;
@@ -838,5 +839,6 @@ export default function Directory() {
         )}
       </AnimatePresence>
     </motion.div>
+    </PageContainer>
   );
 }

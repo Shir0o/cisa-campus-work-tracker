@@ -821,7 +821,7 @@ export default function OutreachBoard() {
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeId && activeContact ? (
-            <div className="w-[280px] sm:w-[320px] rotate-3 scale-105 pointer-events-none">
+            <div className="w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] rotate-3 scale-105 pointer-events-none">
               <InternalKanbanCard
                 contact={activeContact}
                 tone={toneFor(stages.find((s) => s.label === activeContact.stage)?.color, 0)}
@@ -877,7 +877,7 @@ function KanbanColumn({
   return (
     <div
       className={cn(
-        "flex flex-col w-[280px] sm:w-[320px] shrink-0 bg-surface-container rounded-2xl border border-t-2 max-h-full transition-all",
+        "flex flex-col w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] shrink-0 bg-surface-container rounded-2xl border border-t-2 max-h-full transition-all",
         toneCx ? toneCx.topBorder : "border-t-outline-variant",
         isOver ? "border-outline ring-2 ring-primary/30" : "border-outline-variant/30",
       )}

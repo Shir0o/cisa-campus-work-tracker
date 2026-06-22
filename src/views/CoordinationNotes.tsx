@@ -933,7 +933,7 @@ function DocEditor({
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Untitled page"
         spellCheck={false}
-        className="w-full bg-transparent border-0 outline-none font-serif text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
+        className="w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
       />
 
       {/* toolbar */}

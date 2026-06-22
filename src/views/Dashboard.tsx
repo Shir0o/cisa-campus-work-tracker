@@ -19,6 +19,7 @@ import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
+import PageContainer from "../components/layout/PageContainer";
 
 const DAY_MS = 86_400_000;
 
@@ -258,7 +259,7 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="p-6 md:p-8 space-y-8 animate-pulse max-w-5xl">
+      <PageContainer variant="wide" className="space-y-8 animate-pulse">
         <div className="space-y-3">
           <Skeleton className="h-4 w-64 opacity-70" />
           <Skeleton className="h-10 w-72" />
@@ -269,7 +270,7 @@ export default function Dashboard() {
             <Skeleton key={i} className="h-28 w-full rounded-2xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -311,11 +312,11 @@ export default function Dashboard() {
     ) : null;
 
   return (
+    <PageContainer variant="wide">
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
-      className="p-6 md:p-8 max-w-5xl"
     >
       {/* ── Greeting + state of things, in prose ── */}
       <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
@@ -370,7 +371,7 @@ export default function Dashboard() {
           onLink={() => navigate("/directory")}
         />
         {needsFollowup.length > 0 ? (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
             {needsFollowup.slice(0, 4).map(({ contact, days, note }) => (
               <div
                 key={contact.id}
@@ -424,7 +425,7 @@ export default function Dashboard() {
       </section>
 
       {/* ── New faces + This week ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12">
         <section>
           <SectionHead title="New faces" sub="Joined in the last two weeks" />
           <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
@@ -567,6 +568,7 @@ export default function Dashboard() {
         contact={selectedContact}
       />
     </motion.div>
+    </PageContainer>
   );
 }
 

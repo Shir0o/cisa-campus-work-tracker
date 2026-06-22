@@ -231,7 +231,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
               </button>
             </div>
 
-            <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            <div className="flex-1 min-h-0 overflow-y-auto lg:overflow-hidden flex flex-col lg:flex-row">
               {/* Left Side: Contact Picker */}
               <div className="w-full lg:w-1/2 border-r border-outline-variant/30 flex flex-col min-h-0 bg-surface-container-low/30">
                 <div className="p-4 space-y-4">

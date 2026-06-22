@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
+import PageContainer from '../components/layout/PageContainer';
 
 export default function SubmitFeedback() {
   const { user, role } = useAuth();
@@ -138,9 +139,9 @@ export default function SubmitFeedback() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-2xl mx-auto space-y-6" id="submit-feedback-page">
+    <PageContainer variant="reading" className="max-w-2xl space-y-6" id="submit-feedback-page">
       <div>
-        <h1 className="font-serif text-3xl font-medium tracking-tight text-on-background">Leave a note</h1>
+        <h1 className="font-serif page-title font-medium tracking-tight text-on-background">Leave a note</h1>
         <p className="text-sm text-on-surface-variant max-w-prose">
           Ideas, friction, appreciation — all welcome. Your note goes straight to the team.
         </p>
@@ -267,6 +268,6 @@ export default function SubmitFeedback() {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </PageContainer>
   );
 }

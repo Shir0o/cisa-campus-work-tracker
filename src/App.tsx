@@ -132,8 +132,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
         {/* Sidebar Skeleton */}
         <div
           className={cn(
-            "hidden lg:flex flex-col bg-surface-container border-r border-outline-variant p-6 gap-8 transition-all duration-300",
-            isSidebarCollapsed ? "w-20" : "w-72",
+            "hidden md:flex flex-col bg-surface-container border-r border-outline-variant p-6 gap-8 transition-all duration-300",
+            isSidebarCollapsed ? "w-20" : "w-20 lg:w-72",
           )}
         >
           <Skeleton
@@ -301,7 +301,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         setSearchOpen,
       }}
     >
-      <div className="flex min-h-screen bg-background pb-16 lg:pb-0 relative">
+      <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
         <Sidebar
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={toggleSidebarCollapse}
@@ -313,7 +313,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           )}
         >
           <TopBar />
-          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 lg:pb-8">
+          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
             {children}
           </main>
         </div>
