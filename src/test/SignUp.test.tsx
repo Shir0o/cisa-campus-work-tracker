@@ -54,7 +54,7 @@ describe('SignUp View', () => {
     fireEvent.change(nameInput, { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect = screen.getByText('Where are you with faith right now?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'None' } });
 
     const continueButton = screen.getByRole('button', { name: /Continue/i });
@@ -74,7 +74,7 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect = screen.getByText('Where are you with faith right now?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'None' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
@@ -122,7 +122,21 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect = screen.getByText('Where are you with faith right now?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    
+    // Fill optional inputs
+    fireEvent.change(screen.getByLabelText(/Pronouns/i), { target: { value: 'she/her' } });
+    fireEvent.change(screen.getByLabelText(/Instagram/i), { target: { value: '@jane_doe' } });
+
+    const yearSelect = screen.getByLabelText('Year') as HTMLSelectElement;
+    fireEvent.change(yearSelect, { target: { value: 'Freshman' } });
+
+    const majorSelect = screen.getByLabelText('Major') as HTMLSelectElement;
+    fireEvent.change(majorSelect, { target: { value: 'Computer Science' } });
+
+    const hallSelect = screen.getByLabelText('Where do you live?') as HTMLSelectElement;
+    fireEvent.change(hallSelect, { target: { value: 'Whitman Hall' } });
+
+    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
     fireEvent.change(spiritualSelect, { target: { value: 'None' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
@@ -168,7 +182,7 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect2 = screen.getByText('Where are you with faith right now?').nextElementSibling?.querySelector('select') as HTMLSelectElement;
+    const spiritualSelect2 = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
     fireEvent.change(spiritualSelect2, { target: { value: 'None' } });
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 

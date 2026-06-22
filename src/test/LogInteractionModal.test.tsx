@@ -111,6 +111,14 @@ describe('LogInteractionModal Component', () => {
     const aliceContact = await screen.findByText('Alice Smith');
     fireEvent.click(aliceContact);
 
+    // Select interaction type 'Call'
+    const callTypeBtn = screen.getByText('Call');
+    fireEvent.click(callTypeBtn);
+
+    // Change date field
+    const dateInput = screen.getByText('Date').nextElementSibling?.querySelector('input') as HTMLInputElement;
+    fireEvent.change(dateInput, { target: { value: '2026-06-25' } });
+
     // Add follow-up task
     const addTaskBtn = screen.getByText(/Add Follow-Up Task/i);
     fireEvent.click(addTaskBtn);
@@ -118,6 +126,25 @@ describe('LogInteractionModal Component', () => {
     // Fill task title
     const taskTitleInput = screen.getByPlaceholderText(/Task description/i);
     fireEvent.change(taskTitleInput, { target: { value: 'Follow up call' } });
+
+    // Change task due date
+    const taskDueDateInput = screen.getByPlaceholderText(/Task description/i).nextElementSibling as HTMLInputElement;
+    fireEvent.change(taskDueDateInput, { target: { value: '2026-07-01' } });
+
+    // Add manual/second follow-up task
+    const addManualBtn = screen.getByText(/Add Manual/i);
+    fireEvent.click(addManualBtn);
+
+    // Fill second task title
+    const taskTitleInputs = screen.getAllByPlaceholderText(/Task description/i);
+    fireEvent.change(taskTitleInputs[1], { target: { value: 'Second task to delete' } });
+
+    // Remove the second task
+    const tasksContainer = screen.getByText('Follow-Up Tasks').closest('.space-y-3')!;
+    const taskItems = tasksContainer.querySelectorAll('.flex.gap-2.items-start');
+    expect(taskItems.length).toBe(2);
+    const removeBtn = taskItems[1].querySelector('button')!;
+    fireEvent.click(removeBtn);
 
     // Fill interaction notes
     const notesArea = screen.getByPlaceholderText(/What was discussed\?/i);
@@ -130,7 +157,7 @@ describe('LogInteractionModal Component', () => {
     const batchMock = firestore.writeBatch(null as any);
     await waitFor(() => {
       expect(firestore.writeBatch).toHaveBeenCalled();
-      expect(batchMock.set).toHaveBeenCalledTimes(2); // 1 interaction + 1 task
+      expect(batchMock.set).toHaveBeenCalledTimes(2); // 1 interaction + 1 task (second task was removed)
       expect(batchMock.update).toHaveBeenCalledTimes(1); // 1 contact updated
       expect(batchMock.commit).toHaveBeenCalled();
       expect(mockOnClose).toHaveBeenCalled();
