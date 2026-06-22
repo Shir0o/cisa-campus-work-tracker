@@ -355,7 +355,7 @@ function NtfItem({
 
       {/* Set-aside button (hover-reveal, sits on top of unread dot) */}
       <button
-        className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover:opacity-100 hover:!text-on-surface hover:bg-surface-container-high transition-all"
+        className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all"
         title="Set aside"
         aria-label="Set aside"
         onClick={e => { e.stopPropagation(); onSetAside(notif.id); }}
