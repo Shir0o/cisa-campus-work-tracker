@@ -5,10 +5,12 @@ name: Deploy Database Rules
 # previously had no auto-deploy, so edits silently never reached the live DB
 # (every board live-collab write got permission_denied).
 #
-# Auth: reuses the FIREBASE_SERVICE_ACCOUNT repo secret. NOTE: deploying RTDB
-# rules needs role roles/firebasedatabase.admin on the service account — in
-# addition to the firebaserules.admin used for Firestore — or the deploy fails
-# with a permission error.
+# Auth: keyless via Workload Identity Federation (WIF) — the same pool/provider/SA
+# as deploy-firestore-rules.yml. GitHub's per-run OIDC token is exchanged for
+# short-lived credentials that impersonate github-action@sac-campus-hub; no key is
+# stored. NOTE: deploying RTDB rules needs role roles/firebasedatabase.admin on the
+# service account — in addition to the firebaserules.admin used for Firestore — or
+# the deploy fails with a permission error.
 
 on:
   # Manual trigger — re-publish rules or validate the deploy credential without
@@ -36,6 +38,11 @@ jobs:
     name: Deploy Realtime Database rules
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # id-token: write is required to mint the GitHub OIDC token that WIF exchanges
+    # for short-lived GCP credentials.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -43,13 +50,16 @@ jobs:
           node-version: 20
       - name: Install Firebase CLI
         run: npm install -g firebase-tools@^15
-      # Authenticates the Firebase CLI non-interactively: this action writes the
-      # service-account key to a temp file and exports
-      # GOOGLE_APPLICATION_CREDENTIALS, which the CLI honors.
+      # Authenticates the Firebase CLI non-interactively via WIF: this action
+      # exchanges the GitHub OIDC token for short-lived credentials, writes them to
+      # a temp file, and exports GOOGLE_APPLICATION_CREDENTIALS, which the CLI honors.
+      # No long-lived key is involved.
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          project_id: sac-campus-hub
+          workload_identity_provider: projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-action@sac-campus-hub.iam.gserviceaccount.com
       - name: Deploy Realtime Database rules
         run: >
           firebase deploy
