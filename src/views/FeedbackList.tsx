@@ -19,6 +19,7 @@ import {
   Unlink
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
+import PageContainer from '../components/layout/PageContainer';
 
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
@@ -261,11 +262,11 @@ export default function FeedbackList() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-6xl mx-auto space-y-8" id="feedback-admin-panel">
+    <PageContainer variant="wide" className="space-y-8" id="feedback-admin-panel">
       {/* Header and overview */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-regular tracking-tight text-on-background">User Feedback</h1>
+          <h1 className="text-2xl sm:text-3xl font-regular tracking-tight text-on-background">User Feedback</h1>
           <p className="text-sm text-on-surface-variant">Review bug reports and feature requests submitted by CISA Campus Work Tracker users.</p>
         </div>
         
@@ -379,7 +380,7 @@ export default function FeedbackList() {
           <p className="text-xs text-on-surface-variant">There are no feedback submissions that match your query.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
           <AnimatePresence mode="popLayout">
             {filteredFeedback.map((item) => {
               const k = resolveKind(item);
@@ -588,6 +589,6 @@ export default function FeedbackList() {
           </AnimatePresence>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }

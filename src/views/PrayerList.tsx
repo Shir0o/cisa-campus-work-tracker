@@ -17,6 +17,7 @@ import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import PageContainer from '../components/layout/PageContainer';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
 const DAY_MS = 86_400_000;
@@ -297,7 +298,7 @@ export default function PrayerList() {
 
   if (loading && contacts.length === 0) {
     return (
-      <div className="p-6 md:p-8 max-w-5xl flex flex-col gap-8">
+      <PageContainer variant="wide" className="flex flex-col gap-8">
         <Skeleton className="h-9 w-56" />
         <Skeleton className="h-5 w-full max-w-md opacity-70" />
         <div className="flex flex-col gap-4">
@@ -305,15 +306,15 @@ export default function PrayerList() {
             <Skeleton key={i} className="h-40 w-full rounded-2xl" />
           ))}
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl">
+    <PageContainer variant="wide">
       {/* Header */}
       <header className="mb-8">
-        <h1 className="font-serif text-3xl text-on-surface">Prayer Log</h1>
+        <h1 className="font-serif page-title text-on-surface">Prayer Log</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
           <span className="text-success font-medium">{answeredThisYear}</span>{' '}
           {answeredThisYear === 1 ? 'prayer' : 'prayers'} answered this year.
@@ -398,7 +399,7 @@ export default function PrayerList() {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
       />
-    </div>
+    </PageContainer>
   );
 }
 

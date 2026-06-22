@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, LogOut, Menu } from 'lucide-react';
+import { Settings, LogOut, Menu, Search } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
@@ -35,7 +35,7 @@ function pageTitleFor(pathname: string): string {
 
 export default function TopBar() {
   const { user, logOut } = useAuth();
-  const { setIsMobileMenuOpen } = useLayout();
+  const { setIsMobileMenuOpen, setSearchOpen } = useLayout();
   const { pathname } = useLocation();
   const pageTitle = pageTitleFor(pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -56,7 +56,7 @@ export default function TopBar() {
       {/* Mobile menu trigger */}
       <button
         onClick={() => setIsMobileMenuOpen(true)}
-        className="lg:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full focus:outline-none transition-colors shrink-0"
+        className="md:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full focus:outline-none transition-colors shrink-0"
         aria-label="Open navigation"
       >
         <Menu className="w-5 h-5" />
@@ -83,9 +83,21 @@ export default function TopBar() {
         {/* Global Search (#19) — desktop pill lives here; on mobile the search is
             opened from the bottom-nav and renders a full-screen overlay, so the
             pill is hidden below lg. */}
-        <div className="hidden lg:block w-full max-w-sm">
+        <div className="hidden lg:block w-full max-w-sm xl:max-w-md">
           <GlobalSearch />
         </div>
+
+        {/* Tablet (md–lg) lost the bottom-nav search button, and the desktop pill
+            only appears at lg+, so give the rail layout its own search trigger.
+            It opens the same full-screen overlay GlobalSearch portals to body. */}
+        <button
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          className="hidden md:inline-flex lg:hidden p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"
+          aria-label="Search"
+        >
+          <Search className="w-5 h-5" />
+        </button>
 
         <NotificationCenter />
         

@@ -14,6 +14,7 @@ import {
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { AppUser, Invitation } from '../types';
 import { useAuth } from '../components/AuthProvider';
+import PageContainer from '../components/layout/PageContainer';
 import {
   Shield,
   CheckCircle2,
@@ -1317,9 +1318,9 @@ export default function Settings() {
 
   // ── Manager / admin: full settings ──
   return (
-    <div className="p-6 md:p-8 max-w-3xl pb-24 lg:pb-8">
+    <PageContainer variant="reading">
       <header className="mb-8">
-        <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">Settings</h1>
+        <h1 className="font-serif page-title text-on-surface">Settings</h1>
         <p className="text-base text-on-surface-variant mt-2">
           {currentUser?.displayName
             ? `Signed in as ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`
@@ -1497,6 +1498,6 @@ export default function Settings() {
           />
         )}
       </AnimatePresence>
-    </div>
+    </PageContainer>
   );
 }

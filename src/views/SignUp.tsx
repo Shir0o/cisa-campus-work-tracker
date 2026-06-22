@@ -354,7 +354,7 @@ export default function SignUp() {
               <div className="w-14 h-14 rounded-2xl bg-success-container text-success flex items-center justify-center mb-5">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h1 className="font-serif text-3xl font-medium tracking-tight text-on-surface">Thanks, {firstName}.</h1>
+              <h1 className="font-serif page-title font-medium tracking-tight text-on-surface">Thanks, {firstName}.</h1>
               <p className="mt-3 text-[15px] leading-relaxed text-on-surface-variant max-w-[42ch]">
                 We got it. Someone from the team will reach out within two days. If you&rsquo;d like, you&rsquo;re
                 always welcome at our Friday gathering this week (7pm, Lower Common Room).
@@ -394,7 +394,7 @@ export default function SignUp() {
                 </div>
               </div>
 
-              <h1 className="font-serif text-3xl font-medium tracking-tight text-on-surface">
+              <h1 className="font-serif page-title font-medium tracking-tight text-on-surface">
                 {step === 1 ? 'Tell us about you.' : 'And a little more.'}
               </h1>
               <p className="mt-1.5 text-[15px] text-on-surface-variant">

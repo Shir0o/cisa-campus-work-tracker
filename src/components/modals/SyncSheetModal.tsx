@@ -196,7 +196,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl p-6 md:p-8 overflow-hidden border border-outline-variant/30"
+            className="relative w-full max-w-md max-h-[90vh] overflow-y-auto custom-scrollbar bg-surface-container-high rounded-3xl shadow-2xl p-6 md:p-8 border border-outline-variant/30"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">

@@ -209,6 +209,20 @@
   }
 }
 
+/* Fluid page heading — scales ~24px (phone) → 36px (large monitor). Pair with
+   `font-serif`/color utilities at the call site; this only governs size. */
+.page-title {
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  line-height: 1.15;
+}
+
+/* Slightly larger base text on very large monitors for comfortable reading. */
+@media (min-width: 1536px) {
+  body {
+    font-size: 16px;
+  }
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -252,12 +266,20 @@
 .bdoc-prose {
   max-width: 760px;
   margin: 0 auto;
-  padding: 26px 30px 64px;
+  /* tighter gutters on phones; full padding from sm up (see media query below) */
+  padding: 20px 16px 56px;
   min-height: 420px;
   outline: 0;
   font-size: 15.5px;
   line-height: 1.7;
   color: var(--on-surface);
+}
+@media (min-width: 640px) {
+  .bdoc-prose { padding: 26px 30px 64px; }
+}
+@media (min-width: 1280px) {
+  /* use a little more of the canvas on large screens */
+  .bdoc-prose { max-width: 880px; }
 }
 .bdoc-prose:focus { outline: 0; }
 .bdoc-prose h1 { font-family: var(--font-serif); font-size: 27px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.2; margin: 4px 0 10px; }

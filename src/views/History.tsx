@@ -27,6 +27,7 @@ import {
 import { cn, relTime } from "../lib/utils";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
+import PageContainer from "../components/layout/PageContainer";
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -322,13 +323,13 @@ export default function History() {
   });
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl">
+    <PageContainer variant="wide">
       {/* Header */}
       <header className="mb-8">
         <div className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant mb-2">
           {todayLong}
         </div>
-        <h1 className="font-serif text-3xl text-on-surface">Looking back</h1>
+        <h1 className="font-serif page-title text-on-surface">Looking back</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
           A record of the small, faithful work of the last little while — conversations had, prayers begun, steps
           taken. <span className="text-on-surface font-medium">{activities.length}</span>{" "}
@@ -489,6 +490,6 @@ export default function History() {
         onClose={() => setSelectedContact(null)}
         contact={selectedContact}
       />
-    </div>
+    </PageContainer>
   );
 }
