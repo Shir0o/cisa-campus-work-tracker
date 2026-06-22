@@ -508,6 +508,7 @@ describe('OutreachBoard', () => {
       'LIST',
       'stages'
     );
+    expect(screen.getByText(/Couldn't load/)).toBeInTheDocument();
   });
 
   // ── 15. Role filter menu ─────────────────────────────────────────────

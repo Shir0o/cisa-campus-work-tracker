@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
+import { DataLoadError } from "../components/ui/DataLoadError";
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -215,6 +216,7 @@ export default function History() {
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   const [kind, setKind] = useState<"all" | Bucket>("all");
@@ -222,12 +224,20 @@ export default function History() {
   const [q, setQ] = useState("");
 
   useEffect(() => {
+    // Clear state before handleFirestoreError (which throws), so the skeleton always
+    // clears and the failure surfaces instead of a stuck/partial view.
+    const onLoadError = (e: unknown, path: string) => {
+      setError("history");
+      setLoading(false);
+      handleFirestoreError(e, OperationType.LIST, path);
+    };
+
     const unsubscribeContacts = onSnapshot(
       query(collection(db, "contacts")),
       (snapshot) => {
         setContacts(snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
       },
-      (error) => handleFirestoreError(error, OperationType.LIST, "contacts"),
+      (e) => onLoadError(e, "contacts"),
     );
 
     const unsubscribeActivities = onSnapshot(
@@ -251,7 +261,7 @@ export default function History() {
         );
         setLoading(false);
       },
-      (error) => handleFirestoreError(error, OperationType.LIST, "activities"),
+      (e) => onLoadError(e, "activities"),
     );
 
     return () => {
@@ -374,7 +384,9 @@ export default function History() {
       </div>
 
       {/* The stream */}
-      {loading ? (
+      {error ? (
+        <DataLoadError label={error} />
+      ) : loading ? (
         <div className="text-center py-16 text-on-surface-variant">Gathering the last few days…</div>
       ) : rows.length === 0 ? (
         <div className="text-center py-16">

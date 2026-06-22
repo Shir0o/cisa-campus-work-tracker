@@ -8,13 +8,14 @@ import {
   addDoc,
   updateDoc,
 } from 'firebase/firestore';
-import { db, logActivity } from '../lib/firebase';
+import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord } from '../types';
 import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
+import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
@@ -90,7 +91,16 @@ export default function PrayerList() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Clear state before handleFirestoreError (which throws), so the skeleton always
+  // clears and the failure surfaces instead of a stuck/partial view.
+  const onLoadError = (e: unknown, path: string) => {
+    setError('the prayer list');
+    setLoading(false);
+    handleFirestoreError(e, OperationType.LIST, path);
+  };
 
   // Contacts we've started carrying this session that have no prayer yet.
   const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
@@ -105,7 +115,7 @@ export default function PrayerList() {
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const contactData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
       setContacts(contactData);
-    });
+    }, (e) => onLoadError(e, 'contacts'));
     return () => unsubscribe();
   }, []);
 
@@ -134,7 +144,7 @@ export default function PrayerList() {
       });
       setPrayers(prayerData);
       setLoading(false);
-    });
+    }, (e) => onLoadError(e, 'prayers'));
     return () => unsubscribe();
   }, []);
 
@@ -280,6 +290,10 @@ export default function PrayerList() {
     setComposeFor(contact.id);
     setSearchQuery('');
   };
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading && contacts.length === 0) {
     return (

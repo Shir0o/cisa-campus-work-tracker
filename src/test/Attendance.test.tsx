@@ -145,6 +145,17 @@ describe('Attendance', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('surfaces a load error when a listener fails', async () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, onError?: any) => {
+      onError?.(new Error('permission-denied'));
+      return vi.fn();
+    });
+
+    render(<Attendance />);
+
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
   it('renders title and loaded events stats', async () => {
     render(<Attendance />);
 

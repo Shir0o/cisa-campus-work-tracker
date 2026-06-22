@@ -25,6 +25,7 @@ import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
+import { DataLoadError } from '../components/ui/DataLoadError';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -135,11 +136,20 @@ export default function Directory() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // ── Last-connected signal: most recent interaction/comment per contact ──
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
+
+  // Clear state before handleFirestoreError (which throws), so the skeleton always
+  // clears and the failure surfaces instead of a stuck/partial view.
+  const onLoadError = (e: unknown, path: string) => {
+    setError('contacts');
+    setLoading(false);
+    handleFirestoreError(e, OperationType.LIST, path);
+  };
 
   useEffect(() => {
     const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
@@ -149,9 +159,7 @@ export default function Directory() {
         ...doc.data()
       })) as Contact[];
       setContacts(contactData);
-    }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'contacts');
-    });
+    }, (e) => onLoadError(e, 'contacts'));
 
     const qStages = query(collection(db, 'stages'), orderBy('order', 'asc'));
     const unsubscribeStages = onSnapshot(qStages, (snapshot) => {
@@ -163,10 +171,7 @@ export default function Directory() {
 
       // Delay first loading=false after both are loaded or after contacts if stages are empty
       setTimeout(() => setLoading(false), 800);
-    }, (error) => {
-      setTimeout(() => setLoading(false), 800);
-      handleFirestoreError(error, OperationType.LIST, 'stages');
-    });
+    }, (e) => onLoadError(e, 'stages'));
 
     return () => {
       unsubscribeContacts();
@@ -199,7 +204,7 @@ export default function Directory() {
         interactionTouches = ingest(snap as never, 'content');
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, 'interactions (collectionGroup)'),
+      (e) => onLoadError(e, 'interactions (collectionGroup)'),
     );
 
     const unsubComments = onSnapshot(
@@ -208,7 +213,7 @@ export default function Directory() {
         commentTouches = ingest(snap as never, 'text');
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, 'comments (collectionGroup)'),
+      (e) => onLoadError(e, 'comments (collectionGroup)'),
     );
 
     return () => {
@@ -430,6 +435,10 @@ export default function Directory() {
   };
 
   const allSelected = selectedIds.size > 0 && selectedIds.size === filteredContacts.length;
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading) {
     return (

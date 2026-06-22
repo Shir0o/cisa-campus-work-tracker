@@ -114,6 +114,17 @@ describe('MyDay', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('surfaces a load error when a listener fails', async () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, onError?: any) => {
+      onError?.(new Error('permission-denied'));
+      return vi.fn();
+    });
+
+    render(<MyDay />);
+
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
   it('renders greeting, all sections and the quiet figures footer', async () => {
     render(<MyDay />);
     await waitFor(() => {

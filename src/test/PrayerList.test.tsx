@@ -126,6 +126,17 @@ describe('PrayerList', () => {
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
 
+  it('surfaces a load error when a listener fails', async () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, onError?: any) => {
+      onError?.(new Error('permission-denied'));
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
+  });
+
   it('renders prayer log title and active prayer threads with legacy support', async () => {
     render(<PrayerList />);
 

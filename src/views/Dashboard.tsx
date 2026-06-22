@@ -17,6 +17,7 @@ import { useAuth } from "../components/AuthProvider";
 import { useLayout } from "../App";
 import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
+import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 
 const DAY_MS = 86_400_000;
@@ -71,36 +72,45 @@ export default function Dashboard() {
     { contactId: string; ms: number; note: string }[]
   >([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   useEffect(() => {
+    // Clear state before handleFirestoreError (which throws), so the skeleton always
+    // clears and the failure surfaces instead of a stuck/partial view.
+    const onError = (e: unknown, path: string) => {
+      setError("the dashboard");
+      setLoading(false);
+      handleFirestoreError(e, OperationType.LIST, path);
+    };
+
     const unsubContacts = onSnapshot(
       query(collection(db, "contacts")),
       (snap) => {
         setContacts(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]);
         setLoading(false);
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "contacts"),
+      (e) => onError(e, "contacts"),
     );
 
     const unsubStages = onSnapshot(
       query(collection(db, "stages"), orderBy("order", "asc")),
       (snap) => setStages(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Stage[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "stages"),
+      (e) => onError(e, "stages"),
     );
 
     const unsubEvents = onSnapshot(
       query(collection(db, "events")),
       (snap) => setEvents(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Event[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "events"),
+      (e) => onError(e, "events"),
     );
 
     const unsubPrayers = onSnapshot(
       query(collection(db, "prayers")),
       (snap) => setPrayers(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as PrayerRecord[]),
-      (e) => handleFirestoreError(e, OperationType.LIST, "prayers"),
+      (e) => onError(e, "prayers"),
     );
 
     // Last-touch signal: most recent interaction/comment per contact (createdAt is ISO).
@@ -130,7 +140,7 @@ export default function Dashboard() {
         interactionTouches = ingest(snap as never, "content");
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "interactions (collectionGroup)"),
+      (e) => onError(e, "interactions (collectionGroup)"),
     );
 
     const unsubComments = onSnapshot(
@@ -139,7 +149,7 @@ export default function Dashboard() {
         commentTouches = ingest(snap as never, "text");
         publish();
       },
-      (e) => handleFirestoreError(e, OperationType.LIST, "comments (collectionGroup)"),
+      (e) => onError(e, "comments (collectionGroup)"),
     );
 
     return () => {
@@ -241,6 +251,10 @@ export default function Dashboard() {
     setSelectedContact(c);
     setIsDetailsModalOpen(true);
   };
+
+  if (error) {
+    return <DataLoadError label={error} />;
+  }
 
   if (loading) {
     return (
