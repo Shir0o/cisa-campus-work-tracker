@@ -296,6 +296,30 @@
 .bdoc-prose blockquote { margin: 14px 0; padding: 6px 18px; border-left: 3px solid var(--stage-accent); color: var(--on-surface-variant); font-style: italic; background: var(--stage-accent-soft); border-radius: 0 8px 8px 0; }
 .bdoc-prose hr { border: 0; border-top: 1px solid var(--outline); margin: 22px 0; }
 
+/* tables */
+.bdoc-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 18px 0 14px;
+  font-size: 14.5px;
+}
+.bdoc-prose th,
+.bdoc-prose td {
+  border: 1px solid var(--outline-variant);
+  padding: 8px 12px;
+  text-align: left;
+  vertical-align: top;
+}
+.bdoc-prose th {
+  background-color: var(--surface-variant);
+  color: var(--on-surface);
+  font-weight: 600;
+}
+.bdoc-prose tr:nth-child(even) {
+  background-color: var(--surface-container-low);
+}
+
+
 /* task lists — TipTap TaskItem renders <li><label><input/></label><div/></li> */
 .bdoc-prose ul[data-type="taskList"] { list-style: none; padding-left: 2px; }
 .bdoc-prose ul[data-type="taskList"] li { display: flex; gap: 10px; align-items: flex-start; margin: 6px 0; }
