@@ -235,8 +235,10 @@ describe('OutreachBoard', () => {
     expect(screen.getByText('Alice Chen')).toBeInTheDocument();
     expect(screen.getByText('Bob Park')).toBeInTheDocument();
 
-    // Header shows total people count
-    expect(screen.getByText(/3/)).toBeInTheDocument();
+    // Header shows total people count. Match the exact count phrase rather
+    // than /3/, which also matches incidental digits like relative dates
+    // ("Last connected 13 days ago") and is therefore date-dependent.
+    expect(screen.getByText('3 people')).toBeInTheDocument();
     expect(screen.getByText(/walking it/i)).toBeInTheDocument();
   });
 

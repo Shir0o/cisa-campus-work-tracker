@@ -25,11 +25,11 @@ function typeToTone(type: Notification['type']): Tone {
 }
 
 const TONE_CLASSES: Record<Tone, string> = {
-  accent: 'text-[var(--accent)] bg-[var(--accent-soft)]',
-  violet: 'text-[var(--violet)] bg-[var(--violet-soft)]',
-  amber:  'text-[var(--amber)]  bg-[var(--amber-soft)]',
-  teal:   'text-[var(--teal)]   bg-[var(--teal-soft)]',
-  sage:   'text-[var(--success)] bg-[var(--success-soft)]',
+  accent: 'text-stage-accent bg-stage-accent-soft',
+  violet: 'text-stage-violet bg-stage-violet-soft',
+  amber:  'text-stage-amber  bg-stage-amber-soft',
+  teal:   'text-stage-teal   bg-stage-teal-soft',
+  sage:   'text-success bg-success/10',
 };
 
 function ToneIcon({ tone, type }: { tone: Tone; type?: Notification['type'] }) {
@@ -173,14 +173,14 @@ export default function NotificationCenter() {
         className={cn(
           'relative w-[38px] h-[38px] grid place-items-center rounded-[10px] border transition-all duration-120',
           isOpen
-            ? 'bg-[var(--accent-soft)] text-[var(--accent)] border-[var(--accent-line)]'
-            : 'bg-transparent text-[var(--text-dim)] border-transparent hover:bg-[var(--panel-2)] hover:text-[var(--text)]',
+            ? 'bg-stage-accent-soft text-primary border-primary/30'
+            : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
         )}
         aria-label={unreadCount ? `${unreadCount} new notifications` : 'Notifications'}
       >
         <Bell className={cn('w-[17px] h-[17px] transition-transform duration-300', isOpen && 'rotate-[15deg]')} />
         {unreadCount > 0 && (
-          <span className="absolute top-[4px] right-[4px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-[var(--accent)] text-white text-[10.5px] font-bold leading-[16px] text-center border-2 border-[var(--bg-elev)] box-content">
+          <span className="absolute top-[4px] right-[4px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-primary text-white text-[10.5px] font-bold leading-[16px] text-center border-2 border-surface-container box-content">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -200,19 +200,19 @@ export default function NotificationCenter() {
               'absolute right-0 top-[calc(100%+12px)] z-50',
               'w-96 max-w-[calc(100vw-28px)]',
               'flex flex-col max-h-[min(640px,78vh)]',
-              'bg-[var(--bg-elev)] border border-[var(--border)] rounded-[16px] overflow-hidden',
-              'shadow-[var(--shadow-pop)]',
+              'bg-surface-container border border-outline-variant rounded-[16px] overflow-hidden',
+              'shadow-xl',
               // mobile: fixed full-width strip
               'max-sm:fixed max-sm:top-16 max-sm:right-3 max-sm:left-3 max-sm:w-auto',
             )}
           >
             {/* Header */}
-            <div className="flex items-start justify-between gap-3 px-[18px] py-4 border-b border-[var(--border-soft)] flex-none">
+            <div className="flex items-start justify-between gap-3 px-[18px] py-4 border-b border-outline-variant flex-none">
               <div className="min-w-0">
-                <div className="font-serif text-[19px] font-medium tracking-[-0.01em] text-[var(--text)] leading-tight">
+                <div className="font-serif text-[19px] font-medium tracking-[-0.01em] text-on-surface leading-tight">
                   What's stirring
                 </div>
-                <div className="text-[12.5px] text-[var(--text-mute)] mt-0.5">
+                <div className="text-[12.5px] text-outline mt-0.5">
                   {unreadCount > 0
                     ? `${unreadCount} ${unreadCount === 1 ? 'thing' : 'things'} since you last looked`
                     : "You're all caught up"}
@@ -221,7 +221,7 @@ export default function NotificationCenter() {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="flex-none whitespace-nowrap text-[var(--accent)] text-[12.5px] font-semibold px-1.5 py-1 rounded-[7px] hover:bg-[var(--accent-soft)] transition-colors"
+                  className="flex-none whitespace-nowrap text-primary text-[12.5px] font-semibold px-1.5 py-1 rounded-[7px] hover:bg-stage-accent-soft transition-colors"
                 >
                   Mark all read
                 </button>
@@ -232,13 +232,13 @@ export default function NotificationCenter() {
             <div className="overflow-y-auto flex-1 min-h-0">
               {notifications.length === 0 ? (
                 <div className="py-11 px-8 text-center">
-                  <div className="w-[46px] h-[46px] rounded-full bg-[var(--accent-soft)] text-[var(--accent)] grid place-items-center mx-auto mb-3.5">
+                  <div className="w-[46px] h-[46px] rounded-full bg-stage-accent-soft text-primary grid place-items-center mx-auto mb-3.5">
                     <Heart className="w-5 h-5" />
                   </div>
-                  <div className="font-serif text-[17px] font-medium text-[var(--text)]">
+                  <div className="font-serif text-[17px] font-medium text-on-surface">
                     Nothing needs you right now
                   </div>
-                  <div className="text-[13px] text-[var(--text-mute)] mt-1.5 leading-[1.55]">
+                  <div className="text-[13px] text-outline mt-1.5 leading-[1.55] [text-wrap:pretty]">
                     A quiet inbox is a kind of grace. We'll let you know when something stirs.
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export default function NotificationCenter() {
             {notifications.length > 0 && (
               <button
                 onClick={() => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); }}
-                className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-[var(--panel)] border-t border-[var(--border-soft)] text-[var(--accent)] text-[13px] font-semibold hover:bg-[var(--accent-soft)] transition-colors"
+                className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-primary text-[13px] font-semibold hover:bg-stage-accent-soft transition-colors"
               >
                 {isStaff ? 'See the whole record in History' : 'Open Prayer'}
                 <ArrowRight className="w-[14px] h-[14px]" />
@@ -291,8 +291,8 @@ function NtfGroup({
   bordered?: boolean;
 }) {
   return (
-    <div className={cn('py-1.5', bordered && 'border-t border-[var(--border-soft)]')}>
-      <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-[var(--text-mute)] px-[18px] pt-2.5 pb-1.5">
+    <div className={cn('py-1.5', bordered && 'border-t border-outline-variant')}>
+      <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-outline px-[18px] pt-2.5 pb-1.5">
         {label}
       </div>
       {items.map(n => <NtfItem key={n.id} notif={n} onRead={onRead} onSetAside={onSetAside} />)}
@@ -313,7 +313,7 @@ function NtfItem({
 
   return (
     <div
-      className="group relative flex gap-[13px] items-start px-[18px] py-3 cursor-pointer text-left transition-colors duration-110 hover:bg-[var(--panel)]"
+      className="group relative flex gap-[13px] items-start px-[18px] py-3 cursor-pointer text-left transition-colors duration-110 hover:bg-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/30"
       onClick={() => !notif.read && onRead(notif.id)}
       role="button"
       tabIndex={0}
@@ -335,27 +335,27 @@ function NtfItem({
         <div className={cn(
           'text-[14px] leading-[1.35]',
           notif.read
-            ? 'font-medium text-[var(--text-dim)]'
-            : 'font-semibold text-[var(--text)]',
+            ? 'font-medium text-on-surface-variant'
+            : 'font-semibold text-on-surface',
         )}>
           {notif.title}
         </div>
-        <div className="text-[13px] text-[var(--text-dim)] leading-[1.5] mt-0.5">
+        <div className="text-[13px] text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]">
           {notif.message}
         </div>
-        <div className="text-[11.5px] text-[var(--text-mute)] mt-1.5">
+        <div className="text-[11.5px] text-outline mt-1.5">
           {ntfWhen(notif.createdAt)}
         </div>
       </div>
 
       {/* Unread dot */}
       {!notif.read && (
-        <span className="absolute top-[17px] right-4 w-[7px] h-[7px] rounded-full bg-[var(--accent)]" aria-hidden />
+        <span className="absolute top-[17px] right-4 w-[7px] h-[7px] rounded-full bg-primary" aria-hidden />
       )}
 
       {/* Set-aside button (hover-reveal, sits on top of unread dot) */}
       <button
-        className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-[var(--bg-elev)] text-[var(--text-mute)] opacity-0 group-hover:opacity-100 hover:!text-[var(--text)] hover:bg-[var(--panel-2)] transition-all"
+        className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all"
         title="Set aside"
         aria-label="Set aside"
         onClick={e => { e.stopPropagation(); onSetAside(notif.id); }}
