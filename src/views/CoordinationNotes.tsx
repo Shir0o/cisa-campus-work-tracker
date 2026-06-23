@@ -59,6 +59,10 @@ import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
 import { Placeholder } from '@tiptap/extension-placeholder';
 import { Markdown } from 'tiptap-markdown';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
 import {
   BoardDoc,
@@ -729,6 +733,10 @@ function DocEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ undoRedo: false }), // Yjs owns history
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
       TaskList,
       TaskItem.configure({ nested: true }),

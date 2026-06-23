@@ -177,6 +177,15 @@ describe('CoordinationNotes — live editor behavior', () => {
       expect(out).toBe('PARSED::hi **there**');
     });
 
+    it('converts pasted HTML tables to GFM Markdown tables and parses them', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      const htmlTable = '<table><thead><tr><th>H1</th></tr></thead><tbody><tr><td>C1</td></tr></tbody></table>';
+      const out = h.config.editorProps.transformPastedHTML(htmlTable);
+      expect(out).toBe('PARSED::| H1 |\n| --- |\n| C1 |');
+    });
+
     it('leaves internal editor copy/paste (data-pm-slice) untouched', async () => {
       render(<CoordinationNotes />);
       await waitFor(() => expect(h.config).not.toBeNull());

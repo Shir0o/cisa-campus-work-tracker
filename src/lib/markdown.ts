@@ -79,4 +79,48 @@ turndown.addRule('styledItalic', {
   replacement: (content) => (content.trim() ? `_${content}_` : content),
 });
 
+turndown.addRule('tableSection', {
+  filter: ['thead', 'tbody', 'tfoot'],
+  replacement: (content) => content,
+});
+
+turndown.addRule('tableCell', {
+  filter: ['th', 'td'],
+  replacement: (content) => {
+    const cleanContent = content.replace(/\|/g, '\\|').trim();
+    return `| ${cleanContent} `;
+  },
+});
+
+turndown.addRule('tableRow', {
+  filter: 'tr',
+  replacement: (content, node) => {
+    const el = node as HTMLElement;
+    const trimmed = content.trim();
+    if (!trimmed) return '';
+    const rowStr = trimmed + ' |';
+
+    const parentNodeName = el.parentNode?.nodeName;
+    const isHeader =
+      parentNodeName === 'THEAD' ||
+      (parentNodeName === 'TABLE' && (!el.previousSibling || el.previousSibling.nodeName !== 'TR'));
+
+    let suffix = '';
+    if (isHeader) {
+      const cells = el.querySelectorAll('th, td');
+      const separator = '| ' + Array.from({ length: cells.length }).map(() => '---').join(' | ') + ' |';
+      suffix = '\n' + separator;
+    }
+    return rowStr + suffix + '\n';
+  },
+});
+
+turndown.addRule('table', {
+  filter: 'table',
+  replacement: (content) => {
+    return '\n\n' + content.trim() + '\n\n';
+  },
+});
+
 export const htmlToBoardMarkdown = (html: string): string => turndown.turndown(html || '');
+
