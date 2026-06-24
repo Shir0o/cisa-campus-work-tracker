@@ -21,6 +21,7 @@ import {
 } from 'firebase/firestore';
 import { ref as dbRef, remove as dbRemove } from 'firebase/database';
 import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials } from '../lib/utils';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -44,10 +45,12 @@ import {
   Type,
   Code2,
   Check,
+  CheckSquare,
   Clock,
   MapPin,
   PanelLeftClose,
   PanelLeftOpen,
+  Users,
   Sparkles,
 } from 'lucide-react';
 import * as Y from 'yjs';
@@ -83,7 +86,10 @@ import {
   newDocMarkdown,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
-import { Contact } from '../types';
+import { Task, Contact } from '../types';
+import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
+import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
+import { setTodoDone, deleteTodo } from '../lib/todos';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -181,6 +187,21 @@ export default function CoordinationNotes() {
   const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
   const [showNoteForm, setShowNoteForm] = useState(false);
 
+  // team to-dos ("What we're carrying")
+  const [todos, setTodos] = useState<Task[]>([]);
+  const [todoFilter, setTodoFilter] = useState<string>('all'); // 'all' | assignee uid
+  const [showDoneTodos, setShowDoneTodos] = useState(false);
+  const [todoComposer, setTodoComposer] = useState<{ mode: 'create' | 'edit'; initial?: TodoComposerInitial } | null>(null);
+
+  // a light, ephemeral confirmation pill (the global Toaster is notification-driven)
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (msg: string) => {
+    setFlash(msg);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(null), 2800);
+  };
+
   const memberById = useMemo(() => {
     const m = new Map<string, TeamMember>();
     team.forEach((t) => m.set(t.uid, t));
@@ -239,6 +260,12 @@ export default function CoordinationNotes() {
       (err) => handleFirestoreError(err, OperationType.LIST, 'users'),
     );
 
+    const unsubTodos = onSnapshot(
+      collection(db, 'tasks'),
+      (snap) => setTodos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Task)),
+      (err) => handleFirestoreError(err, OperationType.LIST, 'tasks'),
+    );
+
     const unsubContacts = onSnapshot(
       collection(db, 'contacts'),
       (snap) => {
@@ -251,6 +278,7 @@ export default function CoordinationNotes() {
       unsubDocs();
       unsubNotes();
       unsubUsers();
+      unsubTodos();
       unsubContacts();
     };
   }, [hasAccess]);
@@ -267,6 +295,49 @@ export default function CoordinationNotes() {
     const upcoming = [...desc].reverse().find((d) => sessionStatus(d.date) === 'upcoming');
     setActiveId((today || upcoming || desc[0]).id);
   }, [docs, activeId]);
+
+  // Deep-link from a to-do's source link on My Day: focus the page it came from.
+  const location = useLocation();
+  useEffect(() => {
+    const focusId = (location.state as { focusDocId?: string } | null)?.focusDocId;
+    if (focusId && docs.some((d) => d.id === focusId)) setActiveId(focusId);
+  }, [location.state, docs]);
+
+  // ── team to-dos: derived counts + the filtered, sorted list ──────────────────
+  const openTodoCount = useMemo(
+    () => todos.filter((t) => t.status !== 'completed' && t.status !== 'canceled').length,
+    [todos],
+  );
+  const openTodosByUid = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const t of todos) {
+      if (t.status === 'completed' || t.status === 'canceled' || !t.assigneeId) continue;
+      m.set(t.assigneeId, (m.get(t.assigneeId) ?? 0) + 1);
+    }
+    return m;
+  }, [todos]);
+  const visibleTodos = useMemo(() => {
+    const dueMs = (s?: string | null) => (s ? new Date(s).getTime() : Infinity);
+    return todos
+      .filter((t) => t.status !== 'canceled')
+      .filter((t) => todoFilter === 'all' || t.assigneeId === todoFilter)
+      .filter((t) => showDoneTodos || t.status !== 'completed')
+      .sort((a, b) => {
+        const ra = a.status === 'completed' ? 1 : 0;
+        const rb = b.status === 'completed' ? 1 : 0;
+        if (ra !== rb) return ra - rb;
+        return dueMs(a.dueDate) - dueMs(b.dueDate);
+      });
+  }, [todos, todoFilter, showDoneTodos]);
+
+  const jumpToTodoSource = (docId: string) => {
+    if (docs.some((d) => d.id === docId)) {
+      setActiveId(docId);
+      document.getElementById('coordination-notes-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      showToast('That page is no longer here.');
+    }
+  };
 
   const grouped = useMemo(() => {
     const g: Record<string, BoardDoc[]> = { 'This week': [], Earlier: [] };
@@ -543,14 +614,124 @@ export default function CoordinationNotes() {
                 onSaveMarkdown={saveMarkdown}
                 onSaveTitle={saveTitle}
                 onDelete={deleteBoardDoc}
-                contacts={contacts}
                 team={team}
+                onToast={showToast}
+                contacts={contacts}
                 onSelectContact={setSelectedContact}
                 onOpenContactModal={setIsDetailsModalOpen}
               />
             ) : (
               <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
             )}
+          </div>
+        )}
+      </section>
+
+      {/* What we're carrying — every to-do the team is holding, in one list */}
+      <section>
+        <SectionHead
+          title="What we're carrying"
+          sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
+          action={
+            <button
+              onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
+              className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Add to-do
+            </button>
+          }
+        />
+
+        {/* controls: person filter + show done */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-3">
+          <div className="flex flex-wrap gap-1.5 flex-1">
+            <button
+              onClick={() => setTodoFilter('all')}
+              className={cn(
+                'inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+                todoFilter === 'all'
+                  ? 'bg-primary-container border-primary text-on-primary-container'
+                  : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
+              )}
+            >
+              <Users className="w-3.5 h-3.5" /> Everyone
+            </button>
+            {team.map((m) => {
+              const n = openTodosByUid.get(m.uid) ?? 0;
+              return (
+                <button
+                  key={m.uid}
+                  onClick={() => setTodoFilter(m.uid)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border text-xs font-medium transition-colors',
+                    todoFilter === m.uid
+                      ? 'bg-primary-container border-primary text-on-primary-container'
+                      : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
+                  )}
+                >
+                  <PersonAvatar person={m} size="xs" />
+                  {m.name.split(' ')[0]}
+                  {m.uid === uid ? ' (you)' : ''}
+                  {n > 0 && (
+                    <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-primary text-[10px] font-bold inline-flex items-center justify-center">
+                      {n}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            onClick={() => setShowDoneTodos((v) => !v)}
+            className={cn(
+              'inline-flex items-center gap-2 text-xs font-medium transition-colors shrink-0',
+              showDoneTodos ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface',
+            )}
+          >
+            <span
+              className={cn(
+                'w-4 h-4 rounded border flex items-center justify-center',
+                showDoneTodos ? 'bg-primary border-primary text-on-primary' : 'border-outline',
+              )}
+            >
+              {showDoneTodos && <Check className="w-2.5 h-2.5" />}
+            </span>
+            Show done
+          </button>
+        </div>
+
+        {visibleTodos.length === 0 ? (
+          <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-8 text-center flex flex-col items-center">
+            <CheckSquare className="w-6 h-6 text-on-surface-variant/50 mb-2" />
+            <p className="text-sm text-on-surface-variant max-w-sm">
+              Nothing here yet. Add one above, or highlight a line in a page and choose “Make a to-do”.
+            </p>
+          </div>
+        ) : (
+          <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+            {visibleTodos.map((t, i) => (
+              <TodoRow
+                key={t.id}
+                first={i === 0}
+                todo={t}
+                assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
+                showAssignee
+                onToggle={(todo, done) => setTodoDone(todo.id, done)}
+                onEdit={(todo) =>
+                  setTodoComposer({
+                    mode: 'edit',
+                    initial: {
+                      id: todo.id,
+                      text: todo.title,
+                      assigneeId: todo.assigneeId ?? null,
+                      dueDate: todo.dueDate ?? null,
+                    },
+                  })
+                }
+                onDelete={(todo) => deleteTodo(todo.id)}
+                onJumpToSource={jumpToTodoSource}
+              />
+            ))}
           </div>
         )}
       </section>
@@ -647,6 +828,26 @@ export default function CoordinationNotes() {
         <Feather className="w-3.5 h-3.5" /> A shared place to think together — so the team stays one mind.
       </p>
 
+      {/* Add / edit a to-do (centered) */}
+      {todoComposer && (
+        <TodoComposer
+          mode={todoComposer.mode}
+          initial={todoComposer.initial}
+          team={team}
+          meUid={uid}
+          meName={meName}
+          onClose={() => setTodoComposer(null)}
+          onSaved={showToast}
+        />
+      )}
+
+      {/* ephemeral confirmation */}
+      {flash && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[130] bg-on-surface text-surface text-sm font-medium px-4 py-2.5 rounded-full shadow-lg">
+          {flash}
+        </div>
+      )}
+
       <ContactDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
@@ -708,8 +909,9 @@ function DocEditor({
   onSaveMarkdown,
   onSaveTitle,
   onDelete,
-  contacts,
   team,
+  onToast,
+  contacts,
   onSelectContact,
   onOpenContactModal,
 }: {
@@ -722,8 +924,9 @@ function DocEditor({
   onSaveMarkdown: (id: string, md: string) => void;
   onSaveTitle: (id: string, title: string) => void;
   onDelete: (d: BoardDoc) => void;
-  contacts: Contact[];
   team: TeamMember[];
+  onToast: (msg: string) => void;
+  contacts: Contact[];
   onSelectContact: (c: Contact | null) => void;
   onOpenContactModal: (open: boolean) => void;
 }) {
@@ -739,6 +942,42 @@ function DocEditor({
   const [showSource, setShowSource] = useState(false);
   const [peers, setPeers] = useState<{ id: number; name: string; color: string }[]>([]);
   const [title, setTitle] = useState(d.title);
+
+  // Highlight → "Make a to-do": a floating button over the current selection, and
+  // the composer it opens (anchored to the selection, prefilled with the text).
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const [fab, setFab] = useState<{ text: string; top: number; left: number } | null>(null);
+  const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+
+  const refreshSelectionFab = () => {
+    if (todoFromSelection || showSource) {
+      setFab(null);
+      return;
+    }
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) {
+      setFab(null);
+      return;
+    }
+    const range = sel.getRangeAt(0);
+    if (!canvasRef.current || !canvasRef.current.contains(range.commonAncestorContainer)) {
+      setFab(null);
+      return;
+    }
+    const text = sel.toString().replace(/\s+/g, ' ').trim();
+    if (!text) {
+      setFab(null);
+      return;
+    }
+    const r = range.getBoundingClientRect();
+    setFab({ text, top: r.top, left: r.left + r.width / 2 });
+  };
+
+  const openTodoFromFab = () => {
+    if (!fab) return;
+    setTodoFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
+    setFab(null);
+  };
 
   // AI Insights States
   const [analyzing, setAnalyzing] = useState(false);
@@ -1247,7 +1486,12 @@ function DocEditor({
       {/* canvas & sidebar */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Editor Content */}
-        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+        <div
+          ref={canvasRef}
+          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
+          onMouseUp={refreshSelectionFab}
+          onKeyUp={refreshSelectionFab}
+        >
           {showSource ? (
             <textarea
               readOnly
@@ -1380,6 +1624,33 @@ function DocEditor({
           </aside>
         )}
       </div>
+
+      {/* Highlight → "Make a to-do" floating button */}
+      {fab && !todoFromSelection && (
+        <button
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={openTodoFromFab}
+          style={{ position: 'fixed', top: fab.top - 44, left: fab.left, transform: 'translateX(-50%)' }}
+          className="z-[110] inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-on-surface text-surface text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
+        >
+          <CheckSquare className="w-3.5 h-3.5" /> Make a to-do
+        </button>
+      )}
+
+      {/* Composer anchored to the selection */}
+      {todoFromSelection && (
+        <TodoComposer
+          mode="create"
+          anchorRect={todoFromSelection.rect}
+          initial={{ text: todoFromSelection.text, assigneeId: null }}
+          source={{ docId: d.id, docTitle: title || d.title || 'Untitled page' }}
+          team={team}
+          meUid={meUid}
+          meName={meName}
+          onClose={() => setTodoFromSelection(null)}
+          onSaved={onToast}
+        />
+      )}
     </div>
   );
 }

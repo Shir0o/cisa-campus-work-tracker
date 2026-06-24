@@ -11,8 +11,6 @@ import {
   limit,
   where,
   collectionGroup,
-  doc,
-  updateDoc,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { cn, getUserInitials } from "../lib/utils";
@@ -22,6 +20,8 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import PageContainer from "../components/layout/PageContainer";
+import TodoRow from "../components/todos/TodoRow";
+import { setTodoDone } from "../lib/todos";
 
 const DAY_MS = 86_400_000;
 
@@ -37,32 +37,19 @@ const connectedLabel = (d: number) =>
 const truncate = (s: string | undefined, n: number) =>
   s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s || "";
 
-// Humanize a task's due date into a chip + tone.
-type DueTone = "overdue" | "soon" | "normal";
-const dueChip = (dueDate?: string | null): { label: string; tone: DueTone } | null => {
-  const ms = parseMs(dueDate);
-  if (ms == null) return null;
-  const due = new Date(ms);
-  due.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diff = Math.round((due.getTime() - today.getTime()) / DAY_MS);
-  if (diff < 0) return { label: "Overdue", tone: "overdue" };
-  if (diff === 0) return { label: "Due today", tone: "soon" };
-  if (diff === 1) return { label: "Due tomorrow", tone: "soon" };
-  if (diff <= 6) return { label: `Due ${format(due, "EEEE")}`, tone: diff <= 2 ? "soon" : "normal" };
-  return { label: `Due ${format(due, "MMM d")}`, tone: "normal" };
-};
-
 interface MyTask {
   id: string;
   title: string;
-  dueDate?: string;
+  dueDate?: string | null;
   priority?: string;
   contactId?: string;
   contactName?: string;
   assigneeId?: string | null;
   status: "pending" | "completed" | "canceled";
+  createdById?: string | null;
+  createdByName?: string | null;
+  sourceDocId?: string | null;
+  sourceDocTitle?: string | null;
 }
 
 function Avatar({ contact, size = "md" }: { contact: Contact; size?: "sm" | "md" }) {
@@ -294,15 +281,6 @@ export default function MyDay() {
     setIsDetailsModalOpen(true);
   };
 
-  const toggleTask = async (t: MyTask) => {
-    const next = t.status === "completed" ? "pending" : "completed";
-    try {
-      await updateDoc(doc(db, "tasks", t.id), { status: next });
-    } catch (e) {
-      handleFirestoreError(e, OperationType.UPDATE, "tasks");
-    }
-  };
-
   if (error) {
     return <DataLoadError label={error} />;
   }
@@ -360,12 +338,6 @@ export default function MyDay() {
         {stage}
       </span>
     ) : null;
-
-  const dueToneClass: Record<DueTone, string> = {
-    overdue: "text-error",
-    soon: "text-primary",
-    normal: "text-on-surface-variant",
-  };
 
   return (
     <PageContainer variant="wide">
@@ -436,61 +408,16 @@ export default function MyDay() {
         />
         {plate.length > 0 ? (
           <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
-            {plate.map((t, i) => {
-              const isDone = t.status === "completed";
-              const due = isDone ? null : dueChip(t.dueDate);
-              return (
-                <div
-                  key={t.id}
-                  className={cn(
-                    "flex items-start gap-3.5 py-4",
-                    i > 0 && "border-t border-outline-variant/40",
-                  )}
-                >
-                  <button
-                    onClick={() => toggleTask(t)}
-                    title={isDone ? "Done — tap to reopen" : "Mark done"}
-                    aria-pressed={isDone}
-                    className={cn(
-                      "mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
-                      isDone
-                        ? "bg-primary border-primary text-on-primary"
-                        : "border-outline hover:border-primary",
-                    )}
-                  >
-                    {isDone && <Check className="w-3 h-3" />}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <div
-                      className={cn(
-                        "text-on-surface",
-                        isDone && "line-through text-on-surface-variant",
-                      )}
-                    >
-                      {t.title}
-                    </div>
-                    {t.contactId && t.contactName && (
-                      <button
-                        onClick={() => openContact(contactById(t.contactId))}
-                        className="text-sm text-primary font-medium hover:underline mt-0.5"
-                      >
-                        {t.contactName}
-                      </button>
-                    )}
-                  </div>
-                  {due && (
-                    <span
-                      className={cn(
-                        "text-xs font-medium whitespace-nowrap shrink-0 mt-0.5",
-                        dueToneClass[due.tone],
-                      )}
-                    >
-                      {due.label}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+            {plate.map((t, i) => (
+              <TodoRow
+                key={t.id}
+                first={i === 0}
+                todo={t}
+                onToggle={(todo, done) => setTodoDone(todo.id, done)}
+                onContactClick={(id) => openContact(contactById(id))}
+                onJumpToSource={(docId) => navigate("/coordination", { state: { focusDocId: docId } })}
+              />
+            ))}
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-2">

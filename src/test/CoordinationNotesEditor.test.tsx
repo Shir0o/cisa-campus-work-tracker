@@ -14,6 +14,8 @@ const h = vi.hoisted(() => ({ config: null as any, editor: null as any }));
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 
+vi.mock('react-router-dom', () => ({ useLocation: () => ({ state: null }) }));
+
 vi.mock('@tiptap/react', () => ({
   useEditor: (config: any) => {
     const chain: any = {};

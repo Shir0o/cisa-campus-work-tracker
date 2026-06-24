@@ -265,4 +265,67 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'board_docs', 'bdX'), { title: 'No date or md' }));
     });
   });
+
+  describe('Tasks (team to-dos)', () => {
+    const validTask = {
+      title: 'Confirm the Friday setlist with Beatriz',
+      dueDate: '2026-05-15',
+      status: 'pending',
+      priority: 'medium',
+      assigneeId: 'operator1',
+      createdById: 'admin1',
+      createdByName: 'Tony',
+      sourceDocId: 'bd-wed',
+      sourceDocTitle: "Wednesday Women's Group",
+    };
+
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('TD1: Operator can create a to-do with creator + source-doc fields', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(setDoc(doc(db, 'tasks', 'td1'), validTask));
+    });
+
+    it('TD2: Accepts a to-do with no due date (null)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'tasks', 'td2'), { ...validTask, dueDate: null }));
+    });
+
+    it('TD3: Approved viewer can read but not create a to-do', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'tasks', 'td1'), validTask);
+      });
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(getDoc(doc(db, 'tasks', 'td1')));
+      await assertFails(setDoc(doc(db, 'tasks', 'tdX'), validTask));
+    });
+
+    it('TD4: Operator can mark a to-do done; only manager+ can delete it', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'tasks', 'td1'), validTask);
+      });
+      const opDb = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(updateDoc(doc(opDb, 'tasks', 'td1'), { status: 'completed' }));
+      await assertFails(deleteDoc(doc(opDb, 'tasks', 'td1')));
+      const mgrDb = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(deleteDoc(doc(mgrDb, 'tasks', 'td1')));
+    });
+
+    it('TD5: Rejects an invalid status', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'tasks', 'tdBad'), { ...validTask, status: 'archived' }));
+    });
+  });
 });

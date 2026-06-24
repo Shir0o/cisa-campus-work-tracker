@@ -11,6 +11,12 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+// ── Router seam (the view reads location.state for the My Day deep-link) ──────
+vi.mock('react-router-dom', () => ({
+  useLocation: () => ({ state: null }),
+}));
+
+// ── TipTap (thin seam) ──────────────────────────────────────────────────────
 const mockEditor = {
   commands: {
     setContent: vi.fn(),
@@ -238,10 +244,11 @@ function setupSnapshots(
     notes?: typeof mockNotes;
     team?: typeof mockTeam;
     contacts?: any[];
+    tasks?: any[];
     neverFire?: boolean;
   } = {},
 ) {
-  const { docs = [], notes = [], team = [], contacts = [], neverFire = false } = opts;
+  const { docs = [], notes = [], team = [], contacts = [], tasks = [], neverFire = false } = opts;
   (onSnapshot as ReturnType<typeof vi.fn>).mockImplementation(
     (ref: { path?: string }, callback: (snap: unknown) => void) => {
       if (neverFire) return vi.fn();
@@ -252,6 +259,12 @@ function setupSnapshots(
         callback({ docs: notes, size: notes.length });
       } else if (path === 'users') {
         callback({ docs: team, size: team.length });
+      } else if (path === 'tasks') {
+        const mappedTasks = tasks.map((t: any) => ({
+          id: t.id,
+          data: () => t,
+        }));
+        callback({ docs: mappedTasks, size: mappedTasks.length });
       } else if (path === 'contacts') {
         const mappedContacts = contacts.map((c) => ({
           id: c.id,
@@ -730,7 +743,8 @@ describe('CoordinationNotes', () => {
       // Tag string should be rendered as "#planning #q3"
       expect(screen.getByText('#planning #q3')).toBeInTheDocument();
       // Contributor initials or title should be rendered inside Avatar
-      expect(screen.getByTitle('Tony Wang')).toBeInTheDocument();
+      // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
+      expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
     });
 
     it('toggles NoteForm type and parses tags with deduplication and hash removal', async () => {
@@ -801,9 +815,11 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: customNotes, team: customTeam });
       render(<CoordinationNotes />);
 
-      const img = screen.getByAltText('Tony Wang');
-      expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute('src', 'http://example.com/photo.jpg');
+      // The same person also appears in the "What we're carrying" person filter,
+      // so both avatars share this alt text — every one should use the photoURL.
+      const imgs = screen.getAllByAltText('Tony Wang');
+      expect(imgs.length).toBeGreaterThan(0);
+      imgs.forEach((img) => expect(img).toHaveAttribute('src', 'http://example.com/photo.jpg'));
     });
 
     it('auto-selects today first when present', () => {
@@ -1207,6 +1223,91 @@ describe('CoordinationNotes', () => {
       fireEvent.click(aiBtn);
 
       expect(await screen.findByText("Some completely random server crash")).toBeInTheDocument();
+    });
+  });
+  // ── Team to-dos ("What we're carrying") ─────────────────────────────────────
+  describe('What we\'re carrying — team to-dos', () => {
+    const mockTasks = [
+      {
+        id: 'td-1',
+        title: 'Call the venue',
+        status: 'pending',
+        priority: 'medium',
+        dueDate: today,
+        assigneeId: 'u-admin',
+        createdById: 'u-admin',
+        createdByName: 'Tony Wang',
+        sourceDocId: null,
+        sourceDocTitle: null,
+      },
+      {
+        id: 'td-2',
+        title: 'Order supplies',
+        status: 'completed',
+        priority: 'medium',
+        dueDate: null,
+        assigneeId: 'u-admin',
+        createdById: 'u-admin',
+        createdByName: 'Tony Wang',
+        sourceDocId: null,
+        sourceDocTitle: null,
+      },
+    ];
+
+    it('renders the section header with open count', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByText(/what we're carrying/i)).toBeInTheDocument();
+      expect(screen.getByText(/1 still open/i)).toBeInTheDocument();
+    });
+
+    it('renders pending to-do titles in the list', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      // Pending to-do visible, completed hidden by default
+      expect(screen.getByText('Call the venue')).toBeInTheDocument();
+      expect(screen.queryByText('Order supplies')).not.toBeInTheDocument();
+    });
+
+    it('shows completed todos when "Show done" is toggled', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      fireEvent.click(screen.getByText('Show done'));
+      expect(screen.getByText('Order supplies')).toBeInTheDocument();
+    });
+
+    it('shows empty state when there are no to-dos', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByText(/nothing here yet/i)).toBeInTheDocument();
+    });
+
+    it('shows the "Add to-do" button', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByText(/add to-do/i)).toBeInTheDocument();
+    });
+
+    it('renders the "Everyone" filter pill and per-person filter pills', () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByText('Everyone')).toBeInTheDocument();
+      // Team member first name should appear as a filter pill
+      expect(screen.getAllByText(/Tony/).length).toBeGreaterThan(0);
+    });
+
+    it('shows "all clear" when all todos are completed', () => {
+      const allDone = [{ ...mockTasks[1] }]; // only the completed one
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: allDone });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByText(/all clear/i)).toBeInTheDocument();
     });
   });
 });
