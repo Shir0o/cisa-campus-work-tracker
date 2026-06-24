@@ -269,6 +269,11 @@ describe('Directory', () => {
       expect(logActivity).toHaveBeenCalled();
     });
 
+    // Wait for the modal to close and the selection to be cleared
+    await waitFor(() => {
+      expect(screen.queryByText('Add a tag')).not.toBeInTheDocument();
+    });
+
     // Select all
     let selectAllLabel: HTMLElement | null = null;
     await waitFor(() => {
