@@ -51,6 +51,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -85,10 +86,11 @@ import {
   newDocMarkdown,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
-import { Task } from '../types';
+import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
 import { setTodoDone, deleteTodo } from '../lib/todos';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 interface TeamMember {
@@ -159,6 +161,9 @@ export default function CoordinationNotes() {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(true);
   const [loadingNotes, setLoadingNotes] = useState(true);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -261,11 +266,20 @@ export default function CoordinationNotes() {
       (err) => handleFirestoreError(err, OperationType.LIST, 'tasks'),
     );
 
+    const unsubContacts = onSnapshot(
+      collection(db, 'contacts'),
+      (snap) => {
+        setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact));
+      },
+      (err) => handleFirestoreError(err, OperationType.LIST, 'contacts'),
+    );
+
     return () => {
       unsubDocs();
       unsubNotes();
       unsubUsers();
       unsubTodos();
+      unsubContacts();
     };
   }, [hasAccess]);
 
@@ -602,6 +616,9 @@ export default function CoordinationNotes() {
                 onDelete={deleteBoardDoc}
                 team={team}
                 onToast={showToast}
+                contacts={contacts}
+                onSelectContact={setSelectedContact}
+                onOpenContactModal={setIsDetailsModalOpen}
               />
             ) : (
               <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
@@ -830,6 +847,12 @@ export default function CoordinationNotes() {
           {flash}
         </div>
       )}
+
+      <ContactDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => setIsDetailsModalOpen(false)}
+        contact={selectedContact}
+      />
     </div>
   );
 }
@@ -888,6 +911,9 @@ function DocEditor({
   onDelete,
   team,
   onToast,
+  contacts,
+  onSelectContact,
+  onOpenContactModal,
 }: {
   doc: BoardDoc;
   meUid: string;
@@ -900,6 +926,9 @@ function DocEditor({
   onDelete: (d: BoardDoc) => void;
   team: TeamMember[];
   onToast: (msg: string) => void;
+  contacts: Contact[];
+  onSelectContact: (c: Contact | null) => void;
+  onOpenContactModal: (open: boolean) => void;
 }) {
   // This component is remounted (key={doc.id}) per page, so a fresh Y.Doc +
   // awareness live for exactly one page's lifetime.
@@ -950,6 +979,18 @@ function DocEditor({
     setFab(null);
   };
 
+  // AI Insights States
+  const [analyzing, setAnalyzing] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [insightsData, setInsightsData] = useState<{
+    updatedMarkdown: string;
+    suggestedTasks: any[];
+  } | null>(null);
+  const [linksApplied, setLinksApplied] = useState(false);
+  const [addedTasks, setAddedTasks] = useState<Record<number, boolean>>({});
+  const [dismissedTasks, setDismissedTasks] = useState<Record<number, boolean>>({});
+  const [aiError, setAiError] = useState<string | null>(null);
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -998,6 +1039,24 @@ function DocEditor({
         const ed = edRef.current;
         if (!ed) return html;
         return editorMdToHtml(ed, htmlToBoardMarkdown(html));
+      },
+      handleClick: (view, pos, event) => {
+        const target = event.target as HTMLElement;
+        const link = target.closest('a');
+        if (link) {
+          const href = link.getAttribute('href');
+          if (href && (href.startsWith('/contacts/') || href.startsWith('contact://'))) {
+            event.preventDefault();
+            const contactId = href.replace('/contacts/', '').replace('contact://', '');
+            const c = contacts.find((x) => x.id === contactId);
+            if (c) {
+              onSelectContact(c);
+              onOpenContactModal(true);
+              return true;
+            }
+          }
+        }
+        return false;
       },
     },
     onCreate: ({ editor }) => {
@@ -1081,6 +1140,156 @@ function DocEditor({
     setTitle(v);
     if (titleTimer.current) clearTimeout(titleTimer.current);
     titleTimer.current = setTimeout(() => onSaveTitle(d.id, v), 800);
+  };
+
+  const formatFriendlyError = (rawError: string): string => {
+    if (!rawError) return "An unexpected error occurred.";
+    
+    let cleanMsg = rawError.trim();
+
+    const extractMessage = (obj: any): string | null => {
+      if (!obj || typeof obj !== 'object') return null;
+      if (obj.error && typeof obj.error === 'object' && obj.error.message) {
+        return obj.error.message;
+      }
+      if (obj.message && typeof obj.message === 'string') {
+        return obj.message;
+      }
+      if (obj.error && typeof obj.error === 'string') {
+        try {
+          const nested = JSON.parse(obj.error);
+          const nestedMsg = extractMessage(nested);
+          if (nestedMsg) return nestedMsg;
+        } catch {}
+        return obj.error;
+      }
+      return null;
+    };
+
+    try {
+      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
+        const parsed = JSON.parse(cleanMsg);
+        const extracted = extractMessage(parsed);
+        if (extracted) {
+          cleanMsg = extracted;
+        }
+      }
+    } catch {}
+
+    try {
+      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
+        const parsed = JSON.parse(cleanMsg);
+        if (parsed.message) {
+          cleanMsg = parsed.message;
+        } else if (parsed.error && typeof parsed.error === 'object' && parsed.error.message) {
+          cleanMsg = parsed.error.message;
+        }
+      }
+    } catch {}
+
+    if (
+      cleanMsg.includes("experiences high demand") || 
+      cleanMsg.includes("high demand") || 
+      cleanMsg.includes("503") || 
+      cleanMsg.includes("UNAVAILABLE")
+    ) {
+      return "The AI service is temporarily unavailable due to high demand. Please try again in a few moments.";
+    }
+    if (
+      cleanMsg.includes("API key not valid") || 
+      cleanMsg.includes("API_KEY_INVALID") ||
+      cleanMsg.includes("API key expired")
+    ) {
+      return "The configured AI service key is invalid. Please contact support or check your server configuration.";
+    }
+
+    return cleanMsg;
+  };
+
+  const analyzeNotes = async () => {
+    if (!editor) return;
+    const text = editorMarkdown(editor);
+    if (!text.trim()) {
+      alert("Please write some notes first before running AI analysis.");
+      return;
+    }
+    setAnalyzing(true);
+    setAiError(null);
+    setInsightsData(null);
+    setLinksApplied(false);
+    setAddedTasks({});
+    setDismissedTasks({});
+    setShowInsights(true);
+
+    try {
+      const res = await fetch('/api/analyze-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+      if (!res.ok) {
+        let errMsg = "Failed to analyze notes";
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch {
+          try {
+            errMsg = await res.text() || errMsg;
+          } catch {}
+        }
+        throw new Error(errMsg);
+      }
+      const data = await res.json();
+      if (data.success) {
+        setInsightsData(data);
+      } else {
+        throw new Error(data.error || "Analysis failed");
+      }
+    } catch (err: any) {
+      console.error("AI Analysis Error: ", err);
+      setAiError(formatFriendlyError(err.message || String(err)));
+    } finally {
+      setAnalyzing(false);
+    }
+  };
+
+  const applyLinks = () => {
+    if (!editor || !insightsData?.updatedMarkdown) return;
+    editor.commands.setContent(insightsData.updatedMarkdown);
+    setLinksApplied(true);
+  };
+
+  const handleSaveTask = async (taskData: {
+    title: string;
+    dueDate: string | null;
+    priority: 'low' | 'medium' | 'high';
+    contactId: string | null;
+    assigneeId: string | null;
+  }) => {
+    const matchedContact = contacts.find((c) => c.id === taskData.contactId);
+    const matchedAssignee = team.find((t) => t.uid === taskData.assigneeId);
+
+    const taskRef = doc(collection(db, 'tasks'));
+    await setDoc(taskRef, {
+      title: taskData.title,
+      dueDate: taskData.dueDate || null,
+      priority: taskData.priority,
+      contactId: taskData.contactId || null,
+      contactName: matchedContact?.name || null,
+      assigneeId: taskData.assigneeId || null,
+      assigneeName: matchedAssignee?.name || null,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    });
+
+    logActivity({
+      action: 'added task',
+      targetId: taskRef.id,
+      targetName: taskData.title,
+      targetType: 'comment',
+      type: 'create',
+      description: `Assigned to ${matchedAssignee?.name || 'Unassigned'}`,
+    } as never);
   };
 
   const status = sessionStatus(d.date);
@@ -1240,6 +1449,26 @@ function DocEditor({
           </span>
           <button
             type="button"
+            onClick={() => {
+              if (showInsights) {
+                setShowInsights(false);
+              } else {
+                analyzeNotes();
+              }
+            }}
+            disabled={analyzing}
+            title="Analyze notes with AI to link contacts and suggest tasks"
+            className={cn(
+              'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
+              showInsights
+                ? 'bg-stage-accent-soft border-stage-accent/40 text-stage-accent'
+                : 'bg-surface-variant border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent',
+            )}
+          >
+            <Sparkles className={cn("w-3.5 h-3.5", analyzing && "animate-spin text-stage-accent")} /> {analyzing ? 'Analyzing…' : 'AI Insights'}
+          </button>
+          <button
+            type="button"
             onClick={() => setShowSource((v) => !v)}
             title="View Markdown source"
             className={cn(
@@ -1254,23 +1483,145 @@ function DocEditor({
         </div>
       </div>
 
-      {/* canvas */}
-      <div
-        ref={canvasRef}
-        className="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
-        onMouseUp={refreshSelectionFab}
-        onKeyUp={refreshSelectionFab}
-      >
-        {showSource ? (
-          <textarea
-            readOnly
-            value={editor ? editorMarkdown(editor) : ''}
-            spellCheck={false}
-            className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[420px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap"
-            title="Markdown source is read-only while live editing is on"
-          />
-        ) : (
-          <EditorContent editor={editor as Editor} />
+      {/* canvas & sidebar */}
+      <div className="flex-1 flex overflow-hidden min-h-0">
+        {/* Editor Content */}
+        <div
+          ref={canvasRef}
+          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
+          onMouseUp={refreshSelectionFab}
+          onKeyUp={refreshSelectionFab}
+        >
+          {showSource ? (
+            <textarea
+              readOnly
+              value={editor ? editorMarkdown(editor) : ''}
+              spellCheck={false}
+              className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[420px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap"
+              title="Markdown source is read-only while live editing is on"
+            />
+          ) : (
+            <EditorContent editor={editor as Editor} />
+          )}
+        </div>
+
+        {/* AI Insights Sidebar */}
+        {showInsights && (
+          <aside className="w-[320px] border-l border-outline-variant bg-surface-container-low flex flex-col min-h-0 shrink-0">
+            {/* Sidebar Head */}
+            <div className="flex items-center justify-between p-4 border-b border-outline-variant shrink-0 bg-surface">
+              <span className="font-serif text-lg text-on-surface flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-stage-accent" /> AI Insights
+              </span>
+              <button
+                onClick={() => setShowInsights(false)}
+                className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors"
+                title="Close sidebar"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Sidebar Body */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
+              {analyzing ? (
+                <div className="h-60 flex flex-col items-center justify-center text-center p-4">
+                  <div className="relative mb-4 flex items-center justify-center">
+                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                    <Sparkles className="w-4 h-4 absolute text-stage-accent animate-pulse" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-on-surface mb-1">Reading between the lines...</h4>
+                  <p className="text-xs text-on-surface-variant max-w-[200px]">
+                    Gemini is extracting action items and looking up contact names.
+                  </p>
+                </div>
+              ) : aiError ? (
+                <div className="p-3 bg-error-container/20 border border-error-container/30 rounded-xl text-center space-y-2">
+                  <p className="text-xs text-error font-medium">{aiError}</p>
+                  <button
+                    onClick={analyzeNotes}
+                    className="px-3 py-1.5 bg-error text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Try again
+                  </button>
+                </div>
+              ) : insightsData ? (
+                <>
+                  {/* Link Suggestions */}
+                  <div className="space-y-2">
+                    <h5 className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant/70">
+                      Contact Links
+                    </h5>
+                    <div className="bg-surface border border-outline-variant rounded-xl p-3 space-y-3">
+                      <p className="text-xs text-on-surface-variant leading-relaxed">
+                        We scanned the notes and matched contact names to their profile database links.
+                      </p>
+                      {linksApplied ? (
+                        <div className="flex items-center gap-1.5 text-xs text-tertiary font-semibold">
+                          <Check className="w-4 h-4" /> Links applied to notes!
+                        </div>
+                      ) : (
+                        <button
+                          onClick={applyLinks}
+                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-stage-accent text-white text-xs font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
+                        >
+                          Apply Links to Notes
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Task Suggestions */}
+                  <div className="space-y-2">
+                    <h5 className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant/70">
+                      Suggested Tasks
+                    </h5>
+                    {insightsData.suggestedTasks.length === 0 ? (
+                      <p className="text-xs text-on-surface-variant/70 italic bg-surface border border-outline-variant rounded-xl p-3">
+                        No tasks found in the text. Try writing something like "Tony to text Jerry on Monday".
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {insightsData.suggestedTasks.map((t, idx) => {
+                          if (dismissedTasks[idx]) return null;
+                          const isAdded = addedTasks[idx];
+
+                          return (
+                            <SuggestedTaskCard
+                              key={idx}
+                              task={t}
+                              isAdded={isAdded}
+                              contacts={contacts}
+                              team={team}
+                              meUid={meUid}
+                              onAdd={() => setAddedTasks(prev => ({ ...prev, [idx]: true }))}
+                              onDismiss={() => setDismissedTasks(prev => ({ ...prev, [idx]: true }))}
+                              onSaveTask={handleSaveTask}
+                            />
+                          );
+                        })}
+                        {Object.keys(dismissedTasks).length + Object.keys(addedTasks).length === insightsData.suggestedTasks.length && (
+                          <p className="text-xs text-on-surface-variant/70 italic text-center py-2">
+                            All suggestions processed!
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="h-40 flex flex-col items-center justify-center text-center p-4 text-on-surface-variant">
+                  <p className="text-xs italic">Notes must be analyzed first.</p>
+                  <button
+                    onClick={analyzeNotes}
+                    className="mt-3 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
+                  >
+                    Run AI Analysis
+                  </button>
+                </div>
+              )}
+            </div>
+          </aside>
         )}
       </div>
 
@@ -1443,6 +1794,174 @@ function NoteForm({
           className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
         >
           Save to archive
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Suggested Task card inside AI Insights sidebar ────────────────────────────
+function SuggestedTaskCard({
+  task,
+  isAdded,
+  contacts,
+  team,
+  meUid,
+  onAdd,
+  onDismiss,
+  onSaveTask,
+}: {
+  task: any;
+  isAdded: boolean;
+  contacts: Contact[];
+  team: TeamMember[];
+  meUid: string;
+  onAdd: () => void;
+  onDismiss: () => void;
+  onSaveTask: (taskData: {
+    title: string;
+    dueDate: string | null;
+    priority: 'low' | 'medium' | 'high';
+    contactId: string | null;
+    assigneeId: string | null;
+  }) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(task.title);
+  const [dueDate, setDueDate] = useState(task.dueDate || '');
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
+  const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId || meUid || '');
+  const [contactId, setContactId] = useState<string>(task.contactId || '');
+  const [saving, setSaving] = useState(false);
+
+  const saveTask = async () => {
+    if (!title.trim()) return;
+    try {
+      setSaving(true);
+      await onSaveTask({
+        title: title.trim(),
+        dueDate: dueDate || null,
+        priority,
+        contactId: contactId || null,
+        assigneeId: assigneeId || null,
+      });
+      onAdd();
+    } catch (err) {
+      console.error('Failed to save suggested task: ', err);
+      alert('Failed to save task: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (isAdded) {
+    return (
+      <div className="bg-tertiary/10 border border-tertiary/30 rounded-xl p-3 flex items-center justify-between text-xs">
+        <span className="text-on-surface font-medium truncate flex-1">
+          <del className="text-on-surface-variant">{title}</del>
+        </span>
+        <span className="flex items-center gap-1 text-tertiary font-semibold ml-2">
+          <Check className="w-3.5 h-3.5" /> Added
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-surface border border-outline-variant rounded-xl p-3.5 space-y-3 shadow-xs">
+      <textarea
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        rows={2}
+        className="w-full text-xs font-semibold text-on-surface bg-transparent border-0 resize-none focus:outline-none focus:ring-0 p-0 leading-snug"
+        placeholder="Task description"
+      />
+
+      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+        {/* Assignee */}
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Who</label>
+          <select
+            value={assigneeId}
+            onChange={(e) => setAssigneeId(e.target.value)}
+            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
+          >
+            <option value="">Unassigned</option>
+            {team.map((t) => (
+              <option key={t.uid} value={t.uid}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Due Date */}
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">When</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
+          />
+        </div>
+
+        {/* Contact */}
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Contact</label>
+          <select
+            value={contactId}
+            onChange={(e) => setContactId(e.target.value)}
+            className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
+          >
+            <option value="">None</option>
+            {contacts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Priority */}
+        <div className="space-y-1">
+          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Priority</label>
+          <div className="flex bg-surface-container border border-outline-variant rounded-lg p-0.5">
+            {(['low', 'medium', 'high'] as const).map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => setPriority(p)}
+                className={cn(
+                  'flex-1 text-[9.5px] font-bold uppercase rounded py-0.5 transition-colors',
+                  priority === p
+                    ? p === 'high'
+                      ? 'bg-error text-white'
+                      : p === 'medium'
+                        ? 'bg-stage-amber text-on-stage-amber'
+                        : 'bg-stage-teal text-white'
+                    : 'text-on-surface-variant/60 hover:text-on-surface',
+                )}
+              >
+                {p.slice(0, 3)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2 justify-end pt-1">
+        <button
+          onClick={onDismiss}
+          className="px-2 py-1 text-on-surface-variant/70 hover:bg-surface-variant rounded text-[11px] font-semibold"
+        >
+          Dismiss
+        </button>
+        <button
+          onClick={saveTask}
+          disabled={saving || !title.trim()}
+          className="flex items-center gap-1 px-3 py-1 bg-primary text-on-primary rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity"
+        >
+          {saving ? 'Adding...' : 'Add Task'}
         </button>
       </div>
     </div>
