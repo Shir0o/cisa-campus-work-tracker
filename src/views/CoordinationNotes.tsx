@@ -903,6 +903,70 @@ function DocEditor({
     titleTimer.current = setTimeout(() => onSaveTitle(d.id, v), 800);
   };
 
+  const formatFriendlyError = (rawError: string): string => {
+    if (!rawError) return "An unexpected error occurred.";
+    
+    let cleanMsg = rawError.trim();
+
+    const extractMessage = (obj: any): string | null => {
+      if (!obj || typeof obj !== 'object') return null;
+      if (obj.error && typeof obj.error === 'object' && obj.error.message) {
+        return obj.error.message;
+      }
+      if (obj.message && typeof obj.message === 'string') {
+        return obj.message;
+      }
+      if (obj.error && typeof obj.error === 'string') {
+        try {
+          const nested = JSON.parse(obj.error);
+          const nestedMsg = extractMessage(nested);
+          if (nestedMsg) return nestedMsg;
+        } catch {}
+        return obj.error;
+      }
+      return null;
+    };
+
+    try {
+      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
+        const parsed = JSON.parse(cleanMsg);
+        const extracted = extractMessage(parsed);
+        if (extracted) {
+          cleanMsg = extracted;
+        }
+      }
+    } catch {}
+
+    try {
+      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
+        const parsed = JSON.parse(cleanMsg);
+        if (parsed.message) {
+          cleanMsg = parsed.message;
+        } else if (parsed.error && typeof parsed.error === 'object' && parsed.error.message) {
+          cleanMsg = parsed.error.message;
+        }
+      }
+    } catch {}
+
+    if (
+      cleanMsg.includes("experiences high demand") || 
+      cleanMsg.includes("high demand") || 
+      cleanMsg.includes("503") || 
+      cleanMsg.includes("UNAVAILABLE")
+    ) {
+      return "The AI service is temporarily unavailable due to high demand. Please try again in a few moments.";
+    }
+    if (
+      cleanMsg.includes("API key not valid") || 
+      cleanMsg.includes("API_KEY_INVALID") ||
+      cleanMsg.includes("API key expired")
+    ) {
+      return "The configured AI service key is invalid. Please contact support or check your server configuration.";
+    }
+
+    return cleanMsg;
+  };
+
   const analyzeNotes = async () => {
     if (!editor) return;
     const text = editorMarkdown(editor);
@@ -925,7 +989,16 @@ function DocEditor({
         body: JSON.stringify({ text }),
       });
       if (!res.ok) {
-        throw new Error(await res.text() || "Failed to analyze notes");
+        let errMsg = "Failed to analyze notes";
+        try {
+          const errData = await res.json();
+          errMsg = errData.error || errMsg;
+        } catch {
+          try {
+            errMsg = await res.text() || errMsg;
+          } catch {}
+        }
+        throw new Error(errMsg);
       }
       const data = await res.json();
       if (data.success) {
@@ -935,7 +1008,7 @@ function DocEditor({
       }
     } catch (err: any) {
       console.error("AI Analysis Error: ", err);
-      setAiError(err.message || String(err));
+      setAiError(formatFriendlyError(err.message || String(err)));
     } finally {
       setAnalyzing(false);
     }
