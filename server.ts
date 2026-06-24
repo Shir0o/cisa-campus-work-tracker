@@ -1188,15 +1188,15 @@ Error: ${error.message || "Internal server processing error."}
 
       const db = getAdminDb();
 
-      // Fetch all contacts
-      const contactsSnapshot = await db.collection("contacts").get();
+      // Fetch all contacts (limited to 200 to optimize prompt size)
+      const contactsSnapshot = await db.collection("contacts").limit(200).get();
       const contactsList = contactsSnapshot.docs.map(doc => ({
         id: doc.id,
         name: doc.data().name || "Unknown"
       }));
 
-      // Fetch all approved users (team members)
-      const usersSnapshot = await db.collection("users").get();
+      // Fetch all approved users (limited to 100 to optimize prompt size)
+      const usersSnapshot = await db.collection("users").limit(100).get();
       const usersList = usersSnapshot.docs
         .filter(doc => doc.data().approved !== false)
         .map(doc => ({
@@ -1253,7 +1253,13 @@ The current local date is: ${currentDate}.`,
         throw new Error("No response returned from the Gemini API.");
       }
 
-      const parsed = JSON.parse(response.text.trim());
+      let parsed;
+      try {
+        parsed = JSON.parse(response.text.trim());
+      } catch (parseError: any) {
+        throw new Error(`Failed to parse AI response: ${parseError.message || String(parseError)}`);
+      }
+
       console.log(`[AI Notes Analyzer] Analysis complete. Extracted ${parsed.suggestedTasks.length} tasks.`);
       res.status(200).json({ success: true, ...parsed });
     } catch (error: any) {

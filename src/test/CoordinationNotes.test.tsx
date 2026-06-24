@@ -11,9 +11,28 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
-// ── TipTap (thin seam) ──────────────────────────────────────────────────────
+const mockEditor = {
+  commands: {
+    setContent: vi.fn(),
+  },
+  isEmpty: false,
+  storage: {
+    markdown: {
+      getMarkdown: () => '# Team standup\n- [x] Review goals',
+      parser: {
+        parse: (md: string) => `<div>${md}</div>`,
+      }
+    }
+  },
+  isActive: vi.fn(() => false),
+  on: vi.fn(),
+  off: vi.fn(),
+};
+
+let mockActiveEditor: any = null;
+
 vi.mock('@tiptap/react', () => ({
-  useEditor: () => null,
+  useEditor: () => mockActiveEditor,
   EditorContent: () => <div data-testid="tiptap-editor">Editor</div>,
 }));
 vi.mock('@tiptap/starter-kit', () => ({
@@ -65,17 +84,20 @@ vi.mock('y-protocols/awareness', () => {
   }
   return { Awareness: MockAwareness };
 });
-vi.mock('../lib/yjsRtdbProvider', () => ({
-  RtdbYjsProvider: vi.fn().mockImplementation(() => ({
-    destroy: vi.fn(),
-    awareness: {
-      setLocalStateField: vi.fn(),
-      on: vi.fn(),
-      off: vi.fn(),
-      getStates: () => new Map(),
-    },
-  })),
-}));
+vi.mock('../lib/yjsRtdbProvider', () => {
+  return {
+    RtdbYjsProvider: class MockRtdbYjsProvider {
+      destroy = vi.fn();
+      awareness = {
+        setLocalStateField: vi.fn(),
+        on: vi.fn(),
+        off: vi.fn(),
+        getStates: () => new Map(),
+      };
+      claimSeed = vi.fn().mockResolvedValue(true);
+    }
+  };
+});
 
 // ── Firestore ────────────────────────────────────────────────────────────────
 vi.mock('firebase/firestore', () => ({
@@ -215,10 +237,11 @@ function setupSnapshots(
     docs?: typeof mockDocs;
     notes?: typeof mockNotes;
     team?: typeof mockTeam;
+    contacts?: any[];
     neverFire?: boolean;
   } = {},
 ) {
-  const { docs = [], notes = [], team = [], neverFire = false } = opts;
+  const { docs = [], notes = [], team = [], contacts = [], neverFire = false } = opts;
   (onSnapshot as ReturnType<typeof vi.fn>).mockImplementation(
     (ref: { path?: string }, callback: (snap: unknown) => void) => {
       if (neverFire) return vi.fn();
@@ -229,6 +252,12 @@ function setupSnapshots(
         callback({ docs: notes, size: notes.length });
       } else if (path === 'users') {
         callback({ docs: team, size: team.length });
+      } else if (path === 'contacts') {
+        const mappedContacts = contacts.map((c) => ({
+          id: c.id,
+          data: () => c,
+        }));
+        callback({ docs: mappedContacts, size: mappedContacts.length });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -241,6 +270,7 @@ function setupSnapshots(
 describe('CoordinationNotes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockActiveEditor = null;
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
     setupSnapshots();
   });
@@ -976,6 +1006,133 @@ describe('CoordinationNotes', () => {
       expect(workspace.className).toContain('lg:h-[calc(100vh-6rem)]');
       expect(workspace.className).toContain('lg:grid-rows-1');
       expect(workspace.className).toContain('lg:min-h-0');
+    });
+  });
+
+  // ── AI Insights & Task Suggestions ─────────────────────────────────────────
+  describe('AI Insights & Task Suggestions', () => {
+    let mockFetch: any;
+
+    beforeEach(() => {
+      mockActiveEditor = mockEditor;
+      mockFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              success: true,
+              updatedMarkdown: '# Team standup\n- [x] Review goals\n[Priya Raman](/contacts/c-priya)',
+              suggestedTasks: [
+                {
+                  title: 'Confirm Friday setlist with Beatriz',
+                  dueDate: '2026-06-26',
+                  priority: 'high',
+                  contactId: 'c-beatriz',
+                  contactName: 'Beatriz Lima',
+                  assigneeId: 'u-admin',
+                  assigneeName: 'Tony Wang',
+                },
+                {
+                  title: 'Another suggestion to dismiss',
+                  dueDate: '2026-06-27',
+                  priority: 'low',
+                  contactId: 'c-priya',
+                  contactName: 'Priya Raman',
+                  assigneeId: 'u-admin',
+                  assigneeName: 'Tony Wang',
+                },
+              ],
+            }),
+        })
+      );
+      global.fetch = mockFetch;
+    });
+
+    it('renders the AI Insights button and opens the sidebar on click', async () => {
+      const mockContacts = [
+        { id: 'c-priya', name: 'Priya Raman' },
+        { id: 'c-beatriz', name: 'Beatriz Lima' },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
+      render(<CoordinationNotes />);
+
+      // Find and click AI Insights button
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      expect(aiBtn).toBeInTheDocument();
+
+      fireEvent.click(aiBtn);
+
+      // Verify sidebar title appears
+      expect(await screen.findByText('AI Insights')).toBeInTheDocument();
+
+      // Wait for mock fetch to be called
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+      });
+
+      // Verify link suggestions module is rendered
+      expect(screen.getByText('Contact Links')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Apply Links to Notes/i })).toBeInTheDocument();
+
+      // Verify suggested task title is visible
+      expect(screen.getByText('Suggested Tasks')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
+    });
+
+    it('applies contact links to the editor when clicking Apply Links', async () => {
+      const mockContacts = [{ id: 'c-priya', name: 'Priya Raman' }];
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
+      render(<CoordinationNotes />);
+
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+
+      const applyBtn = await screen.findByRole('button', { name: /Apply Links to Notes/i });
+      fireEvent.click(applyBtn);
+
+      // Check if setContent was called with updated markdown
+      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
+        '# Team standup\n- [x] Review goals\n[Priya Raman](/contacts/c-priya)'
+      );
+      expect(screen.getByText('Links applied to notes!')).toBeInTheDocument();
+    });
+
+    it('adds task to Firestore when clicking Add Task and allows dismissing it', async () => {
+      const mockContacts = [
+        { id: 'c-beatriz', name: 'Beatriz Lima' },
+        { id: 'c-priya', name: 'Priya Raman' },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
+      render(<CoordinationNotes />);
+
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+
+      // Verify both suggested tasks are visible
+      expect(await screen.findByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Another suggestion to dismiss')).toBeInTheDocument();
+
+      // Find the first Add Task button and click it
+      const addBtns = await screen.findAllByRole('button', { name: /Add Task/i });
+      fireEvent.click(addBtns[0]);
+
+      // Verify setDoc is called to add a task to Firestore
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalled();
+      });
+
+      // Verify task shows as added
+      expect(await screen.findByText('Added')).toBeInTheDocument();
+
+      // Find the dismiss button for the second task and click it
+      const dismissBtns = await screen.findAllByRole('button', { name: /Dismiss/i });
+      // Since the first task is "Added" and doesn't render Dismiss, there should only be one Dismiss button visible, which is for the second task.
+      fireEvent.click(dismissBtns[0]);
+
+      // Verify the second task is hidden
+      await waitFor(() => {
+        expect(screen.queryByDisplayValue('Another suggestion to dismiss')).not.toBeInTheDocument();
+      });
     });
   });
 });

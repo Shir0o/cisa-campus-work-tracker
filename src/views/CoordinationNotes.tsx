@@ -947,6 +947,39 @@ function DocEditor({
     setLinksApplied(true);
   };
 
+  const handleSaveTask = async (taskData: {
+    title: string;
+    dueDate: string | null;
+    priority: 'low' | 'medium' | 'high';
+    contactId: string | null;
+    assigneeId: string | null;
+  }) => {
+    const matchedContact = contacts.find((c) => c.id === taskData.contactId);
+    const matchedAssignee = team.find((t) => t.uid === taskData.assigneeId);
+
+    const taskRef = doc(collection(db, 'tasks'));
+    await setDoc(taskRef, {
+      title: taskData.title,
+      dueDate: taskData.dueDate || null,
+      priority: taskData.priority,
+      contactId: taskData.contactId || null,
+      contactName: matchedContact?.name || null,
+      assigneeId: taskData.assigneeId || null,
+      assigneeName: matchedAssignee?.name || null,
+      status: 'pending',
+      createdAt: serverTimestamp(),
+    });
+
+    logActivity({
+      action: 'added task',
+      targetId: taskRef.id,
+      targetName: taskData.title,
+      targetType: 'comment',
+      type: 'create',
+      description: `Assigned to ${matchedAssignee?.name || 'Unassigned'}`,
+    } as never);
+  };
+
   const status = sessionStatus(d.date);
   const st = DOC_STATUS[status];
 
@@ -1246,6 +1279,7 @@ function DocEditor({
                               meUid={meUid}
                               onAdd={() => setAddedTasks(prev => ({ ...prev, [idx]: true }))}
                               onDismiss={() => setDismissedTasks(prev => ({ ...prev, [idx]: true }))}
+                              onSaveTask={handleSaveTask}
                             />
                           );
                         })}
@@ -1431,6 +1465,7 @@ function SuggestedTaskCard({
   meUid,
   onAdd,
   onDismiss,
+  onSaveTask,
 }: {
   task: any;
   isAdded: boolean;
@@ -1439,6 +1474,13 @@ function SuggestedTaskCard({
   meUid: string;
   onAdd: () => void;
   onDismiss: () => void;
+  onSaveTask: (taskData: {
+    title: string;
+    dueDate: string | null;
+    priority: 'low' | 'medium' | 'high';
+    contactId: string | null;
+    assigneeId: string | null;
+  }) => Promise<void>;
 }) {
   const [title, setTitle] = useState(task.title);
   const [dueDate, setDueDate] = useState(task.dueDate || '');
@@ -1448,33 +1490,16 @@ function SuggestedTaskCard({
   const [saving, setSaving] = useState(false);
 
   const saveTask = async () => {
+    if (!title.trim()) return;
     try {
       setSaving(true);
-      const matchedContact = contacts.find((c) => c.id === contactId);
-      const matchedAssignee = team.find((t) => t.uid === assigneeId);
-
-      const taskRef = doc(collection(db, 'tasks'));
-      await setDoc(taskRef, {
+      await onSaveTask({
         title: title.trim(),
         dueDate: dueDate || null,
         priority,
         contactId: contactId || null,
-        contactName: matchedContact?.name || null,
         assigneeId: assigneeId || null,
-        assigneeName: matchedAssignee?.name || null,
-        status: 'pending',
-        createdAt: serverTimestamp(),
       });
-
-      logActivity({
-        action: 'added task',
-        targetId: taskRef.id,
-        targetName: title.trim(),
-        targetType: 'comment',
-        type: 'create',
-        description: `Assigned to ${matchedAssignee?.name || 'Unassigned'}`,
-      } as never);
-
       onAdd();
     } catch (err) {
       console.error('Failed to save suggested task: ', err);
