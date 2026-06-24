@@ -73,8 +73,20 @@ export interface SystemActivity {
 export interface Task {
   id: string;
   title: string;
-  dueDate: string;
+  dueDate?: string | null;
   priority: 'low' | 'medium' | 'high';
+  status?: 'pending' | 'completed' | 'canceled';
+  contactId?: string | null;
+  contactName?: string | null;
+  assigneeId?: string | null;
+  sourceInteractionId?: string | null;
+  // Who created/assigned the to-do — surfaces as the "from {name}" line.
+  createdById?: string | null;
+  createdByName?: string | null;
+  // The Board page a to-do was made from (highlight → "Make a to-do").
+  sourceDocId?: string | null;
+  sourceDocTitle?: string | null;
+  createdAt?: unknown;
 }
 
 export interface Comment {

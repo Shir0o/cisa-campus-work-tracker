@@ -11,6 +11,11 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+// ── Router seam (the view reads location.state for the My Day deep-link) ──────
+vi.mock('react-router-dom', () => ({
+  useLocation: () => ({ state: null }),
+}));
+
 // ── TipTap (thin seam) ──────────────────────────────────────────────────────
 vi.mock('@tiptap/react', () => ({
   useEditor: () => null,
@@ -700,7 +705,8 @@ describe('CoordinationNotes', () => {
       // Tag string should be rendered as "#planning #q3"
       expect(screen.getByText('#planning #q3')).toBeInTheDocument();
       // Contributor initials or title should be rendered inside Avatar
-      expect(screen.getByTitle('Tony Wang')).toBeInTheDocument();
+      // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
+      expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
     });
 
     it('toggles NoteForm type and parses tags with deduplication and hash removal', async () => {
@@ -771,9 +777,11 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: customNotes, team: customTeam });
       render(<CoordinationNotes />);
 
-      const img = screen.getByAltText('Tony Wang');
-      expect(img).toBeInTheDocument();
-      expect(img).toHaveAttribute('src', 'http://example.com/photo.jpg');
+      // The same person also appears in the "What we're carrying" person filter,
+      // so both avatars share this alt text — every one should use the photoURL.
+      const imgs = screen.getAllByAltText('Tony Wang');
+      expect(imgs.length).toBeGreaterThan(0);
+      imgs.forEach((img) => expect(img).toHaveAttribute('src', 'http://example.com/photo.jpg'));
     });
 
     it('auto-selects today first when present', () => {
