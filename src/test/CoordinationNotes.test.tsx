@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc } from 'firebase/firestore';
+import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
@@ -116,6 +116,7 @@ vi.mock('firebase/firestore', () => ({
     id: id || 'auto-id',
   })),
   setDoc: vi.fn(() => Promise.resolve()),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'mock-doc-id' })),
   updateDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
@@ -1300,6 +1301,115 @@ describe('CoordinationNotes', () => {
       render(<CoordinationNotes />);
 
       expect(screen.getByText(/all clear/i)).toBeInTheDocument();
+    });
+  });
+
+  // ── 7. Selection popover menu & NoteComposer ──────────────────────────────
+  describe('text selection popover menu', () => {
+    it('shows floating bubble menu when selecting text and allows note actions', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Assigned task text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      // Wait for editor to load
+      const editor = screen.getByTestId('tiptap-editor');
+      
+      mockRange.commonAncestorContainer = editor;
+
+      // Trigger mouseUp to refresh selection FAB
+      fireEvent.mouseUp(editor);
+
+      // Verify bubble menu buttons are displayed
+      expect(await screen.findByText('Todo')).toBeInTheDocument();
+      expect(screen.getByText('Note/Learning')).toBeInTheDocument();
+      expect(screen.getByText('Assign')).toBeInTheDocument();
+
+      // Click "Note/Learning" to open NoteComposer
+      fireEvent.click(screen.getByText('Note/Learning'));
+
+      // Verify NoteComposer floating popover opens
+      expect(screen.getByText('Make note/learning')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Note title')).toBeInTheDocument();
+      
+      // Fill out note title
+      fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'Selection Note Title' } });
+      
+      // Save note
+      fireEvent.click(screen.getByRole('button', { name: 'Save Note' }));
+
+      // Verify note save calls setDoc
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Selection Note Title',
+            body: 'Assigned task text',
+            tags: [],
+          })
+        );
+      });
+      
+      getSelectionSpy.mockRestore();
+    });
+
+    it('allows direct task assignment to team member from menu', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Task from highlight',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Click "Assign" button to open member dropdown
+      fireEvent.click(await screen.findByText('Assign'));
+
+      // Click on team member "Tony Wang"
+      const memberBtn = screen.getByText('Tony Wang');
+      fireEvent.click(memberBtn);
+
+      // Verify direct assignment calls addDoc to create task (addTodo is a firebase addDoc call)
+      await waitFor(() => {
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Task from highlight',
+            assigneeId: 'u-admin',
+            status: 'pending',
+          })
+        );
+      });
+
+      getSelectionSpy.mockRestore();
     });
   });
 });
