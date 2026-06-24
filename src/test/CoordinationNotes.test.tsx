@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc } from 'firebase/firestore';
+import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
@@ -116,6 +116,7 @@ vi.mock('firebase/firestore', () => ({
     id: id || 'auto-id',
   })),
   setDoc: vi.fn(() => Promise.resolve()),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'mock-doc-id' })),
   updateDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
@@ -298,10 +299,10 @@ describe('CoordinationNotes', () => {
         screen.getByRole('heading', { name: /a space for the core team/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/the board is where the full-time team thinks together/i),
+        screen.getByText(/coordination notes is where the full-time team thinks together/i),
       ).toBeInTheDocument();
       // Main content should NOT be present
-      expect(screen.queryByRole('heading', { name: /the board/i, level: 1 })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /coordination notes/i, level: 1 })).not.toBeInTheDocument();
     });
   });
 
@@ -350,12 +351,12 @@ describe('CoordinationNotes', () => {
       });
     });
 
-    it('renders the main header "The Board"', () => {
+    it('renders the main header "Coordination Notes"', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
       expect(
-        screen.getByRole('heading', { name: /the board/i, level: 1 }),
+        screen.getByRole('heading', { name: /coordination notes/i, level: 1 }),
       ).toBeInTheDocument();
     });
   });
@@ -483,9 +484,6 @@ describe('CoordinationNotes', () => {
         screen.getByPlaceholderText(/what happened, or what you learned/i),
         { target: { value: 'Some reflection content' } },
       );
-      fireEvent.change(screen.getByPlaceholderText(/tags/i), {
-        target: { value: 'tag1, tag2' },
-      });
 
       // Submit
       const saveBtn = screen.getByRole('button', { name: /save to archive/i });
@@ -717,7 +715,7 @@ describe('CoordinationNotes', () => {
       expect(screen.getByText('2 to do')).toBeInTheDocument();
     });
 
-    it('renders NoteCard with old recall badge (>300 days), contributor avatars, and tags', async () => {
+    it('renders NoteCard with old recall badge (>300 days) and contributor avatars', async () => {
       const oldDate = new Date(Date.now() - 310 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const customNotes = [
         {
@@ -740,14 +738,12 @@ describe('CoordinationNotes', () => {
       await screen.findByText('Old Planning');
       // "1 yr" recall badge should be visible
       expect(screen.getByText('1 yr')).toBeInTheDocument();
-      // Tag string should be rendered as "#planning #q3"
-      expect(screen.getByText('#planning #q3')).toBeInTheDocument();
       // Contributor initials or title should be rendered inside Avatar
       // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
       expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
     });
 
-    it('toggles NoteForm type and parses tags with deduplication and hash removal', async () => {
+    it('toggles NoteForm type and saves note', async () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
@@ -765,9 +761,6 @@ describe('CoordinationNotes', () => {
       fireEvent.change(screen.getByPlaceholderText(/a short title/i), {
         target: { value: 'Deduplication Note' },
       });
-      fireEvent.change(screen.getByPlaceholderText(/tags/i), {
-        target: { value: '#welcome, retreat, #retreat, welcome' },
-      });
 
       const saveBtn = screen.getByRole('button', { name: /save to archive/i });
       fireEvent.click(saveBtn);
@@ -777,7 +770,7 @@ describe('CoordinationNotes', () => {
           expect.anything(),
           expect.objectContaining({
             type: 'learning',
-            tags: ['welcome', 'retreat'], // Deduplicated, hashes removed
+            tags: [],
           })
         );
       });
@@ -1308,6 +1301,115 @@ describe('CoordinationNotes', () => {
       render(<CoordinationNotes />);
 
       expect(screen.getByText(/all clear/i)).toBeInTheDocument();
+    });
+  });
+
+  // ── 7. Selection popover menu & NoteComposer ──────────────────────────────
+  describe('text selection popover menu', () => {
+    it('shows floating bubble menu when selecting text and allows note actions', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Assigned task text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      // Wait for editor to load
+      const editor = screen.getByTestId('tiptap-editor');
+      
+      mockRange.commonAncestorContainer = editor;
+
+      // Trigger mouseUp to refresh selection FAB
+      fireEvent.mouseUp(editor);
+
+      // Verify bubble menu buttons are displayed
+      expect(await screen.findByText('Todo')).toBeInTheDocument();
+      expect(screen.getByText('Note/Learning')).toBeInTheDocument();
+      expect(screen.getByText('Assign')).toBeInTheDocument();
+
+      // Click "Note/Learning" to open NoteComposer
+      fireEvent.click(screen.getByText('Note/Learning'));
+
+      // Verify NoteComposer floating popover opens
+      expect(screen.getByText('Make note/learning')).toBeInTheDocument();
+      expect(screen.getByPlaceholderText('Note title')).toBeInTheDocument();
+      
+      // Fill out note title
+      fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'Selection Note Title' } });
+      
+      // Save note
+      fireEvent.click(screen.getByRole('button', { name: 'Save Note' }));
+
+      // Verify note save calls setDoc
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Selection Note Title',
+            body: 'Assigned task text',
+            tags: [],
+          })
+        );
+      });
+      
+      getSelectionSpy.mockRestore();
+    });
+
+    it('allows direct task assignment to team member from menu', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Task from highlight',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Click "Assign" button to open member dropdown
+      fireEvent.click(await screen.findByText('Assign'));
+
+      // Click on team member "Tony Wang"
+      const memberBtn = screen.getByText('Tony Wang');
+      fireEvent.click(memberBtn);
+
+      // Verify direct assignment calls addDoc to create task (addTodo is a firebase addDoc call)
+      await waitFor(() => {
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Task from highlight',
+            assigneeId: 'u-admin',
+            status: 'pending',
+          })
+        );
+      });
+
+      getSelectionSpy.mockRestore();
     });
   });
 });
