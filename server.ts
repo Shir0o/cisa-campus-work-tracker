@@ -1176,6 +1176,92 @@ Error: ${error.message || "Internal server processing error."}
     }
   });
 
+  // AI Notes Analyzer endpoint: automates contact linking and suggests tasks
+  app.post("/api/analyze-notes", async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Missing required 'text' parameter." });
+      }
+
+      console.log(`[AI Notes Analyzer] Analyzing notes content (${text.length} chars)`);
+
+      const db = getAdminDb();
+
+      // Fetch all contacts
+      const contactsSnapshot = await db.collection("contacts").get();
+      const contactsList = contactsSnapshot.docs.map(doc => ({
+        id: doc.id,
+        name: doc.data().name || "Unknown"
+      }));
+
+      // Fetch all approved users (team members)
+      const usersSnapshot = await db.collection("users").get();
+      const usersList = usersSnapshot.docs
+        .filter(doc => doc.data().approved !== false)
+        .map(doc => ({
+          id: doc.id,
+          name: doc.data().displayName || doc.data().email || "Teammate"
+        }));
+
+      const currentDate = new Date().toISOString().split("T")[0];
+
+      const prompt = `Here are the meeting notes to analyze:\n\n${text}\n\nAvailable Contacts:\n${JSON.stringify(
+        contactsList
+      )}\n\nAvailable Users (Team Members):\n${JSON.stringify(usersList)}`;
+
+      const response = await getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: `You are an expert assistant for a campus ministry tracker. Your job is to analyze meeting notes (written in markdown) and do two things:
+1. Identify contacts mentioned in the notes and add markdown links to their profiles in the format [Name](/contacts/id) based on the provided contacts list. Only link names that are actual contacts and not part of existing links. Ensure you match names accurately. If a contact name is a common noun (e.g., Will, Hope, Grace, Joy), only link it if the context indicates it refers to the person.
+2. Suggest tasks/action items extracted from the notes, matching each task to a contact from the contacts list (if applicable) and an assignee from the users list (if applicable). Suggest a priority ('low', 'medium', 'high') and a due date (YYYY-MM-DD format) based on context and relative terms (like 'before Friday', 'next week', 'by Monday').
+The current local date is: ${currentDate}.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              updatedMarkdown: {
+                type: Type.STRING,
+                description: "The complete updated meeting notes markdown with contact names wrapped in [Name](/contacts/id) links."
+              },
+              suggestedTasks: {
+                type: Type.ARRAY,
+                description: "List of tasks/action items extracted from the notes.",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    title: { type: Type.STRING, description: "Clear action-oriented task description." },
+                    dueDate: { type: Type.STRING, description: "Suggested due date (YYYY-MM-DD format) or empty string if not mentioned/estimatable." },
+                    priority: { type: Type.STRING, description: "Suggested priority: low, medium, or high." },
+                    contactId: { type: Type.STRING, description: "The matching contact ID if associated with a contact, or null." },
+                    contactName: { type: Type.STRING, description: "The matched contact name, or null." },
+                    assigneeId: { type: Type.STRING, description: "The matching user ID if assigned to a team member, or null." },
+                    assigneeName: { type: Type.STRING, description: "The matched team member name, or null." }
+                  },
+                  required: ["title", "priority"]
+                }
+              }
+            },
+            required: ["updatedMarkdown", "suggestedTasks"]
+          }
+        }
+      });
+
+      if (!response.text) {
+        throw new Error("No response returned from the Gemini API.");
+      }
+
+      const parsed = JSON.parse(response.text.trim());
+      console.log(`[AI Notes Analyzer] Analysis complete. Extracted ${parsed.suggestedTasks.length} tasks.`);
+      res.status(200).json({ success: true, ...parsed });
+    } catch (error: any) {
+      console.error("AI Notes Analyzer Error: ", error);
+      res.status(500).json({ error: error.message || "Failed to analyze notes" });
+    }
+  });
+
   // Endpoint 3: Public endpoint to verify that the Gemini API is configured
   app.get("/api/quick-add/status", (req, res) => {
     res.json({
