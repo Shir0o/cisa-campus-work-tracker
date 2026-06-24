@@ -112,4 +112,91 @@ describe('TodoComposer', () => {
       expect(todos.updateTodo).toHaveBeenCalledWith('t9', expect.objectContaining({ title: 'New text', assigneeId: 'u1' })),
     );
   });
+
+  it('closes when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={onClose} />,
+    );
+    fireEvent.keyDown(screen.getByPlaceholderText('What needs doing?').closest('div[class*="bg-surface"]')!, {
+      key: 'Escape',
+    });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('saves via Ctrl+Enter keyboard shortcut', async () => {
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={vi.fn()} onSaved={vi.fn()} />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('What needs doing?'), { target: { value: 'Keyboard task' } });
+    fireEvent.click(screen.getByRole('button', { name: /Tony/ }));
+    const card = screen.getByPlaceholderText('What needs doing?').closest('div[class*="bg-surface"]')!;
+    fireEvent.keyDown(card, { key: 'Enter', ctrlKey: true });
+    await waitFor(() => expect(todos.addTodo).toHaveBeenCalled());
+  });
+
+  it('closes when Cancel button is clicked', () => {
+    const onClose = vi.fn();
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={onClose} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Cancel/ }));
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('shows the custom DatePicker when "Pick a date…" is clicked', () => {
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={vi.fn()} />,
+    );
+    // Click "Pick a date…" to switch to custom mode
+    fireEvent.click(screen.getByRole('button', { name: /Pick a date/i }));
+    expect(screen.getByText('Due date')).toBeInTheDocument();
+  });
+
+  it('renders in anchored mode when anchorRect is provided', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        anchorRect={{ top: 200, left: 400 }}
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    // The component should render — just verify it's in the DOM
+    expect(screen.getByPlaceholderText('What needs doing?')).toBeInTheDocument();
+  });
+
+  it('handles save failure gracefully', async () => {
+    (todos.addTodo as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('save failed'));
+    const onClose = vi.fn();
+    render(
+      <TodoComposer mode="create" team={team} meUid="u1" meName="Tony Wang" onClose={onClose} onSaved={vi.fn()} />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('What needs doing?'), { target: { value: 'Failing task' } });
+    fireEvent.click(screen.getByRole('button', { name: /Tony/ }));
+    fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
+
+    // Wait a tick — the save should fail but not crash
+    await waitFor(() => expect(todos.addTodo).toHaveBeenCalled());
+    // onClose should NOT have been called since save failed
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('pre-selects "custom" due pill when editing with an arbitrary due date', () => {
+    render(
+      <TodoComposer
+        mode="edit"
+        initial={{ id: 't1', text: 'Task', assigneeId: 'u1', dueDate: '2099-12-31' }}
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    // The "Pick a date…" button should be styled as active (bg-primary)
+    const pickBtn = screen.getByRole('button', { name: /Pick a date/i });
+    expect(pickBtn.className).toContain('bg-primary');
+  });
 });
