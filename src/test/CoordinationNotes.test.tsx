@@ -1134,6 +1134,80 @@ describe('CoordinationNotes', () => {
         expect(screen.queryByDisplayValue('Another suggestion to dismiss')).not.toBeInTheDocument();
       });
     });
+
+    it('displays high demand friendly error message on 503/UNAVAILABLE', async () => {
+      const payload = {
+        error: JSON.stringify({
+          error: {
+            code: 503,
+            message: "This model is currently experiencing high demand. Please try again later.",
+            status: "UNAVAILABLE"
+          }
+        })
+      };
+      
+      const mockErrorFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve(payload),
+          text: () => Promise.resolve(JSON.stringify(payload)),
+        })
+      );
+      global.fetch = mockErrorFetch;
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+
+      expect(await screen.findByText(/The AI service is temporarily unavailable due to high demand/i)).toBeInTheDocument();
+    });
+
+    it('displays invalid key friendly error message on API_KEY_INVALID', async () => {
+      const payload = {
+        error: "API key not valid. API_KEY_INVALID"
+      };
+      
+      const mockErrorFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: false,
+          status: 400,
+          json: () => Promise.resolve(payload),
+          text: () => Promise.resolve(JSON.stringify(payload)),
+        })
+      );
+      global.fetch = mockErrorFetch;
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+
+      expect(await screen.findByText(/The configured AI service key is invalid/i)).toBeInTheDocument();
+    });
+
+    it('displays fallback raw error message for unhandled errors', async () => {
+      const mockErrorFetch = vi.fn().mockImplementation(() =>
+        Promise.resolve({
+          ok: false,
+          status: 500,
+          json: () => Promise.reject(new Error("Not JSON")),
+          text: () => Promise.resolve("Some completely random server crash"),
+        })
+      );
+      global.fetch = mockErrorFetch;
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+
+      expect(await screen.findByText("Some completely random server crash")).toBeInTheDocument();
+    });
   });
 });
 
