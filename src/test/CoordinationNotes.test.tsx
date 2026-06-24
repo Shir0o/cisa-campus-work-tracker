@@ -298,10 +298,10 @@ describe('CoordinationNotes', () => {
         screen.getByRole('heading', { name: /a space for the core team/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/the board is where the full-time team thinks together/i),
+        screen.getByText(/coordination notes is where the full-time team thinks together/i),
       ).toBeInTheDocument();
       // Main content should NOT be present
-      expect(screen.queryByRole('heading', { name: /the board/i, level: 1 })).not.toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /coordination notes/i, level: 1 })).not.toBeInTheDocument();
     });
   });
 
@@ -350,12 +350,12 @@ describe('CoordinationNotes', () => {
       });
     });
 
-    it('renders the main header "The Board"', () => {
+    it('renders the main header "Coordination Notes"', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
       expect(
-        screen.getByRole('heading', { name: /the board/i, level: 1 }),
+        screen.getByRole('heading', { name: /coordination notes/i, level: 1 }),
       ).toBeInTheDocument();
     });
   });
@@ -483,9 +483,6 @@ describe('CoordinationNotes', () => {
         screen.getByPlaceholderText(/what happened, or what you learned/i),
         { target: { value: 'Some reflection content' } },
       );
-      fireEvent.change(screen.getByPlaceholderText(/tags/i), {
-        target: { value: 'tag1, tag2' },
-      });
 
       // Submit
       const saveBtn = screen.getByRole('button', { name: /save to archive/i });
@@ -717,7 +714,7 @@ describe('CoordinationNotes', () => {
       expect(screen.getByText('2 to do')).toBeInTheDocument();
     });
 
-    it('renders NoteCard with old recall badge (>300 days), contributor avatars, and tags', async () => {
+    it('renders NoteCard with old recall badge (>300 days) and contributor avatars', async () => {
       const oldDate = new Date(Date.now() - 310 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
       const customNotes = [
         {
@@ -740,14 +737,12 @@ describe('CoordinationNotes', () => {
       await screen.findByText('Old Planning');
       // "1 yr" recall badge should be visible
       expect(screen.getByText('1 yr')).toBeInTheDocument();
-      // Tag string should be rendered as "#planning #q3"
-      expect(screen.getByText('#planning #q3')).toBeInTheDocument();
       // Contributor initials or title should be rendered inside Avatar
       // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
       expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
     });
 
-    it('toggles NoteForm type and parses tags with deduplication and hash removal', async () => {
+    it('toggles NoteForm type and saves note', async () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
@@ -765,9 +760,6 @@ describe('CoordinationNotes', () => {
       fireEvent.change(screen.getByPlaceholderText(/a short title/i), {
         target: { value: 'Deduplication Note' },
       });
-      fireEvent.change(screen.getByPlaceholderText(/tags/i), {
-        target: { value: '#welcome, retreat, #retreat, welcome' },
-      });
 
       const saveBtn = screen.getByRole('button', { name: /save to archive/i });
       fireEvent.click(saveBtn);
@@ -777,7 +769,7 @@ describe('CoordinationNotes', () => {
           expect.anything(),
           expect.objectContaining({
             type: 'learning',
-            tags: ['welcome', 'retreat'], // Deduplicated, hashes removed
+            tags: [],
           })
         );
       });

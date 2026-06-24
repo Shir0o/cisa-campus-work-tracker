@@ -20,7 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/prayer': 'Prayer',
   '/history': 'Looking back',
   '/settings': 'Settings',
-  '/coordination': 'The Board',
+  '/coordination': 'Coordination Notes',
   '/feedback': 'Feedback',
   '/admin/feedback': 'Feedback',
 };

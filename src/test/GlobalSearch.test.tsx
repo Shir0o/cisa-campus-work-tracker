@@ -165,7 +165,7 @@ describe('GlobalSearch', () => {
     typeDesktop('plan');
     expect(screen.getAllByText('People').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Conversations').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('The Board').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Coordination Notes').length).toBeGreaterThan(0);
 
     // History is opt-in behind a pill toggle.
     expect(screen.queryAllByText('History').length).toBe(0);
@@ -179,7 +179,7 @@ describe('GlobalSearch', () => {
     typeDesktop('plan');
     expect(screen.getAllByText('People').length).toBeGreaterThan(0);
     expect(screen.queryAllByText('Conversations').length).toBe(0);
-    expect(screen.queryAllByText('The Board').length).toBe(0);
+    expect(screen.queryAllByText('Coordination Notes').length).toBe(0);
     expect(screen.queryAllByRole('button', { name: /search history too/i }).length).toBe(0);
   });
 

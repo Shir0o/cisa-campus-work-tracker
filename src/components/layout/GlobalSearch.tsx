@@ -508,7 +508,7 @@ export default function GlobalSearch() {
 
           {boardResults.length > 0 && (
             <div>
-              <GroupLabel>The Board</GroupLabel>
+              <GroupLabel>Coordination Notes</GroupLabel>
               {boardResults.map((n) => (
                 <Row
                   key={n.id}

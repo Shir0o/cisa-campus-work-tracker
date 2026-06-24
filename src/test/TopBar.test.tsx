@@ -120,7 +120,7 @@ describe('TopBar Component', () => {
     ['/attendance', 'Gatherings'],
     ['/prayer', 'Prayer'],
     ['/history', 'Looking back'],
-    ['/coordination', 'The Board'],
+    ['/coordination', 'Coordination Notes'],
     ['/feedback', 'Feedback'],
     ['/admin/feedback', 'Feedback'],
   ])('renders %s as "%s"', (route, expectedTitle) => {

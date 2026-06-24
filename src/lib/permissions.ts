@@ -53,7 +53,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/prayer', label: 'Prayer', minRole: 'viewer' },
-  { href: '/coordination', label: 'The Board', minRole: 'admin' },
+  { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 

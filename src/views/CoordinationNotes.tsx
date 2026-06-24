@@ -52,6 +52,7 @@ import {
   PanelLeftOpen,
   Users,
   Sparkles,
+  AtSign,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -468,7 +469,7 @@ export default function CoordinationNotes() {
       if (kind === 'Records' && n.type !== 'record') return false;
       if (kind === 'Learnings' && n.type !== 'learning') return false;
       if (ql) {
-        const hay = `${n.title} ${n.body} ${n.series} ${(n.tags || []).join(' ')}`.toLowerCase();
+        const hay = `${n.title} ${n.body} ${n.series}`.toLowerCase();
         if (!hay.includes(ql)) return false;
       }
       return true;
@@ -491,7 +492,7 @@ export default function CoordinationNotes() {
           </div>
           <h2 className="font-serif text-2xl mb-3 text-on-background">A space for the core team</h2>
           <p className="text-on-surface-variant leading-relaxed">
-            The Board is where the full-time team thinks together. It's kept to administrators. If you think you should
+            Coordination Notes is where the full-time team thinks together. It's kept to administrators. If you think you should
             be here, ask an administrator to widen your access.
           </p>
         </div>
@@ -505,7 +506,7 @@ export default function CoordinationNotes() {
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div className="max-w-2xl">
           <div className="text-sm text-on-surface-variant mb-1">{weekdayOf(todayISO())}, {dateLabelOf(todayISO())}</div>
-          <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">The Board</h1>
+          <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">Coordination Notes</h1>
           <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
             One <b className="text-on-surface font-medium">page per gathering</b>, kept by date — what you talked
             through, who's carrying what, what you learned. Write it like a doc; nothing important should live in one
@@ -898,6 +899,162 @@ function DocRow({ d, active, liveMd, onClick }: { d: BoardDoc; active: boolean; 
   );
 }
 
+// ── Note Composer Popover ───────────────────────────────────────────────────
+function NoteComposer({
+  anchorRect,
+  initialText,
+  seriesOptions,
+  onClose,
+  onSaved,
+  meUid,
+  meName,
+  sessionId,
+}: {
+  anchorRect: { top: number; left: number };
+  initialText: string;
+  seriesOptions: string[];
+  onClose: () => void;
+  onSaved?: (msg: string) => void;
+  meUid: string;
+  meName: string;
+  sessionId: string;
+}) {
+  const [type, setType] = useState<NoteType>('record');
+  const [series, setSeries] = useState(seriesOptions[0] || 'Team');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState(initialText);
+  const [saving, setSaving] = useState(false);
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  React.useLayoutEffect(() => {
+    const h = cardRef.current?.offsetHeight ?? 260;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const left = Math.min(Math.max(anchorRect.left - 160, 12), vw - 332);
+    let top = anchorRect.top + 14;
+    if (top + h > vh - 12) top = Math.max(12, anchorRect.top - h - 14);
+    setPos({ left, top });
+  }, [anchorRect]);
+
+  const handleSave = async () => {
+    if (!title.trim() || saving) return;
+    setSaving(true);
+    try {
+      const ref = doc(collection(db, 'board_notes'));
+      await setDoc(ref, {
+        type,
+        series,
+        title: title.trim() || 'Untitled note',
+        body: body.trim(),
+        date: todayISO(),
+        contributorIds: [meUid],
+        tags: [],
+        sessionId: sessionId || '',
+        createdAt: serverTimestamp(),
+        createdBy: meUid,
+        createdByName: meName,
+        updatedAt: serverTimestamp(),
+        updatedBy: meUid,
+        updatedByName: meName,
+      });
+      logActivity({
+        action: type === 'learning' ? 'recorded a learning' : 'saved a record',
+        targetId: ref.id,
+        targetName: title || 'Note',
+        targetType: 'comment',
+        type: 'create',
+        description: series,
+      } as never);
+      onSaved?.(`Note saved to ${series}.`);
+      onClose();
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'board_notes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100]" onClick={onClose}>
+      <div
+        ref={cardRef}
+        onClick={(e) => e.stopPropagation()}
+        style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
+        className="bg-surface rounded-2xl border border-outline-variant p-4 shadow-xl flex flex-col space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif text-sm font-semibold text-on-surface">Make note/learning</h3>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-0.5">
+            {(['record', 'learning'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setType(k)}
+                className={cn(
+                  'px-2 py-1 rounded-lg text-[11px] font-medium capitalize transition-colors',
+                  type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+          <select
+            value={series}
+            onChange={(e) => setSeries(e.target.value)}
+            className="bg-surface border border-outline-variant rounded-xl px-2 py-1 text-xs text-on-surface-variant focus:outline-none focus:border-stage-accent"
+          >
+            {seriesOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <input
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="Note title"
+          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+          autoFocus
+        />
+
+        <textarea
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          rows={3}
+          placeholder="Note content..."
+          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors resize-y leading-relaxed"
+        />
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded-xl hover:bg-surface-container transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!title.trim() || saving}
+            className="px-3 py-1.5 bg-primary text-on-primary text-xs font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
+          >
+            Save Note
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── The live document editor ──────────────────────────────────────────────────
 function DocEditor({
   doc: d,
@@ -943,14 +1100,15 @@ function DocEditor({
   const [peers, setPeers] = useState<{ id: number; name: string; color: string }[]>([]);
   const [title, setTitle] = useState(d.title);
 
-  // Highlight → "Make a to-do": a floating button over the current selection, and
-  // the composer it opens (anchored to the selection, prefilled with the text).
+  // Highlight → floating bubble menu over selection:
   const canvasRef = useRef<HTMLDivElement>(null);
   const [fab, setFab] = useState<{ text: string; top: number; left: number } | null>(null);
   const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+  const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+  const [assignMenuOpen, setAssignMenuOpen] = useState(false);
 
   const refreshSelectionFab = () => {
-    if (todoFromSelection || showSource) {
+    if (todoFromSelection || noteFromSelection || showSource) {
       setFab(null);
       return;
     }
@@ -978,6 +1136,50 @@ function DocEditor({
     setTodoFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
     setFab(null);
   };
+
+  const openNoteFromFab = () => {
+    if (!fab) return;
+    setNoteFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
+    setFab(null);
+  };
+
+  const handleAssignDirectly = async (member: TeamMember) => {
+    if (!fab) return;
+    const taskTitle = fab.text;
+    setFab(null);
+    setAssignMenuOpen(false);
+
+    const sel = window.getSelection();
+    if (sel) sel.removeAllRanges();
+
+    try {
+      await addTodo(
+        {
+          title: taskTitle,
+          assigneeId: member.uid,
+          dueDate: null,
+          source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
+        },
+        { uid: meUid, name: meName }
+      );
+      onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Keyboard shortcut: pressing `@` key while selection FAB is active opens Direct Assignment menu
+  useEffect(() => {
+    if (!fab) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '@') {
+        e.preventDefault();
+        setAssignMenuOpen((v) => !v);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [fab]);
 
   // AI Insights States
   const [analyzing, setAnalyzing] = useState(false);
@@ -1625,16 +1827,58 @@ function DocEditor({
         )}
       </div>
 
-      {/* Highlight → "Make a to-do" floating button */}
-      {fab && !todoFromSelection && (
-        <button
+      {/* Highlight → Selection Menu */}
+      {fab && !todoFromSelection && !noteFromSelection && (
+        <div
           onMouseDown={(e) => e.preventDefault()}
-          onClick={openTodoFromFab}
           style={{ position: 'fixed', top: fab.top - 44, left: fab.left, transform: 'translateX(-50%)' }}
-          className="z-[110] inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-on-surface text-surface text-xs font-semibold shadow-lg hover:opacity-90 transition-opacity"
+          className="z-[110] flex items-center bg-on-surface text-surface rounded-full shadow-lg h-9 px-1.5 gap-1 select-none"
         >
-          <CheckSquare className="w-3.5 h-3.5" /> Make a to-do
-        </button>
+          <button
+            onClick={openTodoFromFab}
+            className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
+            title="Make a to-do"
+          >
+            <CheckSquare className="w-3.5 h-3.5" /> Todo
+          </button>
+
+          <div className="w-px h-4 bg-surface/20" />
+
+          <button
+            onClick={openNoteFromFab}
+            className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
+            title="Make into note/learning"
+          >
+            <Feather className="w-3.5 h-3.5" /> Note/Learning
+          </button>
+
+          <div className="w-px h-4 bg-surface/20" />
+
+          <div className="relative">
+            <button
+              onClick={() => setAssignMenuOpen(!assignMenuOpen)}
+              className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
+              title="Assign to member"
+            >
+              <AtSign className="w-3.5 h-3.5" /> Assign
+            </button>
+            
+            {assignMenuOpen && (
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 bg-on-surface border border-surface/10 rounded-xl shadow-xl py-1 w-44 flex flex-col z-[120] max-h-48 overflow-y-auto animate-in fade-in slide-in-from-bottom-2 duration-150">
+                {team.map((m) => (
+                  <button
+                    key={m.uid}
+                    onClick={() => handleAssignDirectly(m)}
+                    className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface/15 text-left text-xs font-medium w-full text-surface transition-colors"
+                  >
+                    <PersonAvatar name={m.name} photoURL={m.photoURL} size="xs" />
+                    <span className="truncate">{m.name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Composer anchored to the selection */}
@@ -1649,6 +1893,20 @@ function DocEditor({
           meName={meName}
           onClose={() => setTodoFromSelection(null)}
           onSaved={onToast}
+        />
+      )}
+
+      {/* Note Composer anchored to the selection */}
+      {noteFromSelection && (
+        <NoteComposer
+          anchorRect={noteFromSelection.rect}
+          initialText={noteFromSelection.text}
+          seriesOptions={BOARD_SERIES}
+          onClose={() => setNoteFromSelection(null)}
+          onSaved={onToast}
+          meUid={meUid}
+          meName={meName}
+          sessionId={d.id}
         />
       )}
     </div>
@@ -1711,11 +1969,6 @@ function NoteCard({
             </div>
           ))}
         </div>
-        {(n.tags || []).length > 0 && (
-          <span className="text-[11.5px] text-on-surface-variant/70 truncate ml-auto text-right">
-            {(n.tags || []).map((t) => `#${t}`).join(' ')}
-          </span>
-        )}
       </div>
     </article>
   );
@@ -1735,10 +1988,6 @@ function NoteForm({
   const [series, setSeries] = useState(seriesOptions[0] || 'Team');
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
-  const [tags, setTags] = useState('');
-
-  const parseTags = (s: string) =>
-    Array.from(new Set(s.split(/[,\s]+/).map((t) => t.replace(/^#/, '').trim()).filter(Boolean)));
 
   const field =
     'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
@@ -1780,7 +2029,6 @@ function NoteForm({
         placeholder="What happened, or what you learned…"
         className={cn(field, 'resize-y leading-relaxed')}
       />
-      <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="Tags — welcome, retreat, follow-up" className={field} />
       <div className="flex gap-2.5 justify-end">
         <button
           onClick={onCancel}
@@ -1789,7 +2037,7 @@ function NoteForm({
           Cancel
         </button>
         <button
-          onClick={() => onSave({ type, series, title, body, tags: parseTags(tags) })}
+          onClick={() => onSave({ type, series, title, body, tags: [] })}
           disabled={!title.trim()}
           className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
         >
