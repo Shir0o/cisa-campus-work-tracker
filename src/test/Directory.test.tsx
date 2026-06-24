@@ -270,10 +270,15 @@ describe('Directory', () => {
     });
 
     // Select all
-    const selectAllLabel = screen.getByText((_content, element) => {
-      return element?.tagName.toLowerCase() === 'span' && element.textContent?.includes('3 people') === true;
-    }).closest('label')!;
-    fireEvent.click(selectAllLabel);
+    let selectAllLabel: HTMLElement | null = null;
+    await waitFor(() => {
+      const span = screen.getByText((_content, element) => {
+        return element?.tagName.toLowerCase() === 'span' && element.textContent?.includes('3 people') === true;
+      });
+      selectAllLabel = span.closest('label');
+      expect(selectAllLabel).not.toBeNull();
+    });
+    fireEvent.click(selectAllLabel!);
     expect(screen.getByText('3 selected')).toBeInTheDocument();
 
     // Deselect all
