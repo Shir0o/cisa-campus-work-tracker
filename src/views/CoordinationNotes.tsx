@@ -90,7 +90,7 @@ import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
-import { setTodoDone, deleteTodo } from '../lib/todos';
+import { setTodoDone, deleteTodo, addTodo } from '../lib/todos';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -1871,7 +1871,7 @@ function DocEditor({
                     onClick={() => handleAssignDirectly(m)}
                     className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface/15 text-left text-xs font-medium w-full text-surface transition-colors"
                   >
-                    <PersonAvatar name={m.name} photoURL={m.photoURL} size="xs" />
+                    <PersonAvatar person={m} size="xs" />
                     <span className="truncate">{m.name}</span>
                   </button>
                 ))}
