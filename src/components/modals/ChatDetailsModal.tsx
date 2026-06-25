@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, UserPlus, LogOut, User, Loader2, Mail, ShieldAlert } from 'lucide-react';
-import { collection, query, where, getDocs, doc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { AppUser, ChatRoom, Contact } from '../../types';
 import { useAuth } from '../AuthProvider';
@@ -69,9 +69,9 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
         if (!otherUid) return;
         
         // Find other user email
-        const userDoc = await getDocs(query(collection(db, 'users'), where('__name__', '==', otherUid)));
-        if (userDoc.empty) return;
-        const otherUserEmail = userDoc.docs[0].data().email;
+        const userDocSnap = await getDoc(doc(db, 'users', otherUid));
+        if (!userDocSnap.exists()) return;
+        const otherUserEmail = userDocSnap.data().email;
 
         // Query contact by email
         const contactsQuery = query(

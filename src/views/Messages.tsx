@@ -300,7 +300,7 @@ export default function Messages() {
         setLoadingRooms(false);
       }
     } else if (attachment.type === 'interaction') {
-      openLogInteraction();
+      navigate('/history');
     } else if (attachment.type === 'todo') {
       navigate('/my-day');
     } else if (attachment.type === 'event') {
