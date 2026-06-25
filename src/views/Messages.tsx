@@ -47,7 +47,6 @@ export default function Messages() {
   const { user: currentUser, role: userRole } = useAuth();
   const { setSelectedContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
-
   // Modals state
   const [createChatOpen, setCreateChatOpen] = useState(false);
   const [chatDetailsOpen, setChatDetailsOpen] = useState(false);
@@ -108,6 +107,7 @@ export default function Messages() {
 
   // 2. Fetch Active Room Messages
   useEffect(() => {
+
     if (!activeRoomId) {
       setMessages([]);
       return;
@@ -130,7 +130,9 @@ export default function Messages() {
 
       // Scroll to bottom
       setTimeout(() => {
-        messageEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (typeof messageEndRef.current?.scrollIntoView === 'function') {
+          messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       }, 100);
     }, (error) => {
       console.error('Error fetching messages:', error);
