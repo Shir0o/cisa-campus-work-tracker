@@ -13,6 +13,7 @@ import {
   HeartHandshake,
   History as HistoryIcon,
   Settings as SettingsIcon,
+  MessageSquare,
   FileText,
   LogOut,
   X
@@ -75,6 +76,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     '/attendance': CalendarCheck,
     '/prayer': HeartHandshake,
     '/coordination': FileText,
+    '/messages': MessageSquare,
     '/settings': SettingsIcon,
   };
 

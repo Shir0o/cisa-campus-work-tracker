@@ -76,10 +76,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory'],
-    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/my-day'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/messages'],
+    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/messages'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/my-day', '/messages'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -184,6 +184,7 @@ describe('Sidebar nav items', () => {
     renderSidebar();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.getByText('Messages')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
@@ -215,10 +216,10 @@ describe('Sidebar nav items', () => {
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('admin: sees all 9 nav items', () => {
+  it('admin: sees all 10 nav items', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Settings'];
+    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Messages', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

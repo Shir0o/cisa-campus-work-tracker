@@ -194,3 +194,41 @@ export interface Feedback {
   viewport?: string;
   archived?: boolean;
 }
+
+export interface ChatAttachment {
+  type: 'contact' | 'interaction' | 'event' | 'todo' | 'note' | 'prayer' | 'feedback' | 'phone';
+  id: string;
+  name: string;
+  subtitle?: string;
+  status?: string;
+  priority?: string;
+}
+
+export interface ChatRoom {
+  id: string;
+  type: 'direct' | 'group';
+  name?: string;
+  memberIds: string[];
+  createdById: string;
+  createdByName: string;
+  createdAt: any;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    senderName: string;
+    timestamp: any;
+  };
+}
+
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  text: string;
+  senderId: string;
+  senderName: string;
+  senderPhoto?: string;
+  timestamp: any;
+  type: 'text' | 'system';
+  attachments?: ChatAttachment[];
+}
+
