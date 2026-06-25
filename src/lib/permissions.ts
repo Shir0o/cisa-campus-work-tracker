@@ -32,6 +32,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/attendance': 'viewer',
   '/prayer': 'viewer',
   '/settings': 'viewer',
+  '/messages': 'viewer',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
   '/coordination': 'admin',
@@ -54,6 +55,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/prayer', label: 'Prayer', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'admin' },
+  { href: '/messages', label: 'Messages', minRole: 'viewer' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 
