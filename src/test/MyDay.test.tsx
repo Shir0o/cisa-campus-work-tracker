@@ -1,12 +1,11 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, updateDoc } from 'firebase/firestore';
+import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
 import { useAuth } from '../components/AuthProvider';
-import React from 'react';
 import { format } from 'date-fns';
 
-// Mock dependencies (mirrors Dashboard.test.tsx)
+// ── Mocks ──────────────────────────────────────────────────────────────
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
@@ -41,13 +40,14 @@ vi.mock('firebase/firestore', () => ({
   collectionGroup: vi.fn((_db: unknown, group: string) => ({ path: group })),
   doc: vi.fn(),
   updateDoc: vi.fn(() => Promise.resolve()),
+  deleteDoc: vi.fn(() => Promise.resolve()),
   getDoc: vi.fn(),
   setDoc: vi.fn(),
-  addDoc: vi.fn(),
+  addDoc: vi.fn(() => Promise.resolve()),
   serverTimestamp: vi.fn(),
   Timestamp: class MockTimestamp {
     static now() { return new MockTimestamp(); }
-    static fromDate(d: Date) { return new MockTimestamp(); }
+    static fromDate(_d: Date) { return new MockTimestamp(); }
     toDate() { return new Date(); }
   },
 }));
@@ -55,51 +55,85 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
-  OperationType: { LIST: 'LIST', UPDATE: 'UPDATE' },
+  OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE', DELETE: 'DELETE', WRITE: 'WRITE' },
 }));
 
-// A single doc whose data satisfies every collection's mapping (contacts,
-// stages, events, prayers, tasks, interactions/comments). Returned to all
-// subscriptions to populate every section at once.
+// New My Day libs — mocked so we can drive subscription data and assert calls.
+// (todos stays real so dueChip / presets run against the mocked firestore.)
+const h = vi.hoisted(() => ({
+  saveUserPreferences: vi.fn(),
+  addPersonalPrayer: vi.fn(),
+  updatePersonalPrayer: vi.fn(),
+  deletePersonalPrayer: vi.fn(),
+  updatePrayerStatus: vi.fn(),
+  openMessage: vi.fn(),
+  prefsData: {} as any,
+  personalPrayersData: [] as any[],
+}));
+vi.mock('../lib/userPreferences', () => ({
+  subscribeUserPreferences: (_uid: string, cb: any) => {
+    cb(h.prefsData);
+    return vi.fn();
+  },
+  saveUserPreferences: (...a: any[]) => h.saveUserPreferences(...a),
+}));
+vi.mock('../lib/personalPrayers', () => ({
+  subscribePersonalPrayers: (_uid: string, cb: any) => {
+    cb(h.personalPrayersData);
+    return vi.fn();
+  },
+  addPersonalPrayer: (...a: any[]) => h.addPersonalPrayer(...a),
+  updatePersonalPrayer: (...a: any[]) => h.updatePersonalPrayer(...a),
+  deletePersonalPrayer: (...a: any[]) => h.deletePersonalPrayer(...a),
+}));
+vi.mock('../lib/prayers', () => ({
+  updatePrayerStatus: (...a: any[]) => h.updatePrayerStatus(...a),
+}));
+vi.mock('../lib/messaging', () => ({
+  openMessage: (...a: any[]) => h.openMessage(...a),
+}));
+
 const soonISO = new Date(Date.now() + 2 * 86_400_000).toISOString();
-const makeDoc = () => ({
-  id: 'x1',
-  ref: { path: 'contacts/x1/interactions/i1' },
-  data: () => ({
-    // contact
-    name: 'Ana Lee',
-    initials: 'AL',
-    stage: 'Regular',
-    email: 'ana@example.com',
-    notes: 'a quiet note',
-    createdAt: '2026-01-01T00:00:00.000Z',
-    createdBy: 'u-test',
-    // task
-    title: 'Plan Ana’s 1:1',
-    dueDate: soonISO,
-    status: 'pending',
-    assigneeId: 'u-test',
-    contactId: 'x1',
-    contactName: 'Ana Lee',
-    // prayer
-    date: soonISO,
-    burden: 'health and provision',
-    // event
-    order: 1,
-    // stage
-    label: 'Regular',
-    color: 'bg-stage-teal-soft text-stage-teal',
-    // touch (interaction/comment)
-    content: 'coffee chat',
-    text: 'left a comment',
-  }),
+
+// Build an onSnapshot implementation that returns specific docs per collection
+// path and empty results for everything else.
+type DocLike = { id: string; ref: { path: string }; data: () => any };
+const byPath =
+  (map: Record<string, DocLike[]>) =>
+  (ref: any, callback: any) => {
+    const p = ref?.path;
+    callback({ docs: (p && map[p]) || [], size: (p && map[p]?.length) || 0 });
+    return vi.fn();
+  };
+
+const contactDoc = (id: string, data: any): DocLike => ({
+  id,
+  ref: { path: `contacts/${id}` },
+  data: () => data,
+});
+const taskDoc = (id: string, data: any): DocLike => ({
+  id,
+  ref: { path: `tasks/${id}` },
+  data: () => data,
+});
+const prayerDoc = (id: string, data: any): DocLike => ({
+  id,
+  ref: { path: `prayers/${id}` },
+  data: () => data,
+});
+const eventDoc = (id: string, data: any): DocLike => ({
+  id,
+  ref: { path: `events/${id}` },
+  data: () => data,
 });
 
 describe('MyDay', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockClear();
-    vi.mocked(onSnapshot).mockImplementation((_, callback: any) => {
+    h.prefsData = {};
+    h.personalPrayersData = [];
+    vi.mocked(onSnapshot).mockImplementation((_: any, callback: any) => {
       callback({ docs: [], size: 0 });
       return vi.fn();
     });
@@ -109,7 +143,7 @@ describe('MyDay', () => {
   });
 
   it('renders the loading skeleton until data resolves', () => {
-    vi.mocked(onSnapshot).mockImplementation(() => vi.fn()); // never fires → stays loading
+    vi.mocked(onSnapshot).mockImplementation(() => vi.fn()); // never fires
     render(<MyDay />);
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
   });
@@ -119,9 +153,7 @@ describe('MyDay', () => {
       onError?.(new Error('permission-denied'));
       return vi.fn();
     });
-
     render(<MyDay />);
-
     expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
   });
 
@@ -144,578 +176,413 @@ describe('MyDay', () => {
         screen.getByText('Nothing on the horizon right now — a rare, quiet moment.'),
       ).toBeInTheDocument();
       expect(
-        screen.getByText("No one's in your care yet — the contacts you connect with will gather here."),
+        screen.getByText("No one's in your care yet — pick your contacts to gather them here."),
       ).toBeInTheDocument();
       expect(screen.getByText('Nothing on the calendar this week yet.')).toBeInTheDocument();
       expect(screen.getByText('No prayers in your care right now.')).toBeInTheDocument();
     });
   });
 
-  it('renders owned tasks/leaders/prayers and handles check + “I prayed”', async () => {
-    vi.mocked(onSnapshot).mockImplementation((_, callback: any) => {
-      callback({ docs: [makeDoc()], size: 1 });
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Plan Ana’s 1:1')).toBeInTheDocument();
-      expect(screen.getByText('I prayed')).toBeInTheDocument();
-    });
-
-    // Checking a task persists status to Firestore.
-    fireEvent.click(screen.getByTitle('Mark done'));
-    expect(updateDoc).toHaveBeenCalled();
-
-    // "I prayed" flips to "Prayed today" (local state).
-    fireEvent.click(screen.getByText('I prayed'));
-    await waitFor(() => {
-      expect(screen.getByText('Prayed today')).toBeInTheDocument();
-    });
-  });
-
-  it('shows "Overdue" chip for tasks with a past due date', async () => {
-    const pastISO = new Date(Date.now() - 2 * 86_400_000).toISOString();
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 'overdue-1',
-              ref: { path: 'tasks/overdue-1' },
-              data: () => ({
-                title: 'Call overdue contact',
-                dueDate: pastISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-                contactId: 'x1',
-                contactName: 'Ana Lee',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (p === 'contacts') {
-        // fire contacts so loading turns off
-        callback({ docs: [], size: 0 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-    await waitFor(() => {
-      expect(screen.getByText('Overdue')).toBeInTheDocument();
-    });
-  });
-
-  it('renders events in "Your week" section', async () => {
-    const soonEventISO = new Date(Date.now() + 1 * 86_400_000).toISOString();
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'events') {
-        callback({
-          docs: [
-            {
-              id: 'ev-1',
-              ref: { path: 'events/ev-1' },
-              data: () => ({
-                name: 'Wednesday Bible Study',
-                date: soonEventISO,
-                type: 'Bible Study',
-                location: 'Room 201',
-                order: 1,
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (p === 'contacts') {
-        callback({ docs: [], size: 0 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-    await waitFor(() => {
-      expect(screen.getByText('Wednesday Bible Study')).toBeInTheDocument();
-      expect(screen.getByText(/up next/)).toBeInTheDocument();
-    });
-  });
-
-  it('shows staleLeader nudge when a contact has not been touched in >=7 days', async () => {
-    const oldDate = new Date(Date.now() - 15 * 86_400_000).toISOString();
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'contacts') {
-        callback({
-          docs: [
-            {
-              id: 'stale-1',
-              ref: { path: 'contacts/stale-1' },
-              data: () => ({
-                name: 'John Stale',
-                initials: 'JS',
-                stage: 'Regular',
-                email: 'john@example.com',
-                notes: '',
-                createdAt: oldDate,
-                createdBy: 'u-test',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (p === 'interactions') {
-        callback({
-          docs: [
-            {
-              id: 'i-old',
-              ref: { path: 'contacts/stale-1/interactions/i-old' },
-              data: () => ({
-                content: 'had coffee',
-                createdAt: oldDate,
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-    await waitFor(() => {
-      // The nudge text is inline inside a <p> — match the paragraph by substring.
-      expect(screen.getByText(/since you sat with John/)).toBeInTheDocument();
-    });
-  });
-
-  it('renders completed tasks with line-through styling', async () => {
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 'done-1',
-              ref: { path: 'tasks/done-1' },
-              data: () => ({
-                title: 'Already finished task',
-                dueDate: soonISO,
-                status: 'completed',
-                assigneeId: 'u-test',
-                contactId: 'x1',
-                contactName: 'Ana Lee',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (p === 'contacts') {
-        callback({ docs: [], size: 0 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-    await waitFor(() => {
-      const taskTitle = screen.getByText('Already finished task');
-      expect(taskTitle.className).toContain('line-through');
-    });
-  });
-
   it('renders gracefully when user has no uid (no tasks subscription)', async () => {
-    (useAuth as any).mockReturnValue({
-      user: { displayName: 'Test User' },
-    });
-
+    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User' } });
     render(<MyDay />);
     await waitFor(() => {
       expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
-      expect(
-        screen.getByText('Nothing on the horizon right now — a rare, quiet moment.'),
-      ).toBeInTheDocument();
     });
   });
 
-  // ── dueChip variants ───────────────────────────────────────────────
-  it('covers all dueChip variant labels and styles', async () => {
-    const today = new Date();
-    const todayISO = today.toISOString();
-
-    const tomorrow = new Date(Date.now() + 86_400_000);
-    const tomorrowISO = tomorrow.toISOString();
-
-    // 3 days away
-    const soon = new Date(Date.now() + 3 * 86_400_000);
-    const soonISOStr = soon.toISOString();
-    const soonDayName = format(soon, "EEEE");
-
-    // 10 days away
-    const far = new Date(Date.now() + 10 * 86_400_000);
-    const farISO = far.toISOString();
-    const farMonthDay = format(far, "MMM d");
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 't-today',
-              ref: { path: 'tasks/t-today' },
-              data: () => ({
-                title: 'Task today',
-                dueDate: todayISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-tomorrow',
-              ref: { path: 'tasks/t-tomorrow' },
-              data: () => ({
-                title: 'Task tomorrow',
-                dueDate: tomorrowISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-soon',
-              ref: { path: 'tasks/t-soon' },
-              data: () => ({
-                title: 'Task soon',
-                dueDate: soonISOStr,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-far',
-              ref: { path: 'tasks/t-far' },
-              data: () => ({
-                title: 'Task far',
-                dueDate: farISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-          ],
-          size: 4,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Due today')).toBeInTheDocument();
-      expect(screen.getByText('Due tomorrow')).toBeInTheDocument();
-      expect(screen.getByText(`Due ${soonDayName}`)).toBeInTheDocument();
-      expect(screen.getByText(`Due ${farMonthDay}`)).toBeInTheDocument();
-    });
-  });
-
-  // ── dueChip variants ───────────────────────────────────────────────
-  it('covers all dueChip variant labels and styles', async () => {
-    const today = new Date();
-    const todayISO = today.toISOString();
-
-    const tomorrow = new Date(Date.now() + 86_400_000);
-    const tomorrowISO = tomorrow.toISOString();
-
-    // 3 days away
-    const soon = new Date(Date.now() + 3 * 86_400_000);
-    const soonISOStr = soon.toISOString();
-    const soonDayName = format(soon, "EEEE");
-
-    // 10 days away
-    const far = new Date(Date.now() + 10 * 86_400_000);
-    const farISO = far.toISOString();
-    const farMonthDay = format(far, "MMM d");
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 't-today',
-              ref: { path: 'tasks/t-today' },
-              data: () => ({
-                title: 'Task today',
-                dueDate: todayISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-tomorrow',
-              ref: { path: 'tasks/t-tomorrow' },
-              data: () => ({
-                title: 'Task tomorrow',
-                dueDate: tomorrowISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-soon',
-              ref: { path: 'tasks/t-soon' },
-              data: () => ({
-                title: 'Task soon',
-                dueDate: soonISOStr,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-            {
-              id: 't-far',
-              ref: { path: 'tasks/t-far' },
-              data: () => ({
-                title: 'Task far',
-                dueDate: farISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-          ],
-          size: 4,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Due today')).toBeInTheDocument();
-      expect(screen.getByText('Due tomorrow')).toBeInTheDocument();
-      expect(screen.getByText(`Due ${soonDayName}`)).toBeInTheDocument();
-      expect(screen.getByText(`Due ${farMonthDay}`)).toBeInTheDocument();
-    });
-  });
-
-  // ── openContact ────────────────────────────────────────────────────
-  it('opens contact details modal when clicking contact link or card', async () => {
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'contacts') {
-        callback({
-          docs: [
-            {
-              id: 'c-1',
-              ref: { path: 'contacts/c-1' },
-              data: () => ({
-                name: 'John Sheep',
-                initials: 'JS',
-                stage: 'First Contact',
-                createdBy: 'u-test',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 't-1',
-              ref: { path: 'tasks/t-1' },
-              data: () => ({
-                title: 'Task for John',
-                dueDate: soonISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-                contactId: 'c-1',
-                contactName: 'John Sheep',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    // Click contact name in task
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'John Sheep' })).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'John Sheep' }));
-
-    expect(await screen.findByRole('heading', { name: 'John Sheep', level: 2 })).toBeInTheDocument();
-  });
-
-  // ── multiple events and calendar navigation ────────────────────────
-  it('renders rest of events in "Your week" and navigates via links', async () => {
-    const nowMs = Date.now();
-    const leadEventISO = new Date(nowMs + 1 * 86_400_000).toISOString();
-    const restEventISO = new Date(nowMs + 2 * 86_400_000).toISOString();
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'events') {
-        callback({
-          docs: [
-            {
-              id: 'ev-lead',
-              ref: { path: 'events/ev-lead' },
-              data: () => ({
-                name: 'Bible Study',
-                date: leadEventISO,
-                type: 'Gathering',
-                location: 'Room 1',
-                order: 1,
-              }),
-            },
-            {
-              id: 'ev-rest',
-              ref: { path: 'events/ev-rest' },
-              data: () => ({
-                name: 'Community Dinner',
-                date: restEventISO,
-                type: 'Fellowship',
-                location: 'Hall',
-                order: 2,
-              }),
-            },
-          ],
-          size: 2,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    // Verify both events render
-    await waitFor(() => {
-      expect(screen.getByText('Bible Study')).toBeInTheDocument();
-      expect(screen.getByText('Community Dinner')).toBeInTheDocument();
-    });
-
-    // Test SectionHead links
-    const calLink = screen.getByRole('button', { name: /Full calendar/i });
-    fireEvent.click(calLink);
-    expect(mockNavigate).toHaveBeenCalledWith('/attendance');
-
-    const seeEveryoneLink = screen.getByRole('button', { name: /See everyone/i });
-    fireEvent.click(seeEveryoneLink);
-    expect(mockNavigate).toHaveBeenCalledWith('/directory');
-
-    const prayLink = screen.getByRole('button', { name: /Pray together/i });
-    fireEvent.click(prayLink);
-    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
-
-    const boardLink = screen.getByRole('button', { name: /The team's board/i });
-    fireEvent.click(boardLink);
-    expect(mockNavigate).toHaveBeenCalledWith('/coordination');
-  });
-
-  // ── toggleTask error handling ──────────────────────────────────────
-  it('handles toggleTask errors gracefully via handleFirestoreError', async () => {
-    const { handleFirestoreError } = await import('../lib/firebase');
-    const mockError = new Error('Permission denied');
-    vi.mocked(updateDoc).mockRejectedValueOnce(mockError);
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'tasks') {
-        callback({
-          docs: [
-            {
-              id: 't-error',
-              ref: { path: 'tasks/t-error' },
-              data: () => ({
-                title: 'Failing task',
-                dueDate: soonISO,
-                status: 'pending',
-                assigneeId: 'u-test',
-              }),
-            },
-          ],
-          size: 1,
-        });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
-    render(<MyDay />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Failing task')).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByTitle('Mark done'));
-
-    await waitFor(() => {
-      expect(handleFirestoreError).toHaveBeenCalledWith(
-        mockError,
-        'UPDATE',
-        'tasks'
-      );
-    });
-  });
-
-  // ── "Not connected yet" and sheep limit ────────────────────────────
-  it('shows "Not connected yet" for untouched contacts and limits sheep to 6', async () => {
-    const mock8Contacts = Array.from({ length: 8 }, (_, i) => ({
-      id: `c-${i}`,
-      ref: { path: `contacts/c-${i}` },
-      data: () => ({
-        name: `Sheep ${i}`,
-        initials: `S${i}`,
-        stage: 'First Contact',
-        createdBy: 'u-test',
-        createdAt: null,
+  // ── On the horizon: two tiers ──────────────────────────────────────────
+  it('treats a sourced task as read-only "Assigned to you" with a From link', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-team', {
+            title: 'Confirm the setlist',
+            dueDate: soonISO,
+            status: 'pending',
+            assigneeId: 'u-test',
+            createdById: 'someone-else',
+            sourceDocId: 'BD-fri',
+            sourceDocTitle: 'Friday run of show',
+          }),
+        ],
       }),
-    }));
-
-    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      const p = ref?.path;
-      if (p === 'contacts') {
-        callback({ docs: mock8Contacts, size: 8 });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
-      return vi.fn();
-    });
-
+    );
     render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Confirm the setlist')).toBeInTheDocument());
 
+    expect(screen.getByText('Assigned to you')).toBeInTheDocument();
+    expect(screen.getByText(/From Friday run of show/)).toBeInTheDocument();
+
+    // Expanding reveals a due editor but NO text input (text is read-only here).
+    fireEvent.click(screen.getByText('Confirm the setlist'));
+    await waitFor(() => expect(screen.getByText('open it on The Board')).toBeInTheDocument());
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+
+    // Adjusting the due date persists via updateTodo → updateDoc.
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    expect(updateDoc).toHaveBeenCalled();
+
+    // Jump-to-board navigates with the focus doc id.
+    fireEvent.click(screen.getByText('open it on The Board'));
+    expect(mockNavigate).toHaveBeenCalledWith('/coordination', { state: { focusDocId: 'BD-fri' } });
+  });
+
+  it('treats a sourceless self-created task as a fully editable personal task', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-mine', {
+            title: 'Plan my week',
+            dueDate: soonISO,
+            status: 'pending',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Plan my week')).toBeInTheDocument());
+
+    // No group labels when only one group is present.
+    expect(screen.queryByText('Assigned to you')).not.toBeInTheDocument();
+
+    // Expand → editable text field.
+    fireEvent.click(screen.getByText('Plan my week'));
+    const input = await screen.findByDisplayValue('Plan my week');
+    fireEvent.change(input, { target: { value: 'Plan my week carefully' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('deletes a personal task', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-mine', {
+            title: 'Throwaway task',
+            status: 'pending',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Throwaway task')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Throwaway task'));
+    fireEvent.click(await screen.findByRole('button', { name: /Delete/ }));
+    expect(deleteDoc).toHaveBeenCalled();
+  });
+
+  it('adds a personal task through the inline composer', async () => {
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Add a task')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Add a task'));
+    const input = await screen.findByPlaceholderText('What needs doing?');
+    fireEvent.change(input, { target: { value: 'A brand new task' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(addDoc).toHaveBeenCalled();
+  });
+
+  it('marks an assigned task done via the check button', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t1', {
+            title: 'Finish me',
+            status: 'pending',
+            assigneeId: 'u-test',
+            sourceDocId: 'BD-x',
+            sourceDocTitle: 'Doc',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Finish me')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle('Mark done'));
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('renders completed tasks with line-through styling', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('done-1', {
+            title: 'Already finished task',
+            status: 'completed',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
     await waitFor(() => {
-      expect(screen.getByText('Sheep 0')).toBeInTheDocument();
-      expect(screen.getAllByText('Not connected yet').length).toBeGreaterThan(0);
+      expect(screen.getByText('Already finished task').className).toContain('line-through');
     });
+  });
 
-    expect(screen.getByText('Sheep 0')).toBeInTheDocument();
-    expect(screen.getByText('Sheep 5')).toBeInTheDocument();
-    expect(screen.queryByText('Sheep 6')).not.toBeInTheDocument();
-    expect(screen.queryByText('Sheep 7')).not.toBeInTheDocument();
+  it('handles toggle errors gracefully via handleFirestoreError', async () => {
+    const { handleFirestoreError } = await import('../lib/firebase');
+    // setTodoDone wraps its own try/catch; force the firestore call to reject.
+    vi.mocked(updateDoc).mockRejectedValueOnce(new Error('Permission denied'));
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-err', { title: 'Failing task', status: 'pending', assigneeId: 'u-test', createdById: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Failing task')).toBeInTheDocument());
+    fireEvent.click(screen.getByTitle('Mark done'));
+    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());
+  });
+
+  it('covers all dueChip variant labels', async () => {
+    const iso = (d: number) => new Date(Date.now() + d * 86_400_000).toISOString();
+    const soonName = format(new Date(Date.now() + 3 * 86_400_000), 'EEEE');
+    const farName = format(new Date(Date.now() + 10 * 86_400_000), 'MMM d');
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('a', { title: 'A', dueDate: iso(0), status: 'pending', assigneeId: 'u-test', sourceDocId: 'd' }),
+          taskDoc('b', { title: 'B', dueDate: iso(1), status: 'pending', assigneeId: 'u-test', sourceDocId: 'd' }),
+          taskDoc('c', { title: 'C', dueDate: iso(3), status: 'pending', assigneeId: 'u-test', sourceDocId: 'd' }),
+          taskDoc('e', { title: 'E', dueDate: iso(10), status: 'pending', assigneeId: 'u-test', sourceDocId: 'd' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText('Due today')).toBeInTheDocument();
+      expect(screen.getByText('Due tomorrow')).toBeInTheDocument();
+      expect(screen.getByText(`Due ${soonName}`)).toBeInTheDocument();
+      expect(screen.getByText(`Due ${farName}`)).toBeInTheDocument();
+    });
+  });
+
+  // ── Your sheep ────────────────────────────────────────────────────────
+  it('lists all personal contacts (no cap) and opens the picker', async () => {
+    const contacts = Array.from({ length: 8 }, (_, i) =>
+      contactDoc(`c-${i}`, { name: `Sheep ${i}`, initials: `S${i}`, stage: 'First Contact', createdBy: 'u-test' }),
+    );
+    vi.mocked(onSnapshot).mockImplementation(byPath({ contacts }));
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Sheep 0')).toBeInTheDocument());
+    // No 6-cap anymore.
+    expect(screen.getByText('Sheep 7')).toBeInTheDocument();
+
+    // Open the picker and toggle a contact → persists via saveUserPreferences.
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    const checkboxes = await screen.findAllByRole('checkbox');
+    fireEvent.click(checkboxes[0]);
+    expect(h.saveUserPreferences).toHaveBeenCalledWith(
+      'u-test',
+      expect.objectContaining({ personalContactIds: expect.any(Array) }),
+    );
+  });
+
+  it('uses the Message button for contacts with a phone, Email otherwise', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          contactDoc('c-phone', { name: 'Phoned Friend', initials: 'PF', stage: 'Regular', createdBy: 'u-test', phone: '5551234' }),
+          contactDoc('c-email', { name: 'Emailed Friend', initials: 'EF', stage: 'Regular', createdBy: 'u-test', email: 'e@x.com' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Phoned Friend')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Message/i }));
+    expect(h.openMessage).toHaveBeenCalledWith('5551234', undefined);
+
+    const emailLink = screen.getByRole('link', { name: /Email/i });
+    expect(emailLink).toHaveAttribute('href', 'mailto:e@x.com');
+  });
+
+  it('respects an explicit personal-contacts preference and messaging app', async () => {
+    h.prefsData = { personalContactIds: ['c-keep'], desktopMessagingApp: 'google' };
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          contactDoc('c-keep', { name: 'Kept', initials: 'K', stage: 'Regular', createdBy: 'someone', phone: '999' }),
+          contactDoc('c-drop', { name: 'Dropped', initials: 'D', stage: 'Regular', createdBy: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Kept')).toBeInTheDocument());
+    // Not created by me but explicitly chosen → shows; created by me but not chosen → hidden.
+    expect(screen.queryByText('Dropped')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Message/i }));
+    expect(h.openMessage).toHaveBeenCalledWith('999', 'google');
+  });
+
+  it('shows the stale-leader nudge for a contact untouched >= 7 days', async () => {
+    const old = new Date(Date.now() - 15 * 86_400_000).toISOString();
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('stale-1', { name: 'John Stale', initials: 'JS', stage: 'Regular', createdBy: 'u-test', createdAt: old })],
+        interactions: [
+          { id: 'i', ref: { path: 'contacts/stale-1/interactions/i' }, data: () => ({ content: 'coffee', createdAt: old }) },
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText(/since you sat with John/)).toBeInTheDocument());
+  });
+
+  // ── Your week ─────────────────────────────────────────────────────────
+  it('features the soonest gathering (honest data, no "up next") and lists the rest', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        events: [
+          eventDoc('ev-lead', { name: 'Friday Gathering', date: new Date(Date.now() + 86_400_000).toISOString(), type: 'Weekly', location: 'Hall', order: 1 }),
+          eventDoc('ev-rest', { name: 'Sunday Service', date: new Date(Date.now() + 2 * 86_400_000).toISOString(), type: 'Service', location: 'Chapel', order: 2 }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering')).toBeInTheDocument();
+      expect(screen.getByText('Sunday Service')).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/up next/i)).not.toBeInTheDocument();
+  });
+
+  // ── Your prayers ──────────────────────────────────────────────────────
+  it('renders a read-only contact prayer with status pills and a Prayer Log link', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'u-test' })],
+        prayers: [prayerDoc('p-1', { contactId: 'c-1', burden: 'health and provision', status: 'pending', date: soonISO })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('health and provision')).toBeInTheDocument());
+
+    // "for {name}" appears, and there's no editing textbox (read-only).
+    expect(screen.getByRole('button', { name: 'for Mara Vale' })).toBeInTheDocument();
+
+    // Clicking a status pill writes the mapped status to the shared prayer.
+    fireEvent.click(screen.getByRole('button', { name: 'answered' }));
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything());
+
+    // Archive maps to the existing "unanswered" status.
+    fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything());
+
+    // Prayer Log link navigates to the Prayer page.
+    fireEvent.click(screen.getByRole('button', { name: /Prayer Log/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+  });
+
+  it('hides archived (unanswered) contact prayers', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara', initials: 'M', stage: 'Regular', createdBy: 'u-test' })],
+        prayers: [prayerDoc('p-arch', { contactId: 'c-1', burden: 'archived burden', status: 'unanswered', date: soonISO })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Your prayers')).toBeInTheDocument());
+    expect(screen.queryByText('archived burden')).not.toBeInTheDocument();
+  });
+
+  it('renders, edits, status-updates and deletes a personal prayer (with optional contact tag)', async () => {
+    h.personalPrayersData = [
+      { id: 'pp-1', title: 'pray for exams', contactId: null, date: soonISO, status: 'open' },
+      { id: 'pp-2', title: 'tagged prayer', contactId: 'c-1', date: soonISO, status: 'open' },
+    ];
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara', initials: 'M', stage: 'Regular', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('pray for exams')).toBeInTheDocument());
+
+    // Untagged shows "personal"; tagged shows "for {name}".
+    expect(screen.getByText('personal')).toBeInTheDocument();
+    expect(screen.getByText('tagged prayer')).toBeInTheDocument();
+
+    // Status pill → updatePersonalPrayer({status}).
+    fireEvent.click(screen.getAllByRole('button', { name: 'answered' })[0]);
+    expect(h.updatePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1', { status: 'answered' });
+
+    // Expand the first → edit + save.
+    fireEvent.click(screen.getByText('pray for exams'));
+    const input = await screen.findByDisplayValue('pray for exams');
+    fireEvent.change(input, { target: { value: 'pray for finals' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(h.updatePersonalPrayer).toHaveBeenCalledWith(
+      'u-test',
+      'pp-1',
+      expect.objectContaining({ title: 'pray for finals' }),
+    );
+
+    // The mocked update doesn't mutate data, so the row collapses back to its
+    // original title; re-open it to delete.
+    fireEvent.click(screen.getByText('pray for exams'));
+    fireEvent.click(await screen.findByRole('button', { name: /Delete/ }));
+    expect(h.deletePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1');
+  });
+
+  it('adds a personal prayer with an optional contact tag', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara', initials: 'M', stage: 'Regular', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Add a personal prayer')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Add a personal prayer'));
+    const input = await screen.findByPlaceholderText('What would you like to pray for?');
+    fireEvent.change(input, { target: { value: 'pray for the team' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'c-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(h.addPersonalPrayer).toHaveBeenCalledWith('u-test', { title: 'pray for the team', contactId: 'c-1' });
+  });
+
+  it('hides archived personal prayers', async () => {
+    h.personalPrayersData = [{ id: 'pp-x', title: 'archived personal', contactId: null, date: soonISO, status: 'archived' }];
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Your prayers')).toBeInTheDocument());
+    expect(screen.queryByText('archived personal')).not.toBeInTheDocument();
+  });
+
+  // ── Navigation ────────────────────────────────────────────────────────
+  it('wires the section navigation links', async () => {
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Your sheep')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Full calendar/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/attendance');
+    fireEvent.click(screen.getByRole('button', { name: /See everyone/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/directory');
+    fireEvent.click(screen.getByRole('button', { name: /Pray together/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+    fireEvent.click(screen.getByRole('button', { name: /The team's board/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/coordination');
+    fireEvent.click(screen.getByRole('button', { name: /Team prayers/i }));
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+  });
+
+  it('opens the contact details modal from a sheep card', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'John Sheep', initials: 'JS', stage: 'First Contact', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('John Sheep')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('John Sheep'));
+    expect(await screen.findByRole('heading', { name: 'John Sheep', level: 2 })).toBeInTheDocument();
   });
 });

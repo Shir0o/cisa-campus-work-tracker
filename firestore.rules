@@ -89,6 +89,18 @@ service cloud.firestore {
                        isValidUser(incoming()))
                     );
       allow delete: if isValidId(userId) && isAdmin();
+
+      // Personal prayers — private to the owning user; never shared. Powers the
+      // "Your prayers" personal list on My Day.
+      match /personalPrayers/{prayerId} {
+        allow read, write, delete: if isApprovedUser() && isOwner(userId);
+      }
+    }
+
+    // 2b. User Preferences — private My Day settings (personal contacts,
+    // messaging app) scoped to the owning user.
+    match /userPreferences/{userId} {
+      allow read, write: if isApprovedUser() && isOwner(userId);
     }
 
     // 3. Invitations Collection

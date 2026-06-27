@@ -328,4 +328,62 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'tasks', 'tdBad'), { ...validTask, status: 'archived' }));
     });
   });
+
+  describe('My Day — user preferences & personal prayers', () => {
+    const seedUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'u1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'u2'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
+      });
+    };
+
+    it('MP1: Owner can write and read their own preferences', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'u1' });
+      const ref = doc(db, 'userPreferences', 'u1');
+      await assertSucceeds(setDoc(ref, { personalContactIds: ['c1', 'c2'], desktopMessagingApp: 'apple' }));
+      await assertSucceeds(getDoc(ref));
+    });
+
+    it('MP2: A user cannot read or write another user’s preferences', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'userPreferences', 'u1'), { personalContactIds: ['c1'] });
+      });
+      const db = getFirestore({ uid: 'u2' });
+      await assertFails(getDoc(doc(db, 'userPreferences', 'u1')));
+      await assertFails(setDoc(doc(db, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
+    });
+
+    it('MP3: An unapproved user cannot touch their own preferences', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'pending1' });
+      await assertFails(setDoc(doc(db, 'userPreferences', 'pending1'), { personalContactIds: [] }));
+    });
+
+    it('MP4: Owner can create, read, update and delete their personal prayers', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'u1' });
+      const ref = doc(db, 'users/u1/personalPrayers/pp1');
+      await assertSucceeds(setDoc(ref, { title: 'pray for finals', contactId: null, date: '2026-05-15', status: 'open' }));
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(updateDoc(ref, { status: 'answered' }));
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('MP5: A user cannot read or write another user’s personal prayers', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users/u1/personalPrayers/pp1'), {
+          title: 'private', contactId: null, date: '2026-05-15', status: 'open',
+        });
+      });
+      const db = getFirestore({ uid: 'u2' });
+      await assertFails(getDoc(doc(db, 'users/u1/personalPrayers/pp1')));
+      await assertFails(setDoc(doc(db, 'users/u1/personalPrayers/pp2'), {
+        title: 'intruder', contactId: null, date: '2026-05-15', status: 'open',
+      }));
+    });
+  });
 });
