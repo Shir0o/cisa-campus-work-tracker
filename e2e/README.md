@@ -1,22 +1,26 @@
 # E2E permissions tests
 
 Playwright tests that sign in as **real Firebase email/password users** (one per
-role) and verify the role-based access control: sidebar nav items, route
-access/redirects, and the Quick Actions FAB.
+role) and verify the role-based access control: the landing route, the sidebar
+nav items, and route access/redirects.
 
 No Firebase emulator and no Java are required — the tests hit the real
-`sac-campus-hub` project.
+`sac-campus-hub` project. The matrix mirrors `src/lib/permissions.ts` (and its
+unit test, `src/test/permissions.test.tsx`).
 
-## Roles
+## Roles & expectations
 
-| Display name | Internal role |
-| ------------ | ------------- |
-| Full-timer   | `admin`       |
-| Trainee      | `manager`     |
-| Student      | `operator`    |
-| Community    | `viewer`      |
+| Display name | Internal role | Sidebar nav (in addition to lower roles)                |
+| ------------ | ------------- | ------------------------------------------------------- |
+| Community    | `viewer`      | Home, Gatherings, Prayer, Messages, Settings            |
+| Student      | `operator`    | + People                                                |
+| Trainee      | `manager`     | + The Journey, Looking back                             |
+| Full-timer   | `admin`       | + Coordination Notes (and the home item reads "My Day") |
 
-The actual login emails/passwords live in `e2e/.test-credentials.json` (gitignored).
+Every approved role lands on `/`; a guarded route (`/board`, `/directory`,
+`/history`, `/coordination`, `/admin/feedback`) redirects a denied role back to
+`/`. The actual login emails/passwords live in `e2e/.test-credentials.json`
+(gitignored).
 
 ## One-time setup
 
@@ -49,6 +53,16 @@ VITE_FIREBASE_API_KEY=<real-web-api-key> npm run test:e2e
 exposes `window.__e2eSignIn(email, password)` (defined in `src/lib/firebase.ts`).
 That helper is **only** present in E2E mode and never ships in the production
 bundle.
+
+## CI
+
+`.github/workflows/e2e.yml` runs this suite, but because it hits the real
+Firebase project it is **gated** — it runs only on manual dispatch ("Run
+workflow") or on a pull request that carries the `e2e` label, and is
+non-blocking (not in the required-checks ruleset). It requires two repo secrets:
+
+- `VITE_FIREBASE_API_KEY` — the Firebase web API key
+- `E2E_TEST_CREDENTIALS` — the full JSON contents of `e2e/.test-credentials.json`
 
 ## How sign-in works
 
