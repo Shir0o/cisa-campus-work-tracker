@@ -35,7 +35,20 @@ export function subscribePersonalPrayers(
   return onSnapshot(
     query(col(uid), orderBy("date", "asc")),
     (snap) =>
-      cb(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<PersonalPrayer, "id">) }))),
+      cb(
+        snap.docs.map((d) => {
+          // Default required fields so a malformed/partial doc can't produce an
+          // incomplete PersonalPrayer that breaks rendering.
+          const data = d.data() as Partial<PersonalPrayer>;
+          return {
+            id: d.id,
+            title: data.title ?? "",
+            contactId: data.contactId ?? null,
+            date: data.date ?? new Date().toISOString(),
+            status: data.status ?? "open",
+          };
+        }),
+      ),
     (e) => (onError ? onError(e) : console.error("personalPrayers subscription error", e)),
   );
 }
