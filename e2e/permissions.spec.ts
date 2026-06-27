@@ -1,8 +1,13 @@
 /**
  * End-to-end permissions validation against REAL Firebase Auth + Firestore.
  *
- * Signs in as each real test user and verifies the sidebar nav items,
- * route access / redirects, and Quick Actions FAB visibility.
+ * Signs in as each real test user and verifies the landing route, the sidebar
+ * nav items, and route access / redirects.
+ *
+ * Mirrors the matrix in src/lib/permissions.ts (and its unit test,
+ * src/test/permissions.test.tsx). Every approved role lands on `/`; guarded
+ * routes redirect a denied role back to `/`. The home nav label is role-aware:
+ * admin (Full-timer) sees "My Day", everyone else sees "Home".
  *
  * Prerequisites (see playwright.config.ts):
  *   - e2e/.test-credentials.json present
@@ -23,41 +28,54 @@ async function expectRedirectedFrom(page: Page, from: string, expectedLanding: s
   expect(new URL(page.url()).pathname).toBe(expectedLanding);
 }
 
-// role (display key) → expected nav + route access. Internal role in parens.
+// role (display key) → expected landing, nav, and route access. Internal role
+// in parens. Denied routes all redirect to `fallback`.
 const EXPECT: Record<Role, {
+  landing: string;
   nav: { present: string[]; absent: string[] };
   allowed: string[];
   denied: string[];
   fallback: string;
-  fab: boolean;
 }> = {
   community: { // viewer
-    nav: { present: ['Gatherings', 'Prayer', 'Settings'], absent: ['Today', 'The Journey', 'People', 'Looking back'] },
-    allowed: ['/attendance', '/prayer', '/settings'],
-    denied: ['/', '/board', '/directory', '/history', '/admin/feedback'],
-    fallback: '/attendance',
-    fab: false,
+    landing: '/',
+    nav: {
+      present: ['Home', 'Gatherings', 'Prayer', 'Messages', 'Settings'],
+      absent: ['The Journey', 'People', 'Looking back', 'Coordination Notes'],
+    },
+    allowed: ['/', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
+    denied: ['/board', '/directory', '/history', '/coordination', '/admin/feedback'],
+    fallback: '/',
   },
   student: { // operator
-    nav: { present: ['Today', 'People', 'Gatherings', 'Prayer', 'Settings'], absent: ['The Journey', 'Looking back'] },
-    allowed: ['/', '/directory', '/attendance', '/prayer', '/settings'],
-    denied: ['/board', '/history', '/admin/feedback'],
+    landing: '/',
+    nav: {
+      present: ['Home', 'People', 'Gatherings', 'Prayer', 'Messages', 'Settings'],
+      absent: ['The Journey', 'Looking back', 'Coordination Notes'],
+    },
+    allowed: ['/', '/directory', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
+    denied: ['/board', '/history', '/coordination', '/admin/feedback'],
     fallback: '/',
-    fab: true,
   },
   trainee: { // manager
-    nav: { present: ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Settings'], absent: [] },
-    allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings'],
-    denied: ['/admin/feedback'],
+    landing: '/',
+    nav: {
+      present: ['Home', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Messages', 'Settings'],
+      absent: ['Coordination Notes'],
+    },
+    allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
+    denied: ['/coordination', '/admin/feedback'],
     fallback: '/',
-    fab: true,
   },
-  fulltimer: { // admin
-    nav: { present: ['Today', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Settings'], absent: [] },
-    allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings', '/admin/feedback'],
+  fulltimer: { // admin — home nav label is "My Day", not "Home"
+    landing: '/',
+    nav: {
+      present: ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Messages', 'Settings'],
+      absent: [],
+    },
+    allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/messages', '/settings', '/feedback', '/coordination', '/admin/feedback'],
     denied: [],
     fallback: '/',
-    fab: true,
   },
 };
 
@@ -67,6 +85,10 @@ for (const role of Object.keys(EXPECT) as Role[]) {
   test.describe(`Role: ${role}`, () => {
     test.beforeEach(async ({ page }) => {
       await signInAs(page, role);
+    });
+
+    test('lands on the default route', async ({ page }) => {
+      expect(new URL(page.url()).pathname).toBe(spec.landing);
     });
 
     test('sidebar shows correct nav items', async ({ page }) => {
@@ -82,7 +104,10 @@ for (const role of Object.keys(EXPECT) as Role[]) {
     test('allowed routes stay put', async ({ page }) => {
       for (const route of spec.allowed) {
         await page.goto(route);
-        await page.waitForLoadState('networkidle');
+        // Firebase keeps connections open, so 'networkidle' never fires — wait
+        // for the authed app shell to render instead, then assert the guard
+        // didn't bounce us elsewhere.
+        await page.getByLabel('Main Navigation').waitFor({ state: 'visible', timeout: 20_000 });
         expect(new URL(page.url()).pathname).toBe(route);
       }
     });
@@ -94,11 +119,5 @@ for (const role of Object.keys(EXPECT) as Role[]) {
         }
       });
     }
-
-    test('Quick Actions FAB visibility', async ({ page }) => {
-      const fab = page.getByRole('button', { name: /quick actions/i });
-      if (spec.fab) await expect(fab).toBeVisible();
-      else await expect(fab).toHaveCount(0);
-    });
   });
 }
