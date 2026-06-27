@@ -76,10 +76,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/messages'],
     manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/messages'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/my-day', '/messages'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -134,14 +134,14 @@ describe('hasMinRole()', () => {
 // ─── 3. defaultRouteForRole() ────────────────────────────────────────────────
 
 describe('defaultRouteForRole()', () => {
-  it('sends operator+ to dashboard', () => {
+  it('sends every approved role to the role-based home', () => {
     expect(defaultRouteForRole('admin')).toBe('/');
     expect(defaultRouteForRole('manager')).toBe('/');
     expect(defaultRouteForRole('operator')).toBe('/');
+    expect(defaultRouteForRole('viewer')).toBe('/');
   });
 
-  it('sends viewer to attendance', () => {
-    expect(defaultRouteForRole('viewer')).toBe('/attendance');
+  it('sends a null/unknown role to attendance', () => {
     expect(defaultRouteForRole(null)).toBe('/attendance');
   });
 });
@@ -179,9 +179,10 @@ describe('roleLabel()', () => {
 describe('Sidebar nav items', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows only Gatherings, Prayer, Settings', () => {
+  it('viewer: shows Home, Gatherings, Prayer, Settings', () => {
     currentUser = TEST_USERS.viewer;
     renderSidebar();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Messages')).toBeInTheDocument();
@@ -193,20 +194,21 @@ describe('Sidebar nav items', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('operator: adds Today and People, still no The Journey or Looking back', () => {
+  it('operator: adds People, labels home "Home", still no The Journey or Looking back', () => {
     currentUser = TEST_USERS.operator;
     renderSidebar();
-    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: adds The Journey and Looking back, everything except Settings admin-tools', () => {
+  it('manager: adds The Journey and Looking back, home labeled "Home"', () => {
     currentUser = TEST_USERS.manager;
     renderSidebar();
-    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
@@ -214,15 +216,18 @@ describe('Sidebar nav items', () => {
     expect(screen.getByText('Prayer')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
+    expect(screen.queryByText('Today')).not.toBeInTheDocument();
   });
 
-  it('admin: sees all 10 nav items', () => {
+  it('admin: sees all nav items with the home labeled "My Day"', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['Today', 'My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Messages', 'Settings'];
+    const labels = ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Messages', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }
+    expect(screen.queryByText('Today')).not.toBeInTheDocument();
+    expect(screen.queryByText('Home')).not.toBeInTheDocument();
   });
 });
 
@@ -241,26 +246,26 @@ describe('MobileNav', () => {
     expect(screen.queryByRole('button', { name: /search/i })).not.toBeInTheDocument();
   });
 
-  it('operator: shows Dashboard and Contacts with search FAB', () => {
+  it('operator: shows Home and Contacts with search FAB', () => {
     currentUser = TEST_USERS.operator;
     renderMobileNav();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('manager: shows Dashboard and Contacts with search FAB', () => {
+  it('manager: shows Home and Contacts with search FAB', () => {
     currentUser = TEST_USERS.manager;
     renderMobileNav();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
-  it('admin: shows Dashboard and Contacts with search FAB', () => {
+  it('admin: shows Home and Contacts with search FAB', () => {
     currentUser = TEST_USERS.admin;
     renderMobileNav();
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Contacts')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });

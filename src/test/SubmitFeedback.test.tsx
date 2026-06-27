@@ -129,7 +129,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
     });
   });
 
-  it('"Go to Dashboard" navigates to /', async () => {
+  it('"Go home" navigates to /', async () => {
     const user = userEvent.setup();
     render(<SubmitFeedback />);
 
@@ -141,7 +141,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
       expect(screen.getByText('We got your note.')).toBeInTheDocument();
     });
 
-    await user.click(screen.getByText('Go to Dashboard'));
+    await user.click(screen.getByText('Go home'));
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 

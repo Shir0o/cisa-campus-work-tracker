@@ -24,8 +24,7 @@ export function roleLabel(role: AppRole | string | null): string {
 }
 
 const ROUTE_MIN_ROLE: Record<string, AppRole> = {
-  '/': 'operator',
-  '/my-day': 'admin',
+  '/': 'viewer',
   '/board': 'manager',
   '/directory': 'operator',
   '/history': 'manager',
@@ -47,8 +46,7 @@ export interface NavItem {
 // Field Notes (#10) — warm, human nav labels. Route hrefs are unchanged; only
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Today', minRole: 'operator' },
-  { href: '/my-day', label: 'My Day', minRole: 'admin' },
+  { href: '/', label: 'Home', minRole: 'viewer' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
@@ -72,6 +70,6 @@ export function hasMinRole(role: AppRole | string | null, min: AppRole): boolean
 }
 
 export function defaultRouteForRole(role: AppRole | string | null): string {
-  if (hasMinRole(role, 'operator')) return '/';
+  if (hasMinRole(role, 'viewer')) return '/';
   return '/attendance';
 }

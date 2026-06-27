@@ -38,7 +38,7 @@ export default function MobileNav() {
               )}>
                 <LayoutDashboard className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Dashboard</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
             </>
           )}
         </NavLink>

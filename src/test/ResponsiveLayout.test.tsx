@@ -64,9 +64,9 @@ describe('Responsive Layout Components', () => {
     expect(logOutBtn.closest('button')).toBeInTheDocument();
   });
 
-  it('Accessibility: MobileNav shows Dashboard and Contacts links for admin', () => {
+  it('Accessibility: MobileNav shows Home and Contacts links for admin', () => {
     renderWithRouter(<MobileNav />);
-    expect(screen.getByText(/Dashboard/i)).toBeInTheDocument();
+    expect(screen.getByText(/Home/i)).toBeInTheDocument();
     expect(screen.getByText(/Contacts/i)).toBeInTheDocument();
   });
 });

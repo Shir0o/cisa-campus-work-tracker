@@ -207,6 +207,13 @@ service cloud.firestore {
       allow read: if isApprovedUser();
       allow create, update: if isValidId(eventId) && isOperator() && isValidEvent(incoming());
       allow delete: if isValidId(eventId) && isManager();
+
+      // RSVPs — one doc per attendee, keyed by uid. Any approved user may read
+      // (staff see who's coming); a user may only create/delete their own.
+      match /rsvps/{uid} {
+        allow read: if isApprovedUser();
+        allow create, delete: if isApprovedUser() && isOwner(uid);
+      }
     }
 
     // 7. Activities Collection
@@ -441,6 +448,10 @@ service cloud.firestore {
       allow list: if isApprovedUser();
     }
     match /{path=**}/comments/{commentId} {
+      allow list: if isApprovedUser();
+    }
+    // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
+    match /{path=**}/rsvps/{rsvpId} {
       allow list: if isApprovedUser();
     }
   }

@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- Made the home route (`/`) a **role-based landing**: Full-timers get the **My Day** cockpit, while Trainees (your caseload + the prayers you're carrying), Students (upcoming gatherings + friends to pray for), and Community members (open gatherings + a way to reach a Full-timer) each get a tailored home. Built real **event RSVP** (`events/{eventId}/rsvps/{uid}`, with a `setRsvp`/`subscribeEventRsvps`/`subscribeMyRsvps` lib and matching Firestore rules) — members RSVP from their landing and staff see a read-only "going" count on the Attendance "Coming up" list. Community "Reach out" opens a direct message to a Full-timer (with a `mailto:` fallback). Extracted the shared My Day building blocks (avatar, stage chip, section head, prayer rows, reach card, personal-prayer composer) into `src/components/landing/` for reuse.
 - Reworked the **My Day** page to the updated design: two-tier to-dos (read-only "Assigned to you" team to-dos with a "From [doc]" tap-through vs. fully-editable personal tasks, plus an inline composer); a "Your contacts" picker persisted to a new `userPreferences/{uid}` doc; corporate-prayer status controls (with a "→ Prayer Log" link) plus private, fully-editable personal prayers (new `users/{uid}/personalPrayers` collection) that can be optionally tagged to a contact; an SMS/Google-Messages "Message" contact action; and a richer "Your week" featured card. Added Firestore rules for the two new per-user collections.
 - Expanded unit-test coverage for core components and views, targeting `ContactDetailsModal.tsx` (blur validation, contact edit/delete, comment replies, and history), `Sidebar.tsx`, `Directory.tsx`, and `PrayerList.tsx` to cover async state changes and lifecycle events. Ratcheted the Vitest coverage thresholds to the new baselines (83% lines, 81% statements, 75% functions, 69% branches) to prevent regressions.
 - Enforced unit-test coverage thresholds in CI by adding pragmatic exclusions, improving test coverage of views/modals (e.g. `Attendance`, `SignUp`, and `AddEventModal`), and ratcheting the Vitest thresholds to the new baseline (~79.5% lines) (#62).
@@ -16,6 +17,10 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - `CHANGELOG.md` — distilled project history backfilled from git/PR log.
 
 ### Changed
+- Removed the generic **"Today"** dashboard and the separate admin-only `/my-day`
+  route in favor of the single role-based home at `/` (My Day is now served at
+  `/` for Full-timers). The home nav item is role-aware ("My Day" for Full-timers,
+  "Home" otherwise).
 - Reskinned the feedback FAB + `/feedback` page to the warm Field Notes "Leave a
   note" panel — four note kinds (A thought / An idea / Something's off / A
   request), ⌘↵ to send, persona footer, and a "We got your note." success state.

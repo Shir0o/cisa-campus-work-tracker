@@ -107,7 +107,7 @@ export default function TodoComposer({
             title: "New to-do",
             message: `${meName.split(" ")[0]} assigned you: ${text.trim().slice(0, 400)}`,
             type: "assignment",
-            link: "/my-day",
+            link: "/",
           });
         }
         onSaved?.(assigneeId === meUid ? "Added to your day." : `Sent to ${first} — it's on their day now.`);

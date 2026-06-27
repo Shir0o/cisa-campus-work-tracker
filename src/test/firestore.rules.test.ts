@@ -386,4 +386,49 @@ describeRules('Firestore Security Rules', () => {
       }));
     });
   });
+
+  describe('Event RSVPs', () => {
+    const seedUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
+      });
+    };
+    const rsvp = { uid: 'viewer1', name: 'Phil', status: 'going', createdAt: serverTimestamp() };
+
+    it('RSVP1: an approved member can create, read and delete their own RSVP', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'viewer1' });
+      const ref = doc(db, 'events/ev1/rsvps/viewer1');
+      await assertSucceeds(setDoc(ref, rsvp));
+      await assertSucceeds(getDoc(ref));
+      await assertSucceeds(deleteDoc(ref));
+    });
+
+    it('RSVP2: a member cannot create an RSVP keyed to someone else', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertFails(
+        setDoc(doc(db, 'events/ev1/rsvps/admin1'), { ...rsvp, uid: 'admin1', name: 'Imposter' }),
+      );
+    });
+
+    it('RSVP3: any approved user can read who is coming', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'events/ev1/rsvps/viewer1'), {
+          uid: 'viewer1', name: 'Phil', status: 'going',
+        });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDoc(doc(db, 'events/ev1/rsvps/viewer1')));
+    });
+
+    it('RSVP4: an unapproved user cannot RSVP', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'pending1' });
+      await assertFails(setDoc(doc(db, 'events/ev1/rsvps/pending1'), { ...rsvp, uid: 'pending1' }));
+    });
+  });
 });
