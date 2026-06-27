@@ -4,7 +4,18 @@ import {
   initializeTestEnvironment, 
   RulesTestEnvironment 
 } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  collectionGroup,
+  query,
+  where,
+} from 'firebase/firestore';
 import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import * as fs from 'fs';
 
@@ -429,6 +440,30 @@ describeRules('Firestore Security Rules', () => {
       await seedUsers();
       const db = getFirestore({ uid: 'pending1' });
       await assertFails(setDoc(doc(db, 'events/ev1/rsvps/pending1'), { ...rsvp, uid: 'pending1' }));
+    });
+
+    const seedRsvps = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'events/ev1/rsvps/viewer1'), { uid: 'viewer1', name: 'Phil', status: 'going' });
+        await setDoc(doc(context.firestore(), 'events/ev2/rsvps/admin1'), { uid: 'admin1', name: 'Tony', status: 'going' });
+      });
+    };
+
+    it('RSVP5: a member can collection-group list their own RSVPs (events I am going to)', async () => {
+      await seedUsers();
+      await seedRsvps();
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'viewer1'))));
+    });
+
+    it('RSVP6: a collection-group RSVP list not scoped to self is denied', async () => {
+      await seedUsers();
+      await seedRsvps();
+      const db = getFirestore({ uid: 'viewer1' });
+      // No uid filter → would expose other people's RSVPs → denied.
+      await assertFails(getDocs(query(collectionGroup(db, 'rsvps'))));
+      // Filtered to someone else → denied.
+      await assertFails(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'admin1'))));
     });
   });
 });

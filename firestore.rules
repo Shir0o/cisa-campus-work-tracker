@@ -451,8 +451,11 @@ service cloud.firestore {
       allow list: if isApprovedUser();
     }
     // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
+    // Scoped to the requester's own RSVPs: the query filters on the `uid` field,
+    // so listing other people's RSVPs across events is denied. (Staff still read
+    // a single event's RSVP list via the nested events/{id}/rsvps read rule.)
     match /{path=**}/rsvps/{rsvpId} {
-      allow list: if isApprovedUser();
+      allow list: if isApprovedUser() && resource.data.uid == request.auth.uid;
     }
   }
 }
