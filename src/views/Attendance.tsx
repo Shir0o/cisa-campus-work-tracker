@@ -7,10 +7,12 @@ import {
   Trash2,
   CalendarDays,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { subscribeEventRsvps } from '../lib/rsvp';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
@@ -42,6 +44,18 @@ const TYPE_BLURB: Record<string, string> = {
 };
 
 const TYPE_FILTERS = ['All', 'Weekly', 'Small Group', 'Special', 'Outreach'] as const;
+
+// Read-only "who's coming" count for an upcoming event, fed by member RSVPs.
+function RsvpCount({ eventId }: { eventId: string }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => subscribeEventRsvps(eventId, (rsvps) => setCount(rsvps.length)), [eventId]);
+  if (count === 0) return null;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant whitespace-nowrap shrink-0">
+      <Users className="w-3.5 h-3.5" /> {count} going
+    </span>
+  );
+}
 
 // ── shared warm bits (mirror Dashboard.tsx) ──
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
@@ -608,6 +622,7 @@ export default function Attendance() {
                         {[isValid(d) ? format(d, 'EEEE') : '', ev.location].filter(Boolean).join(' · ')}
                       </div>
                     </div>
+                    <RsvpCount eventId={ev.id} />
                   </div>
                 );
               })}

@@ -261,7 +261,7 @@ export default function SubmitFeedback() {
                 onClick={() => navigate('/')}
                 className="py-2.5 px-6 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 justify-center transition-all"
               >
-                Go to Dashboard
+                Go home
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

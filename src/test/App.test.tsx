@@ -4,24 +4,25 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App, { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
 
-// Mock all views to keep tests isolated and fast
-vi.mock('../views/Dashboard', () => ({
+// Mock all views to keep tests isolated and fast. The role-dispatched home (`/`)
+// renders <Landing/>; we mock it as a stand-in "home" view that also exercises
+// the layout context (used by the modal tests below).
+vi.mock('../views/landings/Landing', () => ({
   default: () => {
     try {
       const { openNewContact, setSelectedContact } = useLayout();
       return (
         <div data-testid="dashboard-view">
-          Dashboard View
+          Home View
           <button onClick={() => openNewContact('lead')} data-testid="dashboard-add-contact-btn">Add Contact</button>
           <button onClick={() => setSelectedContact({ id: 'c1', name: 'John Doe' } as any)} data-testid="dashboard-select-contact-btn">Select Contact</button>
         </div>
       );
     } catch (_) {
-      return <div data-testid="dashboard-view">Dashboard View</div>;
+      return <div data-testid="dashboard-view">Home View</div>;
     }
   }
 }));
-vi.mock('../views/MyDay', () => ({ default: () => <div data-testid="myday-view">MyDay View</div> }));
 vi.mock('../views/Attendance', () => ({ default: () => <div data-testid="attendance-view">Attendance View</div> }));
 vi.mock('../views/OutreachBoard', () => ({ default: () => <div data-testid="board-view">OutreachBoard View</div> }));
 vi.mock('../views/Directory', () => ({ default: () => <div data-testid="directory-view">Directory View</div> }));
@@ -207,15 +208,15 @@ describe('App Component', () => {
     consoleSpy.mockRestore();
   });
 
-  it('redirects viewer to attendance when trying to access admin page', async () => {
+  it('redirects viewer away from an admin-only route to their home', async () => {
     mockAuthValue.user = { uid: '123', email: 'test@example.com' };
     mockAuthValue.isApproved = true;
     mockAuthValue.role = 'viewer';
-    window.history.replaceState(null, '', '/my-day');
-    
+    window.history.replaceState(null, '', '/coordination');
+
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByTestId('attendance-view')).toBeInTheDocument();
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
     });
   });
 
@@ -223,11 +224,11 @@ describe('App Component', () => {
     mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
     mockAuthValue.isApproved = true;
     mockAuthValue.role = 'admin';
-    window.history.replaceState(null, '', '/my-day');
-    
+    window.history.replaceState(null, '', '/coordination');
+
     render(<App />);
     await waitFor(() => {
-      expect(screen.getByTestId('myday-view')).toBeInTheDocument();
+      expect(screen.getByTestId('coordination-view')).toBeInTheDocument();
     });
   });
 

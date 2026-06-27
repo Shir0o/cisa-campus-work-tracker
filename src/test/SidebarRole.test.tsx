@@ -96,19 +96,19 @@ describe('Sidebar Role Label & Interactions', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('shows Today and People but not The Journey or Looking back for operator role', () => {
+  it('shows Home and People but not The Journey or Looking back for operator role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'operator' });
     renderSidebar();
-    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('shows all nav items for admin role', () => {
+  it('shows all nav items for admin role, home labeled My Day', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
     renderSidebar();
-    expect(screen.getByText('Today')).toBeInTheDocument();
+    expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();

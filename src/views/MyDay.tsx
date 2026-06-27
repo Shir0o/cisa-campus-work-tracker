@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
-  ArrowRight,
-  Mail,
-  MessageSquare,
   HeartHandshake,
   ClipboardList,
   Check,
@@ -26,7 +23,7 @@ import {
   collectionGroup,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
-import { cn, getUserInitials } from "../lib/utils";
+import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
 import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
@@ -56,29 +53,25 @@ import {
   updatePersonalPrayer,
   deletePersonalPrayer,
   type PersonalPrayer,
-  type PersonalPrayerStatus,
 } from "../lib/personalPrayers";
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
-
-const DAY_MS = 86_400_000;
-
-// ── small inline helpers (shared shape with Dashboard's) ──
-const parseMs = (s?: string | null): number | null => {
-  if (!s) return null;
-  const t = new Date(s).getTime();
-  return Number.isNaN(t) ? null : t;
-};
-const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
-const connectedLabel = (d: number) =>
-  d === 0 ? "Connected today" : d === 1 ? "Last connected yesterday" : `Last connected ${d} days ago`;
-const truncate = (s: string | undefined, n: number) =>
-  s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s || "";
-const agoLabel = (iso?: string | null) => {
-  const ms = parseMs(iso);
-  const d = ms == null ? 0 : daysSince(ms);
-  return `${d} ${d === 1 ? "day" : "days"} ago`;
-};
+import {
+  parseMs,
+  daysSince,
+  DAY_MS,
+  editInputClass,
+  dueLabelClass,
+  cardClass,
+  getGreeting,
+} from "../components/landing/helpers";
+import { Avatar, StageChip, SectionHead, Figure } from "../components/landing/primitives";
+import {
+  TeamPrayerRow,
+  PersonalPrayerRow,
+  AddPersonalPrayer,
+} from "../components/landing/PrayerRows";
+import { ReachCard } from "../components/landing/ReachCard";
 
 interface MyTask {
   id: string;
@@ -98,30 +91,6 @@ const taskSort = (a: MyTask, b: MyTask) => {
   if (rank(a) !== rank(b)) return rank(a) - rank(b);
   return (parseMs(a.dueDate) ?? Infinity) - (parseMs(b.dueDate) ?? Infinity);
 };
-
-function Avatar({ contact, size = "md" }: { contact: Contact; size?: "sm" | "md" }) {
-  const dim = size === "sm" ? "w-8 h-8 text-xs" : "w-11 h-11 text-sm";
-  const initials = contact.initials || getUserInitials(contact.name);
-  if (contact.avatar) {
-    return (
-      <img
-        src={contact.avatar}
-        alt={contact.name}
-        className={cn(dim, "rounded-full object-cover shrink-0")}
-      />
-    );
-  }
-  return (
-    <div
-      className={cn(
-        dim,
-        "rounded-full bg-primary-container text-on-primary-container font-semibold flex items-center justify-center shrink-0",
-      )}
-    >
-      {initials}
-    </div>
-  );
-}
 
 // ── Round check button — shared by the task rows ──
 function CheckButton({ done, onClick }: { done: boolean; onClick: () => void }) {
@@ -172,10 +141,6 @@ function DuePresetPills({
     </div>
   );
 }
-
-const editInputClass =
-  "w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none";
-const dueLabelClass = "text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant";
 
 // ── On the horizon: team todo row (has a source / assigned by others) ──
 // Text is read-only here — the shared decision lives on The Board. Only the
@@ -465,254 +430,6 @@ function AddTaskRow({
   );
 }
 
-// ── Prayer status pills — three-way toggle shared by both prayer rows ──
-type PillTone = "ongoing" | "answered" | "archived";
-function statusPillClass(active: boolean, tone: PillTone) {
-  if (!active)
-    return "text-on-surface-variant border-outline-variant hover:text-on-surface hover:bg-surface-variant";
-  switch (tone) {
-    case "ongoing":
-      return "text-primary bg-stage-accent-soft border-primary/30";
-    case "answered":
-      return "text-on-tertiary-container bg-tertiary-container border-tertiary/40";
-    case "archived":
-      return "text-on-surface-variant bg-surface-variant border-outline-variant";
-  }
-}
-function StatusPills({
-  value,
-  options,
-  onChange,
-}: {
-  value: string;
-  options: { val: string; label: string; tone: PillTone }[];
-  onChange: (val: string) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-1 justify-end">
-      {options.map((o) => (
-        <button
-          key={o.val}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onChange(o.val);
-          }}
-          className={cn(
-            "text-[11px] font-semibold border rounded-full px-2.5 py-[3px] transition-colors whitespace-nowrap",
-            statusPillClass(value === o.val, o.tone),
-          )}
-        >
-          {o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// Contact / corporate prayer — read-only here. Status only + link to the Prayer Log.
-const TEAM_PRAYER_PILLS: { val: PrayerRecord["status"]; label: string; tone: PillTone }[] = [
-  { val: "ongoing", label: "ongoing", tone: "ongoing" },
-  { val: "answered", label: "answered", tone: "answered" },
-  { val: "unanswered", label: "archive", tone: "archived" },
-];
-function TeamPrayerRow({
-  prayer,
-  contact,
-  first,
-  onUpdateStatus,
-  onOpenContact,
-  onOpenPrayerLog,
-}: {
-  prayer: PrayerRecord;
-  contact?: Contact;
-  first: boolean;
-  onUpdateStatus: (id: string, status: PrayerRecord["status"]) => void;
-  onOpenContact: (contact: Contact) => void;
-  onOpenPrayerLog: () => void;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 py-4",
-        !first && "border-t border-outline-variant/40",
-      )}
-    >
-      <div className="min-w-0">
-        <div className="text-on-surface font-medium leading-snug">{prayer.burden}</div>
-        {contact && (
-          <button
-            type="button"
-            onClick={() => onOpenContact(contact)}
-            className="text-sm text-primary hover:underline mt-0.5"
-          >
-            for {contact.name}
-          </button>
-        )}
-      </div>
-      <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-        <span className="text-xs text-on-surface-variant whitespace-nowrap">
-          {agoLabel(prayer.date)}
-        </span>
-        <StatusPills
-          value={prayer.status}
-          options={TEAM_PRAYER_PILLS}
-          onChange={(s) => onUpdateStatus(prayer.id, s as PrayerRecord["status"])}
-        />
-        <button
-          type="button"
-          onClick={onOpenPrayerLog}
-          className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-primary transition-colors"
-        >
-          <ArrowRight className="w-3 h-3" /> Prayer Log
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Personal prayer — fully editable + removable, optionally tagged to a contact.
-const PERSONAL_PRAYER_PILLS: { val: PersonalPrayerStatus; label: string; tone: PillTone }[] = [
-  { val: "open", label: "ongoing", tone: "ongoing" },
-  { val: "answered", label: "answered", tone: "answered" },
-  { val: "archived", label: "archive", tone: "archived" },
-];
-function PersonalPrayerRow({
-  prayer,
-  first,
-  contacts,
-  onUpdate,
-  onDelete,
-  onOpenContact,
-}: {
-  prayer: PersonalPrayer;
-  first: boolean;
-  contacts: Contact[];
-  onUpdate: (
-    id: string,
-    patch: { title?: string; contactId?: string | null; status?: PersonalPrayerStatus },
-  ) => void;
-  onDelete: (id: string) => void;
-  onOpenContact: (contact: Contact) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState(prayer.title);
-  const [contactId, setContactId] = useState(prayer.contactId || "");
-  const linked = prayer.contactId ? contacts.find((c) => c.id === prayer.contactId) : null;
-
-  const openEdit = () => {
-    setTitle(prayer.title);
-    setContactId(prayer.contactId || "");
-    setOpen(true);
-  };
-  const save = () => {
-    const t = title.trim();
-    if (!t) return;
-    onUpdate(prayer.id, { title: t, contactId: contactId || null });
-    setOpen(false);
-  };
-
-  return (
-    <div
-      className={cn(
-        "py-4",
-        !first && "border-t border-outline-variant/40",
-        open && "bg-surface-variant/40 rounded-xl px-3 -mx-3",
-      )}
-    >
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-        <div
-          className={cn("min-w-0 flex-1", !open && "cursor-pointer")}
-          onClick={() => !open && openEdit()}
-        >
-          <div className="text-on-surface font-medium leading-snug">{prayer.title}</div>
-          {linked ? (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onOpenContact(linked);
-              }}
-              className="text-sm text-primary hover:underline mt-0.5"
-            >
-              for {linked.name}
-            </button>
-          ) : (
-            <span className="text-sm text-on-surface-variant/60 mt-0.5 inline-block">personal</span>
-          )}
-
-          {open && (
-            <div className="mt-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
-              <input
-                autoFocus
-                className={editInputClass}
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") save();
-                  if (e.key === "Escape") setOpen(false);
-                }}
-                placeholder="What are you praying for?"
-              />
-              <div className={dueLabelClass}>For a contact (optional)</div>
-              <select
-                className={cn(editInputClass, "cursor-pointer")}
-                value={contactId}
-                onChange={(e) => setContactId(e.target.value)}
-              >
-                <option value="">— no one in particular</option>
-                {contacts.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-error transition-colors"
-                  onClick={() => onDelete(prayer.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
-                </button>
-                <div className="flex-1" />
-                <button
-                  type="button"
-                  className="px-3 py-1.5 rounded-full text-sm text-on-surface hover:bg-surface-variant"
-                  onClick={() => setOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={!title.trim()}
-                  className="px-3 py-1.5 rounded-full text-sm bg-primary text-on-primary disabled:opacity-50"
-                  onClick={save}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {!open && (
-          <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-            <span className="text-xs text-on-surface-variant whitespace-nowrap">
-              {agoLabel(prayer.date)}
-            </span>
-            <StatusPills
-              value={prayer.status}
-              options={PERSONAL_PRAYER_PILLS}
-              onChange={(s) => onUpdate(prayer.id, { status: s as PersonalPrayerStatus })}
-            />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export default function MyDay() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -743,9 +460,6 @@ export default function MyDay() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
-  const [addingPrayer, setAddingPrayer] = useState(false);
-  const [newPrayerTitle, setNewPrayerTitle] = useState("");
-  const [newPrayerContactId, setNewPrayerContactId] = useState("");
 
   useEffect(() => {
     const unsubContacts = onSnapshot(
@@ -842,9 +556,6 @@ export default function MyDay() {
     };
   }, [uid]);
 
-  const stageColor = (label?: string) =>
-    stages.find((s) => s.label === label)?.color || "bg-surface-variant text-on-surface-variant";
-
   // most-recent touch (+ its note) per contact
   const lastTouchByContact = useMemo(() => {
     const map = new Map<string, { ms: number; note: string }>();
@@ -932,13 +643,6 @@ export default function MyDay() {
 
   const contactById = (id?: string) => contacts.find((c) => c.id === id);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
-    return "Good evening";
-  };
-
   const openContact = (c: Contact | undefined | null) => {
     if (!c) return;
     setSelectedContact(c);
@@ -976,48 +680,6 @@ export default function MyDay() {
       </PageContainer>
     );
   }
-
-  const SectionHead = ({
-    title,
-    sub,
-    linkLabel,
-    onLink,
-    action,
-  }: {
-    title: string;
-    sub?: React.ReactNode;
-    linkLabel?: string;
-    onLink?: () => void;
-    action?: React.ReactNode;
-  }) => (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
-      <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
-      {sub && <span className="text-sm text-on-surface-variant flex-1 min-w-0">{sub}</span>}
-      {action}
-      {linkLabel && (
-        <button
-          onClick={onLink}
-          className="ml-auto text-sm font-medium text-primary hover:underline inline-flex items-center gap-1"
-        >
-          {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      )}
-    </div>
-  );
-
-  const StageChip = ({ stage }: { stage?: string }) =>
-    stage ? (
-      <span
-        className={cn(
-          "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
-          stageColor(stage),
-        )}
-      >
-        {stage}
-      </span>
-    ) : null;
-
-  const cardClass = "bg-surface rounded-2xl border border-outline-variant/60 px-5";
 
   return (
     <PageContainer variant="wide">
@@ -1174,55 +836,15 @@ export default function MyDay() {
           {myLeaders.length > 0 ? (
             <div className="flex flex-col gap-3">
               {myLeaders.map(({ contact, days, note }) => (
-                <div
+                <ReachCard
                   key={contact.id}
-                  onClick={() => openContact(contact)}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
-                >
-                  <div className="flex gap-4 min-w-0">
-                    <Avatar contact={contact} />
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-semibold text-on-surface">{contact.name}</span>
-                        <StageChip stage={contact.stage} />
-                      </div>
-                      <div className="text-sm text-primary font-medium mt-0.5">
-                        {Number.isFinite(days) ? connectedLabel(days) : "Not connected yet"}
-                      </div>
-                      {note && (
-                        <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-                          {truncate(note, 120)}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div
-                    className="flex sm:flex-col gap-2 items-start sm:items-end"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {contact.phone ? (
-                      <button
-                        onClick={() => openMessage(contact.phone, desktopMessagingApp)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> Message
-                      </button>
-                    ) : contact.email ? (
-                      <a
-                        href={`mailto:${contact.email}`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <Mail className="w-3.5 h-3.5" /> Email
-                      </a>
-                    ) : null}
-                    <button
-                      onClick={() => openContact(contact)}
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
-                    >
-                      Open
-                    </button>
-                  </div>
-                </div>
+                  contact={contact}
+                  days={days}
+                  note={note}
+                  stages={stages}
+                  onOpen={() => openContact(contact)}
+                  onMessage={() => openMessage(contact.phone, desktopMessagingApp)}
+                />
               ))}
             </div>
           ) : (
@@ -1355,89 +977,15 @@ export default function MyDay() {
                   onOpenContact={openContact}
                 />
               ))}
-              {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && !addingPrayer && (
+              {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
                 <p className="text-sm text-on-surface-variant py-4">
                   No prayers in your care right now.
                 </p>
               )}
-              {addingPrayer ? (
-                <div className="py-4 border-t border-outline-variant/40 flex flex-col gap-2">
-                  <input
-                    autoFocus
-                    className={editInputClass}
-                    value={newPrayerTitle}
-                    onChange={(e) => setNewPrayerTitle(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && newPrayerTitle.trim() && uid) {
-                        addPersonalPrayer(uid, {
-                          title: newPrayerTitle.trim(),
-                          contactId: newPrayerContactId || null,
-                        });
-                        setNewPrayerTitle("");
-                        setNewPrayerContactId("");
-                        setAddingPrayer(false);
-                      }
-                      if (e.key === "Escape") {
-                        setAddingPrayer(false);
-                        setNewPrayerTitle("");
-                        setNewPrayerContactId("");
-                      }
-                    }}
-                    placeholder="What would you like to pray for?"
-                  />
-                  <div className={dueLabelClass}>For a contact (optional)</div>
-                  <select
-                    className={cn(editInputClass, "cursor-pointer")}
-                    value={newPrayerContactId}
-                    onChange={(e) => setNewPrayerContactId(e.target.value)}
-                  >
-                    <option value="">— no one in particular</option>
-                    {contacts.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1" />
-                    <button
-                      type="button"
-                      className="px-3 py-1.5 rounded-full text-sm text-on-surface hover:bg-surface-variant"
-                      onClick={() => {
-                        setAddingPrayer(false);
-                        setNewPrayerTitle("");
-                        setNewPrayerContactId("");
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      disabled={!newPrayerTitle.trim()}
-                      className="px-3 py-1.5 rounded-full text-sm bg-primary text-on-primary disabled:opacity-50"
-                      onClick={() => {
-                        if (!uid) return;
-                        addPersonalPrayer(uid, {
-                          title: newPrayerTitle.trim(),
-                          contactId: newPrayerContactId || null,
-                        });
-                        setNewPrayerTitle("");
-                        setNewPrayerContactId("");
-                        setAddingPrayer(false);
-                      }}
-                    >
-                      Add
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setAddingPrayer(true)}
-                  className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary transition-colors py-3"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add a personal prayer
-                </button>
-              )}
+              <AddPersonalPrayer
+                contacts={contacts}
+                onAdd={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
+              />
             </div>
         </section>
 
@@ -1497,7 +1045,7 @@ export default function MyDay() {
                       <span className="text-sm text-on-surface flex-1 min-w-0 truncate">
                         {c.name}
                       </span>
-                      <StageChip stage={c.stage} />
+                      <StageChip stage={c.stage} stages={stages} />
                     </label>
                   );
                 })}
@@ -1513,14 +1061,5 @@ export default function MyDay() {
         />
       </motion.div>
     </PageContainer>
-  );
-}
-
-function Figure({ n, label }: { n: number | string; label: string }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="font-serif text-2xl text-on-surface leading-none">{n}</span>
-      <span className="text-xs text-on-surface-variant">{label}</span>
-    </div>
   );
 }

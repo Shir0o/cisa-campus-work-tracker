@@ -304,7 +304,7 @@ export default function Messages() {
     } else if (attachment.type === 'interaction') {
       navigate('/history');
     } else if (attachment.type === 'todo') {
-      navigate('/my-day');
+      navigate('/');
     } else if (attachment.type === 'event') {
       navigate('/attendance');
     } else if (attachment.type === 'prayer') {

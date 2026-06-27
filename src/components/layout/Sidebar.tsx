@@ -68,8 +68,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
   const effectiveIsCollapsed = isDesktop ? !!isCollapsed : isTabletRail;
 
   const NAV_ICONS: Record<string, React.ElementType> = {
-    '/': LayoutDashboard,
-    '/my-day': Sunrise,
+    '/': Sunrise,
     '/board': Kanban,
     '/directory': Contact,
     '/history': HistoryIcon,
@@ -80,9 +79,15 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     '/settings': SettingsIcon,
   };
 
+  // The home route is role-aware: Full-timers see their "My Day" cockpit, while
+  // everyone else gets a role-tailored "Home" landing.
   const navItems = NAV_ITEMS
     .filter(item => canAccessRoute(role as AppRole, item.href))
-    .map(item => ({ ...item, icon: NAV_ICONS[item.href] ?? LayoutDashboard }));
+    .map(item => ({
+      ...item,
+      label: item.href === '/' ? (isAdmin ? 'My Day' : 'Home') : item.label,
+      icon: NAV_ICONS[item.href] ?? LayoutDashboard,
+    }));
 
   const getRoleLabel = (r: string | null) => roleLabel(r);
 
