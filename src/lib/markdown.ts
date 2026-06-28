@@ -3,7 +3,7 @@
 // The editor itself (TipTap + tiptap-markdown) owns rich editing and the
 // Markdown round-trip; these operate on the stored markdown string only, to
 // render each page's one-line preview and its open-task count. Ported from the
-// design's `mdPreview` / `mdOpenTasks` (docs/design/project/views/board.jsx).
+// design's `mdPreview` / `mdOpenTasks`.
 
 import TurndownService from 'turndown';
 

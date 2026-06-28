@@ -76,7 +76,7 @@
 
 @layer base {
   :root {
-    /* Field Notes — warm paper (light), the default. Source: docs/design/project/styles.css [data-theme="light"]. */
+    /* Field Notes — warm paper (light), the default. Source: the Field Notes design's [data-theme="light"]. */
     --primary: #3a5a82;
     --on-primary: #ffffff;
     --primary-container: #dbe3ee;
@@ -131,7 +131,7 @@
   }
 
   .dark {
-    /* Field Notes — warm slate (dark). Source: docs/design/project/styles.css :root. */
+    /* Field Notes — warm slate (dark). Source: the Field Notes design's :root. */
     --primary: #7aa0cc;
     --on-primary: #15191f;
     --primary-container: #2b3a4d;
@@ -260,7 +260,7 @@
 /* ====================================================================
    The Board — TipTap document content.
    `.bdoc-prose` sits on the editable element; these style the rendered
-   Markdown. Ported from docs/design/project/styles.css (.bdoc-editor) and
+   Markdown. Ported from the Field Notes design's `.bdoc-editor` and
    re-themed onto the app's tokens so it follows light/dark.
    ==================================================================== */
 .bdoc-prose {

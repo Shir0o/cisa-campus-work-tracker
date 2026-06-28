@@ -466,4 +466,83 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'admin1'))));
     });
   });
+
+  describe('Walking-together threads', () => {
+    const seedThreadUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+    };
+    const newMsg = (over: Record<string, unknown> = {}) => ({
+      from: 'operator1',
+      fromName: 'Op One',
+      kind: 'comment',
+      body: 'walking with you',
+      at: new Date().toISOString(),
+      reactions: [],
+      interactionId: null,
+      ...over,
+    });
+    const seedMsg = async (id: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), `contacts/contact1/threads/${id}`), newMsg(over));
+      });
+    };
+
+    it('lets the author create a message (from == uid, empty reactions)', async () => {
+      await seedThreadUsers();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(setDoc(doc(db, 'contacts/contact1/threads/th1'), newMsg()));
+    });
+
+    it('rejects creating a message attributed to someone else', async () => {
+      await seedThreadUsers();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th2'), newMsg({ from: 'operator2' })));
+    });
+
+    it('rejects creating with pre-seeded reactions or an oversized body', async () => {
+      await seedThreadUsers();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(
+        setDoc(doc(db, 'contacts/contact1/threads/th3'), newMsg({ reactions: [{ by: 'operator1', emoji: '🙏' }] })),
+      );
+      await assertFails(setDoc(doc(db, 'contacts/contact1/threads/th4'), newMsg({ body: 'a'.repeat(6000) })));
+    });
+
+    it('lets any approved operator toggle the reactions array', async () => {
+      await seedThreadUsers();
+      await seedMsg('th10');
+      const db = getFirestore({ uid: 'operator2' });
+      await assertSucceeds(
+        updateDoc(doc(db, 'contacts/contact1/threads/th10'), { reactions: [{ by: 'operator2', emoji: '🙏' }] }),
+      );
+    });
+
+    it('allows body edits by the author only', async () => {
+      await seedThreadUsers();
+      await seedMsg('th20');
+      const other = getFirestore({ uid: 'operator2' });
+      await assertFails(updateDoc(doc(other, 'contacts/contact1/threads/th20'), { body: 'hijacked' }));
+      const author = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(updateDoc(doc(author, 'contacts/contact1/threads/th20'), { body: 'edited' }));
+    });
+
+    it('rejects changing immutable fields (from/kind) via update', async () => {
+      await seedThreadUsers();
+      await seedMsg('th30');
+      const author = getFirestore({ uid: 'operator1' });
+      await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th30'), { kind: 'nudge' }));
+    });
+
+    it('lets a full-timer mark a contact reviewed (bool only)', async () => {
+      await seedThreadUsers();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: true }));
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: 'yes' }));
+    });
+  });
 });

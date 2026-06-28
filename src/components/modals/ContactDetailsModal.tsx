@@ -20,6 +20,7 @@ import {
   Tag,
   Sparkles,
   Heart,
+  Footprints,
 } from "lucide-react";
 import {
   db,
@@ -48,6 +49,9 @@ import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
+import Thread from "../Thread";
+import { useThreads, countFor } from "../../lib/threads";
+import { traineesOf } from "../../lib/walking";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -172,8 +176,12 @@ export default function ContactDetailsModal({
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "interactions" | "prayer" | "comments" | "history"
+    "overview" | "interactions" | "thread" | "prayer" | "comments" | "history"
   >("overview");
+  // Walking-together threads on this contact (live), + which interaction's
+  // inline thread is expanded.
+  const threadMessages = useThreads(contact?.id);
+  const [openThread, setOpenThread] = useState<string | null>(null);
   const [isAddingPrayer, setIsAddingPrayer] = useState(false);
   const [newPrayer, setNewPrayer] = useState({ burden: "", context: "" });
   const [submittingPrayer, setSubmittingPrayer] = useState(false);
@@ -421,9 +429,19 @@ export default function ContactDetailsModal({
     setIsAddingPrayer(false);
     setAddingTag(false);
     setTagInput("");
+    setOpenThread(null);
   }, [contact?.id]);
 
   if (!contact) return null;
+
+  // "Walking together" tab: when the viewer is the full-timer for a contact a
+  // trainee of theirs added, name the trainee they're walking with.
+  const viewerWalksWithAdder =
+    !!contact.createdBy && traineesOf(user?.uid).includes(contact.createdBy);
+  const walkLabel =
+    viewerWalksWithAdder && contact.createdByName
+      ? `Walking with ${contact.createdByName.split(" ")[0]}`
+      : "Walking together";
 
   const handlePhoneBlur = () => {
     if (!formData.phone) {
@@ -931,6 +949,7 @@ export default function ContactDetailsModal({
                 {([
                   { id: "overview", label: "Overview" },
                   { id: "interactions", label: "Conversations", count: interactions.length },
+                  { id: "thread", label: walkLabel, count: countFor(threadMessages, null) },
                   { id: "prayer", label: "Prayer", count: prayers.length },
                   { id: "comments", label: "Discussion", count: comments.length },
                   { id: "history", label: "History" },
@@ -1638,6 +1657,34 @@ export default function ContactDetailsModal({
                                         </span>
                                       )}
                                     </div>
+                                    {/* Walk through this interaction together */}
+                                    <div className="mt-2">
+                                      <button
+                                        onClick={() =>
+                                          setOpenThread(
+                                            openThread === interaction.id
+                                              ? null
+                                              : interaction.id,
+                                          )
+                                        }
+                                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/60 hover:text-primary transition-colors"
+                                      >
+                                        <Footprints className="w-3.5 h-3.5" />
+                                        {countFor(threadMessages, interaction.id) > 0
+                                          ? `Walking together · ${countFor(threadMessages, interaction.id)}`
+                                          : "Walk through this together"}
+                                      </button>
+                                      {openThread === interaction.id && (
+                                        <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
+                                          <Thread
+                                            contactId={contact.id}
+                                            interactionId={interaction.id}
+                                            meStaffId={user?.uid ?? ""}
+                                            compact
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
                                   </>
                                 )}
                               </div>
@@ -1645,6 +1692,19 @@ export default function ContactDetailsModal({
                           ))
                         )}
                       </div>
+                    </motion.div>
+                  )}
+
+                  {activeTab === "thread" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                    >
+                      <Thread
+                        contactId={contact.id}
+                        interactionId={null}
+                        meStaffId={user?.uid ?? ""}
+                      />
                     </motion.div>
                   )}
 

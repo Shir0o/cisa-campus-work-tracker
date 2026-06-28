@@ -126,7 +126,8 @@ service cloud.firestore {
                (data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
                (data.role == null || (data.role is string && data.role.size() <= 64)) &&
                (data.location == null || (data.location is string && data.location.size() <= 128)) &&
-               (data.stage == null || (data.stage is string && data.stage.size() <= 64));
+               (data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
+               (data.reviewed == null || data.reviewed is bool);
       }
 
       allow read: if isApprovedUser();
@@ -179,6 +180,38 @@ service cloud.firestore {
                         (existing().userId == request.auth.uid || isAdmin()) &&
                         incoming().diff(existing()).affectedKeys().hasOnly(['text']);
         allow delete: if isValidId(commentId) && isApprovedUser() && (isManager() || existing().userId == request.auth.uid);
+      }
+
+      // Walking-together threads (trainee <-> full-timer). A light conversation
+      // attached to the contact (interactionId null) or to one interaction.
+      match /threads/{threadId} {
+        function isValidThread(data) {
+          return data.keys().hasAll(['from', 'fromName', 'kind', 'body', 'at', 'reactions', 'interactionId']) &&
+                 data.from is string && data.from.size() <= 128 &&
+                 data.fromName is string && data.fromName.size() <= 128 &&
+                 data.kind in ['note', 'question', 'comment', 'encouragement', 'nudge'] &&
+                 data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
+                 data.at is string && data.at.size() <= 40 &&
+                 data.reactions is list &&
+                 (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
+        }
+
+        allow read: if isApprovedUser();
+        allow create: if isValidId(threadId) && isApprovedUser() && isOperator() &&
+                        isValidThread(incoming()) &&
+                        incoming().from == request.auth.uid &&
+                        incoming().reactions.size() == 0;
+        // Reactions: any approved operator may toggle the reactions array.
+        // Body edits: author only (kind/from/at are immutable).
+        allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['reactions'])
+                        || (
+                          incoming().diff(existing()).affectedKeys().hasOnly(['body']) &&
+                          existing().from == request.auth.uid &&
+                          incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
+                        )
+                      );
+        allow delete: if isValidId(threadId) && isApprovedUser() && (isManager() || existing().from == request.auth.uid);
       }
     }
 
