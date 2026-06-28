@@ -121,13 +121,17 @@ service cloud.firestore {
     // 4. Contacts Collection
     match /contacts/{contactId} {
       function isValidContact(data) {
+        // Optional fields are guarded with `!('x' in data)` first: a partial
+        // update (e.g. flipping only `reviewed`) produces a merged doc that may
+        // omit an optional key, and `data.x == null` errors ("Property x is
+        // undefined") on an absent key rather than returning false.
         return data.name is string && data.name.size() <= 128 &&
                data.email is string && data.email.size() <= 128 &&
-               (data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
-               (data.role == null || (data.role is string && data.role.size() <= 64)) &&
-               (data.location == null || (data.location is string && data.location.size() <= 128)) &&
-               (data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
-               (data.reviewed == null || data.reviewed is bool);
+               (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
+               (!('role' in data) || data.role == null || (data.role is string && data.role.size() <= 64)) &&
+               (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
+               (!('stage' in data) || data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
+               (!('reviewed' in data) || data.reviewed == null || data.reviewed is bool);
       }
 
       allow read: if isApprovedUser();
@@ -135,7 +139,20 @@ service cloud.firestore {
       // this allows unauthenticated creates. Mitigated partially by client-side 
       // honeypot and math captcha on the public form. Acceptable for low-traffic.
       allow create: if isValidId(contactId) && isValidContact(incoming());
-      allow update: if isValidId(contactId) && isApprovedUser() && isOperator() && isValidContact(incoming());
+      // Operators edit the typed profile fields; unknown keys are rejected
+      // (ghost-field injection). diff().affectedKeys() only inspects the changed
+      // keys, so a contact carrying legacy/extra fields stays editable as long as
+      // the edit itself touches only known fields.
+      allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
+                      isValidContact(incoming()) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'name', 'initials', 'role', 'location', 'email', 'phone', 'stage',
+                        'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
+                        'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
+                        'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
+                        'createdAt', 'createdBy', 'createdByName', 'serverCreatedAt',
+                        'updatedAt', 'updatedBy', 'updatedByName'
+                      ]);
       allow delete: if isValidId(contactId) && isManager();
 
       // Interactions
