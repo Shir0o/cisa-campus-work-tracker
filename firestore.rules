@@ -142,7 +142,11 @@ service cloud.firestore {
       // Operators edit the typed profile fields; unknown keys are rejected
       // (ghost-field injection). diff().affectedKeys() only inspects the changed
       // keys, so a contact carrying legacy/extra fields stays editable as long as
-      // the edit itself touches only known fields.
+      // the edit itself touches only known fields. Creation-audit fields
+      // (createdAt/createdBy/createdByName/serverCreatedAt) are deliberately
+      // omitted so updates cannot rewrite who/when a contact was created; the
+      // updatedAt/updatedBy/updatedByName trio stays because the client stamps
+      // them on every edit.
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
                       isValidContact(incoming()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
@@ -150,7 +154,6 @@ service cloud.firestore {
                         'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
                         'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
-                        'createdAt', 'createdBy', 'createdByName', 'serverCreatedAt',
                         'updatedAt', 'updatedBy', 'updatedByName'
                       ]);
       allow delete: if isValidId(contactId) && isManager();
