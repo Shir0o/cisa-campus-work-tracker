@@ -163,15 +163,33 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(deleteDoc(doc(db, 'contacts', 'any')));
     });
 
-    it('DD11: Prevents PII Scraping by Viewer', async () => {
-      const db = getFirestore({ uid: 'viewer1' });
-      // Setup: Viewer role
+    it('DD11: Approved members may read peers; unapproved users cannot, and no one may tamper', async () => {
+      // The directory is intentionally readable by any *approved* member: the
+      // messaging member picker (CreateChatModal) and the Community landing page
+      // (LandingCommunity lists full-timers) both query the users collection as a
+      // plain approved user, including viewers. The protections that remain are
+      // that unapproved users can't scrape PII, and a viewer can't tamper with
+      // another member's profile (role/approval are manager-only).
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
+        await setDoc(doc(context.firestore(), 'users', 'other-user'), {
+          email: 'other@example.com',
+          displayName: 'Other Member',
+          role: 'operator',
+          approved: true,
+        });
       });
 
-      const usersRef = doc(db, 'users', 'other-user');
-      await assertFails(getDoc(usersRef));
+      const viewer = getFirestore({ uid: 'viewer1' });
+      // Approved viewer may look up another member (needed by messaging + community home)…
+      await assertSucceeds(getDoc(doc(viewer, 'users', 'other-user')));
+      // …but cannot escalate or otherwise tamper with that member's profile.
+      await assertFails(updateDoc(doc(viewer, 'users', 'other-user'), { role: 'admin' }));
+
+      // An unapproved user cannot scrape user PII at all.
+      const pending = getFirestore({ uid: 'pending1' });
+      await assertFails(getDoc(doc(pending, 'users', 'other-user')));
     });
   });
 
