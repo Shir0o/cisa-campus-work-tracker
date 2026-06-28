@@ -1,0 +1,198 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook, waitFor } from "@testing-library/react";
+import { addDoc, onSnapshot, runTransaction } from "firebase/firestore";
+import {
+  THREAD_KINDS,
+  THREAD_REACTIONS,
+  threadsFor,
+  countFor,
+  addThreadMessage,
+  toggleReaction,
+  subscribeThreads,
+  useThreads,
+  type ThreadMessage,
+} from "../lib/threads";
+
+vi.mock("firebase/firestore", () => ({
+  addDoc: vi.fn(() => Promise.resolve()),
+  collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  onSnapshot: vi.fn(),
+  orderBy: vi.fn((field, dir) => ({ field, dir })),
+  query: vi.fn((ref) => ref),
+  runTransaction: vi.fn(),
+}));
+
+vi.mock("../lib/firebase", () => ({
+  db: {},
+  handleFirestoreError: vi.fn(),
+  OperationType: { CREATE: "CREATE", UPDATE: "UPDATE" },
+}));
+
+const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
+  id: "x",
+  interactionId: null,
+  from: "u1",
+  fromName: "T",
+  kind: "comment",
+  body: "b",
+  at: "2020-01-01T00:00:00.000Z",
+  reactions: [],
+  ...over,
+});
+
+describe("THREAD_KINDS / reactions config", () => {
+  it("defines all five kinds with the nudge as a warn tone", () => {
+    expect(Object.keys(THREAD_KINDS).sort()).toEqual([
+      "comment",
+      "encouragement",
+      "note",
+      "nudge",
+      "question",
+    ]);
+    expect(THREAD_KINDS.nudge.tone).toBe("warn");
+    expect(THREAD_KINDS.question.tone).toBe("amber");
+  });
+
+  it("offers the small reaction set", () => {
+    expect(THREAD_REACTIONS).toEqual(["🙏", "❤️", "🌱", "✅"]);
+  });
+});
+
+describe("threadsFor / countFor", () => {
+  const messages = [
+    msg({ id: "a", interactionId: null }),
+    msg({ id: "b", interactionId: "I-1" }),
+    msg({ id: "c", interactionId: null }),
+  ];
+
+  it("filters by level — null = the contact-level thread", () => {
+    expect(threadsFor(messages).map((m) => m.id)).toEqual(["a", "c"]);
+    expect(countFor(messages)).toBe(2);
+  });
+
+  it("filters by a specific interaction id", () => {
+    expect(threadsFor(messages, "I-1").map((m) => m.id)).toEqual(["b"]);
+    expect(countFor(messages, "I-1")).toBe(1);
+  });
+});
+
+describe("addThreadMessage", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("writes a trimmed message with empty reactions and an ISO timestamp", async () => {
+    await addThreadMessage("C-1", {
+      interactionId: null,
+      from: "u1",
+      fromName: "Tony",
+      kind: "comment",
+      body: "  hello  ",
+    });
+    expect(addDoc).toHaveBeenCalledTimes(1);
+    const [ref, data] = vi.mocked(addDoc).mock.calls[0] as unknown as [
+      { path: string },
+      Record<string, unknown>,
+    ];
+    expect(ref.path).toBe("contacts/C-1/threads");
+    expect(data).toMatchObject({
+      from: "u1",
+      fromName: "Tony",
+      kind: "comment",
+      body: "hello",
+      interactionId: null,
+      reactions: [],
+    });
+    expect(typeof data.at).toBe("string");
+    expect(Number.isNaN(Date.parse(data.at as string))).toBe(false);
+  });
+});
+
+describe("toggleReaction", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const runWith = (existingReactions: { by: string; emoji: string }[]) => {
+    const update = vi.fn();
+    vi.mocked(runTransaction).mockImplementation((async (_db: unknown, fn: any) =>
+      fn({
+        get: async () => ({
+          exists: () => true,
+          data: () => ({ reactions: existingReactions }),
+        }),
+        update,
+      })) as any);
+    return update;
+  };
+
+  it("adds the reaction when absent", async () => {
+    const update = runWith([]);
+    await toggleReaction("C-1", "M-1", "u1", "🙏");
+    expect(update).toHaveBeenCalledWith({ path: "contacts/C-1/threads/M-1" }, {
+      reactions: [{ by: "u1", emoji: "🙏" }],
+    });
+  });
+
+  it("removes the reaction when already present (toggle off)", async () => {
+    const update = runWith([{ by: "u1", emoji: "🙏" }]);
+    await toggleReaction("C-1", "M-1", "u1", "🙏");
+    expect(update).toHaveBeenCalledWith({ path: "contacts/C-1/threads/M-1" }, {
+      reactions: [],
+    });
+  });
+});
+
+describe("subscribeThreads", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("maps docs and defaults missing fields", () => {
+    vi.mocked(onSnapshot).mockImplementation((_q: unknown, next: unknown) => {
+      (next as (s: unknown) => void)({
+        docs: [
+          {
+            id: "m1",
+            data: () => ({
+              from: "u1",
+              fromName: "Tony",
+              kind: "note",
+              body: "hi",
+              at: "2021-01-01T00:00:00.000Z",
+              interactionId: null,
+              reactions: [{ by: "u3", emoji: "🙏" }],
+            }),
+          },
+          { id: "m2", data: () => ({}) },
+        ],
+      });
+      return () => {};
+    });
+
+    const cb = vi.fn();
+    subscribeThreads("C-1", cb);
+    const messages = cb.mock.calls[0][0] as ThreadMessage[];
+    expect(messages[0]).toMatchObject({
+      id: "m1",
+      kind: "note",
+      reactions: [{ by: "u3", emoji: "🙏" }],
+    });
+    // malformed doc gets safe defaults
+    expect(messages[1]).toMatchObject({ id: "m2", kind: "comment", from: "", reactions: [] });
+  });
+});
+
+describe("useThreads", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns live messages for a contact and [] when no contactId", async () => {
+    vi.mocked(onSnapshot).mockImplementation((_q: unknown, next: unknown) => {
+      (next as (s: unknown) => void)({
+        docs: [{ id: "m1", data: () => msg({ id: "m1" }) }],
+      });
+      return () => {};
+    });
+
+    const { result } = renderHook(() => useThreads("C-1"));
+    await waitFor(() => expect(result.current).toHaveLength(1));
+
+    const { result: empty } = renderHook(() => useThreads(undefined));
+    expect(empty.current).toEqual([]);
+  });
+});

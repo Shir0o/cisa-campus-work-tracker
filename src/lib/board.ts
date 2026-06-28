@@ -3,8 +3,7 @@
 // A weekly rhythm of coordination SESSIONS, each carrying an AGENDA (items to
 // talk through, delegated sub-steps, carried forward if not covered) and a
 // standalone delegated TASK list. Discussion becomes NOTES that live on as a
-// record or a learning, findable by event series. Mirrors the design in
-// docs/design/project/views/board.jsx (`BoardFT`).
+// record or a learning, findable by event series. Mirrors the design's `BoardFT`.
 
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
 

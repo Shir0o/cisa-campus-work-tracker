@@ -16,7 +16,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, getDocs, limit } from 'firebase/firestore';
 
-// ── Intake options (mirrors docs/design/project/data.jsx) ──────────────
+// ── Intake options (mirrors the Field Notes design) ──────────────
 const MAJORS = [
   'Computer Science', 'Biology', 'Economics', 'Mech. Engineering', 'Psychology',
   'English Lit', 'Business', 'Architecture', 'Music', 'Math', 'Nursing',

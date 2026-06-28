@@ -5,7 +5,7 @@
 // a Yjs CRDT carries concurrent edits + cursors over Firebase RTDB, while the
 // markdown is persisted to Firestore (`board_docs`) as the durable, searchable
 // record that powers the Pages list and the Notes & learnings archive. Admin-only.
-// Re-derived from the design's `BoardFT` (docs/design/project/views/board.jsx).
+// Re-derived from the design's `BoardFT`.
 
 import React, { useState, useEffect, useMemo, useRef, useReducer } from 'react';
 import {
