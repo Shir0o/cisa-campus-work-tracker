@@ -503,6 +503,12 @@ service cloud.firestore {
     match /{path=**}/comments/{commentId} {
       allow list: if isApprovedUser();
     }
+    // Walking-together threads — collection-group list for the full-timer inbox
+    // (My Day) and the trainee cockpit, which read thread messages across all
+    // contacts at once. The nested contacts/{id}/threads rule governs get/write.
+    match /{path=**}/threads/{threadId} {
+      allow list: if isApprovedUser();
+    }
     // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
     // Scoped to the requester's own RSVPs: the query filters on the `uid` field,
     // so listing other people's RSVPs across events is denied. (Staff still read

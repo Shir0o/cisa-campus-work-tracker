@@ -8,9 +8,18 @@ vi.mock("react-router-dom", () => ({ useNavigate: () => mockNavigate }));
 vi.mock("../components/AuthProvider", () => ({ useAuth: vi.fn() }));
 vi.mock("../components/modals/ContactDetailsModal", () => ({ default: () => null }));
 
+// Make the test user (u1) a trainee whose full-timer is ft1.
+vi.mock("../lib/walking", () => ({
+  FT_TRAINEES: { ft1: ["u1"] },
+  FT_OF: { u1: "ft1" },
+  traineesOf: (uid?: string) => (uid === "ft1" ? ["u1"] : []),
+  isTrainee: (uid?: string) => uid === "u1",
+  fullTimerOf: (uid?: string) => (uid === "u1" ? "ft1" : null),
+}));
+
 const soonISO = new Date(Date.now() + 2 * 86_400_000).toISOString();
 
-type DocLike = { id: string; data: () => any };
+type DocLike = { id: string; data: () => any; ref?: any };
 const byPath =
   (map: Record<string, DocLike[]>) =>
   (ref: any, cb: any) => {
@@ -20,6 +29,7 @@ const byPath =
 
 vi.mock("firebase/firestore", () => ({
   collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
   query: vi.fn((ref) => ref),
   orderBy: vi.fn(),
   onSnapshot: vi.fn((_ref, cb) => {
@@ -111,5 +121,35 @@ describe("LandingTrainee", () => {
     fireEvent.change(input, { target: { value: "a teachable heart" } });
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     expect(h.addPersonalPrayer).toHaveBeenCalledWith("u1", { title: "a teachable heart", contactId: null });
+  });
+
+  it("surfaces a full-timer nudge under What's waiting on you and marks it handled", async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          { id: "c1", data: () => ({ name: "Rio Tan", initials: "RT", stage: "Regular", createdBy: "u1" }) },
+        ],
+        threads: [
+          {
+            id: "n1",
+            data: () => ({
+              from: "ft1",
+              fromName: "Mei Chen",
+              kind: "nudge",
+              body: "Don't forget Thursday coffee with Rio.",
+              at: "2026-02-03T00:00:00.000Z",
+              interactionId: null,
+              reactions: [],
+            }),
+            ref: { parent: { parent: { id: "c1" } } },
+          },
+        ],
+      }),
+    );
+    render(<LandingTrainee />);
+    await waitFor(() => expect(screen.getByText("What's waiting on you")).toBeInTheDocument());
+    expect(screen.getByText("Mei nudged a follow-up about Rio Tan")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Mark handled/ }));
+    await waitFor(() => expect(screen.getByRole("button", { name: /Handled/ })).toBeInTheDocument());
   });
 });

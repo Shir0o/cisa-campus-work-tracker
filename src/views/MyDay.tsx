@@ -72,6 +72,7 @@ import {
   AddPersonalPrayer,
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
+import FromTraineesInbox from "../components/landing/FromTraineesInbox";
 
 interface MyTask {
   id: string;
@@ -458,6 +459,8 @@ export default function MyDay() {
 
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<"thread" | undefined>(undefined);
+  const [initialInteractionId, setInitialInteractionId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
 
@@ -643,9 +646,14 @@ export default function MyDay() {
 
   const contactById = (id?: string) => contacts.find((c) => c.id === id);
 
-  const openContact = (c: Contact | undefined | null) => {
+  const openContact = (
+    c: Contact | undefined | null,
+    opts?: { tab?: "thread"; interactionId?: string | null },
+  ) => {
     if (!c) return;
     setSelectedContact(c);
+    setInitialTab(opts?.tab);
+    setInitialInteractionId(opts?.interactionId ?? null);
     setIsDetailsModalOpen(true);
   };
 
@@ -735,6 +743,11 @@ export default function MyDay() {
             </button>
           </div>
         </header>
+
+        {/* ── Walking with your trainee(s) — the full-timer inbox ── */}
+        {uid && (
+          <FromTraineesInbox meUid={uid} contacts={contacts} onOpenContact={openContact} />
+        )}
 
         {/* ── On the horizon — the actionable heart of the day ── */}
         <section className="mt-12">
@@ -1058,6 +1071,8 @@ export default function MyDay() {
           isOpen={isDetailsModalOpen}
           onClose={() => setIsDetailsModalOpen(false)}
           contact={selectedContact}
+          initialTab={initialTab}
+          initialInteractionId={initialInteractionId}
         />
       </motion.div>
     </PageContainer>

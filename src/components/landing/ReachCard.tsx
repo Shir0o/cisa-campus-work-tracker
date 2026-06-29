@@ -14,6 +14,7 @@ export function ReachCard({
   stages,
   onOpen,
   onMessage,
+  statusNode,
 }: {
   contact: Contact;
   days: number;
@@ -21,6 +22,9 @@ export function ReachCard({
   stages: Stage[];
   onOpen: () => void;
   onMessage?: () => void;
+  // Optional status line under the name (e.g. the trainee cockpit's "{FT}
+  // weighed in" / "Awaiting a look").
+  statusNode?: React.ReactNode;
 }) {
   return (
     <div
@@ -37,6 +41,7 @@ export function ReachCard({
           <div className="text-sm text-primary font-medium mt-0.5">
             {Number.isFinite(days) ? connectedLabel(days) : "Not connected yet"}
           </div>
+          {statusNode && <div className="mt-1.5">{statusNode}</div>}
           {note && (
             <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
               {truncate(note, 120)}

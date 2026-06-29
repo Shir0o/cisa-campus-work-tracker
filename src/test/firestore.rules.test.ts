@@ -556,6 +556,20 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(author, 'contacts/contact1/threads/th30'), { kind: 'nudge' }));
     });
 
+    it('lets an approved user collection-group list threads (the inbox/cockpit read)', async () => {
+      await seedThreadUsers();
+      await seedMsg('th40');
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDocs(query(collectionGroup(db, 'threads'))));
+    });
+
+    it('denies a collection-group thread list to an unapproved user', async () => {
+      await seedThreadUsers();
+      await seedMsg('th41');
+      const db = getFirestore({ uid: 'stranger' }); // no user doc → not approved
+      await assertFails(getDocs(query(collectionGroup(db, 'threads'))));
+    });
+
     it('lets a full-timer mark a contact reviewed (bool only)', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'admin1' });
