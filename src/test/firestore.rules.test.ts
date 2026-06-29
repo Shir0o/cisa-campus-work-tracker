@@ -216,7 +216,21 @@ describeRules('Firestore Security Rules', () => {
     const seedRoles = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    // Seed a board page at the given audience, bypassing rules.
+    const seedBoardDoc = async (id: string, audience?: string) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'board_docs', id), {
+          date: '2026-05-15',
+          title: `Page ${id}`,
+          md: '# Page',
+          ...(audience ? { audience } : {}),
+        });
       });
     };
 
@@ -292,6 +306,55 @@ describeRules('Firestore Security Rules', () => {
       await seedRoles();
       const db = getFirestore({ uid: 'admin1' });
       await assertFails(setDoc(doc(db, 'board_docs', 'bdX'), { title: 'No date or md' }));
+    });
+
+    // ── Audience-scoped reads (Session 3) ───────────────────────────────────
+    it('BD9: Trainee (manager) reads trainees + everyone pages, never team', async () => {
+      await seedRoles();
+      await seedBoardDoc('bd-team', 'team');
+      await seedBoardDoc('bd-trainees', 'trainees');
+      await seedBoardDoc('bd-everyone', 'everyone');
+      await seedBoardDoc('bd-legacy'); // no audience → team-private
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-trainees')));
+      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-everyone')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-team')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-legacy')));
+    });
+
+    it('BD10: Student (operator) reads only everyone pages', async () => {
+      await seedRoles();
+      await seedBoardDoc('bd-team', 'team');
+      await seedBoardDoc('bd-trainees', 'trainees');
+      await seedBoardDoc('bd-everyone', 'everyone');
+      const db = getFirestore({ uid: 'operator1' });
+      await assertSucceeds(getDoc(doc(db, 'board_docs', 'bd-everyone')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-trainees')));
+      await assertFails(getDoc(doc(db, 'board_docs', 'bd-team')));
+    });
+
+    it('BD11: Trainee/Student can read but never write board pages', async () => {
+      await seedRoles();
+      await seedBoardDoc('bd-everyone', 'everyone');
+      const trainee = getFirestore({ uid: 'manager1' });
+      const student = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(trainee, 'board_docs', 'bd-new'), { ...validDoc, audience: 'everyone' }));
+      await assertFails(setDoc(doc(student, 'board_docs', 'bd-new2'), { ...validDoc, audience: 'everyone' }));
+      // Admin write with a valid audience succeeds; an invalid audience is rejected.
+      const admin = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(admin, 'board_docs', 'bd-ok'), { ...validDoc, audience: 'trainees' }));
+      await assertFails(setDoc(doc(admin, 'board_docs', 'bd-bad'), { ...validDoc, audience: 'world' }));
+    });
+
+    it('BD12: The notes archive is Full-timer + Trainee read; Student denied', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'board_notes', 'bn1'), validNote);
+      });
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'manager1' }), 'board_notes', 'bn1')));
+      await assertFails(getDoc(doc(getFirestore({ uid: 'operator1' }), 'board_notes', 'bn1')));
+      // Trainees still cannot write to the archive.
+      await assertFails(setDoc(doc(getFirestore({ uid: 'manager1' }), 'board_notes', 'bn2'), validNote));
     });
   });
 

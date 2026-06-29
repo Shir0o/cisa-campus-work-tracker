@@ -6,6 +6,7 @@
 // record or a learning, findable by event series. Mirrors the design's `BoardFT`.
 
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
+import type { AppRole } from './permissions';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
 export type BoardCategory = 'gathering' | 'outreach' | 'care' | 'prayer' | 'logistics';
@@ -158,6 +159,7 @@ export interface BoardDoc {
   date: string; // yyyy-MM-dd
   title: string;
   md: string; // markdown body (derived from the live Y.Doc on save)
+  audience?: Audience; // who the page is open to; missing → 'team' (full-timers only)
   facilitatorId?: string;
   place?: string;
   time?: string;
@@ -168,6 +170,69 @@ export interface BoardDoc {
   updatedBy?: string;
   updatedByName?: string;
 }
+
+// ── Audience / visibility (design Session 3) ──────────────────────────────────
+// Each page is tagged so trainees and students can share the Board without seeing
+// the team's private pastoral coordination. Hierarchy (rank): team (full-timers
+// only) > trainees (staff + trainees) > everyone (any student in CISA). A role
+// sees a page when its board-level >= the page's rank. Role labels only — this is
+// visibility, not a permissions-management UI. Enforced in firestore.rules too.
+export type Audience = 'team' | 'trainees' | 'everyone';
+
+export const BOARD_AUDIENCE: Record<Audience, { label: string; sub: string; rank: number; icon: 'lock' | 'users' | 'globe' }> = {
+  team: { label: 'Team', sub: 'Full-timers', rank: 2, icon: 'lock' },
+  trainees: { label: 'Trainees', sub: 'Staff & trainees', rank: 1, icon: 'users' },
+  everyone: { label: 'Open', sub: 'Anyone in CISA', rank: 0, icon: 'globe' },
+};
+
+// Order shown in the audience picker (most open → most private).
+export const AUDIENCE_ORDER: Audience[] = ['everyone', 'trainees', 'team'];
+
+// A page with no audience defaults to the most private tier.
+export const audienceOf = (doc: Pick<BoardDoc, 'audience'>): Audience => doc.audience ?? 'team';
+
+// How far up the audience hierarchy a role can see. Community (viewer) has no
+// Board access at all (the nav item stops at Student).
+export const boardLevelForRole = (role: AppRole | string | null): number => {
+  switch (role) {
+    case 'admin':
+      return 2;
+    case 'manager':
+      return 1;
+    case 'operator':
+      return 0;
+    default:
+      return -1;
+  }
+};
+
+export const canSeeBoardDoc = (role: AppRole | string | null, doc: Pick<BoardDoc, 'audience'>): boolean => {
+  const level = boardLevelForRole(role);
+  return level >= 0 && level >= BOARD_AUDIENCE[audienceOf(doc)].rank;
+};
+
+// The audiences a role may query for — used to scope the Firestore listener so
+// the rules' per-document checks never reject the list. Admins read everything
+// (returned empty so the caller queries unconstrained, including legacy/no-audience
+// pages). Higher roles include every tier at or below their level.
+export const boardAudiencesForRole = (role: AppRole | string | null): Audience[] => {
+  switch (role) {
+    case 'admin':
+      return [];
+    case 'manager':
+      return ['trainees', 'everyone'];
+    case 'operator':
+      return ['everyone'];
+    default:
+      return [];
+  }
+};
+
+// Who can reach the Board at all (Student and up) vs. who can edit (Full-timers).
+export const canViewBoard = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 0;
+// The Notes & learnings archive is shared by Full-timers + Trainees only.
+export const canViewBoardNotes = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 1;
+export const canEditBoard = (isAdmin: boolean): boolean => isAdmin;
 
 // The two list groups, in order.
 export const DOC_GROUPS = ['This week', 'Earlier'] as const;

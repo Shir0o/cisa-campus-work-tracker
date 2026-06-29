@@ -11,6 +11,13 @@ import {
   dayNum,
   docByDateDesc,
   newDocMarkdown,
+  audienceOf,
+  boardLevelForRole,
+  canSeeBoardDoc,
+  boardAudiencesForRole,
+  canViewBoard,
+  canViewBoardNotes,
+  canEditBoard,
   type BoardSession,
   type BoardDoc,
 } from '../lib/board';
@@ -154,6 +161,90 @@ describe('Board Pure Helpers', () => {
   describe('newDocMarkdown', () => {
     it('returns the starter markdown content', () => {
       expect(newDocMarkdown()).toContain('# Untitled page');
+    });
+  });
+
+  // ── Audience / visibility (Session 3) ───────────────────────────────────────
+  describe('audienceOf', () => {
+    it('defaults a page with no audience to the most private tier (team)', () => {
+      expect(audienceOf({})).toBe('team');
+      expect(audienceOf({ audience: undefined })).toBe('team');
+    });
+
+    it('returns the explicit audience when set', () => {
+      expect(audienceOf({ audience: 'everyone' })).toBe('everyone');
+      expect(audienceOf({ audience: 'trainees' })).toBe('trainees');
+    });
+  });
+
+  describe('boardLevelForRole', () => {
+    it('maps roles to board levels; community (viewer) is excluded', () => {
+      expect(boardLevelForRole('admin')).toBe(2);
+      expect(boardLevelForRole('manager')).toBe(1);
+      expect(boardLevelForRole('operator')).toBe(0);
+      expect(boardLevelForRole('viewer')).toBe(-1);
+      expect(boardLevelForRole(null)).toBe(-1);
+      expect(boardLevelForRole('unknown')).toBe(-1);
+    });
+  });
+
+  describe('canSeeBoardDoc', () => {
+    it('full-timer (admin) sees every tier, incl. legacy/no-audience pages', () => {
+      expect(canSeeBoardDoc('admin', { audience: 'team' })).toBe(true);
+      expect(canSeeBoardDoc('admin', { audience: 'trainees' })).toBe(true);
+      expect(canSeeBoardDoc('admin', { audience: 'everyone' })).toBe(true);
+      expect(canSeeBoardDoc('admin', {})).toBe(true);
+    });
+
+    it('trainee (manager) sees trainees + everyone, never team', () => {
+      expect(canSeeBoardDoc('manager', { audience: 'team' })).toBe(false);
+      expect(canSeeBoardDoc('manager', { audience: 'trainees' })).toBe(true);
+      expect(canSeeBoardDoc('manager', { audience: 'everyone' })).toBe(true);
+      expect(canSeeBoardDoc('manager', {})).toBe(false);
+    });
+
+    it('student (operator) sees only everyone', () => {
+      expect(canSeeBoardDoc('operator', { audience: 'team' })).toBe(false);
+      expect(canSeeBoardDoc('operator', { audience: 'trainees' })).toBe(false);
+      expect(canSeeBoardDoc('operator', { audience: 'everyone' })).toBe(true);
+    });
+
+    it('community (viewer) and unknown roles see nothing', () => {
+      expect(canSeeBoardDoc('viewer', { audience: 'everyone' })).toBe(false);
+      expect(canSeeBoardDoc(null, { audience: 'everyone' })).toBe(false);
+    });
+  });
+
+  describe('boardAudiencesForRole', () => {
+    it('returns an empty list for admins (query is unconstrained)', () => {
+      expect(boardAudiencesForRole('admin')).toEqual([]);
+    });
+
+    it('scopes lower roles to the tiers they may read', () => {
+      expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
+      expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
+      expect(boardAudiencesForRole('viewer')).toEqual([]);
+    });
+  });
+
+  describe('canViewBoard / canViewBoardNotes / canEditBoard', () => {
+    it('grants Board view to Student and up only', () => {
+      expect(canViewBoard('admin')).toBe(true);
+      expect(canViewBoard('manager')).toBe(true);
+      expect(canViewBoard('operator')).toBe(true);
+      expect(canViewBoard('viewer')).toBe(false);
+    });
+
+    it('grants the notes archive to Full-timer + Trainee only', () => {
+      expect(canViewBoardNotes('admin')).toBe(true);
+      expect(canViewBoardNotes('manager')).toBe(true);
+      expect(canViewBoardNotes('operator')).toBe(false);
+      expect(canViewBoardNotes('viewer')).toBe(false);
+    });
+
+    it('grants editing to full-timers (admins) only', () => {
+      expect(canEditBoard(true)).toBe(true);
+      expect(canEditBoard(false)).toBe(false);
     });
   });
 });

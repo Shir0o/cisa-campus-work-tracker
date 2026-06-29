@@ -487,7 +487,7 @@ export default function App() {
                 path="/coordination"
                 element={
                   <ProtectedRoute>
-                    <RoleGuard minRole="admin">
+                    <RoleGuard minRole="operator">
                       <DashboardLayout>
                         <React.Suspense
                           fallback={
