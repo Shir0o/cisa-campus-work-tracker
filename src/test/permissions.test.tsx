@@ -77,8 +77,8 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/messages'],
-    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/messages'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages'],
+    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages'],
   };
 

@@ -12,6 +12,7 @@ import {
   collection,
   query,
   orderBy,
+  where,
   onSnapshot,
   doc,
   setDoc,
@@ -53,6 +54,8 @@ import {
   Users,
   Sparkles,
   AtSign,
+  Lock,
+  Globe,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -74,6 +77,13 @@ import {
   BoardNote,
   NoteType,
   BOARD_SERIES,
+  Audience,
+  BOARD_AUDIENCE,
+  AUDIENCE_ORDER,
+  audienceOf,
+  canViewBoard,
+  canViewBoardNotes,
+  boardAudiencesForRole,
   todayISO,
   weekdayOf,
   dateLabelOf,
@@ -87,6 +97,8 @@ import {
   newDocMarkdown,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
+import ReactMarkdown, { type Components } from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
@@ -150,10 +162,179 @@ const STATUS_CHIP: Record<string, string> = {
   '': 'bg-surface-variant text-on-surface-variant',
 };
 
+// ── Audience (visibility) badge ───────────────────────────────────────────────
+const AUDIENCE_ICON = { lock: Lock, users: Users, globe: Globe } as const;
+const AUDIENCE_CHIP: Record<Audience, string> = {
+  team: 'bg-surface-variant text-on-surface-variant',
+  trainees: 'bg-stage-accent-soft text-stage-accent',
+  everyone: 'bg-tertiary/15 text-tertiary',
+};
+
+function AudienceBadge({ audience, size = 'sm' }: { audience: Audience; size?: 'xs' | 'sm' }) {
+  const meta = BOARD_AUDIENCE[audience];
+  const Icon = AUDIENCE_ICON[meta.icon];
+  return (
+    <span
+      title={meta.sub}
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap',
+        AUDIENCE_CHIP[audience],
+        size === 'xs' ? 'px-1.5 py-px text-[10.5px]' : 'px-2 py-0.5 text-xs',
+      )}
+    >
+      <Icon className={size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3'} /> {meta.label}
+    </span>
+  );
+}
+
+// Full-timer control to set who a page is open to.
+function AudiencePicker({ audience, onChange }: { audience: Audience; onChange: (a: Audience) => void }) {
+  const Icon = AUDIENCE_ICON[BOARD_AUDIENCE[audience].icon];
+  return (
+    <span
+      className={cn('inline-flex items-center gap-1 rounded-full pl-2 pr-0.5 py-0.5 text-xs font-medium', AUDIENCE_CHIP[audience])}
+      title="Who can see this page"
+    >
+      <Icon className="w-3 h-3" />
+      <select
+        value={audience}
+        onChange={(e) => onChange(e.target.value as Audience)}
+        aria-label="Page audience"
+        className="bg-transparent border-0 outline-none text-xs font-medium cursor-pointer pr-0.5"
+      >
+        {AUDIENCE_ORDER.map((a) => (
+          <option key={a} value={a}>
+            {BOARD_AUDIENCE[a].label} · {BOARD_AUDIENCE[a].sub}
+          </option>
+        ))}
+      </select>
+    </span>
+  );
+}
+
+// ── Read-only page render for non-editors (Trainees + Students) ───────────────
+// No TipTap/Yjs — just the durable markdown rendered with react-markdown so a
+// viewer never loads collaborative editing or writes presence.
+const READONLY_MD: Components = {
+  h1: ({ children }) => <h2 className="font-serif text-2xl text-on-surface mt-6 mb-2 first:mt-0">{children}</h2>,
+  h2: ({ children }) => <h3 className="font-serif text-xl text-on-surface mt-5 mb-2">{children}</h3>,
+  h3: ({ children }) => <h4 className="font-semibold text-on-surface mt-4 mb-1.5">{children}</h4>,
+  p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{children}</p>,
+  ul: ({ children, className }) => (
+    <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'list-disc pl-5')}>
+      {children}
+    </ul>
+  ),
+  ol: ({ children }) => <ol className="list-decimal pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
+  li: ({ children, className }) => (
+    <li className={cn('leading-relaxed', className?.includes('task-list-item') && 'list-none flex items-start gap-2')}>{children}</li>
+  ),
+  a: ({ children, href }) => (
+    <a href={href} target="_blank" rel="noreferrer" className="text-stage-accent underline">
+      {children}
+    </a>
+  ),
+  strong: ({ children }) => <strong className="font-semibold text-on-surface">{children}</strong>,
+  blockquote: ({ children }) => (
+    <blockquote className="border-l-2 border-stage-accent/40 pl-3 my-3 text-on-surface-variant/90 italic">{children}</blockquote>
+  ),
+  code: ({ children }) => <code className="bg-surface-variant rounded px-1 py-0.5 text-[13px]">{children}</code>,
+  table: ({ children }) => <table className="my-3 border-collapse text-sm">{children}</table>,
+  th: ({ children }) => <th className="border border-outline-variant px-2 py-1 text-left font-semibold">{children}</th>,
+  td: ({ children }) => <td className="border border-outline-variant px-2 py-1">{children}</td>,
+};
+
+function ReadOnlyDoc({
+  doc: d,
+  pagesCollapsed,
+  onTogglePages,
+}: {
+  doc: BoardDoc;
+  pagesCollapsed: boolean;
+  onTogglePages: () => void;
+}) {
+  const st = DOC_STATUS[sessionStatus(d.date)];
+  return (
+    <div className="flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
+      {/* head */}
+      <div className="flex items-center gap-2.5 flex-wrap px-5 lg:px-8 pt-4">
+        {pagesCollapsed && (
+          <button
+            type="button"
+            onClick={onTogglePages}
+            title="Show pages"
+            aria-label="Show pages"
+            className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+          >
+            <PanelLeftOpen className="w-[18px] h-[18px]" />
+          </button>
+        )}
+        {st && (
+          <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
+            {st.label}
+          </span>
+        )}
+        <span className="text-[13px] text-on-surface-variant font-medium">
+          {weekdayOf(d.date)}, {dateLabelOf(d.date)}
+          {d.time ? ` · ${d.time}` : ''}
+        </span>
+        {d.place && (
+          <span className="inline-flex items-center gap-1 text-[13px] text-on-surface-variant/70">
+            <MapPin className="w-3.5 h-3.5" /> {d.place}
+          </span>
+        )}
+        <AudienceBadge audience={audienceOf(d)} />
+      </div>
+
+      <h1 className="font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
+        {d.title}
+      </h1>
+
+      <div className="px-5 lg:px-8 pb-10">
+        <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
+          {d.md || '_This page is empty._'}
+        </ReactMarkdown>
+      </div>
+    </div>
+  );
+}
+
+// ── Notes & learnings: prefill helpers (Session 4) ────────────────────────────
+type NoteFormInitial = { type?: NoteType; series?: string; title?: string; body?: string };
+
+// Guess which series a page belongs to from its title (first-word match).
+function guessSeries(title: string): string {
+  const t = (title || '').toLowerCase();
+  return BOARD_SERIES.find((s) => t.includes(s.toLowerCase().split(' ')[0])) || 'Team';
+}
+
+// A short plain-text excerpt of a page's markdown, for the archive body.
+function mdExcerpt(md: string): string {
+  const body = (md || '')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+    .filter((l) => !/^#{1,3}\s/.test(l)) // drop headings
+    .filter((l) => !/^\*\*.*\*\*$/.test(l)) // drop a bold-only meta line
+    .map((l) =>
+      l
+        .replace(/^\s*[-*]\s+\[( |x|X)\]\s+/, '') // task marker
+        .replace(/^\s*[-*]\s+/, '') // bullet
+        .replace(/^>\s?/, '') // quote
+        .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/\*(.+?)\*/g, '$1'),
+    )
+    .join(' ');
+  return body.length > 360 ? body.slice(0, 357).trimEnd() + '…' : body;
+}
+
 export default function CoordinationNotes() {
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, role } = useAuth();
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
-  const hasAccess = isAdmin || isMe;
+  // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
+  const canEdit = isAdmin || isMe;
+  const canView = canEdit || canViewBoard(role);
+  const canSeeNotes = canEdit || canViewBoardNotes(role);
   const uid = user?.uid || '';
   const meName = user?.displayName || user?.email || 'Someone';
 
@@ -186,7 +367,8 @@ export default function CoordinationNotes() {
   const [q, setQ] = useState('');
   const [series, setSeries] = useState('All');
   const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
-  const [showNoteForm, setShowNoteForm] = useState(false);
+  // The note form holds optional prefill so "Save to archive" can seed it from a page.
+  const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
   // team to-dos ("What we're carrying")
   const [todos, setTodos] = useState<Task[]>([]);
@@ -211,14 +393,21 @@ export default function CoordinationNotes() {
 
   // ── listeners ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasAccess) {
+    if (!canView) {
       setLoadingDocs(false);
       setLoadingNotes(false);
       return;
     }
 
+    // Full-timers read every page (incl. legacy pages with no audience); lower
+    // roles must scope the query by audience so the rules' per-doc checks pass.
+    // The non-admin query has no orderBy (sorted client-side) so no composite
+    // index is needed.
+    const docsQuery = canEdit
+      ? query(collection(db, 'board_docs'), orderBy('date', 'desc'))
+      : query(collection(db, 'board_docs'), where('audience', 'in', boardAudiencesForRole(role)));
     const unsubDocs = onSnapshot(
-      query(collection(db, 'board_docs'), orderBy('date', 'desc')),
+      docsQuery,
       (snap) => {
         setDocs(snap.docs.map((d) => ({ id: d.id, md: '', title: 'Untitled page', ...(d.data() as object) }) as BoardDoc));
         setLoadingDocs(false);
@@ -229,17 +418,20 @@ export default function CoordinationNotes() {
       },
     );
 
-    const unsubNotes = onSnapshot(
-      query(collection(db, 'board_notes'), orderBy('date', 'desc')),
-      (snap) => {
-        setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as BoardNote));
-        setLoadingNotes(false);
-      },
-      (err) => {
-        setLoadingNotes(false);
-        handleFirestoreError(err, OperationType.LIST, 'board_notes');
-      },
-    );
+    // The Notes & learnings archive is Full-timer + Trainee only.
+    const unsubNotes = canSeeNotes
+      ? onSnapshot(
+          query(collection(db, 'board_notes'), orderBy('date', 'desc')),
+          (snap) => {
+            setNotes(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as BoardNote));
+            setLoadingNotes(false);
+          },
+          (err) => {
+            setLoadingNotes(false);
+            handleFirestoreError(err, OperationType.LIST, 'board_notes');
+          },
+        )
+      : (setLoadingNotes(false), () => {});
 
     const unsubUsers = onSnapshot(
       collection(db, 'users'),
@@ -261,19 +453,24 @@ export default function CoordinationNotes() {
       (err) => handleFirestoreError(err, OperationType.LIST, 'users'),
     );
 
-    const unsubTodos = onSnapshot(
-      collection(db, 'tasks'),
-      (snap) => setTodos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Task)),
-      (err) => handleFirestoreError(err, OperationType.LIST, 'tasks'),
-    );
+    // To-dos ("What we're carrying") + contacts (AI linking) are editor-only.
+    const unsubTodos = canEdit
+      ? onSnapshot(
+          collection(db, 'tasks'),
+          (snap) => setTodos(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Task)),
+          (err) => handleFirestoreError(err, OperationType.LIST, 'tasks'),
+        )
+      : () => {};
 
-    const unsubContacts = onSnapshot(
-      collection(db, 'contacts'),
-      (snap) => {
-        setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact));
-      },
-      (err) => handleFirestoreError(err, OperationType.LIST, 'contacts'),
-    );
+    const unsubContacts = canEdit
+      ? onSnapshot(
+          collection(db, 'contacts'),
+          (snap) => {
+            setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact));
+          },
+          (err) => handleFirestoreError(err, OperationType.LIST, 'contacts'),
+        )
+      : () => {};
 
     return () => {
       unsubDocs();
@@ -282,7 +479,7 @@ export default function CoordinationNotes() {
       unsubTodos();
       unsubContacts();
     };
-  }, [hasAccess]);
+  }, [canView, canEdit, canSeeNotes, role]);
 
   // keep a sensible page focused: today → soonest upcoming → most recent
   useEffect(() => {
@@ -359,6 +556,7 @@ export default function CoordinationNotes() {
         date: todayISO(),
         title: 'Untitled page',
         md,
+        audience: 'team' as Audience, // starts private to the team; open it up when ready
         facilitatorId: uid,
         createdAt: serverTimestamp(),
         createdBy: uid,
@@ -397,6 +595,20 @@ export default function CoordinationNotes() {
         updatedBy: uid,
         updatedByName: meName,
       });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
+    }
+  };
+
+  const saveAudience = async (id: string, audience: Audience) => {
+    try {
+      await updateDoc(doc(db, 'board_docs', id), {
+        audience,
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        updatedByName: meName,
+      });
+      showToast(`Page now open to ${BOARD_AUDIENCE[audience].sub}.`);
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -447,10 +659,18 @@ export default function CoordinationNotes() {
         type: 'create',
         description: fields.series,
       } as never);
-      setShowNoteForm(false);
+      setNoteForm(null);
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'board_notes');
     }
+  };
+
+  // Session 4 — "Save to archive": promote the open page into Notes & learnings,
+  // prefilling the form with its title, an excerpt, and a guessed series.
+  const promoteDoc = (d: BoardDoc) => {
+    const md = d.id === activeId ? liveActiveMd ?? d.md : d.md;
+    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(md) });
+    document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
   const removeNote = async (n: BoardNote) => {
@@ -483,22 +703,41 @@ export default function CoordinationNotes() {
   }, [notes]);
 
   // ── access gate ──────────────────────────────────────────────────────────────
-  if (!hasAccess) {
+  if (!canView) {
     return (
       <div className="p-8 max-w-4xl mx-auto text-center" id="coordination-notes-guard">
         <div className="bg-error-container/10 border border-error-container/30 rounded-3xl p-12 max-w-xl mx-auto my-12 flex flex-col items-center">
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="font-serif text-2xl mb-3 text-on-background">A space for the core team</h2>
+          <h2 className="font-serif text-2xl mb-3 text-on-background">A space for the team</h2>
           <p className="text-on-surface-variant leading-relaxed">
-            Coordination Notes is where the full-time team thinks together. It's kept to administrators. If you think you should
-            be here, ask an administrator to widen your access.
+            This is where the team coordinates. If you think you should be here, ask a full-timer to widen your access.
           </p>
         </div>
       </div>
     );
   }
+
+  // Header copy by role: editors get the working framing, trainees a read-along
+  // note, students a gentler "what's happening" look.
+  const heading = canSeeNotes ? 'Coordination Notes' : "What's happening";
+  const intro = canEdit ? (
+    <>
+      One <b className="text-on-surface font-medium">page per gathering</b>, kept by date — what you talked through, who's
+      carrying what, what you learned. Write it like a doc; nothing important should live in one person's inbox.
+    </>
+  ) : canSeeNotes ? (
+    <>
+      The team's shared pages, kept by date. Read along to follow what's being planned and learned together — the pages
+      open to <b className="text-on-surface font-medium">staff &amp; trainees</b> are gathered here for you.
+    </>
+  ) : (
+    <>
+      A look at our gatherings — what's coming up, and how each night is shaped. These are the pages the team keeps{' '}
+      <b className="text-on-surface font-medium">open to everyone</b>.
+    </>
+  );
 
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-8" id="coordination-notes-panel">
@@ -506,19 +745,17 @@ export default function CoordinationNotes() {
       <header className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
         <div className="max-w-2xl">
           <div className="text-sm text-on-surface-variant mb-1">{weekdayOf(todayISO())}, {dateLabelOf(todayISO())}</div>
-          <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">Coordination Notes</h1>
-          <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">
-            One <b className="text-on-surface font-medium">page per gathering</b>, kept by date — what you talked
-            through, who's carrying what, what you learned. Write it like a doc; nothing important should live in one
-            person's inbox.
-          </p>
+          <h1 className="font-serif text-3xl lg:text-4xl text-on-surface">{heading}</h1>
+          <p className="text-sm text-on-surface-variant mt-2 leading-relaxed">{intro}</p>
         </div>
-        <button
-          onClick={createDoc}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shrink-0"
-        >
-          <Plus className="w-4 h-4" /> New page
-        </button>
+        {canEdit && (
+          <button
+            onClick={createDoc}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" /> New page
+          </button>
+        )}
       </header>
 
       {/* Documents workspace */}
@@ -530,16 +767,22 @@ export default function CoordinationNotes() {
             <div className="w-14 h-14 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center mb-4">
               <NotebookPen className="w-7 h-7" />
             </div>
-            <h3 className="font-serif text-xl text-on-surface mb-1">No pages yet</h3>
+            <h3 className="font-serif text-xl text-on-surface mb-1">
+              {canEdit ? 'No pages yet' : 'Nothing here just yet'}
+            </h3>
             <p className="text-sm text-on-surface-variant max-w-sm mb-5">
-              Start this week's first page — give it a title and begin writing. The team can edit it live, together.
+              {canEdit
+                ? "Start this week's first page — give it a title and begin writing. The team can edit it live, together."
+                : 'Check back after the next gathering — the team will share pages here as they plan.'}
             </p>
-            <button
-              onClick={createDoc}
-              className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 transition-all"
-            >
-              <Plus className="w-4 h-4" /> Start a page
-            </button>
+            {canEdit && (
+              <button
+                onClick={createDoc}
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 transition-all"
+              >
+                <Plus className="w-4 h-4" /> Start a page
+              </button>
+            )}
           </div>
         ) : (
           <div
@@ -559,13 +802,15 @@ export default function CoordinationNotes() {
               <div className="flex items-center justify-between px-4 pt-4 pb-3">
                 <span className="font-serif text-[17px] text-on-surface">Pages</span>
                 <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={createDoc}
-                    title="New page"
-                    className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={createDoc}
+                      title="New page"
+                      className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={togglePages}
                     title="Collapse pages"
@@ -591,6 +836,7 @@ export default function CoordinationNotes() {
                             key={d.id}
                             d={d}
                             active={d.id === activeId}
+                            canEdit={canEdit}
                             liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
                             onClick={() => setActiveId(d.id)}
                           />
@@ -602,25 +848,31 @@ export default function CoordinationNotes() {
               </div>
             </aside>
 
-            {/* Open page */}
+            {/* Open page — full editor for full-timers, read-only render otherwise */}
             {active ? (
-              <DocEditor
-                key={active.id}
-                doc={active}
-                meUid={uid}
-                meName={meName}
-                pagesCollapsed={pagesCollapsed}
-                onTogglePages={togglePages}
-                onLiveMarkdownChange={setLiveActiveMd}
-                onSaveMarkdown={saveMarkdown}
-                onSaveTitle={saveTitle}
-                onDelete={deleteBoardDoc}
-                team={team}
-                onToast={showToast}
-                contacts={contacts}
-                onSelectContact={setSelectedContact}
-                onOpenContactModal={setIsDetailsModalOpen}
-              />
+              canEdit ? (
+                <DocEditor
+                  key={active.id}
+                  doc={active}
+                  meUid={uid}
+                  meName={meName}
+                  pagesCollapsed={pagesCollapsed}
+                  onTogglePages={togglePages}
+                  onLiveMarkdownChange={setLiveActiveMd}
+                  onSaveMarkdown={saveMarkdown}
+                  onSaveTitle={saveTitle}
+                  onSaveAudience={saveAudience}
+                  onPromote={promoteDoc}
+                  onDelete={deleteBoardDoc}
+                  team={team}
+                  onToast={showToast}
+                  contacts={contacts}
+                  onSelectContact={setSelectedContact}
+                  onOpenContactModal={setIsDetailsModalOpen}
+                />
+              ) : (
+                <ReadOnlyDoc key={active.id} doc={active} pagesCollapsed={pagesCollapsed} onTogglePages={togglePages} />
+              )
             ) : (
               <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
             )}
@@ -629,6 +881,7 @@ export default function CoordinationNotes() {
       </section>
 
       {/* What we're carrying — every to-do the team is holding, in one list */}
+      {canEdit && (
       <section>
         <SectionHead
           title="What we're carrying"
@@ -736,23 +989,37 @@ export default function CoordinationNotes() {
           </div>
         )}
       </section>
+      )}
 
       {/* Notes & learnings */}
-      <section>
+      {canSeeNotes && (
+      <section id="board-notes-section">
         <SectionHead
           title="Notes & learnings"
           sub="Every page becomes a record — running it again? Find last time's notes."
           action={
-            <button
-              onClick={() => setShowNoteForm((v) => !v)}
-              className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-            >
-              <NotebookPen className="w-4 h-4" /> Add a note
-            </button>
+            canEdit ? (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setNoteForm({ type: 'record' })}
+                  className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+                >
+                  <Plus className="w-4 h-4" /> New record
+                </button>
+                <button
+                  onClick={() => setNoteForm({ type: 'learning' })}
+                  className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+                >
+                  <NotebookPen className="w-4 h-4" /> New learning
+                </button>
+              </div>
+            ) : undefined
           }
         />
 
-        {showNoteForm && <NoteForm seriesOptions={BOARD_SERIES} onCancel={() => setShowNoteForm(false)} onSave={addNote} />}
+        {canEdit && noteForm && (
+          <NoteForm initial={noteForm} seriesOptions={BOARD_SERIES} onCancel={() => setNoteForm(null)} onSave={addNote} />
+        )}
 
         {/* controls */}
         <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
@@ -819,14 +1086,20 @@ export default function CoordinationNotes() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {filteredNotes.map((n) => (
-              <NoteCard key={n.id} n={n} memberById={memberById} onRemove={removeNote} />
+              <NoteCard key={n.id} n={n} memberById={memberById} onRemove={canEdit ? removeNote : undefined} />
             ))}
           </div>
         )}
       </section>
+      )}
 
       <p className="text-center text-sm text-on-surface-variant/70 pt-2 flex items-center justify-center gap-2">
-        <Feather className="w-3.5 h-3.5" /> A shared place to think together — so the team stays one mind.
+        <Feather className="w-3.5 h-3.5" />{' '}
+        {canEdit
+          ? 'A shared place to think together — so the team stays one mind.'
+          : canSeeNotes
+            ? 'Read along — the team is keeping nothing important to itself.'
+            : 'A look at how each gathering comes together.'}
       </p>
 
       {/* Add / edit a to-do (centered) */}
@@ -859,10 +1132,23 @@ export default function CoordinationNotes() {
 }
 
 // ── Pages list row ────────────────────────────────────────────────────────────
-function DocRow({ d, active, liveMd, onClick }: { d: BoardDoc; active: boolean; liveMd?: string; onClick: () => void }) {
+function DocRow({
+  d,
+  active,
+  canEdit,
+  liveMd,
+  onClick,
+}: {
+  d: BoardDoc;
+  active: boolean;
+  canEdit: boolean;
+  liveMd?: string;
+  onClick: () => void;
+}) {
   const md = liveMd ?? d.md;
   const open = mdOpenTasks(md);
   const isToday = sessionStatus(d.date) === 'today';
+  const audience = audienceOf(d);
   return (
     <button
       onClick={onClick}
@@ -888,11 +1174,12 @@ function DocRow({ d, active, liveMd, onClick }: { d: BoardDoc; active: boolean; 
               Today
             </span>
           )}
-          {open > 0 && (
+          {open > 0 && canEdit && (
             <span className="text-[11.5px] text-on-surface-variant/80 bg-surface-variant border border-outline-variant rounded-full px-2 py-px">
               {open} to do
             </span>
           )}
+          {(canEdit || audience !== 'everyone') && <AudienceBadge audience={audience} size="xs" />}
         </span>
       </span>
     </button>
@@ -1065,6 +1352,8 @@ function DocEditor({
   onLiveMarkdownChange,
   onSaveMarkdown,
   onSaveTitle,
+  onSaveAudience,
+  onPromote,
   onDelete,
   team,
   onToast,
@@ -1080,6 +1369,8 @@ function DocEditor({
   onLiveMarkdownChange: (md: string) => void;
   onSaveMarkdown: (id: string, md: string) => void;
   onSaveTitle: (id: string, title: string) => void;
+  onSaveAudience: (id: string, audience: Audience) => void;
+  onPromote: (d: BoardDoc) => void;
   onDelete: (d: BoardDoc) => void;
   team: TeamMember[];
   onToast: (msg: string) => void;
@@ -1555,8 +1846,16 @@ function DocEditor({
               <MapPin className="w-3.5 h-3.5" /> {d.place}
             </span>
           )}
+          <AudiencePicker audience={audienceOf(d)} onChange={(a) => onSaveAudience(d.id, a)} />
         </div>
         <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => onPromote(d)}
+            title="Keep this page as a record or learning in the archive"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+          >
+            <Tag className="w-3.5 h-3.5" /> Save to archive
+          </button>
           {peers.length > 0 && (
             <div className="flex -space-x-1.5" title={`${peers.length} other${peers.length === 1 ? '' : 's'} editing`}>
               {peers.slice(0, 4).map((p) => (
@@ -1921,7 +2220,7 @@ function NoteCard({
 }: {
   n: BoardNote;
   memberById: Map<string, TeamMember>;
-  onRemove: (n: BoardNote) => void;
+  onRemove?: (n: BoardNote) => void;
 }) {
   const isLearning = n.type === 'learning';
   const ageDays = Math.round((Date.now() - new Date(n.date).getTime()) / 86400000);
@@ -1951,13 +2250,15 @@ function NoteCard({
           )}
           {dateLabelOf(n.date)}
         </span>
-        <button
-          onClick={() => onRemove(n)}
-          className="p-0.5 text-on-surface-variant/0 group-hover:text-on-surface-variant/50 hover:!text-error transition-colors"
-          title="Remove from archive"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
+        {onRemove && (
+          <button
+            onClick={() => onRemove(n)}
+            className="p-0.5 text-on-surface-variant/0 group-hover:text-on-surface-variant/50 hover:!text-error transition-colors"
+            title="Remove from archive"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        )}
       </div>
       <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">{n.title}</h4>
       {n.body && <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">{n.body}</p>}
@@ -1977,17 +2278,19 @@ function NoteCard({
 // ── Add-note form ─────────────────────────────────────────────────────────────
 function NoteForm({
   seriesOptions,
+  initial,
   onCancel,
   onSave,
 }: {
   seriesOptions: string[];
+  initial?: NoteFormInitial;
   onCancel: () => void;
   onSave: (f: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => void;
 }) {
-  const [type, setType] = useState<NoteType>('record');
-  const [series, setSeries] = useState(seriesOptions[0] || 'Team');
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
+  const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [body, setBody] = useState(initial?.body ?? '');
 
   const field =
     'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
@@ -2041,7 +2344,7 @@ function NoteForm({
           disabled={!title.trim()}
           className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
         >
-          Save to archive
+          {type === 'learning' ? 'Save learning' : 'Save record'}
         </button>
       </div>
     </div>

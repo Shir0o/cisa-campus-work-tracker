@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc } from 'firebase/firestore';
+import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, where } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
@@ -111,6 +111,7 @@ vi.mock('firebase/firestore', () => ({
   onSnapshot: vi.fn((_ref: unknown, _cb: unknown) => vi.fn()),
   query: vi.fn((ref: unknown) => ref),
   orderBy: vi.fn(),
+  where: vi.fn((field: string, op: string, value: unknown) => ({ field, op, value })),
   doc: vi.fn((_db: unknown, coll: string, id?: string) => ({
     path: id ? `${coll}/${id}` : coll,
     id: id || 'auto-id',
@@ -235,6 +236,23 @@ const nonAdminAuth = {
   loading: false,
 };
 
+// Trainee (manager) and Student (operator) read a role-scoped, read-only Board.
+const traineeAuth = {
+  user: { uid: 'u-trainee', email: 'zion@test.com', displayName: 'Zion Park' },
+  isAdmin: false,
+  role: 'manager',
+  isApproved: true,
+  loading: false,
+};
+
+const studentAuth = {
+  user: { uid: 'u-student', email: 'tim@test.com', displayName: 'Timothy Lee' },
+  isAdmin: false,
+  role: 'operator',
+  isApproved: true,
+  loading: false,
+};
+
 /**
  * Configure path-routing onSnapshot so each collection gets its own data.
  * The callback can be skipped entirely (for loading tests) by passing `neverFire`.
@@ -296,13 +314,82 @@ describe('CoordinationNotes', () => {
       render(<CoordinationNotes />);
 
       expect(
-        screen.getByRole('heading', { name: /a space for the core team/i }),
+        screen.getByRole('heading', { name: /a space for the team/i }),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(/coordination notes is where the full-time team thinks together/i),
+        screen.getByText(/this is where the team coordinates/i),
       ).toBeInTheDocument();
       // Main content should NOT be present
       expect(screen.queryByRole('heading', { name: /coordination notes/i, level: 1 })).not.toBeInTheDocument();
+    });
+  });
+
+  // ── 1b. Role-based access (Session 3) ──────────────────────────────────────
+  describe('role-based access', () => {
+    const audDocs = [
+      {
+        id: `doc-${today}`,
+        data: () => ({
+          title: 'Friday run of show',
+          date: today,
+          weekday: 'Friday',
+          md: '# Friday\n\n- [ ] Greeters',
+          audience: 'everyone',
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      },
+      {
+        id: 'doc-trainees',
+        data: () => ({
+          title: 'Trainee huddle',
+          date: '2026-06-10',
+          weekday: 'Wednesday',
+          md: '# Huddle',
+          audience: 'trainees',
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      },
+    ];
+
+    it('trainee (manager) gets a read-only, audience-scoped Board with the notes archive', () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(traineeAuth);
+      setupSnapshots({ docs: audDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Coordination heading present, but no editing affordances.
+      expect(screen.getByRole('heading', { name: /coordination notes/i, level: 1 })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /new page/i })).not.toBeInTheDocument();
+      // Read-only render — the TipTap editor seam is never mounted; markdown
+      // (incl. the GFM task list) is rendered by react-markdown as a disabled box.
+      expect(screen.queryByTestId('tiptap-editor')).not.toBeInTheDocument();
+      const checkbox = screen.getByRole('checkbox');
+      expect(checkbox).toBeDisabled();
+      // Notes archive is visible to trainees but read-only (no create buttons).
+      expect(screen.getByRole('heading', { name: /notes & learnings/i })).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /new record/i })).not.toBeInTheDocument();
+      // The board_docs query is scoped to the trainee's audiences.
+      expect(where).toHaveBeenCalledWith('audience', 'in', ['trainees', 'everyone']);
+    });
+
+    it('student (operator) sees a "What\'s happening" read-only view without the notes archive', () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(studentAuth);
+      setupSnapshots({ docs: audDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      expect(screen.getByRole('heading', { name: /what's happening/i, level: 1 })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { name: /notes & learnings/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /new page/i })).not.toBeInTheDocument();
+      expect(where).toHaveBeenCalledWith('audience', 'in', ['everyone']);
+    });
+
+    it('full-timer (admin) reads every page unconstrained (no audience filter)', () => {
+      setupSnapshots({ docs: audDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+      expect(where).not.toHaveBeenCalled();
+      // Header "New page" + the Pages-list "+" are both present for full-timers.
+      expect(screen.getAllByRole('button', { name: /new page/i }).length).toBeGreaterThan(0);
     });
   });
 
@@ -465,8 +552,8 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
       render(<CoordinationNotes />);
 
-      // Click "Add a note"
-      const addBtn = screen.getByRole('button', { name: /add a note/i });
+      // Open the note form via "New record"
+      const addBtn = screen.getByRole('button', { name: /new record/i });
       fireEvent.click(addBtn);
 
       // Form inputs should appear
@@ -486,7 +573,7 @@ describe('CoordinationNotes', () => {
       );
 
       // Submit
-      const saveBtn = screen.getByRole('button', { name: /save to archive/i });
+      const saveBtn = screen.getByRole('button', { name: /save record/i });
       fireEvent.click(saveBtn);
 
       await waitFor(() => {
@@ -498,10 +585,43 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
-      fireEvent.click(screen.getByRole('button', { name: /add a note/i }));
+      fireEvent.click(screen.getByRole('button', { name: /new record/i }));
 
-      const saveBtn = screen.getByRole('button', { name: /save to archive/i });
+      const saveBtn = screen.getByRole('button', { name: /save record/i });
       expect(saveBtn).toBeDisabled();
+    });
+  });
+
+  // ── 8b. Save to archive — promote a page (Session 4) ───────────────────────
+  describe('promote page to archive', () => {
+    it('prefills the note form from the open page when "Save to archive" is clicked', async () => {
+      mockActiveEditor = mockEditor;
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const promoteBtn = await screen.findByRole('button', { name: /save to archive/i });
+      fireEvent.click(promoteBtn);
+
+      const titleInput = (await screen.findByPlaceholderText(/a short title/i)) as HTMLInputElement;
+      expect(titleInput.value).toContain('Monday'); // the open page's title
+      // Promote defaults to a record save.
+      expect(screen.getByRole('button', { name: /save record/i })).toBeInTheDocument();
+    });
+
+    it('lets a full-timer change a page audience (writes via updateDoc)', async () => {
+      mockActiveEditor = mockEditor;
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const picker = (await screen.findByLabelText('Page audience')) as HTMLSelectElement;
+      fireEvent.change(picker, { target: { value: 'everyone' } });
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ audience: 'everyone' }),
+        );
+      });
     });
   });
 
@@ -747,8 +867,8 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
-      // Open Form
-      const addBtn = screen.getByRole('button', { name: /add a note/i });
+      // Open Form via "New record", then toggle to learning
+      const addBtn = screen.getByRole('button', { name: /new record/i });
       fireEvent.click(addBtn);
 
       await screen.findByPlaceholderText(/a short title/i);
@@ -762,7 +882,7 @@ describe('CoordinationNotes', () => {
         target: { value: 'Deduplication Note' },
       });
 
-      const saveBtn = screen.getByRole('button', { name: /save to archive/i });
+      const saveBtn = screen.getByRole('button', { name: /save learning/i });
       fireEvent.click(saveBtn);
 
       await waitFor(() => {
