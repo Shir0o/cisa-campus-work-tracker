@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Contact, Interaction } from "../types";
-import { inboxItemsFor, type ThreadMessageWithContact } from "../lib/inbox";
+import { inboxItemsFor, traineeWaitingItems, type ThreadMessageWithContact } from "../lib/inbox";
 
 // Control the relationship config so the test is independent of the real seed.
 vi.mock("../lib/walking", () => ({
   FT_TRAINEES: { ft1: ["t1"] },
+  FT_OF: { t1: "ft1" },
+  fullTimerOf: (uid: string) => (uid === "t1" ? "ft1" : null),
 }));
 
 const contact = (over: Partial<Contact>): Contact =>
@@ -81,5 +83,36 @@ describe("inboxItemsFor", () => {
       threads: [thread({ id: "q1", contactId: "c1", from: "t1", kind: "question", at: "2026-02-01T00:00:00Z" })],
     });
     expect(items.map((x) => x.id)).toEqual(["interaction:i1", "thread:q1", "contact:c1"]);
+  });
+});
+
+describe("traineeWaitingItems", () => {
+  it("returns nothing for a uid with no full-timer", () => {
+    expect(traineeWaitingItems("ft1", [])).toEqual([]);
+  });
+
+  it("surfaces the full-timer's nudges and questions, newest-first, carrying the kind", () => {
+    const items = traineeWaitingItems("t1", [
+      thread({ id: "n1", contactId: "c1", from: "ft1", kind: "nudge", at: "2026-02-01T00:00:00Z" }),
+      thread({ id: "q1", contactId: "c2", from: "ft1", kind: "question", at: "2026-02-03T00:00:00Z" }),
+      // a comment/encouragement from the FT is not a "waiting" item
+      thread({ id: "c1m", contactId: "c3", from: "ft1", kind: "comment", at: "2026-02-04T00:00:00Z" }),
+      // a trainee's own message is never waiting on them
+      thread({ id: "self", contactId: "c4", from: "t1", kind: "question", at: "2026-02-05T00:00:00Z" }),
+    ]);
+    expect(items.map((x) => x.id)).toEqual(["thread:q1", "thread:n1"]);
+    expect(items[0]).toMatchObject({ kind: "question", by: "ft1" });
+    expect(items[1]).toMatchObject({ kind: "nudge" });
+  });
+
+  it("drops items the trainee has already replied to at the same level", () => {
+    const items = traineeWaitingItems("t1", [
+      thread({ id: "q1", contactId: "c1", from: "ft1", kind: "question", at: "2026-02-01T00:00:00Z" }),
+      // a later trainee reply on the same contact-level thread → handled
+      thread({ id: "r1", contactId: "c1", from: "t1", kind: "comment", at: "2026-02-02T00:00:00Z" }),
+      // a still-open question on a different contact
+      thread({ id: "q2", contactId: "c2", from: "ft1", kind: "question", at: "2026-02-01T00:00:00Z" }),
+    ]);
+    expect(items.map((x) => x.id)).toEqual(["thread:q2"]);
   });
 });

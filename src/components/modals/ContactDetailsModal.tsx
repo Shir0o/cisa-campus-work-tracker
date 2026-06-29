@@ -51,12 +51,17 @@ import { useAuth } from "../AuthProvider";
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
-import { traineesOf } from "../../lib/walking";
+import { traineesOf, walkingRecipient } from "../../lib/walking";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
   contact: Contact | null;
+  // Deep-link the modal to a tab on open (e.g. the My Day inbox "Comment"
+  // action). When initialInteractionId is set, opens that interaction's inline
+  // thread; otherwise honours initialTab.
+  initialTab?: "thread";
+  initialInteractionId?: string | null;
 }
 
 function AuditActivityItem({
@@ -162,6 +167,8 @@ export default function ContactDetailsModal({
   isOpen,
   onClose,
   contact,
+  initialTab,
+  initialInteractionId,
 }: ContactDetailsModalProps) {
   const { user, isAdmin } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
@@ -423,14 +430,17 @@ export default function ContactDetailsModal({
     }
   }, [isOpen, contact]);
 
-  // Reset to the Overview tab whenever a different contact opens.
+  // On open: reset to Overview, unless a deep-link asks for a thread. An
+  // interaction deep-link opens the Conversations tab with that thread expanded;
+  // otherwise initialTab ("thread") opens the contact-level "Walking together".
   useEffect(() => {
-    setActiveTab("overview");
+    if (!isOpen) return;
+    setActiveTab(initialInteractionId ? "interactions" : initialTab ?? "overview");
     setIsAddingPrayer(false);
     setAddingTag(false);
     setTagInput("");
-    setOpenThread(null);
-  }, [contact?.id]);
+    setOpenThread(initialInteractionId ?? null);
+  }, [contact?.id, isOpen, initialTab, initialInteractionId]);
 
   if (!contact) return null;
 
@@ -442,6 +452,8 @@ export default function ContactDetailsModal({
     viewerWalksWithAdder && contact.createdByName
       ? `Walking with ${contact.createdByName.split(" ")[0]}`
       : "Walking together";
+  // The other party in the walk — pinged on the bell when a thread msg is posted.
+  const threadRecipient = walkingRecipient(user?.uid, contact.createdBy);
 
   const handlePhoneBlur = () => {
     if (!formData.phone) {
@@ -1680,6 +1692,8 @@ export default function ContactDetailsModal({
                                             contactId={contact.id}
                                             interactionId={interaction.id}
                                             meStaffId={user?.uid ?? ""}
+                                            recipientUid={threadRecipient}
+                                            contactName={contact.name}
                                             compact
                                           />
                                         </div>
@@ -1704,6 +1718,8 @@ export default function ContactDetailsModal({
                         contactId={contact.id}
                         interactionId={null}
                         meStaffId={user?.uid ?? ""}
+                        recipientUid={threadRecipient}
+                        contactName={contact.name}
                       />
                     </motion.div>
                   )}

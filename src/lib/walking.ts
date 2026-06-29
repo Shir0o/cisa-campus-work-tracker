@@ -39,3 +39,21 @@ export function fullTimerOf(uid?: string | null): string | null {
 export function traineesOf(uid?: string | null): string[] {
   return uid ? FT_TRAINEES[uid] ?? [] : [];
 }
+
+/**
+ * Who should be notified about a thread message on a contact: the other party in
+ * the walk. A trainee's message → their full-timer; a full-timer's message → the
+ * trainee who added the contact (only if that trainee is one they walk with).
+ * Returns null when there's no walking counterpart to notify.
+ */
+export function walkingRecipient(
+  from?: string | null,
+  contactCreatedBy?: string | null,
+): string | null {
+  if (!from) return null;
+  if (isTrainee(from)) return fullTimerOf(from);
+  if (contactCreatedBy && traineesOf(from).includes(contactCreatedBy)) {
+    return contactCreatedBy;
+  }
+  return null;
+}

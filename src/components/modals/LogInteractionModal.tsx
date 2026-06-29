@@ -20,7 +20,8 @@ import {
   Plus
 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
+import { isTrainee, fullTimerOf } from '../../lib/walking';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -154,6 +155,23 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
       }
 
       await batch.commit();
+
+      // Walking together: when a trainee logs time, ping their full-timer's bell.
+      const ft = isTrainee(user?.uid) ? fullTimerOf(user?.uid) : null;
+      if (ft) {
+        const who = (user?.displayName || 'Your trainee').split(' ')[0];
+        const snippet = notes.length > 140 ? notes.slice(0, 140).trimEnd() + '…' : notes;
+        for (const contactId of selectedContactIds) {
+          const contact = contacts.find(c => c.id === contactId);
+          await sendNotification({
+            userId: ft,
+            title: `${who} logged time with ${contact?.name || 'someone'}`,
+            message: snippet,
+            type: 'info',
+            targetId: contactId,
+          });
+        }
+      }
 
       // Log system activity outside batch (helper adds its own doc)
       if (selectedContactIds.size === 1) {

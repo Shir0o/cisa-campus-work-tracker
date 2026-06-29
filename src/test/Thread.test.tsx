@@ -89,13 +89,17 @@ describe("Thread", () => {
       "Great first contact",
     );
     await userEvent.click(screen.getByRole("button", { name: /Post/ }));
-    expect(addThreadMessage).toHaveBeenCalledWith("C-1", {
-      interactionId: null,
-      from: "u1",
-      fromName: "Tony Wang",
-      kind: "comment",
-      body: "Great first contact",
-    });
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      "C-1",
+      {
+        interactionId: null,
+        from: "u1",
+        fromName: "Tony Wang",
+        kind: "comment",
+        body: "Great first contact",
+      },
+      { to: null, contactName: undefined },
+    );
   });
 
   it("toggles a reaction on a message", async () => {
@@ -138,6 +142,7 @@ describe("Thread", () => {
     expect(addThreadMessage).toHaveBeenCalledWith(
       "C-1",
       expect.objectContaining({ body: "quick post", kind: "comment" }),
+      expect.objectContaining({ to: null }),
     );
   });
 

@@ -61,6 +61,9 @@ interface ThreadProps {
   contactId: string;
   interactionId?: string | null;
   meStaffId: string;
+  // The other party in the walk — pinged on the bell when a message is posted.
+  recipientUid?: string | null;
+  contactName?: string;
   compact?: boolean;
 }
 
@@ -68,6 +71,8 @@ export default function Thread({
   contactId,
   interactionId = null,
   meStaffId,
+  recipientUid = null,
+  contactName,
   compact = false,
 }: ThreadProps) {
   const { user } = useAuth();
@@ -91,13 +96,17 @@ export default function Thread({
       taRef.current?.focus();
       return;
     }
-    void addThreadMessage(contactId, {
-      interactionId,
-      from: meStaffId,
-      fromName: user?.displayName || "Someone",
-      kind,
-      body,
-    });
+    void addThreadMessage(
+      contactId,
+      {
+        interactionId,
+        from: meStaffId,
+        fromName: user?.displayName || "Someone",
+        kind,
+        body,
+      },
+      { to: recipientUid, contactName },
+    );
     setDraft("");
   };
 

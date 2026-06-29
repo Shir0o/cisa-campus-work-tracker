@@ -9,13 +9,16 @@ import {
   addThreadMessage,
   toggleReaction,
   subscribeThreads,
+  subscribeAllThreads,
   useThreads,
   type ThreadMessage,
 } from "../lib/threads";
+import { sendNotification } from "../lib/firebase";
 
 vi.mock("firebase/firestore", () => ({
   addDoc: vi.fn(() => Promise.resolve()),
   collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
+  collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
   doc: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
   onSnapshot: vi.fn(),
   orderBy: vi.fn((field, dir) => ({ field, dir })),
@@ -26,7 +29,8 @@ vi.mock("firebase/firestore", () => ({
 vi.mock("../lib/firebase", () => ({
   db: {},
   handleFirestoreError: vi.fn(),
-  OperationType: { CREATE: "CREATE", UPDATE: "UPDATE" },
+  sendNotification: vi.fn(),
+  OperationType: { CREATE: "CREATE", UPDATE: "UPDATE", LIST: "LIST" },
 }));
 
 const msg = (over: Partial<ThreadMessage>): ThreadMessage => ({
@@ -104,6 +108,82 @@ describe("addThreadMessage", () => {
     });
     expect(typeof data.at).toBe("string");
     expect(Number.isNaN(Date.parse(data.at as string))).toBe(false);
+  });
+});
+
+describe("addThreadMessage notify", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("pings the recipient with a kind-shaped title + contact when notify.to is set", async () => {
+    await addThreadMessage(
+      "C-1",
+      { interactionId: null, from: "u1", fromName: "Tony Wang", kind: "question", body: "Coming Thursday?" },
+      { to: "u3", contactName: "Rio Tan" },
+    );
+    expect(sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "u3",
+        title: "Tony asked about Rio Tan",
+        message: "Coming Thursday?",
+        type: "info",
+        targetId: "C-1",
+      }),
+    );
+  });
+
+  it("truncates a long body in the notification message", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "nudge", body: "x".repeat(200) },
+      { to: "u3", contactName: "Rio" },
+    );
+    const arg = vi.mocked(sendNotification).mock.calls[0][0] as { message: string };
+    expect(arg.message.endsWith("…")).toBe(true);
+    expect(arg.message.length).toBeLessThanOrEqual(141);
+  });
+
+  it("does not notify when notify.to is absent", async () => {
+    await addThreadMessage(
+      "C-1",
+      { from: "u1", fromName: "Tony", kind: "comment", body: "hi" },
+      { to: null },
+    );
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe("subscribeAllThreads", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("tags each message with its parent contactId and defaults malformed docs", () => {
+    vi.mocked(onSnapshot).mockImplementation((_q: unknown, next: unknown) => {
+      (next as (s: unknown) => void)({
+        docs: [
+          {
+            id: "m1",
+            ref: { parent: { parent: { id: "c1" } } },
+            data: () => ({
+              from: "u3",
+              fromName: "Zion",
+              kind: "question",
+              body: "q",
+              at: "2021-01-01T00:00:00.000Z",
+              interactionId: "i9",
+              reactions: [],
+            }),
+          },
+          { id: "m2", ref: { parent: { parent: null } }, data: () => ({}) },
+        ],
+      });
+      return () => {};
+    });
+
+    const cb = vi.fn();
+    subscribeAllThreads(cb);
+    const messages = cb.mock.calls[0][0] as (ThreadMessage & { contactId: string })[];
+    expect(messages[0]).toMatchObject({ id: "m1", contactId: "c1", interactionId: "i9", kind: "question" });
+    // malformed doc → empty contactId + safe field defaults
+    expect(messages[1]).toMatchObject({ id: "m2", contactId: "", kind: "comment", from: "", reactions: [] });
   });
 });
 
