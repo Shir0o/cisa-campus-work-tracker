@@ -5,6 +5,7 @@ import {
   isTrainee,
   fullTimerOf,
   traineesOf,
+  walkingRecipient,
 } from "../lib/walking";
 
 describe("walking relationships", () => {
@@ -38,5 +39,28 @@ describe("walking relationships", () => {
     expect(fullTimerOf(undefined)).toBeNull();
     expect(traineesOf("nobody")).toEqual([]);
     expect(traineesOf(undefined)).toEqual([]);
+  });
+});
+
+describe("walkingRecipient", () => {
+  const [ft, trainees] = Object.entries(FT_TRAINEES)[0];
+  const trainee = trainees[0];
+
+  it("routes a trainee's message to their full-timer", () => {
+    expect(walkingRecipient(trainee, "anyone")).toBe(ft);
+  });
+
+  it("routes a full-timer's message to the trainee who added the contact", () => {
+    expect(walkingRecipient(ft, trainee)).toBe(trainee);
+  });
+
+  it("returns null when the contact wasn't added by a trainee the full-timer walks with", () => {
+    expect(walkingRecipient(ft, "some-other-uid")).toBeNull();
+    expect(walkingRecipient(ft, undefined)).toBeNull();
+  });
+
+  it("returns null for a nullish sender", () => {
+    expect(walkingRecipient(undefined, trainee)).toBeNull();
+    expect(walkingRecipient(null)).toBeNull();
   });
 });
