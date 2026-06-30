@@ -20,6 +20,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - `CHANGELOG.md` — distilled project history backfilled from git/PR log.
 
 ### Changed
+- Widened the Full-timer's My Day inbox from a single trainee to the **whole team**: it now surfaces new contacts, logged interactions, and unanswered questions from everyone except the Full-timer, retitled **"From the team"** with a calm-by-default collapse ("Show N earlier" / "Show less"). Also dropped the phrase **"walking with" / "walking together"** from the UI — the contact thread tab is now **"Alongside"**, and people-summary copy reads "in your care" / "caring for".
 - Removed the stale in-repo `docs/design/project` "Field Notes" design bundle; the design source now lives in the external Claude Design handoff zip, so the repo no longer carries a duplicate that drifts out of date.
 - Removed the generic **"Today"** dashboard and the separate admin-only `/my-day`
   route in favor of the single role-based home at `/` (My Day is now served at

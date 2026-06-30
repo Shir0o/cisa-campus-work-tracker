@@ -91,9 +91,9 @@ describe("FromTraineesInbox", () => {
     });
   });
 
-  it("renders the trainee-titled section with a row per inbox item and an unread count", async () => {
+  it("renders the team inbox with a row per inbox item and an unread count", async () => {
     render(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} />);
-    await waitFor(() => expect(screen.getByText("Walking with Zion")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
     expect(screen.getByText("Zion added Rio Tan")).toBeInTheDocument();
     expect(screen.getByText("Zion logged time with Rio Tan")).toBeInTheDocument();
     expect(screen.getByText("Zion asked about Rio Tan")).toBeInTheDocument();

@@ -4,13 +4,13 @@ import type { ThreadKind, ThreadMessageWithContact } from "./threads";
 
 export type { ThreadMessageWithContact };
 
-// Derives a full-timer's inbox feed: the things their trainees did that the
-// full-timer wants to be aware of —
-//   • contacts a trainee added
-//   • interactions a trainee logged
-//   • trainee questions still awaiting a reply from the full-timer
-// Newest-first. This is the data layer for Session 2's My Day inbox; it is a
-// pure function over already-loaded data so it stays trivially testable.
+// Derives a full-timer's inbox feed: the whole team's activity the full-timer
+// wants to be aware of — everyone's work except their own —
+//   • contacts anyone added
+//   • interactions anyone logged
+//   • questions (from anyone) still awaiting a reply from the full-timer
+// Newest-first. This is the data layer for the My Day "From the team" inbox; it
+// is a pure function over already-loaded data so it stays trivially testable.
 //
 // Threads live as per-contact subcollections, so each message must be tagged
 // with its contactId by the caller (Session 2's collection-group query supplies
@@ -23,7 +23,7 @@ export interface InboxItem {
   type: InboxItemType;
   at: string; // ISO
   contactId: string;
-  by: string; // trainee uid
+  by: string; // the team member who did it
   interactionId?: string | null;
   reviewed?: boolean;
   title?: string;
@@ -44,14 +44,15 @@ export function inboxItemsFor(
     threads: ThreadMessageWithContact[];
   },
 ): InboxItem[] {
-  const trainees = FT_TRAINEES[uid] ?? [];
-  if (!trainees.length) return [];
+  // Only full-timers get this oversight inbox.
+  if (!FT_TRAINEES[uid]) return [];
 
   const items: InboxItem[] = [];
 
-  // Contacts a trainee added (we treat the contact creator as "added by").
+  // Contacts anyone on the team added (the creator doubles as "added by"); skip
+  // the full-timer's own.
   for (const c of data.contacts) {
-    if (c.createdBy && trainees.includes(c.createdBy)) {
+    if (c.createdBy && c.createdBy !== uid) {
       items.push({
         id: "contact:" + c.id,
         type: "contact",
@@ -63,10 +64,10 @@ export function inboxItemsFor(
     }
   }
 
-  // Interactions a trainee logged.
+  // Interactions anyone on the team logged; skip the full-timer's own.
   for (const i of data.interactions) {
     const by = i.userId ?? i.createdById;
-    if (by && trainees.includes(by) && i.contactId) {
+    if (by && by !== uid && i.contactId) {
       items.push({
         id: "interaction:" + i.id,
         type: "interaction",
@@ -79,9 +80,10 @@ export function inboxItemsFor(
     }
   }
 
-  // Trainee questions with no later reply from this full-timer (same level).
+  // Questions from anyone but the full-timer, with no later reply from the
+  // full-timer (same level).
   for (const m of data.threads) {
-    if (m.kind === "question" && trainees.includes(m.from)) {
+    if (m.kind === "question" && m.from && m.from !== uid) {
       const answered = data.threads.some(
         (r) =>
           r.from === uid &&

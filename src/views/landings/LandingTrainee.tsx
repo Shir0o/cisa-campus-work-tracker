@@ -266,7 +266,7 @@ export default function LandingTrainee() {
           {getGreeting()}, {firstName}.
         </h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-          You're walking with{" "}
+          You're caring for{" "}
           <b className="text-on-surface font-semibold">
             {myPeople.length} {myPeople.length === 1 ? "student" : "students"}
           </b>{" "}

@@ -444,14 +444,14 @@ export default function ContactDetailsModal({
 
   if (!contact) return null;
 
-  // "Walking together" tab: when the viewer is the full-timer for a contact a
-  // trainee of theirs added, name the trainee they're walking with.
+  // "Alongside" tab: when the viewer is the full-timer for a contact a trainee
+  // of theirs added, name the person they're alongside.
   const viewerWalksWithAdder =
     !!contact.createdBy && traineesOf(user?.uid).includes(contact.createdBy);
   const walkLabel =
     viewerWalksWithAdder && contact.createdByName
-      ? `Walking with ${contact.createdByName.split(" ")[0]}`
-      : "Walking together";
+      ? `Alongside ${contact.createdByName.split(" ")[0]}`
+      : "Alongside";
   // The other party in the walk — pinged on the bell when a thread msg is posted.
   const threadRecipient = walkingRecipient(user?.uid, contact.createdBy);
 
@@ -1683,8 +1683,8 @@ export default function ContactDetailsModal({
                                       >
                                         <Footprints className="w-3.5 h-3.5" />
                                         {countFor(threadMessages, interaction.id) > 0
-                                          ? `Walking together · ${countFor(threadMessages, interaction.id)}`
-                                          : "Walk through this together"}
+                                          ? `Alongside · ${countFor(threadMessages, interaction.id)}`
+                                          : "Think this through together"}
                                       </button>
                                       {openThread === interaction.id && (
                                         <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
