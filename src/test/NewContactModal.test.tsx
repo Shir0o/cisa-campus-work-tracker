@@ -33,6 +33,21 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: vi.fn(),
 }));
 
+vi.mock('../lib/seasons', () => ({
+  useSeason: () => ({
+    autoId: 'summer',
+    activeId: 'summer',
+    active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
+    isAuto: true,
+    clubRush: false,
+    label: "Summer '26",
+    tags: ["Summer '26"],
+    setSeason: vi.fn(),
+    resetSeason: vi.fn(),
+    toggleClubRush: vi.fn(),
+  }),
+}));
+
 describe('NewContactModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -46,7 +61,7 @@ describe('NewContactModal', () => {
     render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
     await waitFor(() => {
       expect(screen.getByText('New Contact')).toBeInTheDocument();
-      expect(screen.getByText('Add a new connection to your network')).toBeInTheDocument();
+      expect(screen.getByText("Tagged for this season's cohort")).toBeInTheDocument();
     });
   });
 
@@ -104,6 +119,10 @@ describe('NewContactModal', () => {
       expect(onClose).toHaveBeenCalled();
       expect(vi.mocked(addDoc)).toHaveBeenCalled();
     });
+
+    // The new contact carries the active season cohort tag.
+    const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
+    expect(contactArg?.tags).toEqual(expect.arrayContaining(["Summer '26"]));
   });
 
   // ── Viewer role guard ──────────────────────────────────────────────

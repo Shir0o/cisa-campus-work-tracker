@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, getDocs, limit } from 'firebase/firestore';
+import { useSeason } from '../lib/seasons';
 
 // ── Intake options (mirrors the Field Notes design) ──────────────
 const MAJORS = [
@@ -135,6 +136,7 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const season = useSeason();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(false);
@@ -235,7 +237,9 @@ export default function SignUp() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastSeen: new Date().toLocaleDateString(),
-        tags: ['New Sign Up'],
+        // Stamp the cohort (e.g. "Fall '26", plus "Club Rush" during intake weeks)
+        // so a whole season's sign-ups can be found again later.
+        tags: ['New Sign Up', ...season.tags],
       };
 
       await addDoc(collection(db, 'contacts'), contactData);
@@ -297,7 +301,7 @@ export default function SignUp() {
           {brandLogo}
           <div className="min-w-0">
             <div className="font-serif text-base font-semibold text-on-surface leading-tight">CISA Campus</div>
-            <div className="text-[13px] text-on-surface-variant">Christian Fellowship &middot; Spring &rsquo;26</div>
+            <div className="text-[13px] text-on-surface-variant">Christian Fellowship &middot; {season.label}</div>
           </div>
           <button
             type="button"
@@ -309,6 +313,12 @@ export default function SignUp() {
         </div>
 
         <div>
+          {season.clubRush && (
+            <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1 rounded-full bg-stage-accent-soft text-stage-accent text-xs font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" />
+              {season.active.label} intake &middot; club rush
+            </div>
+          )}
           <h2 className="font-serif text-4xl font-medium tracking-tight text-on-surface leading-[1.1]">
             Hey &mdash; we&rsquo;d love
             <br />

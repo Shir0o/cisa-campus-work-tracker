@@ -8,17 +8,22 @@ import {
   CalendarDays,
   ChevronDown,
   Users,
+  Pencil,
+  Settings2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
+import { useGatheringTypes, blurbOf, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import AddEventModal from '../components/modals/AddEventModal';
+import EditEventModal from '../components/modals/EditEventModal';
+import ManageGatheringTypesModal from '../components/modals/ManageGatheringTypesModal';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
 import PageContainer from '../components/layout/PageContainer';
@@ -34,16 +39,6 @@ const evtDate = (s?: string | null): Date | null => {
   return isValid(d) ? d : null;
 };
 const evtMs = (s?: string | null): number | null => evtDate(s)?.getTime() ?? null;
-
-// blurbs by gathering type — falls back to the raw type for anything custom
-const TYPE_BLURB: Record<string, string> = {
-  Weekly: 'Friday night, the whole fellowship',
-  'Small Group': 'A handful, around a table',
-  Special: 'A one-off worship gathering',
-  Outreach: 'Out on campus, meeting people',
-};
-
-const TYPE_FILTERS = ['All', 'Weekly', 'Small Group', 'Special', 'Outreach'] as const;
 
 // Read-only "who's coming" count for an upcoming event, fed by member RSVPs.
 function RsvpCount({ eventId }: { eventId: string }) {
@@ -96,15 +91,28 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 
 export default function Attendance() {
   const { user, isAdmin } = useAuth();
+  const gatheringTypes = useGatheringTypes();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAddEventModalOpen, setIsAddEventModalOpen] = useState(false);
+  const [isManageTypesOpen, setIsManageTypesOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
-  const [typeFilter, setTypeFilter] = useState<(typeof TYPE_FILTERS)[number]>('All');
+  const [typeFilter, setTypeFilter] = useState<string>('All');
   const [openId, setOpenId] = useState<string | null>(null);
+
+  // Seed the default kinds the first time an admin opens Gatherings (mirrors how
+  // OutreachBoard seeds the default stages). One-shot; no-op once any kind exists.
+  useEffect(() => {
+    if (isAdmin) void seedDefaultGatheringTypesIfEmpty();
+  }, [isAdmin]);
+
+  // A filter pointing at a kind that was just renamed/removed falls back to All.
+  const activeFilter =
+    typeFilter !== 'All' && gatheringTypes.some((t) => t.name === typeFilter) ? typeFilter : 'All';
 
   useEffect(() => {
     // Clear state before handleFirestoreError (which throws), so the skeleton always
@@ -255,8 +263,8 @@ export default function Attendance() {
 
   // gatherings to mark / review — newest first, filtered by type
   const sessions = useMemo(
-    () => sessionsNewestFirst.filter((s) => typeFilter === 'All' || s.type === typeFilter),
-    [sessionsNewestFirst, typeFilter],
+    () => sessionsNewestFirst.filter((s) => activeFilter === 'All' || s.type === activeFilter),
+    [sessionsNewestFirst, activeFilter],
   );
 
   // coming up — today or later, soonest first
@@ -421,21 +429,29 @@ export default function Attendance() {
             sub="Tap a gathering to see who came — and mark anyone you remember."
           />
 
-          <div className="flex flex-wrap gap-2 mb-4">
-            {TYPE_FILTERS.map((t) => (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            {['All', ...gatheringTypes.map((t) => t.name)].map((t) => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
                 className={cn(
                   'h-9 px-4 rounded-full border text-sm font-medium transition-colors',
-                  typeFilter === t
+                  activeFilter === t
                     ? 'bg-primary text-on-primary border-primary'
                     : 'border-outline-variant text-on-surface hover:bg-surface-variant',
                 )}
               >
-                {t === 'Weekly' ? 'Friday Gatherings' : t === 'Small Group' ? 'Small Groups' : t}
+                {t}
               </button>
             ))}
+            {isAdmin && (
+              <button
+                onClick={() => setIsManageTypesOpen(true)}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+              >
+                <Settings2 className="w-3.5 h-3.5" /> Manage kinds
+              </button>
+            )}
           </div>
 
           {sessions.length > 0 ? (
@@ -470,7 +486,7 @@ export default function Attendance() {
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-on-surface truncate">{s.name}</div>
                         <div className="text-sm text-on-surface-variant truncate">
-                          {(s.type && TYPE_BLURB[s.type]) || s.type || 'A time together'}
+                          {blurbOf(gatheringTypes, s.type) || s.type || 'A time together'}
                         </div>
                       </div>
                       <div className="hidden sm:flex items-center -space-x-2 mr-1">
@@ -490,6 +506,20 @@ export default function Attendance() {
                           isOpen && 'rotate-180',
                         )}
                       />
+                      {isAdmin && (
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingEvent(s);
+                          }}
+                          className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
+                          title="Edit gathering"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </span>
+                      )}
                       {isAdmin && (
                         <span
                           role="button"
@@ -647,6 +677,16 @@ export default function Attendance() {
         isOpen={isAddEventModalOpen}
         onClose={() => setIsAddEventModalOpen(false)}
         currentEventCount={events.length}
+      />
+      <EditEventModal
+        isOpen={editingEvent !== null}
+        onClose={() => setEditingEvent(null)}
+        event={editingEvent}
+      />
+      <ManageGatheringTypesModal
+        isOpen={isManageTypesOpen}
+        onClose={() => setIsManageTypesOpen(false)}
+        types={gatheringTypes}
       />
       <ContactDetailsModal
         isOpen={selectedContact !== null}

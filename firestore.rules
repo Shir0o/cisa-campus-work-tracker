@@ -269,6 +269,36 @@ service cloud.firestore {
       }
     }
 
+    // 6b. Gathering Types — the managed "kinds of gathering" taxonomy (mirrors stages).
+    match /gatheringTypes/{typeId} {
+      function isValidGatheringType(data) {
+        return data.keys().hasAll(['name', 'order']) &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 64 &&
+               (!('blurb' in data) || data.blurb == null || (data.blurb is string && data.blurb.size() <= 200)) &&
+               data.order is int;
+      }
+
+      allow read: if isApprovedUser();
+      allow create, update: if isValidId(typeId) && isManager() && isValidGatheringType(incoming());
+      allow delete: if isValidId(typeId) && isManager();
+    }
+
+    // 6c. Settings — small team-wide singletons (e.g. settings/season). Publicly
+    // readable so the public sign-up reflects the active season / club-rush; only
+    // managers may change them.
+    match /settings/{docId} {
+      function isValidSeasonSettings(data) {
+        return data.keys().hasOnly(['override', 'clubRush']) &&
+               (!('override' in data) || data.override == null ||
+                 (data.override is string && data.override.size() <= 32)) &&
+               (!('clubRush' in data) || data.clubRush is bool);
+      }
+
+      allow read: if true;
+      allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
+      allow delete: if false;
+    }
+
     // 7. Activities Collection
     match /activities/{activityId} {
       function isValidActivity(data) {

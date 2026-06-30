@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, endOfMonth, getWeekOfMonth, isBefore, isSameDay } from 'date-fns';
 
 import DatePicker from '../ui/DatePicker';
+import { useGatheringTypes } from '../../lib/gatheringTypes';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -16,8 +17,6 @@ interface AddEventModalProps {
 
 type RecurrenceType = 'none' | 'daily' | 'weekly' | 'monthly';
 type MonthlyType = 'same-day' | 'relative-day';
-
-const GATHERING_TYPES = ['Weekly', 'Small Group', 'Special', 'Outreach'];
 
 const DAYS = [
   { label: 'S', labelFull: 'Sunday', value: 0 },
@@ -30,6 +29,7 @@ const DAYS = [
 ];
 
 export default function AddEventModal({ isOpen, onClose, currentEventCount }: AddEventModalProps) {
+  const gatheringTypes = useGatheringTypes();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -50,6 +50,15 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
       setFormData(f => ({ ...f, recurrenceDays: [day] }));
     }
   }, [formData.date, formData.recurrenceDays.length]);
+
+  // Keep the selected kind valid against the managed list — default to the first
+  // type once it loads (or after the current selection is renamed/removed).
+  useEffect(() => {
+    if (gatheringTypes.length === 0) return;
+    if (!gatheringTypes.some(t => t.name === formData.type)) {
+      setFormData(f => ({ ...f, type: gatheringTypes[0].name }));
+    }
+  }, [gatheringTypes, formData.type]);
 
   const getNthDayOfMonth = (date: Date, dayOfWeek: number, weekIndex: number) => {
     const monthStart = startOfMonth(date);
@@ -209,7 +218,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
       
       setFormData({
         name: '',
-        type: 'Weekly',
+        type: gatheringTypes[0]?.name ?? 'Weekly',
         location: '',
         date: format(new Date(), 'yyyy-MM-dd'),
         isRecurring: false,
@@ -284,19 +293,19 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black text-on-surface-variant px-1 uppercase tracking-wider">Type</label>
                   <div className="flex flex-wrap gap-2">
-                    {GATHERING_TYPES.map(t => (
+                    {gatheringTypes.map(t => (
                       <button
-                        key={t}
+                        key={t.id}
                         type="button"
-                        onClick={() => setFormData(f => ({ ...f, type: t }))}
+                        onClick={() => setFormData(f => ({ ...f, type: t.name }))}
                         className={cn(
                           'px-3.5 h-9 rounded-full border text-xs font-medium transition-colors cursor-pointer',
-                          formData.type === t
+                          formData.type === t.name
                             ? 'bg-primary text-on-primary border-primary'
                             : 'bg-surface-container-high border-outline/40 text-on-surface-variant hover:border-outline'
                         )}
                       >
-                        {t}
+                        {t.name}
                       </button>
                     ))}
                   </div>
