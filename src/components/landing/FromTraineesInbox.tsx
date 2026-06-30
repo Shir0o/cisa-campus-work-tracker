@@ -15,13 +15,14 @@ import {
 } from "../../lib/threads";
 import { useInboxReads } from "../../lib/inboxReads";
 
-// The full-timer's "Walking with {trainee}" inbox on My Day: new people,
-// conversations and questions from the trainee(s) they walk with — scannable,
-// with quick ways to encourage, comment, or nudge a follow-up. Reads thread/
-// interaction data across all contacts (collection-group), derives the feed with
-// `inboxItemsFor`, and tracks per-device scanned state via `InboxReads`.
+// The full-timer's "From the team" inbox on My Day: new people, conversations
+// and questions from anyone on the team (except the full-timer) — scannable,
+// with quick ways to encourage, comment, or nudge a follow-up, and a calm
+// collapse so it stays quiet by default. Reads thread/interaction data across
+// all contacts (collection-group), derives the feed with `inboxItemsFor`, and
+// tracks per-device scanned state via `InboxReads`.
 
-const firstNameOf = (full?: string) => (full || "Your trainee").trim().split(/\s+/)[0];
+const firstNameOf = (full?: string) => (full || "A teammate").trim().split(/\s+/)[0];
 
 // Tonal node per item type (reuses the History/notification stage tones).
 const NODE: Record<
@@ -53,7 +54,7 @@ function ActionButton({
 function InboxRow({
   item,
   contact,
-  traineeFirst,
+  actorFirst,
   read,
   onEncourage,
   onComment,
@@ -62,7 +63,7 @@ function InboxRow({
 }: {
   item: InboxItem;
   contact?: Contact;
-  traineeFirst: string;
+  actorFirst: string;
   read: boolean;
   onEncourage: () => void;
   onComment: () => void;
@@ -73,10 +74,10 @@ function InboxRow({
   const who = contact?.name || "someone new";
   const summary =
     item.type === "contact"
-      ? `${traineeFirst} added ${who}`
+      ? `${actorFirst} added ${who}`
       : item.type === "interaction"
-        ? `${traineeFirst} logged time with ${who}`
-        : `${traineeFirst} asked about ${who}`;
+        ? `${actorFirst} logged time with ${who}`
+        : `${actorFirst} asked about ${who}`;
 
   return (
     <div
@@ -121,7 +122,7 @@ function InboxRow({
               <MessageSquare className="w-3.5 h-3.5" /> Comment
             </ActionButton>
             <ActionButton onClick={onRemind}>
-              <Bell className="w-3.5 h-3.5" /> Remind {traineeFirst}
+              <Bell className="w-3.5 h-3.5" /> Remind {actorFirst}
             </ActionButton>
             <button
               onClick={onToggleScanned}
@@ -157,6 +158,7 @@ export default function FromTraineesInbox({
   const inbox = useInboxReads();
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
+  const [showAll, setShowAll] = useState(false);
 
   const trainees = useMemo(() => traineesOf(meUid), [meUid]);
   const hasTrainees = trainees.length > 0;
@@ -211,9 +213,12 @@ export default function FromTraineesInbox({
   // has no inbox content yet (e.g. before the rules deploy lands).
   if (!hasTrainees || items.length === 0) return null;
 
-  const titleFirst = firstNameOf(nameByUid[trainees[0]]);
-  const title = trainees.length > 1 ? "Walking with your trainees" : `Walking with ${titleFirst}`;
   const meName = user?.displayName || "Someone";
+
+  // Keep My Day calm: show everything unread plus a few recent, collapse the rest.
+  const COLLAPSED = 6;
+  const visible = showAll ? items : items.slice(0, Math.max(COLLAPSED, unreadCount));
+  const hidden = items.length - visible.length;
 
   const post = (item: InboxItem, kind: "encouragement" | "nudge", body: string) => {
     const contact = contactById(item.contactId);
@@ -228,8 +233,8 @@ export default function FromTraineesInbox({
   return (
     <section className="mt-12">
       <SectionHead
-        title={title}
-        sub="New people and conversations, as they happen — scan, encourage, or nudge a next step."
+        title="From the team"
+        sub="New people and conversations across the team, as they happen — scan, encourage, or nudge a next step."
         action={
           unreadCount > 0 ? (
             <span className="text-xs font-semibold text-primary bg-stage-accent-soft rounded-full px-2.5 py-1">
@@ -241,22 +246,22 @@ export default function FromTraineesInbox({
         onLink={() => inbox.markAll(meUid, items.map((it) => it.id))}
       />
       <div className="flex flex-col gap-3">
-        {items.map((item) => {
+        {visible.map((item) => {
           const contact = contactById(item.contactId);
-          const traineeFirst = firstNameOf(nameByUid[item.by]);
+          const actorFirst = firstNameOf(nameByUid[item.by]);
           const contactFirst = (contact?.name || "them").split(/\s+/)[0];
           return (
             <InboxRow
               key={item.id}
               item={item}
               contact={contact}
-              traineeFirst={traineeFirst}
+              actorFirst={actorFirst}
               read={isRead(item.id)}
               onEncourage={() =>
                 post(
                   item,
                   "encouragement",
-                  `Love seeing this — thank you for walking with ${contactFirst} so faithfully. 🌱`,
+                  `Love seeing this — thank you for caring for ${contactFirst} so faithfully. 🌱`,
                 )
               }
               onRemind={() =>
@@ -276,6 +281,22 @@ export default function FromTraineesInbox({
           );
         })}
       </div>
+      {hidden > 0 && !showAll && (
+        <button
+          onClick={() => setShowAll(true)}
+          className="mt-3 text-sm font-medium text-primary hover:underline"
+        >
+          Show {hidden} earlier
+        </button>
+      )}
+      {showAll && items.length > COLLAPSED && (
+        <button
+          onClick={() => setShowAll(false)}
+          className="mt-3 text-sm font-medium text-on-surface-variant hover:underline"
+        >
+          Show less
+        </button>
+      )}
     </section>
   );
 }

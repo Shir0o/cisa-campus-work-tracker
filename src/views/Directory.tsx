@@ -475,7 +475,7 @@ export default function Directory() {
             <b className="text-on-surface font-semibold">
               {contacts.length} {contacts.length === 1 ? 'person' : 'people'}
             </b>{' '}
-            you're walking with
+            in your care
             {newCount > 0 && (
               <>
                 {' '}— <span className="text-on-surface font-medium">{newCount}</span> new in the

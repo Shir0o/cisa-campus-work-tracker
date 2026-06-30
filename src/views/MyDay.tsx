@@ -744,7 +744,7 @@ export default function MyDay() {
           </div>
         </header>
 
-        {/* ── Walking with your trainee(s) — the full-timer inbox ── */}
+        {/* ── From the team — the full-timer inbox ── */}
         {uid && (
           <FromTraineesInbox meUid={uid} contacts={contacts} onOpenContact={openContact} />
         )}
@@ -890,7 +890,7 @@ export default function MyDay() {
                       </div>
                       <h3 className="font-serif text-2xl text-on-surface mt-2">{lead.name}</h3>
                       <p className="text-sm text-on-surface-variant leading-relaxed mt-1.5 max-w-2xl">
-                        A good chance to be present with the people you're walking with.
+                        A good chance to be present with the people in your care.
                       </p>
                       {facts.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-3">
@@ -955,7 +955,7 @@ export default function MyDay() {
             title="Your prayers"
             sub={
               <>
-                Prayers for the people you're personally walking with.{" "}
+                Prayers for the people you're personally caring for.{" "}
                 <button
                   onClick={() => navigate("/prayer")}
                   className="text-primary hover:underline"
