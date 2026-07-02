@@ -33,6 +33,17 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
     }
   }, [isOpen, event]);
 
+  // Keep the selected kind valid against the managed list — if this gathering's
+  // stored type was renamed/removed, fall back to the first available kind (so we
+  // never re-save a non-existent type). Touches only `type`, never the edits in
+  // progress. Mirrors AddEventModal.
+  useEffect(() => {
+    if (!isOpen || gatheringTypes.length === 0 || !formData.type) return;
+    if (!gatheringTypes.some((t) => t.name === formData.type)) {
+      setFormData((f) => ({ ...f, type: gatheringTypes[0].name }));
+    }
+  }, [isOpen, gatheringTypes, formData.type]);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     if (isOpen) window.addEventListener('keydown', handleEsc);

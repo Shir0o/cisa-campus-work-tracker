@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2, Loader2, CalendarHeart } from 'lucide-react';
 import type { GatheringType } from '../../types';
@@ -23,13 +23,12 @@ interface Row {
   blurb: string;
 }
 
-let seq = 0;
-
 export default function ManageGatheringTypesModal({ isOpen, onClose, types }: ManageGatheringTypesModalProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [newName, setNewName] = useState('');
   const [newBlurb, setNewBlurb] = useState('');
   const [saving, setSaving] = useState(false);
+  const nextKey = useRef(0); // unique keys for freshly-added rows (per instance)
 
   // Snapshot the live types into an editable draft each time the modal opens.
   useEffect(() => {
@@ -57,7 +56,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
   const addRow = () => {
     const name = newName.trim();
     if (!name || nameExists(name)) return;
-    setRows((rs) => [...rs, { key: `n${seq++}`, name, blurb: newBlurb.trim() }]);
+    setRows((rs) => [...rs, { key: `n${nextKey.current++}`, name, blurb: newBlurb.trim() }]);
     setNewName('');
     setNewBlurb('');
   };
