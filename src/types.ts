@@ -135,6 +135,24 @@ export interface Event {
   createdAt: string;
 }
 
+// A managed "kind of gathering" (Weekly / Small Group / …) with a warm one-line
+// blurb. Lives in the `gatheringTypes` collection so the list is team-shared and
+// editable (mirrors the `stages` taxonomy). Events reference a type by NAME.
+export interface GatheringType {
+  id: string;
+  name: string;
+  blurb?: string;
+  order: number;
+}
+
+// Team-wide season/club-rush settings (one doc: settings/season). The active
+// season is auto-derived from today's date unless `override` is set; `clubRush`
+// flags the busy intake weeks. Publicly readable so the public sign-up reflects it.
+export interface SeasonSettings {
+  override?: string | null;
+  clubRush?: boolean;
+}
+
 export interface PrayerRecord {
   id: string;
   contactId: string;

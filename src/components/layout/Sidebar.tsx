@@ -23,6 +23,7 @@ import { cn, getUserAvatar } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
 import { NAV_ITEMS, canAccessRoute, roleLabel, AppRole } from '../../lib/permissions';
+import SeasonChip from './SeasonChip';
 
 interface SidebarProps {
   isCollapsed?: boolean;
@@ -152,13 +153,18 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           </NavLink>
           
           {!effectiveIsCollapsed && (
-            <button 
+            <button
               onClick={() => setIsMobileMenuOpen(false)}
               className="md:hidden p-2 -mr-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant"
             >
               <X className="w-5 h-5" />
             </button>
           )}
+        </div>
+
+        {/* Season / club-rush strip (staff can override; hidden when collapsed) */}
+        <div className="-mt-5 mb-4">
+          <SeasonChip collapsed={effectiveIsCollapsed} />
         </div>
 
         {/* Main Nav Items */}

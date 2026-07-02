@@ -49,6 +49,25 @@ vi.mock('../components/modals/AddEventModal', () => ({
   default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="add-event-modal">Add Event Modal</div> : null,
 }));
 
+vi.mock('../components/modals/EditEventModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="edit-event-modal">Edit Event Modal</div> : null,
+}));
+
+vi.mock('../components/modals/ManageGatheringTypesModal', () => ({
+  default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="manage-types-modal">Manage Types</div> : null,
+}));
+
+vi.mock('../lib/gatheringTypes', () => ({
+  useGatheringTypes: () => [
+    { id: 't1', name: 'Weekly', blurb: 'Friday night, the whole fellowship', order: 0 },
+    { id: 't2', name: 'Small Group', blurb: 'A handful, around a table', order: 1 },
+    { id: 't3', name: 'Special', blurb: '', order: 2 },
+    { id: 't4', name: 'Outreach', blurb: '', order: 3 },
+  ],
+  blurbOf: (types: any[], name?: string) => types.find((t) => t.name === name)?.blurb ?? '',
+  seedDefaultGatheringTypesIfEmpty: vi.fn(() => Promise.resolve()),
+}));
+
 vi.mock('../components/modals/ContactDetailsModal', () => ({
   default: ({ isOpen }: { isOpen: boolean }) => isOpen ? <div data-testid="contact-details-modal">Contact Details</div> : null,
 }));
@@ -172,8 +191,8 @@ describe('Attendance', () => {
       expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
     });
 
-    // Select 'Small Groups' filter
-    const smallGroupsFilter = screen.getByText('Small Groups');
+    // Select the 'Small Group' filter (pills now show the managed type names)
+    const smallGroupsFilter = screen.getByText('Small Group');
     fireEvent.click(smallGroupsFilter);
 
     expect(screen.queryByText('Friday Gathering 1')).not.toBeInTheDocument();

@@ -6,6 +6,7 @@ import { isTrainee, fullTimerOf } from '../../lib/walking';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { useSeason } from '../../lib/seasons';
 import { Contact, Stage } from '../../types';
 
 interface NewContactModalProps {
@@ -33,6 +34,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     spiritualBackground: ''
   });
   const [stages, setStages] = useState<Stage[]>([]);
+  const season = useSeason();
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -113,7 +115,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
-        tags: formData.tags,
+        // Stamp the active season cohort (+ "Club Rush" during intake) alongside
+        // any tags the staffer typed, so the contact is findable by cohort later.
+        tags: Array.from(new Set([...formData.tags, ...season.tags])),
         notes: formData.notes,
         spiritualBackground: formData.spiritualBackground,
         initials: getInitials(formData.firstName, formData.lastName),
@@ -217,8 +221,14 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                   <User className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
-                  <p className="text-sm text-on-surface-variant font-medium">Add a new connection to your network</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent text-[11px] font-semibold">
+                      <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" />
+                      {season.label}{season.clubRush ? ' · club rush' : ''}
+                    </span>
+                  </div>
+                  <p className="text-sm text-on-surface-variant font-medium">Tagged for this season's cohort</p>
                 </div>
               </div>
               <button 

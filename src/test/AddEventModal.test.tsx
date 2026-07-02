@@ -25,6 +25,15 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { CREATE: 'CREATE' },
 }));
 
+vi.mock('../lib/gatheringTypes', () => ({
+  useGatheringTypes: () => [
+    { id: 't1', name: 'Weekly', blurb: 'Friday night', order: 0 },
+    { id: 't2', name: 'Small Group', blurb: 'Around a table', order: 1 },
+    { id: 't3', name: 'Special', blurb: '', order: 2 },
+    { id: 't4', name: 'Outreach', blurb: '', order: 3 },
+  ],
+}));
+
 vi.mock('motion/react', () => ({
   motion: {
     div: ({ children, ...props }: any) => <div {...props}>{children}</div>,

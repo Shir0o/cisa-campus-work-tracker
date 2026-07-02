@@ -5,6 +5,30 @@ import { BrowserRouter } from 'react-router-dom';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
+// SeasonChip (in the sidebar) reads the season lib; stub it so the real Firestore
+// layer (firebase.ts → getAuth) is never loaded in these layout tests.
+vi.mock('../lib/seasons', () => ({
+  SEASON_ORDER: ['spring', 'summer', 'fall', 'winter'],
+  SEASONS: {
+    spring: { id: 'spring', label: 'Spring' },
+    summer: { id: 'summer', label: 'Summer' },
+    fall: { id: 'fall', label: 'Fall' },
+    winter: { id: 'winter', label: 'Winter' },
+  },
+  useSeason: () => ({
+    autoId: 'summer',
+    activeId: 'summer',
+    active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
+    isAuto: true,
+    clubRush: false,
+    label: "Summer '26",
+    tags: ["Summer '26"],
+    setSeason: () => {},
+    resetSeason: () => {},
+    toggleClubRush: () => {},
+  }),
+}));
+
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: '123' },

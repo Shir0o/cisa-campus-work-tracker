@@ -35,6 +35,21 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+vi.mock('../lib/seasons', () => ({
+  useSeason: () => ({
+    autoId: 'summer',
+    activeId: 'summer',
+    active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
+    isAuto: true,
+    clubRush: false,
+    label: "Summer '26",
+    tags: ["Summer '26"],
+    setSeason: vi.fn(),
+    resetSeason: vi.fn(),
+    toggleClubRush: vi.fn(),
+  }),
+}));
+
 describe('SignUp View', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -108,6 +123,12 @@ describe('SignUp View', () => {
     // Step 3 success page
     expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
     expect(addDoc).toHaveBeenCalled();
+
+    // The new contact is stamped with the season cohort (+ the "New Sign Up" tag).
+    const contactArg = (addDoc as any).mock.calls.find(
+      (c: any[]) => c[1] && Array.isArray(c[1].tags),
+    )?.[1];
+    expect(contactArg?.tags).toEqual(expect.arrayContaining(['New Sign Up', "Summer '26"]));
   });
 
   it('covers optional inputs, back navigation, honeypot, and success page actions', async () => {

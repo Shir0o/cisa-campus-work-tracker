@@ -640,4 +640,97 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), { reviewed: 'yes' }));
     });
   });
+
+  describe('Gathering Types', () => {
+    const validType = { name: 'Prayer Walk', blurb: 'on campus', order: 3 };
+
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('GT1: Manager can create a valid gathering type', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(setDoc(doc(db, 'gatheringTypes', 'gt1'), validType));
+    });
+
+    it('GT2: Operator cannot create a gathering type (needs manager+)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gt2'), validType));
+    });
+
+    it('GT3: Approved viewer can read but not create', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'gatheringTypes', 'gt1'), validType);
+      });
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(getDoc(doc(db, 'gatheringTypes', 'gt1')));
+      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtX'), validType));
+    });
+
+    it('GT4: Manager can update and delete a type', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'gatheringTypes', 'gt1'), validType);
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(updateDoc(doc(db, 'gatheringTypes', 'gt1'), { name: 'Walk', blurb: '', order: 3 }));
+      await assertSucceeds(deleteDoc(doc(db, 'gatheringTypes', 'gt1')));
+    });
+
+    it('GT5: Rejects an invalid type (missing order / empty name)', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtBad'), { name: 'No order', blurb: '' }));
+      await assertFails(setDoc(doc(db, 'gatheringTypes', 'gtBad2'), { name: '', blurb: '', order: 1 }));
+    });
+  });
+
+  describe('Settings (season)', () => {
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+      });
+    };
+
+    it('SS1: Anyone (even unauthenticated) can read settings/season', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'season'), { override: null, clubRush: false });
+      });
+      const db = getFirestore(); // unauthenticated
+      await assertSucceeds(getDoc(doc(db, 'settings', 'season')));
+    });
+
+    it('SS2: Manager can set the override + club-rush flag', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertSucceeds(setDoc(doc(db, 'settings', 'season'), { override: 'fall', clubRush: true }));
+    });
+
+    it('SS3: Operator cannot write the season settings', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(db, 'settings', 'season'), { override: 'fall', clubRush: true }));
+    });
+
+    it('SS4: Rejects unexpected keys', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'season'), { override: 'fall', evil: true }));
+    });
+
+    it('SS5: Only the season doc id is writable', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'other'), { clubRush: true }));
+    });
+  });
 });
