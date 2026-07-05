@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import type { User } from 'firebase/auth';
 import {
   collection,
   getDocs,
@@ -321,7 +322,7 @@ function Steps({ items }: { items: string[] }) {
 function IntegrationsSection({
   currentUser,
 }: {
-  currentUser: { uid?: string; displayName?: string | null; email?: string | null } | null;
+  currentUser: User | null;
 }) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -342,12 +343,25 @@ function IntegrationsSection({
     setErrorMsg('');
 
     try {
+      let token: string | null = null;
+      try {
+        if (currentUser && typeof currentUser.getIdToken === 'function') {
+          token = await currentUser.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.error('Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/quick-add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           text,
-          userId: currentUser?.uid,
           userName: currentUser?.displayName || currentUser?.email || 'Unknown User',
         }),
       });

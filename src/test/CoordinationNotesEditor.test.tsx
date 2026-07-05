@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, act, waitFor } from '@testing-library/react';
+import { render, screen, act, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot } from 'firebase/firestore';
 import CoordinationNotes from '../views/CoordinationNotes';
@@ -235,6 +235,68 @@ describe('CoordinationNotes — live editor behavior', () => {
       vi.useRealTimers();
 
       expect(screen.queryByText('2 to do')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── "AI Insights" — /api/analyze-notes is admin-only server-side; the client
+  // must attach the caller's Firebase ID token so the server can verify it.
+  describe('AI Insights auth token', () => {
+    it('attaches a Bearer token from the signed-in admin to /api/analyze-notes', async () => {
+      const getIdToken = vi.fn().mockResolvedValue('mock-id-token');
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...adminAuth,
+        user: { ...adminAuth.user, getIdToken },
+      });
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true, updatedMarkdown: '# Live heading', suggestedTasks: [] }),
+      } as Response);
+
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByRole('button', { name: /AI Insights/i }));
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/analyze-notes',
+        expect.objectContaining({
+          method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer mock-id-token' }),
+        }),
+      ));
+
+      fetchSpy.mockRestore();
+    });
+
+    it('still sends the request without a token when getIdToken fails', async () => {
+      const getIdToken = vi.fn().mockRejectedValue(new Error('token fetch failed'));
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+        ...adminAuth,
+        user: { ...adminAuth.user, getIdToken },
+      });
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true, updatedMarkdown: '# Live heading', suggestedTasks: [] }),
+      } as Response);
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByRole('button', { name: /AI Insights/i }));
+
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/analyze-notes',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ));
+
+      fetchSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
   });
 });

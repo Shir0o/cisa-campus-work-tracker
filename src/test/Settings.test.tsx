@@ -113,6 +113,7 @@ function setupManagerAuth(overrides: Record<string, any> = {}) {
       displayName: 'Admin User',
       email: 'admin@test.com',
       photoURL: null,
+      getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
     },
     isAdmin: true,
     isManager: true,
@@ -129,6 +130,7 @@ function setupNonManagerAuth(overrides: Record<string, any> = {}) {
       displayName: 'Regular User',
       email: 'regular@test.com',
       photoURL: null,
+      getIdToken: vi.fn().mockResolvedValue('mock-id-token'),
     },
     isAdmin: false,
     isManager: false,
@@ -613,15 +615,53 @@ describe('Settings', () => {
         '/api/quick-add',
         expect.objectContaining({
           method: 'POST',
+          headers: expect.objectContaining({ Authorization: 'Bearer mock-id-token' }),
           body: JSON.stringify({
             text: 'Met Jane Smith at Dorm C',
-            userId: 'u-admin',
             userName: 'Admin User'
           })
         })
       );
 
       fetchSpy.mockRestore();
+    });
+
+    it('still submits quick add without a token when getIdToken fails', async () => {
+      setupManagerAuth({
+        user: {
+          uid: 'u-admin',
+          displayName: 'Admin User',
+          email: 'admin@test.com',
+          photoURL: null,
+          getIdToken: vi.fn().mockRejectedValue(new Error('token fetch failed')),
+        },
+      });
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() =>
+        Promise.resolve({
+          json: () => Promise.resolve({ success: true, contact: { name: 'Jane Smith', role: 'Student', location: 'Dorm C', stage: 'Interested', notes: 'Likes books' } }),
+        } as Response)
+      );
+
+      render(<Settings />);
+
+      const quickAddInput = screen.getByPlaceholderText(/e\.g\. Met John/i);
+      fireEvent.change(quickAddInput, { target: { value: 'Met Jane Smith at Dorm C' } });
+      fireEvent.click(screen.getByRole('button', { name: /Try it/i }));
+
+      await waitFor(() => {
+        expect(fetchSpy).toHaveBeenCalledWith(
+          '/api/quick-add',
+          expect.objectContaining({
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+      });
+
+      fetchSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
 
     it('performs quick add with failure response', async () => {

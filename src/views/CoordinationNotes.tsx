@@ -1378,6 +1378,8 @@ function DocEditor({
   onSelectContact: (c: Contact | null) => void;
   onOpenContactModal: (open: boolean) => void;
 }) {
+  const { user } = useAuth();
+
   // This component is remounted (key={doc.id}) per page, so a fresh Y.Doc +
   // awareness live for exactly one page's lifetime.
   const ydoc = useMemo(() => new Y.Doc(), []);
@@ -1715,9 +1717,23 @@ function DocEditor({
     setShowInsights(true);
 
     try {
+      let token: string | null = null;
+      try {
+        if (user && typeof user.getIdToken === 'function') {
+          token = await user.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.error('Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: HeadersInit = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const res = await fetch('/api/analyze-notes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ text }),
       });
       if (!res.ok) {
