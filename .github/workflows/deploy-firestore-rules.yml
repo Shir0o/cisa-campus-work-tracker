@@ -1,7 +1,8 @@
 name: Deploy Firestore Rules
 
-# Publishes firestore.rules to the live project on merge to main, so rules
-# changes no longer have to be published by hand (Console / `firebase deploy`).
+# Publishes firestore.rules and firestore.indexes.json to the live project on
+# merge to main, so rules/index changes no longer have to be published by hand
+# (Console / `firebase deploy`).
 #
 # Auth: keyless via Workload Identity Federation (WIF). GitHub's per-run OIDC
 # token is exchanged for short-lived credentials that impersonate the deploy SA
@@ -18,6 +19,7 @@ on:
     branches: [main]
     paths:
       - firestore.rules
+      - firestore.indexes.json
       - firebase.json
       - .firebaserc
       - .github/workflows/deploy-firestore-rules.yml
@@ -85,9 +87,9 @@ jobs:
           project_id: sac-campus-hub
           workload_identity_provider: projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github
           service_account: github-action@sac-campus-hub.iam.gserviceaccount.com
-      - name: Deploy Firestore rules
+      - name: Deploy Firestore rules + indexes
         run: >
           firebase deploy
-          --only firestore:rules
+          --only firestore:rules,firestore:indexes
           --project sac-campus-hub
           --non-interactive
