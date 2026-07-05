@@ -360,10 +360,7 @@ function IntegrationsSection({
       const response = await fetch('/api/quick-add', {
         method: 'POST',
         headers,
-        body: JSON.stringify({
-          text,
-          userName: currentUser?.displayName || currentUser?.email || 'Unknown User',
-        }),
+        body: JSON.stringify({ text }),
       });
 
       const data = await response.json();

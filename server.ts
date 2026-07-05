@@ -1061,7 +1061,7 @@ Analyze the input text carefully and extract the following:
         try {
           const decoded = await authenticateFirebaseUser(req);
           userId = decoded.uid;
-          userName = decoded.name || req.body.userName || decoded.email || "Teammate";
+          userName = decoded.name || decoded.email || "Teammate";
         } catch (authErr: any) {
           return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
         }

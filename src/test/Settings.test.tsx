@@ -616,10 +616,7 @@ describe('Settings', () => {
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({ Authorization: 'Bearer mock-id-token' }),
-          body: JSON.stringify({
-            text: 'Met Jane Smith at Dorm C',
-            userName: 'Admin User'
-          })
+          body: JSON.stringify({ text: 'Met Jane Smith at Dorm C' })
         })
       );
 

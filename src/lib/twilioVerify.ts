@@ -23,7 +23,7 @@ export function verifyTwilioRequest(req: TwilioVerifiableRequest, authToken: str
   const params = req.body || {};
   const data = Object.keys(params)
     .sort()
-    .reduce((acc, key) => acc + key + params[key], url);
+    .reduce((acc, key) => acc + key + String(params[key]), url);
 
   const expected = crypto.createHmac("sha1", authToken).update(Buffer.from(data, "utf-8")).digest("base64");
 
