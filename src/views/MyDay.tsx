@@ -582,7 +582,7 @@ export default function MyDay() {
     [prefContactIds, myCreatedIds],
   );
 
-  // Leaders I'm walking with — my personal contacts, longest-since-connected first.
+  // Leaders I'm caring for — my personal contacts, longest-since-connected first.
   const myLeaders = useMemo(() => {
     return contacts
       .filter((c) => personalContactIds.has(c.id))
@@ -725,7 +725,7 @@ export default function MyDay() {
                 </>
               )}{" "}
               And <span className="text-on-surface font-medium">{prayersCount}</span>{" "}
-              {prayersCount === 1 ? "prayer" : "prayers"} to carry.
+              {prayersCount === 1 ? "prayer" : "prayers"} to hold.
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -830,7 +830,7 @@ export default function MyDay() {
           </div>
         </section>
 
-        {/* ── The leaders you're walking with ── */}
+        {/* ── The leaders you're caring for ── */}
         <section className="mt-12">
           <SectionHead
             title="Your sheep"
@@ -949,7 +949,7 @@ export default function MyDay() {
           )}
         </section>
 
-        {/* ── Prayers you're carrying ── */}
+        {/* ── Prayers you're holding ── */}
         <section className="mt-12">
           <SectionHead
             title="Your prayers"
@@ -972,8 +972,8 @@ export default function MyDay() {
                   prayer={p}
                   contact={contactById(p.contactId)}
                   first={i === 0}
-                  onUpdateStatus={(id, status) =>
-                    updatePrayerStatus(id, status, { uid, name: user?.displayName })
+                  onUpdateStatus={(id, status, answer, answeredAt) =>
+                    updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt)
                   }
                   onOpenContact={openContact}
                   onOpenPrayerLog={() => navigate("/prayer")}
@@ -1005,8 +1005,8 @@ export default function MyDay() {
         {/* ── Quiet figures: present, but never the headline ── */}
         <div className="mt-14 pt-6 border-t border-outline-variant/50 flex flex-wrap items-end gap-x-10 gap-y-4">
           <Figure n={myLeaders.length} label="contacts to care for" />
-          <Figure n={prayersCount} label="prayers to carry" />
-          <Figure n={leftToDo} label="tasks to carry" />
+          <Figure n={prayersCount} label="prayers to hold" />
+          <Figure n={leftToDo} label="tasks to hold" />
           <Figure n={thisWeek.length} label="gatherings you're part of" />
           <span className="text-sm text-on-surface-variant italic ml-auto">
             Numbers are just a way of noticing people.

@@ -18,6 +18,7 @@ import OutreachBoard from "./views/OutreachBoard";
 import Directory from "./views/Directory";
 import History from "./views/History";
 import PrayerList from "./views/PrayerList";
+import AnsweredList from "./views/AnsweredList";
 import Settings from "./views/Settings";
 import SignUp from "./views/SignUp";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
@@ -423,6 +424,17 @@ export default function App() {
                   <ProtectedRoute>
                     <DashboardLayout>
                       <PrayerList />
+                    </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/answered"
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout>
+                      <AnsweredList />
                     </DashboardLayout>
                   </ProtectedRoute>
                 }

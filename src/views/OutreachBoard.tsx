@@ -589,7 +589,7 @@ export default function OutreachBoard() {
               <b className="text-on-surface font-semibold">
                 {filteredContacts.length} {filteredContacts.length === 1 ? 'person' : 'people'}
               </b>{' '}
-              walking it
+              in our care
               {stages.length > 0 && (
                 <>
                   {' — '}
@@ -717,7 +717,7 @@ export default function OutreachBoard() {
                 <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
                 <h3 className="font-serif text-xl text-on-surface">The journey hasn't been mapped yet</h3>
                 <p className="text-sm text-on-surface-variant mt-1 max-w-sm">
-                  {isAdmin ? 'Shape the steps people walk through — from a first hello toward a church home.' : 'The steps of the journey haven\'t been set up yet.'}
+                  {isAdmin ? 'Shape the steps of the journey — from a first hello toward a church home.' : 'The steps of the journey haven\'t been set up yet.'}
                 </p>
               </div>
             )}
@@ -748,7 +748,7 @@ export default function OutreachBoard() {
                     </div>
                     <div>
                       <h2 className="font-serif text-xl text-on-surface">{editingStage ? 'Rename this step' : 'Shape the journey'}</h2>
-                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Give the step a new name or colour' : 'Add a step people walk through'}</p>
+                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Give the step a new name or colour' : 'Add a step to the journey'}</p>
                     </div>
                   </div>
                   <button

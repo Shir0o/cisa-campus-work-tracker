@@ -137,11 +137,11 @@ describe('PrayerList', () => {
     expect(await screen.findByText(/Couldn't load/)).toBeInTheDocument();
   });
 
-  it('renders prayer log title and active prayer threads with legacy support', async () => {
+  it('renders on our hearts title and active prayer threads with legacy support', async () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText('Prayer Log')).toBeInTheDocument();
+      expect(screen.getAllByText('On our hearts').length).toBeGreaterThan(0);
       // Alice (normal prayer)
       expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
       expect(screen.getByText('Strength for finals')).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('PrayerList', () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText('No one to carry yet')).toBeInTheDocument();
+      expect(screen.getByText('No one to hold yet')).toBeInTheDocument();
     });
   });
 
@@ -177,7 +177,7 @@ describe('PrayerList', () => {
     });
 
     // Mark as Answered
-    const answerButton = screen.getAllByRole('button', { name: 'Answered' })[0];
+    const answerButton = screen.getAllByRole('button', { name: 'Answered' }).find(btn => !btn.className.includes('ans-toggle-opt'))!;
     fireEvent.click(answerButton);
     expect(updateDoc).toHaveBeenCalled();
     await waitFor(() => expect(logActivity).toHaveBeenCalled());
@@ -197,10 +197,10 @@ describe('PrayerList', () => {
     render(<PrayerList />);
 
     await waitFor(() => {
-      expect(screen.getByText(/Write what we’re carrying for Alice this week/i)).toBeInTheDocument();
+      expect(screen.getByText(/Write what we’re holding for Alice this week/i)).toBeInTheDocument();
     });
 
-    const writeButton = screen.getByText(/Write what we’re carrying for Alice this week/i);
+    const writeButton = screen.getByText(/Write what we’re holding for Alice this week/i);
     fireEvent.click(writeButton);
 
     // Cancel input
@@ -212,7 +212,7 @@ describe('PrayerList', () => {
     });
 
     // Re-open and add burden
-    fireEvent.click(screen.getByText(/Write what we’re carrying for Alice this week/i));
+    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
     const textarea = screen.getByPlaceholderText(/What are we praying for Alice this week/i);
     fireEvent.change(textarea, { target: { value: 'New prayer request text' } });
 
@@ -261,7 +261,7 @@ describe('PrayerList', () => {
     });
   });
 
-  it('handles starting to carry a suggested contact', async () => {
+  it('handles starting to hold a suggested contact', async () => {
     // Let's verify we can find the search input
     render(<PrayerList />);
     await waitFor(() => {

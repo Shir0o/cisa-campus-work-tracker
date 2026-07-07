@@ -81,7 +81,7 @@ describe("LandingTrainee", () => {
     render(<LandingTrainee />);
     await waitFor(() => expect(screen.getByText(/Zion/)).toBeInTheDocument());
     expect(screen.getByText("Your people")).toBeInTheDocument();
-    expect(screen.getByText("Prayers you're carrying")).toBeInTheDocument();
+    expect(screen.getByText("Prayers you're holding")).toBeInTheDocument();
     expect(screen.getByText(/No one's in your care yet/)).toBeInTheDocument();
     expect(screen.getByText(/No prayers yet/)).toBeInTheDocument();
   });
@@ -110,7 +110,7 @@ describe("LandingTrainee", () => {
     render(<LandingTrainee />);
     await waitFor(() => expect(screen.getByText("wisdom for finals")).toBeInTheDocument());
     fireEvent.click(screen.getByRole("button", { name: "answered" }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith("p1", "answered", expect.anything());
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith("p1", "answered", expect.anything(), undefined, expect.any(String));
   });
 
   it("adds a personal prayer", async () => {

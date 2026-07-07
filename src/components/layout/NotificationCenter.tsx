@@ -180,7 +180,7 @@ export default function NotificationCenter() {
       >
         <Bell className={cn('w-[17px] h-[17px] transition-transform duration-300', isOpen && 'rotate-[15deg]')} />
         {unreadCount > 0 && (
-          <span className="absolute top-[4px] right-[4px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-primary text-white text-[10.5px] font-bold leading-[16px] text-center border-2 border-surface-container box-content">
+          <span className="absolute top-[-3px] right-[-3px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-primary text-white text-[10.5px] font-bold leading-[16px] text-center border-2 border-surface-container box-content">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

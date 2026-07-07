@@ -100,10 +100,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages'],
-    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
+    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages', '/answered'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -208,7 +208,7 @@ describe('Sidebar nav items', () => {
     renderSidebar();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.getByText('Messages')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
@@ -237,7 +237,7 @@ describe('Sidebar nav items', () => {
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
@@ -246,7 +246,7 @@ describe('Sidebar nav items', () => {
   it('admin: sees all nav items with the home labeled "My Day"', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'Prayer', 'Coordination Notes', 'Messages', 'Settings'];
+    const labels = ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

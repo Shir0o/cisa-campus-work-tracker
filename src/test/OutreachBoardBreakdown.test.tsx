@@ -92,7 +92,7 @@ describe('OutreachBoard header reconciliation (#29)', () => {
 
     const text = (container.textContent || '').replace(/\s+/g, ' ');
     // Bold total counts every contact on the board, unassigned included.
-    expect(text).toContain('7 people walking it');
+    expect(text).toContain('7 people in our care');
     // Per-stage breakdown reconciles: 2 + 3 + 2 = 7.
     expect(text).toMatch(/2 first contact, 3 regular, 2 not yet placed\./);
   });

@@ -16,7 +16,8 @@ import {
   MessageSquare,
   FileText,
   LogOut,
-  X
+  X,
+  Sun
 } from 'lucide-react';
 import { cn, getUserAvatar } from '../../lib/utils';
 
@@ -75,6 +76,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     '/history': HistoryIcon,
     '/attendance': CalendarCheck,
     '/prayer': HeartHandshake,
+    '/answered': Sun,
     '/coordination': FileText,
     '/messages': MessageSquare,
     '/settings': SettingsIcon,

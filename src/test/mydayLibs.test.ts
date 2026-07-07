@@ -68,12 +68,12 @@ describe('personalPrayers', () => {
     const cb = vi.fn();
     subscribePersonalPrayers('u1', cb);
     success({ docs: [{ id: 'p1', data: () => ({ title: 't', date: 'd', status: 'open' }) }] });
-    expect(cb).toHaveBeenCalledWith([{ id: 'p1', title: 't', contactId: null, date: 'd', status: 'open' }]);
+    expect(cb).toHaveBeenCalledWith([{ id: 'p1', title: 't', contactId: null, date: 'd', status: 'open', answeredAt: null, answeredBody: null }]);
     // A malformed doc with no fields gets safe defaults rather than an incomplete object.
     cb.mockClear();
     success({ docs: [{ id: 'p2', data: () => ({}) }] });
     expect(cb).toHaveBeenCalledWith([
-      expect.objectContaining({ id: 'p2', title: '', contactId: null, status: 'open' }),
+      expect.objectContaining({ id: 'p2', title: '', contactId: null, status: 'open', answeredAt: null, answeredBody: null }),
     ]);
     const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
     fail(new Error('boom'));

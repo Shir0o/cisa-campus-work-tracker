@@ -100,6 +100,6 @@ describe("LandingStudent", () => {
     h.personalPrayers = [{ id: "pp1", title: "Daniel", contactId: null, date: soonISO, status: "open" }];
     render(<LandingStudent />);
     fireEvent.click(screen.getByRole("button", { name: "answered" }));
-    expect(h.updatePersonalPrayer).toHaveBeenCalledWith("u1", "pp1", { status: "answered" });
+    expect(h.updatePersonalPrayer).toHaveBeenCalledWith("u1", "pp1", { status: "answered", answeredAt: expect.any(String) });
   });
 });

@@ -112,7 +112,7 @@ function WaitingRow({
 }
 
 // Trainee landing: what the full-timer's flagged + the students in your care +
-// the prayers you're carrying.
+// the prayers you're holding.
 export default function LandingTrainee() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -189,7 +189,7 @@ export default function LandingTrainee() {
   }, [contacts, uid]);
   const myIds = useMemo(() => new Set(myPeople.map((p) => p.contact.id)), [myPeople]);
 
-  // Prayers you're carrying — shared prayers on your people (not archived) +
+  // Prayers you're holding — shared prayers on your people (not archived) +
   // your own private personal prayers.
   const contactPrayers = useMemo(
     () =>
@@ -272,8 +272,8 @@ export default function LandingTrainee() {
           </b>{" "}
           this season.{" "}
           {ft
-            ? `Here's what ${ftFirst}'s flagged for you, the people you've brought in, and what you're carrying in prayer.`
-            : "Here's your circle, and what you're carrying in prayer."}
+            ? `Here's what ${ftFirst}'s flagged for you, the people you've brought in, and what you're holding in prayer.`
+            : "Here's your circle, and what you're holding in prayer."}
         </p>
       </header>
 
@@ -368,10 +368,10 @@ export default function LandingTrainee() {
         )}
       </section>
 
-      {/* ── Prayers you're carrying ── */}
+      {/* ── Prayers you're holding ── */}
       <section className="mt-12">
         <SectionHead
-          title="Prayers you're carrying"
+          title="Prayers you're holding"
           sub="Yours to hold this week — for your people, and just between you and God."
         />
         <div className={cardClass}>
@@ -381,8 +381,8 @@ export default function LandingTrainee() {
               prayer={p}
               contact={contactById(p.contactId)}
               first={i === 0}
-              onUpdateStatus={(id, status) =>
-                updatePrayerStatus(id, status, { uid, name: user?.displayName })
+              onUpdateStatus={(id, status, answer, answeredAt) =>
+                updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt)
               }
               onOpenContact={openContact}
               onOpenPrayerLog={() => navigate("/prayer")}

@@ -373,7 +373,7 @@ describe('Settings', () => {
 
       // Check descriptions are present (partial)
       expect(screen.getByText(/Full-time staff/)).toBeInTheDocument();
-      expect(screen.getByText(/Walks alongside the team/)).toBeInTheDocument();
+      expect(screen.getByText(/Cares for the team/)).toBeInTheDocument();
       expect(screen.getByText(/Can add and update people/)).toBeInTheDocument();
       expect(screen.getByText(/A read-only window/)).toBeInTheDocument();
     });

@@ -134,7 +134,7 @@ describe('ContactDetailsModal Component', () => {
     // Click Prayer tab
     const prayerTab = screen.getByRole('button', { name: /^Prayer\s*\d*$/ });
     fireEvent.click(prayerTab);
-    expect(screen.getByText("Prayers we're carrying")).toBeInTheDocument();
+    expect(screen.getByText("Prayers we're holding")).toBeInTheDocument();
 
     // Click Discussion tab (labeled "Discussion")
     const commentsTab = screen.getByRole('button', { name: /Discussion/i });
@@ -235,7 +235,7 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
-  it('allows carrying a prayer', async () => {
+  it('allows holding a prayer', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
     // Click Add prayer button in the header

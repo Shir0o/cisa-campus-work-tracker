@@ -472,11 +472,11 @@ describe('MyDay', () => {
 
     // Clicking a status pill writes the mapped status to the shared prayer.
     fireEvent.click(screen.getByRole('button', { name: 'answered' }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything());
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String));
 
     // Archive maps to the existing "unanswered" status.
     fireEvent.click(screen.getByRole('button', { name: 'archive' }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything());
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined);
 
     // Prayer Log link navigates to the Prayer page.
     fireEvent.click(screen.getByRole('button', { name: /Prayer Log/i }));
@@ -514,13 +514,14 @@ describe('MyDay', () => {
 
     // Status pill → updatePersonalPrayer({status}).
     fireEvent.click(screen.getAllByRole('button', { name: 'answered' })[0]);
-    expect(h.updatePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1', { status: 'answered' });
+    expect(h.updatePersonalPrayer).toHaveBeenCalledWith('u-test', 'pp-1', { status: 'answered', answeredAt: expect.any(String) });
 
     // Expand the first → edit + save.
     fireEvent.click(screen.getByText('pray for exams'));
     const input = await screen.findByDisplayValue('pray for exams');
     fireEvent.change(input, { target: { value: 'pray for finals' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const saveButton = screen.getAllByRole('button', { name: 'Save' }).find(btn => btn.className.includes('text-sm'))!;
+    fireEvent.click(saveButton);
     expect(h.updatePersonalPrayer).toHaveBeenCalledWith(
       'u-test',
       'pp-1',

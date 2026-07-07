@@ -159,6 +159,8 @@ export interface PrayerRecord {
   date: string; 
   burden: string;
   status: 'pending' | 'answered' | 'ongoing' | 'unanswered';
+  answer?: string;
+  answeredAt?: string;
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;
