@@ -390,9 +390,8 @@ export default function ContactDetailsModal({
           setActivitiesLoading(false);
         },
         (error) => {
-          // activities might not have index yet or permission issues
-          console.error("Activities listener error:", error);
           setActivitiesLoading(false);
+          handleFirestoreError(error, OperationType.LIST, "activities");
         },
       );
 

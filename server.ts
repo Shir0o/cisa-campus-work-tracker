@@ -9,6 +9,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import admin from "firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import dotenv from "dotenv";
+import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 
 dotenv.config();
 
@@ -1015,6 +1016,15 @@ Analyze the input text carefully and extract the following:
   // Endpoint 0: Developer Query Endpoint to fetch latest webhook logs as JSON outside the website
   app.get("/api/webhook/logs", async (req, res) => {
     try {
+      // Admin-only: these logs contain raw contact PII and SMS/GroupMe message bodies.
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authorizeAdmin(req);
+        } catch (authErr: any) {
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+
       const limitVal = Math.min(parseInt(req.query.limit as string) || 10, 50);
       const snapshot = await getAdminDb()
         .collection("webhook_logs")
@@ -1037,7 +1047,26 @@ Analyze the input text carefully and extract the following:
   // Endpoint 1: Direct JSON API endpoint for custom clients, Siri, Android Shortcuts, or browser tools
   app.post("/api/quick-add", async (req, res) => {
     try {
-      const { text, userId, userName } = req.body;
+      const { text } = req.body;
+
+      // If a Firebase ID token is supplied (the in-app Quick Add box), verify it
+      // and attribute the contact to the real signed-in user. Otherwise (curl,
+      // Siri/Android Shortcuts) this is an intentionally public automation
+      // endpoint, so fall back to a generic label instead of trusting a
+      // client-supplied userId/userName, which anyone could otherwise forge to
+      // impersonate a specific teammate.
+      let userId = "external-automation";
+      let userName = "External Automation";
+      if (req.headers.authorization) {
+        try {
+          const decoded = await authenticateFirebaseUser(req);
+          userId = decoded.uid;
+          userName = decoded.name || decoded.email || "Teammate";
+        } catch (authErr: any) {
+          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+        }
+      }
+
       if (!text || typeof text !== "string") {
         const errMsg = "No text description provided. Please include a 'text' property.";
         await logApiCall("Quick Add API", req.body, req.headers, "error", errMsg, "Missing required 'text' parameter.");
@@ -1062,6 +1091,20 @@ Analyze the input text carefully and extract the following:
   // Endpoint 2: URL-Encoded Twilio Webhook compatibility endpoint (SMS & WhatsApp trigger)
   app.post("/api/webhook/sms", async (req, res) => {
     try {
+      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
+      if (twilioAuthToken) {
+        if (!verifyTwilioRequest(req, twilioAuthToken)) {
+          console.warn("Twilio SMS Webhook: Signature verification failed.");
+          return res.status(403).type("text/xml").send(`
+          <Response>
+            <Message>Forbidden: invalid signature.</Message>
+          </Response>
+        `);
+        }
+      } else {
+        console.warn("TWILIO_AUTH_TOKEN not configured; skipping SMS webhook signature verification.");
+      }
+
       const smsBody = req.body.Body;
       const smsFrom = req.body.From;
 
@@ -1116,7 +1159,19 @@ Error: ${error.message || "Internal server processing error."}
   // Endpoint 2.5: GroupMe Bot Callback Endpoint to add contacts dynamically from GroupMe chats
   app.post("/api/webhook/groupme", async (req, res) => {
     try {
-      const { text, sender_type, name, sender_id } = req.body;
+      const { text, sender_type, name, sender_id, group_id } = req.body;
+
+      // GroupMe callbacks carry no cryptographic signature; if the bot's group
+      // is configured, restrict inbound triggers to that group.
+      const expectedGroupId = process.env.GROUPME_GROUP_ID;
+      if (expectedGroupId) {
+        if (group_id !== expectedGroupId) {
+          console.warn(`GroupMe Webhook: group_id mismatch (got "${group_id}").`);
+          return res.status(403).json({ error: "Forbidden: unrecognized group." });
+        }
+      } else {
+        console.warn("GROUPME_GROUP_ID not configured; accepting GroupMe webhook from any group.");
+      }
 
       if (sender_type === "bot") {
         await logApiCall("GroupMe", req.body, req.headers, "ignored", `Ignored message from bot: "${text || ""}"`);
@@ -1179,6 +1234,17 @@ Error: ${error.message || "Internal server processing error."}
   // AI Notes Analyzer endpoint: automates contact linking and suggests tasks
   app.post("/api/analyze-notes", async (req, res) => {
     try {
+      // Admin-only: this endpoint dumps the full contact directory + user roster
+      // into the AI prompt (matches the client-side canEdit=isAdmin gating on the
+      // "Analyze notes" button in CoordinationNotes).
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authorizeAdmin(req);
+        } catch (authErr: any) {
+          return res.status(403).json({ error: `Forbidden: ${authErr.message || String(authErr)}` });
+        }
+      }
+
       const { text } = req.body;
       if (!text || typeof text !== "string") {
         return res.status(400).json({ error: "Missing required 'text' parameter." });
