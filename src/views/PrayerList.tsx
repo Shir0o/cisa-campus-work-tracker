@@ -18,6 +18,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import PageContainer from '../components/layout/PageContainer';
+import { useNavigate } from 'react-router-dom';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
 const DAY_MS = 86_400_000;
@@ -89,6 +90,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function PrayerList() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -103,9 +105,9 @@ export default function PrayerList() {
     handleFirestoreError(e, OperationType.LIST, path);
   };
 
-  // Contacts we've started carrying this session that have no prayer yet.
+  // Contacts we've started holding this session that have no prayer yet.
   const [startedIds, setStartedIds] = useState<Set<string>>(new Set());
-  // A contact whose this-week compose should auto-open (just started carrying).
+  // A contact whose this-week compose should auto-open (just started holding).
   const [composeFor, setComposeFor] = useState<string | null>(null);
   // Contact whose full profile/history is open in the modal.
   const [profileContact, setProfileContact] = useState<Contact | null>(null);
@@ -183,16 +185,19 @@ export default function PrayerList() {
     }
   };
 
-  const handleUpdateStatus = async (prayer: PrayerRecord, newStatus: Status) => {
+  const handleUpdateStatus = async (prayer: PrayerRecord, newStatus: Status, answer?: string, answeredAt?: string) => {
     try {
-      await updateDoc(doc(db, 'prayers', prayer.id), { status: newStatus, ...stamp() });
+      const clean: Record<string, any> = { status: newStatus, ...stamp() };
+      if (answer !== undefined) clean.answer = answer;
+      if (answeredAt !== undefined) clean.answeredAt = answeredAt;
+      await updateDoc(doc(db, 'prayers', prayer.id), clean);
       logActivity({
         action: `marked a prayer burden as ${newStatus} for`,
         targetId: prayer.contactId,
         targetName: contactName(prayer.contactId),
         targetType: 'contact',
         type: 'edit',
-        description: `Status changed to ${newStatus}`,
+        description: answer ? `Answered: "${answer}"` : `Status changed to ${newStatus}`,
       });
     } catch (error) {
       console.error('Error updating status:', error);
@@ -226,7 +231,7 @@ export default function PrayerList() {
       .filter((p) => prayerMs(p) < THIS_WEEK_START)
       .sort((a, b) => prayerMs(b) - prayerMs(a))[0] || null;
 
-  // One entry per person we're carrying (has a prayer, or we just started).
+  // One entry per person we're holding (has a prayer, or we just started).
   const entries = useMemo(() => {
     const ids = new Set<string>();
     prayers.forEach((p) => ids.add(p.contactId));
@@ -262,13 +267,13 @@ export default function PrayerList() {
     );
   }, [entries, searchQuery]);
 
-  // Contacts not yet carried that match the search — offer to start carrying them.
+  // Contacts not yet held that match the search — offer to start holding them.
   const suggestions = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return [];
-    const carried = new Set(entries.map((e) => e.contact.id));
+    const held = new Set(entries.map((e) => e.contact.id));
     return contacts
-      .filter((c) => !carried.has(c.id) && c.name.toLowerCase().includes(q))
+      .filter((c) => !held.has(c.id) && c.name.toLowerCase().includes(q))
       .slice(0, 5);
   }, [contacts, entries, searchQuery]);
 
@@ -286,7 +291,7 @@ export default function PrayerList() {
     [entries],
   );
 
-  const startCarrying = (contact: Contact) => {
+  const startHolding = (contact: Contact) => {
     setStartedIds((prev) => new Set(prev).add(contact.id));
     setComposeFor(contact.id);
     setSearchQuery('');
@@ -313,18 +318,31 @@ export default function PrayerList() {
   return (
     <PageContainer variant="wide">
       {/* Header */}
-      <header className="mb-8">
-        <h1 className="font-serif page-title text-on-surface">Prayer Log</h1>
-        <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-          <span className="text-success font-medium">{answeredThisYear}</span>{' '}
-          {answeredThisYear === 1 ? 'prayer' : 'prayers'} answered this year.
-          {awaiting > 0 && (
-            <span className="text-on-surface-variant/70">
-              {' '}
-              {awaiting} from last week {awaiting === 1 ? 'still needs' : 'still need'} an update below.
-            </span>
-          )}
-        </p>
+      <header className="ans-head">
+        <div className="ans-eyebrow">
+          <span className="ans-lit" /> On our hearts
+        </div>
+        <div className="ans-head-row">
+          <div>
+            <h1 className="ans-h1">On our hearts</h1>
+            <p className="ans-sub text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
+              <span className="text-success font-medium">{answeredThisYear}</span>{' '}
+              {answeredThisYear === 1 ? 'prayer' : 'prayers'} answered this year.
+              {awaiting > 0 && (
+                <span className="text-on-surface-variant/70">
+                  {' '}
+                  {awaiting} from last week {awaiting === 1 ? 'still needs' : 'still need'} an update below.
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+        <div className="ans-toggle">
+          <button className="ans-toggle-opt on">On our hearts</button>
+          <button className="ans-toggle-opt" onClick={() => navigate('/answered')}>
+            Answered
+          </button>
+        </div>
       </header>
 
       {/* Search */}
@@ -339,26 +357,26 @@ export default function PrayerList() {
         />
       </div>
 
-      {/* Start carrying suggestions */}
+      {/* Start holding suggestions */}
       {suggestions.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-2">
           {suggestions.map((c) => (
             <button
               key={c.id}
-              onClick={() => startCarrying(c)}
+              onClick={() => startHolding(c)}
               className="inline-flex items-center gap-2 pl-1.5 pr-3.5 py-1.5 rounded-full bg-surface border border-outline-variant hover:border-primary transition-colors text-sm text-on-surface"
             >
               <Avatar contact={c} size="sm" />
-              <span>Start carrying {firstNameOf(c.name)}</span>
+              <span>Start holding {firstNameOf(c.name)}</span>
             </button>
           ))}
         </div>
       )}
 
-      {/* People we're carrying */}
+      {/* People we're holding */}
       <div className="flex items-center gap-3 mb-4">
         <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant">
-          People we&rsquo;re carrying
+          People we&rsquo;re holding
         </span>
         <span className="font-serif text-sm text-on-surface-variant">{filteredEntries.length}</span>
         <span className="flex-1 h-px bg-outline-variant" />
@@ -367,11 +385,11 @@ export default function PrayerList() {
       {filteredEntries.length === 0 ? (
         <div className="text-center py-16">
           <h3 className="font-serif text-xl text-on-surface mb-1">
-            {searchQuery ? 'No one matches that just yet' : 'No one to carry yet'}
+            {searchQuery ? 'No one matches that just yet' : 'No one to hold yet'}
           </h3>
           <p className="text-sm text-on-surface-variant">
             {searchQuery
-              ? 'Try another name, or start carrying someone above.'
+              ? 'Try another name, or start holding someone above.'
               : 'Find a person above to begin praying for them.'}
           </p>
         </div>
@@ -419,7 +437,7 @@ function PrayerThread({
   prayers: PrayerRecord[];
   autoCompose: boolean;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
 }) {
@@ -581,12 +599,15 @@ function PrayerItem({
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
+  const [answering, setAnswering] = useState(false);
+  const [howDraft, setHowDraft] = useState(prayer.answer || '');
+  const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const startEdit = () => {
     setDraft(prayer.burden);
@@ -598,9 +619,6 @@ function PrayerItem({
     setSaving(false);
     if (ok) setEditing(false);
   };
-
-  // Toggle: clicking the active mark clears it back to unmarked (pending).
-  const mark = (s: Status) => onUpdateStatus(prayer, prayer.status === s ? 'pending' : s);
 
   const dimmed = prayer.status === 'answered' || variant === 'earlier';
 
@@ -667,6 +685,67 @@ function PrayerItem({
         </p>
       )}
 
+      {/* Answer testimony display */}
+      {!editing && !answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
+        <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+              Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+            </span>
+            <button
+              onClick={() => {
+                setHowDraft(prayer.answer || "");
+                setAnswering(true);
+              }}
+              className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+            >
+              Edit Testimony
+            </button>
+          </div>
+          {prayer.answer && (
+            <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
+              "{prayer.answer}"
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Testimony compose box */}
+      {answering && (
+        <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+          <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+            How was it answered?
+          </label>
+          <textarea
+            className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+            autoFocus
+            rows={2}
+            value={howDraft}
+            onChange={(e) => setHowDraft(e.target.value)}
+            placeholder="A sentence on how God answered — the testimony."
+          />
+          <div className="mt-2 flex justify-end gap-2">
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+              onClick={() => setAnswering(false)}
+            >
+              Skip
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+              onClick={() => {
+                onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || today);
+                setAnswering(false);
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Mark */}
       <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
         <span className="text-[11.5px] text-on-surface-variant">
@@ -676,7 +755,24 @@ function PrayerItem({
           {MARK_ORDER.map((s) => (
             <button
               key={s}
-              onClick={() => mark(s)}
+              onClick={() => {
+                console.log("STATUS_CLICK", s, prayer.id);
+                if (s === 'answered') {
+                  if (prayer.status === 'answered') {
+                    onUpdateStatus(prayer, 'pending', undefined, undefined);
+                    setAnswering(false);
+                  } else {
+                    onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || today);
+                    if (!prayer.answer) {
+                      setHowDraft("");
+                      setAnswering(true);
+                    }
+                  }
+                } else {
+                  setAnswering(false);
+                  onUpdateStatus(prayer, prayer.status === s ? 'pending' : s, undefined, undefined);
+                }
+              }}
               className={cn(
                 'text-xs px-2.5 py-1 rounded-full border transition-colors',
                 prayer.status === s
@@ -693,7 +789,7 @@ function PrayerItem({
   );
 }
 
-// Empty state for the week: a quiet invitation to write what we're carrying.
+// Empty state for the week: a quiet invitation to write what we're holding.
 function AddThisWeek({
   firstName,
   defaultOpen,
@@ -726,7 +822,7 @@ function AddThisWeek({
         className="flex items-center gap-2 w-full px-4 py-3 rounded-xl border border-dashed border-outline-variant hover:border-primary text-sm text-on-surface-variant hover:text-on-surface transition-colors"
       >
         <Plus className="w-4 h-4 shrink-0" />
-        <span>Write what we&rsquo;re carrying for {firstName} this week</span>
+        <span>Write what we&rsquo;re holding for {firstName} this week</span>
       </button>
     );
   }

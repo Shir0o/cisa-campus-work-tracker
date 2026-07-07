@@ -84,7 +84,7 @@ const ROLE_CARDS: {
     key: 'manager',
     label: 'Trainee',
     initials: 'TR',
-    description: 'Walks alongside the team. Manages users and accesses all data surfaces, minus dev-only admin.',
+    description: 'Cares for the team. Manages users and accesses all data surfaces, minus dev-only admin.',
     access: ['Today', 'People', 'The Journey', 'Gatherings', 'Prayer', 'History'],
   },
   {

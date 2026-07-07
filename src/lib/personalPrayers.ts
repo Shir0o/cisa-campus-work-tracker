@@ -22,6 +22,8 @@ export interface PersonalPrayer {
   contactId?: string | null;
   date: string; // ISO
   status: PersonalPrayerStatus;
+  answeredAt?: string | null;
+  answeredBody?: string | null;
 }
 
 const col = (uid: string) => collection(db, "users", uid, "personalPrayers");
@@ -46,6 +48,8 @@ export function subscribePersonalPrayers(
             contactId: data.contactId ?? null,
             date: data.date ?? new Date().toISOString(),
             status: data.status ?? "open",
+            answeredAt: data.answeredAt ?? null,
+            answeredBody: data.answeredBody ?? null,
           };
         }),
       ),
@@ -72,13 +76,21 @@ export async function addPersonalPrayer(
 export async function updatePersonalPrayer(
   uid: string,
   id: string,
-  patch: { title?: string; contactId?: string | null; status?: PersonalPrayerStatus },
+  patch: { 
+    title?: string; 
+    contactId?: string | null; 
+    status?: PersonalPrayerStatus;
+    answeredAt?: string | null;
+    answeredBody?: string | null;
+  },
 ): Promise<void> {
   try {
     const clean: Record<string, unknown> = {};
     if (patch.title !== undefined) clean.title = patch.title.trim();
     if (patch.contactId !== undefined) clean.contactId = patch.contactId;
     if (patch.status !== undefined) clean.status = patch.status;
+    if (patch.answeredAt !== undefined) clean.answeredAt = patch.answeredAt;
+    if (patch.answeredBody !== undefined) clean.answeredBody = patch.answeredBody;
     await updateDoc(ref(uid, id), clean);
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `users/${uid}/personalPrayers/${id}`);

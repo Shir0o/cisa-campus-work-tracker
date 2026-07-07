@@ -1371,7 +1371,7 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
       render(<CoordinationNotes />);
 
-      expect(screen.getByText(/what we're carrying/i)).toBeInTheDocument();
+      expect(screen.getByText(/what we're holding/i)).toBeInTheDocument();
       expect(screen.getByText(/1 still open/i)).toBeInTheDocument();
     });
 

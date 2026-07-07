@@ -118,7 +118,7 @@ describe('TopBar Component', () => {
     ['/board', 'The Journey'],
     ['/directory', 'People'],
     ['/attendance', 'Gatherings'],
-    ['/prayer', 'Prayer'],
+    ['/prayer', 'On our hearts'],
     ['/history', 'Looking back'],
     ['/coordination', 'Coordination Notes'],
     ['/feedback', 'Feedback'],

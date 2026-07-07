@@ -239,7 +239,7 @@ describe('OutreachBoard', () => {
     // than /3/, which also matches incidental digits like relative dates
     // ("Last connected 13 days ago") and is therefore date-dependent.
     expect(screen.getByText('3 people')).toBeInTheDocument();
-    expect(screen.getByText(/walking it/i)).toBeInTheDocument();
+    expect(screen.getByText(/in our care/i)).toBeInTheDocument();
   });
 
   // ── 6. Non-admin: no "Shape the journey" button ───────────────────────

@@ -370,7 +370,7 @@ export default function CoordinationNotes() {
   // The note form holds optional prefill so "Save to archive" can seed it from a page.
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
-  // team to-dos ("What we're carrying")
+  // team to-dos ("What we're holding")
   const [todos, setTodos] = useState<Task[]>([]);
   const [todoFilter, setTodoFilter] = useState<string>('all'); // 'all' | assignee uid
   const [showDoneTodos, setShowDoneTodos] = useState(false);
@@ -453,7 +453,7 @@ export default function CoordinationNotes() {
       (err) => handleFirestoreError(err, OperationType.LIST, 'users'),
     );
 
-    // To-dos ("What we're carrying") + contacts (AI linking) are editor-only.
+    // To-dos ("What we're holding") + contacts (AI linking) are editor-only.
     const unsubTodos = canEdit
       ? onSnapshot(
           collection(db, 'tasks'),
@@ -725,7 +725,7 @@ export default function CoordinationNotes() {
   const intro = canEdit ? (
     <>
       One <b className="text-on-surface font-medium">page per gathering</b>, kept by date — what you talked through, who's
-      carrying what, what you learned. Write it like a doc; nothing important should live in one person's inbox.
+      holding what, what you learned. Write it like a doc; nothing important should live in one person's inbox.
     </>
   ) : canSeeNotes ? (
     <>
@@ -884,7 +884,7 @@ export default function CoordinationNotes() {
       {canEdit && (
       <section>
         <SectionHead
-          title="What we're carrying"
+          title="What we're holding"
           sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
           action={
             <button

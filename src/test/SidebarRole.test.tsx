@@ -114,7 +114,7 @@ describe('Sidebar Role Label & Interactions', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'viewer' });
     renderSidebar();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
@@ -137,7 +137,7 @@ describe('Sidebar Role Label & Interactions', () => {
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('Prayer')).toBeInTheDocument();
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 

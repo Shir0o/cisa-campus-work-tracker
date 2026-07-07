@@ -24,45 +24,127 @@ export function TeamPrayerRow({
   prayer: PrayerRecord;
   contact?: Contact;
   first: boolean;
-  onUpdateStatus: (id: string, status: PrayerRecord["status"]) => void;
+  onUpdateStatus: (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string) => void;
   onOpenContact: (contact: Contact) => void;
   onOpenPrayerLog: () => void;
 }) {
+  const [answering, setAnswering] = useState(false);
+  const [howDraft, setHowDraft] = useState(prayer.answer || "");
+  const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+
+  const handleStatusChange = (status: PrayerRecord["status"]) => {
+    if (status === "answered") {
+      onUpdateStatus(prayer.id, "answered", prayer.answer || undefined, prayer.answeredAt || today);
+      if (!prayer.answer) {
+        setHowDraft("");
+        setAnswering(true);
+      }
+    } else {
+      setAnswering(false);
+      onUpdateStatus(prayer.id, status, undefined, undefined);
+    }
+  };
+
+  const saveAnswer = () => {
+    onUpdateStatus(prayer.id, "answered", howDraft.trim(), prayer.answeredAt || today);
+    setAnswering(false);
+  };
+
   return (
     <div
       className={cn(
-        "flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 py-4",
+        "py-4",
         !first && "border-t border-outline-variant/40",
       )}
     >
-      <div className="min-w-0">
-        <div className="text-on-surface font-medium leading-snug">{prayer.burden}</div>
-        {contact && (
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="text-on-surface font-medium leading-snug">{prayer.burden}</div>
+          {contact && (
+            <button
+              type="button"
+              onClick={() => onOpenContact(contact)}
+              className="text-sm text-primary hover:underline mt-0.5"
+            >
+              for {contact.name}
+            </button>
+          )}
+
+          {!answering && prayer.status === "answered" && (prayer.answer || prayer.answeredAt) && (
+            <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+                  Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHowDraft(prayer.answer || "");
+                    setAnswering(true);
+                  }}
+                  className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                >
+                  Edit Testimony
+                </button>
+              </div>
+              {prayer.answer && (
+                <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
+                  "{prayer.answer}"
+                </p>
+              )}
+            </div>
+          )}
+
+          {answering && (
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+                How was it answered?
+              </label>
+              <textarea
+                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                autoFocus
+                rows={2}
+                value={howDraft}
+                onChange={(e) => setHowDraft(e.target.value)}
+                placeholder="A sentence on how God answered — the testimony."
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  onClick={() => setAnswering(false)}
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  onClick={saveAnswer}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+          <span className="text-xs text-on-surface-variant whitespace-nowrap">
+            {agoLabel(prayer.date)}
+          </span>
+          <StatusPills
+            value={prayer.status}
+            options={TEAM_PRAYER_PILLS}
+            onChange={(s) => handleStatusChange(s as PrayerRecord["status"])}
+          />
           <button
             type="button"
-            onClick={() => onOpenContact(contact)}
-            className="text-sm text-primary hover:underline mt-0.5"
+            onClick={onOpenPrayerLog}
+            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-primary transition-colors"
           >
-            for {contact.name}
+            <ArrowRight className="w-3 h-3" /> Prayer Log
           </button>
-        )}
-      </div>
-      <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
-        <span className="text-xs text-on-surface-variant whitespace-nowrap">
-          {agoLabel(prayer.date)}
-        </span>
-        <StatusPills
-          value={prayer.status}
-          options={TEAM_PRAYER_PILLS}
-          onChange={(s) => onUpdateStatus(prayer.id, s as PrayerRecord["status"])}
-        />
-        <button
-          type="button"
-          onClick={onOpenPrayerLog}
-          className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-primary transition-colors"
-        >
-          <ArrowRight className="w-3 h-3" /> Prayer Log
-        </button>
+        </div>
       </div>
     </div>
   );
@@ -88,7 +170,13 @@ export function PersonalPrayerRow({
   contacts: Contact[];
   onUpdate: (
     id: string,
-    patch: { title?: string; contactId?: string | null; status?: PersonalPrayerStatus },
+    patch: { 
+      title?: string; 
+      contactId?: string | null; 
+      status?: PersonalPrayerStatus;
+      answeredAt?: string | null;
+      answeredBody?: string | null;
+    },
   ) => void;
   onDelete: (id: string) => void;
   onOpenContact: (contact: Contact) => void;
@@ -96,6 +184,9 @@ export function PersonalPrayerRow({
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(prayer.title);
   const [contactId, setContactId] = useState(prayer.contactId || "");
+  const [answering, setAnswering] = useState(false);
+  const [howDraft, setHowDraft] = useState(prayer.answeredBody || "");
+  const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
   const linked = prayer.contactId ? contacts.find((c) => c.id === prayer.contactId) : null;
 
   const openEdit = () => {
@@ -108,6 +199,24 @@ export function PersonalPrayerRow({
     if (!t) return;
     onUpdate(prayer.id, { title: t, contactId: contactId || null });
     setOpen(false);
+  };
+
+  const handleStatusChange = (status: PersonalPrayerStatus) => {
+    if (status === "answered") {
+      onUpdate(prayer.id, { status: "answered", answeredAt: prayer.answeredAt || today });
+      if (!prayer.answeredBody) {
+        setHowDraft("");
+        setAnswering(true);
+      }
+    } else {
+      setAnswering(false);
+      onUpdate(prayer.id, { status, answeredAt: null, answeredBody: null });
+    }
+  };
+
+  const saveAnswer = () => {
+    onUpdate(prayer.id, { status: "answered", answeredBody: howDraft.trim(), answeredAt: prayer.answeredAt || today });
+    setAnswering(false);
   };
 
   return (
@@ -137,6 +246,63 @@ export function PersonalPrayerRow({
             </button>
           ) : (
             <span className="text-sm text-on-surface-variant/60 mt-0.5 inline-block">personal</span>
+          )}
+
+          {!open && !answering && prayer.status === "answered" && (prayer.answeredAt || prayer.answeredBody) && (
+            <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+                  Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHowDraft(prayer.answeredBody || "");
+                    setAnswering(true);
+                  }}
+                  className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                >
+                  Edit Testimony
+                </button>
+              </div>
+              {prayer.answeredBody && (
+                <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
+                  "{prayer.answeredBody}"
+                </p>
+              )}
+            </div>
+          )}
+
+          {answering && (
+            <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl" onClick={(e) => e.stopPropagation()}>
+              <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+                How was it answered?
+              </label>
+              <textarea
+                className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
+                autoFocus
+                rows={2}
+                value={howDraft}
+                onChange={(e) => setHowDraft(e.target.value)}
+                placeholder="A sentence on how God answered — the testimony."
+              />
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
+                  onClick={() => setAnswering(false)}
+                >
+                  Skip
+                </button>
+                <button
+                  type="button"
+                  className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
+                  onClick={saveAnswer}
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           )}
 
           {open && (
@@ -194,7 +360,7 @@ export function PersonalPrayerRow({
           )}
         </div>
 
-        {!open && (
+        {!open && !answering && (
           <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
             <span className="text-xs text-on-surface-variant whitespace-nowrap">
               {agoLabel(prayer.date)}
@@ -202,7 +368,7 @@ export function PersonalPrayerRow({
             <StatusPills
               value={prayer.status}
               options={PERSONAL_PRAYER_PILLS}
-              onChange={(s) => onUpdate(prayer.id, { status: s as PersonalPrayerStatus })}
+              onChange={(s) => handleStatusChange(s as PersonalPrayerStatus)}
             />
           </div>
         )}

@@ -1732,7 +1732,7 @@ export default function ContactDetailsModal({
                     >
                       <div className="flex items-center justify-between px-2">
                         <h3 className="font-serif text-lg text-on-surface">
-                          Prayers we're carrying
+                          Prayers we're holding
                         </h3>
                         <button
                           onClick={() => setIsAddingPrayer(!isAddingPrayer)}
