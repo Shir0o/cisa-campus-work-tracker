@@ -6,6 +6,9 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Fixed
+- Fixed Vitest timeouts and test failures in `AnsweredList.test.tsx` by correcting the Firestore mock and date formatting assertions, and expanded coverage in `gatheringTypes.test.ts` to satisfy global statements and branches coverage thresholds.
+
 ### Security
 - Closed several unauthenticated Express API endpoints found in a repo-wide security audit: `/api/webhook/logs` and `/api/analyze-notes` now require a verified Firebase ID token belonging to an admin (matching their existing admin-only client-side gating); `/api/quick-add` now derives the attributed user from a verified token when one is supplied instead of trusting a client-supplied `userId`/`userName` (falling back to a generic "External Automation" label for unauthenticated automation callers like curl/Shortcuts, preserving that use case). Added Twilio request-signature verification (`TWILIO_AUTH_TOKEN`) for `/api/webhook/sms` and an optional group allow-list (`GROUPME_GROUP_ID`) for `/api/webhook/groupme`, both no-ops until configured. New `src/lib/twilioVerify.ts` + unit tests.
 

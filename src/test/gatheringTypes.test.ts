@@ -38,8 +38,12 @@ import {
   removeGatheringType,
   seedDefaultGatheringTypesIfEmpty,
   DEFAULT_GATHERING_TYPES,
+  useGatheringTypes,
 } from '../lib/gatheringTypes';
 import { addDoc, updateDoc, deleteDoc, getDocs } from 'firebase/firestore';
+import { handleFirestoreError } from '../lib/firebase';
+import { render, screen } from '@testing-library/react';
+import React from 'react';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -105,5 +109,38 @@ describe('gatheringTypes lib', () => {
     (getDocs as any).mockResolvedValueOnce({ empty: false });
     await seedDefaultGatheringTypesIfEmpty();
     expect(batch.set).not.toHaveBeenCalled();
+  });
+
+  it('useGatheringTypes hook subscribes and returns types', () => {
+    const TestComponent = () => {
+      const types = useGatheringTypes();
+      return React.createElement('div', null, JSON.stringify(types));
+    };
+    render(React.createElement(TestComponent));
+    expect(screen.getByText(/Weekly/)).toBeInTheDocument();
+  });
+
+  it('handles error in addGatheringType', async () => {
+    (addDoc as any).mockRejectedValueOnce(new Error('Add error'));
+    await addGatheringType({ name: 'Error', blurb: 'Error', order: 0 });
+    expect(handleFirestoreError).toHaveBeenCalled();
+  });
+
+  it('handles error in updateGatheringType', async () => {
+    (updateDoc as any).mockRejectedValueOnce(new Error('Update error'));
+    await updateGatheringType('t1', { name: 'Error', blurb: 'Error' }, 'Weekly');
+    expect(handleFirestoreError).toHaveBeenCalled();
+  });
+
+  it('handles error in removeGatheringType', async () => {
+    (deleteDoc as any).mockRejectedValueOnce(new Error('Delete error'));
+    await removeGatheringType('t1');
+    expect(handleFirestoreError).toHaveBeenCalled();
+  });
+
+  it('handles error in seedDefaultGatheringTypesIfEmpty', async () => {
+    (getDocs as any).mockRejectedValueOnce(new Error('Seed error'));
+    await seedDefaultGatheringTypesIfEmpty();
+    expect(handleFirestoreError).toHaveBeenCalled();
   });
 });

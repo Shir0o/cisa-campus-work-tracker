@@ -19,6 +19,7 @@ function getToneForId(id: string): 'accent' | 'violet' | 'amber' | 'sage' {
 function formatDate(isoString: string) {
   try {
     const d = new Date(isoString);
+    if (isNaN(d.getTime())) throw new Error('Invalid Date');
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   } catch {
     return 'Recently';
