@@ -281,7 +281,6 @@ export default function AnsweredList() {
           isOpen={true}
           onClose={() => setProfileContact(null)}
           contact={profileContact}
-          onContactUpdated={() => {}}
         />
       )}
     </PageContainer>
