@@ -179,7 +179,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
 
     // handleFirestoreError should have been called as fallback
     const { handleFirestoreError } = await import('../lib/firebase');
-    expect(handleFirestoreError).toHaveBeenCalled();
+    await waitFor(() => { expect(handleFirestoreError).toHaveBeenCalled(); });
   });
 
   it('handles token acquisition failure gracefully', async () => {
@@ -208,7 +208,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
     // Verify no Authorization header was set
     const fetchCall = (global.fetch as any).mock.calls[0];
     const headers = fetchCall[1].headers;
-    expect(headers['Authorization']).toBeUndefined();
+    expect(headers ? headers['Authorization'] : undefined).toBeUndefined();
   });
 
   it('does not submit when message is empty and form is submitted', async () => {
