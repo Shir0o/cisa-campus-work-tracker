@@ -1,21 +1,16 @@
-import '@testing-library/jest-dom/vitest';
-import { cleanup, configure } from '@testing-library/react';
-import { afterEach, vi } from 'vitest';
+import '@testing-library/jest-dom';
+import { vi } from 'vitest';
 
-// Configure testing library to have a longer timeout under concurrent load
-configure({ asyncUtilTimeout: 15000 });
-
-// Cleanup after each test case (e.g. unmounting React components)
-afterEach(() => {
-  cleanup();
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(), // Deprecated
+    removeListener: vi.fn(), // Deprecated
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
 });
-
-// Mock html2canvas-pro globally
-vi.mock('html2canvas-pro', () => ({
-  default: vi.fn().mockResolvedValue({
-    toDataURL: () => 'data:image/png;base64,mock',
-    width: 100,
-    height: 100,
-  }),
-}));
-

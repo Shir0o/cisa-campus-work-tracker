@@ -1,3 +1,5 @@
+import "./useMediaQuery.mock";
+import "../lib/useMediaQuery";
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
