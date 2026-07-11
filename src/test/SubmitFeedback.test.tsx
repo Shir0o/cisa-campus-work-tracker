@@ -113,7 +113,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
 
     const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
     await user.type(textarea, 'A great suggestion');
-    await user.click(screen.getByRole('button', { name: /Send/i }));
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
 
     await waitFor(() => {
       expect(screen.getByText('We got your note.')).toBeInTheDocument();
@@ -135,7 +135,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
 
     const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
     await user.type(textarea, 'Some feedback');
-    await user.click(screen.getByRole('button', { name: /Send/i }));
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
 
     await waitFor(() => {
       expect(screen.getByText('We got your note.')).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
 
     const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
     await user.type(textarea, 'Trigger error');
-    await user.click(screen.getByRole('button', { name: /Send/i }));
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
 
     // Should NOT show success
     await waitFor(() => {
@@ -198,7 +198,7 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
 
     const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
     await user.type(textarea, 'Test without token');
-    await user.click(screen.getByRole('button', { name: /Send/i }));
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
 
     // Should still succeed (token is optional)
     await waitFor(() => {
