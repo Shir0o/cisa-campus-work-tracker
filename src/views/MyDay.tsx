@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useMediaQuery } from "../lib/useMediaQuery";
+import MyDayMobile from "./MyDayMobile";
 import {
   HeartHandshake,
   ClipboardList,
@@ -432,6 +434,7 @@ function AddTaskRow({
 }
 
 export default function MyDay() {
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const { user } = useAuth();
   const navigate = useNavigate();
   const firstName = user?.displayName?.split(" ")[0] || "friend";
@@ -670,6 +673,10 @@ export default function MyDay() {
 
   if (error) {
     return <DataLoadError label={error} />;
+  }
+
+  if (isMobile && !loading && !error) {
+    return <MyDayMobile contacts={contacts} events={events} prayers={prayers} stages={stages} />;
   }
 
   if (loading) {

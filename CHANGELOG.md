@@ -13,6 +13,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - Closed several unauthenticated Express API endpoints found in a repo-wide security audit: `/api/webhook/logs` and `/api/analyze-notes` now require a verified Firebase ID token belonging to an admin (matching their existing admin-only client-side gating); `/api/quick-add` now derives the attributed user from a verified token when one is supplied instead of trusting a client-supplied `userId`/`userName` (falling back to a generic "External Automation" label for unauthenticated automation callers like curl/Shortcuts, preserving that use case). Added Twilio request-signature verification (`TWILIO_AUTH_TOKEN`) for `/api/webhook/sms` and an optional group allow-list (`GROUPME_GROUP_ID`) for `/api/webhook/groupme`, both no-ops until configured. New `src/lib/twilioVerify.ts` + unit tests.
 
 ### Added
+- **Mobile Redesign Phase 1**: Built a dedicated mobile structure aligning with the target design files for the "My Day" screen (Dashboard). Added `MyDayMobile.tsx` to display mobile-native vertical layouts for hero greeting, inbox, people list with quick actions, events, and prayers. Introduced `useMediaQuery` in `MyDay.tsx` to conditionally render the mobile view for devices under 768px. Updated `MobileNav.tsx` to match the exact 5-tab plus center FAB (Log a moment) layout and active tab styling.
 - **Session 7 — Answered page, testimonies & terminology updates.** Implemented terminology updates globally (carry -> hold, walking -> caring for). Added answered prayer testimonies: corporate and personal prayers now support an optional `answer` body and `answeredAt` date, with an inline text area popping up when marked answered. Built a keepsake masonry page at `/answered` to archive answered prayers by time group, with deterministic card color tones and a toggle header. Adjusted the notification bell badge alignment.
 - Wired up ESLint (flat config, `eslint.config.js`) covering TS/TSX (`@typescript-eslint`), React hooks (`eslint-plugin-react-hooks`), and `firestore.rules` (`@firebase/eslint-plugin-security-rules`, already a devDependency but never configured). `npm run lint` now runs ESLint; type-checking moved to a new `npm run typecheck` script. CI now runs typecheck, lint, tests, and `npm run build`.
 - Added the missing `activities` composite Firestore index (`targetId` + `createdAt`) so the contact Activity tab's query — which needs it — stops depending on it having been created out-of-band; the rules-deploy CI workflow now also deploys `firestore.indexes.json`.
@@ -62,6 +63,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [2026-06] — Field Notes design system, RBAC & CI
 
 ### Added
+- **Mobile Redesign Phase 1**: Built a dedicated mobile structure aligning with the target design files for the "My Day" screen (Dashboard). Added `MyDayMobile.tsx` to display mobile-native vertical layouts for hero greeting, inbox, people list with quick actions, events, and prayers. Introduced `useMediaQuery` in `MyDay.tsx` to conditionally render the mobile view for devices under 768px. Updated `MobileNav.tsx` to match the exact 5-tab plus center FAB (Log a moment) layout and active tab styling.
 - Role-based access control enforced across routes and navigation (#3).
 - CI workflow with a 90% test coverage threshold (#6).
 - Coordination notes collection with Markdown editing and archive support.
@@ -80,6 +82,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [2026-05] — Productionization, AI & integrations
 
 ### Added
+- **Mobile Redesign Phase 1**: Built a dedicated mobile structure aligning with the target design files for the "My Day" screen (Dashboard). Added `MyDayMobile.tsx` to display mobile-native vertical layouts for hero greeting, inbox, people list with quick actions, events, and prayers. Introduced `useMediaQuery` in `MyDay.tsx` to conditionally render the mobile view for devices under 768px. Updated `MobileNav.tsx` to match the exact 5-tab plus center FAB (Log a moment) layout and active tab styling.
 - User feedback system, with the feedback list surfaced in Settings.
 - Server-side Gemini processing with a webhook proxy and logging system.
 - Serverless functions bundled into the build and Docker image.
@@ -103,6 +106,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [2026-04] — Foundation & core CRM
 
 ### Added
+- **Mobile Redesign Phase 1**: Built a dedicated mobile structure aligning with the target design files for the "My Day" screen (Dashboard). Added `MyDayMobile.tsx` to display mobile-native vertical layouts for hero greeting, inbox, people list with quick actions, events, and prayers. Introduced `useMediaQuery` in `MyDay.tsx` to conditionally render the mobile view for devices under 768px. Updated `MobileNav.tsx` to match the exact 5-tab plus center FAB (Log a moment) layout and active tab styling.
 - Firebase authentication with user approval and admin access control.
 - PWA features and mobile navigation.
 - Collapsible sidebar with persisted state.
