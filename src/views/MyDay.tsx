@@ -676,7 +676,45 @@ export default function MyDay() {
   }
 
   if (isMobile && !loading && !error) {
-    return <MyDayMobile contacts={contacts} events={events} prayers={prayers} stages={stages} />;
+    return (
+      <MyDayMobile
+        contacts={contacts}
+        events={events}
+        prayers={prayers}
+        stages={stages}
+        uid={uid}
+        myLeaders={myLeaders}
+        staleLeader={staleLeader}
+        assignedTasks={assignedTasks}
+        personalTasks={personalTasks}
+        contactPrayers={contactPrayers}
+        activePersonalPrayers={activePersonalPrayers}
+        thisWeek={thisWeek}
+        leftToDo={leftToDo}
+        prayersCount={prayersCount}
+        personalContactIds={personalContactIds}
+        onOpenContact={openContact}
+        onToggleTask={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
+        onUpdateTaskDue={(todo, days) => updateTodo(todo.id, { dueDate: duePresetToISO(days) })}
+        onUpdatePersonalTask={(id, patch) => updateTodo(id, patch)}
+        onDeletePersonalTask={(id) => deleteTodo(id)}
+        onAddPersonalTask={(title, dueDate) =>
+          uid &&
+          addTodo(
+            { title, assigneeId: uid, dueDate, source: null },
+            { uid, name: user?.displayName || "" },
+          )
+        }
+        onUpdatePrayerStatus={(id, status, answer, answeredAt) =>
+          updatePrayerStatus(id, status as any, { uid, name: user?.displayName }, answer, answeredAt)
+        }
+        onUpdatePersonalPrayer={(id, patch) => uid && updatePersonalPrayer(uid, id, patch)}
+        onDeletePersonalPrayer={(id) => uid && deletePersonalPrayer(uid, id)}
+        onAddPersonalPrayer={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
+        onTogglePersonalContact={togglePersonalContact}
+        onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
+      />
+    );
   }
 
   if (loading) {

@@ -16,8 +16,8 @@ describe('MyDayMobile', () => {
     render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
 
     expect(screen.getByText('Good morning, John.')).toBeInTheDocument();
-    expect(screen.getByText('Your people')).toBeInTheDocument();
-    expect(screen.getByText('No contacts assigned yet.')).toBeInTheDocument();
+    expect(screen.getByText('Your sheep')).toBeInTheDocument();
+    expect(screen.getByText('No contacts in your care yet.')).toBeInTheDocument();
 
     expect(screen.getByText('Your week')).toBeInTheDocument();
     expect(screen.getByText('Nothing on the calendar this week.')).toBeInTheDocument();
@@ -50,9 +50,9 @@ describe('MyDayMobile', () => {
     expect(screen.getByText('Student')).toBeInTheDocument();
 
     expect(screen.getByText('Bible Study')).toBeInTheDocument();
-    expect(screen.getByText('Room 101')).toBeInTheDocument();
+    expect(screen.getByText(/Room 101/)).toBeInTheDocument();
     expect(screen.getByText('Worship Night')).toBeInTheDocument();
-    expect(screen.getByText('Main Hall')).toBeInTheDocument();
+    expect(screen.getByText(/Main Hall/)).toBeInTheDocument();
 
     expect(screen.getByText('ongoing')).toBeInTheDocument();
   });
@@ -117,7 +117,7 @@ describe('MyDayMobile', () => {
     });
 
     render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
-    expect(screen.getByText('No contacts assigned yet.')).toBeInTheDocument();
+    expect(screen.getByText('No contacts in your care yet.')).toBeInTheDocument();
   });
 
 });

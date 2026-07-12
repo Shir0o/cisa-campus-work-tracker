@@ -33,6 +33,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
 import { sendMessage } from '../services/chat';
@@ -47,6 +48,7 @@ export default function Messages() {
   const { user: currentUser, role: userRole } = useAuth();
   const { setSelectedContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   // Modals state
   const [createChatOpen, setCreateChatOpen] = useState(false);
   const [chatDetailsOpen, setChatDetailsOpen] = useState(false);
@@ -73,6 +75,30 @@ export default function Messages() {
   const [roomMembers, setRoomMembers] = useState<{ uid: string; displayName: string }[]>([]);
 
   const isAdmin = userRole === 'admin';
+
+  // Toggle fullscreen chat body class on mobile when a chat is open
+  useEffect(() => {
+    const full = isMobile && !!activeRoomId;
+    document.body.classList.toggle("msgs-fullscreen", full);
+    return () => document.body.classList.remove("msgs-fullscreen");
+  }, [isMobile, activeRoomId]);
+
+  // Back-button/gesture integration for mobile chat
+  useEffect(() => {
+    if (!isMobile || !activeRoomId) return;
+
+    const stateId = `chat-room-${activeRoomId}`;
+    window.history.pushState({ chatRoomId: stateId }, '');
+
+    const handlePopState = (e: PopStateEvent) => {
+      setActiveRoomId(null);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [isMobile, activeRoomId]);
 
   // 1. Fetch Rooms (Real-time)
   useEffect(() => {
@@ -480,7 +506,13 @@ export default function Messages() {
             <div className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0 z-10">
               <div className="flex items-center gap-3.5 min-w-0">
                 <button
-                  onClick={() => setActiveRoomId(null)}
+                  onClick={() => {
+                    if (isMobile) {
+                      window.history.back();
+                    } else {
+                      setActiveRoomId(null);
+                    }
+                  }}
                   className="p-2 -ml-2 rounded-full hover:bg-surface-container-high text-on-surface md:hidden cursor-pointer"
                 >
                   <ChevronLeft className="w-5 h-5" />
