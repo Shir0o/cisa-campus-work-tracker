@@ -713,6 +713,8 @@ export default function MyDay() {
         onAddPersonalPrayer={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
         onTogglePersonalContact={togglePersonalContact}
         onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
+        onOpenBoard={() => navigate("/coordination")}
+        onOpenPrayer={() => navigate("/prayer")}
       />
     );
   }

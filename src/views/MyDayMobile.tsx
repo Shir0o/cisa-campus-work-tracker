@@ -63,6 +63,8 @@ interface MyDayMobileProps {
   onAddPersonalPrayer?: (title: string, contactId?: string) => void;
   onTogglePersonalContact?: (id: string) => void;
   onMessage?: (contact: Contact) => void;
+  onOpenBoard?: () => void;
+  onOpenPrayer?: () => void;
 }
 
 // Due-date presets for inline editors
@@ -122,6 +124,8 @@ export default function MyDayMobile({
   onAddPersonalPrayer = () => {},
   onTogglePersonalContact = () => {},
   onMessage = () => {},
+  onOpenBoard = () => {},
+  onOpenPrayer = () => {},
 }: MyDayMobileProps) {
   const { user } = useAuth();
   const firstName = user?.displayName?.split(" ")[0] || "friend";
@@ -203,6 +207,20 @@ export default function MyDayMobile({
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 mdm-line">
           You're caring for <b className="font-semibold text-on-surface">{myLeaders.length}</b> people this season — <b className="font-semibold text-on-surface">{leftToDo}</b> things to tend, <b className="font-semibold text-on-surface">{prayersCount}</b> prayers to hold.
         </p>
+        <div className="flex gap-2.5 mt-4 mdm-actions">
+          <button
+            onClick={onOpenBoard}
+            className="flex-1 inline-flex items-center justify-center gap-2 h-[46px] rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-on-surface active:bg-surface-variant/60 transition-colors mdm-action"
+          >
+            <ClipboardList className="w-4 h-4" /> The board
+          </button>
+          <button
+            onClick={onOpenPrayer}
+            className="flex-1 inline-flex items-center justify-center gap-2 h-[46px] rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-on-surface active:bg-surface-variant/60 transition-colors mdm-action"
+          >
+            <HeartHandshake className="w-4 h-4" /> Pray together
+          </button>
+        </div>
       </header>
 
       {/* ── Relational Nudge Prompt ── */}

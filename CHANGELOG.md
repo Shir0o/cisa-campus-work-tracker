@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Fixed
+- Wired up the "The board" / "Pray together" quick-action buttons in the My Day mobile hero (`MyDayMobile.tsx`) — the CSS and icons had shipped in Mobile Redesign Phase 1 but the buttons were never added to the markup, so they never rendered.
 - Fixed Vitest timeouts and test failures in `AnsweredList.test.tsx` by correcting the Firestore mock and date formatting assertions, and expanded coverage in `gatheringTypes.test.ts` to satisfy global statements and branches coverage thresholds.
 
 ### Security
