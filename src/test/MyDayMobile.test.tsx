@@ -7,6 +7,13 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  auth: { currentUser: { uid: 'u1' } },
+  handleFirestoreError: vi.fn(),
+  logActivity: vi.fn(),
+}));
+
 describe('MyDayMobile', () => {
   it('renders correctly with no data', () => {
     (useAuth as any).mockReturnValue({
