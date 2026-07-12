@@ -25,6 +25,8 @@ import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../l
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials } from '../lib/utils';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import CoordinationNotesMobile from './CoordinationNotesMobile';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
   Plus,
@@ -330,6 +332,7 @@ function mdExcerpt(md: string): string {
 
 export default function CoordinationNotes() {
   const { isAdmin, user, role } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
   const canEdit = isAdmin || isMe;
@@ -738,6 +741,257 @@ export default function CoordinationNotes() {
       <b className="text-on-surface font-medium">open to everyone</b>.
     </>
   );
+
+  const TodoSectionComponent = canEdit ? (
+    <section className="px-5 mt-5">
+      <SectionHead
+        title="What we're holding"
+        sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
+        action={
+          <button
+            onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
+            className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add to-do
+          </button>
+        }
+      />
+
+      {/* filters */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 mb-3">
+        <div className="flex flex-wrap gap-1.5 flex-1">
+          <button
+            onClick={() => setTodoFilter('all')}
+            className={cn(
+              'inline-flex items-center gap-1.5 pl-2.5 pr-3 py-1.5 rounded-full border text-xs font-medium transition-colors',
+              todoFilter === 'all'
+                ? 'bg-primary-container border-primary text-on-primary-container'
+                : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
+            )}
+          >
+            <Users className="w-3.5 h-3.5" /> Everyone
+          </button>
+          {team.map((m) => {
+            const n = openTodosByUid.get(m.uid) ?? 0;
+            return (
+              <button
+                key={m.uid}
+                onClick={() => setTodoFilter(m.uid)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full border text-xs font-medium transition-colors',
+                  todoFilter === m.uid
+                    ? 'bg-primary-container border-primary text-on-primary-container'
+                    : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
+                )}
+              >
+                <PersonAvatar person={m} size="xs" />
+                {m.name.split(' ')[0]}
+                {m.uid === uid ? ' (you)' : ''}
+                {n > 0 && (
+                  <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-primary text-[10px] font-bold inline-flex items-center justify-center">
+                    {n}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+        <button
+          onClick={() => setShowDoneTodos((v) => !v)}
+          className={cn(
+            'inline-flex items-center gap-2 text-xs font-medium transition-colors shrink-0',
+            showDoneTodos ? 'text-on-surface' : 'text-on-surface-variant hover:text-on-surface',
+          )}
+        >
+          <span
+            className={cn(
+              'w-4 h-4 rounded border flex items-center justify-center',
+              showDoneTodos ? 'bg-primary border-primary text-on-primary' : 'border-outline',
+            )}
+          >
+            {showDoneTodos && <Check className="w-2.5 h-2.5" />}
+          </span>
+          Show done
+        </button>
+      </div>
+
+      {visibleTodos.length === 0 ? (
+        <div className="bg-surface rounded-2xl border border-dashed border-outline-variant p-8 text-center flex flex-col items-center">
+          <CheckSquare className="w-6 h-6 text-on-surface-variant/50 mb-2" />
+          <p className="text-sm text-on-surface-variant max-w-sm">
+            Nothing here yet. Add one above, or highlight a line in a page and choose “Make a to-do”.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+          {visibleTodos.map((t, i) => (
+            <TodoRow
+              key={t.id}
+              first={i === 0}
+              todo={t}
+              assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
+              showAssignee
+              onToggle={(todo, done) => setTodoDone(todo.id, done)}
+              onEdit={(todo) =>
+                setTodoComposer({
+                  mode: 'edit',
+                  initial: {
+                    id: todo.id,
+                    text: todo.title,
+                    assigneeId: todo.assigneeId ?? null,
+                    dueDate: todo.dueDate ?? null,
+                  },
+                })
+              }
+              onDelete={(todo) => deleteTodo(todo.id)}
+              onJumpToSource={jumpToTodoSource}
+            />
+          ))}
+        </div>
+      )}
+    </section>
+  ) : null;
+
+  const NotesSectionComponent = canSeeNotes ? (
+    <section id="board-notes-section" className="px-5 mt-5">
+      <SectionHead
+        title="Notes & learnings"
+        sub="Every page becomes a record — running it again? Find last time's notes."
+        action={
+          canEdit ? (
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setNoteForm({ type: 'record' })}
+                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+              >
+                <Plus className="w-4 h-4" /> New record
+              </button>
+              <button
+                onClick={() => setNoteForm({ type: 'learning' })}
+                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
+              >
+                <NotebookPen className="w-4 h-4" /> New learning
+              </button>
+            </div>
+          ) : undefined
+        }
+      />
+
+      {canEdit && noteForm && (
+        <NoteForm initial={noteForm} seriesOptions={BOARD_SERIES} onCancel={() => setNoteForm(null)} onSave={addNote} />
+      )}
+
+      {/* controls */}
+      <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search notes — e.g. “Friday gathering”, “retreat”, “welcome”…"
+            className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+          />
+          {q && (
+            <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+        <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+          {(['All', 'Records', 'Learnings'] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setKind(k)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              {k}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* series chips */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {seriesOptions.map((s) => (
+          <button
+            key={s}
+            onClick={() => setSeries(s)}
+            className={cn(
+              'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
+              series === s
+                ? 'bg-stage-accent border-stage-accent text-white'
+                : 'bg-surface border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-on-surface',
+            )}
+          >
+            {s}
+          </button>
+        ))}
+      </div>
+
+      {/* note cards */}
+      {notes.length > 0 && (
+        filteredNotes.length === 0 ? (
+          <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
+            No notes match that yet — try a different word or series.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            {filteredNotes.map((n) => (
+              <NoteCard key={n.id} n={n} memberById={memberById} onRemove={canEdit ? removeNote : undefined} />
+            ))}
+          </div>
+        )
+      )}
+    </section>
+  ) : null;
+
+  if (isMobile && !loadingDocs && !loadingNotes) {
+    return (
+      <>
+        <CoordinationNotesMobile
+          canEdit={canEdit}
+          canSeeNotes={canSeeNotes}
+          docs={docs}
+          active={active}
+          activeId={activeId}
+          setActiveId={setActiveId}
+          newDoc={createDoc}
+          promoteDoc={promoteDoc}
+          heading={heading}
+          intro={intro}
+          uid={uid}
+          meName={meName}
+          pagesCollapsed={pagesCollapsed}
+          togglePages={togglePages}
+          setLiveActiveMd={setLiveActiveMd}
+          saveMarkdown={saveMarkdown}
+          saveTitle={saveTitle}
+          saveAudience={saveAudience}
+          deleteBoardDoc={deleteBoardDoc}
+          team={team}
+          showToast={showToast}
+          contacts={contacts}
+          setSelectedContact={setSelectedContact}
+          setIsDetailsModalOpen={setIsDetailsModalOpen}
+          DocEditorComponent={DocEditor}
+          ReadOnlyDocComponent={ReadOnlyDoc}
+          TodoSectionComponent={TodoSectionComponent}
+          NotesSectionComponent={NotesSectionComponent}
+        />
+        <ContactDetailsModal
+          isOpen={isDetailsModalOpen}
+          onClose={() => {
+            setIsDetailsModalOpen(false);
+            setSelectedContact(null);
+          }}
+          contact={selectedContact}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8 space-y-8" id="coordination-notes-panel">

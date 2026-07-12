@@ -28,6 +28,8 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
 import PageContainer from '../components/layout/PageContainer';
 import { format, parseISO, isValid } from 'date-fns';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import AttendanceMobile from './AttendanceMobile';
 
 const DAY_MS = 86_400_000;
 
@@ -91,6 +93,7 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 
 export default function Attendance() {
   const { user, isAdmin } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const gatheringTypes = useGatheringTypes();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
@@ -305,6 +308,31 @@ export default function Attendance() {
           ))}
         </div>
       </PageContainer>
+    );
+  }
+
+  if (isMobile && !loading && !error) {
+    return (
+      <AttendanceMobile
+        contacts={contacts}
+        events={events}
+        sessions={sessions}
+        upcoming={upcoming}
+        missed={missed}
+        avgPer={avgPer}
+        activeFilter={activeFilter}
+        setTypeFilter={setTypeFilter}
+        gatheringTypes={gatheringTypes}
+        isAdmin={isAdmin}
+        onOpenContact={openContact}
+        onLogGathering={() => setIsAddEventModalOpen(true)}
+        onManageTypes={() => setIsManageTypesOpen(true)}
+        onEditSession={(session) => setEditingEvent(session)}
+        onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
+        cycleAttendance={cycleAttendance}
+        here={here}
+        RsvpCountComponent={RsvpCount}
+      />
     );
   }
 

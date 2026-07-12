@@ -28,6 +28,8 @@ import { cn, relTime } from "../lib/utils";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import PageContainer from "../components/layout/PageContainer";
+import { useMediaQuery } from '../lib/useMediaQuery';
+import HistoryMobile from './HistoryMobile';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -214,6 +216,7 @@ const firstName = (name: string) => (name || "Someone").split(" ")[0];
 
 export default function History() {
   useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -321,6 +324,34 @@ export default function History() {
     month: "long",
     day: "numeric",
   });
+
+  if (isMobile && !loading && !error) {
+    return (
+      <>
+        <HistoryMobile
+          activities={activities}
+          contacts={contacts}
+          filteredActivities={filtered}
+          rows={rows}
+          peopleRemembered={peopleRemembered}
+          kind={kind}
+          setKind={setKind}
+          who={who}
+          setWho={setWho}
+          staff={staff}
+          onOpenContact={openContact}
+          humanize={humanize}
+          dayInfo={dayInfo}
+          firstName={firstName}
+        />
+        <ContactDetailsModal
+          isOpen={selectedContact !== null}
+          onClose={() => setSelectedContact(null)}
+          contact={selectedContact}
+        />
+      </>
+    );
+  }
 
   return (
     <PageContainer variant="wide">

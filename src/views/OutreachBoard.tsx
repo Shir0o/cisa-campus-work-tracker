@@ -52,6 +52,8 @@ import {
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import OutreachBoardMobile from './OutreachBoardMobile';
 
 // ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
 const DAY_MS = 86_400_000;
@@ -168,6 +170,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function OutreachBoard() {
   const { setSelectedContact, openNewContact } = useLayout();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
@@ -565,6 +568,22 @@ export default function OutreachBoard() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (isMobile && !loading && !error) {
+    return (
+      <OutreachBoardMobile
+        stages={stages}
+        contacts={boardContacts}
+        unmappedContacts={unmappedContacts}
+        lastTouchByContact={lastTouchByContact}
+        onOpenContact={setSelectedContact}
+        onMove={handleUpdateContactStage}
+        onShapeJourney={() => { setEditingStage(null); setNewStageName(''); setNewStageColor('bg-board-indigo'); setShowAddStage(true); }}
+        isAdmin={isAdmin}
+        onAddContact={openNewContact}
+      />
     );
   }
 

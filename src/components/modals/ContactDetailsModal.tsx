@@ -48,6 +48,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
@@ -171,6 +172,7 @@ export default function ContactDetailsModal({
   initialInteractionId,
 }: ContactDetailsModalProps) {
   const { user, isAdmin } = useAuth();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [interactionsLoading, setInteractionsLoading] = useState(true);
@@ -859,104 +861,238 @@ export default function ContactDetailsModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1]"
-          />
+        <div className={cn("fixed inset-0 z-[100] flex", isMobile ? "w-full h-full bg-surface" : "items-center justify-center p-4 md:p-10")}>
+          {!isMobile && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1]"
+            />
+          )}
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={isMobile ? { opacity: 0, y: 80 } : { opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant overflow-hidden flex flex-col max-h-full"
+            exit={isMobile ? { opacity: 0, y: 80 } : { opacity: 0, scale: 0.95, y: 20 }}
+            className={cn(
+              "relative flex flex-col overflow-hidden max-h-full",
+              isMobile
+                ? "w-full h-full bg-surface-container-lowest"
+                : "w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant"
+            )}
           >
-            {/* Header */}
-            <div className="px-6 py-5 border-b border-outline-variant shrink-0">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
-                    {contact.initials}
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="font-serif text-2xl text-on-surface leading-tight line-clamp-1">
-                      {isEditing ? "Edit details" : contact.name}
-                    </h2>
-                    {!isEditing && (
-                      <p className="text-sm text-on-surface-variant mt-0.5 truncate">
-                        {[contact.role, contact.location].filter(Boolean).join(" · ")}
-                      </p>
+            {isMobile ? (
+              isEditing ? (
+                /* Mobile Editing Header */
+                <div className="flex items-center justify-between px-4 py-3 bg-surface border-b border-outline-variant shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="text-sm font-semibold text-on-surface-variant"
+                  >
+                    Cancel
+                  </button>
+                  <h3 className="font-serif text-base text-on-surface font-semibold">Edit details</h3>
+                  <button
+                    type="submit"
+                    form="edit-contact-form"
+                    className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                /* Mobile Profile Header */
+                <div className="shrink-0 flex flex-col bg-surface border-b border-outline-variant/30">
+                  {/* Top back bar */}
+                  <div className="cdm-top px-5 pt-4 flex items-center justify-between">
+                    <button
+                      onClick={onClose}
+                      className="cdm-back text-on-surface-variant font-medium text-sm inline-flex items-center gap-1"
+                    >
+                      <ChevronRight className="w-4.5 h-4.5 rotate-180 cdm-back-ico text-on-surface-variant" />
+                      <span>People</span>
+                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant"
+                      >
+                        Edit
+                      </button>
                     )}
                   </div>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {!isEditing && (
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
-                      title="Edit details"
-                    >
-                      <Edit3 className="w-5 h-5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={onClose}
-                    className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
 
-              {/* Header actions */}
-              {!isEditing && (
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {contact.phone && (
-                    <button
-                      onClick={callContact}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <Phone className="w-3.5 h-3.5" /> Call
+                  {/* Hero Block */}
+                  <div className="cdm-hero px-5 pt-1 pb-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
+                        {contact.initials}
+                      </div>
+                      <div className="cdm-hero-main min-w-0 flex-1">
+                        <h2 className="font-serif text-2xl text-on-surface leading-tight truncate cd-name">
+                          {contact.name}
+                        </h2>
+                        <div className="cdm-chip-row flex flex-wrap gap-1 mt-1.5">
+                          {contact.tags?.map((t) => (
+                            <span
+                              key={t}
+                              className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant"
+                            >
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                        <p className="text-xs text-on-surface-variant cdm-meta mt-3">
+                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Communication Tiles */}
+                  <div className="cdm-comm px-5 pb-4">
+                    {contact.phone && (
+                      <button onClick={callContact}>
+                        <span className="cdm-comm-ico"><Phone className="w-4.5 h-4.5" /></span>
+                        <span>Call</span>
+                      </button>
+                    )}
+                    {contact.phone && (
+                      <button onClick={textContact}>
+                        <span className="cdm-comm-ico"><MessageSquare className="w-4.5 h-4.5" /></span>
+                        <span>Text</span>
+                      </button>
+                    )}
+                    {contact.email && (
+                      <button onClick={emailContact}>
+                        <span className="cdm-comm-ico"><Mail className="w-4.5 h-4.5" /></span>
+                        <span>Email</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Two Primary Actions */}
+                  <div className="cdm-primary px-5 pb-5 flex gap-2">
+                    <button onClick={startLogInteraction} className="btn bg-primary text-on-primary font-semibold flex items-center justify-center gap-2 flex-1 min-h-[48px] rounded-xl text-sm">
+                      <MessageSquare className="w-4 h-4" /> Log interaction
                     </button>
-                  )}
-                  {contact.phone && (
-                    <button
-                      onClick={textContact}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Text
+                    <button onClick={startAddPrayer} className="btn bg-stage-violet-soft text-stage-violet font-semibold flex items-center justify-center gap-2 border border-stage-violet/20 flex-1 min-h-[48px] rounded-xl text-sm">
+                      <Heart className="w-4 h-4" /> Prayer
                     </button>
-                  )}
-                  {contact.email && (
-                    <button
-                      onClick={emailContact}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <Mail className="w-3.5 h-3.5" /> Email
-                    </button>
-                  )}
-                  <button
-                    onClick={startLogInteraction}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                  >
-                    <MessageSquare className="w-3.5 h-3.5" /> Log interaction
-                  </button>
-                  <button
-                    onClick={startAddPrayer}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                  >
-                    <Heart className="w-3.5 h-3.5" /> Add prayer
-                  </button>
+                  </div>
                 </div>
-              )}
-            </div>
+              )
+            ) : (
+              /* Desktop Header */
+              <div className="px-6 py-5 border-b border-outline-variant shrink-0">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
+                      {contact.initials}
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="font-serif text-2xl text-on-surface leading-tight line-clamp-1">
+                        {isEditing ? "Edit details" : contact.name}
+                      </h2>
+                      {!isEditing && (
+                        <p className="text-sm text-on-surface-variant mt-0.5 truncate">
+                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!isEditing && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
+                        title="Edit details"
+                      >
+                        <Edit3 className="w-5 h-5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={onClose}
+                      className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Header actions */}
+                {!isEditing && (
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {contact.phone && (
+                      <button
+                        onClick={callContact}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <Phone className="w-3.5 h-3.5" /> Call
+                      </button>
+                    )}
+                    {contact.phone && (
+                      <button
+                        onClick={textContact}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Text
+                      </button>
+                    )}
+                    {contact.email && (
+                      <button
+                        onClick={emailContact}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <Mail className="w-3.5 h-3.5" /> Email
+                      </button>
+                    )}
+                    <button
+                      onClick={startLogInteraction}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" /> Log interaction
+                    </button>
+                    <button
+                      onClick={startAddPrayer}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                    >
+                      <Heart className="w-3.5 h-3.5" /> Add prayer
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Content Tab Switcher */}
             {!isEditing && (
-              <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0 overflow-x-auto no-scrollbar">
+              isMobile ? (
+                /* Mobile Dropdown Switcher */
+                <div className="cdm-switch sticky top-0 z-10 bg-surface border-t border-b border-outline-variant/35 px-5 py-2.5">
+                  <div className="relative">
+                    <select
+                      value={activeTab}
+                      onChange={(e) => setActiveTab(e.target.value as any)}
+                      className="w-full h-11 pl-4 pr-10 bg-surface-container-low border border-outline rounded-xl text-sm font-semibold appearance-none cursor-pointer text-on-surface cdm-select"
+                    >
+                      <option value="overview">Overview</option>
+                      <option value="interactions">Conversations ({interactions.length})</option>
+                      <option value="thread">{walkLabel} ({countFor(threadMessages, null)})</option>
+                      <option value="prayer">Prayer ({prayers.length})</option>
+                      <option value="comments">Discussion ({comments.length})</option>
+                      <option value="history">History</option>
+                    </select>
+                    <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/75 cdm-select-caret">
+                      ▾
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                /* Desktop Tab Bar */
+                <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0 overflow-x-auto no-scrollbar">
                 {([
                   { id: "overview", label: "Overview" },
                   { id: "interactions", label: "Conversations", count: interactions.length },
@@ -988,7 +1124,8 @@ export default function ContactDetailsModal({
                   </button>
                 ))}
               </div>
-            )}
+            )
+          )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -1194,6 +1331,23 @@ export default function ContactDetailsModal({
                         placeholder="Add some context about this contact..."
                       />
                     </div>
+                    {isMobile && (
+                      <div className="pt-4 border-t border-outline-variant/30 md:col-span-2">
+                        <button
+                          type="button"
+                          onClick={handleDelete}
+                          disabled={loading}
+                          className="w-full flex items-center justify-center gap-2 px-4 h-11 rounded-xl text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          {loading ? (
+                            <span className="animate-pulse">Deleting...</span>
+                          ) : (
+                            "Delete Contact"
+                          )}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </form>
               ) : (
@@ -2086,7 +2240,7 @@ export default function ContactDetailsModal({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center justify-between bg-surface-container-low/50">
+            <div className={cn("px-6 py-4 border-t border-outline-variant shrink-0 flex items-center justify-between bg-surface-container-low/50", isMobile && "hidden")}>
               <div className="hidden sm:block">
                 <button
                   onClick={handleDelete}
@@ -2137,7 +2291,7 @@ export default function ContactDetailsModal({
             </div>
 
             {/* Mobile-only delete button */}
-            <div className="sm:hidden px-6 pb-6 pt-0">
+            <div className={cn("sm:hidden px-6 pb-6 pt-0", isMobile && "hidden")}>
               <button
                 onClick={handleDelete}
                 disabled={loading}

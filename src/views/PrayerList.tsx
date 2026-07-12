@@ -14,11 +14,14 @@ import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import PageContainer from '../components/layout/PageContainer';
 import { useNavigate } from 'react-router-dom';
+import { useMediaQuery } from '../lib/useMediaQuery';
+import PrayerListMobile from './PrayerListMobile';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
 const DAY_MS = 86_400_000;
@@ -91,11 +94,20 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 export default function PrayerList() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
+    try {
+      const s = localStorage.getItem('cisa.prayer.hidden');
+      if (s) return new Set(JSON.parse(s));
+    } catch (e) {}
+    return new Set();
+  });
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -234,8 +246,12 @@ export default function PrayerList() {
   // One entry per person we're holding (has a prayer, or we just started).
   const entries = useMemo(() => {
     const ids = new Set<string>();
-    prayers.forEach((p) => ids.add(p.contactId));
-    startedIds.forEach((id) => ids.add(id));
+    prayers.forEach((p) => {
+      if (!hiddenIds.has(p.contactId)) ids.add(p.contactId);
+    });
+    startedIds.forEach((id) => {
+      if (!hiddenIds.has(id)) ids.add(id);
+    });
 
     const list: { contact: Contact; prayers: PrayerRecord[] }[] = [];
     ids.forEach((id) => {
@@ -254,7 +270,7 @@ export default function PrayerList() {
       return bRecent - aRecent;
     });
     return list;
-  }, [prayers, contacts, startedIds]);
+  }, [prayers, contacts, startedIds, hiddenIds]);
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -293,8 +309,27 @@ export default function PrayerList() {
 
   const startHolding = (contact: Contact) => {
     setStartedIds((prev) => new Set(prev).add(contact.id));
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(contact.id);
+      try {
+        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
+      } catch (e) {}
+      return next;
+    });
     setComposeFor(contact.id);
     setSearchQuery('');
+  };
+
+  const stopHolding = (contactId: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.add(contactId);
+      try {
+        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
+      } catch (e) {}
+      return next;
+    });
   };
 
   if (error) {
@@ -312,6 +347,29 @@ export default function PrayerList() {
           ))}
         </div>
       </PageContainer>
+    );
+  }
+
+  if (isMobile && !loading && !error) {
+    return (
+      <PrayerListMobile
+        contacts={contacts}
+        prayers={prayers}
+        entries={filteredEntries}
+        suggestions={suggestions}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        startHolding={startHolding}
+        onAddBurden={handleAddBurden}
+        onUpdateStatus={handleUpdateStatus}
+        onUpdateBurden={handleUpdateBurden}
+        onOpenContact={setProfileContact}
+        answeredThisYear={answeredThisYear}
+        awaiting={awaiting}
+        composeFor={composeFor}
+        setComposeFor={setComposeFor}
+        onStopHolding={stopHolding}
+      />
     );
   }
 
