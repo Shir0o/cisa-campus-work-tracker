@@ -12,10 +12,9 @@ import { db, logActivity, handleFirestoreError, OperationType } from '../lib/fir
 import { Contact, PrayerRecord } from '../types';
 import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { canAccessRoute, defaultRouteForRole, AppRole, hasMinRole } from '../lib/permissions';
+import { hasMinRole } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
-import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -674,7 +673,7 @@ function PrayerItem({
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
-  isOperator?: boolean;
+  isOperator: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);

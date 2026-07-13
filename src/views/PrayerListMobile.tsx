@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
-import { Plus, Search, X, Check, Edit3, MessageSquare, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 
@@ -24,6 +24,7 @@ interface PrayerListMobileProps {
   composeFor: string | null;
   setComposeFor: (id: string | null) => void;
   onStopHolding: (contactId: string) => void;
+  isOperator: boolean;
 }
 
 const THIS_WEEK_START = (() => {
@@ -51,12 +52,7 @@ const STATUS_TONE: Record<Status, string> = {
   unanswered: 'text-error',
 };
 
-const MARK_ON: Record<Status, string> = {
-  pending: '',
-  ongoing: 'bg-stage-accent-soft text-stage-accent border-stage-accent/40',
-  answered: 'bg-success/10 text-success border-success/40',
-  unanswered: 'bg-error/10 text-error border-error/40',
-};
+
 
 const firstNameOf = (name: string) => name.split(' ')[0];
 
