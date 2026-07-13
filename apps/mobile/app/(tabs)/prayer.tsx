@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
-import type { Contact } from '@cisa/core';
+import { hasMinRole, type Contact } from '@cisa/core';
 import { Screen, AppText, Button } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -13,7 +13,8 @@ import { HoldPrayerSheet } from '../../src/components/prayer/HoldPrayerSheet';
 // Phase 2 placeholder, matching My Day's onOpenContact.
 export default function Prayer() {
   const { colors, spacing } = useTheme();
-  const { uid, user } = useAuth();
+  const { uid, user, role } = useAuth();
+  const isOperator = hasMinRole(role, 'operator');
   const data = usePrayerData(uid, user?.displayName ?? null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -36,7 +37,9 @@ export default function Prayer() {
           </AppText>
         </View>
 
-        <Button title="Hold someone in prayer" onPress={() => setPickerOpen(true)} full />
+        {isOperator && (
+          <Button title="Hold someone in prayer" onPress={() => setPickerOpen(true)} full />
+        )}
 
         {data.entries.length === 0 ? (
           <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center', paddingVertical: 24 }}>
@@ -53,6 +56,7 @@ export default function Prayer() {
               onAddPrayer={(text) => data.addPrayer(e.contact.id, text)}
               onSetStatus={data.setStatus}
               onUpdateBurden={data.updateBurden}
+              isOperator={isOperator}
             />
           ))
         )}

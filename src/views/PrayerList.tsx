@@ -12,9 +12,9 @@ import { db, logActivity, handleFirestoreError, OperationType } from '../lib/fir
 import { Contact, PrayerRecord } from '../types';
 import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { hasMinRole } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
-import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<Status, string> = {
   pending: 'Unmarked',
   ongoing: 'Ongoing',
   answered: 'Answered',
-  unanswered: 'Still waiting',
+  unanswered: 'archive',
 };
 
 // Warm tone for a status label (text only).
@@ -92,7 +92,8 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 }
 
 export default function PrayerList() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isOperator = hasMinRole(role, 'operator');
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -370,6 +371,7 @@ export default function PrayerList() {
         composeFor={composeFor}
         setComposeFor={setComposeFor}
         onStopHolding={stopHolding}
+        isOperator={isOperator}
       />
     );
   }
@@ -417,7 +419,7 @@ export default function PrayerList() {
       </div>
 
       {/* Start holding suggestions */}
-      {suggestions.length > 0 && (
+      {isOperator && suggestions.length > 0 && (
         <div className="mb-6 flex flex-wrap gap-2">
           {suggestions.map((c) => (
             <button
@@ -465,6 +467,7 @@ export default function PrayerList() {
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateBurden={handleUpdateBurden}
                 onOpenProfile={() => setProfileContact(e.contact)}
+                isOperator={isOperator}
               />
             ))}
           </AnimatePresence>
@@ -491,6 +494,7 @@ function PrayerThread({
   onUpdateStatus,
   onUpdateBurden,
   onOpenProfile,
+  isOperator,
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
@@ -499,6 +503,7 @@ function PrayerThread({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
+  isOperator: boolean;
 }) {
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -562,13 +567,18 @@ function PrayerThread({
             variant="week"
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
+            isOperator={isOperator}
           />
-        ) : (
+        ) : isOperator ? (
           <AddThisWeek
             firstName={firstName}
             defaultOpen={autoCompose}
             onAdd={(text) => onAddBurden(contact.id, text)}
           />
+        ) : (
+          <div className="text-sm text-on-surface-variant/60 italic pl-3">
+            No prayer recorded for this week
+          </div>
         )}
       </div>
 
@@ -582,6 +592,7 @@ function PrayerThread({
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
+            isOperator={isOperator}
           />
         </div>
       )}
@@ -616,6 +627,7 @@ function PrayerThread({
                   variant="earlier"
                   onUpdateStatus={onUpdateStatus}
                   onUpdateBurden={onUpdateBurden}
+                  isOperator={isOperator}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
@@ -654,12 +666,14 @@ function PrayerItem({
   needsMark,
   onUpdateStatus,
   onUpdateBurden,
+  isOperator,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
+  isOperator: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -703,7 +717,7 @@ function PrayerItem({
             Unmarked
           </span>
         ) : null}
-        {!editing && (
+        {!editing && isOperator && (
           <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-primary transition-colors ml-auto">
             Edit
           </button>
@@ -751,15 +765,17 @@ function PrayerItem({
             <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
               Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
-            <button
-              onClick={() => {
-                setHowDraft(prayer.answer || "");
-                setAnswering(true);
-              }}
-              className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
-            >
-              Edit Testimony
-            </button>
+            {isOperator && (
+              <button
+                onClick={() => {
+                  setHowDraft(prayer.answer || "");
+                  setAnswering(true);
+                }}
+                className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+              >
+                Edit Testimony
+              </button>
+            )}
           </div>
           {prayer.answer && (
             <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
@@ -806,44 +822,46 @@ function PrayerItem({
       )}
 
       {/* Mark */}
-      <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
-        <span className="text-[11.5px] text-on-surface-variant">
-          {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark'}
-        </span>
-        <div className="flex gap-1.5 flex-wrap">
-          {MARK_ORDER.map((s) => (
-            <button
-              key={s}
-              onClick={() => {
-                console.log("STATUS_CLICK", s, prayer.id);
-                if (s === 'answered') {
-                  if (prayer.status === 'answered') {
-                    onUpdateStatus(prayer, 'pending', undefined, undefined);
-                    setAnswering(false);
-                  } else {
-                    onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || today);
-                    if (!prayer.answer) {
-                      setHowDraft("");
-                      setAnswering(true);
+      {isOperator && (
+        <div className="mt-2.5 flex items-center gap-2.5 flex-wrap">
+          <span className="text-[11.5px] text-on-surface-variant">
+            {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark'}
+          </span>
+          <div className="flex gap-1.5 flex-wrap">
+            {MARK_ORDER.map((s) => (
+              <button
+                key={s}
+                onClick={() => {
+                  console.log("STATUS_CLICK", s, prayer.id);
+                  if (s === 'answered') {
+                    if (prayer.status === 'answered') {
+                      onUpdateStatus(prayer, 'pending', undefined, undefined);
+                      setAnswering(false);
+                    } else {
+                      onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || today);
+                      if (!prayer.answer) {
+                        setHowDraft("");
+                        setAnswering(true);
+                      }
                     }
+                  } else {
+                    setAnswering(false);
+                    onUpdateStatus(prayer, prayer.status === s ? 'pending' : s, undefined, undefined);
                   }
-                } else {
-                  setAnswering(false);
-                  onUpdateStatus(prayer, prayer.status === s ? 'pending' : s, undefined, undefined);
-                }
-              }}
-              className={cn(
-                'text-xs px-2.5 py-1 rounded-full border transition-colors',
-                prayer.status === s
-                  ? MARK_ON[s]
-                  : 'border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline',
-              )}
-            >
-              {STATUS_LABEL[s]}
-            </button>
-          ))}
+                }}
+                className={cn(
+                  'text-xs px-2.5 py-1 rounded-full border transition-colors',
+                  prayer.status === s
+                    ? MARK_ON[s]
+                    : 'border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline',
+                )}
+              >
+                {STATUS_LABEL[s]}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

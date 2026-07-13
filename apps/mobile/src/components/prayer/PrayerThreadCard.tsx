@@ -38,12 +38,14 @@ function PrayerItemRow({
   needsMark,
   onSetStatus,
   onUpdateBurden,
+  isOperator,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
   onSetStatus: (status: PrayerRecord['status'], answer?: string, answeredAt?: string | null) => void;
   onUpdateBurden: (text: string) => void;
+  isOperator: boolean;
 }) {
   const { colors } = useTheme();
   const [editing, setEditing] = useState(false);
@@ -81,7 +83,7 @@ function PrayerItemRow({
         {variant === 'last' && needsMark && (
           <Text style={{ fontSize: 11, fontWeight: '600', color: colors.error }}>Needs an update</Text>
         )}
-        {!editing && (
+        {!editing && isOperator && (
           <Pressable
             onPress={() => {
               setDraft(prayer.burden);
@@ -118,10 +120,10 @@ function PrayerItemRow({
         <AnsweredCard
           answer={prayer.answer}
           answeredAt={prayer.answeredAt}
-          onEdit={() => {
+          onEdit={isOperator ? () => {
             setHowDraft(prayer.answer || '');
             setAnswering(true);
-          }}
+          } : undefined}
         />
       )}
       {answering && (
@@ -136,12 +138,14 @@ function PrayerItemRow({
         />
       )}
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
-        <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>
-          {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark'}
-        </Text>
-        <StatusSegments activeIndex={activeIndex} onPick={pick} />
-      </View>
+      {isOperator && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 }}>
+          <Text style={{ fontSize: 11, color: colors.onSurfaceVariant }}>
+            {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark'}
+          </Text>
+          <StatusSegments activeIndex={activeIndex} onPick={pick} />
+        </View>
+      )}
     </View>
   );
 }
@@ -223,6 +227,7 @@ export function PrayerThreadCard({
   onAddPrayer,
   onSetStatus,
   onUpdateBurden,
+  isOperator,
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
@@ -231,6 +236,7 @@ export function PrayerThreadCard({
   onAddPrayer: (text: string) => void;
   onSetStatus: (prayerId: string, status: PrayerRecord['status'], answer?: string, answeredAt?: string | null) => void;
   onUpdateBurden: (prayerId: string, text: string) => void;
+  isOperator: boolean;
 }) {
   const { colors, spacing } = useTheme();
   const [showEarlier, setShowEarlier] = useState(false);
@@ -253,19 +259,21 @@ export function PrayerThreadCard({
             </AppText>
           </View>
         </Pressable>
-        {confirmRemove ? (
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <Pressable onPress={onRemove} hitSlop={6}>
-              <Text style={{ color: colors.error, fontSize: 12.5, fontWeight: '600' }}>Remove</Text>
+        {isOperator && (
+          confirmRemove ? (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Pressable onPress={onRemove} hitSlop={6}>
+                <Text style={{ color: colors.error, fontSize: 12.5, fontWeight: '600' }}>Remove</Text>
+              </Pressable>
+              <Pressable onPress={() => setConfirmRemove(false)} hitSlop={6}>
+                <Text style={{ color: colors.onSurfaceVariant, fontSize: 12.5 }}>Keep</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable onPress={() => setConfirmRemove(true)} hitSlop={8} accessibilityLabel={`Remove ${firstName} from this page`}>
+              <Ionicons name="close" size={16} color={colors.onSurfaceVariant} />
             </Pressable>
-            <Pressable onPress={() => setConfirmRemove(false)} hitSlop={6}>
-              <Text style={{ color: colors.onSurfaceVariant, fontSize: 12.5 }}>Keep</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <Pressable onPress={() => setConfirmRemove(true)} hitSlop={8} accessibilityLabel={`Remove ${firstName} from this page`}>
-            <Ionicons name="close" size={16} color={colors.onSurfaceVariant} />
-          </Pressable>
+          )
         )}
       </View>
 
@@ -284,9 +292,14 @@ export function PrayerThreadCard({
           variant="week"
           onSetStatus={(s, a, at) => onSetStatus(weekItem.id, s, a, at)}
           onUpdateBurden={(t) => onUpdateBurden(weekItem.id, t)}
+          isOperator={isOperator}
         />
-      ) : (
+      ) : isOperator ? (
         <AddThisWeek name={firstName} onAdd={onAddPrayer} />
+      ) : (
+        <AppText variant="caption" color={colors.onSurfaceVariant} style={{ marginTop: 6, fontStyle: 'italic' }}>
+          No prayer recorded for this week
+        </AppText>
       )}
 
       {lastItem && (
@@ -298,6 +311,7 @@ export function PrayerThreadCard({
             needsMark={needsMark}
             onSetStatus={(s, a, at) => onSetStatus(lastItem.id, s, a, at)}
             onUpdateBurden={(t) => onUpdateBurden(lastItem.id, t)}
+            isOperator={isOperator}
           />
         </>
       )}
@@ -319,6 +333,7 @@ export function PrayerThreadCard({
                   variant="earlier"
                   onSetStatus={(s, a, at) => onSetStatus(p.id, s, a, at)}
                   onUpdateBurden={(t) => onUpdateBurden(p.id, t)}
+                  isOperator={isOperator}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
