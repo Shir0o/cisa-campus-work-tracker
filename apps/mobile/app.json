@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "CISA Campus",
+    "slug": "cisa-campus",
+    "scheme": "cisacampus",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#eaeef4"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cisa.campus"
+    },
+    "android": {
+      "package": "com.cisa.campus"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-asset"
+    ],
+    "experiments": {
+      "typedRoutes": false
+    }
+  }
+}
