@@ -102,6 +102,12 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 - [ ] **Fonts** — bundle Newsreader + Hanken Grotesk via
       `@expo-google-fonts/*`, load in `app/_layout.tsx` (currently system
       fallback).
+- [ ] **Firebase API key guard** (PR #115 review comment) — `apiKey` falls back
+      to blank when `EXPO_PUBLIC_FIREBASE_API_KEY` is unset. This is *by design*
+      (the key comes from `.env`, mirroring the web app's `VITE_FIREBASE_API_KEY`
+      — do **not** hardcode a key in source). Not a live bug (firebase.ts isn't
+      imported by the Phase 0 shell). When wiring auth, add a dev `console.warn`
+      if the resolved key is empty so the failure mode is obvious.
 
 ### 🔲 Phase 1 — Share the data layer
 - [ ] Re-home the Firestore modules (`threads`, `rsvp`, `todos`, `prayers`,
