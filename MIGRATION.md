@@ -59,10 +59,12 @@ resolves `@cisa/core` via a Metro alias + a tsconfig path. See
 npm run dev
 
 # Shared logic tests (the behavior oracle for the port)
-cd packages/core && npm install && npm test        # 27 tests
+cd packages/core && npm install && npm test        # 49 tests
 
 # Mobile app
 cd apps/mobile && npm install
+# Set EXPO_PUBLIC_FIREBASE_API_KEY in apps/mobile/.env (see .env.example) for a
+# live login — copy the value from the root .env's VITE_FIREBASE_API_KEY.
 npx expo start            # i = iOS sim, a = Android emu, w = web, or scan w/ Expo Go
 npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" (:8081)
 ```
@@ -102,20 +104,47 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 - [ ] **Fonts** — bundle Newsreader + Hanken Grotesk via
       `@expo-google-fonts/*`, load in `app/_layout.tsx` (currently system
       fallback).
-- [ ] **Firebase API key guard** (PR #115 review comment) — `apiKey` falls back
-      to blank when `EXPO_PUBLIC_FIREBASE_API_KEY` is unset. This is *by design*
-      (the key comes from `.env`, mirroring the web app's `VITE_FIREBASE_API_KEY`
-      — do **not** hardcode a key in source). Not a live bug (firebase.ts isn't
-      imported by the Phase 0 shell). When wiring auth, add a dev `console.warn`
-      if the resolved key is empty so the failure mode is obvious.
+- [x] **Firebase API key guard** (PR #115 review comment) — a dev `console.warn`
+      now fires from `apps/mobile/src/lib/firebase.ts` when the resolved API key
+      is empty, so the failure mode is obvious.
+
+### ✅ My Day cockpit — DONE, verified live (Phase 1 auth slice + Phase 3 screen)
+Landed ahead of the phase order below because it's the flagship home screen and
+forces the two real prerequisites (auth + live data) through one concrete path.
+- `packages/core/src/myday.ts` — the pure derivations (leaders/stale-leader,
+  task + prayer splits, this-week, due-date presets) ported from
+  `src/views/MyDay.tsx` + `src/lib/todos.ts`, **unit-tested** (packages/core is
+  now 49/49 tests). Shared behavior oracle for web + mobile.
+- `apps/mobile/src/lib/AuthProvider.tsx` + `app/login.tsx` — minimal email/
+  password auth (no invitation/auto-provisioning — e2e users already have
+  `/users/{uid}` docs), gated by a `<Redirect>` in `app/_layout.tsx`.
+- `apps/mobile/src/lib/useMyDayData.ts` + `src/lib/data/*` — live Firestore
+  subscriptions (contacts/stages/events/prayers/tasks/personalPrayers/threads +
+  interactions+comments collection-groups for last-touch) and writes, mirroring
+  the web's `MyDay.tsx`/`lib/*` modules.
+- `apps/mobile/app/(tabs)/index.tsx` + `src/components/myday/*` — the full
+  screen: hero, relational nudge, "From the team" inbox (scan/encourage/remind,
+  AsyncStorage-backed read-state), tasks (add/edit/complete/delete), your sheep,
+  your week, your prayers (status + answered-testimony composer), figures
+  footer, contacts picker sheet.
+- Bottom tabs re-aligned to the design's mobile shell: Home · People · Log ·
+  Journey · Prayer · More (Journey + Log are placeholder screens).
+- **Verified live** on Expo web (both themes, mobile viewport): logged in as
+  the e2e Full-timer, real Firestore data rendered (13 real "From the team"
+  items), scan/mark-read persisted through a reload, zero console errors.
+- **Not yet done**: `canAccessRoute`-based tab/drawer gating by live role (tabs
+  are still static); the Firestore CRUD modules are mobile-local (mirroring the
+  web ones) rather than re-homed into `packages/core` behind an injected `db` —
+  that generalization is still Phase 1 proper, below.
 
 ### 🔲 Phase 1 — Share the data layer
 - [ ] Re-home the Firestore modules (`threads`, `rsvp`, `todos`, `prayers`,
       `personalPrayers`, `gatheringTypes`, `userPreferences`, `seasons` hooks,
       `services/chat`) into `packages/core` behind an injected `db` handle, so web
-      + mobile share them (not just the pure logic).
-- [ ] Auth context + `ProtectedRoute`/`RoleGuard` equivalents in RN using
-      `canAccessRoute` from core; gate the tabs/drawer by live role.
+      + mobile share them (not just the pure logic — My Day's mobile copies in
+      `apps/mobile/src/lib/data/` are the first candidates to generalize).
+- [ ] Gate the tabs/drawer by live role (`canAccessRoute` from core) — auth
+      itself now exists (see My Day above), just not route-gating yet.
 
 ### 🔲 Phase 2 — Low-risk read screens (validate the pattern end-to-end)
 - [ ] Landings dispatcher + LandingTrainee / Student / Community
@@ -123,12 +152,14 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 - [ ] Live Firestore data + the e2e test users (one per role)
 
 ### 🔲 Phase 3 — Medium screens
-- [ ] My Day cockpit (uses `inboxItemsFor` over live subscriptions)
+- [x] ~~My Day cockpit~~ — done, see above.
 - [ ] Gatherings/Attendance, Settings, SignUp (phone verify), Feedback,
       Notifications, Global search, Quick add
-- [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`)
+- [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
+      plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
-      CSV export→`expo-file-system`+`expo-sharing`, `messaging.ts`→`Linking`
+      CSV export→`expo-file-system`+`expo-sharing`. `messaging.ts`→`Linking` is
+      **done** (`apps/mobile/src/lib/messaging.ts`).
 
 ### 🔲 Phase 4 — High-risk screens
 - [ ] The Journey (dnd-kit → gesture-based move / MoveSheet)
@@ -151,13 +182,18 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 
 ## How to proceed (recommended next steps, in order)
 
-1. **Get a real login working** on the mobile app: add `EXPO_PUBLIC_FIREBASE_API_KEY`
-   to `apps/mobile/.env`, build a simple email/password sign-in screen, and log in
-   as an e2e test user — proves the reused Firebase layer end-to-end on a device.
-2. **Run the WebView editor spike** (Phase 0.5) — it's the one thing that could
-   change the architecture, so validate it early.
-3. **Phase 1 + one Phase 2 screen** (Prayer is a good first — medium complexity,
-   clear design in `prayer*.png`) to lock the "screen port" pattern, then fan out.
+1. ~~Get a real login working~~ — **done**: `apps/mobile/.env` has
+   `EXPO_PUBLIC_FIREBASE_API_KEY`, `app/login.tsx` is a real email/password
+   sign-in, and it's verified live against the e2e Full-timer on Expo web.
+2. **Run the WebView editor spike** (Phase 0.5) — still the one thing that could
+   change the architecture (The Board), so validate it before investing in Phase 4.
+3. **Native Google Sign-In** (Phase 0.5) — the current login is email/password
+   only; most real users will want Google.
+4. **Generalize My Day's data layer into Phase 1 proper** — re-home
+   `apps/mobile/src/lib/data/*` into `packages/core` behind an injected `db`, and
+   add `canAccessRoute`-based tab gating, so the next screen (Prayer is a good
+   pick — medium complexity, clear design in `prayer*.png`) reuses the pattern
+   instead of re-deriving it.
 
 ## Known gotchas
 

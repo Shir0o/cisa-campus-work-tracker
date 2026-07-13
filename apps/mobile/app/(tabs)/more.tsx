@@ -6,7 +6,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 // "More" surfaces the NAV_ITEMS destinations not in the bottom tabs — driven by
 // the SHARED NAV_ITEMS + role labels from @cisa/core (the mobile drawer in the
 // design). Role-gating (canAccessRoute) applies once auth is live.
-const TAB_HREFS = ['/', '/directory', '/prayer'];
+const TAB_HREFS = ['/', '/directory', '/board', '/prayer'];
 
 export default function More() {
   const { colors, spacing } = useTheme();
