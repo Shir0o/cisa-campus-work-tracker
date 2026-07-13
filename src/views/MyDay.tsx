@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { format, isValid } from "date-fns";
 import {
@@ -467,6 +467,68 @@ export default function MyDay() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
 
+  const [undoSnack, setUndoSnack] = useState<{
+    message: string;
+    onUndo: () => void;
+  } | null>(null);
+
+  const snackTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const showUndoSnack = (message: string, onUndo: () => void) => {
+    if (snackTimerRef.current) {
+      clearTimeout(snackTimerRef.current);
+    }
+    setUndoSnack({ message, onUndo });
+    snackTimerRef.current = setTimeout(() => {
+      setUndoSnack(null);
+    }, 5000);
+  };
+
+  const closeUndoSnack = () => {
+    if (snackTimerRef.current) {
+      clearTimeout(snackTimerRef.current);
+      snackTimerRef.current = null;
+    }
+    setUndoSnack(null);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (snackTimerRef.current) {
+        clearTimeout(snackTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleUpdatePersonalPrayer = async (id: string, patch: any) => {
+    if (!uid) return;
+    const oldPrayer = personalPrayers.find(p => p.id === id);
+    if (patch.status === "archived" && oldPrayer && oldPrayer.status !== "archived") {
+      const previousStatus = oldPrayer.status;
+      await updatePersonalPrayer(uid, id, patch);
+      showUndoSnack("Personal prayer archived", () => {
+        updatePersonalPrayer(uid, id, { status: previousStatus });
+      });
+    } else {
+      await updatePersonalPrayer(uid, id, patch);
+    }
+  };
+
+  const handleUpdatePrayerStatus = async (id: string, status: PrayerRecord["status"], answer?: string, answeredAt?: string) => {
+    const oldPrayer = prayers.find(p => p.id === id);
+    if (status === "unanswered" && oldPrayer && oldPrayer.status !== "unanswered") {
+      const previousStatus = oldPrayer.status;
+      const previousAnswer = oldPrayer.answer;
+      const previousAnsweredAt = oldPrayer.answeredAt;
+      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt);
+      showUndoSnack("Prayer archived", () => {
+        updatePrayerStatus(id, previousStatus, { uid, name: user?.displayName }, previousAnswer || undefined, previousAnsweredAt || undefined);
+      });
+    } else {
+      await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt);
+    }
+  };
+
   useEffect(() => {
     const unsubContacts = onSnapshot(
       query(collection(db, "contacts")),
@@ -677,45 +739,79 @@ export default function MyDay() {
 
   if (isMobile && !loading && !error) {
     return (
-      <MyDayMobile
-        contacts={contacts}
-        events={events}
-        prayers={prayers}
-        stages={stages}
-        uid={uid}
-        myLeaders={myLeaders}
-        staleLeader={staleLeader}
-        assignedTasks={assignedTasks}
-        personalTasks={personalTasks}
-        contactPrayers={contactPrayers}
-        activePersonalPrayers={activePersonalPrayers}
-        thisWeek={thisWeek}
-        leftToDo={leftToDo}
-        prayersCount={prayersCount}
-        personalContactIds={personalContactIds}
-        onOpenContact={openContact}
-        onToggleTask={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
-        onUpdateTaskDue={(todo, days) => updateTodo(todo.id, { dueDate: duePresetToISO(days) })}
-        onUpdatePersonalTask={(id, patch) => updateTodo(id, patch)}
-        onDeletePersonalTask={(id) => deleteTodo(id)}
-        onAddPersonalTask={(title, dueDate) =>
-          uid &&
-          addTodo(
-            { title, assigneeId: uid, dueDate, source: null },
-            { uid, name: user?.displayName || "" },
-          )
-        }
-        onUpdatePrayerStatus={(id, status, answer, answeredAt) =>
-          updatePrayerStatus(id, status as any, { uid, name: user?.displayName }, answer, answeredAt)
-        }
-        onUpdatePersonalPrayer={(id, patch) => uid && updatePersonalPrayer(uid, id, patch)}
-        onDeletePersonalPrayer={(id) => uid && deletePersonalPrayer(uid, id)}
-        onAddPersonalPrayer={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
-        onTogglePersonalContact={togglePersonalContact}
-        onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
-        onOpenBoard={() => navigate("/coordination")}
-        onOpenPrayer={() => navigate("/prayer")}
-      />
+      <>
+        <MyDayMobile
+          contacts={contacts}
+          events={events}
+          prayers={prayers}
+          stages={stages}
+          uid={uid}
+          myLeaders={myLeaders}
+          staleLeader={staleLeader}
+          assignedTasks={assignedTasks}
+          personalTasks={personalTasks}
+          contactPrayers={contactPrayers}
+          activePersonalPrayers={activePersonalPrayers}
+          thisWeek={thisWeek}
+          leftToDo={leftToDo}
+          prayersCount={prayersCount}
+          personalContactIds={personalContactIds}
+          onOpenContact={openContact}
+          onToggleTask={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
+          onUpdateTaskDue={(todo, days) => updateTodo(todo.id, { dueDate: duePresetToISO(days) })}
+          onUpdatePersonalTask={(id, patch) => updateTodo(id, patch)}
+          onDeletePersonalTask={(id) => deleteTodo(id)}
+          onAddPersonalTask={(title, dueDate) =>
+            uid &&
+            addTodo(
+              { title, assigneeId: uid, dueDate, source: null },
+              { uid, name: user?.displayName || "" },
+            )
+          }
+          onUpdatePrayerStatus={handleUpdatePrayerStatus}
+          onUpdatePersonalPrayer={handleUpdatePersonalPrayer}
+          onDeletePersonalPrayer={(id) => uid && deletePersonalPrayer(uid, id)}
+          onAddPersonalPrayer={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
+          onTogglePersonalContact={togglePersonalContact}
+          onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
+          onOpenBoard={() => navigate("/coordination")}
+          onOpenPrayer={() => navigate("/prayer")}
+        />
+        <AnimatePresence>
+          {undoSnack && (
+            <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[250] pointer-events-none w-full max-w-sm px-4">
+              <motion.div
+                initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.15 } }}
+                className="pointer-events-auto bg-surface-container-highest/95 backdrop-blur-xl border border-outline-variant rounded-2xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4 w-full ring-1 ring-white/10"
+              >
+                <span className="text-sm font-medium text-on-surface">
+                  {undoSnack.message}
+                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      undoSnack.onUndo();
+                      closeUndoSnack();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    onClick={closeUndoSnack}
+                    className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
+                    aria-label="Close snackbar"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </>
     );
   }
 
@@ -1019,9 +1115,7 @@ export default function MyDay() {
                   prayer={p}
                   contact={contactById(p.contactId)}
                   first={i === 0}
-                  onUpdateStatus={(id, status, answer, answeredAt) =>
-                    updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt)
-                  }
+                  onUpdateStatus={handleUpdatePrayerStatus}
                   onOpenContact={openContact}
                   onOpenPrayerLog={() => navigate("/prayer")}
                 />
@@ -1032,7 +1126,7 @@ export default function MyDay() {
                   prayer={p}
                   first={i === 0 && contactPrayers.length === 0}
                   contacts={contacts}
-                  onUpdate={(id, patch) => uid && updatePersonalPrayer(uid, id, patch)}
+                  onUpdate={handleUpdatePersonalPrayer}
                   onDelete={(id) => uid && deletePersonalPrayer(uid, id)}
                   onOpenContact={openContact}
                 />
@@ -1121,6 +1215,40 @@ export default function MyDay() {
           initialTab={initialTab}
           initialInteractionId={initialInteractionId}
         />
+        <AnimatePresence>
+          {undoSnack && (
+            <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[250] pointer-events-none w-full max-w-sm px-4">
+              <motion.div
+                initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.15 } }}
+                className="pointer-events-auto bg-surface-container-highest/95 backdrop-blur-xl border border-outline-variant rounded-2xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4 w-full ring-1 ring-white/10"
+              >
+                <span className="text-sm font-medium text-on-surface">
+                  {undoSnack.message}
+                </span>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => {
+                      undoSnack.onUndo();
+                      closeUndoSnack();
+                    }}
+                    className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition-all"
+                  >
+                    Undo
+                  </button>
+                  <button
+                    onClick={closeUndoSnack}
+                    className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
+                    aria-label="Close snackbar"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </motion.div>
     </PageContainer>
   );
