@@ -203,7 +203,22 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       `packages/core/src/data/prayers.ts` and a unit-tested pure
       `groupPrayerThread` in `packages/core/src/prayerThread.ts`. Answered
       (`/answered`), History, and Directory (People) are still open.
-- [ ] Answered, History, Directory (People)
+- [x] ~~Directory (People)~~ — done, verified live against real Firestore
+      data on Expo web (both themes, mobile viewport): search, stage-filter
+      pills, and a contact list sorted longest-since-touched first.
+      `apps/mobile/app/(tabs)/people.tsx` + `src/components/people/`
+      (`StagePills`, `ContactRow`), backed by new
+      `subscribeContacts`/`subscribeStages`/`subscribeTouches` in
+      `packages/core/src/data/contacts.ts` and a unit-tested pure
+      `filterAndSortDirectory` in `packages/core/src/directory.ts` (reuses
+      `myday.ts`'s `lastTouchByContact`/`daysSince`/`parseMs`). Scoped
+      read-only per the design's mobile branch — no bulk-select, no tag
+      editing, no quick-add (the design's "Add someone" header button stays
+      deferred to the item below); `onOpenContact` is an `Alert.alert`
+      placeholder matching Prayer's. Answered, History are still open.
+- [ ] Answered, History
+- [ ] Quick add (new contact) — the design's People-header "Add someone"
+      button; no mobile create-contact flow exists yet
 - [ ] Live Firestore data + the e2e test users (one per role)
 
 ### 🔲 Phase 3 — Medium screens
@@ -249,7 +264,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 3. **Run the WebView editor spike** (Phase 0.5) — still the one thing that could
    change the architecture (The Board), so validate it before investing in Phase 4.
    Needs a real iOS/Android simulator or device — not verifiable on Expo web.
-   **Not a blocker for step 6** (Directory) — see re-sequencing note below.
+   **Not a blocker for step 6** — see re-sequencing note below.
 4. **Native Google Sign-In** (Phase 0.5) — the current login is email/password
    only; most real users will want Google. Also needs native-platform testing.
    See the CLI findings under Phase 0.5 above before assuming this needs a
@@ -260,34 +275,21 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    `app/_layout.tsx`'s `<Redirect>` took effect, hit `permission-denied`, and
    `handleFirestoreError` re-threw. Fixed by gating the team-data effect on
    `uid` and making `onLoadError` pass `{ rethrow: false }`.
-6. ~~Pick the next screen to port~~ — **Prayer done** (see Phase 2 above).
-   **Directory (People) is next**, reusing the Phase 1 data-layer pattern.
-   Scoped from the design (Claude Design project
-   `019e2501-d939-73e9-8f0f-af68b36b8e64`, file `views/contacts.jsx` — has a
-   real `isMobile` branch): search bar + stage-filter pills render on **both**
-   mobile and desktop in the design (not desktop-only), and **no bulk-select
-   UI appears in the mobile-aware mock at all** (looks desktop-only there), so
-   the mobile pass only needs search + stage-pill filtering + `contact-card`
-   rows (avatar, name, stage chip, year/major, overdue-toned "last connected"
-   line) — no new bottom-sheet filter panel or bulk-select needed for parity.
-   Needs a genuinely new shared module, `packages/core/src/data/contacts.ts`
-   (+ maybe `stages.ts`): subscribe to contacts/stages, plus tag-update/delete
-   writes — none of this is shared yet (today it's inline `onSnapshot` calls
-   duplicated in both `apps/mobile/src/lib/useMyDayData.ts` and the web's
-   `src/views/Directory.tsx`). The last-touch (interactions+comments
-   collection-group) logic already exists inline in `useMyDayData.ts` and can
-   be extracted/reused rather than rewritten. Reuse `Avatar`, `StatusPill`,
-   `toneForStage` (theme/tokens.ts) and `ContactsPickerSheet.tsx`'s row layout
-   as a starting template for `apps/mobile/app/(tabs)/people.tsx` (currently a
-   3-row hardcoded stub).
+6. ~~Pick the next screen to port~~ — **Prayer and Directory (People) both
+   done** (see Phase 2 above). **Answered or History are next** — both are
+   read-mostly screens that can reuse the Phase 1/2 data-layer pattern
+   (Answered's masonry-by-time-group layout is the more involved of the two;
+   History is closer to a straight list). Quick add (People's "Add someone")
+   is also open — it needs a new mobile create-contact flow that doesn't
+   exist yet, unlike the other two which are pure reads.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
-Phase 2 screens (Prayer, done; Directory, next) have no external blockers and
-can proceed independently of the two Phase 0.5 spikes (WebView editor is a
+Phase 2 screens (Prayer, Directory — both done) had no external blockers and
+proceeded independently of the two Phase 0.5 spikes (WebView editor is a
 sizable standalone extraction project; Google Sign-In needs the user's
 go-ahead on a permission-required Firebase config change before an agent can
-finish it). Prefer continuing screen ports unless the user specifically wants
-a spike tackled next.
+finish it). The same is true of Answered/History next. Prefer continuing
+screen ports unless the user specifically wants a spike tackled next.
 
 ## Known gotchas
 

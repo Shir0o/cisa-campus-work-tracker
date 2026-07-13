@@ -1,37 +1,58 @@
-import { ScrollView, View } from 'react-native';
-import { Screen, AppText, Card, Avatar, StatusPill } from '../../src/components/ui';
+import { Alert, ScrollView, View } from 'react-native';
+import type { Contact } from '@cisa/core';
+import { Screen, AppText, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { useAuth } from '../../src/lib/AuthProvider';
+import { usePeopleData } from '../../src/lib/usePeopleData';
+import { StagePills } from '../../src/components/people/StagePills';
+import { ContactRow } from '../../src/components/people/ContactRow';
 
-// People (design: dir-*.png). Whole-card-opens rows are the settled per-item
-// pattern. Live contacts come from Firestore in Phase 2; these are placeholders
-// to validate the row layout + primitives.
-const DEMO = [
-  { name: 'Mei Lin', detail: 'Sophomore · Biology', tone: 'accent' as const, stage: 'Regular' },
-  { name: 'Ana Reyes', detail: 'Freshman · Undeclared', tone: 'amber' as const, stage: 'New' },
-  { name: 'Sam Cho', detail: 'Junior · CS', tone: 'teal' as const, stage: 'Church' },
-];
-
+// People / Directory — the full team contact list (design: views/contacts.jsx,
+// screenshots/dir-*.png). Contact-detail navigation is a Phase 2 placeholder,
+// matching Prayer's onOpenContact.
 export default function People() {
   const { colors, spacing } = useTheme();
+  const { uid } = useAuth();
+  const data = usePeopleData(uid);
+
+  const onOpenContact = (contact: Contact) => {
+    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+  };
+
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
-        <AppText variant="title">People</AppText>
-        {DEMO.map((p) => (
-          <Card key={p.name} onPress={() => {}}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <Avatar name={p.name} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <AppText variant="heading">{p.name}</AppText>
-                <AppText variant="caption">{p.detail}</AppText>
-              </View>
-              <StatusPill label={p.stage} tone={p.tone} />
-            </View>
-          </Card>
-        ))}
-        <AppText variant="caption" color={colors.onSurfaceVariant}>
-          Placeholder rows — live contacts wire to Firestore in Phase 2.
-        </AppText>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40, gap: spacing.lg }}>
+        <View style={{ gap: 4 }}>
+          <AppText variant="label" color={colors.primary}>
+            PEOPLE
+          </AppText>
+          <AppText variant="title">Your directory</AppText>
+          <AppText variant="body" color={colors.onSurfaceVariant}>
+            {data.totalCount} {data.totalCount === 1 ? 'person' : 'people'} in your care — {data.newCount} new in
+            the last two weeks, {data.overdueCount} you haven't connected with in over a week.
+          </AppText>
+        </View>
+
+        <InlineInput placeholder="Find someone by name…" value={data.search} onChangeText={data.setSearch} />
+
+        <StagePills
+          stageCounts={data.stageCounts}
+          totalCount={data.totalCount}
+          value={data.stageFilter}
+          onChange={data.setStageFilter}
+        />
+
+        {data.entries.length === 0 ? (
+          <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center', paddingVertical: 24 }}>
+            No one matches that just yet.
+          </AppText>
+        ) : (
+          <View style={{ gap: 8 }}>
+            {data.entries.map((e) => (
+              <ContactRow key={e.contact.id} contact={e.contact} days={e.days} stages={data.stages} onPress={onOpenContact} />
+            ))}
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );
