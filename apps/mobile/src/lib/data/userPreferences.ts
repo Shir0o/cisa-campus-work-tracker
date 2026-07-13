@@ -1,29 +1,24 @@
-// Per-user My Day preferences — mirrors the web app's src/lib/userPreferences.ts.
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+// Per-user My Day preferences — thin mobile wrapper around the shared
+// @cisa/core logic (behind an injected `db`).
+import * as core from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
-export interface UserPreferences {
-  personalContactIds?: string[];
-}
+export type { UserPreferences } from '@cisa/core';
 
 export function subscribeUserPreferences(
   uid: string,
-  cb: (prefs: UserPreferences) => void,
+  cb: (prefs: core.UserPreferences) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return onSnapshot(
-    doc(db, 'userPreferences', uid),
-    (snap) => cb((snap.data() as UserPreferences) ?? {}),
-    (e) => (onError ? onError(e) : console.error('userPreferences subscription error', e)),
-  );
+  return core.subscribeUserPreferences(db, uid, cb, onError);
 }
 
 export async function saveUserPreferences(
   uid: string,
-  patch: Partial<UserPreferences>,
+  patch: Partial<core.UserPreferences>,
 ): Promise<void> {
   try {
-    await setDoc(doc(db, 'userPreferences', uid), patch, { merge: true });
+    await core.saveUserPreferences(db, uid, patch);
   } catch (e) {
     handleFirestoreError(e, OperationType.WRITE, `userPreferences/${uid}`);
   }
