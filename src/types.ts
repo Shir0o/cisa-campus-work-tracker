@@ -164,6 +164,7 @@ export interface PrayerRecord {
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;
+  prayerPage?: boolean;
 }
 
 export interface AppUser {

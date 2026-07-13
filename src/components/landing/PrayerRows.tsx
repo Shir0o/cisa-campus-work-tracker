@@ -33,6 +33,7 @@ export function TeamPrayerRow({
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const handleStatusChange = (status: PrayerRecord["status"]) => {
+    if (prayer.prayerPage) return;
     if (status === "answered") {
       onUpdateStatus(prayer.id, "answered", prayer.answer || undefined, prayer.answeredAt || today);
       if (!prayer.answer) {
@@ -46,6 +47,7 @@ export function TeamPrayerRow({
   };
 
   const saveAnswer = () => {
+    if (prayer.prayerPage) return;
     onUpdateStatus(prayer.id, "answered", howDraft.trim(), prayer.answeredAt || today);
     setAnswering(false);
   };
@@ -76,16 +78,18 @@ export function TeamPrayerRow({
                 <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
                   Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setHowDraft(prayer.answer || "");
-                    setAnswering(true);
-                  }}
-                  className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
-                >
-                  Edit Testimony
-                </button>
+                {!prayer.prayerPage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHowDraft(prayer.answer || "");
+                      setAnswering(true);
+                    }}
+                    className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                  >
+                    Edit Testimony
+                  </button>
+                )}
               </div>
               {prayer.answer && (
                 <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
@@ -136,6 +140,7 @@ export function TeamPrayerRow({
             value={prayer.status}
             options={TEAM_PRAYER_PILLS}
             onChange={(s) => handleStatusChange(s as PrayerRecord["status"])}
+            disabled={prayer.prayerPage}
           />
           <button
             type="button"

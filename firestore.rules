@@ -353,6 +353,7 @@ service cloud.firestore {
                (!('status' in data) || data.status in ['pending', 'answered', 'ongoing', 'unanswered']) &&
                (!('prayedFor' in data) || (data.prayedFor is string && data.prayedFor.size() <= 10000)) &&
                (!('unanswered' in data) || (data.unanswered is string && data.unanswered.size() <= 10000)) &&
+               (!('prayerPage' in data) || data.prayerPage is bool) &&
                (!('updatedAt' in data) || data.updatedAt is string);
       }
 

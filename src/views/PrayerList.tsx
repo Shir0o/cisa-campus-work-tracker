@@ -180,6 +180,7 @@ export default function PrayerList() {
         date: new Date().toISOString(),
         burden: text,
         status: 'pending',
+        prayerPage: true,
         ...stamp(),
       } as Omit<PrayerRecord, 'id'>);
       logActivity({
