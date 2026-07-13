@@ -87,6 +87,7 @@ export function handleFirestoreError(
   error: unknown,
   operationType: OperationType,
   path: string | null,
+  options?: { rethrow?: boolean },
 ) {
   const info = {
     error: error instanceof Error ? error.message : String(error),
@@ -98,6 +99,7 @@ export function handleFirestoreError(
     },
   };
   console.error('Firestore Error: ', JSON.stringify(info));
+  if (options?.rethrow === false) return;
   throw new Error(JSON.stringify(info));
 }
 

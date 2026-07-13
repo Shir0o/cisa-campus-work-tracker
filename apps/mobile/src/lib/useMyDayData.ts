@@ -85,12 +85,15 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (fixture) return; // fixture data is already in state — no subscriptions
+    // Wait for auth to be ready before reading Firestore — on the very first
+    // render after sign-in, `uid` (and auth.currentUser) can briefly be null,
+    // and querying then gets permission-denied from the security rules.
+    if (fixture || !uid) return;
 
     const onLoadError = (e: unknown, path: string) => {
       console.error(`My Day load error (${path})`, e);
       setError(`Couldn't load ${path}.`);
-      handleFirestoreError(e, OperationType.LIST, path);
+      handleFirestoreError(e, OperationType.LIST, path, { rethrow: false });
     };
 
     const unsubContacts = onSnapshot(
@@ -157,7 +160,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
       unsubComments();
       unsubThreads();
     };
-  }, [fixture]);
+  }, [fixture, uid]);
 
   useEffect(() => {
     if (fixture || !uid) return;
