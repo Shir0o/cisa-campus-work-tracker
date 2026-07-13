@@ -1,6 +1,6 @@
 import "./useMediaQuery.mock";
 import "../lib/useMediaQuery";
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
@@ -587,5 +587,78 @@ describe('MyDay', () => {
     await waitFor(() => expect(screen.getByText('John Sheep')).toBeInTheDocument());
     fireEvent.click(screen.getByText('John Sheep'));
     expect(await screen.findByRole('heading', { name: 'John Sheep', level: 2 })).toBeInTheDocument();
+  });
+
+  it('shows undo snackbar when a contact prayer is archived and allows undoing it', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara', initials: 'M', stage: 'Regular', createdBy: 'u-test' })],
+        prayers: [prayerDoc('p-1', { contactId: 'c-1', burden: 'pray for provision', status: 'ongoing', date: soonISO })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('pray for provision')).toBeInTheDocument());
+
+    // Archive it
+    fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'unanswered', expect.anything(), undefined, undefined);
+
+    // Snackbar should appear
+    expect(await screen.findByText('Prayer archived')).toBeInTheDocument();
+
+    // Click Undo
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(h.updatePrayerStatus).toHaveBeenLastCalledWith('p-1', 'ongoing', expect.anything(), undefined, undefined);
+
+    // Snackbar should disappear
+    await waitFor(() => expect(screen.queryByText('Prayer archived')).not.toBeInTheDocument());
+  });
+
+  it('shows undo snackbar when a personal prayer is archived and allows undoing it', async () => {
+    h.personalPrayersData = [
+      { id: 'pp-1', title: 'personal concern', contactId: null, date: soonISO, status: 'open' },
+    ];
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('personal concern')).toBeInTheDocument());
+
+    // Archive it
+    fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+    expect(h.updatePersonalPrayer).toHaveBeenLastCalledWith('u-test', 'pp-1', { status: 'archived', answeredAt: null, answeredBody: null });
+
+    // Snackbar should appear
+    expect(await screen.findByText('Personal prayer archived')).toBeInTheDocument();
+
+    // Click Undo
+    fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(h.updatePersonalPrayer).toHaveBeenLastCalledWith('u-test', 'pp-1', { status: 'open' });
+
+    // Snackbar should disappear
+    await waitFor(() => expect(screen.queryByText('Personal prayer archived')).not.toBeInTheDocument());
+  });
+
+  it('automatically hides the undo snackbar after timeout', async () => {
+    h.personalPrayersData = [
+      { id: 'pp-1', title: 'personal concern', contactId: null, date: soonISO, status: 'open' },
+    ];
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('personal concern')).toBeInTheDocument());
+
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'archive' }));
+
+    // Flush microtasks so the state update runs
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByText('Personal prayer archived')).toBeInTheDocument();
+
+    // Now advance fake timers to dismiss snackbar
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(screen.queryByText('Personal prayer archived')).not.toBeInTheDocument();
+    vi.useRealTimers();
   });
 });
