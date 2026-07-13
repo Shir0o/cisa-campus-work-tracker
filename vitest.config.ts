@@ -9,8 +9,11 @@ export default defineConfig({
     globals: true,
     testTimeout: 15000,
     setupFiles: ['./src/test/setup.ts'],
-    // e2e/ holds Playwright specs — run those via `npm run test:e2e`, not Vitest
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**'],
+    // e2e/ holds Playwright specs — run those via `npm run test:e2e`, not Vitest.
+    // apps/** and packages/** are separate projects with their own test runners
+    // (e.g. `cd packages/core && npm test`) — don't pull them into the web app's
+    // run or they'd skew its coverage totals.
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'apps/**', 'packages/**'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
