@@ -132,19 +132,41 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 - **Verified live** on Expo web (both themes, mobile viewport): logged in as
   the e2e Full-timer, real Firestore data rendered (13 real "From the team"
   items), scan/mark-read persisted through a reload, zero console errors.
-- **Not yet done**: `canAccessRoute`-based tab/drawer gating by live role (tabs
-  are still static); the Firestore CRUD modules are mobile-local (mirroring the
-  web ones) rather than re-homed into `packages/core` behind an injected `db` —
-  that generalization is still Phase 1 proper, below.
+- **Not yet done** (as of this writing): the *web* app's own Firestore modules
+  (`rsvp`, `gatheringTypes`, `seasons` hooks, `services/chat`, and web's
+  separate copies of `threads`/`todos`/`prayers`/`personalPrayers`/
+  `userPreferences`) still have their own implementations — only My Day's
+  mobile-side modules have been generalized so far (see Phase 1 below).
 
-### 🔲 Phase 1 — Share the data layer
-- [ ] Re-home the Firestore modules (`threads`, `rsvp`, `todos`, `prayers`,
-      `personalPrayers`, `gatheringTypes`, `userPreferences`, `seasons` hooks,
-      `services/chat`) into `packages/core` behind an injected `db` handle, so web
-      + mobile share them (not just the pure logic — My Day's mobile copies in
-      `apps/mobile/src/lib/data/` are the first candidates to generalize).
-- [ ] Gate the tabs/drawer by live role (`canAccessRoute` from core) — auth
-      itself now exists (see My Day above), just not route-gating yet.
+### ✅ Phase 1 — Share the data layer (My Day's slice DONE)
+- [x] Re-homed My Day's Firestore CRUD/subscriptions — `threads` (the
+      `subscribeAllThreads`/`addThreadMessage` subset), `todos`, `prayers`,
+      `personalPrayers`, `userPreferences` — into `packages/core/src/data/`
+      behind an injected `db: Firestore` handle. `apps/mobile/src/lib/data/*.ts`
+      are now thin wrappers (mobile `db` + `handleFirestoreError`);
+      `useMyDayData.ts` and every screen were untouched (same external API).
+      `addThreadMessage` takes an `onNotify` callback so the mobile-specific
+      push write (`sendNotification`) stays out of the shared module.
+  - [ ] Still open: `rsvp`, `gatheringTypes`, `seasons` hooks, `services/chat`,
+        and re-pointing the *web* app's own copies of the five re-homed
+        modules at the shared `packages/core/src/data/` versions (today only
+        mobile consumes them — web's `src/lib/*.ts` are unchanged).
+- [x] Gated the tabs/drawer by live role (`canAccessRoute` from core) — the
+      bottom tab bar hides People/Journey when the signed-in role is below
+      their `NAV_ITEMS` minRole (Expo Router `href: null`), and the "More"
+      screen filters its destination list the same way. Verified live against
+      the fulltimer (admin, all 6 tabs) and student (operator: Journey hidden,
+      "Looking back" absent from More) e2e test users.
+- **Gotcha hit + fixed**: `packages/core` needs its own `node_modules/firebase`
+  for standalone `npm test`/`typecheck`, but Metro's default upward
+  `node_modules` crawl found that copy *before* `apps/mobile/node_modules`,
+  bundling two separate `firebase` packages — a `db` built with one copy fails
+  `instanceof Firestore` checks in functions from the other ("Expected type
+  'Firestore$1', but it was: a custom Firestore object"). Fixed by adding a
+  `resolver.blockList` entry for `packages/core/node_modules` in
+  `apps/mobile/metro.config.js` (not `disableHierarchicalLookup` — that also
+  breaks resolution of `apps/mobile`'s own non-hoisted nested deps, e.g.
+  firebase's own `node_modules/@firebase/auth`).
 
 ### 🔲 Phase 2 — Low-risk read screens (validate the pattern end-to-end)
 - [ ] Landings dispatcher + LandingTrainee / Student / Community
@@ -185,15 +207,28 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 1. ~~Get a real login working~~ — **done**: `apps/mobile/.env` has
    `EXPO_PUBLIC_FIREBASE_API_KEY`, `app/login.tsx` is a real email/password
    sign-in, and it's verified live against the e2e Full-timer on Expo web.
-2. **Run the WebView editor spike** (Phase 0.5) — still the one thing that could
+2. ~~Generalize My Day's data layer into Phase 1 proper~~ — **done**: My Day's
+   Firestore modules live in `packages/core/src/data/` behind an injected `db`,
+   and the tabs/More screen are gated by `canAccessRoute`. Verified live
+   against two roles (fulltimer, student). The pattern (core function takes
+   `db` first, platform wrapper supplies `db` + error handling) is ready for
+   the next screen to reuse.
+3. **Run the WebView editor spike** (Phase 0.5) — still the one thing that could
    change the architecture (The Board), so validate it before investing in Phase 4.
-3. **Native Google Sign-In** (Phase 0.5) — the current login is email/password
-   only; most real users will want Google.
-4. **Generalize My Day's data layer into Phase 1 proper** — re-home
-   `apps/mobile/src/lib/data/*` into `packages/core` behind an injected `db`, and
-   add `canAccessRoute`-based tab gating, so the next screen (Prayer is a good
-   pick — medium complexity, clear design in `prayer*.png`) reuses the pattern
-   instead of re-deriving it.
+   Needs a real iOS/Android simulator or device — not verifiable on Expo web.
+4. **Native Google Sign-In** (Phase 0.5) — the current login is email/password
+   only; most real users will want Google. Also needs native-platform testing.
+5. **Fix the cold-login crash** (found while verifying Phase 1, pre-existing —
+   reproduces on unmodified `main` too, not a Phase 1 regression): signing in
+   from a logged-out state can crash `<MyDay>` and bounce back to `/login`
+   because `useMyDayData.ts`'s Firestore subscriptions fire before
+   `app/_layout.tsx`'s `<Redirect>` takes effect, hit `permission-denied`, and
+   `handleFirestoreError` re-throws. A page reload after the first successful
+   sign-in works fine (session persists), so this only bites the very first
+   cold sign-in. See the spawned background task for the fix.
+6. Pick the next screen to port (Prayer is a good candidate — medium
+   complexity, clear design in `prayer*.png`) once WebView/Google Sign-In are
+   de-risked, reusing the Phase 1 data-layer pattern.
 
 ## Known gotchas
 
@@ -209,3 +244,18 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   the Material tokens; don't trust those CSS blocks' colors literally.
 - Design spec = Claude Design project `019e2501-d939-73e9-8f0f-af68b36b8e64`
   (`mobile.html` + `screenshots/`).
+- **Cold sign-in can crash `<MyDay>`** (pre-existing, not a Phase 1 regression —
+  see "How to proceed" above). Reload after the first successful sign-in and
+  it's fine; the bug is specifically in the logged-out → just-signed-in
+  transition.
+- **`packages/core`'s own `node_modules` can shadow `apps/mobile`'s copy of a
+  shared runtime dep in Metro** (hit this with `firebase` in Phase 1) — Metro's
+  default node_modules crawl runs from the requiring file's location, and
+  `packages/core/src/data/*.ts` is closer to `packages/core/node_modules` than
+  to `apps/mobile/node_modules`. `apps/mobile/metro.config.js` blocks
+  `packages/core/node_modules` via `resolver.blockList` to force everything
+  through the one copy mobile actually initializes. Any future runtime dep
+  added to `packages/core` needs to also be a direct dependency of
+  `apps/mobile` (same pattern already used for `date-fns`) — the blockList
+  means core's own copy is never bundled, only used for its standalone
+  typecheck/test.

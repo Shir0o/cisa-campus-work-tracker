@@ -1,8 +1,9 @@
 import { Alert } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { NAV_ITEMS } from '@cisa/core';
+import { NAV_ITEMS, canAccessRoute } from '@cisa/core';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { useAuth } from '../../src/lib/AuthProvider';
 
 // Bottom nav matches the design's mobile shell (views/mobile/app.jsx):
 // Home · People · [Log] · Journey · Prayer, with a raised center capture
@@ -13,6 +14,12 @@ const labelFor = (href: string, fallback: string) =>
 
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const { role } = useAuth();
+  // Tabs tied to a gated NAV_ITEMS route drop out of the bar (href: null) when
+  // the live role doesn't meet its minRole. Home/Log/Prayer/More stay put —
+  // Home + Prayer are viewer-open, Log has no route yet, More self-filters.
+  const canPeople = canAccessRoute(role, '/directory');
+  const canJourney = canAccessRoute(role, '/board');
   return (
     <Tabs
       screenOptions={{
@@ -37,6 +44,7 @@ export default function TabsLayout() {
         options={{
           title: labelFor('/directory', 'People'),
           tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
+          href: canPeople ? undefined : null,
         }}
       />
       <Tabs.Screen
@@ -57,6 +65,7 @@ export default function TabsLayout() {
         options={{
           title: labelFor('/board', 'Journey'),
           tabBarIcon: ({ color, size }) => <Ionicons name="git-branch-outline" color={color} size={size} />,
+          href: canJourney ? undefined : null,
         }}
       />
       <Tabs.Screen

@@ -1,16 +1,18 @@
 import { ScrollView, View } from 'react-native';
-import { NAV_ITEMS, roleLabel } from '@cisa/core';
+import { NAV_ITEMS, roleLabel, canAccessRoute } from '@cisa/core';
 import { Screen, AppText, Card } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { useAuth } from '../../src/lib/AuthProvider';
 
 // "More" surfaces the NAV_ITEMS destinations not in the bottom tabs — driven by
 // the SHARED NAV_ITEMS + role labels from @cisa/core (the mobile drawer in the
-// design). Role-gating (canAccessRoute) applies once auth is live.
+// design), gated by the live role (canAccessRoute).
 const TAB_HREFS = ['/', '/directory', '/board', '/prayer'];
 
 export default function More() {
   const { colors, spacing } = useTheme();
-  const rest = NAV_ITEMS.filter((n) => !TAB_HREFS.includes(n.href));
+  const { role } = useAuth();
+  const rest = NAV_ITEMS.filter((n) => !TAB_HREFS.includes(n.href) && canAccessRoute(role, n.href));
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
