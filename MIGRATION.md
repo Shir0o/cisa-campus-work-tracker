@@ -59,7 +59,7 @@ resolves `@cisa/core` via a Metro alias + a tsconfig path. See
 npm run dev
 
 # Shared logic tests (the behavior oracle for the port)
-cd packages/core && npm install && npm test        # 49 tests
+cd packages/core && npm install && npm test        # 54 tests
 
 # Mobile app
 cd apps/mobile && npm install
@@ -94,13 +94,39 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 
 ## Remaining work
 
-### 🔲 Phase 0.5 — De-risking spikes (do before committing to full ports)
+### 🔲 Phase 0.5 — De-risking spikes (no longer blocking Phase 2 — see "How to
+proceed"; these are ordinary Firestore CRUD screens with no editor/WebView
+involved, so screen-porting can continue in parallel)
 - [ ] **Collab editor in a WebView** — host the existing web TipTap/Yjs editor in
       `react-native-webview`, pass doc id + auth token, confirm Yjs/RTDB sync on a
-      device. This is the top technical risk and gates Phase 4.
+      device. This is the top technical risk and gates Phase 4. **Scoped**: the
+      web `DocEditor` is a nested, unexported component inside
+      `src/views/CoordinationNotes.tsx` (~2791 lines) sharing code with the
+      parent screen — it needs to be extracted into a standalone bundle a
+      WebView can load (bridged via `postMessage` for doc id/auth token)
+      before the Yjs↔RTDB sync (`src/lib/yjsRtdbProvider.ts`'s
+      `RtdbYjsProvider`, path `board_docs_rtdb/{docId}`) can even be tested.
+      `react-native-webview` is already installed in `apps/mobile` (13.12.5),
+      but there's no Board/Coordination-notes route stub yet. This machine has
+      iOS simulators available locally (`xcrun simctl list devices`) for the
+      on-device verification step; no Android emulator/`adb`.
 - [ ] **Native Google Sign-In** — `@react-native-google-signin` +
       `signInWithCredential` (popup sign-in doesn't exist in RN). Recovers the
-      Sheets `spreadsheets.readonly` token too.
+      Sheets `spreadsheets.readonly` token too. **Less blocked than it looks**:
+      `gcloud`/`firebase` CLI are already authenticated in this environment
+      (account `yilongwang05@gmail.com`, project `sac-campus-hub` — confirmed
+      via `.firebaserc`/`firebase.json`). `firebase apps:list --project
+      sac-campus-hub` shows only one app today (`ai-studio-applet-webapp`,
+      WEB) — no iOS/Android app registered, no `GoogleService-Info.plist`/
+      `google-services.json` in the repo. Registering the iOS/Android apps for
+      `com.cisa.campus` (already set in `apps/mobile/app.json`) via `firebase
+      apps:create`/`apps:sdkconfig` is CLI-doable — **but is a
+      permission-required action** (creates persistent config in a live
+      Firebase project), so confirm with the user before running it. Still
+      unverified: whether enabling the Google sign-in provider itself
+      (Firebase Auth → Sign-in method → Google) and registering the Android
+      OAuth client's SHA-1 can also be done via CLI, or needs one manual
+      console toggle.
 - [ ] **Fonts** — bundle Newsreader + Hanken Grotesk via
       `@expo-google-fonts/*`, load in `app/_layout.tsx` (currently system
       fallback).
@@ -170,7 +196,14 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 
 ### 🔲 Phase 2 — Low-risk read screens (validate the pattern end-to-end)
 - [ ] Landings dispatcher + LandingTrainee / Student / Community
-- [ ] Prayer, Answered, History, Directory (People)
+- [x] ~~Prayer~~ — done, verified live against the e2e Full-timer (both
+      themes): `apps/mobile/app/(tabs)/prayer.tsx` + `src/components/prayer/`
+      (`PrayerThreadCard`, `HoldPrayerSheet`), backed by new
+      `subscribeAllPrayers`/`addPrayer`/`updatePrayerBurden` in
+      `packages/core/src/data/prayers.ts` and a unit-tested pure
+      `groupPrayerThread` in `packages/core/src/prayerThread.ts`. Answered
+      (`/answered`), History, and Directory (People) are still open.
+- [ ] Answered, History, Directory (People)
 - [ ] Live Firestore data + the e2e test users (one per role)
 
 ### 🔲 Phase 3 — Medium screens
@@ -216,19 +249,45 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 3. **Run the WebView editor spike** (Phase 0.5) — still the one thing that could
    change the architecture (The Board), so validate it before investing in Phase 4.
    Needs a real iOS/Android simulator or device — not verifiable on Expo web.
+   **Not a blocker for step 6** (Directory) — see re-sequencing note below.
 4. **Native Google Sign-In** (Phase 0.5) — the current login is email/password
    only; most real users will want Google. Also needs native-platform testing.
-5. **Fix the cold-login crash** (found while verifying Phase 1, pre-existing —
-   reproduces on unmodified `main` too, not a Phase 1 regression): signing in
-   from a logged-out state can crash `<MyDay>` and bounce back to `/login`
-   because `useMyDayData.ts`'s Firestore subscriptions fire before
-   `app/_layout.tsx`'s `<Redirect>` takes effect, hit `permission-denied`, and
-   `handleFirestoreError` re-throws. A page reload after the first successful
-   sign-in works fine (session persists), so this only bites the very first
-   cold sign-in. See the spawned background task for the fix.
-6. Pick the next screen to port (Prayer is a good candidate — medium
-   complexity, clear design in `prayer*.png`) once WebView/Google Sign-In are
-   de-risked, reusing the Phase 1 data-layer pattern.
+   See the CLI findings under Phase 0.5 above before assuming this needs a
+   manual Google Cloud Console walkthrough.
+5. ~~Fix the cold-login crash~~ — **done** in `d700414` (#121): signing in
+   from a logged-out state used to crash `<MyDay>` and bounce back to
+   `/login` because `useMyDayData.ts`'s Firestore subscriptions fired before
+   `app/_layout.tsx`'s `<Redirect>` took effect, hit `permission-denied`, and
+   `handleFirestoreError` re-threw. Fixed by gating the team-data effect on
+   `uid` and making `onLoadError` pass `{ rethrow: false }`.
+6. ~~Pick the next screen to port~~ — **Prayer done** (see Phase 2 above).
+   **Directory (People) is next**, reusing the Phase 1 data-layer pattern.
+   Scoped from the design (Claude Design project
+   `019e2501-d939-73e9-8f0f-af68b36b8e64`, file `views/contacts.jsx` — has a
+   real `isMobile` branch): search bar + stage-filter pills render on **both**
+   mobile and desktop in the design (not desktop-only), and **no bulk-select
+   UI appears in the mobile-aware mock at all** (looks desktop-only there), so
+   the mobile pass only needs search + stage-pill filtering + `contact-card`
+   rows (avatar, name, stage chip, year/major, overdue-toned "last connected"
+   line) — no new bottom-sheet filter panel or bulk-select needed for parity.
+   Needs a genuinely new shared module, `packages/core/src/data/contacts.ts`
+   (+ maybe `stages.ts`): subscribe to contacts/stages, plus tag-update/delete
+   writes — none of this is shared yet (today it's inline `onSnapshot` calls
+   duplicated in both `apps/mobile/src/lib/useMyDayData.ts` and the web's
+   `src/views/Directory.tsx`). The last-touch (interactions+comments
+   collection-group) logic already exists inline in `useMyDayData.ts` and can
+   be extracted/reused rather than rewritten. Reuse `Avatar`, `StatusPill`,
+   `toneForStage` (theme/tokens.ts) and `ContactsPickerSheet.tsx`'s row layout
+   as a starting template for `apps/mobile/app/(tabs)/people.tsx` (currently a
+   3-row hardcoded stub).
+
+**Re-sequencing note**: the numbering above is historical — in practice,
+Phase 2 screens (Prayer, done; Directory, next) have no external blockers and
+can proceed independently of the two Phase 0.5 spikes (WebView editor is a
+sizable standalone extraction project; Google Sign-In needs the user's
+go-ahead on a permission-required Firebase config change before an agent can
+finish it). Prefer continuing screen ports unless the user specifically wants
+a spike tackled next.
 
 ## Known gotchas
 
@@ -243,11 +302,17 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   alias set that isn't defined in tracked source — the RN theme resolves those to
   the Material tokens; don't trust those CSS blocks' colors literally.
 - Design spec = Claude Design project `019e2501-d939-73e9-8f0f-af68b36b8e64`
-  (`mobile.html` + `screenshots/`).
-- **Cold sign-in can crash `<MyDay>`** (pre-existing, not a Phase 1 regression —
-  see "How to proceed" above). Reload after the first successful sign-in and
-  it's fine; the bug is specifically in the logged-out → just-signed-in
-  transition.
+  (`mobile.html` + `screenshots/`). Per-screen source components are readable
+  via the DesignSync MCP (`get_file` on that project id) — e.g. `views/
+  prayer.jsx` (used for the Prayer tab) and `views/contacts.jsx` (Directory,
+  not yet ported) both have real `isMobile` branches worth reading before
+  building a screen's RN port, rather than inferring layout from screenshots
+  alone.
+- ~~**Cold sign-in can crash `<MyDay>`**~~ — **fixed** in `d700414` (#121):
+  `useMyDayData.ts`'s team-data effect now guards on `uid` (not just
+  `fixture`), so its Firestore subscriptions no longer fire before auth is
+  ready; `handleFirestoreError` also stops re-throwing when the caller
+  already sets error state.
 - **`packages/core`'s own `node_modules` can shadow `apps/mobile`'s copy of a
   shared runtime dep in Metro** (hit this with `firebase` in Phase 1) — Metro's
   default node_modules crawl runs from the requiring file's location, and

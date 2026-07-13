@@ -7,6 +7,7 @@ export * from './inbox';
 export * from './board';
 export * from './seasons';
 export * from './myday';
+export * from './prayerThread';
 export * from './utils';
 export * from './data/todos';
 export * from './data/prayers';

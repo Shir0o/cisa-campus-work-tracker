@@ -15,7 +15,9 @@ const SEGMENTS: { label: string; tone: ToneKey }[] = [
   { label: 'archive', tone: 'neutral' },
 ];
 
-function StatusSegments({ activeIndex, onPick, disabled }: { activeIndex: number; onPick: (i: number) => void; disabled?: boolean }) {
+// Exported so the full Prayer tab (apps/mobile/src/components/prayer/*) can
+// reuse the same status-segment / testimony UI instead of duplicating it.
+export function StatusSegments({ activeIndex, onPick, disabled }: { activeIndex: number; onPick: (i: number) => void; disabled?: boolean }) {
   const { colors, radius } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -45,14 +47,14 @@ function StatusSegments({ activeIndex, onPick, disabled }: { activeIndex: number
   );
 }
 
-function AnsweredCard({
+export function AnsweredCard({
   answer,
   answeredAt,
   onEdit,
 }: {
   answer?: string | null;
   answeredAt?: string | null;
-  onEdit: () => void;
+  onEdit?: () => void;
 }) {
   const { colors, radius, typography } = useTheme();
   return (
@@ -71,9 +73,11 @@ function AnsweredCard({
         <Text style={{ fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4, color: colors.success }}>
           Answered{answeredAt ? ` · ${answeredAt}` : ''}
         </Text>
-        <Pressable onPress={onEdit} hitSlop={6}>
-          <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, fontWeight: '500' }}>Edit testimony</Text>
-        </Pressable>
+        {onEdit && (
+          <Pressable onPress={onEdit} hitSlop={6}>
+            <Text style={{ fontSize: 11, color: colors.onSurfaceVariant, fontWeight: '500' }}>Edit testimony</Text>
+          </Pressable>
+        )}
       </View>
       {answer ? (
         <Text style={{ fontFamily: typography.fontSerif, fontSize: 14.5, fontStyle: 'italic', color: colors.onSurface }}>
@@ -84,7 +88,7 @@ function AnsweredCard({
   );
 }
 
-function TestimonyComposer({
+export function TestimonyComposer({
   value,
   onChange,
   onSave,

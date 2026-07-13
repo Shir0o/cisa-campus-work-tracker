@@ -17,3 +17,34 @@ export async function updatePrayerStatus(
     handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
   }
 }
+
+/** Live subscription to every team prayer (the Prayer tab's full list). */
+export function subscribeAllPrayers(
+  cb: (prayers: PrayerRecord[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeAllPrayers(db, cb, onError);
+}
+
+export async function addPrayer(
+  input: { contactId: string; burden: string },
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    await core.addPrayer(db, input, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, 'prayers');
+  }
+}
+
+export async function updatePrayerBurden(
+  prayerId: string,
+  burden: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    await core.updatePrayerBurden(db, prayerId, burden, by);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
+  }
+}
