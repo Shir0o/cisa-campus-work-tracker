@@ -113,6 +113,7 @@ describe('PrayerList', () => {
 
     (useAuth as any).mockReturnValue({
       user: { uid: 'u-test', displayName: 'Test User' },
+      role: 'operator',
     });
 
     (useLayout as any).mockReturnValue({
@@ -148,7 +149,7 @@ describe('PrayerList', () => {
       // Bob (legacy prayer)
       expect(screen.getByText('Bob Smith')).toBeInTheDocument();
       expect(screen.getByText('Health and recovery')).toBeInTheDocument();
-      expect(screen.getAllByText('Still waiting').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('archive').length).toBeGreaterThan(0);
     });
   });
 
@@ -188,7 +189,7 @@ describe('PrayerList', () => {
     expect(updateDoc).toHaveBeenCalled();
 
     // Mark as Still waiting
-    const unansweredButton = screen.getAllByRole('button', { name: 'Still waiting' })[0];
+    const unansweredButton = screen.getAllByRole('button', { name: 'archive' })[0];
     fireEvent.click(unansweredButton);
     expect(updateDoc).toHaveBeenCalled();
   });

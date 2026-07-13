@@ -41,7 +41,7 @@ const STATUS_LABEL: Record<Status, string> = {
   pending: 'Unmarked',
   ongoing: 'Ongoing',
   answered: 'Answered',
-  unanswered: 'Still waiting',
+  unanswered: 'archive',
 };
 
 const STATUS_TONE: Record<Status, string> = {
@@ -100,6 +100,7 @@ export default function PrayerListMobile({
   composeFor,
   setComposeFor,
   onStopHolding,
+  isOperator,
 }: PrayerListMobileProps) {
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -136,21 +137,23 @@ export default function PrayerListMobile({
         </p>
 
         {/* Hold someone button */}
-        <button
-          onClick={() => {
-            setSearchQuery("");
-            setPickerOpen(true);
-          }}
-          className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-stage-accent-soft border border-primary/20 text-primary rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
-        >
-          <div className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            <span>Hold someone in prayer</span>
-          </div>
-          <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-primary font-bold shadow-sm prm-choose-n">
-            {entries.length}
-          </span>
-        </button>
+        {isOperator && (
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setPickerOpen(true);
+            }}
+            className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-stage-accent-soft border border-primary/20 text-primary rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
+          >
+            <div className="flex items-center gap-2">
+              <Plus className="w-4 h-4" />
+              <span>Hold someone in prayer</span>
+            </div>
+            <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-primary font-bold shadow-sm prm-choose-n">
+              {entries.length}
+            </span>
+          </button>
+        )}
       </header>
 
       {/* ── Toggle buttons ── */}
@@ -186,6 +189,7 @@ export default function PrayerListMobile({
             onOpenProfile={() => onOpenContact(e.contact)}
             onRemove={() => onStopHolding(e.contact.id)}
             setComposeFor={setComposeFor}
+            isOperator={isOperator}
           />
         ))}
       </div>
@@ -272,6 +276,7 @@ interface PrayerThreadCardProps {
   onOpenProfile: () => void;
   onRemove: () => void;
   setComposeFor: (id: string | null) => void;
+  isOperator: boolean;
 }
 
 function PrayerThreadCard({
@@ -284,6 +289,7 @@ function PrayerThreadCard({
   onOpenProfile,
   onRemove,
   setComposeFor,
+  isOperator,
 }: PrayerThreadCardProps) {
   const [showEarlier, setShowEarlier] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -330,29 +336,31 @@ function PrayerThreadCard({
         </button>
 
         {/* Remove Button */}
-        {confirmRemove ? (
-          <div className="flex gap-1.5 shrink-0 self-start prt-remove-confirm">
+        {isOperator && (
+          confirmRemove ? (
+            <div className="flex gap-1.5 shrink-0 self-start prt-remove-confirm">
+              <button
+                onClick={onRemove}
+                className="px-2 py-1 rounded-lg bg-error-container text-on-error-container text-xs font-semibold border border-error/20 prt-remove-yes"
+              >
+                Remove
+              </button>
+              <button
+                onClick={() => setConfirmRemove(false)}
+                className="px-2 py-1 rounded-lg bg-surface-container border border-outline text-xs font-semibold prt-remove-no"
+              >
+                Keep
+              </button>
+            </div>
+          ) : (
             <button
-              onClick={onRemove}
-              className="px-2 py-1 rounded-lg bg-error-container text-on-error-container text-xs font-semibold border border-error/20 prt-remove-yes"
+              onClick={() => setConfirmRemove(true)}
+              className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant shrink-0 self-start prt-remove"
+              title={`Remove ${firstName} from prayer list`}
             >
-              Remove
+              <X className="w-3.5 h-3.5" />
             </button>
-            <button
-              onClick={() => setConfirmRemove(false)}
-              className="px-2 py-1 rounded-lg bg-surface-container border border-outline text-xs font-semibold prt-remove-no"
-            >
-              Keep
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmRemove(true)}
-            className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant shrink-0 self-start prt-remove"
-            title={`Remove ${firstName} from prayer list`}
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+          )
         )}
       </div>
 
@@ -365,8 +373,9 @@ function PrayerThreadCard({
             variant="week"
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
+            isOperator={isOperator}
           />
-        ) : (
+        ) : isOperator ? (
           <AddThisWeekMobile
             firstName={firstName}
             defaultOpen={autoCompose}
@@ -376,6 +385,10 @@ function PrayerThreadCard({
               return ok;
             }}
           />
+        ) : (
+          <div className="text-xs text-on-surface-variant/65 italic pl-3.5 py-1">
+            No prayer recorded for this week
+          </div>
         )}
       </div>
 
@@ -389,6 +402,7 @@ function PrayerThreadCard({
             needsMark={needsMark}
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
+            isOperator={isOperator}
           />
         </div>
       )}
@@ -423,6 +437,7 @@ function PrayerThreadCard({
                   variant="earlier"
                   onUpdateStatus={onUpdateStatus}
                   onUpdateBurden={onUpdateBurden}
+                  isOperator={isOperator}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
@@ -461,12 +476,14 @@ function PrayerItemMobile({
   needsMark,
   onUpdateStatus,
   onUpdateBurden,
+  isOperator,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
+  isOperator: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -511,7 +528,7 @@ function PrayerItemMobile({
             Unmarked
           </span>
         ) : null}
-        {!editing && (
+        {!editing && isOperator && (
           <button
             onClick={startEdit}
             className="text-xs text-on-surface-variant/80 hover:text-primary transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
@@ -562,15 +579,17 @@ function PrayerItemMobile({
             <span className="text-[10px] font-bold text-success uppercase tracking-wider">
               Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
-            <button
-              onClick={() => {
-                setHowDraft(prayer.answer || "");
-                setAnswering(true);
-              }}
-              className="text-[10px] text-on-surface-variant/80 hover:text-primary font-semibold"
-            >
-              Edit Testimony
-            </button>
+            {isOperator && (
+              <button
+                onClick={() => {
+                  setHowDraft(prayer.answer || "");
+                  setAnswering(true);
+                }}
+                className="text-[10px] text-on-surface-variant/80 hover:text-primary font-semibold"
+              >
+                Edit Testimony
+              </button>
+            )}
           </div>
           {prayer.answer && (
             <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
@@ -617,47 +636,49 @@ function PrayerItemMobile({
       )}
 
       {/* Marks status dropdown */}
-      <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
-        <span className="text-[10.5px] uppercase tracking-wider text-on-surface-variant/75 prt-mark-label">
-          {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark status'}
-        </span>
-        <div className={cn(
-          "relative border rounded-xl bg-surface-container-low transition-all prt-mark-select",
-          prayer.status && `status-${prayer.status}`
-        )}>
-          <select
-            value={prayer.status || ""}
-            onChange={(e) => {
-              const val = e.target.value as Status | '';
-              if (!val) {
-                onUpdateStatus(prayer, 'pending');
-                return;
-              }
-              if (val === 'answered') {
-                onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || format(new Date(), 'MMM d'));
-                if (!prayer.answer) {
-                  setHowDraft("");
-                  setAnswering(true);
-                }
-              } else {
-                setAnswering(false);
-                onUpdateStatus(prayer, val);
-              }
-            }}
-            className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant/90"
-          >
-            <option value="">Not yet marked</option>
-            {MARK_OPTIONS.map((o) => (
-              <option key={o} value={o}>
-                {STATUS_LABEL[o]}
-              </option>
-            ))}
-          </select>
-          <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/60 prt-mark-select-caret">
-            ▾
+      {isOperator && (
+        <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
+          <span className="text-[10.5px] uppercase tracking-wider text-on-surface-variant/75 prt-mark-label">
+            {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark status'}
           </span>
+          <div className={cn(
+            "relative border rounded-xl bg-surface-container-low transition-all prt-mark-select",
+            prayer.status && `status-${prayer.status}`
+          )}>
+            <select
+              value={prayer.status || ""}
+              onChange={(e) => {
+                const val = e.target.value as Status | '';
+                if (!val) {
+                  onUpdateStatus(prayer, 'pending');
+                  return;
+                }
+                if (val === 'answered') {
+                  onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || format(new Date(), 'MMM d'));
+                  if (!prayer.answer) {
+                    setHowDraft("");
+                    setAnswering(true);
+                  }
+                } else {
+                  setAnswering(false);
+                  onUpdateStatus(prayer, val);
+                }
+              }}
+              className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant/90"
+            >
+              <option value="">Not yet marked</option>
+              {MARK_OPTIONS.map((o) => (
+                <option key={o} value={o}>
+                  {STATUS_LABEL[o]}
+                </option>
+              ))}
+            </select>
+            <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/60 prt-mark-select-caret">
+              ▾
+            </span>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
