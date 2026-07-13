@@ -47,6 +47,12 @@ const firestoreDatabaseId =
   env.EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID || staticConfig.firestoreDatabaseId;
 const databaseURL = env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || undefined;
 
+if (__DEV__ && !firebaseConfig.apiKey) {
+  console.warn(
+    'EXPO_PUBLIC_FIREBASE_API_KEY is unset — sign-in and Firestore reads will fail. Set it in apps/mobile/.env.',
+  );
+}
+
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Firebase JS SDK v12 removed getReactNativePersistence: on React Native, auth

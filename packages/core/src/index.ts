@@ -6,4 +6,5 @@ export * from './threads';
 export * from './inbox';
 export * from './board';
 export * from './seasons';
+export * from './myday';
 export * from './utils';

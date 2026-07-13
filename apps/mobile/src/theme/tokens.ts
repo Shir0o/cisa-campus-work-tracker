@@ -202,3 +202,14 @@ export const themes: Record<ThemeMode, ThemeColors> = {
   light: lightColors,
   dark: darkColors,
 };
+
+// Stages don't carry a fixed RN color (the web app stores an arbitrary
+// Tailwind class per stage); deterministically map a stage to one of the 4
+// tones by its position in the team's stage list, so the same stage always
+// reads the same color.
+const STAGE_TONES: ToneKey[] = ['accent', 'amber', 'teal', 'violet'];
+export function toneForStage(stages: { label: string }[], label?: string): ToneKey {
+  if (!label) return 'neutral';
+  const i = stages.findIndex((s) => s.label === label);
+  return i < 0 ? 'neutral' : STAGE_TONES[i % STAGE_TONES.length];
+}

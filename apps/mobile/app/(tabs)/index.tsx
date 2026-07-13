@@ -1,46 +1,112 @@
-import { ScrollView, View } from 'react-native';
-import { seasonForDate, seasonLabel } from '@cisa/core';
-import { Screen, AppText, Card, SectionHead, StatusPill, Button } from '../../src/components/ui';
+import { useState } from 'react';
+import { Alert, ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import type { Contact } from '@cisa/core';
+import { Screen } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
+import { useAuth } from '../../src/lib/AuthProvider';
+import { useMyDayData } from '../../src/lib/useMyDayData';
+import { openMessage } from '../../src/lib/messaging';
+import { Hero } from '../../src/components/myday/Hero';
+import { RelationalNudge } from '../../src/components/myday/RelationalNudge';
+import { FromTeamInbox } from '../../src/components/myday/FromTeamInbox';
+import { OnTheHorizon } from '../../src/components/myday/OnTheHorizon';
+import { YourSheep } from '../../src/components/myday/YourSheep';
+import { YourWeek } from '../../src/components/myday/YourWeek';
+import { YourPrayers } from '../../src/components/myday/YourPrayers';
+import { FiguresFooter } from '../../src/components/myday/FiguresFooter';
+import { ContactsPickerSheet } from '../../src/components/myday/ContactsPickerSheet';
 
-// Home = My Day. Scaffold for the mobile-native cockpit (design: mob-myday.png).
-// Data (the "From the team" inbox, your people, prayers) wires to Firestore in
-// Phase 2 via @cisa/core's inboxItemsFor over live subscriptions.
-export default function Home() {
-  const { colors, spacing } = useTheme();
-  const season = seasonLabel(seasonForDate());
+// Home = My Day, the flagship cockpit (design: mob-myday.png). Live Firestore
+// data via useMyDayData; contact-detail navigation is a Phase 2 placeholder.
+export default function MyDay() {
+  const { spacing } = useTheme();
+  const router = useRouter();
+  const { uid, user } = useAuth();
+  const data = useMyDayData(uid, user?.displayName ?? null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const firstName = (user?.displayName || 'friend').split(' ')[0];
+
+  const onOpenContact = (contact: Contact) => {
+    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+  };
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
-        <View style={{ gap: 4 }}>
-          <AppText variant="label" color={colors.primary}>
-            MY DAY · {season}
-          </AppText>
-          <AppText variant="title">Good to see you.</AppText>
-          <AppText variant="body" color={colors.onSurfaceVariant}>
-            A quiet place to start — who you're carrying, and what's waiting on you.
-          </AppText>
-        </View>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40, gap: spacing.xl }}>
+        <Hero
+          firstName={firstName}
+          leadersCount={data.leaders.length}
+          tasksLeft={data.leftToDo}
+          prayersCount={data.prayersCount}
+          onOpenBoard={() => router.push('/journey')}
+          onOpenPrayer={() => router.push('/prayer')}
+        />
 
-        <Card>
-          <SectionHead title="From the team" action="See all" />
-          <AppText variant="body" color={colors.onSurfaceVariant}>
-            New contacts, logged interactions, and questions from the team surface
-            here. (Wired to Firestore in Phase 2.)
-          </AppText>
-        </Card>
+        <RelationalNudge staleLeader={data.staleLeader} onPress={() => data.staleLeader && onOpenContact(data.staleLeader.contact)} />
 
-        <Card>
-          <SectionHead title="On the horizon" />
-          <View style={{ gap: 8 }}>
-            <StatusPill label="Today" tone="accent" />
-            <AppText variant="body">Your week's gatherings and to-dos live here.</AppText>
-          </View>
-        </Card>
+        {data.isFullTimer && (
+          <FromTeamInbox
+            items={data.inboxItems}
+            contacts={data.contacts}
+            nameByUid={data.nameByUid}
+            isRead={data.isInboxRead}
+            onOpenContact={onOpenContact}
+            onPostReply={data.postInboxReply}
+            onMarkRead={data.markInboxRead}
+            onMarkUnread={data.markInboxUnread}
+            onMarkAllRead={data.markAllInboxRead}
+          />
+        )}
 
-        <Button title="Pray together" variant="secondary" full />
+        <OnTheHorizon
+          assignedTasks={data.assignedTasks}
+          personalTasks={data.personalTasks}
+          onToggle={data.toggleTask}
+          onAdd={data.addTask}
+          onUpdate={data.updateTask}
+          onDelete={data.deleteTask}
+        />
+
+        <YourSheep
+          leaders={data.leaders}
+          stages={data.stages}
+          onOpenContact={onOpenContact}
+          onMessage={(contact) => openMessage(contact.phone)}
+          onOpenPicker={() => setPickerOpen(true)}
+        />
+
+        <YourWeek thisWeek={data.thisWeek} />
+
+        <YourPrayers
+          contactPrayers={data.contactPrayers}
+          activePersonalPrayers={data.activePersonalPrayers}
+          contacts={data.contacts}
+          onOpenContact={onOpenContact}
+          onOpenPicker={() => setPickerOpen(true)}
+          onSetStatus={data.setPrayerStatus}
+          onAddPersonal={data.addPersonalPrayer}
+          onUpdatePersonal={data.updatePersonalPrayer}
+          onDeletePersonal={data.deletePersonalPrayer}
+        />
+
+        <FiguresFooter
+          contacts={data.leaders.length}
+          prayers={data.prayersCount}
+          tasks={data.leftToDo}
+          gatherings={data.thisWeek.length}
+        />
       </ScrollView>
+
+      <ContactsPickerSheet
+        visible={pickerOpen}
+        contacts={data.contacts}
+        stages={data.stages}
+        personalContactIds={data.personalContactIds}
+        onToggle={data.togglePersonalContact}
+        onClose={() => setPickerOpen(false)}
+      />
     </Screen>
   );
 }

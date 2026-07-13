@@ -2,17 +2,20 @@
 // (three files in src/components/ui + inline Tailwind everywhere), so these are
 // net-new, derived from src/components/landing/primitives.tsx and the design's
 // "Field notes" language. Everything reads colors/spacing from the theme.
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
+  TextInput,
   Pressable,
   StyleSheet,
   type ViewStyle,
   type TextStyle,
+  type TextInputProps,
   type StyleProp,
 } from 'react-native';
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { getUserInitials } from '@cisa/core';
 import { useTheme } from '../../theme/ThemeProvider';
 import { toneColors, type ToneKey } from '../../theme/tokens';
@@ -241,5 +244,134 @@ export function StatusPill({ label, tone = 'accent' }: { label: string; tone?: T
       <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: fg }} />
       <Text style={{ color: fg, fontSize: 12, fontWeight: '600' }}>{label}</Text>
     </View>
+  );
+}
+
+// ── IconButton ──────────────────────────────────────────────────────────────
+// A round/square tonal icon tap-target — the message button on a person row,
+// the nudge prompt's icon, and an inbox row's tonal node.
+export function IconButton({
+  name,
+  onPress,
+  size = 42,
+  tone = 'accent',
+  shape = 'rounded',
+}: {
+  name: keyof typeof Ionicons.glyphMap;
+  onPress?: () => void;
+  size?: number;
+  tone?: ToneKey;
+  shape?: 'rounded' | 'circle';
+}) {
+  const { colors, radius } = useTheme();
+  const { fg, soft } = toneColors(colors, tone);
+  const base: ViewStyle = {
+    width: size,
+    height: size,
+    borderRadius: shape === 'circle' ? size / 2 : radius.md,
+    backgroundColor: soft,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.outlineVariant,
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+  const icon = <Ionicons name={name} size={size * 0.42} color={fg} />;
+  if (!onPress) return <View style={base}>{icon}</View>;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => [base, { opacity: pressed ? 0.85 : 1 }]}>
+      {icon}
+    </Pressable>
+  );
+}
+
+// ── Figure ──────────────────────────────────────────────────────────────────
+// A quiet stat in the My Day figures footer — a serif number + caption label.
+export function Figure({ n, label }: { n: number; label: string }) {
+  const { colors, typography } = useTheme();
+  return (
+    <View style={{ gap: 2 }}>
+      <Text style={{ fontFamily: typography.fontSerif, fontSize: 22, fontWeight: '500', color: colors.onSurface }}>
+        {n}
+      </Text>
+      <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>{label}</Text>
+    </View>
+  );
+}
+
+// ── DuePresetPills ────────────────────────────────────────────────────────
+export interface DuePreset {
+  key: string;
+  label: string;
+  days: number | null;
+}
+
+export function DuePresetPills({
+  presets,
+  value,
+  onPick,
+}: {
+  presets: DuePreset[];
+  value: string;
+  onPick: (key: string, days: number | null) => void;
+}) {
+  const { colors, radius } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {presets.map((p) => {
+        const on = value === p.key;
+        return (
+          <Pressable
+            key={p.key}
+            onPress={() => onPick(p.key, p.days)}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.full,
+              borderWidth: 1,
+              borderColor: on ? colors.primary : colors.outlineVariant,
+              backgroundColor: on ? colors.primary : 'transparent',
+            }}
+          >
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: on ? colors.onPrimary : colors.onSurface }}>
+              {p.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+// ── InlineInput ───────────────────────────────────────────────────────────
+// A themed text input for the inline composers (add a task, add a prayer).
+export function InlineInput(props: TextInputProps) {
+  const { colors, radius } = useTheme();
+  const [focused, setFocused] = useState(false);
+  return (
+    <TextInput
+      placeholderTextColor={colors.onSurfaceVariant}
+      {...props}
+      onFocus={(e) => {
+        setFocused(true);
+        props.onFocus?.(e);
+      }}
+      onBlur={(e) => {
+        setFocused(false);
+        props.onBlur?.(e);
+      }}
+      style={[
+        {
+          borderWidth: 1,
+          borderColor: focused ? colors.primary : colors.outlineVariant,
+          borderRadius: radius.md,
+          paddingHorizontal: 12,
+          paddingVertical: 10,
+          fontSize: 14.5,
+          color: colors.onSurface,
+          backgroundColor: colors.surfaceContainer,
+        },
+        props.style,
+      ]}
+    />
   );
 }
