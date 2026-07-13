@@ -485,6 +485,25 @@ describe('MyDay', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/prayer');
   });
 
+  it('does not allow status updates or testimony editing for prayers created in the prayer page', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'u-test' })],
+        prayers: [prayerDoc('p-1', { contactId: 'c-1', burden: 'health and provision', status: 'pending', date: soonISO, prayerPage: true })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('health and provision')).toBeInTheDocument());
+
+    // Status pills should be disabled.
+    const answeredButton = screen.getByRole('button', { name: 'answered' });
+    expect(answeredButton).toBeDisabled();
+
+    // Clicking it should not call updatePrayerStatus.
+    fireEvent.click(answeredButton);
+    expect(h.updatePrayerStatus).not.toHaveBeenCalled();
+  });
+
   it('hides archived (unanswered) contact prayers', async () => {
     vi.mocked(onSnapshot).mockImplementation(
       byPath({

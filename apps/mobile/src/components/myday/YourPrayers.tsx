@@ -15,7 +15,7 @@ const SEGMENTS: { label: string; tone: ToneKey }[] = [
   { label: 'archive', tone: 'neutral' },
 ];
 
-function StatusSegments({ activeIndex, onPick }: { activeIndex: number; onPick: (i: number) => void }) {
+function StatusSegments({ activeIndex, onPick, disabled }: { activeIndex: number; onPick: (i: number) => void; disabled?: boolean }) {
   const { colors, radius } = useTheme();
   return (
     <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -25,6 +25,7 @@ function StatusSegments({ activeIndex, onPick }: { activeIndex: number; onPick: 
         return (
           <Pressable
             key={seg.label}
+            disabled={disabled}
             onPress={() => onPick(i)}
             style={{
               paddingHorizontal: 9,
@@ -33,6 +34,7 @@ function StatusSegments({ activeIndex, onPick }: { activeIndex: number; onPick: 
               borderWidth: 1,
               borderColor: on ? fg + '55' : colors.outlineVariant,
               backgroundColor: on ? soft : 'transparent',
+              opacity: disabled ? (on ? 0.6 : 0.3) : 1,
             }}
           >
             <Text style={{ fontSize: 11, fontWeight: '600', color: on ? fg : colors.onSurfaceVariant }}>{seg.label}</Text>
@@ -137,6 +139,7 @@ function TeamPrayerRow({
   const activeIndex = prayer.status === 'ongoing' ? 0 : prayer.status === 'answered' ? 1 : prayer.status === 'unanswered' ? 2 : -1;
 
   const pick = (i: number) => {
+    if (prayer.prayerPage) return;
     if (i === 1) {
       onSetStatus('answered', prayer.answer || undefined, prayer.answeredAt || today);
       if (!prayer.answer) {
@@ -159,13 +162,13 @@ function TeamPrayerRow({
       )}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 }}>
         <Text style={{ fontSize: 11.5, color: colors.onSurfaceVariant }}>{agoLabel(prayer.date)}</Text>
-        <StatusSegments activeIndex={activeIndex} onPick={pick} />
+        <StatusSegments activeIndex={activeIndex} onPick={pick} disabled={prayer.prayerPage} />
       </View>
       {!answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
         <AnsweredCard
           answer={prayer.answer}
           answeredAt={prayer.answeredAt}
-          onEdit={() => {
+          onEdit={prayer.prayerPage ? undefined : () => {
             setDraft(prayer.answer || '');
             setAnswering(true);
           }}

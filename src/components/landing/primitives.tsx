@@ -51,10 +51,12 @@ export function StatusPills({
   value,
   options,
   onChange,
+  disabled,
 }: {
   value: string;
   options: { val: string; label: string; tone: PillTone }[];
   onChange: (val: string) => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-wrap gap-1 justify-end">
@@ -62,13 +64,18 @@ export function StatusPills({
         <button
           key={o.val}
           type="button"
+          disabled={disabled}
           onClick={(e) => {
             e.stopPropagation();
-            onChange(o.val);
+            if (!disabled) onChange(o.val);
           }}
           className={cn(
             "text-[11px] font-semibold border rounded-full px-2.5 py-[3px] transition-colors whitespace-nowrap",
-            statusPillClass(value === o.val, o.tone),
+            disabled
+              ? value === o.val
+                ? cn(statusPillClass(true, o.tone), "opacity-60 cursor-not-allowed")
+                : "text-on-surface-variant/40 border-outline-variant/30 cursor-not-allowed bg-transparent"
+              : statusPillClass(value === o.val, o.tone),
           )}
         >
           {o.label}
