@@ -240,9 +240,23 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       single-column vertical stack, matching the design's own phone-width
       collapse — no masonry needed. Pushed route reached from "More", same
       pattern as History.
-- [ ] Quick add (new contact) — the design's People-header "Add someone"
-      button; no mobile create-contact flow exists yet
-- [ ] Live Firestore data + the e2e test users (one per role)
+- [x] ~~Quick add (new contact)~~ — done, verified live: the design's
+      People-header "Add someone" button now opens
+      `apps/mobile/src/components/people/AddContactSheet.tsx`, backed by a new
+      `addContact` in `packages/core/src/data/contacts.ts` (self + walking-together
+      full-timer notifications, mirroring `NewContactModal.tsx`) and a new
+      `packages/core/src/data/seasons.ts` (`subscribeSeasonSettings`, re-homing
+      the season Firestore read mobile didn't have yet) consumed via a new
+      `apps/mobile/src/lib/useActiveSeason.ts` hook for cohort-tag stamping.
+      Also wired `logActivity` (existed but was unused on mobile) so new
+      contacts now surface in the already-shipped History screen. Gated behind
+      `role !== 'viewer'`, matching the web modal's self-gate. The design MCP
+      was unreachable during this pass (HTTP 503) — built against
+      `HoldPrayerSheet`'s Modal chrome and the web modal's field set instead of
+      `views/contacts.jsx`'s mobile branch directly; worth a cosmetic
+      double-check against the design next time it's reachable.
+- [ ] Live Firestore data + the e2e test users (one per role) — still not
+      verified against the e2e Community (viewer) user on any screen.
 
 ### 🔲 Phase 3 — Medium screens
 - [x] ~~My Day cockpit~~ — done, see above.
@@ -299,10 +313,11 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    `handleFirestoreError` re-threw. Fixed by gating the team-data effect on
    `uid` and making `onLoadError` pass `{ rethrow: false }`.
 6. ~~Pick the next screen to port~~ — **Prayer, Directory (People), History
-   ("Looking back"), and Answered are now done** (see Phase 2 above). **Quick
-   add (People's "Add someone") is next** — it needs a new mobile
-   create-contact flow that doesn't exist yet, unlike the screens ported so
-   far which were all pure reads.
+   ("Looking back"), Answered, and Quick Add (new contact) are now done** (see
+   Phase 2 above). That leaves the **Landing dispatcher** (LandingTrainee /
+   LandingStudent / LandingCommunity + a role-based home dispatcher) as the
+   last open Phase 2 item — today every mobile role sees the same Full-timer
+   My Day cockpit, with no role branching at all.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

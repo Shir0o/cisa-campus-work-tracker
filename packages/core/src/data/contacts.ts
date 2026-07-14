@@ -2,14 +2,17 @@
 // `db`. Mirrors the inline subscriptions previously duplicated in the web
 // app's src/views/Directory.tsx and apps/mobile/src/lib/useMyDayData.ts.
 import {
+  addDoc,
   collection,
   collectionGroup,
   limit,
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
   type Firestore,
 } from "firebase/firestore";
+import { fullTimerOf, isTrainee } from "../walking";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
 
@@ -96,4 +99,76 @@ export function subscribeTouches(
     unsubInteractions();
     unsubComments();
   };
+}
+
+export interface NewContactInput {
+  name: string;
+  role: string;
+  location: string;
+  email: string;
+  phone: string;
+  stage: string;
+  tags: string[];
+  notes: string;
+  spiritualBackground: string;
+  initials: string;
+}
+
+export interface ContactNotifyPayload {
+  userId: string;
+  title: string;
+  message: string;
+  type: "success" | "assignment";
+  link?: string;
+  targetId: string;
+}
+
+/**
+ * Create a new contact (mirrors the web app's NewContactModal). `notify`, when
+ * given, is called once for the creator's own confirmation and — reusing the
+ * walking-together relationship — once more for the creator's full-timer when
+ * the creator is a trainee. Each app supplies its own notification write (e.g.
+ * mobile's sendNotification) so this module stays free of that side effect.
+ * Season-tag merging happens at the call site, not here.
+ */
+export async function addContact(
+  db: Firestore,
+  input: NewContactInput,
+  by: { uid?: string | null; name?: string | null },
+  notify?: (payload: ContactNotifyPayload) => void,
+): Promise<string> {
+  const docRef = await addDoc(collection(db, "contacts"), {
+    ...input,
+    lastSeen: "Just now",
+    createdAt: new Date().toISOString(),
+    serverCreatedAt: serverTimestamp(),
+    createdBy: by.uid ?? null,
+    createdByName: by.name ?? null,
+    hasNewActivity: true,
+    attendance: {},
+  });
+
+  if (notify && by.uid) {
+    notify({
+      userId: by.uid,
+      title: "Contact Created",
+      message: `Successfully added ${input.name} to your directory.`,
+      type: "success",
+      link: "/directory",
+      targetId: docRef.id,
+    });
+
+    const ft = isTrainee(by.uid) ? fullTimerOf(by.uid) : null;
+    if (ft) {
+      notify({
+        userId: ft,
+        title: `${(by.name || "Your trainee").split(" ")[0]} added ${input.name}`,
+        message: "A new person in your circle — take a look when you can.",
+        type: "assignment",
+        targetId: docRef.id,
+      });
+    }
+  }
+
+  return docRef.id;
 }

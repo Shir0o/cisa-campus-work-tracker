@@ -19,3 +19,4 @@ export * from './data/userPreferences';
 export * from './data/threads';
 export * from './data/contacts';
 export * from './data/activities';
+export * from './data/seasons';
