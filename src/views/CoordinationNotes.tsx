@@ -1676,10 +1676,7 @@ function DocEditor({
       return;
     }
 
-    const lines = rawText
-      .split('\n')
-      .map((l) => l.trim().replace(/^[\-\*\+]\s+/, '').replace(/^\d+\.\s+/, ''))
-      .filter(Boolean);
+    const lines = parseSelectionToTasks(rawText);
 
     const r = range.getBoundingClientRect();
     setFab({ text, lines, top: r.top, left: r.left + r.width / 2 });
@@ -2814,4 +2811,82 @@ function SuggestedTaskCard({
       </div>
     </div>
   );
+}
+
+interface HierarchicalParsedLine {
+  raw: string;
+  cleanText: string;
+  indent: number;
+  isParent: boolean;
+}
+
+function parseSelectionToTasks(rawText: string): string[] {
+  const lines = rawText.split('\n');
+  const parsedLines: HierarchicalParsedLine[] = [];
+
+  // 1. First pass: parse lines, compute indentation and clean text
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Base indentation from leading spaces/tabs
+    const rawIndent = line.match(/^[\s\t]*/)?.[0] || '';
+    let indent = 0;
+    for (const char of rawIndent) {
+      indent += char === '\t' ? 2 : 1;
+    }
+
+    // Conceptually list items are indented relative to plain text parent headers
+    const startsWithMarker = /^[\-\*\+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed);
+    if (startsWithMarker) {
+      indent += 2; // virtual indentation boost for list markers
+    }
+
+    const cleanText = trimmed
+      .replace(/^[\-\*\+]\s+/, '')
+      .replace(/^\d+\.\s+/, '')
+      .trim();
+
+    if (cleanText) {
+      parsedLines.push({
+        raw: line,
+        cleanText,
+        indent,
+        isParent: false
+      });
+    }
+  }
+
+  // 2. Second pass: mark lines that are followed by a line with strictly greater indentation as parents
+  for (let i = 0; i < parsedLines.length; i++) {
+    const current = parsedLines[i];
+    if (i < parsedLines.length - 1) {
+      const next = parsedLines[i + 1];
+      if (next.indent > current.indent) {
+        current.isParent = true;
+      }
+    }
+  }
+
+  // 3. Third pass: construct task names with hierarchical context
+  const result: string[] = [];
+  const parentStack: { text: string; indent: number }[] = [];
+
+  for (const item of parsedLines) {
+    // Pop parents that have greater or equal indentation than current item
+    while (parentStack.length > 0 && parentStack[parentStack.length - 1].indent >= item.indent) {
+      parentStack.pop();
+    }
+
+    const parentPrefix = parentStack.map(p => p.text).join(': ');
+    const fullTaskName = parentPrefix ? `${parentPrefix}: ${item.cleanText}` : item.cleanText;
+
+    if (item.isParent) {
+      parentStack.push({ text: item.cleanText, indent: item.indent });
+    } else {
+      result.push(fullTaskName);
+    }
+  }
+
+  return result;
 }
