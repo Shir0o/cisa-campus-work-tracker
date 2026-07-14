@@ -26,20 +26,20 @@ describe('DatePicker', () => {
     render(<DatePicker label="Event Date" value="" onChange={vi.fn()} />);
 
     expect(screen.getByText('Event Date')).toBeInTheDocument();
-    expect(screen.getByText('Select date')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Type a date (e.g. "Friday", "tomorrow")')).toBeInTheDocument();
   });
 
   it('renders correctly formatted date when a valid value is provided', () => {
     render(<DatePicker label="Birth Date" value="2026-06-15" onChange={vi.fn()} />);
 
-    expect(screen.getByText('Jun 15, 2026')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Jun 15, 2026')).toBeInTheDocument();
   });
 
   it('opens overlay calendar when clicking the picker button', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={vi.fn()} />);
 
     // Click trigger button
-    const triggerBtn = screen.getByRole('button', { name: 'Jun 15, 2026' });
+    const triggerBtn = screen.getByRole('button', { name: 'Toggle calendar picker' });
     fireEvent.click(triggerBtn);
 
     // Overlay elements should show
@@ -54,7 +54,7 @@ describe('DatePicker', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={handleChange} />);
 
     // Open picker
-    const triggerBtn = screen.getByRole('button', { name: 'Jun 15, 2026' });
+    const triggerBtn = screen.getByRole('button', { name: 'Toggle calendar picker' });
     fireEvent.click(triggerBtn);
 
     // Select the 20th of June
@@ -70,16 +70,13 @@ describe('DatePicker', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={vi.fn()} />);
 
     // Open picker
-    const triggerBtn = screen.getByRole('button', { name: 'Jun 15, 2026' });
+    const triggerBtn = screen.getByRole('button', { name: 'Toggle calendar picker' });
     fireEvent.click(triggerBtn);
 
     expect(screen.getByText('June')).toBeInTheDocument();
 
     // Find Prev Month button (first chevron button inside picker controls)
     const navButtons = screen.getAllByRole('button');
-    // The calendar controls header buttons are MMMM, yyyy, subMonth, addMonth.
-    // Let's filter buttons with svg inside or find them by order.
-    // In our render: MMMM button, yyyy button, prevMonth button, nextMonth button
     const prevMonthBtn = navButtons.find(btn => btn.innerHTML.includes('lucide-chevron-left'));
     const nextMonthBtn = navButtons.find(btn => btn.innerHTML.includes('lucide-chevron-right'));
 
@@ -100,7 +97,7 @@ describe('DatePicker', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={vi.fn()} />);
 
     // Open picker
-    fireEvent.click(screen.getByRole('button', { name: 'Jun 15, 2026' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
 
     // Click month label button to switch to month list view
     const monthViewBtn = screen.getByRole('button', { name: 'June' });
@@ -118,7 +115,7 @@ describe('DatePicker', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={vi.fn()} />);
 
     // Open picker
-    fireEvent.click(screen.getByRole('button', { name: 'Jun 15, 2026' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
 
     // Click year label button to switch to year list view
     const yearViewBtn = screen.getByRole('button', { name: '2026' });
@@ -136,7 +133,7 @@ describe('DatePicker', () => {
     render(<DatePicker label="Date" value="2026-06-15" onChange={vi.fn()} />);
 
     // Open picker
-    fireEvent.click(screen.getByRole('button', { name: 'Jun 15, 2026' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
     expect(screen.getByText('Mon, Jun 15')).toBeInTheDocument();
 
     // Click Cancel
@@ -155,7 +152,7 @@ describe('DatePicker', () => {
     );
 
     // Open picker
-    fireEvent.click(screen.getByRole('button', { name: 'Jun 15, 2026' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
     expect(screen.getByText('Mon, Jun 15')).toBeInTheDocument();
 
     // Click outside
@@ -163,5 +160,22 @@ describe('DatePicker', () => {
 
     // Overlay should close
     expect(screen.queryByText('Mon, Jun 15')).not.toBeInTheDocument();
+  });
+
+  it('allows smart parsing by typing a natural date', () => {
+    const handleChange = vi.fn();
+    render(<DatePicker label="Date" value="" onChange={handleChange} />);
+
+    const input = screen.getByPlaceholderText('Type a date (e.g. "Friday", "tomorrow")') as HTMLInputElement;
+    
+    // Type "tomorrow"
+    fireEvent.change(input, { target: { value: 'tomorrow' } });
+    
+    const expectedDate = new Date();
+    expectedDate.setDate(expectedDate.getDate() + 1);
+    const expectedStr = expectedDate.getFullYear() + '-' + String(expectedDate.getMonth() + 1).padStart(2, '0') + '-' + String(expectedDate.getDate()).padStart(2, '0');
+    
+    expect(handleChange).toHaveBeenCalledWith(expectedStr);
+    expect(screen.getByText(/Matches:/)).toBeInTheDocument();
   });
 });

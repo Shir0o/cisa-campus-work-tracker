@@ -503,7 +503,12 @@ function parseSmartDate(input: string, referenceDate: Date = new Date()): Date |
     }
   }
 
-  // Fallback to standard JS Date parsing
+  // Fallback to standard JS Date parsing, but avoid misinterpreting short numeric strings as epoch milliseconds.
+  const isNumericOnly = /^\d+$/.test(input);
+  if (isNumericOnly && input.length !== 4) {
+    return null;
+  }
+
   const fallback = new Date(input);
   if (!isNaN(fallback.getTime())) {
     return fallback;
