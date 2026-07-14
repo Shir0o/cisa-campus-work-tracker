@@ -29,6 +29,7 @@ function RootNavigator() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="history" />
       </Stack>
       {!user && <Redirect href="/login" />}
     </>
