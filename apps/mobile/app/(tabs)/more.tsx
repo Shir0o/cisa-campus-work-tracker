@@ -15,21 +15,18 @@ export default function More() {
   const { role } = useAuth();
   const router = useRouter();
   const rest = NAV_ITEMS.filter((n) => !TAB_HREFS.includes(n.href) && canAccessRoute(role, n.href));
+  // Only these destinations have a mobile screen to push to today; every
+  // other NAV_ITEMS entry is still a no-op until its screen is built.
+  const pushRoutes: Partial<Record<string, () => void>> = {
+    '/history': () => router.push('/history'),
+    '/answered': () => router.push('/answered'),
+  };
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         <AppText variant="title">More</AppText>
         {rest.map((n) => (
-          <Card
-            key={n.href}
-            onPress={
-              n.href === '/history'
-                ? () => router.push('/history')
-                : n.href === '/answered'
-                  ? () => router.push('/answered')
-                  : () => {}
-            }
-          >
+          <Card key={n.href} onPress={pushRoutes[n.href] ?? (() => {})}>
             <View style={{ gap: 2 }}>
               <AppText variant="heading">{n.label}</AppText>
               <AppText variant="caption" color={colors.onSurfaceVariant}>
