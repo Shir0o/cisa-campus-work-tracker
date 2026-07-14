@@ -14,10 +14,12 @@ const ANSWERED_TONE_MAP: Record<AnsweredTone, ToneKey> = {
   sage: 'teal',
 };
 
+// Matches the web app's AnsweredList.tsx formatDate fallback (an unparsable
+// value falls back to "Recently" rather than displaying the raw string).
 function formatShortDate(value?: string) {
   if (!value) return 'recently';
   const d = new Date(value);
-  if (isNaN(d.getTime())) return value;
+  if (isNaN(d.getTime())) return 'Recently';
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
