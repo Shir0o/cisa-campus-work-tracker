@@ -20,7 +20,16 @@ export default function More() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         <AppText variant="title">More</AppText>
         {rest.map((n) => (
-          <Card key={n.href} onPress={n.href === '/history' ? () => router.push('/history') : () => {}}>
+          <Card
+            key={n.href}
+            onPress={
+              n.href === '/history'
+                ? () => router.push('/history')
+                : n.href === '/answered'
+                  ? () => router.push('/answered')
+                  : () => {}
+            }
+          >
             <View style={{ gap: 2 }}>
               <AppText variant="heading">{n.label}</AppText>
               <AppText variant="caption" color={colors.onSurfaceVariant}>

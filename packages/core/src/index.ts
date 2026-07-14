@@ -10,6 +10,7 @@ export * from './myday';
 export * from './prayerThread';
 export * from './directory';
 export * from './history';
+export * from './answered';
 export * from './utils';
 export * from './data/todos';
 export * from './data/prayers';

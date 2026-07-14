@@ -59,7 +59,7 @@ resolves `@cisa/core` via a Metro alias + a tsconfig path. See
 npm run dev
 
 # Shared logic tests (the behavior oracle for the port)
-cd packages/core && npm install && npm test        # 54 tests
+cd packages/core && npm install && npm test        # 80 tests
 
 # Mobile app
 cd apps/mobile && npm install
@@ -230,7 +230,16 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       `views/answered.jsx` design-tool source, which has no mobile branch.
       First pushed (non-tab) route in the app — reached from "More",
       establishing the back-button pattern for future detail screens.
-- [ ] Answered
+- [x] ~~Answered~~ — done, verified live: `apps/mobile/app/answered.tsx` +
+      `src/components/answered/AnsweredTile.tsx`, backed by the existing
+      `subscribeAllPrayers`/`subscribeContacts` and a new unit-tested pure
+      `groupAnsweredPrayers`/`toneForAnsweredId` in `packages/core/src/answered.ts`.
+      Ported the shipped `src/views/AnsweredList.tsx` behavior (recent/earlier
+      grouping, "answered this year" stat, tone-hashed initial tile) rather
+      than the design tool's unbuilt photo-wall/featured-hero concept. A
+      single-column vertical stack, matching the design's own phone-width
+      collapse — no masonry needed. Pushed route reached from "More", same
+      pattern as History.
 - [ ] Quick add (new contact) — the design's People-header "Add someone"
       button; no mobile create-contact flow exists yet
 - [ ] Live Firestore data + the e2e test users (one per role)
@@ -289,16 +298,11 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    `app/_layout.tsx`'s `<Redirect>` took effect, hit `permission-denied`, and
    `handleFirestoreError` re-threw. Fixed by gating the team-data effect on
    `uid` and making `onLoadError` pass `{ rethrow: false }`.
-6. ~~Pick the next screen to port~~ — **Prayer, Directory (People), and
-   History ("Looking back") are now done** (see Phase 2 above). **Answered
-   is next** — a read-mostly screen that can reuse the Phase 1/2 data-layer
-   pattern, but unlike History it has no shipped mobile-native design yet
-   (its `views/answered.jsx` design-tool source has no `isMobile` branch and
-   depicts a photo-wall concept the real web app never built) — the mobile
-   layout will need to be adapted from the desktop masonry, which already
-   collapses to a single column at phone width. Quick add (People's "Add
-   someone") is also open — it needs a new mobile create-contact flow that
-   doesn't exist yet, unlike Answered which is a pure read.
+6. ~~Pick the next screen to port~~ — **Prayer, Directory (People), History
+   ("Looking back"), and Answered are now done** (see Phase 2 above). **Quick
+   add (People's "Add someone") is next** — it needs a new mobile
+   create-contact flow that doesn't exist yet, unlike the screens ported so
+   far which were all pure reads.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
