@@ -42,8 +42,8 @@ export default function History() {
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40, gap: spacing.lg }}>
         <View style={{ gap: 4 }}>
-          <AppText variant="label" color={colors.primary}>
-            {todayLong.toUpperCase()}
+          <AppText variant="label" color={colors.primary} style={{ textTransform: 'uppercase' }}>
+            {todayLong}
           </AppText>
           <AppText variant="title">Looking back</AppText>
           <AppText variant="body" color={colors.onSurfaceVariant}>
