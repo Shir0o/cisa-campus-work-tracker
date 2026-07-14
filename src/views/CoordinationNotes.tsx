@@ -223,11 +223,11 @@ const READONLY_MD: Components = {
   h3: ({ children }) => <h4 className="font-semibold text-on-surface mt-4 mb-1.5">{children}</h4>,
   p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{children}</p>,
   ul: ({ children, className }) => (
-    <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'list-disc pl-5')}>
+    <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'pl-5')}>
       {children}
     </ul>
   ),
-  ol: ({ children }) => <ol className="list-decimal pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
+  ol: ({ children }) => <ol className="pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
   li: ({ children, className }) => (
     <li className={cn('leading-relaxed', className?.includes('task-list-item') && 'list-none flex items-start gap-2')}>{children}</li>
   ),
@@ -292,7 +292,7 @@ function ReadOnlyDoc({
         {d.title}
       </h1>
 
-      <div className="px-5 lg:px-8 pb-10">
+      <div className="px-5 lg:px-8 pb-10 bdoc-prose-viewer">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
           {d.md || '_This page is empty._'}
         </ReactMarkdown>
@@ -1649,8 +1649,8 @@ function DocEditor({
 
   // Highlight → floating bubble menu over selection:
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [fab, setFab] = useState<{ text: string; top: number; left: number } | null>(null);
-  const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+  const [fab, setFab] = useState<{ text: string; lines: string[]; top: number; left: number } | null>(null);
+  const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string; lines?: string[] } | null>(null);
   const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
   const [assignMenuOpen, setAssignMenuOpen] = useState(false);
 
@@ -1669,18 +1669,26 @@ function DocEditor({
       setFab(null);
       return;
     }
-    const text = sel.toString().replace(/\s+/g, ' ').trim();
+    const rawText = sel.toString();
+    const text = rawText.replace(/\s+/g, ' ').trim();
     if (!text) {
       setFab(null);
       return;
     }
+
+    const lines = parseSelectionToTasks(rawText);
+
     const r = range.getBoundingClientRect();
-    setFab({ text, top: r.top, left: r.left + r.width / 2 });
+    setFab({ text, lines, top: r.top, left: r.left + r.width / 2 });
   };
 
   const openTodoFromFab = () => {
     if (!fab) return;
-    setTodoFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
+    setTodoFromSelection({
+      rect: { top: fab.top, left: fab.left },
+      text: fab.text,
+      lines: fab.lines.length > 1 ? fab.lines : undefined
+    });
     setFab(null);
   };
 
@@ -1692,7 +1700,7 @@ function DocEditor({
 
   const handleAssignDirectly = async (member: TeamMember) => {
     if (!fab) return;
-    const taskTitle = fab.text;
+    const lines = fab.lines;
     setFab(null);
     setAssignMenuOpen(false);
 
@@ -1700,16 +1708,31 @@ function DocEditor({
     if (sel) sel.removeAllRanges();
 
     try {
-      await addTodo(
-        {
-          title: taskTitle,
-          assigneeId: member.uid,
-          dueDate: null,
-          source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
-        },
-        { uid: meUid, name: meName }
-      );
-      onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+      if (lines.length > 1) {
+        for (const line of lines) {
+          await addTodo(
+            {
+              title: line,
+              assigneeId: member.uid,
+              dueDate: null,
+              source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
+            },
+            { uid: meUid, name: meName }
+          );
+        }
+        onToast(`Created ${lines.length} tasks assigned to ${member.name.split(' ')[0]}.`);
+      } else {
+        await addTodo(
+          {
+            title: fab.text,
+            assigneeId: member.uid,
+            dueDate: null,
+            source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
+          },
+          { uid: meUid, name: meName }
+        );
+        onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -2456,6 +2479,7 @@ function DocEditor({
           mode="create"
           anchorRect={todoFromSelection.rect}
           initial={{ text: todoFromSelection.text, assigneeId: null }}
+          initialTexts={todoFromSelection.lines}
           source={{ docId: d.id, docTitle: title || d.title || 'Untitled page' }}
           team={team}
           meUid={meUid}
@@ -2787,4 +2811,82 @@ function SuggestedTaskCard({
       </div>
     </div>
   );
+}
+
+interface HierarchicalParsedLine {
+  raw: string;
+  cleanText: string;
+  indent: number;
+  isParent: boolean;
+}
+
+function parseSelectionToTasks(rawText: string): string[] {
+  const lines = rawText.split('\n');
+  const parsedLines: HierarchicalParsedLine[] = [];
+
+  // 1. First pass: parse lines, compute indentation and clean text
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+
+    // Base indentation from leading spaces/tabs
+    const rawIndent = line.match(/^[\s\t]*/)?.[0] || '';
+    let indent = 0;
+    for (const char of rawIndent) {
+      indent += char === '\t' ? 2 : 1;
+    }
+
+    // Conceptually list items are indented relative to plain text parent headers
+    const startsWithMarker = /^[\-\*\+]\s+/.test(trimmed) || /^\d+\.\s+/.test(trimmed);
+    if (startsWithMarker) {
+      indent += 2; // virtual indentation boost for list markers
+    }
+
+    const cleanText = trimmed
+      .replace(/^[\-\*\+]\s+/, '')
+      .replace(/^\d+\.\s+/, '')
+      .trim();
+
+    if (cleanText) {
+      parsedLines.push({
+        raw: line,
+        cleanText,
+        indent,
+        isParent: false
+      });
+    }
+  }
+
+  // 2. Second pass: mark lines that are followed by a line with strictly greater indentation as parents
+  for (let i = 0; i < parsedLines.length; i++) {
+    const current = parsedLines[i];
+    if (i < parsedLines.length - 1) {
+      const next = parsedLines[i + 1];
+      if (next.indent > current.indent) {
+        current.isParent = true;
+      }
+    }
+  }
+
+  // 3. Third pass: construct task names with hierarchical context
+  const result: string[] = [];
+  const parentStack: { text: string; indent: number }[] = [];
+
+  for (const item of parsedLines) {
+    // Pop parents that have greater or equal indentation than current item
+    while (parentStack.length > 0 && parentStack[parentStack.length - 1].indent >= item.indent) {
+      parentStack.pop();
+    }
+
+    const parentPrefix = parentStack.map(p => p.text).join(': ');
+    const fullTaskName = parentPrefix ? `${parentPrefix}: ${item.cleanText}` : item.cleanText;
+
+    if (item.isParent) {
+      parentStack.push({ text: item.cleanText, indent: item.indent });
+    } else {
+      result.push(fullTaskName);
+    }
+  }
+
+  return result;
 }
