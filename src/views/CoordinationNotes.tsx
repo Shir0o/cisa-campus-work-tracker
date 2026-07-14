@@ -223,11 +223,11 @@ const READONLY_MD: Components = {
   h3: ({ children }) => <h4 className="font-semibold text-on-surface mt-4 mb-1.5">{children}</h4>,
   p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{children}</p>,
   ul: ({ children, className }) => (
-    <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'list-disc pl-5')}>
+    <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'pl-5')}>
       {children}
     </ul>
   ),
-  ol: ({ children }) => <ol className="list-decimal pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
+  ol: ({ children }) => <ol className="pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
   li: ({ children, className }) => (
     <li className={cn('leading-relaxed', className?.includes('task-list-item') && 'list-none flex items-start gap-2')}>{children}</li>
   ),
@@ -292,7 +292,7 @@ function ReadOnlyDoc({
         {d.title}
       </h1>
 
-      <div className="px-5 lg:px-8 pb-10">
+      <div className="px-5 lg:px-8 pb-10 bdoc-prose-viewer">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
           {d.md || '_This page is empty._'}
         </ReactMarkdown>

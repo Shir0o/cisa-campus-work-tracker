@@ -286,9 +286,47 @@
 .bdoc-prose h2 { font-family: var(--font-serif); font-size: 21px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.25; margin: 26px 0 8px; }
 .bdoc-prose h3 { font-family: var(--font-serif); font-size: 17px; font-weight: 600; margin: 20px 0 6px; }
 .bdoc-prose p { margin: 0 0 12px; text-wrap: pretty; }
-.bdoc-prose ul, .bdoc-prose ol { margin: 0 0 14px; padding-left: 24px; }
-.bdoc-prose li { margin: 4px 0; }
-.bdoc-prose li > p { margin: 0; }
+.bdoc-prose ul, .bdoc-prose ol,
+.bdoc-prose-viewer ul, .bdoc-prose-viewer ol {
+  margin: 0 0 14px;
+  padding-left: 24px;
+}
+.bdoc-prose li,
+.bdoc-prose-viewer li {
+  margin: 4px 0;
+}
+.bdoc-prose li > p,
+.bdoc-prose-viewer li > p {
+  margin: 0;
+}
+
+/* Bullet list markers (all levels) */
+.bdoc-prose ul,
+.bdoc-prose-viewer ul {
+  list-style-type: disc;
+}
+.bdoc-prose ul ul,
+.bdoc-prose-viewer ul ul {
+  list-style-type: circle;
+}
+.bdoc-prose ul ul ul,
+.bdoc-prose-viewer ul ul ul {
+  list-style-type: square;
+}
+
+/* Numbered list markers (all levels: 1, a, i, etc.) */
+.bdoc-prose ol,
+.bdoc-prose-viewer ol {
+  list-style-type: decimal;
+}
+.bdoc-prose ol ol,
+.bdoc-prose-viewer ol ol {
+  list-style-type: lower-alpha;
+}
+.bdoc-prose ol ol ol,
+.bdoc-prose-viewer ol ol ol {
+  list-style-type: lower-roman;
+}
 .bdoc-prose a { color: var(--stage-accent); text-decoration: underline; text-underline-offset: 2px; }
 .bdoc-prose code { font-family: var(--font-code); font-size: 0.86em; background: var(--surface-variant); border: 1px solid var(--outline-variant); border-radius: 5px; padding: 1px 5px; }
 .bdoc-prose pre { background: var(--surface-variant); border: 1px solid var(--outline-variant); border-radius: 10px; padding: 12px 14px; margin: 0 0 14px; overflow-x: auto; }

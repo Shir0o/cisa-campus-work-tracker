@@ -67,6 +67,27 @@ export default function TodoComposer({
     return () => clearTimeout(t);
   }, []);
 
+  // Lock scroll on the background page while the composer is open,
+  // preventing mouse-wheel scrolling from scrolling behind the card.
+  useEffect(() => {
+    const preventScroll = (e: WheelEvent | TouchEvent) => {
+      const target = e.target as HTMLElement;
+      // Allow scrolling inside the TodoComposer popup card (e.g. text area, assignee, date picker calendar)
+      if (cardRef.current && cardRef.current.contains(target)) {
+        return;
+      }
+      e.preventDefault();
+    };
+
+    window.addEventListener("wheel", preventScroll, { passive: false });
+    window.addEventListener("touchmove", preventScroll, { passive: false });
+
+    return () => {
+      window.removeEventListener("wheel", preventScroll);
+      window.removeEventListener("touchmove", preventScroll);
+    };
+  }, []);
+
   // Anchor below the selection, clamped to the viewport (flips above if it would
   // overflow the bottom). No anchor → centered.
   useLayoutEffect(() => {
