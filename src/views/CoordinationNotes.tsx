@@ -1649,8 +1649,8 @@ function DocEditor({
 
   // Highlight → floating bubble menu over selection:
   const canvasRef = useRef<HTMLDivElement>(null);
-  const [fab, setFab] = useState<{ text: string; top: number; left: number } | null>(null);
-  const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+  const [fab, setFab] = useState<{ text: string; lines: string[]; top: number; left: number } | null>(null);
+  const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string; lines?: string[] } | null>(null);
   const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
   const [assignMenuOpen, setAssignMenuOpen] = useState(false);
 
@@ -1669,18 +1669,29 @@ function DocEditor({
       setFab(null);
       return;
     }
-    const text = sel.toString().replace(/\s+/g, ' ').trim();
+    const rawText = sel.toString();
+    const text = rawText.replace(/\s+/g, ' ').trim();
     if (!text) {
       setFab(null);
       return;
     }
+
+    const lines = rawText
+      .split('\n')
+      .map((l) => l.trim().replace(/^[\-\*\+]\s+/, '').replace(/^\d+\.\s+/, ''))
+      .filter(Boolean);
+
     const r = range.getBoundingClientRect();
-    setFab({ text, top: r.top, left: r.left + r.width / 2 });
+    setFab({ text, lines, top: r.top, left: r.left + r.width / 2 });
   };
 
   const openTodoFromFab = () => {
     if (!fab) return;
-    setTodoFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
+    setTodoFromSelection({
+      rect: { top: fab.top, left: fab.left },
+      text: fab.text,
+      lines: fab.lines.length > 1 ? fab.lines : undefined
+    });
     setFab(null);
   };
 
@@ -1692,7 +1703,7 @@ function DocEditor({
 
   const handleAssignDirectly = async (member: TeamMember) => {
     if (!fab) return;
-    const taskTitle = fab.text;
+    const lines = fab.lines;
     setFab(null);
     setAssignMenuOpen(false);
 
@@ -1700,16 +1711,31 @@ function DocEditor({
     if (sel) sel.removeAllRanges();
 
     try {
-      await addTodo(
-        {
-          title: taskTitle,
-          assigneeId: member.uid,
-          dueDate: null,
-          source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
-        },
-        { uid: meUid, name: meName }
-      );
-      onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+      if (lines.length > 1) {
+        for (const line of lines) {
+          await addTodo(
+            {
+              title: line,
+              assigneeId: member.uid,
+              dueDate: null,
+              source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
+            },
+            { uid: meUid, name: meName }
+          );
+        }
+        onToast(`Created ${lines.length} tasks assigned to ${member.name.split(' ')[0]}.`);
+      } else {
+        await addTodo(
+          {
+            title: fab.text,
+            assigneeId: member.uid,
+            dueDate: null,
+            source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
+          },
+          { uid: meUid, name: meName }
+        );
+        onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -2456,6 +2482,7 @@ function DocEditor({
           mode="create"
           anchorRect={todoFromSelection.rect}
           initial={{ text: todoFromSelection.text, assigneeId: null }}
+          initialTexts={todoFromSelection.lines}
           source={{ docId: d.id, docTitle: title || d.title || 'Untitled page' }}
           team={team}
           meUid={meUid}

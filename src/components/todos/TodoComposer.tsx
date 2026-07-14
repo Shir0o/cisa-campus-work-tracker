@@ -31,6 +31,7 @@ export default function TodoComposer({
   mode,
   anchorRect,
   initial,
+  initialTexts,
   source,
   team,
   meUid,
@@ -41,6 +42,7 @@ export default function TodoComposer({
   mode: "create" | "edit";
   anchorRect?: { top: number; left: number } | null;
   initial?: TodoComposerInitial;
+  initialTexts?: string[];
   source?: { docId: string; docTitle: string } | null;
   team: TodoPerson[];
   meUid: string;
@@ -48,7 +50,9 @@ export default function TodoComposer({
   onClose: () => void;
   onSaved?: (message: string) => void;
 }) {
-  const [text, setText] = useState(initial?.text ?? "");
+  const [texts, setTexts] = useState<string[]>(() =>
+    initialTexts && initialTexts.length > 0 ? initialTexts : [initial?.text ?? ""],
+  );
   const [assigneeId, setAssigneeId] = useState<string | null>(initial?.assigneeId ?? null);
   const [dueKey, setDueKey] = useState<DuePresetKey>(() =>
     initial?.dueDate !== undefined ? presetForDue(initial?.dueDate) : "week",
@@ -63,9 +67,11 @@ export default function TodoComposer({
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
 
   useEffect(() => {
-    const t = setTimeout(() => taRef.current?.focus(), 30);
-    return () => clearTimeout(t);
-  }, []);
+    if (texts.length <= 1) {
+      const t = setTimeout(() => taRef.current?.focus(), 30);
+      return () => clearTimeout(t);
+    }
+  }, [texts.length]);
 
   // Lock scroll on the background page while the composer is open,
   // preventing mouse-wheel scrolling from scrolling behind the card.
@@ -107,31 +113,37 @@ export default function TodoComposer({
     return preset ? duePresetToISO(preset.days) : null;
   };
 
-  const canSave = text.trim().length > 0 && !!assigneeId && !saving;
+  const canSave = texts.some((t) => t.trim().length > 0) && !!assigneeId && !saving;
 
   const commit = async () => {
-    if (!canSave) return;
+    const validTexts = texts.map((t) => t.trim()).filter(Boolean);
+    if (validTexts.length === 0 || !assigneeId || saving) return;
     setSaving(true);
     const due = resolvedDue();
     const who = team.find((m) => m.uid === assigneeId);
     const first = who ? who.name.split(" ")[0] : "the team";
     try {
       if (mode === "edit" && initial?.id) {
-        await updateTodo(initial.id, { title: text, assigneeId, dueDate: due });
+        await updateTodo(initial.id, { title: validTexts[0], assigneeId, dueDate: due });
         onSaved?.("To-do updated.");
       } else {
-        await addTodo({ title: text, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
-        // Let the assignee know it's now on their day (the global Toaster surfaces it).
-        if (assigneeId && assigneeId !== meUid) {
-          void sendNotification({
-            userId: assigneeId,
-            title: "New to-do",
-            message: `${meName.split(" ")[0]} assigned you: ${text.trim().slice(0, 400)}`,
-            type: "assignment",
-            link: "/",
-          });
+        for (const valText of validTexts) {
+          await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
+          // Let the assignee know it's now on their day (the global Toaster surfaces it).
+          if (assigneeId && assigneeId !== meUid) {
+            void sendNotification({
+              userId: assigneeId,
+              title: "New to-do",
+              message: `${meName.split(" ")[0]} assigned you: ${valText.slice(0, 400)}`,
+              type: "assignment",
+              link: "/",
+            });
+          }
         }
-        onSaved?.(assigneeId === meUid ? "Added to your day." : `Sent to ${first} — it's on their day now.`);
+        const msg = validTexts.length > 1
+          ? `Created ${validTexts.length} tasks for ${assigneeId === meUid ? "yourself" : first}.`
+          : (assigneeId === meUid ? "Added to your day." : `Sent to ${first} — it's on their day now.`);
+        onSaved?.(msg);
       }
       onClose();
     } catch {
@@ -179,7 +191,7 @@ export default function TodoComposer({
       >
         <div className="flex items-center justify-between mb-2.5">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase text-on-surface-variant">
-            <CheckSquare className="w-3.5 h-3.5" /> {mode === "edit" ? "Edit to-do" : "New to-do"}
+            <CheckSquare className="w-3.5 h-3.5" /> {mode === "edit" ? "Edit to-do" : (texts.length > 1 ? `New to-dos (${texts.length})` : "New to-do")}
           </span>
           <button
             onClick={onClose}
@@ -191,15 +203,35 @@ export default function TodoComposer({
           </button>
         </div>
 
-        <textarea
-          ref={taRef}
-          value={text}
-          rows={2}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="What needs doing?"
-          spellCheck={false}
-          className="w-full resize-none rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
-        />
+        {texts.length > 1 ? (
+          <div className="max-h-[140px] overflow-y-auto space-y-2 custom-scrollbar pr-1">
+            {texts.map((t, idx) => (
+              <input
+                key={idx}
+                type="text"
+                value={t}
+                autoFocus={idx === 0}
+                onChange={(e) => {
+                  const copy = [...texts];
+                  copy[idx] = e.target.value;
+                  setTexts(copy);
+                }}
+                placeholder={`Task ${idx + 1}`}
+                className="w-full h-9 rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
+              />
+            ))}
+          </div>
+        ) : (
+          <textarea
+            ref={taRef}
+            value={texts[0] || ""}
+            rows={2}
+            onChange={(e) => setTexts([e.target.value])}
+            placeholder="What needs doing?"
+            spellCheck={false}
+            className="w-full resize-none rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
+          />
+        )}
 
         <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 mt-3 mb-1.5">
           Assign to
@@ -284,7 +316,7 @@ export default function TodoComposer({
               disabled={!canSave}
               className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
-              <Check className="w-3.5 h-3.5" /> {mode === "edit" ? "Save" : "Add to-do"}
+              <Check className="w-3.5 h-3.5" /> {mode === "edit" ? "Save" : (texts.length > 1 ? "Add to-dos" : "Add to-do")}
             </button>
           </div>
         </div>
