@@ -20,6 +20,7 @@ export default function More() {
   const pushRoutes: Partial<Record<string, () => void>> = {
     '/history': () => router.push('/history'),
     '/answered': () => router.push('/answered'),
+    '/attendance': () => router.push('/attendance'),
   };
   return (
     <Screen>

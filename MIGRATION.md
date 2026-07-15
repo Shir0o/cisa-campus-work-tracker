@@ -292,8 +292,28 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 
 ### 🔲 Phase 3 — Medium screens
 - [x] ~~My Day cockpit~~ — done, see above.
-- [ ] Gatherings/Attendance, Settings, SignUp (phone verify), Feedback,
-      Notifications, Global search, Quick add
+- [x] ~~Gatherings/Attendance~~ — done, verified live: `apps/mobile/app/attendance.tsx`
+      + `src/components/attendance/` (`GatheringHero`, `MissedList`,
+      `GatheringTypeFilterPills`, `SessionCard`, `RosterSheet`,
+      `UpcomingGatherings`), backed by new `packages/core/src/attendance.ts`
+      (pure, unit-tested `here`/`cycleAttendanceStatus`/`sessionsNewestFirst`/
+      `whoWeMissed`/`avgAttendance`, ported from `src/views/Attendance.tsx`),
+      `data/attendance.ts`, `data/events.ts`, `data/gatheringTypes.ts`, and a
+      new `subscribeEventRsvps` on the existing `data/rsvp.ts`. Faithfully
+      ported the shipped `src/views/AttendanceMobile.tsx` mobile-native
+      design. Fixed the dead `/attendance` link from the Student/Community
+      landings' "Full calendar" button and from "More". Full read + RSVP +
+      roster attendance-taking (tap to mark present/late/absent), gated
+      client-side to Student role and above — the web UI exposes the tap
+      targets to every role that can reach the screen, but Firestore rules
+      require operator+ to write `contacts.attendance`, so a Community
+      (viewer) tap would silently fail; the mobile port shows a read-only
+      roster to viewers instead. Deferred: "Log a gathering", edit/delete a
+      gathering, "Manage kinds", "Sync sheet", CSV export — all admin-only
+      desktop tooling with complex forms (event recurrence generation,
+      Google Sheets sync).
+- [ ] Settings, SignUp (phone verify), Feedback, Notifications, Global
+      search, Quick add
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
@@ -349,13 +369,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    dispatcher (LandingTrainee / LandingStudent / LandingCommunity) are now
    done** — **Phase 2 is complete.** Every mobile role now gets its own tailored
    Home screen, verified live against all four e2e role users.
-7. **Pick a Phase 3 screen next** — Gatherings/Attendance, Settings, SignUp
-   (phone verify), Feedback, Notifications, and Global search are all still
-   open (see Phase 3 above). Attendance is a natural next pick: both new
-   landings (Student, Community) already link to it ("Full calendar") but the
-   route doesn't exist on mobile yet. Alternatively, tackle a Phase 0.5 spike
-   (WebView editor or Google Sign-In) if the user wants one of those next —
-   see the re-sequencing note below.
+7. ~~Pick a Phase 3 screen next~~ — **Gatherings/Attendance is now done**,
+   fixing the Student/Community landings' previously-dead "Full calendar"
+   link. Settings, SignUp (phone verify), Feedback, Notifications, and Global
+   search are all still open (see Phase 3 above). Alternatively, tackle a
+   Phase 0.5 spike (WebView editor or Google Sign-In) if the user wants one of
+   those next — see the re-sequencing note below.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

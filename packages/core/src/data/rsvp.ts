@@ -2,6 +2,7 @@
 // Mirrors the web app's src/lib/rsvp.ts (the pure Rsvp type + selection logic
 // live in ../rsvp).
 import {
+  collection,
   collectionGroup,
   deleteDoc,
   doc,
@@ -12,6 +13,7 @@ import {
   where,
   type Firestore,
 } from "firebase/firestore";
+import type { Rsvp } from "../rsvp";
 
 const rsvpRef = (db: Firestore, eventId: string, uid: string) =>
   doc(db, "events", eventId, "rsvps", uid);
@@ -33,6 +35,20 @@ export async function setRsvp(
   } else {
     await deleteDoc(rsvpRef(db, eventId, user.uid));
   }
+}
+
+/** All RSVPs for one event (for the staff "who's coming" count). */
+export function subscribeEventRsvps(
+  db: Firestore,
+  eventId: string,
+  cb: (rsvps: Rsvp[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    collection(db, "events", eventId, "rsvps"),
+    (snap) => cb(snap.docs.map((d) => d.data() as Rsvp)),
+    (e) => (onError ? onError(e) : console.error("event rsvps subscription error", e)),
+  );
 }
 
 /** The set of event ids the current user has RSVP'd "going" to — a single

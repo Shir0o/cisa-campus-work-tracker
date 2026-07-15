@@ -1,7 +1,16 @@
 // Event RSVP reads/writes — thin mobile wrapper around the shared @cisa/core
 // logic (behind an injected `db`).
 import * as core from '@cisa/core';
+import type { Rsvp } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from '../firebase';
+
+export function subscribeEventRsvps(
+  eventId: string,
+  cb: (rsvps: Rsvp[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeEventRsvps(db, eventId, cb, onError);
+}
 
 export function subscribeMyRsvps(
   uid: string,
