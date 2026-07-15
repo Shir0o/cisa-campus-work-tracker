@@ -406,7 +406,7 @@ describe('History View', () => {
 
   it('humanize: "updated attendance for event" shows noted who gathered at', async () => {
     renderWithActivity({
-      action: 'updated attendance for event Sunday Service',
+      action: 'updated attendance for "Sunday Service" to Present for',
       description: '',
     });
     await waitFor(() => {

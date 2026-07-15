@@ -142,7 +142,7 @@ export const humanize = (a: Hist): Humanized => {
       showTarget: true,
     };
   }
-  if (act.startsWith("updated attendance for event")) {
+  if (act.startsWith('updated attendance for "') && act.includes('" to ')) {
     return { bucket: "gather", lead: "noted who gathered at", showTarget: true };
   }
   if (act.startsWith("submitted feedback")) {

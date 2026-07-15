@@ -76,7 +76,7 @@ describe('humanize', () => {
   });
 
   it('reads gathering attendance and feedback', () => {
-    expect(humanize(activity({ action: 'Updated attendance for event Sunday gathering' }))).toMatchObject({
+    expect(humanize(activity({ action: 'Updated attendance for "Sunday gathering" to Present for' }))).toMatchObject({
       bucket: 'gather',
       lead: 'noted who gathered at',
     });
