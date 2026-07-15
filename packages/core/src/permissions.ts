@@ -75,3 +75,14 @@ export function defaultRouteForRole(role: AppRole | string | null): string {
   if (hasMinRole(role, 'viewer')) return '/';
   return '/attendance';
 }
+
+// Which Home-tab landing a role sees. Mirrors web's `Landing.tsx` dispatcher:
+// admin (Full-timer) and any unrecognized/null role fall through to My Day.
+export type LandingKind = 'myday' | 'trainee' | 'student' | 'community';
+
+export function pickLandingForRole(role: AppRole | string | null): LandingKind {
+  if (role === 'manager') return 'trainee';
+  if (role === 'operator') return 'student';
+  if (role === 'viewer') return 'community';
+  return 'myday';
+}
