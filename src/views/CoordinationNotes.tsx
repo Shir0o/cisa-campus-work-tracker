@@ -157,8 +157,13 @@ const editorMarkdown = (ed: Editor): string => (ed.storage as unknown as Markdow
 
 function renumberMarkdownLists(text: string): string {
   const lines = text.split('\n');
+  const processed = new Set<number>();
   let i = 0;
   while (i < lines.length) {
+    if (processed.has(i)) {
+      i++;
+      continue;
+    }
     const line = lines[i];
     const match = line.match(/^(\s*)(\d+)\.(\s+)(.*)$/);
     if (match) {
@@ -171,6 +176,7 @@ function renumberMarkdownLists(text: string): string {
         if (nextMatch) {
           if (nextMatch[1] === indent) {
             listIndices.push(j);
+            processed.add(j);
             j++;
             continue;
           }
@@ -2152,7 +2158,7 @@ function DocEditor({
         if (currentLine.startsWith('  ')) {
           const newVal = val.substring(0, lineStartIdx) + currentLine.substring(2) + val.substring(start);
           const renumbered = renumberMarkdownLists(newVal);
-          setMarkdownSource(rennumbered);
+          setMarkdownSource(renumbered);
           
           if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
           markdownSyncTimer.current = setTimeout(() => {
@@ -2177,7 +2183,7 @@ function DocEditor({
       const insert = '\n' + indent;
       const newVal = val.substring(0, start) + insert + val.substring(end);
       const renumbered = renumberMarkdownLists(newVal);
-      setMarkdownSource(rennumbered);
+      setMarkdownSource(renumbered);
       
       if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
       markdownSyncTimer.current = setTimeout(() => {
