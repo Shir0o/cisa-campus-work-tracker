@@ -272,6 +272,42 @@ describe('Settings', () => {
         expect(screen.getByText('No teammates or invites match your search.')).toBeInTheDocument();
       });
     });
+
+    it('filters out cisa-* test accounts from the teammates list', async () => {
+      const mockUsersWithTest = [
+        ...mockUsers,
+        {
+          id: 'u-cisa',
+          data: () => ({
+            uid: 'u-cisa',
+            email: 'cisa-test@example.com',
+            displayName: 'cisa-test-account',
+            approved: true,
+            role: 'viewer',
+            photoURL: null,
+          }),
+        },
+      ];
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'users') {
+          callback({ docs: mockUsersWithTest });
+        } else if (ref?.path === 'invitations') {
+          callback({ docs: mockInvitations });
+        } else {
+          callback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText('cisa-test-account')).not.toBeInTheDocument();
+    });
   });
 
   // ── 6. Invite flow ──

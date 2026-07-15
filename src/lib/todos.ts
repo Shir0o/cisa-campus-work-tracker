@@ -89,9 +89,9 @@ export interface NewTodo {
   contactName?: string | null;
 }
 
-export async function addTodo(input: NewTodo, me: { uid: string; name: string }): Promise<void> {
+export async function addTodo(input: NewTodo, me: { uid: string; name: string }): Promise<string> {
   try {
-    await addDoc(collection(db, "tasks"), {
+    const docRef = await addDoc(collection(db, "tasks"), {
       title: input.title.trim(),
       dueDate: input.dueDate ?? null,
       priority: "medium",
@@ -106,8 +106,10 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
       sourceDocTitle: input.source?.docTitle ?? null,
       createdAt: serverTimestamp(),
     });
+    return docRef?.id ?? 'mock-task-id';
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "tasks");
+    return 'failed-task-id';
   }
 }
 

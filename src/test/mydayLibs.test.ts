@@ -131,6 +131,14 @@ describe('prayers.updatePrayerStatus', () => {
     await updatePrayerStatus('p1', 'ongoing', {});
     expect(handleFirestoreError).toHaveBeenCalled();
   });
+
+  it('includes answer and answeredAt when provided', async () => {
+    await updatePrayerStatus('p1', 'answered', { uid: 'u1', name: 'Tony' }, 'God answered!', '2026-07-15');
+    expect(updateDoc).toHaveBeenCalledWith(
+      { path: 'prayers/p1' },
+      expect.objectContaining({ status: 'answered', answer: 'God answered!', answeredAt: '2026-07-15' }),
+    );
+  });
 });
 
 describe('messaging.openMessage', () => {

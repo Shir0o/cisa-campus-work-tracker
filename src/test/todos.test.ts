@@ -167,6 +167,17 @@ describe('todos.ts', () => {
       );
       expect(handleFirestoreError).toHaveBeenCalled();
     });
+
+    it('falls back to null when uid or name are empty strings', async () => {
+      await addTodo(
+        { title: 'Task', assigneeId: null, dueDate: null },
+        { uid: '', name: '' },
+      );
+      expect(mockAddDoc).toHaveBeenCalledWith('col:tasks', expect.objectContaining({
+        createdById: null,
+        createdByName: null,
+      }));
+    });
   });
 
   describe('updateTodo', () => {

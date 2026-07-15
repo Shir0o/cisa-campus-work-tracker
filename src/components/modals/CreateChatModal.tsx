@@ -45,8 +45,11 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
         const usersList: AppUser[] = [];
         snapshot.forEach((doc) => {
           const u = doc.data() as AppUser;
-          // Exclude current user
-          if (doc.id !== currentUser.uid && u.approved) {
+          // Exclude current user and test accounts
+          const email = (u.email || '').toLowerCase();
+          const displayName = (u.displayName || '').toLowerCase();
+          const isTest = email.startsWith('cisa-') || displayName.startsWith('cisa-');
+          if (doc.id !== currentUser.uid && u.approved && !isTest) {
             usersList.push({ uid: doc.id, ...u });
           }
         });

@@ -5,6 +5,7 @@ import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, wher
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
+import { logActivity } from '../lib/firebase';
 
 // ── Auth mock ────────────────────────────────────────────────────────────────
 vi.mock('../components/AuthProvider', () => ({
@@ -1243,6 +1244,24 @@ describe('CoordinationNotes', () => {
       expect(await screen.findByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Another suggestion to dismiss')).toBeInTheDocument();
 
+      // Interact with When date input
+      const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
+      if (dateInput) {
+        fireEvent.change(dateInput, { target: { value: '2026-07-20' } });
+      }
+
+      // Interact with Contact select
+      const contactSelects = screen.getAllByRole('combobox');
+      if (contactSelects.length > 0) {
+        fireEvent.change(contactSelects[0], { target: { value: 'c-beatriz' } });
+      }
+
+      // Interact with Priority button
+      const highBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'high');
+      if (highBtn) {
+        fireEvent.click(highBtn);
+      }
+
       // Find the first Add Task button and click it
       const addBtns = await screen.findAllByRole('button', { name: /Add Task/i });
       fireEvent.click(addBtns[0]);
@@ -1586,6 +1605,74 @@ describe('CoordinationNotes', () => {
 
       expect(screen.getByText(/all clear/i)).toBeInTheDocument();
     });
+
+    it('handles toggling a to-do status and logs activity', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      // Find the checkbox button for "Call the venue" todo
+      const checkbox = screen.getAllByTitle('Mark done')[0];
+      fireEvent.click(checkbox);
+
+      // Verify updateDoc is called
+      expect(updateDoc).toHaveBeenCalled();
+      // Verify logActivity is called
+      await waitFor(() => {
+        expect(logActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'completed task',
+            targetName: 'Call the venue',
+          })
+        );
+      });
+    });
+
+    it('handles deleting a to-do and logs activity', async () => {
+      // Stub window.confirm to return true
+      const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      // Find the delete button for "Call the venue"
+      const deleteBtn = screen.getAllByTitle('Delete to-do')[0];
+      fireEvent.click(deleteBtn);
+
+      expect(deleteDoc).toHaveBeenCalled();
+      await waitFor(() => {
+        expect(logActivity).toHaveBeenCalledWith(
+          expect.objectContaining({
+            action: 'deleted task',
+            targetName: 'Call the venue',
+          })
+        );
+      });
+
+      confirmSpy.mockRestore();
+    });
+
+    it('filters out cisa-* test accounts from the team list', () => {
+      const teamWithTestUser = [
+        ...mockTeam,
+        {
+          id: 'u-test-cisa',
+          data: () => ({
+            uid: 'u-test-cisa',
+            displayName: 'cisa-test-account',
+            email: 'cisa-test@example.com',
+            approved: true,
+            role: 'viewer',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: [], team: teamWithTestUser, tasks: mockTasks });
+      render(<CoordinationNotes />);
+
+      // Verify the normal team members are present
+      expect(screen.getByText('Tony')).toBeInTheDocument();
+      // Verify cisa-* test user is NOT in the document
+      expect(screen.queryByText('cisa-test-account')).not.toBeInTheDocument();
+    });
   });
 
   // ── 7. Selection popover menu & NoteComposer ──────────────────────────────
@@ -1692,6 +1779,41 @@ describe('CoordinationNotes', () => {
           })
         );
       });
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('parses selection task list hierarchy correctly', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Parent Task\n  - Sub Task A\n  - Sub Task B\nParent Task 2\n  Sub Task C',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Verify bubble menu shows Todo
+      const todoBtn = await screen.findByText('Todo');
+      expect(todoBtn).toBeInTheDocument();
+      fireEvent.click(todoBtn);
+
+      // Verify that TodoComposer popover opens and parses the 3 tasks
+      expect(await screen.findByText('New to-dos (3)')).toBeInTheDocument();
 
       getSelectionSpy.mockRestore();
     });

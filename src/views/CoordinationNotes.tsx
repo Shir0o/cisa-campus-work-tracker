@@ -59,10 +59,12 @@ import {
   Lock,
   Globe,
   RotateCw,
+  Link2,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Collaboration } from '@tiptap/extension-collaboration';
 import { CollaborationCaret } from '@tiptap/extension-collaboration-caret';
@@ -273,13 +275,103 @@ function AudiencePicker({ audience, onChange }: { audience: Audience; onChange: 
   );
 }
 
+const CustomTab = Extension.create({
+  name: 'customTab',
+  addKeyboardShortcuts() {
+    return {
+      Tab: ({ editor }) => {
+        if (editor.isActive('listItem') || editor.isActive('taskItem') || editor.isActive('table')) {
+          return false;
+        }
+        return editor.commands.insertContent('  ');
+      },
+      'Shift-Tab': ({ editor }) => {
+        if (editor.isActive('listItem') || editor.isActive('taskItem') || editor.isActive('table')) {
+          return false;
+        }
+        const { state } = editor;
+        const { selection } = state;
+        if (!selection.empty) return false;
+        const pos = selection.from;
+        const resolvedPos = state.doc.resolve(pos);
+        const textBefore = resolvedPos.parent.textContent.slice(
+          Math.max(0, resolvedPos.parentOffset - 2),
+          resolvedPos.parentOffset
+        );
+        if (textBefore === '  ') {
+          return editor.commands.deleteRange({ from: pos - 2, to: pos });
+        } else if (textBefore.endsWith(' ')) {
+          return editor.commands.deleteRange({ from: pos - 1, to: pos });
+        }
+        return false;
+      },
+    };
+  },
+});
+
+// Helper functions for heading anchor tags
+const slugify = (text: string): string => {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
+    .replace(/\-\-+/g, '-'); // Replace multiple - with single -
+};
+
+const getHeadingText = (node: React.ReactNode): string => {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(getHeadingText).join('');
+  if (React.isValidElement(node)) return getHeadingText((node.props as any).children);
+  return '';
+};
+
+const HeadingWithAnchor = ({
+  level,
+  className,
+  children,
+}: {
+  level: 2 | 3 | 4;
+  className: string;
+  children: React.ReactNode;
+}) => {
+  const text = getHeadingText(children);
+  const id = slugify(text);
+  const Tag = level === 2 ? 'h2' : level === 3 ? 'h3' : 'h4';
+
+  return (
+    <Tag id={id} className={cn('group flex items-center gap-2 scroll-mt-20', className)}>
+      <span>{children}</span>
+      {id && (
+        <a
+          href={`#${id}`}
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.hash = id;
+            const el = document.getElementById(id);
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }}
+          className="opacity-0 group-hover:opacity-100 transition-opacity text-stage-accent hover:text-stage-accent-hover inline-flex items-center"
+          title="Link to this section"
+          aria-label="Link to this section"
+        >
+          <Link2 className="w-4 h-4" />
+        </a>
+      )}
+    </Tag>
+  );
+};
+
 // ── Read-only page render for non-editors (Trainees + Students) ───────────────
 // No TipTap/Yjs — just the durable markdown rendered with react-markdown so a
 // viewer never loads collaborative editing or writes presence.
 const READONLY_MD: Components = {
-  h1: ({ children }) => <h2 className="font-serif text-2xl text-on-surface mt-6 mb-2 first:mt-0">{children}</h2>,
-  h2: ({ children }) => <h3 className="font-serif text-xl text-on-surface mt-5 mb-2">{children}</h3>,
-  h3: ({ children }) => <h4 className="font-semibold text-on-surface mt-4 mb-1.5">{children}</h4>,
+  h1: ({ children }) => <HeadingWithAnchor level={2} className="font-serif text-2xl text-on-surface mt-6 mb-2 first:mt-0">{children}</HeadingWithAnchor>,
+  h2: ({ children }) => <HeadingWithAnchor level={3} className="font-serif text-xl text-on-surface mt-5 mb-2">{children}</HeadingWithAnchor>,
+  h3: ({ children }) => <HeadingWithAnchor level={4} className="font-semibold text-on-surface mt-4 mb-1.5">{children}</HeadingWithAnchor>,
   p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{children}</p>,
   ul: ({ children, className }) => (
     <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'pl-5')}>
@@ -351,7 +443,7 @@ function ReadOnlyDoc({
         {d.title}
       </h1>
 
-      <div className="px-5 lg:px-8 pb-10 bdoc-prose-viewer">
+      <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
           {d.md || '_This page is empty._'}
         </ReactMarkdown>
@@ -447,6 +539,38 @@ export default function CoordinationNotes() {
     flashTimer.current = setTimeout(() => setFlash(null), 2800);
   };
 
+  const handleToggleTodo = async (todoId: string, done: boolean) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo) return;
+    await setTodoDone(todoId, done);
+    if (typeof logActivity === 'function') {
+      logActivity({
+        action: done ? 'completed task' : 'reopened task',
+        targetId: todoId,
+        targetName: todo.title,
+        targetType: 'comment',
+        type: 'update',
+        description: done ? 'Marked as completed' : 'Marked as pending',
+      } as never);
+    }
+  };
+
+  const handleDeleteTodo = async (todoId: string) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo) return;
+    await deleteTodo(todoId);
+    if (typeof logActivity === 'function') {
+      logActivity({
+        action: 'deleted task',
+        targetId: todoId,
+        targetName: todo.title,
+        targetType: 'comment',
+        type: 'delete',
+        description: 'Task removed',
+      } as never);
+    }
+  };
+
   const memberById = useMemo(() => {
     const m = new Map<string, TeamMember>();
     team.forEach((t) => m.set(t.uid, t));
@@ -507,7 +631,11 @@ export default function CoordinationNotes() {
                 approved: data.approved,
               };
             })
-            .filter((u) => u.approved !== false)
+            .filter((u) => {
+              if (u.approved === false) return false;
+              const name = (u.member.name || '').toLowerCase();
+              return !name.startsWith('cisa-');
+            })
             .map((u) => u.member)
             .sort((a, b) => a.name.localeCompare(b.name)),
         );
@@ -890,7 +1018,7 @@ export default function CoordinationNotes() {
               todo={t}
               assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
               showAssignee
-              onToggle={(todo, done) => setTodoDone(todo.id, done)}
+              onToggle={(todo, done) => handleToggleTodo(todo.id, done)}
               onEdit={(todo) =>
                 setTodoComposer({
                   mode: 'edit',
@@ -902,7 +1030,7 @@ export default function CoordinationNotes() {
                   },
                 })
               }
-              onDelete={(todo) => deleteTodo(todo.id)}
+              onDelete={(todo) => handleDeleteTodo(todo.id)}
               onJumpToSource={jumpToTodoSource}
             />
           ))}
@@ -1283,7 +1411,7 @@ export default function CoordinationNotes() {
                 todo={t}
                 assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
                 showAssignee
-                onToggle={(todo, done) => setTodoDone(todo.id, done)}
+                onToggle={(todo, done) => handleToggleTodo(todo.id, done)}
                 onEdit={(todo) =>
                   setTodoComposer({
                     mode: 'edit',
@@ -1295,7 +1423,7 @@ export default function CoordinationNotes() {
                     },
                   })
                 }
-                onDelete={(todo) => deleteTodo(todo.id)}
+                onDelete={(todo) => handleDeleteTodo(todo.id)}
                 onJumpToSource={jumpToTodoSource}
               />
             ))}
@@ -1709,6 +1837,7 @@ function DocEditor({
 
   // Highlight → floating bubble menu over selection:
   const canvasRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [fab, setFab] = useState<{ text: string; lines: string[]; top: number; left: number } | null>(null);
   const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string; lines?: string[] } | null>(null);
   const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
@@ -1855,6 +1984,7 @@ function DocEditor({
       TableHeader,
       TableCell,
       Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
+      CustomTab,
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Write the page — a heading, some notes, a checklist…' }),
@@ -1929,6 +2059,14 @@ function DocEditor({
       editor.off('update', handleUpdate);
     };
   }, [editor, showSource]);
+
+  // Auto-resize raw markdown textarea to match content height
+  useEffect(() => {
+    if (showSource && textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    }
+  }, [markdownSource, showSource]);
 
   // presence
   useEffect(() => {
@@ -2450,6 +2588,7 @@ function DocEditor({
         >
           {showSource ? (
             <textarea
+              ref={textareaRef}
               id="markdown-source-textarea"
               value={markdownSource}
               onChange={(e) => {
@@ -2476,7 +2615,7 @@ function DocEditor({
               }}
               onKeyDown={handleTextareaKeyDown}
               spellCheck={false}
-              className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[420px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20"
+              className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[160px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20 overflow-hidden"
               title="Markdown source view"
             />
           ) : (

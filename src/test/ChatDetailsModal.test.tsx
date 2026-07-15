@@ -219,4 +219,23 @@ describe('ChatDetailsModal Component', () => {
     });
     expect(mockOnClose).toHaveBeenCalled();
   });
+
+  it('filters out cisa-* test accounts from members listing', async () => {
+    const usersWithTest = [
+      ...mockUsers,
+      { uid: 'u4', displayName: 'cisa-test-user', email: 'cisa-test@example.com', role: 'viewer', approved: true },
+    ];
+    setupOnSnapshot(usersWithTest);
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+
+    expect(screen.getByText('Alice Green')).toBeInTheDocument();
+    expect(screen.queryByText('cisa-test-user')).not.toBeInTheDocument();
+  });
 });

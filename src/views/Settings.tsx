@@ -1150,7 +1150,12 @@ export default function Settings() {
       usersQ,
       (snapshot) => {
         const userData = snapshot.docs.map((d) => ({ uid: d.id, ...d.data() })) as AppUser[];
-        setUsers(userData);
+        const filteredUsers = userData.filter((u) => {
+          const email = (u.email || '').toLowerCase();
+          const displayName = (u.displayName || '').toLowerCase();
+          return !email.startsWith('cisa-') && !displayName.startsWith('cisa-');
+        });
+        setUsers(filteredUsers);
         setTimeout(() => setLoading(false), 600);
       },
       (error) => {
