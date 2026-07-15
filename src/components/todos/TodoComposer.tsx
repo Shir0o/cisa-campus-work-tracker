@@ -73,26 +73,6 @@ export default function TodoComposer({
     }
   }, [texts.length]);
 
-  // Lock scroll on the background page while the composer is open,
-  // preventing mouse-wheel scrolling from scrolling behind the card.
-  useEffect(() => {
-    const preventScroll = (e: WheelEvent | TouchEvent) => {
-      const target = e.target as HTMLElement;
-      // Allow scrolling inside the TodoComposer popup card (e.g. text area, assignee, date picker calendar)
-      if (cardRef.current && cardRef.current.contains(target)) {
-        return;
-      }
-      e.preventDefault();
-    };
-
-    window.addEventListener("wheel", preventScroll, { passive: false });
-    window.addEventListener("touchmove", preventScroll, { passive: false });
-
-    return () => {
-      window.removeEventListener("wheel", preventScroll);
-      window.removeEventListener("touchmove", preventScroll);
-    };
-  }, []);
 
   // Anchor below the selection, clamped to the viewport (flips above if it would
   // overflow the bottom). No anchor → centered.
@@ -165,7 +145,7 @@ export default function TodoComposer({
   const anchored = !!anchorRect;
 
   return (
-    <div className="fixed inset-0 z-[120]">
+    <div className="fixed inset-0 z-[120] overflow-y-auto">
       {/* scrim — transparent over a selection, dimmed for the centered modal */}
       <div
         className={cn("absolute inset-0", !anchored && "bg-black/30")}
@@ -180,7 +160,7 @@ export default function TodoComposer({
         onMouseDown={(e) => e.stopPropagation()}
         style={
           anchored
-            ? { position: "fixed", width: POPOVER_W, left: pos?.left ?? 16, top: pos?.top ?? 80 }
+            ? { position: "absolute", width: POPOVER_W, left: pos?.left ?? 16, top: pos?.top ?? 80 }
             : undefined
         }
         className={cn(

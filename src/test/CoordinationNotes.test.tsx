@@ -1067,7 +1067,9 @@ describe('CoordinationNotes', () => {
       const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
       fireEvent.click(markdownBtn);
       // Textarea source view should appear
-      expect(screen.getByTitle('Markdown source is read-only while live editing is on')).toBeInTheDocument();
+      const textarea = screen.getByTitle('Markdown source view');
+      expect(textarea).toBeInTheDocument();
+      expect(textarea).not.toHaveAttribute('readonly');
     });
   });
 
@@ -1336,6 +1338,168 @@ describe('CoordinationNotes', () => {
       fireEvent.click(aiBtn);
 
       expect(await screen.findByText("Some completely random server crash")).toBeInTheDocument();
+    });
+
+    it('caches AI insights data and does not re-fetch when closing and reopening sidebar', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // First open: should call fetch
+      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
+      fireEvent.click(aiBtn);
+      
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledTimes(1);
+      });
+
+      // Close sidebar
+      const closeBtn = screen.getByRole('button', { name: /Close sidebar/i });
+      fireEvent.click(closeBtn);
+      expect(screen.queryByText('Contact Links')).not.toBeInTheDocument();
+
+      // Second open: should NOT call fetch again (mockFetch times stays 1)
+      fireEvent.click(aiBtn);
+      expect(screen.getByText('Contact Links')).toBeInTheDocument();
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+
+      // Manual refresh: should call fetch again
+      const refreshBtn = screen.getByRole('button', { name: /Refresh AI Insights/i });
+      fireEvent.click(refreshBtn);
+      await waitFor(() => {
+        expect(mockFetch).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('allows editing markdown source and automatically renumbers ordered lists', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      expect(textarea).toBeInTheDocument();
+
+      vi.useFakeTimers();
+      // Type some out-of-order list markdown
+      const outOfOrderMarkdown = `1. Apple\n1. Orange\n1. Banana`;
+      fireEvent.change(textarea, { target: { value: outOfOrderMarkdown } });
+
+      // Textarea should contain renumbered markdown
+      expect(textarea.value).toBe(`1. Apple\n2. Orange\n3. Banana`);
+      
+      // Close the view while timer is active to cover immediate setContent and active timer cleanup on close
+      fireEvent.click(markdownBtn);
+      expect(textarea).not.toBeInTheDocument();
+      
+      // Editor setContent should have been called immediately on close
+      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
+        `1. Apple\n2. Orange\n3. Banana`
+      );
+      vi.useRealTimers();
+    });
+
+    it('clears markdownSyncTimer on unmount if active', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      const { unmount } = render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      expect(textarea).toBeInTheDocument();
+
+      vi.useFakeTimers();
+      fireEvent.change(textarea, { target: { value: 'Something' } });
+
+      // Unmount while timer is active to cover active timer cleanup on unmount
+      unmount();
+      vi.useRealTimers();
+    });
+
+    it('handles Tab key press to indent text', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+
+      fireEvent.keyDown(textarea, { key: 'Tab' });
+      expect(textarea.value).toBe('Hello  ');
+    });
+
+    it('handles Shift-Tab key press to outdent text', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      // Test Shift+Tab with indentation
+      textarea.focus();
+      textarea.value = '  Hello';
+      textarea.selectionStart = 7;
+      textarea.selectionEnd = 7;
+      fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+      expect(textarea.value).toBe('Hello');
+
+      // Test Shift+Tab without indentation
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+      fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+      expect(textarea.value).toBe('Hello');
+    });
+
+    it('handles Enter key press to auto-indent new line', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = '  Hello';
+      textarea.selectionStart = 7;
+      textarea.selectionEnd = 7;
+
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+      expect(textarea.value).toBe('  Hello\n  ');
+    });
+
+    it('does not intercept key down for other keys', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+
+      fireEvent.keyDown(textarea, { key: 'a' });
+      expect(textarea.value).toBe('Hello');
     });
   });
   // ── Team to-dos ("What we're carrying") ─────────────────────────────────────

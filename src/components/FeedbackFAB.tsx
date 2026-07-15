@@ -43,9 +43,9 @@ export default function FeedbackFAB() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
+    const fabBtn = document.getElementById('feedback-fab-btn');
+    const dialogPanel = document.querySelector('div[role="dialog"]');
     try {
-      const fabBtn = document.getElementById('feedback-fab-btn');
-      const dialogPanel = document.querySelector('div[role="dialog"]');
       if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
       if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'hidden';
 
@@ -55,9 +55,6 @@ export default function FeedbackFAB() {
         useCORS: true,
         scale: 1.5,
       });
-
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
-      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'visible';
 
       let finalCanvas = canvas;
       const maxDim = 1600;
@@ -75,6 +72,9 @@ export default function FeedbackFAB() {
       screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
+    } finally {
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
+      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {

@@ -58,6 +58,7 @@ import {
   AtSign,
   Lock,
   Globe,
+  RotateCw,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -153,6 +154,64 @@ type MarkdownStorage = {
   markdown: { getMarkdown: () => string; parser: { parse: (md: string) => string } };
 };
 const editorMarkdown = (ed: Editor): string => (ed.storage as unknown as MarkdownStorage).markdown.getMarkdown();
+
+function renumberMarkdownLists(text: string): string {
+  const lines = text.split('\n');
+  const processed = new Set<number>();
+  let i = 0;
+  while (i < lines.length) {
+    if (processed.has(i)) {
+      i++;
+      continue;
+    }
+    const line = lines[i];
+    const match = line.match(/^(\s*)(\d+)\.(\s+)(.*)$/);
+    if (match) {
+      const indent = match[1];
+      const listIndices = [i];
+      let j = i + 1;
+      while (j < lines.length) {
+        const nextLine = lines[j];
+        const nextMatch = nextLine.match(/^(\s*)(\d+)\.(\s+)(.*)$/);
+        if (nextMatch) {
+          if (nextMatch[1] === indent) {
+            listIndices.push(j);
+            processed.add(j);
+            j++;
+            continue;
+          }
+        }
+        
+        const nextIndentMatch = nextLine.match(/^(\s*)\S/);
+        if (nextLine.trim() === '' || (nextIndentMatch && nextIndentMatch[1].length > indent.length)) {
+          j++;
+          continue;
+        }
+        
+        break;
+      }
+      
+      if (listIndices.length > 1) {
+        const firstMatch = lines[listIndices[0]].match(/^(\s*)(\d+)\.(\s+)(.*)$/);
+        if (firstMatch) {
+          const startNum = parseInt(firstMatch[2], 10);
+          for (let k = 0; k < listIndices.length; k++) {
+            const idx = listIndices[k];
+            const itemMatch = lines[idx].match(/^(\s*)(\d+)\.(\s+)(.*)$/);
+            if (itemMatch) {
+              const itemIndent = itemMatch[1];
+              const itemSpace = itemMatch[3];
+              const itemRest = itemMatch[4];
+              lines[idx] = `${itemIndent}${startNum + k}.${itemSpace}${itemRest}`;
+            }
+          }
+        }
+      }
+    }
+    i++;
+  }
+  return lines.join('\n');
+}
 // Render a Markdown string to the editor's own clean HTML — used to normalize
 // rich (HTML) pastes through Markdown so they match the page's formatting.
 const editorMdToHtml = (ed: Editor, md: string): string =>
@@ -1644,6 +1703,7 @@ function DocEditor({
   const [saved, setSaved] = useState(true);
   const [live, setLive] = useState(false);
   const [showSource, setShowSource] = useState(false);
+  const [markdownSource, setMarkdownSource] = useState('');
   const [peers, setPeers] = useState<{ id: number; name: string; color: string }[]>([]);
   const [title, setTitle] = useState(d.title);
 
@@ -1764,6 +1824,7 @@ function DocEditor({
   const [aiError, setAiError] = useState<string | null>(null);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markdownSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const liveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didSeed = useRef(false);
@@ -1852,6 +1913,23 @@ function DocEditor({
     };
   }, [editor]);
 
+  // Sync editor markdown to markdownSource state when editor updates
+  useEffect(() => {
+    if (!editor || !showSource) return;
+    const handleUpdate = () => {
+      // Only update if the active element is not the textarea to avoid cursor jumping
+      if (document.activeElement?.id !== 'markdown-source-textarea') {
+        setMarkdownSource(editorMarkdown(editor));
+      }
+    };
+    editor.on('update', handleUpdate);
+    // Initialize
+    setMarkdownSource(editorMarkdown(editor));
+    return () => {
+      editor.off('update', handleUpdate);
+    };
+  }, [editor, showSource]);
+
   // presence
   useEffect(() => {
     const update = () => {
@@ -1906,7 +1984,10 @@ function DocEditor({
   // Cancel a pending live-preview push on unmount — a page switch resets the
   // parent's live Markdown, so a late fire would wrongly stamp it onto the next
   // page's row. (Save/title timers are intentionally left to flush.)
-  useEffect(() => () => { if (liveTimer.current) clearTimeout(liveTimer.current); }, []);
+  useEffect(() => () => {
+    if (liveTimer.current) clearTimeout(liveTimer.current);
+    if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+  }, []);
 
   const onTitleChange = (v: string) => {
     setTitle(v);
@@ -2043,6 +2124,75 @@ function DocEditor({
     if (!editor || !insightsData?.updatedMarkdown) return;
     editor.commands.setContent(insightsData.updatedMarkdown);
     setLinksApplied(true);
+  };
+
+  const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const val = textarea.value;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const insert = '  '; // 2 spaces
+      
+      if (!e.shiftKey) {
+        // Tab: indent
+        const newVal = val.substring(0, start) + insert + val.substring(end);
+        const renumbered = renumberMarkdownLists(newVal);
+        setMarkdownSource(renumbered);
+        
+        if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+        markdownSyncTimer.current = setTimeout(() => {
+          if (editor) editor.commands.setContent(renumbered);
+        }, 1000);
+        
+        requestAnimationFrame(() => {
+          textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+        });
+      } else {
+        // Shift-Tab: outdent
+        const beforeCursor = val.substring(0, start);
+        const lineStartIdx = beforeCursor.lastIndexOf('\n') + 1;
+        const currentLine = val.substring(lineStartIdx, start);
+        if (currentLine.startsWith('  ')) {
+          const newVal = val.substring(0, lineStartIdx) + currentLine.substring(2) + val.substring(start);
+          const renumbered = renumberMarkdownLists(newVal);
+          setMarkdownSource(renumbered);
+          
+          if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+          markdownSyncTimer.current = setTimeout(() => {
+            if (editor) editor.commands.setContent(renumbered);
+          }, 1000);
+          
+          requestAnimationFrame(() => {
+            textarea.selectionStart = textarea.selectionEnd = Math.max(lineStartIdx, start - 2);
+          });
+        }
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      // Enter: auto indent
+      const beforeCursor = val.substring(0, start);
+      const lineStartIdx = beforeCursor.lastIndexOf('\n') + 1;
+      const currentLine = val.substring(lineStartIdx, start);
+      
+      const indent = (currentLine.match(/^[\s\t]*/) as RegExpMatchArray)[0];
+      
+      const insert = '\n' + indent;
+      const newVal = val.substring(0, start) + insert + val.substring(end);
+      const renumbered = renumberMarkdownLists(newVal);
+      setMarkdownSource(renumbered);
+      
+      if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+      markdownSyncTimer.current = setTimeout(() => {
+        if (editor) editor.commands.setContent(renumbered);
+      }, 1000);
+      
+      requestAnimationFrame(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + insert.length;
+      });
+    }
   };
 
   const handleSaveTask = async (taskData: {
@@ -2247,7 +2397,11 @@ function DocEditor({
               if (showInsights) {
                 setShowInsights(false);
               } else {
-                analyzeNotes();
+                if (insightsData || aiError) {
+                  setShowInsights(true);
+                } else {
+                  analyzeNotes();
+                }
               }
             }}
             disabled={analyzing}
@@ -2263,7 +2417,15 @@ function DocEditor({
           </button>
           <button
             type="button"
-            onClick={() => setShowSource((v) => !v)}
+            onClick={() => {
+              if (showSource) {
+                if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+                if (editor) {
+                  editor.commands.setContent(markdownSource);
+                }
+              }
+              setShowSource((v) => !v);
+            }}
             title="View Markdown source"
             className={cn(
               'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
@@ -2282,17 +2444,40 @@ function DocEditor({
         {/* Editor Content */}
         <div
           ref={canvasRef}
-          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar"
+          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-surface"
           onMouseUp={refreshSelectionFab}
           onKeyUp={refreshSelectionFab}
         >
           {showSource ? (
             <textarea
-              readOnly
-              value={editor ? editorMarkdown(editor) : ''}
+              id="markdown-source-textarea"
+              value={markdownSource}
+              onChange={(e) => {
+                const rawVal = e.target.value;
+                const renumbered = renumberMarkdownLists(rawVal);
+                
+                const textarea = e.target;
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+                
+                setMarkdownSource(renumbered);
+                
+                if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+                markdownSyncTimer.current = setTimeout(() => {
+                  if (editor) {
+                    editor.commands.setContent(renumbered);
+                  }
+                }, 1000);
+                
+                requestAnimationFrame(() => {
+                  textarea.selectionStart = start;
+                  textarea.selectionEnd = end;
+                });
+              }}
+              onKeyDown={handleTextareaKeyDown}
               spellCheck={false}
-              className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[420px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap"
-              title="Markdown source is read-only while live editing is on"
+              className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[420px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20"
+              title="Markdown source view"
             />
           ) : (
             <EditorContent editor={editor as Editor} />
@@ -2307,13 +2492,27 @@ function DocEditor({
               <span className="font-serif text-lg text-on-surface flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-stage-accent" /> AI Insights
               </span>
-              <button
-                onClick={() => setShowInsights(false)}
-                className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors"
-                title="Close sidebar"
-              >
-                <X className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                {insightsData && (
+                  <button
+                    onClick={analyzeNotes}
+                    disabled={analyzing}
+                    className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
+                    title="Refresh AI Insights"
+                    aria-label="Refresh AI Insights"
+                  >
+                    <RotateCw className={cn("w-4 h-4", analyzing && "animate-spin")} />
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowInsights(false)}
+                  className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors"
+                  title="Close sidebar"
+                  aria-label="Close sidebar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Sidebar Body */}

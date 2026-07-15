@@ -18,11 +18,12 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({
+    limit: "50mb",
     verify: (req: any, res, buf) => {
       req.rawBody = buf;
     }
   }));
-  app.use(express.urlencoded({ extended: true }));
+  app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Terminal Request Logging Middleware to easily track incoming webhook/API requests in dev stdout console
   app.use((req, res, next) => {
