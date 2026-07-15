@@ -23,11 +23,20 @@ export default function More() {
     '/history': () => router.push('/history'),
     '/answered': () => router.push('/answered'),
     '/attendance': () => router.push('/attendance'),
+    '/settings': () => router.push('/settings'),
   };
   return (
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         <AppText variant="title">More</AppText>
+        {/* Not a NAV_ITEMS entry (on web it's a ⌘K overlay, not a routed
+            page) — a manual card, same as Notifications below. */}
+        <Card onPress={() => router.push('/search')}>
+          <AppText variant="heading">Search</AppText>
+          <AppText variant="caption" color={colors.onSurfaceVariant}>
+            People, history, quick actions
+          </AppText>
+        </Card>
         {/* Notifications isn't a NAV_ITEMS entry (on web it's a global header
             overlay, not a routed destination), so it's a manual Card here
             rather than riding the loop below. */}

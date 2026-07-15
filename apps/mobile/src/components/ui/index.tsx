@@ -9,6 +9,7 @@ import {
   TextInput,
   Pressable,
   StyleSheet,
+  Image,
   type ViewStyle,
   type TextStyle,
   type TextInputProps,
@@ -174,8 +175,16 @@ export function Chip({ label, tone = 'neutral' }: { label: string; tone?: ToneKe
 }
 
 // ── Avatar ──────────────────────────────────────────────────────────────────
-export function Avatar({ name, size = 44 }: { name: string; size?: number }) {
+export function Avatar({ name, size = 44, photoURL }: { name: string; size?: number; photoURL?: string }) {
   const { colors } = useTheme();
+  if (photoURL) {
+    return (
+      <Image
+        source={{ uri: photoURL }}
+        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: colors.primaryContainer }}
+      />
+    );
+  }
   return (
     <View
       style={{
