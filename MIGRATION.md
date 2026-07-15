@@ -59,7 +59,7 @@ resolves `@cisa/core` via a Metro alias + a tsconfig path. See
 npm run dev
 
 # Shared logic tests (the behavior oracle for the port)
-cd packages/core && npm install && npm test        # 80 tests
+cd packages/core && npm install && npm test        # 90 tests
 
 # Mobile app
 cd apps/mobile && npm install
@@ -173,10 +173,13 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       `useMyDayData.ts` and every screen were untouched (same external API).
       `addThreadMessage` takes an `onNotify` callback so the mobile-specific
       push write (`sendNotification`) stays out of the shared module.
-  - [ ] Still open: `rsvp`, `gatheringTypes`, `seasons` hooks, `services/chat`,
-        and re-pointing the *web* app's own copies of the five re-homed
-        modules at the shared `packages/core/src/data/` versions (today only
-        mobile consumes them — web's `src/lib/*.ts` are unchanged).
+  - [ ] Still open: `gatheringTypes`, `seasons` hooks (partially — see the
+        Quick Add entry below), `services/chat`, and re-pointing the *web*
+        app's own copies of the re-homed modules at the shared
+        `packages/core/src/data/` versions (today only mobile consumes
+        them — web's `src/lib/*.ts` are unchanged). `rsvp` is now re-homed
+        too (`packages/core/src/rsvp.ts` + `data/rsvp.ts` — see the Landing
+        dispatcher entry in Phase 2).
 - [x] Gated the tabs/drawer by live role (`canAccessRoute` from core) — the
       bottom tab bar hides People/Journey when the signed-in role is below
       their `NAV_ITEMS` minRole (Expo Router `href: null`), and the "More"
@@ -194,8 +197,33 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   breaks resolution of `apps/mobile`'s own non-hoisted nested deps, e.g.
   firebase's own `node_modules/@firebase/auth`).
 
-### 🔲 Phase 2 — Low-risk read screens (validate the pattern end-to-end)
-- [ ] Landings dispatcher + LandingTrainee / Student / Community
+### ✅ Phase 2 — Low-risk read screens (validate the pattern end-to-end, DONE)
+- [x] ~~Landings dispatcher + LandingTrainee / Student / Community~~ — done,
+      verified live against all four e2e role users (Full-timer, Trainee,
+      Student, Community) on Expo web. `app/(tabs)/index.tsx` is now a thin
+      `pickLandingForRole` (new, in `packages/core/src/permissions.ts`) switch;
+      My Day was extracted verbatim into
+      `src/components/myday/MyDayScreen.tsx` so Full-timers see no change.
+      `src/components/landing/LandingTrainee.tsx` — a cockpit-lite: "What's
+      waiting on you" (the full-timer's nudges/questions, reusing
+      `traineeWaitingItems`/`fullTimerOf` from the already-ported
+      `inbox.ts`/`walking.ts`), "Your people" (contacts you created, longest-
+      since-seen, via new `traineeMyPeople`/`weighedInContactIds` in a new
+      `packages/core/src/landing.ts`, unit-tested), and "Prayers you're
+      holding" (reuses `myday.ts`'s `splitPrayers` and the now-exported
+      `TeamPrayerRow`/`PersonalPrayerRow`/`AddPersonalPrayerRow` from
+      `components/myday/YourPrayers.tsx`). `src/components/landing/
+      LandingStudent.tsx` and `LandingCommunity.tsx` both share a new
+      `components/landing/UpcomingEventsRsvp.tsx` (events + per-event RSVP
+      toggle), backed by a new `packages/core/src/rsvp.ts` (pure
+      `upcomingEventsForRsvp`, unit-tested) + `data/rsvp.ts`
+      (`setRsvp`/`subscribeMyRsvps`, porting the web app's `lib/rsvp.ts` —
+      Firestore rules already permit it, no new index needed). Community also
+      adds a new `data/users.ts` (`subscribeFullTimers`) for the "Reach out"
+      Full-timer roster; the button opens `mailto:` (or an "isn't wired up
+      yet" alert) rather than a real chat write, since Messages has no mobile
+      route yet (separate, unstarted Phase 4 item) — a `chatRooms` doc with no
+      reader would be pure risk for no benefit.
 - [x] ~~Prayer~~ — done, verified live against the e2e Full-timer (both
       themes): `apps/mobile/app/(tabs)/prayer.tsx` + `src/components/prayer/`
       (`PrayerThreadCard`, `HoldPrayerSheet`), backed by new
@@ -255,8 +283,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       `HoldPrayerSheet`'s Modal chrome and the web modal's field set instead of
       `views/contacts.jsx`'s mobile branch directly; worth a cosmetic
       double-check against the design next time it's reachable.
-- [ ] Live Firestore data + the e2e test users (one per role) — still not
-      verified against the e2e Community (viewer) user on any screen.
+- [x] ~~Live Firestore data + the e2e test users (one per role)~~ — the e2e
+      Community (viewer) user is now verified live, on its Home tab
+      (LandingCommunity, see above) — the first mobile screen ever checked
+      against that role. Still worth a spot-check on Community for the other
+      viewer-accessible screens (Prayer, Answered) if a regression is ever
+      suspected there.
 
 ### 🔲 Phase 3 — Medium screens
 - [x] ~~My Day cockpit~~ — done, see above.
@@ -313,11 +345,17 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    `handleFirestoreError` re-threw. Fixed by gating the team-data effect on
    `uid` and making `onLoadError` pass `{ rethrow: false }`.
 6. ~~Pick the next screen to port~~ — **Prayer, Directory (People), History
-   ("Looking back"), Answered, and Quick Add (new contact) are now done** (see
-   Phase 2 above). That leaves the **Landing dispatcher** (LandingTrainee /
-   LandingStudent / LandingCommunity + a role-based home dispatcher) as the
-   last open Phase 2 item — today every mobile role sees the same Full-timer
-   My Day cockpit, with no role branching at all.
+   ("Looking back"), Answered, Quick Add (new contact), and the Landing
+   dispatcher (LandingTrainee / LandingStudent / LandingCommunity) are now
+   done** — **Phase 2 is complete.** Every mobile role now gets its own tailored
+   Home screen, verified live against all four e2e role users.
+7. **Pick a Phase 3 screen next** — Gatherings/Attendance, Settings, SignUp
+   (phone verify), Feedback, Notifications, and Global search are all still
+   open (see Phase 3 above). Attendance is a natural next pick: both new
+   landings (Student, Community) already link to it ("Full calendar") but the
+   route doesn't exist on mobile yet. Alternatively, tackle a Phase 0.5 spike
+   (WebView editor or Google Sign-In) if the user wants one of those next —
+   see the re-sequencing note below.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

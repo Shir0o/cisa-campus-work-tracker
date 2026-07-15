@@ -4,6 +4,7 @@ import {
   canAccessRoute,
   hasMinRole,
   defaultRouteForRole,
+  pickLandingForRole,
   NAV_ITEMS,
 } from '../src/permissions';
 
@@ -40,6 +41,15 @@ describe('permissions', () => {
   it('defaultRouteForRole falls back to /attendance for unknown roles', () => {
     expect(defaultRouteForRole('viewer')).toBe('/');
     expect(defaultRouteForRole(null)).toBe('/attendance');
+  });
+
+  it('pickLandingForRole maps roles to their Home-tab landing', () => {
+    expect(pickLandingForRole('manager')).toBe('trainee');
+    expect(pickLandingForRole('operator')).toBe('student');
+    expect(pickLandingForRole('viewer')).toBe('community');
+    expect(pickLandingForRole('admin')).toBe('myday');
+    expect(pickLandingForRole(null)).toBe('myday');
+    expect(pickLandingForRole('bogus')).toBe('myday');
   });
 
   it('every NAV_ITEM route is accessible to a user at its minRole', () => {

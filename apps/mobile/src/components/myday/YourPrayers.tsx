@@ -122,7 +122,9 @@ export function TestimonyComposer({
   );
 }
 
-function TeamPrayerRow({
+// Exported so other landings (e.g. Trainee) can reuse the same prayer-row UI
+// instead of duplicating it.
+export function TeamPrayerRow({
   prayer,
   contact,
   first,
@@ -193,7 +195,7 @@ function TeamPrayerRow({
   );
 }
 
-function PersonalPrayerRow({
+export function PersonalPrayerRow({
   prayer,
   first,
   contacts,
@@ -310,7 +312,15 @@ function PersonalPrayerRow({
   );
 }
 
-function AddPersonalPrayerRow({ onAdd }: { onAdd: (title: string, contactId: string | null) => void }) {
+export function AddPersonalPrayerRow({
+  onAdd,
+  addLabel = 'Add a personal prayer',
+  placeholder = 'What would you like to pray for?',
+}: {
+  onAdd: (title: string, contactId: string | null) => void;
+  addLabel?: string;
+  placeholder?: string;
+}) {
   const { colors } = useTheme();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
@@ -320,7 +330,7 @@ function AddPersonalPrayerRow({ onAdd }: { onAdd: (title: string, contactId: str
       <Pressable onPress={() => setOpen(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 12 }}>
         <Ionicons name="add" size={16} color={colors.primary} />
         <AppText variant="body" color={colors.primary} style={{ fontWeight: '600' }}>
-          Add a personal prayer
+          {addLabel}
         </AppText>
       </Pressable>
     );
@@ -336,7 +346,7 @@ function AddPersonalPrayerRow({ onAdd }: { onAdd: (title: string, contactId: str
 
   return (
     <View style={{ paddingVertical: 14, gap: 8 }}>
-      <InlineInput autoFocus value={title} onChangeText={setTitle} placeholder="What would you like to pray for?" />
+      <InlineInput autoFocus value={title} onChangeText={setTitle} placeholder={placeholder} />
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
         <Button title="Cancel" variant="ghost" onPress={() => setOpen(false)} />
         <Button title="Add" onPress={commit} disabled={!title.trim()} />
