@@ -1,14 +1,19 @@
 import { ActivityIndicator, View } from 'react-native';
-import { Redirect, Stack } from 'expo-router';
+import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
 
+// Routes reachable while signed out — the public welcome form (a prospective
+// student fills it out themselves, no account needed) plus login itself.
+const PUBLIC_ROUTES = ['/signup', '/login'];
+
 function RootNavigator() {
   const { mode, colors } = useTheme();
   const { user, loading } = useAuth();
+  const pathname = usePathname();
 
   if (loading) {
     return (
@@ -29,9 +34,10 @@ function RootNavigator() {
       >
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="signup" />
         <Stack.Screen name="history" />
       </Stack>
-      {!user && <Redirect href="/login" />}
+      {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
     </>
   );
 }

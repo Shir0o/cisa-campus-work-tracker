@@ -337,7 +337,31 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       --only firestore:rules`, a live-project change), so it's still
       unverified for `operator`/`viewer` roles — deploy, then re-check
       mark-as-read/set-aside as the Student or Community e2e user.
-- [ ] Settings, SignUp (phone verify), Feedback, Global search, Quick add
+- [x] ~~SignUp~~ — done, verified live: `apps/mobile/app/signup.tsx`, backed by
+      new `packages/core/src/signup.ts` (pure, unit-tested
+      `validateSignUpBasics`/`checkMathAnswer` + the intake option constants)
+      and `packages/core/src/data/signup.ts` (`submitSignUp` — stage lookup,
+      `contacts` write, best-effort `ALL_ADMINS` notification). **Correction
+      to this item's old description**: there is no phone verification
+      anywhere in the web app (grepped for `RecaptchaVerifier`/
+      `signInWithPhoneNumber`/OTP — zero matches); `src/views/SignUp.tsx` is a
+      public, unauthenticated lead-intake form (phone is a plain text field,
+      never verified), so there was no RN Firebase-Auth blocker to work
+      around. Ported as a genuinely public route — `apps/mobile/app/
+      _layout.tsx`'s auth-redirect now exempts `/signup` (alongside `/login`)
+      via `usePathname()`, since Firestore rules already allow the
+      unauthenticated `contacts`/`notifications` writes this form needs (no
+      rules changes required) and Phase 6 will need this page reachable
+      without an account regardless. Two in-app entry points added since
+      mobile has no address bar and no Global Search yet (where web's
+      "quick action → open signup" lives): a link from `/login` ("New
+      here?"), and a manual "Welcome form" card on "More" (same pattern as
+      the existing Notifications card, since neither is a `NAV_ITEMS`
+      entry). Does **not** reuse `data/contacts.ts`'s `addContact` — that
+      assumes an authenticated creator and self/walking-together
+      notifications, neither of which applies to an anonymous public
+      submission.
+- [ ] Settings, Feedback, Global search
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
@@ -397,10 +421,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    fixing the Student/Community landings' previously-dead "Full calendar"
    link. **Notifications is now done too** (deploy the widened
    `firestore.rules` to finish it for `operator`/`viewer` roles — see the
-   Phase 3 entry above). Settings, SignUp, Feedback, and Global search are
-   all still open (see Phase 3 above). Alternatively, tackle a Phase 0.5
-   spike (WebView editor or Google Sign-In) if the user wants one of those
-   next — see the re-sequencing note below.
+   Phase 3 entry above). **SignUp is now done too** — a genuinely public
+   route, not gated behind login (see the Phase 3 entry above). Settings,
+   Feedback, and Global search are all still open (see Phase 3 above).
+   Alternatively, tackle a Phase 0.5 spike (WebView editor or Google
+   Sign-In) if the user wants one of those next — see the re-sequencing
+   note below.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

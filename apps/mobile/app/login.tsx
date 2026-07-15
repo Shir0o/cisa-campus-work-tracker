@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { TextInput, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
@@ -80,6 +80,10 @@ export default function Login() {
           disabled={submitting || !email || !password}
           full
         />
+
+        <Pressable onPress={() => router.push('/signup')} style={{ marginTop: spacing.sm, alignSelf: 'center' }}>
+          <Text style={{ color: colors.primary, fontSize: 13, fontWeight: '600' }}>New here? Fill out our welcome form</Text>
+        </Pressable>
       </View>
     </Screen>
   );

@@ -37,6 +37,15 @@ export default function More() {
             {notif.unreadCount > 0 && <StatusPill label={String(notif.unreadCount)} tone="accent" />}
           </View>
         </Card>
+        {/* Not a NAV_ITEMS entry (it's the public /signup form, same one a
+            prospective student can fill out unauthenticated) — a manual card
+            so a signed-in staffer can hand their phone to someone in person. */}
+        <Card onPress={() => router.push('/signup')}>
+          <AppText variant="heading">Welcome form</AppText>
+          <AppText variant="caption" color={colors.onSurfaceVariant}>
+            Sign up someone new
+          </AppText>
+        </Card>
         {rest.map((n) => (
           <Card key={n.href} onPress={pushRoutes[n.href] ?? (() => {})}>
             <View style={{ gap: 2 }}>

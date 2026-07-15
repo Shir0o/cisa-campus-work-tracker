@@ -1,0 +1,370 @@
+import { useEffect, useState } from 'react';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import {
+  checkMathAnswer,
+  emptySignUpForm,
+  validateSignUpBasics,
+  SIGNUP_HALLS,
+  SIGNUP_HOW_HEARD,
+  SIGNUP_INTERESTS,
+  SIGNUP_MAJORS,
+  SIGNUP_SPIRITUAL_BACKGROUNDS,
+  SIGNUP_YEARS,
+  type SignUpFormState,
+} from '@cisa/core';
+import { Screen, AppText, Button } from '../src/components/ui';
+import { useTheme } from '../src/theme/ThemeProvider';
+import { useActiveSeason } from '../src/lib/useActiveSeason';
+import { submitSignUp } from '../src/lib/data/signup';
+
+// Public welcome form — ported from src/views/SignUp.tsx. Unauthenticated
+// (see app/_layout.tsx's redirect exemption): a prospective student fills
+// this out themselves, so unlike AddContactSheet there's no logged-in actor
+// to attribute the contact to.
+export default function SignUp() {
+  const { colors, spacing, radius } = useTheme();
+  const router = useRouter();
+  const season = useActiveSeason();
+
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [form, setForm] = useState<SignUpFormState>(emptySignUpForm);
+  const [botField, setBotField] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const [mathChallenge, setMathChallenge] = useState({ a: 0, b: 0 });
+  const [mathAnswer, setMathAnswer] = useState('');
+
+  useEffect(() => {
+    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
+  }, []);
+
+  const set = <K extends keyof SignUpFormState>(k: K, v: SignUpFormState[K]) =>
+    setForm((prev) => ({ ...prev, [k]: v }));
+  const toggleInterest = (i: string) =>
+    setForm((prev) => ({
+      ...prev,
+      interests: prev.interests.includes(i) ? prev.interests.filter((x) => x !== i) : [...prev.interests, i],
+    }));
+
+  const goNext = () => {
+    const err = validateSignUpBasics(form);
+    if (err) {
+      setError(err);
+      return;
+    }
+    setError(null);
+    setStep(2);
+  };
+
+  const resetForm = () => {
+    setForm(emptySignUpForm);
+    setBotField('');
+    setMathAnswer('');
+    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
+    setError(null);
+    setStep(1);
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+
+    // Anti-abuse: honeypot — silently "succeed" with no write.
+    if (botField) {
+      setStep(3);
+      return;
+    }
+    if (!checkMathAnswer(mathChallenge, mathAnswer)) {
+      setError("Hmm, that didn't quite add up — mind trying the math again?");
+      return;
+    }
+    const err = validateSignUpBasics(form);
+    if (err) {
+      setError(err);
+      setStep(1);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await submitSignUp(form, season.tags);
+      setStep(3);
+    } catch {
+      setError('Something went wrong sending that — mind trying again?');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const firstName = form.name.trim().split(' ')[0] || 'friend';
+
+  const inputStyle = {
+    borderWidth: 1,
+    borderColor: colors.outlineVariant,
+    borderRadius: radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14.5,
+    color: colors.onSurface,
+    backgroundColor: colors.surfaceContainer,
+  };
+
+  if (step === 3) {
+    return (
+      <Screen>
+        <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
+          <View
+            style={{
+              width: 56,
+              height: 56,
+              borderRadius: 20,
+              backgroundColor: colors.primaryContainer,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: spacing.lg,
+            }}
+          >
+            <Ionicons name="checkmark-circle" size={30} color={colors.primary} />
+          </View>
+          <AppText variant="title">Thanks, {firstName}.</AppText>
+          <AppText
+            variant="body"
+            color={colors.onSurfaceVariant}
+            style={{ marginTop: spacing.sm, textAlign: 'center', maxWidth: 320 }}
+          >
+            We got it. Someone from the team will reach out within two days. If you'd like, you're always welcome at
+            our Friday gathering this week (7pm, Lower Common Room).
+          </AppText>
+          <View style={{ flexDirection: 'row', gap: 12, marginTop: spacing.xl }}>
+            <Button title="Back to app" variant="ghost" onPress={() => router.replace('/')} />
+            <Button title="Add another" onPress={resetForm} />
+          </View>
+        </ScrollView>
+      </Screen>
+    );
+  }
+
+  return (
+    <Screen>
+      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+          <AppText variant="caption" color={colors.onSurfaceVariant}>
+            STEP {step} OF 2
+          </AppText>
+          <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surfaceVariant, overflow: 'hidden' }}>
+            <View style={{ width: step === 1 ? '50%' : '100%', height: '100%', backgroundColor: colors.primary }} />
+          </View>
+        </View>
+
+        <AppText variant="title">{step === 1 ? 'Tell us about you.' : 'And a little more.'}</AppText>
+        <AppText variant="body" color={colors.onSurfaceVariant}>
+          {step === 1 ? "Just the basics. We'll cover the rest in person." : "All optional — skip anything you'd rather not answer."}
+        </AppText>
+
+        {error && (
+          <View style={{ backgroundColor: colors.errorContainer, borderRadius: radius.md, padding: 12 }}>
+            <AppText variant="body" color={colors.onErrorContainer}>
+              {error}
+            </AppText>
+          </View>
+        )}
+
+        {step === 1 ? (
+          <>
+            <Field label="Full name">
+              <TextInput style={inputStyle} value={form.name} onChangeText={(v) => set('name', v)} placeholder="e.g. Naomi Park" placeholderTextColor={colors.onSurfaceVariant} />
+            </Field>
+            <Field label="Pronouns (optional)">
+              <TextInput style={inputStyle} value={form.pronouns} onChangeText={(v) => set('pronouns', v)} placeholder="she / her" placeholderTextColor={colors.onSurfaceVariant} />
+            </Field>
+            <Field label="Year">
+              <PillRow options={SIGNUP_YEARS} value={form.year} onChange={(v) => set('year', v)} />
+            </Field>
+            <Field label="Major">
+              <PillRow options={[...SIGNUP_MAJORS, 'Other / undecided']} value={form.major} onChange={(v) => set('major', v)} />
+            </Field>
+            <Field label="Phone">
+              <TextInput
+                style={inputStyle}
+                value={form.phone}
+                onChangeText={(v) => set('phone', v)}
+                placeholder="(___) ___-____"
+                keyboardType="phone-pad"
+                placeholderTextColor={colors.onSurfaceVariant}
+              />
+            </Field>
+            <Field label="Email">
+              <TextInput
+                style={inputStyle}
+                value={form.email}
+                onChangeText={(v) => set('email', v)}
+                placeholder="you@umail.edu"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor={colors.onSurfaceVariant}
+              />
+            </Field>
+            <Field label="Instagram (optional)">
+              <TextInput style={inputStyle} value={form.instagram} onChangeText={(v) => set('instagram', v)} placeholder="@handle" autoCapitalize="none" placeholderTextColor={colors.onSurfaceVariant} />
+            </Field>
+            <Field label="Where do you live?">
+              <PillRow options={SIGNUP_HALLS} value={form.hall} onChange={(v) => set('hall', v)} />
+            </Field>
+            <Field label="Where are you with faith right now?">
+              <PillRow
+                options={SIGNUP_SPIRITUAL_BACKGROUNDS.map((o) => o.label)}
+                value={SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.value === form.spiritualBackground)?.label ?? ''}
+                onChange={(label) => set('spiritualBackground', SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.label === label)?.value ?? '')}
+              />
+            </Field>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
+              <Button title="Cancel" variant="ghost" onPress={() => router.replace('/')} />
+              <Button title="Continue" onPress={goNext} disabled={!form.name.trim()} />
+            </View>
+          </>
+        ) : (
+          <>
+            <Field label="How did you hear about us?">
+              <PillRow options={SIGNUP_HOW_HEARD} value={form.howHeard} onChange={(v) => set('howHeard', form.howHeard === v ? '' : v)} />
+            </Field>
+            <Field label="What are you drawn to?">
+              <MultiPillRow options={SIGNUP_INTERESTS} value={form.interests} onToggle={toggleInterest} />
+            </Field>
+            <Field label="Anything we can pray for? (optional)">
+              <TextInput
+                style={[inputStyle, { minHeight: 72, textAlignVertical: 'top' }]}
+                value={form.prayerRequest}
+                onChangeText={(v) => set('prayerRequest', v)}
+                placeholder="Totally optional. We hold these confidentially."
+                placeholderTextColor={colors.onSurfaceVariant}
+                multiline
+              />
+            </Field>
+            <Field label="Anything else? (optional)">
+              <TextInput
+                style={[inputStyle, { minHeight: 56, textAlignVertical: 'top' }]}
+                value={form.notes}
+                onChangeText={(v) => set('notes', v)}
+                placeholder="Allergies, schedule conflicts, questions…"
+                placeholderTextColor={colors.onSurfaceVariant}
+                multiline
+              />
+            </Field>
+            <Field label={`Quick check — what's ${mathChallenge.a} + ${mathChallenge.b}?`}>
+              <TextInput
+                style={[inputStyle, { maxWidth: 140 }]}
+                value={mathAnswer}
+                onChangeText={setMathAnswer}
+                placeholder="Your answer"
+                keyboardType="number-pad"
+                placeholderTextColor={colors.onSurfaceVariant}
+              />
+            </Field>
+            {/* Anti-abuse honeypot: off-screen, still reachable by scripted bots
+                (relevant once this screen also serves as the public web page). */}
+            <View
+              style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
+              <TextInput value={botField} onChangeText={setBotField} />
+            </View>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
+              <Button
+                title="Back"
+                variant="ghost"
+                onPress={() => {
+                  setError(null);
+                  setStep(1);
+                }}
+              />
+              <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading} />
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  const { colors } = useTheme();
+  return (
+    <View style={{ gap: 6 }}>
+      <AppText variant="label" color={colors.onSurfaceVariant}>
+        {label}
+      </AppText>
+      {children}
+    </View>
+  );
+}
+
+function PillRow({ options, value, onChange }: { options: string[]; value: string; onChange: (v: string) => void }) {
+  const { colors, radius } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {options.map((opt) => {
+        const on = value === opt;
+        return (
+          <Pressable
+            key={opt}
+            onPress={() => onChange(opt)}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.full,
+              borderWidth: 1,
+              borderColor: on ? colors.primary : colors.outlineVariant,
+              backgroundColor: on ? colors.primary : 'transparent',
+            }}
+          >
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: on ? colors.onPrimary : colors.onSurface }}>{opt}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function MultiPillRow({
+  options,
+  value,
+  onToggle,
+}: {
+  options: string[];
+  value: string[];
+  onToggle: (v: string) => void;
+}) {
+  const { colors, radius } = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {options.map((opt) => {
+        const on = value.includes(opt);
+        return (
+          <Pressable
+            key={opt}
+            onPress={() => onToggle(opt)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: radius.full,
+              borderWidth: 1,
+              borderColor: on ? colors.primary : colors.outlineVariant,
+              backgroundColor: on ? colors.primary : 'transparent',
+            }}
+          >
+            {on && <Ionicons name="checkmark" size={12} color={colors.onPrimary} />}
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: on ? colors.onPrimary : colors.onSurface }}>{opt}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
