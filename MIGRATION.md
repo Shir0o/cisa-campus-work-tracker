@@ -290,7 +290,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       viewer-accessible screens (Prayer, Answered) if a regression is ever
       suspected there.
 
-### 🔲 Phase 3 — Medium screens
+### ✅ Phase 3 — Medium screens (all screens DONE; two cosmetic polish items remain)
 - [x] ~~My Day cockpit~~ — done, see above.
 - [x] ~~Gatherings/Attendance~~ — done, verified live: `apps/mobile/app/attendance.tsx`
       + `src/components/attendance/` (`GatheringHero`, `MissedList`,
@@ -378,7 +378,57 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       archive) and Student (operator: submit works, admin entry point and
       direct-URL guard both correctly hidden/blocked) e2e users on Expo web.
       Settings and Global search are still open.
-- [ ] Settings, Global search
+- [x] ~~Settings~~ — done, verified live against all four e2e role users:
+      `apps/mobile/app/settings.tsx` + `src/components/settings/*`, ported in
+      full from `src/views/Settings.tsx` rather than just profile/appearance —
+      a profile header, a static "Roles & access" reference (highlighting
+      your own role), a light/dark/system appearance picker wired to the
+      already-built `ThemeProvider` (scheme persistence stays deferred,
+      matching that provider's own "in a later pass" comment), and — for
+      Trainee+ — full team management: search, approve/un-approve pending
+      sign-ups, edit a member's role (the Full-timer option, and editing
+      itself, both gated to admin actors — `canEditRole={isAdmin && !isYou}`,
+      matching web's stricter-than-`isManager` RBAC exactly), soft-remove
+      access, invite by email, and cancel a pending invite. Added a new pure,
+      unit-tested `packages/core/src/settings.ts` and extended the existing
+      `packages/core/src/data/users.ts` (previously just `subscribeFullTimers`)
+      with `subscribeUsers`/`subscribeInvitations`/`toggleUserApproval`/
+      `changeUserRole`/`sendInvitation`/`revokeInvitation`. The existing
+      `users`/`invitations` Firestore rules (`isManager()`) already permitted
+      everything needed — no rules changes required. Also extended the shared
+      `Avatar` primitive (`apps/mobile/src/components/ui/index.tsx`) with an
+      optional `photoURL` prop, verified rendering real Google profile photos
+      for two of the three seeded Full-timers. `more.tsx`'s Settings card
+      (previously inert — `/settings` was in `NAV_ITEMS` but had no
+      `pushRoutes` handler) now navigates. **Deferred**, matching the mobile
+      port's existing scope conventions: the Quick Add/Integrations AI
+      playground and API/webhook console (both need the server
+      `/api/quick-add` endpoint — Admin SDK + Gemini, not client-portable),
+      and the embedded "What people are telling us" feedback list (mobile
+      already has this as its own `/feedback-admin` route from the Feedback
+      phase — linking out was considered but skipped as non-essential).
+- [x] ~~Global search~~ — done, verified live against all four e2e role
+      users: `apps/mobile/app/search.tsx` + `src/components/search/*`, a
+      pushed route reached from a manual "More" card (web's version is a ⌘K
+      overlay, not a routed page — same "no persistent header" precedent as
+      Notifications). **MVP scope**: People (any signed-in role) + a
+      role-filtered Quick actions list ("New contact" for Student+, opening
+      the existing `AddContactSheet`; "Open sign-up form" for everyone) +
+      History (Trainee+ only). Reuses the existing `subscribeContacts`/
+      `subscribeStages`/`subscribeActivities` data layer as-is — no new
+      `packages/core/data` module was needed. Added a new pure, unit-tested
+      `packages/core/src/search.ts`. Two of web's four result groups and two
+      of its four quick actions are intentionally trimmed: **Conversations**
+      (would need a new `subscribeInteractions` — `subscribeTouches` drops
+      the raw interaction id needed for navigation) and **Coordination
+      Notes** (would need a new `subscribeBoardNotes` module and points at
+      the unstarted Phase 4 Board) are deferred; "Log a visit" and "The
+      Journey" quick actions are omitted since mobile has no log-interaction
+      flow or Board route yet. People-result taps reuse `people.tsx`'s
+      existing "coming in a later pass" `Alert.alert` placeholder, since no
+      contact-detail screen exists yet. Also deliberately drops web's opt-in
+      "Search history too" toggle — History is a single cheap `limit(100)`
+      query, shown eagerly for Trainee+ like every other Phase 2/3 screen.
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
@@ -442,10 +492,11 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    route, not gated behind login (see the Phase 3 entry above). **Feedback
    (submit + admin review) is now done too** — writes directly to
    Firestore, no rules changes needed (see the Phase 3 entry above).
-   Settings and Global search are still open (see Phase 3 above).
-   Alternatively, tackle a Phase 0.5 spike (WebView editor or Google
-   Sign-In) if the user wants one of those next — see the re-sequencing
-   note below.
+   **Settings and Global search are now done too** — **Phase 3 is
+   complete.** Remaining Phase 3 items (modals → RN bottom sheets, platform
+   swaps) are cosmetic polish, not new screens. Next up is a Phase 0.5 spike
+   (WebView editor or Google Sign-In) or a Phase 4 screen (The Journey,
+   Messages, Coordination Notes) — see the re-sequencing note below.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

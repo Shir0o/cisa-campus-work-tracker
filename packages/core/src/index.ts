@@ -17,6 +17,8 @@ export * from './attendance';
 export * from './notifications';
 export * from './signup';
 export * from './feedback';
+export * from './settings';
+export * from './search';
 export * from './utils';
 export * from './data/todos';
 export * from './data/prayers';
