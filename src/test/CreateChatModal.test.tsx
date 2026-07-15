@@ -167,4 +167,22 @@ describe('CreateChatModal Component', () => {
       expect(mockOnClose).toHaveBeenCalled();
     });
   });
+
+  it('filters out cisa-* test accounts from user list', async () => {
+    const usersWithTest = [
+      ...mockUsers,
+      { uid: 'u4', displayName: 'cisa-test-user', email: 'cisa-test@example.com', approved: true },
+    ];
+    setupOnSnapshot(usersWithTest);
+    render(
+      <CreateChatModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onSelectRoom={mockOnSelectRoom}
+      />
+    );
+
+    expect(screen.getByText('Alice Green')).toBeInTheDocument();
+    expect(screen.queryByText('cisa-test-user')).not.toBeInTheDocument();
+  });
 });

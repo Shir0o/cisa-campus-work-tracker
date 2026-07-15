@@ -745,4 +745,64 @@ describe('Messages View Component', () => {
 
     expect(screen.getByTestId('create-chat-modal')).toBeInTheDocument();
   });
+
+  it('filters out direct chat rooms with cisa-* test accounts', async () => {
+    const mockDirectRooms = [
+      {
+        id: 'room-normal',
+        type: 'direct' as const,
+        memberIds: ['u1', 'u2'],
+        createdById: 'u1',
+        createdByName: 'User One',
+        createdAt: { seconds: 123456 },
+      },
+      {
+        id: 'room-cisa',
+        type: 'direct' as const,
+        memberIds: ['u1', 'u-cisa'],
+        createdById: 'u1',
+        createdByName: 'User One',
+        createdAt: { seconds: 123456 },
+      },
+    ];
+
+    // Mock direct users info in firestore
+    (firestore.getDoc as any).mockImplementation((docRef: any) => {
+      const path = docRef._path || (docRef.path as string) || '';
+      if (path && path.includes('users/u2')) {
+        return Promise.resolve({
+          exists: () => true,
+          data: () => ({ displayName: 'Alice Green', email: 'alice@example.com' }),
+        });
+      }
+      if (path && path.includes('users/u-cisa')) {
+        return Promise.resolve({
+          exists: () => true,
+          data: () => ({ displayName: 'cisa-test-account', email: 'cisa-test@example.com' }),
+        });
+      }
+      return Promise.resolve({ exists: () => false });
+    });
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      // Return rooms list
+      successCallback({
+        forEach: (fn: any) => {
+          mockDirectRooms.forEach(item => fn({ id: item.id, data: () => item }));
+        }
+      });
+      return vi.fn();
+    });
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    // Verify Alice Green direct room is rendered
+    expect(await screen.findByText('Alice Green')).toBeInTheDocument();
+    // Verify cisa-* test account direct room is NOT rendered
+    expect(screen.queryByText('cisa-test-account')).not.toBeInTheDocument();
+  });
 });

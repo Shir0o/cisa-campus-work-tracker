@@ -543,7 +543,7 @@ export default function CoordinationNotes() {
     const todo = todos.find((t) => t.id === todoId);
     if (!todo) return;
     await setTodoDone(todoId, done);
-    try {
+    if (typeof logActivity === 'function') {
       logActivity({
         action: done ? 'completed task' : 'reopened task',
         targetId: todoId,
@@ -552,8 +552,6 @@ export default function CoordinationNotes() {
         type: 'update',
         description: done ? 'Marked as completed' : 'Marked as pending',
       } as never);
-    } catch (e) {
-      // ignore mock errors in tests
     }
   };
 
@@ -561,7 +559,7 @@ export default function CoordinationNotes() {
     const todo = todos.find((t) => t.id === todoId);
     if (!todo) return;
     await deleteTodo(todoId);
-    try {
+    if (typeof logActivity === 'function') {
       logActivity({
         action: 'deleted task',
         targetId: todoId,
@@ -570,8 +568,6 @@ export default function CoordinationNotes() {
         type: 'delete',
         description: 'Task removed',
       } as never);
-    } catch (e) {
-      // ignore mock errors in tests
     }
   };
 

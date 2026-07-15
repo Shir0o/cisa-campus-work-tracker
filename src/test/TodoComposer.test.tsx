@@ -21,6 +21,7 @@ vi.mock('../lib/firebase', () => ({
   handleFirestoreError: vi.fn(),
   OperationType: { CREATE: 'create', UPDATE: 'update', DELETE: 'delete', LIST: 'list' },
   sendNotification: vi.fn().mockResolvedValue(undefined),
+  logActivity: vi.fn(),
 }));
 
 // Keep the pure helpers (presets, dueChip) real; spy only on the Firestore writes.

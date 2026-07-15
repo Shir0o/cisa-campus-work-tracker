@@ -105,7 +105,7 @@ export default function TodoComposer({
     try {
       if (mode === "edit" && initial?.id) {
         await updateTodo(initial.id, { title: validTexts[0], assigneeId, dueDate: due });
-        try {
+        if (typeof logActivity === "function") {
           logActivity({
             action: 'updated task',
             targetId: initial.id,
@@ -114,14 +114,12 @@ export default function TodoComposer({
             type: 'update',
             description: `Assigned to ${who?.name || 'Unassigned'}`,
           } as never);
-        } catch (e) {
-          // ignore mock errors in tests
         }
         onSaved?.("To-do updated.");
       } else {
         for (const valText of validTexts) {
           const newId = await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
-          try {
+          if (typeof logActivity === "function") {
             logActivity({
               action: 'added task',
               targetId: newId,
@@ -130,8 +128,6 @@ export default function TodoComposer({
               type: 'create',
               description: `Assigned to ${who?.name || 'Unassigned'}`,
             } as never);
-          } catch (e) {
-            // ignore mock errors in tests
           }
           // Let the assignee know it's now on their day (the global Toaster surfaces it).
           if (assigneeId && assigneeId !== meUid) {
