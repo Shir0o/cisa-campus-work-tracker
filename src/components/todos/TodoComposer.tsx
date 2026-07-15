@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 import { Check, CheckSquare, X } from "lucide-react";
 import DatePicker from "../ui/DatePicker";
-import { sendNotification } from "../../lib/firebase";
+import { sendNotification, logActivity } from "../../lib/firebase";
 import { cn } from "../../lib/utils";
 import {
   addTodo,
@@ -105,10 +105,26 @@ export default function TodoComposer({
     try {
       if (mode === "edit" && initial?.id) {
         await updateTodo(initial.id, { title: validTexts[0], assigneeId, dueDate: due });
+        logActivity({
+          action: 'updated task',
+          targetId: initial.id,
+          targetName: validTexts[0],
+          targetType: 'comment',
+          type: 'update',
+          description: `Assigned to ${who?.name || 'Unassigned'}`,
+        } as never);
         onSaved?.("To-do updated.");
       } else {
         for (const valText of validTexts) {
-          await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
+          const newId = await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
+          logActivity({
+            action: 'added task',
+            targetId: newId,
+            targetName: valText,
+            targetType: 'comment',
+            type: 'create',
+            description: `Assigned to ${who?.name || 'Unassigned'}`,
+          } as never);
           // Let the assignee know it's now on their day (the global Toaster surfaces it).
           if (assigneeId && assigneeId !== meUid) {
             void sendNotification({

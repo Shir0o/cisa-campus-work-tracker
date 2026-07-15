@@ -283,7 +283,7 @@ const CustomTab = Extension.create({
         if (editor.isActive('listItem') || editor.isActive('taskItem') || editor.isActive('table')) {
           return false;
         }
-        return editor.commands.insertText('  ');
+        return editor.commands.insertContent('  ');
       },
       'Shift-Tab': ({ editor }) => {
         if (editor.isActive('listItem') || editor.isActive('taskItem') || editor.isActive('table')) {
@@ -294,14 +294,14 @@ const CustomTab = Extension.create({
         if (!selection.empty) return false;
         const pos = selection.from;
         const resolvedPos = state.doc.resolve(pos);
-        const textBefore = resolvedPos.parent.textBetween(
+        const textBefore = resolvedPos.parent.textContent.slice(
           Math.max(0, resolvedPos.parentOffset - 2),
           resolvedPos.parentOffset
         );
         if (textBefore === '  ') {
-          return editor.commands.deleteRange(pos - 2, pos);
+          return editor.commands.deleteRange({ from: pos - 2, to: pos });
         } else if (textBefore.endsWith(' ')) {
-          return editor.commands.deleteRange(pos - 1, pos);
+          return editor.commands.deleteRange({ from: pos - 1, to: pos });
         }
         return false;
       },
@@ -325,7 +325,7 @@ const getHeadingText = (node: React.ReactNode): string => {
   if (typeof node === 'string') return node;
   if (typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(getHeadingText).join('');
-  if (React.isValidElement(node)) return getHeadingText(node.props.children);
+  if (React.isValidElement(node)) return getHeadingText((node.props as any).children);
   return '';
 };
 
@@ -539,6 +539,34 @@ export default function CoordinationNotes() {
     flashTimer.current = setTimeout(() => setFlash(null), 2800);
   };
 
+  const handleToggleTodo = async (todoId: string, done: boolean) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo) return;
+    await setTodoDone(todoId, done);
+    logActivity({
+      action: done ? 'completed task' : 'reopened task',
+      targetId: todoId,
+      targetName: todo.title,
+      targetType: 'comment',
+      type: 'update',
+      description: done ? 'Marked as completed' : 'Marked as pending',
+    } as never);
+  };
+
+  const handleDeleteTodo = async (todoId: string) => {
+    const todo = todos.find((t) => t.id === todoId);
+    if (!todo) return;
+    await deleteTodo(todoId);
+    logActivity({
+      action: 'deleted task',
+      targetId: todoId,
+      targetName: todo.title,
+      targetType: 'comment',
+      type: 'delete',
+      description: 'Task removed',
+    } as never);
+  };
+
   const memberById = useMemo(() => {
     const m = new Map<string, TeamMember>();
     team.forEach((t) => m.set(t.uid, t));
@@ -599,7 +627,11 @@ export default function CoordinationNotes() {
                 approved: data.approved,
               };
             })
-            .filter((u) => u.approved !== false)
+            .filter((u) => {
+              if (u.approved === false) return false;
+              const name = (u.member.name || '').toLowerCase();
+              return !name.startsWith('cisa-');
+            })
             .map((u) => u.member)
             .sort((a, b) => a.name.localeCompare(b.name)),
         );
@@ -982,7 +1014,7 @@ export default function CoordinationNotes() {
               todo={t}
               assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
               showAssignee
-              onToggle={(todo, done) => setTodoDone(todo.id, done)}
+              onToggle={(todo, done) => handleToggleTodo(todo.id, done)}
               onEdit={(todo) =>
                 setTodoComposer({
                   mode: 'edit',
@@ -994,7 +1026,7 @@ export default function CoordinationNotes() {
                   },
                 })
               }
-              onDelete={(todo) => deleteTodo(todo.id)}
+              onDelete={(todo) => handleDeleteTodo(todo.id)}
               onJumpToSource={jumpToTodoSource}
             />
           ))}
@@ -1375,7 +1407,7 @@ export default function CoordinationNotes() {
                 todo={t}
                 assignee={t.assigneeId ? memberById.get(t.assigneeId) : undefined}
                 showAssignee
-                onToggle={(todo, done) => setTodoDone(todo.id, done)}
+                onToggle={(todo, done) => handleToggleTodo(todo.id, done)}
                 onEdit={(todo) =>
                   setTodoComposer({
                     mode: 'edit',
@@ -1387,7 +1419,7 @@ export default function CoordinationNotes() {
                     },
                   })
                 }
-                onDelete={(todo) => deleteTodo(todo.id)}
+                onDelete={(todo) => handleDeleteTodo(todo.id)}
                 onJumpToSource={jumpToTodoSource}
               />
             ))}

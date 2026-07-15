@@ -36,18 +36,21 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
     const unsubscribe = onSnapshot(usersQuery, (snapshot) => {
       const roomMembers: AppUser[] = [];
       const nonMembers: AppUser[] = [];
-      
       snapshot.forEach((doc) => {
         const u = doc.data() as AppUser;
         const appUser = { uid: doc.id, ...u };
+        const email = (u.email || '').toLowerCase();
+        const displayName = (u.displayName || '').toLowerCase();
+        const isTest = email.startsWith('cisa-') || displayName.startsWith('cisa-');
         
-        if (room.memberIds.includes(doc.id)) {
-          roomMembers.push(appUser);
-        } else if (u.approved) {
-          nonMembers.push(appUser);
+        if (!isTest) {
+          if (room.memberIds.includes(doc.id)) {
+            roomMembers.push(appUser);
+          } else if (u.approved) {
+            nonMembers.push(appUser);
+          }
         }
       });
-      
       setMembers(roomMembers);
       setAllUsers(nonMembers);
       setLoadingMembers(false);

@@ -307,7 +307,18 @@ export default function Messages() {
 
   // Filtered room list
   const filteredRooms = rooms.filter((r) => {
+    if (r.type === 'direct') {
+      const otherUid = r.memberIds.find(id => id !== currentUser?.uid);
+      if (otherUid) {
+        const otherUser = usersCache[otherUid];
+        if (otherUser) {
+          const nameLower = (otherUser.displayName || '').toLowerCase();
+          if (nameLower.startsWith('cisa-')) return false;
+        }
+      }
+    }
     const name = getRoomName(r).toLowerCase();
+    if (name.startsWith('cisa-')) return false;
     return name.includes(roomSearch.toLowerCase());
   });
 
