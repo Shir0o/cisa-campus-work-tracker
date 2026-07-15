@@ -31,7 +31,7 @@ export default function SearchScreen() {
 
   const onQuickAction = (action: QuickAction) => {
     if (action.key === 'new-contact') setShowAddSheet(true);
-    else router.push('/signup');
+    else if (action.key === 'signup') router.push('/signup');
   };
 
   const handleAddContact = async (input: Parameters<typeof addContact>[0]) => {
