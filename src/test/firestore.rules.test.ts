@@ -733,4 +733,70 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'other'), { clubRush: true }));
     });
   });
+
+  describe('Notifications', () => {
+    const seedUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer2'), { role: 'viewer', approved: true });
+      });
+    };
+    const seedPersonalNotif = async (uid: string) => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'notifications', 'n1'), {
+          userId: uid, title: 'Hi', message: 'msg', type: 'info', read: false,
+        });
+      });
+    };
+    const seedBroadcastNotif = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'notifications', 'n2'), {
+          userId: 'ALL_ADMINS', title: 'Hi all', message: 'msg', type: 'event', read: false,
+        });
+      });
+    };
+
+    it('N1: the recipient can mark their own personal notification read', async () => {
+      await seedUsers();
+      await seedPersonalNotif('viewer1');
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(updateDoc(doc(db, 'notifications', 'n1'), { read: true, readBy: ['viewer1'] }));
+    });
+
+    it('N2: the recipient cannot change other fields while marking read', async () => {
+      await seedUsers();
+      await seedPersonalNotif('viewer1');
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertFails(updateDoc(doc(db, 'notifications', 'n1'), { read: true, title: 'Hacked' }));
+    });
+
+    it('N3: a non-recipient, non-manager cannot mark someone else\'s personal notification read', async () => {
+      await seedUsers();
+      await seedPersonalNotif('viewer1');
+      const db = getFirestore({ uid: 'viewer2' });
+      await assertFails(updateDoc(doc(db, 'notifications', 'n1'), { read: true, readBy: ['viewer2'] }));
+    });
+
+    it('N4: any signed-in user can mark a broadcast notification read', async () => {
+      await seedUsers();
+      await seedBroadcastNotif();
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(updateDoc(doc(db, 'notifications', 'n2'), { read: true, readBy: ['viewer1'] }));
+    });
+
+    it('N5: any signed-in user can dismiss (set aside) a broadcast notification for themselves', async () => {
+      await seedUsers();
+      await seedBroadcastNotif();
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(updateDoc(doc(db, 'notifications', 'n2'), { dismissedBy: ['viewer1'] }));
+    });
+
+    it('N6: a manager can update a notification regardless of which fields change', async () => {
+      await seedUsers();
+      await seedPersonalNotif('viewer1');
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(updateDoc(doc(db, 'notifications', 'n1'), { title: 'Edited by staff' }));
+    });
+  });
 });

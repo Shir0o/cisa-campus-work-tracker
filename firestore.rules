@@ -334,8 +334,8 @@ service cloud.firestore {
                     );
       
       allow update: if isValidId(notificationId) && isSignedIn() && (
-                      (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
-                      (resource.data.userId == 'ALL_ADMINS' && incoming().diff(existing()).affectedKeys().hasOnly(['read'])) ||
+                      (resource.data.userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy'])) ||
+                      (resource.data.userId == 'ALL_ADMINS' && incoming().diff(existing()).affectedKeys().hasOnly(['read', 'readBy', 'dismissedBy'])) ||
                       isSuperAdmin() ||
                       isManager()
                     );
