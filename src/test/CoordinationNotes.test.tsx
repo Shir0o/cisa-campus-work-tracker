@@ -1389,15 +1389,117 @@ describe('CoordinationNotes', () => {
       // Textarea should contain renumbered markdown
       expect(textarea.value).toBe(`1. Apple\n2. Orange\n3. Banana`);
       
-      act(() => {
-        vi.advanceTimersByTime(1000);
-      });
-
-      // Editor setContent should have been called with renumbered content
+      // Close the view while timer is active to cover immediate setContent and active timer cleanup on close
+      fireEvent.click(markdownBtn);
+      expect(textarea).not.toBeInTheDocument();
+      
+      // Editor setContent should have been called immediately on close
       expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
         `1. Apple\n2. Orange\n3. Banana`
       );
       vi.useRealTimers();
+    });
+
+    it('clears markdownSyncTimer on unmount if active', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      const { unmount } = render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      expect(textarea).toBeInTheDocument();
+
+      vi.useFakeTimers();
+      fireEvent.change(textarea, { target: { value: 'Something' } });
+
+      // Unmount while timer is active to cover active timer cleanup on unmount
+      unmount();
+      vi.useRealTimers();
+    });
+
+    it('handles Tab key press to indent text', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+
+      fireEvent.keyDown(textarea, { key: 'Tab' });
+      expect(textarea.value).toBe('Hello  ');
+    });
+
+    it('handles Shift-Tab key press to outdent text', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      // Test Shift+Tab with indentation
+      textarea.focus();
+      textarea.value = '  Hello';
+      textarea.selectionStart = 7;
+      textarea.selectionEnd = 7;
+      fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+      expect(textarea.value).toBe('Hello');
+
+      // Test Shift+Tab without indentation
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+      fireEvent.keyDown(textarea, { key: 'Tab', shiftKey: true });
+      expect(textarea.value).toBe('Hello');
+    });
+
+    it('handles Enter key press to auto-indent new line', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = '  Hello';
+      textarea.selectionStart = 7;
+      textarea.selectionEnd = 7;
+
+      fireEvent.keyDown(textarea, { key: 'Enter' });
+      expect(textarea.value).toBe('  Hello\n  ');
+    });
+
+    it('does not intercept key down for other keys', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
+      render(<CoordinationNotes />);
+
+      // Toggle markdown view
+      const markdownBtn = screen.getByRole('button', { name: /Markdown/i });
+      fireEvent.click(markdownBtn);
+
+      const textarea = screen.getByTitle('Markdown source view') as HTMLTextAreaElement;
+      
+      textarea.focus();
+      textarea.value = 'Hello';
+      textarea.selectionStart = 5;
+      textarea.selectionEnd = 5;
+
+      fireEvent.keyDown(textarea, { key: 'a' });
+      expect(textarea.value).toBe('Hello');
     });
   });
   // ── Team to-dos ("What we're carrying") ─────────────────────────────────────

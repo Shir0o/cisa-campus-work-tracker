@@ -91,6 +91,37 @@ describe('TodoComposer', () => {
     expect(sendNotification).not.toHaveBeenCalled();
   });
 
+  it('creates multiple to-dos at once', async () => {
+    const onSaved = vi.fn();
+    render(
+      <TodoComposer
+        mode="create"
+        initialTexts={['Task 1', 'Task 2']}
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+        onSaved={onSaved}
+      />,
+    );
+    
+    // Assignee is required
+    const add = screen.getByRole('button', { name: /add to-dos/i });
+    expect(add).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: /Priya/ }));
+    expect(add).toBeEnabled();
+
+    // Verify task inputs are rendered
+    expect(screen.getByPlaceholderText('Task 1')).toHaveValue('Task 1');
+    expect(screen.getByPlaceholderText('Task 2')).toHaveValue('Task 2');
+
+    // Add them
+    fireEvent.click(add);
+
+    await waitFor(() => expect(todos.addTodo).toHaveBeenCalledTimes(2));
+    expect(onSaved).toHaveBeenCalledWith('Created 2 tasks for Priya.');
+  });
+
   it('edits an existing to-do through updateTodo', async () => {
     render(
       <TodoComposer

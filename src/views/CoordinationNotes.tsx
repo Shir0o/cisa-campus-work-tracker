@@ -2177,8 +2177,7 @@ function DocEditor({
       const lineStartIdx = beforeCursor.lastIndexOf('\n') + 1;
       const currentLine = val.substring(lineStartIdx, start);
       
-      const indentMatch = currentLine.match(/^[\s\t]*/);
-      const indent = indentMatch ? indentMatch[0] : '';
+      const indent = (currentLine.match(/^[\s\t]*/) as RegExpMatchArray)[0];
       
       const insert = '\n' + indent;
       const newVal = val.substring(0, start) + insert + val.substring(end);
