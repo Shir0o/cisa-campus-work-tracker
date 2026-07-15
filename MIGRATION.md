@@ -361,7 +361,24 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       assumes an authenticated creator and self/walking-together
       notifications, neither of which applies to an anonymous public
       submission.
-- [ ] Settings, Feedback, Global search
+- [x] ~~Feedback (submit + admin review)~~ — done, verified live: `apps/mobile/app/
+      feedback.tsx` ("Leave a note", any signed-in role) + `apps/mobile/app/
+      feedback-admin.tsx` ("Notes from the team", admin-only), backed by new
+      `packages/core/src/feedback.ts` (pure, unit-tested kind metadata +
+      `filterFeedback`) and `packages/core/src/data/feedback.ts`. Writes
+      directly to Firestore rather than through web's `/api/feedback` server
+      route (Admin SDK + browser-only `html2canvas` screenshot capture) —
+      the existing `feedback` rules already permit everything needed
+      (self-attested `create`, admin-only `update`/`delete`/`list`), so no
+      rules changes were required. **Deferred**: screenshot capture
+      (`react-native-view-shot` still unused — see the Platform swaps entry
+      below) and GitHub issue creation (needs server-side secrets); an
+      existing `githubIssueUrl` still opens via the admin list. Verified
+      live against the e2e Full-timer (admin: submit, status change,
+      archive) and Student (operator: submit works, admin entry point and
+      direct-URL guard both correctly hidden/blocked) e2e users on Expo web.
+      Settings and Global search are still open.
+- [ ] Settings, Global search
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
@@ -422,8 +439,10 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    link. **Notifications is now done too** (deploy the widened
    `firestore.rules` to finish it for `operator`/`viewer` roles — see the
    Phase 3 entry above). **SignUp is now done too** — a genuinely public
-   route, not gated behind login (see the Phase 3 entry above). Settings,
-   Feedback, and Global search are all still open (see Phase 3 above).
+   route, not gated behind login (see the Phase 3 entry above). **Feedback
+   (submit + admin review) is now done too** — writes directly to
+   Firestore, no rules changes needed (see the Phase 3 entry above).
+   Settings and Global search are still open (see Phase 3 above).
    Alternatively, tackle a Phase 0.5 spike (WebView editor or Google
    Sign-In) if the user wants one of those next — see the re-sequencing
    note below.

@@ -46,6 +46,26 @@ export default function More() {
             Sign up someone new
           </AppText>
         </Card>
+        {/* Not a NAV_ITEMS entry either (on web it's reached only by direct
+            URL, no in-app link) — unconditional like Notifications/Welcome
+            form above, since '/feedback' is viewer-accessible. */}
+        <Card onPress={() => router.push('/feedback')}>
+          <AppText variant="heading">Leave a note</AppText>
+          <AppText variant="caption" color={colors.onSurfaceVariant}>
+            Ideas, friction, appreciation
+          </AppText>
+        </Card>
+        {/* Admin-only review of every submitted note — gated explicitly since
+            it isn't in NAV_ITEMS either (reuses the existing
+            '/admin/feedback' permission key from ROUTE_MIN_ROLE). */}
+        {canAccessRoute(role, '/admin/feedback') && (
+          <Card onPress={() => router.push('/feedback-admin')}>
+            <AppText variant="heading">Notes from the team</AppText>
+            <AppText variant="caption" color={colors.onSurfaceVariant}>
+              Review submitted feedback
+            </AppText>
+          </Card>
+        )}
         {rest.map((n) => (
           <Card key={n.href} onPress={pushRoutes[n.href] ?? (() => {})}>
             <View style={{ gap: 2 }}>
