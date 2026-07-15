@@ -31,8 +31,8 @@ export default function SubmitFeedback() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
+    const fabBtn = document.getElementById('feedback-fab-btn');
     try {
-      const fabBtn = document.getElementById('feedback-fab-btn');
       if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
 
       const html2canvas = (await import('html2canvas-pro')).default;
@@ -41,8 +41,6 @@ export default function SubmitFeedback() {
         useCORS: true,
         scale: 1.5,
       });
-
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
 
       let finalCanvas = canvas;
       const maxDim = 1600;
@@ -60,6 +58,8 @@ export default function SubmitFeedback() {
       screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
+    } finally {
+      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {
