@@ -1661,6 +1661,7 @@ describe('CoordinationNotes', () => {
             displayName: 'cisa-test-account',
             email: 'cisa-test@example.com',
             approved: true,
+            role: 'viewer',
           }),
         },
       ];
