@@ -1,9 +1,10 @@
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { NAV_ITEMS, roleLabel, canAccessRoute } from '@cisa/core';
-import { Screen, AppText, Card } from '../../src/components/ui';
+import { Screen, AppText, Card, StatusPill } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
+import { useNotificationsData } from '../../src/lib/useNotificationsData';
 
 // "More" surfaces the NAV_ITEMS destinations not in the bottom tabs — driven by
 // the SHARED NAV_ITEMS + role labels from @cisa/core (the mobile drawer in the
@@ -14,6 +15,7 @@ export default function More() {
   const { colors, spacing } = useTheme();
   const { role } = useAuth();
   const router = useRouter();
+  const notif = useNotificationsData();
   const rest = NAV_ITEMS.filter((n) => !TAB_HREFS.includes(n.href) && canAccessRoute(role, n.href));
   // Only these destinations have a mobile screen to push to today; every
   // other NAV_ITEMS entry is still a no-op until its screen is built.
@@ -26,6 +28,15 @@ export default function More() {
     <Screen>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }}>
         <AppText variant="title">More</AppText>
+        {/* Notifications isn't a NAV_ITEMS entry (on web it's a global header
+            overlay, not a routed destination), so it's a manual Card here
+            rather than riding the loop below. */}
+        <Card onPress={() => router.push('/notifications')}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <AppText variant="heading">Notifications</AppText>
+            {notif.unreadCount > 0 && <StatusPill label={String(notif.unreadCount)} tone="accent" />}
+          </View>
+        </Card>
         {rest.map((n) => (
           <Card key={n.href} onPress={pushRoutes[n.href] ?? (() => {})}>
             <View style={{ gap: 2 }}>

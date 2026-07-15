@@ -312,8 +312,32 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       gathering, "Manage kinds", "Sync sheet", CSV export — all admin-only
       desktop tooling with complex forms (event recurrence generation,
       Google Sheets sync).
-- [ ] Settings, SignUp (phone verify), Feedback, Notifications, Global
-      search, Quick add
+- [x] ~~Notifications~~ — done, verified live: `apps/mobile/app/notifications.tsx`
+      ("What's stirring") + `src/components/notifications/NotificationRow.tsx`,
+      backed by new `packages/core/src/notifications.ts` (pure, unit-tested
+      `typeToTone`/`toneForNotification`/`mergeNotifications`/`groupNotifications`)
+      and `packages/core/src/data/notifications.ts` (`subscribeNotifications`
+      merges the personal + `ALL_ADMINS` broadcast queries;
+      `markNotificationRead`/`markAllNotificationsRead`/`setAsideNotification`).
+      The write side (`sendNotification`) already existed on mobile. No
+      persistent header exists yet to host a bell icon, so this is a pushed
+      route reached from "More" (which now shows a live unread-count badge)
+      rather than an always-open dropdown like web's. Footer nav ("See the
+      whole record in History" / "Open Prayer") is pinned to the screen
+      bottom rather than floating, so it stays reachable on a long list.
+      **Also widened the `firestore.rules` `notifications` `update` rule** —
+      it only allowed `hasOnly(['read'])`, but `markAsRead` writes `read`+
+      `readBy` and set-aside-on-broadcast writes `dismissedBy`, so
+      non-manager roles got a silent `permission-denied` on both (a
+      pre-existing bug affecting web too). Reproduced live against the e2e
+      Student (operator) user — `markAsRead` threw `permission-denied` — while
+      the e2e Full-timer (admin) succeeded regardless, since `isManager()`/
+      `isSuperAdmin()` already bypasses the `hasOnly(...)` check. The rules
+      fix is committed but **not yet deployed** (needs `firebase deploy
+      --only firestore:rules`, a live-project change), so it's still
+      unverified for `operator`/`viewer` roles — deploy, then re-check
+      mark-as-read/set-aside as the Student or Community e2e user.
+- [ ] Settings, SignUp (phone verify), Feedback, Global search, Quick add
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
 - [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
@@ -371,10 +395,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    Home screen, verified live against all four e2e role users.
 7. ~~Pick a Phase 3 screen next~~ — **Gatherings/Attendance is now done**,
    fixing the Student/Community landings' previously-dead "Full calendar"
-   link. Settings, SignUp (phone verify), Feedback, Notifications, and Global
-   search are all still open (see Phase 3 above). Alternatively, tackle a
-   Phase 0.5 spike (WebView editor or Google Sign-In) if the user wants one of
-   those next — see the re-sequencing note below.
+   link. **Notifications is now done too** (deploy the widened
+   `firestore.rules` to finish it for `operator`/`viewer` roles — see the
+   Phase 3 entry above). Settings, SignUp, Feedback, and Global search are
+   all still open (see Phase 3 above). Alternatively, tackle a Phase 0.5
+   spike (WebView editor or Google Sign-In) if the user wants one of those
+   next — see the re-sequencing note below.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
