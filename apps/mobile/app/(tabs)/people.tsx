@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Alert, ScrollView, View } from 'react-native';
-import type { Contact, NewContactInput } from '@cisa/core';
+import { Ionicons } from '@expo/vector-icons';
+import { canAccessRoute, type Contact, type NewContactInput } from '@cisa/core';
 import { Screen, AppText, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -28,6 +29,24 @@ export default function People() {
   const handleAddContact = async (input: NewContactInput) => {
     await addContact(input, { uid, name: user?.displayName });
   };
+
+  // The tab bar hides this tab below 'operator' (see (tabs)/_layout.tsx), but
+  // that only removes the tab entry — a direct URL/deep link still renders
+  // this screen, so it needs its own guard too (same pattern as
+  // feedback-admin.tsx).
+  if (!canAccessRoute(role, '/directory')) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: 8 }}>
+          <Ionicons name="lock-closed-outline" size={32} color={colors.onSurfaceVariant} />
+          <AppText variant="heading">Students and up</AppText>
+          <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
+            Your directory is only visible to Students, Trainees, and Full-timers.
+          </AppText>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
     <Screen>
