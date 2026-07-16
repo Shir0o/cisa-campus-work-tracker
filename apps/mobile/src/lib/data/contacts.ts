@@ -62,3 +62,29 @@ export async function addContact(
     throw e;
   }
 }
+
+/** Move a contact to a new pipeline stage (The Journey); logs the activity
+ * only for stage-to-stage moves (not moves out of "no stage"), matching web's
+ * handleUpdateContactStage. */
+export async function moveContactStage(
+  contact: Contact,
+  newStageLabel: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  const oldStage = contact.stage;
+  try {
+    await core.moveContactStage(db, contact.id, newStageLabel, by);
+    if (oldStage && oldStage !== newStageLabel) {
+      void logActivity({
+        action: `moved contact to stage "${newStageLabel}"`,
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'edit',
+        description: `Changed stage from ${oldStage} to ${newStageLabel}`,
+      });
+    }
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+  }
+}

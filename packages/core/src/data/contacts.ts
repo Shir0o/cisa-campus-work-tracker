@@ -5,11 +5,13 @@ import {
   addDoc,
   collection,
   collectionGroup,
+  doc,
   limit,
   onSnapshot,
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   type Firestore,
 } from "firebase/firestore";
 import { fullTimerOf, isTrainee } from "../walking";
@@ -171,4 +173,21 @@ export async function addContact(
   }
 
   return docRef.id;
+}
+
+/** Move a contact to a new pipeline stage (The Journey). Mirrors
+ * setContactAttendance in data/attendance.ts — activity logging is left to
+ * each platform, so this stays a plain write. */
+export async function moveContactStage(
+  db: Firestore,
+  contactId: string,
+  newStageLabel: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  await updateDoc(doc(db, "contacts", contactId), {
+    stage: newStageLabel,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid ?? null,
+    updatedByName: by.name ?? null,
+  });
 }
