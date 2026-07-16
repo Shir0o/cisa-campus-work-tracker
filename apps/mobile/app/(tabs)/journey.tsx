@@ -27,8 +27,8 @@ export default function Journey() {
 
   const title = NAV_ITEMS.find((n) => n.href === '/board')?.label ?? 'The Journey';
 
-  const handleMove = async (contactId: string, newStageLabel: string) => {
-    if (!movingContact || movingContact.id !== contactId) return;
+  const handleMove = async (_contactId: string, newStageLabel: string) => {
+    if (!movingContact) return;
     await moveContactStage(movingContact, newStageLabel, { uid, name: user?.displayName });
   };
 
