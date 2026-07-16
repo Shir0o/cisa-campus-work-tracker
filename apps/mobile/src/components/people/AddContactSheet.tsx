@@ -16,12 +16,14 @@ export function AddContactSheet({
   visible,
   stages,
   season,
+  defaultStage,
   onSubmit,
   onClose,
 }: {
   visible: boolean;
   stages: Stage[];
   season: ActiveSeason;
+  defaultStage?: string;
   onSubmit: (input: NewContactInput) => Promise<void>;
   onClose: () => void;
 }) {
@@ -39,7 +41,7 @@ export function AddContactSheet({
   const [notes, setNotes] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  const stageValue = stage || stages[0]?.label || 'Unassigned';
+  const stageValue = stage || defaultStage || stages[0]?.label || 'Unassigned';
 
   const reset = () => {
     setFirstName('');

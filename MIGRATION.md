@@ -448,7 +448,25 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       **done** (`apps/mobile/src/lib/messaging.ts`).
 
 ### 🔲 Phase 4 — High-risk screens
-- [ ] The Journey (dnd-kit → gesture-based move / MoveSheet)
+- [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
+      verified live against the Trainee and Full-timer e2e users (route is
+      hidden from Student/Community in the tab bar via `canAccessRoute`):
+      `apps/mobile/app/(tabs)/journey.tsx` + `src/lib/useJourneyData.ts` +
+      `src/components/journey/{StageTabs,JourneyRow,MoveSheet}.tsx`. Behavior
+      oracle was web's `src/views/OutreachBoardMobile.tsx` (tap-to-switch
+      stage tabs + a MoveSheet, not drag-and-drop). Reused almost the entire
+      data layer from the People phase as-is — `subscribeContacts`/
+      `subscribeStages`/`subscribeTouches`/`lastTouchByContact` needed no
+      changes. Added one new core mutation, `moveContactStage` (in
+      `packages/core/src/data/contacts.ts`, mirroring `setContactAttendance`'s
+      shape), plus its mobile wrapper with the same oldStage-guarded activity
+      log as web's `handleUpdateContactStage`. `AddContactSheet` got a small
+      additive `defaultStage` prop so "Add to {stage}" pre-fills the active
+      tab. **Deferred**, matching the mobile port's existing scope
+      conventions: admin "Shape the journey" stage management (add/edit/
+      delete stage) — People screen similarly defers contact-detail
+      navigation — and swipe-between-tabs (tap is the primary interaction;
+      a `PanResponder` addition later is non-breaking).
 - [ ] Messages (Firestore realtime chat)
 - [ ] Coordination Notes / The Board (WebView editor + native read view)
 
@@ -509,6 +527,11 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    swaps) are cosmetic polish, not new screens. Next up is a Phase 0.5 spike
    (WebView editor or Google Sign-In) or a Phase 4 screen (The Journey,
    Messages, Coordination Notes) — see the re-sequencing note below.
+8. ~~Pick a Phase 4 screen next~~ — **The Journey is now done** (see the
+   Phase 4 entry above), reusing almost the entire People-phase data layer.
+   Next up is Messages (Firestore realtime chat, nothing started) or
+   Coordination Notes / The Board, which is still blocked on the Phase 0.5
+   WebView editor spike.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
