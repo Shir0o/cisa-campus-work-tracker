@@ -186,6 +186,18 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       screen filters its destination list the same way. Verified live against
       the fulltimer (admin, all 6 tabs) and student (operator: Journey hidden,
       "Looking back" absent from More) e2e test users.
+- [x] **Follow-up fix**: tab-hiding/"More"-filtering only remove the entry
+      point — a direct URL or deep link still rendered the screen underneath.
+      `admin/feedback.tsx` already self-guarded with an in-screen
+      `canAccessRoute` check; added the same guard to `journey.tsx` ('/board',
+      manager+), `people.tsx` ('/directory', operator+), and `history.tsx`
+      ('/history', manager+) — the three screens gated above the lowest
+      ('viewer') role. `contacts`/`activities` Firestore rules allow any
+      *approved* user regardless of role, so People/History were a real
+      under-role data leak, not just UX; Journey has no live data yet (Phase
+      4 scaffold). Verified live as the e2e student (operator) user: direct
+      nav to `/journey` and `/history` now shows a lock screen, `/people`
+      still renders.
 - **Gotcha hit + fixed**: `packages/core` needs its own `node_modules/firebase`
   for standalone `npm test`/`typecheck`, but Metro's default upward
   `node_modules` crawl found that copy *before* `apps/mobile/node_modules`,

@@ -4,10 +4,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Screen, AppText } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
+import { useAuth } from '../src/lib/AuthProvider';
 import { useHistoryData } from '../src/lib/useHistoryData';
 import { HistoryRow } from '../src/components/history/HistoryRow';
 import { HistoryFilterSheet } from '../src/components/history/HistoryFilterSheet';
-import { HISTORY_KINDS } from '@cisa/core';
+import { HISTORY_KINDS, canAccessRoute } from '@cisa/core';
 
 // History / "Looking back" — the team's recent activity feed. Design:
 // src/views/HistoryMobile.tsx (already shipped on the web app at mobile
@@ -16,8 +17,26 @@ import { HISTORY_KINDS } from '@cisa/core';
 export default function History() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
+  const { role } = useAuth();
   const data = useHistoryData();
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // This route has no tab (reached via "More", gated there by canAccessRoute),
+  // but a direct URL/deep link would still render it, so it needs its own
+  // guard too (same pattern as feedback-admin.tsx).
+  if (!canAccessRoute(role, '/history')) {
+    return (
+      <Screen>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: 8 }}>
+          <Ionicons name="lock-closed-outline" size={32} color={colors.onSurfaceVariant} />
+          <AppText variant="heading">Trainees and up</AppText>
+          <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
+            Looking back is only visible to Trainees and Full-timers.
+          </AppText>
+        </View>
+      </Screen>
+    );
+  }
 
   const activeCount = (data.kind !== 'all' ? 1 : 0) + (data.who !== 'all' ? 1 : 0);
   const kindLabel = HISTORY_KINDS.find((k) => k.id === data.kind)?.label;
