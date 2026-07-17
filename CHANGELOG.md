@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Fixed
+- **OpenWiki Update workflow still failing after the provider switch.** Switching to Anthropic (below) fixed the immediate `OPENROUTER_API_KEY is required` error, but the run then failed later with repeated `Failed to send multipart request. Received status [403]: Forbidden` messages and a final non-zero exit — `LANGCHAIN_TRACING_V2: "true"` was enabled with no `secrets.LANGSMITH_API_KEY` configured, so every LangSmith trace upload was rejected, and the resulting unhandled rejection crashed the Node process after doc generation had otherwise completed. Removed the unused `LANGSMITH_API_KEY`/`LANGCHAIN_PROJECT`/`LANGCHAIN_TRACING_V2` env vars from `.github/workflows/openwiki-update.yml` since this repo doesn't use LangSmith tracing.
 - **OpenWiki Update workflow failing on every scheduled run.** The workflow was configured for `OPENWIKI_PROVIDER: openrouter` reading a `secrets.OPENROUTER_API_KEY` that was never added to the repo, so every run failed with `OPENROUTER_API_KEY is required for non-interactive runs`. Switched `.github/workflows/openwiki-update.yml` to `OPENWIKI_PROVIDER: anthropic` / `OPENWIKI_MODEL_ID: claude-sonnet-5`, reading `secrets.ANTHROPIC_API_KEY` instead — Anthropic is natively supported by OpenWiki, avoiding an OpenRouter pass-through fee. Still requires the `ANTHROPIC_API_KEY` secret to be added to the repo before the workflow can run successfully.
 
 ### Added
