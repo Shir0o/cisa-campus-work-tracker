@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "CISA Campus",
+    "name": "CISA Campus Work Tracker",
     "slug": "cisa-campus",
     "scheme": "cisacampus",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "splash": {
       "backgroundColor": "#eaeef4"
     },
@@ -15,11 +16,16 @@
       "bundleIdentifier": "com.cisa.campus"
     },
     "android": {
-      "package": "com.cisa.campus"
+      "package": "com.cisa.campus",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#5c5595"
+      }
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/icon.png"
     },
     "plugins": [
       "expo-router",

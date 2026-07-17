@@ -471,7 +471,21 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 - [ ] Coordination Notes / The Board (WebView editor + native read view)
 
 ### 🔲 Phase 5 — App-store delivery
-- [ ] App icon + splash, `app.json` finalize, EAS Build config
+- [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
+      **"CISA Campus Work Tracker"** (was the shorter "CISA Campus"; the
+      user's explicit pick over the manifest's "CISA Tracker", accepting that
+      it may truncate under a phone home-screen icon). The app icon uses the
+      web app's brand mark (`public/logo.svg`'s purple/cream sheep, the same
+      asset in `Sidebar.tsx`'s top-left brand header) via two ready-made
+      1024×1024 exports the user supplied (not re-rendered from the SVG):
+      `apps/mobile/assets/icon.png` (opaque, wired to `expo.icon` and
+      `web.favicon`) and `apps/mobile/assets/adaptive-icon-foreground.png`
+      (transparent, ~19–20% safe-zone margin on every side, wired to
+      `android.adaptiveIcon.foregroundImage` with `backgroundColor: "#5c5595"`
+      matching the brand purple). Verified live on Expo web (favicon renders,
+      no asset-resolution errors). Still open below: splash *image* (only
+      `splash.backgroundColor` is set) and EAS Build config.
+- [ ] Splash image, EAS Build config
 - [ ] Internal TestFlight / Play internal build on a physical device
 - [ ] (Optional) `expo-notifications` for OS push (in-app notifications are
       Firestore docs today)
