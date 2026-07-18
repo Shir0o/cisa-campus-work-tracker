@@ -33,6 +33,7 @@ export default function More() {
     '/answered': () => router.push('/answered'),
     '/attendance': () => router.push('/attendance'),
     '/settings': () => router.push('/settings'),
+    '/coordination': () => router.push('/coordination'),
   };
   return (
     <Screen>

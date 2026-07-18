@@ -111,7 +111,7 @@ import { setTodoDone, deleteTodo, addTodo } from '../lib/todos';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
-interface TeamMember {
+export interface TeamMember {
   uid: string;
   name: string;
   photoURL?: string;
@@ -1784,7 +1784,7 @@ function NoteComposer({
 }
 
 // ── The live document editor ──────────────────────────────────────────────────
-function DocEditor({
+export function DocEditor({
   doc: d,
   meUid,
   meName,
