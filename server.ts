@@ -61,6 +61,10 @@ async function startServer() {
         if (admin.apps.length === 0) {
           firebaseApp = admin.initializeApp({
             projectId: config.projectId,
+            // createCustomToken needs to know which service account to sign
+            // with — without this it tries to auto-discover one via the GCP
+            // metadata server, which doesn't exist in local/Cloud Run dev.
+            serviceAccountId: "firebase-adminsdk-fbsvc@sac-campus-hub.iam.gserviceaccount.com",
           });
         } else {
           firebaseApp = admin.apps[0]!;
@@ -1332,6 +1336,22 @@ The current local date is: ${currentDate}.`,
     } catch (error: any) {
       console.error("AI Notes Analyzer Error: ", error);
       res.status(500).json({ error: error.message || "Failed to analyze notes" });
+    }
+  });
+
+  // Self-service token exchange: mints a short-lived custom token for the
+  // caller's own uid, so the mobile app can bridge its Firebase session into
+  // a react-native-webview page (which has its own, separate auth storage).
+  // No privilege escalation — the token signs in as the same uid the caller
+  // already authenticated as.
+  app.post("/api/mint-custom-token", async (req, res) => {
+    try {
+      const decodedToken = await authenticateFirebaseUser(req);
+      const token = await getAdminAuth().createCustomToken(decodedToken.uid);
+      res.status(200).json({ success: true, token });
+    } catch (error: any) {
+      console.error("Mint Custom Token Error: ", error);
+      res.status(401).json({ success: false, error: error.message || "Failed to mint custom token" });
     }
   });
 

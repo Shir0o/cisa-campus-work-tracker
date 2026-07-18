@@ -37,6 +37,7 @@ import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions"
 
 const CoordinationNotes = React.lazy(() => import("./views/CoordinationNotes"));
 const Messages = React.lazy(() => import("./views/Messages"));
+const EmbedCoordinationDoc = React.lazy(() => import("./views/EmbedCoordinationDoc"));
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
@@ -354,6 +355,15 @@ export default function App() {
           <AuthProvider>
             <Routes>
               <Route path="/signup" element={<SignUp />} />
+
+              <Route
+                path="/embed/coordination/:docId"
+                element={
+                  <React.Suspense fallback={null}>
+                    <EmbedCoordinationDoc />
+                  </React.Suspense>
+                }
+              />
 
               <Route
                 path="/"

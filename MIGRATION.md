@@ -97,19 +97,41 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 ### 🔲 Phase 0.5 — De-risking spikes (no longer blocking Phase 2 — see "How to
 proceed"; these are ordinary Firestore CRUD screens with no editor/WebView
 involved, so screen-porting can continue in parallel)
-- [ ] **Collab editor in a WebView** — host the existing web TipTap/Yjs editor in
-      `react-native-webview`, pass doc id + auth token, confirm Yjs/RTDB sync on a
-      device. This is the top technical risk and gates Phase 4. **Scoped**: the
-      web `DocEditor` is a nested, unexported component inside
-      `src/views/CoordinationNotes.tsx` (~2791 lines) sharing code with the
-      parent screen — it needs to be extracted into a standalone bundle a
-      WebView can load (bridged via `postMessage` for doc id/auth token)
-      before the Yjs↔RTDB sync (`src/lib/yjsRtdbProvider.ts`'s
-      `RtdbYjsProvider`, path `board_docs_rtdb/{docId}`) can even be tested.
-      `react-native-webview` is already installed in `apps/mobile` (13.12.5),
-      but there's no Board/Coordination-notes route stub yet. This machine has
-      iOS simulators available locally (`xcrun simctl list devices`) for the
-      on-device verification step; no Android emulator/`adb`.
+- [x] **Collab editor in a WebView** — done, verified live on the iOS
+      Simulator: typed edits in the RN app's WebView showed up in a normal
+      desktop browser tab within ~1s and vice versa, with live cursor
+      presence ("1 other editing: Tony Wang") — the top technical risk is now
+      resolved. **Design pivot from the original scoping below**: rather than
+      extracting `DocEditor` into a standalone bundle with new build tooling
+      (none existed in the repo), the spike reuses the **already-deployed web
+      SPA** as the "bundle." `DocEditor` only needed one `export` keyword
+      added ([CoordinationNotes.tsx:1787](src/views/CoordinationNotes.tsx:1787)) — it already closes over its
+      module-scope siblings lexically, so no real extraction was needed. New
+      pieces: a bare, unauthenticated `/embed/coordination/:docId` route
+      ([EmbedCoordinationDoc.tsx](src/views/EmbedCoordinationDoc.tsx), wired in [App.tsx](src/App.tsx) next to the
+      existing `/signup` public-route precedent) that signs itself in via
+      `signInWithCustomToken`; a new `POST /api/mint-custom-token` endpoint
+      ([server.ts](server.ts), reusing the existing `authenticateFirebaseUser` helper) that
+      exchanges the caller's own ID token for a short-lived custom token — no
+      privilege escalation, self-service for the caller's own uid; and
+      `apps/mobile/app/coordination.tsx`, which fetches that token and hosts
+      the WebView, delivering the token via
+      `injectedJavaScriptBeforeContentLoaded` (not a post-load `postMessage`,
+      to avoid a listener-not-mounted-yet race). **Known environment gotcha
+      hit + fixed**: `admin.auth().createCustomToken()` needs a signing
+      credential; this environment's ADC is a user identity, not a service
+      account, so it failed with "Failed to determine service account" until
+      granting `yilongwang05@gmail.com` the `roles/iam.serviceAccountTokenCreator`
+      role on the `firebase-adminsdk-fbsvc` service account (keyless, matching
+      this project's existing WIF-over-keys convention — see
+      `server.ts`'s new `serviceAccountId` on `admin.initializeApp`). Scoped
+      narrowly per the spike's intent: hardcoded to the seeded `demo-board-team`
+      doc (no doc-picker), `contacts`/`onPromote`/`onDelete` stubbed as
+      no-ops in the embed route. Verified against `http://localhost:3000`
+      only (Simulator reaches the Mac's loopback directly) — pointing at a
+      deployed URL would additionally need redeploying the new server
+      endpoint, not done here. A **full Board/doc-browser mobile screen** is
+      still separate, unstarted Phase 4 work.
 - [ ] **Native Google Sign-In** — `@react-native-google-signin` +
       `signInWithCredential` (popup sign-in doesn't exist in RN). Recovers the
       Sheets `spreadsheets.readonly` token too. **Less blocked than it looks**:
@@ -498,7 +520,14 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       is untouched and still has the bug. Deferred: attachments,
       @mention autocomplete, and the "View Directory Contact Profile" deep
       link (no contact-detail screen exists yet).
-- [ ] Coordination Notes / The Board (WebView editor + native read view)
+- [ ] Coordination Notes / The Board (WebView editor + native read view) —
+      the Phase 0.5 WebView spike above proved the architecture (one hardcoded
+      doc, live sync verified). Still needed: a real doc browser/picker
+      (folders, dates, audience filter — today's `/coordination` `pushRoutes`
+      entry opens `demo-board-team` unconditionally), wiring `contacts`/
+      `onPromote`/`onDelete` instead of the spike's no-op stubs, and
+      redeploying `/api/mint-custom-token` to the live backend so it works
+      off a deployed URL, not just `localhost:3000`.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
@@ -577,6 +606,13 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    Phase 0.5 spike. Next up is Coordination Notes / The Board, which is
    still blocked on the Phase 0.5 WebView editor spike, or one of the two
    remaining Phase 0.5 spikes themselves.
+9. ~~Run the WebView editor spike~~ — **done**, verified live on the iOS
+   Simulator (see the Phase 0.5 entry above) — the top technical risk is
+   resolved. Coordination Notes / The Board itself (a real doc browser, not
+   just the spike's one hardcoded doc) is still open — see the Phase 4 entry.
+   Native Google Sign-In remains the one open Phase 0.5 spike, still needing
+   the user's go-ahead on a permission-required Firebase project change
+   before an agent can register the iOS/Android apps.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
