@@ -453,16 +453,19 @@ function ReadOnlyDoc({
 }
 
 // ── Notes & learnings: prefill helpers (Session 4) ────────────────────────────
-type NoteFormInitial = { type?: NoteType; series?: string; title?: string; body?: string };
+// Exported alongside NoteForm/addNote's shape so EmbedCoordinationDoc.tsx's
+// admin-only "Save to archive" flow can reuse them (see MIGRATION.md
+// "Coordination Notes / The Board").
+export type NoteFormInitial = { type?: NoteType; series?: string; title?: string; body?: string };
 
 // Guess which series a page belongs to from its title (first-word match).
-function guessSeries(title: string): string {
+export function guessSeries(title: string): string {
   const t = (title || '').toLowerCase();
   return BOARD_SERIES.find((s) => t.includes(s.toLowerCase().split(' ')[0])) || 'Team';
 }
 
 // A short plain-text excerpt of a page's markdown, for the archive body.
-function mdExcerpt(md: string): string {
+export function mdExcerpt(md: string): string {
   const body = (md || '')
     .split('\n')
     .map((l) => l.trim())
@@ -2908,7 +2911,8 @@ function NoteCard({
 }
 
 // ── Add-note form ─────────────────────────────────────────────────────────────
-function NoteForm({
+// Exported for EmbedCoordinationDoc.tsx's admin-only "Save to archive" flow.
+export function NoteForm({
   seriesOptions,
   initial,
   onCancel,

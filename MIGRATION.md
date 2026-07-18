@@ -469,7 +469,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       CSV export→`expo-file-system`+`expo-sharing`. `messaging.ts`→`Linking` is
       **done** (`apps/mobile/src/lib/messaging.ts`).
 
-### 🔲 Phase 4 — High-risk screens
+### ✅ Phase 4 — High-risk screens (all three screens DONE)
 - [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
       verified live against the Trainee and Full-timer e2e users (route is
       hidden from Student/Community in the tab bar via `canAccessRoute`):
@@ -520,14 +520,65 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       is untouched and still has the bug. Deferred: attachments,
       @mention autocomplete, and the "View Directory Contact Profile" deep
       link (no contact-detail screen exists yet).
-- [ ] Coordination Notes / The Board (WebView editor + native read view) —
-      the Phase 0.5 WebView spike above proved the architecture (one hardcoded
-      doc, live sync verified). Still needed: a real doc browser/picker
-      (folders, dates, audience filter — today's `/coordination` `pushRoutes`
-      entry opens `demo-board-team` unconditionally), wiring `contacts`/
-      `onPromote`/`onDelete` instead of the spike's no-op stubs, and
-      redeploying `/api/mint-custom-token` to the live backend so it works
-      off a deployed URL, not just `localhost:3000`.
+- [x] **Coordination Notes / The Board — real doc browser** — done, verified
+      live against all four e2e role users on Expo web. Replaced the
+      single-hardcoded-doc spike with a real, role-scoped browser:
+      `apps/mobile/app/coordination.tsx` is now a folder route —
+      `coordination/index.tsx` (the list, self-guarded via
+      `canAccessRoute(role, '/coordination')`) and `coordination/[docId].tsx`
+      (the detail, role-branched on open). "Folders/dates" ended up mapping
+      to the *existing* `DOC_GROUPS`/`docGroup` ("This week"/"Earlier") pure
+      helpers in `packages/core/src/board.ts`, which no screen had wired up
+      yet — there's no literal folder field on `board_docs`, and no
+      audience-*filter* control exists on web to port either (audience is a
+      query-scoping/visibility mechanism, not a user toggle, confirmed by
+      reading `CoordinationNotes.tsx`). New `packages/core/src/data/board.ts`
+      (`subscribeBoardDocs`/`subscribeBoardDoc`/`deleteBoardDoc`, injected-`db`)
+      also fixes a confirmed sort-order gap where the existing responsive-web
+      mobile view (`CoordinationNotesMobile.tsx`) skipped client-side sorting
+      for the non-admin query branch. Ported `mdPreview`/`mdOpenTasks` into
+      `packages/core/src/board.ts` (unit-tested, packages/core now 192/192
+      tests). On open, admins get the proven WebView editor (now parameterized
+      by `docId` instead of `SPIKE_DOC_ID`); everyone else — read-only per
+      `firestore.rules` regardless of UI — gets a new native read view
+      (`react-native-marked`, chosen over the more obvious
+      `react-native-markdown-display` since that package is unmaintained
+      upstream) matching web's `ReadOnlyDoc` field layout. Because mobile only
+      ever routes admins into the WebView now, `EmbedCoordinationDoc.tsx`'s
+      existing `isAdmin`-only gate needed no change — only its stubbed props:
+      wired a real `contacts` subscription + `ContactDetailsModal`, "Save to
+      archive" (exported `NoteForm`/`guessSeries`/`mdExcerpt` from
+      `CoordinationNotes.tsx`, the same treatment `DocEditor` already got),
+      and delete (Firestore + best-effort RTDB `board_docs_rtdb` cleanup).
+      **Bug found + fixed during verification**: the first cut of
+      `subscribeBoardDocs` inferred "admin" from `boardAudiencesForRole(role)`
+      returning an empty array — but that function's *default* case (any role
+      that isn't admin/manager/operator, including `viewer`) also returns
+      `[]`, so the Community (viewer) e2e user's list screen silently sent the
+      *unconstrained admin query* instead of skipping the fetch. Firestore
+      rules caught it (permission-denied, no data leak), but it was a real
+      correctness bug — reproduced live via console errors, fixed by branching
+      explicitly on `role === 'admin'` instead. Verified live: admin
+      (Full-timer) sees every doc unconstrained + sorted; manager (Trainee)
+      sees `trainees`+`everyone`; operator (Student) sees `everyone`-only,
+      with its audience badge correctly hidden per web's own convention, and
+      its native read view renders real markdown (headings, bold, bullets)
+      correctly; viewer (Community) is blocked from the whole screen, with no
+      wasted Firestore call after the fix; a direct URL to an out-of-audience
+      doc is denied at the rules layer as a defense-in-depth check; the
+      "Coordination Notes" card on "More" still navigates correctly post
+      file-restructure. **Not verified this pass** (needs the iOS Simulator,
+      not available in this environment): the admin WebView flow's
+      `mint-custom-token` fetch hits a CORS preflight failure when tested via
+      a real browser (Expo web) — expected and pre-existing, since that
+      endpoint has no CORS handling and the original Phase 0.5 spike was only
+      ever verified via the Simulator's direct native fetch (no browser CORS
+      enforcement) for this exact reason; contacts-picking/promote/delete
+      inside the WebView editor remain unverified live. **Still deferred**:
+      redeploying `/api/mint-custom-token` to the live backend (+ adding CORS)
+      so it works off a deployed URL for a real device, not just
+      `localhost:3000` — a live-infrastructure change needing the user's
+      explicit go-ahead, same as Native Google Sign-In below.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
@@ -613,6 +664,13 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    Native Google Sign-In remains the one open Phase 0.5 spike, still needing
    the user's go-ahead on a permission-required Firebase project change
    before an agent can register the iOS/Android apps.
+10. ~~Build the Coordination Notes / The Board real doc browser~~ — **done**
+    (see the Phase 4 entry above) — **Phase 4 is now complete**, all three
+    high-risk screens shipped. What's left: Native Google Sign-In (Phase 0.5,
+    needs the user's go-ahead), Phase 3's cosmetic polish (bottom sheets,
+    platform swaps — not new screens), and Phase 5 app-store delivery (splash
+    image, EAS Build config, a TestFlight/Play internal build). None of these
+    are blocked on each other — pick based on what the user wants next.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

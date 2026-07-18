@@ -7,6 +7,8 @@ import {
   canSeeBoardDoc,
   boardAudiencesForRole,
   boardLevelForRole,
+  mdPreview,
+  mdOpenTasks,
 } from '../src/board';
 
 describe('board date + status helpers', () => {
@@ -54,5 +56,32 @@ describe('board audience / visibility', () => {
     expect(boardAudiencesForRole('admin')).toEqual([]); // unconstrained
     expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
     expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
+  });
+});
+
+describe('mdPreview', () => {
+  it('returns the first readable, de-marked-up line', () => {
+    expect(mdPreview('# Heading\n\nHello **world**\nSecond line')).toBe('Hello world');
+    expect(mdPreview('- [ ] a checklist item')).toBe('a checklist item');
+    expect(mdPreview('- a bullet')).toBe('a bullet');
+    expect(mdPreview('1. an ordered item')).toBe('an ordered item');
+    expect(mdPreview('> a quote')).toBe('a quote');
+    expect(mdPreview('**Meta only line**\nReal content')).toBe('Real content');
+    expect(mdPreview('[a link](https://example.com)')).toBe('a link');
+    expect(mdPreview('`code span`')).toBe('code span');
+  });
+
+  it('falls back to "Empty page" when nothing readable remains', () => {
+    expect(mdPreview('')).toBe('Empty page');
+    expect(mdPreview(undefined)).toBe('Empty page');
+    expect(mdPreview('# Just a heading\n**bold meta**')).toBe('Empty page');
+  });
+});
+
+describe('mdOpenTasks', () => {
+  it('counts open checklist items only', () => {
+    expect(mdOpenTasks('- [ ] one\n- [x] done\n- [ ] two')).toBe(2);
+    expect(mdOpenTasks('no tasks here')).toBe(0);
+    expect(mdOpenTasks(undefined)).toBe(0);
   });
 });
