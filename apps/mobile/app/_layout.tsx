@@ -1,6 +1,9 @@
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useFonts } from 'expo-font';
+import { Newsreader_500Medium } from '@expo-google-fonts/newsreader';
+import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from '@expo-google-fonts/hanken-grotesk';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
@@ -14,8 +17,13 @@ function RootNavigator() {
   const { mode, colors } = useTheme();
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  const [fontsLoaded, fontError] = useFonts({
+    Newsreader_500Medium,
+    HankenGrotesk_400Regular,
+    HankenGrotesk_600SemiBold,
+  });
 
-  if (loading) {
+  if (loading || (!fontsLoaded && !fontError)) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
         <ActivityIndicator color={colors.primary} />
