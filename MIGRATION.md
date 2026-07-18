@@ -467,7 +467,37 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       delete stage) — People screen similarly defers contact-detail
       navigation — and swipe-between-tabs (tap is the primary interaction;
       a `PanResponder` addition later is non-breaking).
-- [ ] Messages (Firestore realtime chat)
+- [x] ~~Messages (Firestore realtime chat)~~ — done, verified live against
+      all four e2e role users (cross-role room visibility: only the
+      Full-timer/admin sees every room, other roles see only their own memberships;
+      admin can read+send into a room they aren't a member of, per the rules'
+      admin bypass): `apps/mobile/app/messages/{index,[roomId]}.tsx` +
+      `src/lib/{useMessagesData,useChatThreadData}.ts` +
+      `src/components/messages/{ChatRoomRow,CreateChatSheet,MessageBubble,ChatDetailsSheet}.tsx`.
+      Behavior oracle was the shipped `src/views/Messages.tsx` +
+      `src/services/chat.ts` (not the design tool's aspirational mockup, which
+      models unbuilt reactions/pinning/broadcast/mentions). Added
+      `packages/core/src/chat.ts` (pure, unit-tested) and
+      `packages/core/src/data/chat.ts` (injected-`db` Firestore layer);
+      `apps/mobile/src/lib/data/chatReads.ts` mirrors the existing
+      `prayerHidden.ts`/`inboxReads.ts` AsyncStorage pattern for per-room
+      last-read tracking. Sending a message now also notifies every other
+      member via the existing notifications system (new behavior beyond the
+      web port — mobile has no persistent header/badge to surface an
+      incoming message otherwise). No bottom-tab slot (all 6 are taken), so
+      it's a "More" card with a live unread-room-count badge, same pattern as
+      Notifications. **Also fixed a live, pre-existing bug**, reproduced
+      against the *unmodified* web app: `services/chat.ts`'s group-chat
+      create/invite/leave system messages write `senderId: 'system'`, which
+      fails the deployed `messages` create rule's `senderId ==
+      request.auth.uid` check — every group's genesis/invite/leave system
+      message has always silently failed to write (the room itself still
+      gets created). `packages/core/src/data/chat.ts` uses the acting user's
+      real uid instead (`senderName`/`type` still drive the "System" pill
+      display) — fixes it for mobile; the web app's own `services/chat.ts`
+      is untouched and still has the bug. Deferred: attachments,
+      @mention autocomplete, and the "View Directory Contact Profile" deep
+      link (no contact-detail screen exists yet).
 - [ ] Coordination Notes / The Board (WebView editor + native read view)
 
 ### 🔲 Phase 5 — App-store delivery
@@ -543,9 +573,10 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    Messages, Coordination Notes) — see the re-sequencing note below.
 8. ~~Pick a Phase 4 screen next~~ — **The Journey is now done** (see the
    Phase 4 entry above), reusing almost the entire People-phase data layer.
-   Next up is Messages (Firestore realtime chat, nothing started) or
-   Coordination Notes / The Board, which is still blocked on the Phase 0.5
-   WebView editor spike.
+   **Messages is now done too** — the last Phase 4 screen not blocked on a
+   Phase 0.5 spike. Next up is Coordination Notes / The Board, which is
+   still blocked on the Phase 0.5 WebView editor spike, or one of the two
+   remaining Phase 0.5 spikes themselves.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
