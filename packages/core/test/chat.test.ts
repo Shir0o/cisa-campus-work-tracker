@@ -1,0 +1,214 @@
+import { describe, it, expect } from 'vitest';
+import {
+  getDirectChatId,
+  getRoomName,
+  getRoomPhoto,
+  isRoomUnread,
+  sortRoomsByRecency,
+  filterRooms,
+  filterChatUsers,
+  groupMessagesByDay,
+  messagePreviewText,
+  groupCreatedSystemMessage,
+  membersAddedSystemMessage,
+  memberLeftSystemMessage,
+  type ChatUserSummary,
+} from '../src/chat';
+import type { AppUser, ChatMessage, ChatRoom } from '../src/types';
+
+const NOW = new Date('2026-07-13T12:00:00Z').getTime();
+
+const room = (overrides: Partial<ChatRoom> = {}): ChatRoom => ({
+  id: 'r1',
+  type: 'direct',
+  memberIds: ['me', 'them'],
+  createdById: 'me',
+  createdByName: 'Me',
+  createdAt: new Date(NOW - 100_000).toISOString(),
+  ...overrides,
+});
+
+const message = (overrides: Partial<ChatMessage> = {}): ChatMessage => ({
+  id: 'm1',
+  roomId: 'r1',
+  text: 'hi',
+  senderId: 'them',
+  senderName: 'Them',
+  timestamp: new Date(NOW).toISOString(),
+  type: 'text',
+  ...overrides,
+});
+
+const appUser = (overrides: Partial<AppUser> = {}): AppUser => ({
+  uid: 'u1',
+  email: 'user@example.com',
+  displayName: 'User One',
+  photoURL: '',
+  approved: true,
+  role: 'viewer',
+  ...overrides,
+});
+
+describe('getDirectChatId', () => {
+  it('sorts uids regardless of argument order', () => {
+    expect(getDirectChatId('uidB', 'uidA')).toBe('direct_uidA_uidB');
+    expect(getDirectChatId('uidA', 'uidB')).toBe('direct_uidA_uidB');
+  });
+});
+
+describe('getRoomName', () => {
+  const usersCache: Record<string, ChatUserSummary> = { them: { displayName: 'Them Person' } };
+
+  it('returns the group name, falling back to "Group"', () => {
+    expect(getRoomName(room({ type: 'group', name: 'Outreach Team' }), 'me', {})).toBe('Outreach Team');
+    expect(getRoomName(room({ type: 'group', name: '' }), 'me', {})).toBe('Group');
+  });
+
+  it('returns the other member\'s cached display name for a direct chat', () => {
+    expect(getRoomName(room(), 'me', usersCache)).toBe('Them Person');
+  });
+
+  it('falls back to "Direct Chat" when uncached or currentUid is missing', () => {
+    expect(getRoomName(room(), 'me', {})).toBe('Direct Chat');
+    expect(getRoomName(room(), null, usersCache)).toBe('Direct Chat');
+    expect(getRoomName(room(), undefined, usersCache)).toBe('Direct Chat');
+  });
+});
+
+describe('getRoomPhoto', () => {
+  it('is always null for a group', () => {
+    expect(getRoomPhoto(room({ type: 'group', name: 'X' }), 'me', { them: { displayName: 'T', photoURL: 'p' } })).toBeNull();
+  });
+
+  it('returns the other member\'s cached photo, or null when missing', () => {
+    expect(getRoomPhoto(room(), 'me', { them: { displayName: 'Them', photoURL: 'p.jpg' } })).toBe('p.jpg');
+    expect(getRoomPhoto(room(), 'me', { them: { displayName: 'Them' } })).toBeNull();
+    expect(getRoomPhoto(room(), 'me', {})).toBeNull();
+  });
+});
+
+describe('isRoomUnread', () => {
+  it('is false with no lastMessage', () => {
+    expect(isRoomUnread(room(), 'me', null)).toBe(false);
+  });
+
+  it('is false when the current user sent the last message', () => {
+    const r = room({ lastMessage: { text: 'hi', senderId: 'me', senderName: 'Me', timestamp: new Date(NOW).toISOString() } });
+    expect(isRoomUnread(r, 'me', 100)).toBe(false);
+  });
+
+  it('is true when never read (lastReadMs null)', () => {
+    const r = room({ lastMessage: { text: 'hi', senderId: 'them', senderName: 'Them', timestamp: new Date(NOW).toISOString() } });
+    expect(isRoomUnread(r, 'me', null)).toBe(true);
+  });
+
+  it('compares the last message time against the last-read marker', () => {
+    const r = room({ lastMessage: { text: 'hi', senderId: 'them', senderName: 'Them', timestamp: new Date(NOW).toISOString() } });
+    expect(isRoomUnread(r, 'me', NOW - 1)).toBe(true);
+    expect(isRoomUnread(r, 'me', NOW)).toBe(false);
+    expect(isRoomUnread(r, 'me', NOW + 1)).toBe(false);
+  });
+});
+
+describe('sortRoomsByRecency', () => {
+  it('sorts by lastMessage.timestamp, falling back to createdAt, newest first', () => {
+    const older = room({ id: 'older', createdAt: new Date(NOW - 5000).toISOString() });
+    const newerByMessage = room({
+      id: 'newer-by-message',
+      createdAt: new Date(NOW - 9000).toISOString(),
+      lastMessage: { text: 'x', senderId: 'me', senderName: 'Me', timestamp: new Date(NOW).toISOString() },
+    });
+    const oldest = room({ id: 'oldest', createdAt: new Date(NOW - 10_000).toISOString() });
+    const sorted = sortRoomsByRecency([oldest, older, newerByMessage]);
+    expect(sorted.map((r) => r.id)).toEqual(['newer-by-message', 'older', 'oldest']);
+  });
+});
+
+describe('filterRooms', () => {
+  const usersCache: Record<string, ChatUserSummary> = { them: { displayName: 'Alice' } };
+
+  it('excludes rooms whose resolved name starts with cisa- (case-insensitive)', () => {
+    const testRoom = room({ id: 'test', memberIds: ['me', 'tester'] });
+    const cache = { ...usersCache, tester: { displayName: 'CISA-Bot' } };
+    expect(filterRooms([room(), testRoom], 'me', cache, '')).toEqual([room()]);
+  });
+
+  it('applies a case-insensitive substring search on the resolved name', () => {
+    expect(filterRooms([room()], 'me', usersCache, 'ali')).toHaveLength(1);
+    expect(filterRooms([room()], 'me', usersCache, 'zzz')).toHaveLength(0);
+  });
+
+  it('returns all non-test rooms when the search is empty', () => {
+    expect(filterRooms([room()], 'me', usersCache, '')).toHaveLength(1);
+  });
+});
+
+describe('filterChatUsers', () => {
+  const users = [
+    appUser({ uid: 'me', displayName: 'Me' }),
+    appUser({ uid: 'unapproved', approved: false, displayName: 'Waiting' }),
+    appUser({ uid: 'test1', email: 'cisa-test@example.com', displayName: 'Test' }),
+    appUser({ uid: 'test2', email: 'e@example.com', displayName: 'cisa-bot' }),
+    appUser({ uid: 'alice', displayName: 'Alice Smith', email: 'alice@example.com' }),
+  ];
+
+  it('excludes the current user, unapproved users, and cisa- test accounts', () => {
+    expect(filterChatUsers(users, 'me', '').map((u) => u.uid)).toEqual(['alice']);
+  });
+
+  it('substring-searches displayName and email', () => {
+    expect(filterChatUsers(users, 'me', 'alice').map((u) => u.uid)).toEqual(['alice']);
+    expect(filterChatUsers(users, 'me', 'smith').map((u) => u.uid)).toEqual(['alice']);
+    expect(filterChatUsers(users, 'me', 'zzz')).toEqual([]);
+  });
+});
+
+describe('groupMessagesByDay', () => {
+  it('buckets a null timestamp under "Sending..."', () => {
+    const groups = groupMessagesByDay([message({ id: 'pending', timestamp: null })]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].label).toBe('Sending...');
+    expect(groups[0].messages.map((m) => m.id)).toEqual(['pending']);
+  });
+
+  it('groups same-day messages together and preserves order within a day', () => {
+    const a = message({ id: 'a', timestamp: new Date(NOW).toISOString() });
+    const b = message({ id: 'b', timestamp: new Date(NOW + 60_000).toISOString() });
+    const groups = groupMessagesByDay([a, b]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].messages.map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
+  it('produces separate ordered groups across multiple days', () => {
+    const dayOne = message({ id: 'day1', timestamp: new Date(NOW).toISOString() });
+    const dayTwo = message({ id: 'day2', timestamp: new Date(NOW + 86_400_000).toISOString() });
+    const groups = groupMessagesByDay([dayOne, dayTwo]);
+    expect(groups).toHaveLength(2);
+    expect(groups[0].messages[0].id).toBe('day1');
+    expect(groups[1].messages[0].id).toBe('day2');
+  });
+});
+
+describe('messagePreviewText', () => {
+  it('trims and returns non-empty text as-is', () => {
+    expect(messagePreviewText('  hello world  ')).toBe('hello world');
+  });
+
+  it('falls back to "Shared {type}" for an empty text with an attachment', () => {
+    expect(messagePreviewText('', [{ type: 'contact', id: 'c1', name: 'Alice' }])).toBe('Shared contact');
+  });
+
+  it('falls back to "New message" for empty text and no attachments', () => {
+    expect(messagePreviewText('')).toBe('New message');
+    expect(messagePreviewText('', [])).toBe('New message');
+  });
+});
+
+describe('system message builders', () => {
+  it('matches the exact strings written by the group-create/invite/leave flows', () => {
+    expect(groupCreatedSystemMessage('User One', 'My Team')).toBe('User One created group "My Team"');
+    expect(membersAddedSystemMessage('Alice', ['Bob'])).toBe('Alice added Bob to the group');
+    expect(membersAddedSystemMessage('Alice', ['Bob', 'Carol'])).toBe('Alice added Bob, Carol to the group');
+    expect(memberLeftSystemMessage('Bob')).toBe('Bob left the group');
+  });
+});

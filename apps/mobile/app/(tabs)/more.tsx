@@ -5,18 +5,27 @@ import { Screen, AppText, Card, StatusPill } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useNotificationsData } from '../../src/lib/useNotificationsData';
+import { useMessagesData } from '../../src/lib/useMessagesData';
 
 // "More" surfaces the NAV_ITEMS destinations not in the bottom tabs — driven by
 // the SHARED NAV_ITEMS + role labels from @cisa/core (the mobile drawer in the
 // design), gated by the live role (canAccessRoute).
 const TAB_HREFS = ['/', '/directory', '/board', '/prayer'];
+// '/messages' IS a NAV_ITEMS entry (unlike Search/Notifications/Welcome
+// form/Feedback below), but it gets the same bespoke-card treatment as
+// Notifications (a live unread-room-count badge), so it's pulled out of the
+// generic loop too.
+const MANUAL_CARD_HREFS = ['/messages'];
 
 export default function More() {
   const { colors, spacing } = useTheme();
   const { role } = useAuth();
   const router = useRouter();
   const notif = useNotificationsData();
-  const rest = NAV_ITEMS.filter((n) => !TAB_HREFS.includes(n.href) && canAccessRoute(role, n.href));
+  const messages = useMessagesData();
+  const rest = NAV_ITEMS.filter(
+    (n) => !TAB_HREFS.includes(n.href) && !MANUAL_CARD_HREFS.includes(n.href) && canAccessRoute(role, n.href),
+  );
   // Only these destinations have a mobile screen to push to today; every
   // other NAV_ITEMS entry is still a no-op until its screen is built.
   const pushRoutes: Partial<Record<string, () => void>> = {
@@ -44,6 +53,15 @@ export default function More() {
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
             <AppText variant="heading">Notifications</AppText>
             {notif.unreadCount > 0 && <StatusPill label={String(notif.unreadCount)} tone="accent" />}
+          </View>
+        </Card>
+        {/* '/messages' IS a NAV_ITEMS entry, but gets the same bespoke-card
+            treatment as Notifications above (a live unread-room-count badge)
+            rather than riding the generic loop below. */}
+        <Card onPress={() => router.push('/messages')}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <AppText variant="heading">Messages</AppText>
+            {messages.unreadCount > 0 && <StatusPill label={String(messages.unreadCount)} tone="accent" />}
           </View>
         </Card>
         {/* Not a NAV_ITEMS entry (it's the public /signup form, same one a

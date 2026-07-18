@@ -1,0 +1,145 @@
+// Messages (private chat) — pure room/message shaping shared by web
+// (src/views/Messages.tsx) and mobile. Ported from Messages.tsx's inline
+// getRoomName/getRoomPhoto/isUnread/groupMessagesByDay/filteredRooms helpers
+// and src/components/modals/CreateChatModal.tsx's user filter. The Firestore
+// reads/writes live in ./data/chat.ts; this module never touches Firestore.
+import { parseMs } from "./myday";
+import type { AppUser, ChatAttachment, ChatMessage, ChatRoom } from "./types";
+
+export interface ChatUserSummary {
+  displayName: string;
+  photoURL?: string;
+}
+
+/** Deterministic room id for a 1:1 chat, order-independent. */
+export function getDirectChatId(uid1: string, uid2: string): string {
+  const sorted = [uid1, uid2].sort();
+  return `direct_${sorted[0]}_${sorted[1]}`;
+}
+
+export function getRoomName(
+  room: ChatRoom,
+  currentUid: string | null | undefined,
+  usersCache: Record<string, ChatUserSummary>,
+): string {
+  if (room.type === "group") return room.name || "Group";
+  const otherUid = room.memberIds.find((id) => id !== currentUid);
+  return (otherUid && usersCache[otherUid]?.displayName) || "Direct Chat";
+}
+
+export function getRoomPhoto(
+  room: ChatRoom,
+  currentUid: string | null | undefined,
+  usersCache: Record<string, ChatUserSummary>,
+): string | null {
+  if (room.type === "group") return null;
+  const otherUid = room.memberIds.find((id) => id !== currentUid);
+  return (otherUid && usersCache[otherUid]?.photoURL) || null;
+}
+
+/** `lastReadMs` is this device's last-opened timestamp for the room (or null
+ * if it's never been opened) — see apps/mobile's AsyncStorage-backed chatReads. */
+export function isRoomUnread(
+  room: ChatRoom,
+  currentUid: string | null | undefined,
+  lastReadMs: number | null,
+): boolean {
+  if (!room.lastMessage || room.lastMessage.senderId === currentUid) return false;
+  if (lastReadMs == null) return true;
+  const lastMsgMs = parseMs(room.lastMessage.timestamp as string | null | undefined) ?? 0;
+  return lastMsgMs > lastReadMs;
+}
+
+/** Newest-first, by last message time (falling back to room creation time). */
+export function sortRoomsByRecency(rooms: ChatRoom[]): ChatRoom[] {
+  const roomMs = (r: ChatRoom) =>
+    parseMs((r.lastMessage?.timestamp ?? r.createdAt) as string | null | undefined) ?? 0;
+  return [...rooms].sort((a, b) => roomMs(b) - roomMs(a));
+}
+
+/** Excludes `cisa-` test-account rooms and applies the room-list search box. */
+export function filterRooms(
+  rooms: ChatRoom[],
+  currentUid: string | null | undefined,
+  usersCache: Record<string, ChatUserSummary>,
+  search: string,
+): ChatRoom[] {
+  const needle = search.trim().toLowerCase();
+  return rooms.filter((r) => {
+    const name = getRoomName(r, currentUid, usersCache).toLowerCase();
+    if (name.startsWith("cisa-")) return false;
+    return !needle || name.includes(needle);
+  });
+}
+
+/** Port of CreateChatModal's candidate list: no self, approved only, no test
+ * accounts, filtered by the search box. */
+export function filterChatUsers(
+  users: AppUser[],
+  currentUid: string | null | undefined,
+  search: string,
+): AppUser[] {
+  const needle = search.trim().toLowerCase();
+  return users.filter((u) => {
+    if (u.uid === currentUid || !u.approved) return false;
+    const email = (u.email || "").toLowerCase();
+    const displayName = (u.displayName || "").toLowerCase();
+    if (email.startsWith("cisa-") || displayName.startsWith("cisa-")) return false;
+    return !needle || displayName.includes(needle) || email.includes(needle);
+  });
+}
+
+export interface MessageDayGroup {
+  key: string;
+  label: string;
+  messages: ChatMessage[];
+}
+
+/** Groups already-chronological messages into day buckets, preserving order.
+ * A message with no server timestamp yet (optimistic/in-flight) buckets under
+ * "Sending...". */
+export function groupMessagesByDay(messages: ChatMessage[]): MessageDayGroup[] {
+  const groups: MessageDayGroup[] = [];
+  const indexByKey = new Map<string, number>();
+  for (const msg of messages) {
+    const ms = parseMs(msg.timestamp as string | null | undefined);
+    const label =
+      ms == null
+        ? "Sending..."
+        : new Date(ms).toLocaleDateString(undefined, {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+    const key = ms == null ? "sending" : label;
+    let idx = indexByKey.get(key);
+    if (idx === undefined) {
+      idx = groups.length;
+      indexByKey.set(key, idx);
+      groups.push({ key, label, messages: [] });
+    }
+    groups[idx].messages.push(msg);
+  }
+  return groups;
+}
+
+/** The `lastMessage.text` preview stored on the room doc. */
+export function messagePreviewText(text: string, attachments?: ChatAttachment[]): string {
+  const trimmed = text.trim();
+  if (trimmed) return trimmed;
+  if (attachments && attachments.length > 0) return `Shared ${attachments[0].type}`;
+  return "New message";
+}
+
+export function groupCreatedSystemMessage(creatorName: string, groupName: string): string {
+  return `${creatorName} created group "${groupName}"`;
+}
+
+export function membersAddedSystemMessage(inviterName: string, addedNames: string[]): string {
+  return `${inviterName} added ${addedNames.join(", ")} to the group`;
+}
+
+export function memberLeftSystemMessage(name: string): string {
+  return `${name} left the group`;
+}
