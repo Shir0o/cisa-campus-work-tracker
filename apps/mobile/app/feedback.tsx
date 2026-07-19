@@ -59,21 +59,22 @@ export default function FeedbackScreen() {
 
     // Best-effort — a failed capture must never block submitting the note.
     // Downscaled to a thumbnail width so it stays well under the rules' cap
-    // regardless of the device's screen size or pixel density.
+    // regardless of the device's screen size or pixel density. Skipped
+    // entirely (rather than falling back to an unconstrained capture) if
+    // onLayout hasn't reported a size yet — react-native-view-shot's web
+    // shim only resizes when both width AND height are given, so a
+    // width-only fallback wouldn't actually bound the capture on web.
     let screenshot: string | undefined;
-    try {
-      const size = captureSize.current;
-      const width = size ? Math.min(CAPTURE_MAX_WIDTH, size.width) : undefined;
-      const height = width && size ? Math.round(width * (size.height / size.width)) : undefined;
-      const base64 = await captureRef(viewShotRef, {
-        format: 'jpg',
-        quality: 0.6,
-        result: 'base64',
-        ...(width && height ? { width, height } : {}),
-      });
-      if (base64.length <= SCREENSHOT_MAX_CHARS) screenshot = `data:image/jpeg;base64,${base64}`;
-    } catch {
-      // no screenshot this time
+    const size = captureSize.current;
+    if (size) {
+      try {
+        const width = Math.min(CAPTURE_MAX_WIDTH, size.width);
+        const height = Math.round(width * (size.height / size.width));
+        const base64 = await captureRef(viewShotRef, { format: 'jpg', quality: 0.6, result: 'base64', width, height });
+        if (base64.length <= SCREENSHOT_MAX_CHARS) screenshot = `data:image/jpeg;base64,${base64}`;
+      } catch {
+        // no screenshot this time
+      }
     }
 
     try {
