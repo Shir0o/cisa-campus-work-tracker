@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
+import * as SplashScreen from 'expo-splash-screen';
 import { Newsreader_500Medium } from '@expo-google-fonts/newsreader';
 import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from '@expo-google-fonts/hanken-grotesk';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -14,6 +15,10 @@ import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.
 const PUBLIC_ROUTES = ['/signup', '/login'];
+
+// Keep the native splash on-screen through auth/font loading instead of an
+// instant auto-hide followed by the spinner below flashing separately.
+SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { mode, colors } = useTheme();
@@ -32,6 +37,12 @@ function RootNavigator() {
       console.error('Failed to load bundled fonts:', fontError);
     }
   }, [fontError]);
+
+  useEffect(() => {
+    if (!loading && (fontsLoaded || fontError)) {
+      SplashScreen.hideAsync();
+    }
+  }, [loading, fontsLoaded, fontError]);
 
   if (loading || (!fontsLoaded && !fontError)) {
     return (
