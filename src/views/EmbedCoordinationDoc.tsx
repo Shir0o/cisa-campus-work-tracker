@@ -171,7 +171,7 @@ export default function EmbedCoordinationDoc() {
         targetType: 'comment',
         type: 'create',
         description: fields.series,
-      } as never);
+      });
       setNoteForm(null);
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'board_notes');
