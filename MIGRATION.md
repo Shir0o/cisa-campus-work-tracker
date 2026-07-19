@@ -149,9 +149,24 @@ involved, so screen-porting can continue in parallel)
       (Firebase Auth → Sign-in method → Google) and registering the Android
       OAuth client's SHA-1 can also be done via CLI, or needs one manual
       console toggle.
-- [ ] **Fonts** — bundle Newsreader + Hanken Grotesk via
-      `@expo-google-fonts/*`, load in `app/_layout.tsx` (currently system
-      fallback).
+- [x] **Fonts** — done, verified live on Expo web: `@expo-google-fonts/newsreader`
+      + `@expo-google-fonts/hanken-grotesk` installed in `apps/mobile`, loaded via
+      `useFonts()` in `app/_layout.tsx` (gated behind the existing `loading`
+      spinner alongside auth, so there's no fallback-to-system-font flash). Only
+      the specific weights actually referenced anywhere in the app were bundled
+      — every `typography.fontSerif` call site (28 files) uses weight 500 only,
+      so `fontSerif` now resolves straight to `Newsreader_500Medium`.
+      `typography.fontSans` (`HankenGrotesk_400Regular`) and a new
+      `fontSansSemiBold` (`HankenGrotesk_600SemiBold`) cover the only two sans
+      weights used, both solely through `AppText`
+      ([apps/mobile/src/components/ui/index.tsx](apps/mobile/src/components/ui/index.tsx))
+      — RN doesn't repaint a static (non-variable) custom font at a different
+      `fontWeight`, so `AppText`'s `label` variant now points `fontFamily`
+      straight at the SemiBold family instead of relying on an inert
+      `fontWeight: '600'` override. The many other `fontWeight: '600'/'700'`
+      usages elsewhere (buttons, chips, pills) never set a custom `fontFamily`
+      and were already rendering in the system font before this change — left
+      as-is, out of scope here.
 - [x] **Firebase API key guard** (PR #115 review comment) — a dev `console.warn`
       now fires from `apps/mobile/src/lib/firebase.ts` when the resolved API key
       is empty, so the failure mode is obvious.
@@ -664,7 +679,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
    Native Google Sign-In remains the one open Phase 0.5 spike, still needing
    the user's go-ahead on a permission-required Firebase project change
    before an agent can register the iOS/Android apps.
-10. ~~Build the Coordination Notes / The Board real doc browser~~ — **done**
+10. ~~Fonts~~ — **done** (see the Phase 0.5 entry above), picked specifically
+    because it needed no external account/permission action and has nothing
+    to do with Coordination Notes / The Board. Native Google Sign-In is now
+    the only open Phase 0.5 item, still blocked on the user's go-ahead.
+    Coordination Notes / The Board (Phase 4) remains the other open item.
+11. ~~Build the Coordination Notes / The Board real doc browser~~ — **done**
     (see the Phase 4 entry above) — **Phase 4 is now complete**, all three
     high-risk screens shipped. What's left: Native Google Sign-In (Phase 0.5,
     needs the user's go-ahead), Phase 3's cosmetic polish (bottom sheets,

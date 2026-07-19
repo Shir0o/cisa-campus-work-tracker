@@ -171,8 +171,9 @@ export const darkColors: ThemeColors = {
 // Body 15px / 1.6 line-height in the web app; headings use the serif at weight
 // 500. Formalized here into a small scale for RN.
 export const typography = {
-  fontSerif: 'Newsreader', // headings
-  fontSans: 'HankenGrotesk', // body (expo-font family name)
+  fontSerif: 'Newsreader_500Medium', // headings
+  fontSans: 'HankenGrotesk_400Regular', // body
+  fontSansSemiBold: 'HankenGrotesk_600SemiBold', // AppText's "label" variant
   size: { xs: 11, sm: 13, base: 15, md: 17, lg: 21, xl: 27, xxl: 32 },
   lineHeight: 1.6,
 };
