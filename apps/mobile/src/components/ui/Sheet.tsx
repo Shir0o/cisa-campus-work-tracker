@@ -2,7 +2,8 @@
 // pattern every sheet file used to copy-paste. Keeps the same declarative
 // `visible`/`onClose` API every caller already used with plain Modal, so no
 // caller needed to change.
-import { useCallback, useEffect, useMemo, useRef, type ElementRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ElementRef } from 'react';
+import { View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   BottomSheetBackdrop,
@@ -24,7 +25,7 @@ export function Sheet({
   visible: boolean;
   onClose: () => void;
   children: React.ReactNode;
-  /** Sheet height as a ratio of window height, e.g. 0.85 for the old `maxHeight: '85%'`. Defaults to 0.5. */
+  /** Sheet height as a ratio of window height, e.g. 0.85 for the old `maxHeight: '85%'`. Defaults to 0.85. */
   maxHeightRatio?: number;
   /** Rendered pinned to the bottom, above the keyboard — for an action row that used to sit outside the old ScrollView. */
   footer?: React.ReactNode;
@@ -35,9 +36,13 @@ export function Sheet({
   // the sheet mounts with real content/height but never animates open —
   // https://github.com/gorhom/react-native-bottom-sheet/issues/1751. Explicit
   // snapPoints + enableDynamicSizing={false} is the confirmed-working fix.
-  const snapPoints = useMemo(() => [`${Math.round((maxHeightRatio ?? 0.5) * 100)}%`], [maxHeightRatio]);
+  const snapPoints = useMemo(() => [`${Math.round((maxHeightRatio ?? 0.85) * 100)}%`], [maxHeightRatio]);
   const ref = useRef<ElementRef<typeof BottomSheetModal>>(null);
   const everPresented = useRef(false);
+  // Measured so the scroll content's bottom padding always clears the footer,
+  // instead of a hardcoded guess that drifts if a footer's content changes.
+  const [footerHeight, setFooterHeight] = useState(0);
+  const onFooterLayout = useCallback((e: LayoutChangeEvent) => setFooterHeight(e.nativeEvent.layout.height), []);
 
   useEffect(() => {
     if (visible) {
@@ -59,10 +64,10 @@ export function Sheet({
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
       <BottomSheetFooter {...props} bottomInset={insets.bottom}>
-        {footer}
+        <View onLayout={onFooterLayout}>{footer}</View>
       </BottomSheetFooter>
     ),
-    [footer, insets.bottom],
+    [footer, insets.bottom, onFooterLayout],
   );
 
   return (
@@ -89,7 +94,7 @@ export function Sheet({
       */}
       <BottomSheetScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={footer ? { paddingBottom: 90 } : undefined}
+        contentContainerStyle={footer ? { paddingBottom: footerHeight + 24 } : undefined}
       >
         {children}
       </BottomSheetScrollView>
