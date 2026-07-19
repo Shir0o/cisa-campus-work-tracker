@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { formatPhoneNumber, getUserInitials, validatePhoneNumber, type NewContactInput, type Stage } from '@cisa/core';
-import { AppText, Button, InlineInput } from '../ui';
+import { AppText, Button, Sheet, InlineInput } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 import type { ActiveSeason } from '../../lib/useActiveSeason';
 
@@ -106,116 +106,106 @@ export function AddContactSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} onPress={onClose}>
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      maxHeightRatio={0.9}
+      footer={
+        <View
           style={{
+            flexDirection: 'row',
+            gap: 12,
+            padding: spacing.lg,
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: colors.outlineVariant,
             backgroundColor: colors.surface,
-            borderTopLeftRadius: radius.lg,
-            borderTopRightRadius: radius.lg,
-            maxHeight: '90%',
           }}
         >
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outline, opacity: 0.4, alignSelf: 'center', marginVertical: 12 }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg }}>
-            <View style={{ flex: 1, gap: 2, paddingRight: 12 }}>
-              <Text style={{ fontFamily: typography.fontSerif, fontSize: 18, fontWeight: '500', color: colors.onSurface }}>
-                New contact
-              </Text>
-              <AppText variant="caption" color={colors.primary}>
-                {season.label}
-                {season.clubRush ? ' · club rush' : ''} — tagged for this season's cohort
-              </AppText>
-            </View>
-            <Pressable onPress={onClose} hitSlop={8} style={{ padding: 6 }}>
-              <Ionicons name="close" size={18} color={colors.onSurfaceVariant} />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 8 }}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Field label="FIRST NAME">
-              <InlineInput value={firstName} onChangeText={setFirstName} placeholder="e.g. Alex" />
-            </Field>
-            <Field label="LAST NAME">
-              <InlineInput value={lastName} onChangeText={setLastName} placeholder="e.g. Johnson" />
-            </Field>
-            <Field label="CONTACT GROUP">
-              <InlineInput value={role} onChangeText={setRole} placeholder="e.g. Student, Faculty" />
-            </Field>
-            <Field label="FIRST MET / RESIDENCE">
-              <InlineInput value={location} onChangeText={setLocation} placeholder="e.g. Campus Coffee, Miller Hall" />
-            </Field>
-            <Field label="EMAIL">
-              <InlineInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="alex@campus.edu"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-            </Field>
-            <Field label="PHONE" error={phoneError}>
-              <InlineInput
-                value={phone}
-                onChangeText={(t) => {
-                  setPhone(t);
-                  if (phoneError) setPhoneError(null);
-                }}
-                onBlur={handlePhoneBlur}
-                placeholder="(555) 000-0000"
-                keyboardType="phone-pad"
-              />
-            </Field>
-            <Field label="PIPELINE STAGE">
-              <PillRow options={['Unassigned', ...stages.map((s) => s.label)]} value={stageValue} onChange={setStage} />
-            </Field>
-            <Field label="TAGS (COMMA SEPARATED)">
-              <InlineInput value={tagsText} onChangeText={setTagsText} placeholder="e.g. Gospel, Fall2023" />
-            </Field>
-            <Field label="SPIRITUAL BACKGROUND">
-              <PillRow
-                options={SPIRITUAL_BACKGROUNDS}
-                value={spiritualBackground}
-                onChange={setSpiritualBackground}
-                allowEmpty
-              />
-            </Field>
-            <Field label="NOTES">
-              <InlineInput
-                value={notes}
-                onChangeText={setNotes}
-                placeholder="Add some context about this contact…"
-                multiline
-                numberOfLines={4}
-                style={{ minHeight: 90, textAlignVertical: 'top' }}
-              />
-            </Field>
-          </ScrollView>
-
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: 12,
-              padding: spacing.lg,
-              borderTopWidth: StyleSheet.hairlineWidth,
-              borderTopColor: colors.outlineVariant,
-            }}
-          >
-            <Button title="Cancel" variant="ghost" onPress={onClose} style={{ flex: 1 }} />
-            <Button
-              title={submitting ? 'Adding…' : 'Add contact'}
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-              style={{ flex: 2 }}
-            />
-          </View>
+          <Button title="Cancel" variant="ghost" onPress={onClose} style={{ flex: 1 }} />
+          <Button
+            title={submitting ? 'Adding…' : 'Add contact'}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+            style={{ flex: 2 }}
+          />
+        </View>
+      }
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg }}>
+        <View style={{ flex: 1, gap: 2, paddingRight: 12 }}>
+          <Text style={{ fontFamily: typography.fontSerif, fontSize: 18, fontWeight: '500', color: colors.onSurface }}>
+            New contact
+          </Text>
+          <AppText variant="caption" color={colors.primary}>
+            {season.label}
+            {season.clubRush ? ' · club rush' : ''} — tagged for this season's cohort
+          </AppText>
+        </View>
+        <Pressable onPress={onClose} hitSlop={8} style={{ padding: 6 }}>
+          <Ionicons name="close" size={18} color={colors.onSurfaceVariant} />
         </Pressable>
-      </Pressable>
-    </Modal>
+      </View>
+
+      <View style={{ padding: spacing.lg, gap: spacing.md, paddingBottom: 8 }}>
+        <Field label="FIRST NAME">
+          <InlineInput value={firstName} onChangeText={setFirstName} placeholder="e.g. Alex" />
+        </Field>
+        <Field label="LAST NAME">
+          <InlineInput value={lastName} onChangeText={setLastName} placeholder="e.g. Johnson" />
+        </Field>
+        <Field label="CONTACT GROUP">
+          <InlineInput value={role} onChangeText={setRole} placeholder="e.g. Student, Faculty" />
+        </Field>
+        <Field label="FIRST MET / RESIDENCE">
+          <InlineInput value={location} onChangeText={setLocation} placeholder="e.g. Campus Coffee, Miller Hall" />
+        </Field>
+        <Field label="EMAIL">
+          <InlineInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="alex@campus.edu"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </Field>
+        <Field label="PHONE" error={phoneError}>
+          <InlineInput
+            value={phone}
+            onChangeText={(t) => {
+              setPhone(t);
+              if (phoneError) setPhoneError(null);
+            }}
+            onBlur={handlePhoneBlur}
+            placeholder="(555) 000-0000"
+            keyboardType="phone-pad"
+          />
+        </Field>
+        <Field label="PIPELINE STAGE">
+          <PillRow options={['Unassigned', ...stages.map((s) => s.label)]} value={stageValue} onChange={setStage} />
+        </Field>
+        <Field label="TAGS (COMMA SEPARATED)">
+          <InlineInput value={tagsText} onChangeText={setTagsText} placeholder="e.g. Gospel, Fall2023" />
+        </Field>
+        <Field label="SPIRITUAL BACKGROUND">
+          <PillRow
+            options={SPIRITUAL_BACKGROUNDS}
+            value={spiritualBackground}
+            onChange={setSpiritualBackground}
+            allowEmpty
+          />
+        </Field>
+        <Field label="NOTES">
+          <InlineInput
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Add some context about this contact…"
+            multiline
+            numberOfLines={4}
+            style={{ minHeight: 90, textAlignVertical: 'top' }}
+          />
+        </Field>
+      </View>
+    </Sheet>
   );
 }
 

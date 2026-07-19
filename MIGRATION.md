@@ -339,7 +339,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       viewer-accessible screens (Prayer, Answered) if a regression is ever
       suspected there.
 
-### ✅ Phase 3 — Medium screens (all screens DONE; one cosmetic polish item remains)
+### ✅ Phase 3 — Medium screens (all screens + cosmetic polish DONE)
 - [x] ~~My Day cockpit~~ — done, see above.
 - [x] ~~Gatherings/Attendance~~ — done, verified live: `apps/mobile/app/attendance.tsx`
       + `src/components/attendance/` (`GatheringHero`, `MissedList`,
@@ -505,8 +505,40 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       console) is itself still deferred on mobile, so there's nothing to
       attach it to yet. Modals→bottom sheets (below) is the one remaining
       Phase 3 item.
-- [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
-      plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
+- [x] ~~Modals → RN bottom sheets (`@gorhom/bottom-sheet`)~~ — done. All 12
+      hand-rolled `Modal`+scrim sheets now share one `Sheet` component
+      (`apps/mobile/src/components/ui/Sheet.tsx`), giving real drag-to-dismiss
+      and a proper backdrop instead of the old cosmetic (non-draggable) handle
+      bar: My Day's `FromTeamInbox`/`ContactsPickerSheet`, Prayer's
+      `HoldPrayerSheet`, Journey's `MoveSheet`, Settings'
+      `EditRoleSheet`/`InviteSheet`/`RemoveAccessSheet`, Messages'
+      `CreateChatSheet`/`ChatDetailsSheet`, History's `HistoryFilterSheet`,
+      Attendance's `RosterSheet`, and People's `AddContactSheet`.
+      `apps/mobile/app/_layout.tsx` gained a `BottomSheetModalProvider` nested
+      *inside* `ThemeProvider`/`AuthProvider` (required, not stylistic — the
+      library portals sheet content, and only ancestor providers are visible
+      to it; putting it outside throws `useTheme must be used within a
+      ThemeProvider` the instant a sheet renders). Uses explicit `snapPoints` +
+      `enableDynamicSizing={false}` rather than the library's default dynamic
+      sizing, which has a widely-reported upstream bug
+      (gorhom/react-native-bottom-sheet#1751) where a sheet mounts with real
+      content but never animates open. `AddContactSheet`/`CreateChatSheet`/
+      `ChatDetailsSheet` gained a `footer` prop (pinned above the keyboard) for
+      an action row that used to sit outside the old `ScrollView`.
+      **Bug found + fixed during verification**: `@gorhom/bottom-sheet`'s
+      `BottomSheetTextInput` calls the native-only `TextInput.State.
+      currentlyFocusedInput()` on blur, which `react-native-web` doesn't
+      implement and throws — reproduced live (a real crash, not a preview
+      artifact) the moment a sheet text field lost focus. Every sheet text
+      field uses plain `TextInput`/the existing `InlineInput` instead, which
+      don't call that API. Verified live on Expo web against My Day, People,
+      and The Journey: open/close, backdrop-tap-to-close, the pinned footer
+      staying visible while scrolling/typing through the 8-field add-contact
+      form, and no console errors. **Not verified this pass**: native
+      pan-gesture drag physics, and an Android-specific `Pressable`-inside-a-
+      sheet touch nuance the library's own troubleshooting docs warn about —
+      no simulator/device was available here; worth a follow-up check on a
+      real device. This closes out Phase 3 completely.
 
 ### ✅ Phase 4 — High-risk screens (all three screens DONE)
 - [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
@@ -719,6 +751,12 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     screenshot capture and Attendance CSV export. What's left: Native Google
     Sign-In (Phase 0.5, needs the user's go-ahead), Modals→bottom sheets
     (Phase 3, cosmetic), and Phase 5 app-store delivery.
+13. ~~Modals → RN bottom sheets~~ — **done** (see the Phase 3 entry above) —
+    **Phase 3 is now fully complete**, no open items left in it. What's left
+    overall: Native Google Sign-In (Phase 0.5, needs the user's go-ahead) and
+    Phase 5 app-store delivery (splash image, EAS Build config, a
+    TestFlight/Play internal build). Neither is blocked on the other — pick
+    based on what the user wants next.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

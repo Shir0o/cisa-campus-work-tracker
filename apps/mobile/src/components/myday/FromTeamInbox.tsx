@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Modal, Pressable, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { relTime, type Contact, type InboxItem } from '@cisa/core';
-import { AppText, Button } from '../ui';
+import { AppText, Button, Sheet } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 import { toneColors, type ToneKey } from '../../theme/tokens';
 
@@ -55,6 +55,12 @@ export function FromTeamInbox({
   const [showAll, setShowAll] = useState(false);
   const [openItem, setOpenItem] = useState<InboxItem | null>(null);
   const [reacting, setReacting] = useState(false);
+  // Keep the last-known item rendered while the sheet animates closed, so
+  // content doesn't blank out mid-slide when `openItem` is cleared.
+  const [shownItem, setShownItem] = useState<InboxItem | null>(null);
+  useEffect(() => {
+    if (openItem) setShownItem(openItem);
+  }, [openItem]);
 
   const unreadCount = useMemo(() => items.filter((it) => !isRead(it.id)).length, [items, isRead]);
   if (items.length === 0) return null;
@@ -153,97 +159,91 @@ export function FromTeamInbox({
         </Pressable>
       )}
 
-      <Modal visible={!!openItem} animationType="slide" transparent onRequestClose={closeSheet}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} onPress={closeSheet}>
-          {openItem && (
-            <Pressable
-              onPress={(e) => e.stopPropagation()}
-              style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, padding: spacing.lg, gap: 14 }}
-            >
-              <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outline, opacity: 0.4, alignSelf: 'center' }} />
-              <View>
-                <Text style={{ fontSize: 15, fontWeight: '600', color: colors.onSurface }}>
-                  {(() => {
-                    const contact = contactById(openItem.contactId);
-                    const actorFirst = firstNameOf(nameByUid[openItem.by]);
-                    const who = contact?.name || 'someone new';
-                    return openItem.type === 'contact'
-                      ? `${actorFirst} added ${who}`
-                      : openItem.type === 'interaction'
-                        ? `${actorFirst} logged time with ${who}`
-                        : `${actorFirst} asked about ${who}`;
-                  })()}
-                </Text>
-                <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 }}>{relTime(openItem.at)}</Text>
-              </View>
-              <AppText variant="body" color={colors.onSurfaceVariant}>
-                {openItem.body || 'No details available.'}
-              </AppText>
+      <Sheet visible={!!openItem} onClose={closeSheet}>
+        {shownItem && (
+          <View style={{ padding: spacing.lg, gap: 14 }}>
+            <View>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.onSurface }}>
+                {(() => {
+                  const contact = contactById(shownItem.contactId);
+                  const actorFirst = firstNameOf(nameByUid[shownItem.by]);
+                  const who = contact?.name || 'someone new';
+                  return shownItem.type === 'contact'
+                    ? `${actorFirst} added ${who}`
+                    : shownItem.type === 'interaction'
+                      ? `${actorFirst} logged time with ${who}`
+                      : `${actorFirst} asked about ${who}`;
+                })()}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 }}>{relTime(shownItem.at)}</Text>
+            </View>
+            <AppText variant="body" color={colors.onSurfaceVariant}>
+              {shownItem.body || 'No details available.'}
+            </AppText>
 
-              {reacting ? (
-                <View style={{ gap: 10 }}>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    {Object.keys(IBX_ENCOURAGE).map((emoji) => (
-                      <Pressable
-                        key={emoji}
-                        onPress={() => {
-                          onPostReply(openItem, 'encouragement', IBX_ENCOURAGE[emoji]);
-                          closeSheet();
-                        }}
-                        style={{
-                          width: 44,
-                          height: 44,
-                          borderRadius: 22,
-                          borderWidth: 1,
-                          borderColor: colors.outlineVariant,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                        }}
-                      >
-                        <Text style={{ fontSize: 20 }}>{emoji}</Text>
-                      </Pressable>
-                    ))}
-                  </View>
-                  <Button title="Cancel" variant="ghost" onPress={() => setReacting(false)} full />
-                </View>
-              ) : (
-                <View style={{ gap: 8 }}>
-                  <SheetAction icon="heart-outline" label={`Encourage ${firstNameOf(nameByUid[openItem.by])}`} onPress={() => setReacting(true)} />
-                  {contactById(openItem.contactId) && (
-                    <SheetAction
-                      icon="chatbubble-outline"
-                      label="Open the conversation"
+            {reacting ? (
+              <View style={{ gap: 10 }}>
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  {Object.keys(IBX_ENCOURAGE).map((emoji) => (
+                    <Pressable
+                      key={emoji}
                       onPress={() => {
-                        const contact = contactById(openItem.contactId)!;
-                        onOpenContact(contact, { tab: 'thread', interactionId: openItem.interactionId ?? null });
-                        onMarkRead(openItem.id);
+                        onPostReply(shownItem, 'encouragement', IBX_ENCOURAGE[emoji]);
                         closeSheet();
                       }}
-                    />
-                  )}
-                  <SheetAction
-                    icon="notifications-outline"
-                    label={`Remind ${firstNameOf(nameByUid[openItem.by])}`}
-                    onPress={() => {
-                      const contactFirst = (contactById(openItem.contactId)?.name || 'them').split(/\s+/)[0];
-                      onPostReply(openItem, 'nudge', `A gentle nudge to follow up with ${contactFirst} when you get a chance.`);
-                      closeSheet();
-                    }}
-                  />
-                  <SheetAction
-                    icon="checkmark-circle-outline"
-                    label={isRead(openItem.id) ? 'Mark unscanned' : 'Mark scanned'}
-                    onPress={() => {
-                      isRead(openItem.id) ? onMarkUnread(openItem.id) : onMarkRead(openItem.id);
-                      closeSheet();
-                    }}
-                  />
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        borderWidth: 1,
+                        borderColor: colors.outlineVariant,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text style={{ fontSize: 20 }}>{emoji}</Text>
+                    </Pressable>
+                  ))}
                 </View>
-              )}
-            </Pressable>
-          )}
-        </Pressable>
-      </Modal>
+                <Button title="Cancel" variant="ghost" onPress={() => setReacting(false)} full />
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <SheetAction icon="heart-outline" label={`Encourage ${firstNameOf(nameByUid[shownItem.by])}`} onPress={() => setReacting(true)} />
+                {contactById(shownItem.contactId) && (
+                  <SheetAction
+                    icon="chatbubble-outline"
+                    label="Open the conversation"
+                    onPress={() => {
+                      const contact = contactById(shownItem.contactId)!;
+                      onOpenContact(contact, { tab: 'thread', interactionId: shownItem.interactionId ?? null });
+                      onMarkRead(shownItem.id);
+                      closeSheet();
+                    }}
+                  />
+                )}
+                <SheetAction
+                  icon="notifications-outline"
+                  label={`Remind ${firstNameOf(nameByUid[shownItem.by])}`}
+                  onPress={() => {
+                    const contactFirst = (contactById(shownItem.contactId)?.name || 'them').split(/\s+/)[0];
+                    onPostReply(shownItem, 'nudge', `A gentle nudge to follow up with ${contactFirst} when you get a chance.`);
+                    closeSheet();
+                  }}
+                />
+                <SheetAction
+                  icon="checkmark-circle-outline"
+                  label={isRead(shownItem.id) ? 'Mark unscanned' : 'Mark scanned'}
+                  onPress={() => {
+                    isRead(shownItem.id) ? onMarkUnread(shownItem.id) : onMarkRead(shownItem.id);
+                    closeSheet();
+                  }}
+                />
+              </View>
+            )}
+          </View>
+        )}
+      </Sheet>
     </View>
   );
 }

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { filterChatUsers, type AppUser, type ChatRoom } from '@cisa/core';
-import { AppText, Avatar } from '../ui';
+import { AppText, Avatar, Sheet } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 
 // Room info sheet — direct chats show the other member's profile (a
@@ -65,24 +65,34 @@ export function ChatDetailsSheet({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={close}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' }} onPress={close}>
-        <Pressable
-          onPress={(e) => e.stopPropagation()}
-          style={{ backgroundColor: colors.surface, borderTopLeftRadius: radius.lg, borderTopRightRadius: radius.lg, maxHeight: '85%' }}
-        >
-          <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: colors.outline, opacity: 0.4, alignSelf: 'center', marginVertical: 12 }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg }}>
-            <Text style={{ fontFamily: typography.fontSerif, fontSize: 18, fontWeight: '500', color: colors.onSurface }}>
-              {room.type === 'group' ? 'Group Details' : 'Conversation Details'}
-            </Text>
-            <Pressable onPress={close} hitSlop={8} style={{ padding: 6 }}>
-              <Ionicons name="close" size={18} color={colors.onSurfaceVariant} />
+    <Sheet
+      visible={visible}
+      onClose={close}
+      maxHeightRatio={0.85}
+      footer={
+        room.type === 'group' ? (
+          <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.outlineVariant, backgroundColor: colors.surface }}>
+            <Pressable
+              onPress={handleLeave}
+              style={{ paddingVertical: 12, borderRadius: radius.full, borderWidth: 1, borderColor: colors.error, alignItems: 'center' }}
+            >
+              <Text style={{ color: colors.error, fontWeight: '700' }}>Leave Group</Text>
             </Pressable>
           </View>
+        ) : undefined
+      }
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg }}>
+        <Text style={{ fontFamily: typography.fontSerif, fontSize: 18, fontWeight: '500', color: colors.onSurface }}>
+          {room.type === 'group' ? 'Group Details' : 'Conversation Details'}
+        </Text>
+        <Pressable onPress={close} hitSlop={8} style={{ padding: 6 }}>
+          <Ionicons name="close" size={18} color={colors.onSurfaceVariant} />
+        </Pressable>
+      </View>
 
-          <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: 16 }}>
-            {room.type === 'direct' && otherMember ? (
+      <View style={{ padding: spacing.lg, gap: 16 }}>
+        {room.type === 'direct' && otherMember ? (
               <View style={{ alignItems: 'center', gap: 8 }}>
                 <Avatar name={otherMember.displayName} size={72} photoURL={otherMember.photoURL} />
                 <AppText variant="heading">{otherMember.displayName}</AppText>
@@ -176,20 +186,7 @@ export function ChatDetailsSheet({
                 )}
               </View>
             )}
-          </ScrollView>
-
-          {room.type === 'group' ? (
-            <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.outlineVariant }}>
-              <Pressable
-                onPress={handleLeave}
-                style={{ paddingVertical: 12, borderRadius: radius.full, borderWidth: 1, borderColor: colors.error, alignItems: 'center' }}
-              >
-                <Text style={{ color: colors.error, fontWeight: '700' }}>Leave Group</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </Pressable>
-      </Pressable>
-    </Modal>
+          </View>
+    </Sheet>
   );
 }
