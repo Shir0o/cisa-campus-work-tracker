@@ -339,7 +339,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       viewer-accessible screens (Prayer, Answered) if a regression is ever
       suspected there.
 
-### ✅ Phase 3 — Medium screens (all screens DONE; two cosmetic polish items remain)
+### ✅ Phase 3 — Medium screens (all screens DONE; one cosmetic polish item remains)
 - [x] ~~My Day cockpit~~ — done, see above.
 - [x] ~~Gatherings/Attendance~~ — done, verified live: `apps/mobile/app/attendance.tsx`
       + `src/components/attendance/` (`GatheringHero`, `MissedList`,
@@ -478,11 +478,35 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       contact-detail screen exists yet. Also deliberately drops web's opt-in
       "Search history too" toggle — History is a single cheap `limit(100)`
       query, shown eagerly for Trainee+ like every other Phase 2/3 screen.
+- [x] ~~Platform swaps~~ — `messaging.ts`→`Linking` was already done
+      (`apps/mobile/src/lib/messaging.ts`). Now also **done**: screenshot
+      capture for Feedback (`react-native-view-shot`) and CSV export for
+      Attendance (`expo-file-system`+`expo-sharing`), both verified live on
+      Expo web — capture actually works there too via the package's
+      html2canvas-backed web shim, better than expected (no Simulator-only
+      limitation like the Phase 0.5 WebView spike). `apps/mobile/app/
+      feedback.tsx` wraps the form in `ViewShot`, captures best-effort on
+      submit (any platform), and downscales to a 480px-wide thumbnail — an unconstrained
+      capture of a desktop-width screen came in at ~184000 chars, uncomfortably
+      close to `firestore.rules`' 200000-char cap on `screenshot`; downscaling
+      dropped that to ~15000 chars with plenty of margin. Capture is of *this
+      form screen*, not the screen the user was complaining about — mobile's
+      Feedback is a routed screen reached only from "More" (unlike web's
+      persistent FAB), so the "offending" screen is already unmounted by
+      submit time; still useful for device/theme/rendering context. New
+      `packages/core/src/attendance.ts`'s `buildAttendanceCsv` (unit-tested,
+      packages/core now 185/185 tests) ported verbatim from web's
+      `Attendance.tsx` `handleExport`; new `apps/mobile/src/lib/exportCsv.ts`
+      branches on `Platform.OS === 'web'` (same Blob+anchor-click trick web
+      already uses) vs. native (`expo-file-system` write + `expo-sharing`
+      share sheet). Export is ungated, matching web — unlike "Log a
+      gathering"/"Sync sheet" which are admin-only there. clipboard→
+      `expo-clipboard` was scoped out: its only web use (Settings' Integrations
+      console) is itself still deferred on mobile, so there's nothing to
+      attach it to yet. Modals→bottom sheets (below) is the one remaining
+      Phase 3 item.
 - [ ] Modals → RN bottom sheets (`@gorhom/bottom-sheet`) — My Day's sheets use
       plain RN `Modal` for now; revisit if a richer gesture feel is wanted.
-- [ ] Platform swaps: clipboard→`expo-clipboard`, screenshot→`react-native-view-shot`,
-      CSV export→`expo-file-system`+`expo-sharing`. `messaging.ts`→`Linking` is
-      **done** (`apps/mobile/src/lib/messaging.ts`).
 
 ### ✅ Phase 4 — High-risk screens (all three screens DONE)
 - [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
@@ -691,6 +715,10 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     platform swaps — not new screens), and Phase 5 app-store delivery (splash
     image, EAS Build config, a TestFlight/Play internal build). None of these
     are blocked on each other — pick based on what the user wants next.
+12. ~~Platform swaps~~ — **done** (see the Phase 3 entry above): Feedback
+    screenshot capture and Attendance CSV export. What's left: Native Google
+    Sign-In (Phase 0.5, needs the user's go-ahead), Modals→bottom sheets
+    (Phase 3, cosmetic), and Phase 5 app-store delivery.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

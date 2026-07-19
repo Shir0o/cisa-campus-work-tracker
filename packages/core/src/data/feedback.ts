@@ -51,6 +51,8 @@ export interface NewFeedbackInput {
   userName: string;
   kind: FeedbackKind;
   message: string;
+  /** Base64 JPEG data URL, best-effort. Rules cap this at 200000 chars. */
+  screenshot?: string;
 }
 
 /**
@@ -69,6 +71,7 @@ export async function submitFeedback(db: Firestore, input: NewFeedbackInput): Pr
     status: "new" as const,
     archived: false,
     createdAt: serverTimestamp(),
+    ...(input.screenshot ? { screenshot: input.screenshot } : {}),
   });
   return docRef.id;
 }

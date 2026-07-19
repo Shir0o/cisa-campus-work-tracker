@@ -20,6 +20,7 @@ export async function submitFeedback(input: {
   userName: string;
   kind: FeedbackKind;
   message: string;
+  screenshot?: string;
 }): Promise<string> {
   try {
     const id = await core.submitFeedback(db, {
@@ -28,6 +29,7 @@ export async function submitFeedback(input: {
       userName: input.userName,
       kind: input.kind,
       message: input.message,
+      screenshot: input.screenshot,
     });
 
     const label = core.kindMeta(input.kind).label;

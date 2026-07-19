@@ -1,4 +1,5 @@
-import { Alert, Linking, Pressable, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, Image, Linking, Pressable, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { kindMeta, relTime, typeToKind, type Feedback, type FeedbackStatus } from '@cisa/core';
 import { AppText, Card } from '../ui';
@@ -32,6 +33,7 @@ export function FeedbackRow({
   const kind = item.kind ?? typeToKind(item.type);
   const meta = kindMeta(kind);
   const { fg, soft } = toneColors(colors, FEEDBACK_TONE_MAP[meta.tone]);
+  const [showScreenshot, setShowScreenshot] = useState(false);
 
   const confirmDelete = () => {
     Alert.alert('Delete this note?', 'This cannot be undone.', [
@@ -74,6 +76,23 @@ export function FeedbackRow({
             View GitHub issue ↗
           </AppText>
         </Pressable>
+      )}
+
+      {item.screenshot && (
+        <View>
+          <Pressable onPress={() => setShowScreenshot((v) => !v)} hitSlop={8}>
+            <AppText variant="caption" color={colors.primary} style={{ fontWeight: '600' }}>
+              {showScreenshot ? 'Hide screenshot' : 'View screenshot'}
+            </AppText>
+          </Pressable>
+          {showScreenshot && (
+            <Image
+              source={{ uri: item.screenshot }}
+              resizeMode="contain"
+              style={{ width: '100%', height: 260, borderRadius: radius.md, marginTop: spacing.xs, backgroundColor: colors.surfaceContainer }}
+            />
+          )}
+        </View>
       )}
 
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.xs, marginTop: 2 }}>

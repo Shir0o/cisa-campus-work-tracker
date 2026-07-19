@@ -65,3 +65,19 @@ export function avgAttendance(contacts: Contact[], events: Event[]): number {
   contacts.forEach((c) => events.forEach((e) => { if (here(c, e.id)) slots++; }));
   return Math.round(slots / events.length);
 }
+
+/** CSV text: header row (Name, Role, one column per event as "{name} ({date})"),
+ * one row per contact with Present/Late/Absent/None per event. Ported from
+ * web's Attendance.tsx handleExport row shape. */
+export function buildAttendanceCsv(contacts: Contact[], events: Event[]): string {
+  const headers = ['Name', 'Role', ...events.map((e) => `${e.name} (${e.date})`)];
+  const rows = contacts.map((c) => [
+    c.name,
+    c.role,
+    ...events.map((e) => {
+      const s = c.attendance?.[e.id];
+      return s === true ? 'Present' : s === 'late' ? 'Late' : s === 'absent' ? 'Absent' : 'None';
+    }),
+  ]);
+  return [headers, ...rows].map((r) => r.map((v) => `"${v}"`).join(',')).join('\n');
+}
