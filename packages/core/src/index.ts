@@ -38,3 +38,4 @@ export * from './data/notifications';
 export * from './data/signup';
 export * from './data/feedback';
 export * from './data/chat';
+export * from './data/board';

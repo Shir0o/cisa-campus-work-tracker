@@ -5,15 +5,20 @@
 // authenticates it by injecting a Firebase custom token as
 // window.__CISA_CUSTOM_TOKEN__ before any page script runs
 // (injectedJavaScriptBeforeContentLoaded), and this component exchanges it
-// for a real session via signInWithCustomToken.
+// for a real session via signInWithCustomToken. Mobile only ever routes
+// admins here (everyone else gets a native read view instead), so the
+// isAdmin-only gate below matches the `board_docs` write rules exactly.
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { signInWithCustomToken } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, serverTimestamp } from 'firebase/firestore';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { doc, onSnapshot, updateDoc, collection, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { ref as dbRef, remove as dbRemove } from 'firebase/database';
+import { auth, db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
-import { DocEditor, type TeamMember } from './CoordinationNotes';
-import { BoardDoc, Audience } from '../lib/board';
+import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type NoteFormInitial } from './CoordinationNotes';
+import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
+import { Contact } from '../types';
+import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 declare global {
   interface Window {
@@ -28,6 +33,10 @@ export default function EmbedCoordinationDoc() {
   const [attemptedSignIn, setAttemptedSignIn] = useState(false);
   const [activeDoc, setActiveDoc] = useState<BoardDoc | null | undefined>(undefined);
   const [team, setTeam] = useState<TeamMember[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
   useEffect(() => {
     if (attemptedSignIn || loading || user) return;
@@ -69,7 +78,19 @@ export default function EmbedCoordinationDoc() {
     );
   }, [user]);
 
+  // Contacts (for the editor's /contacts/:id link-click + AI-insights contact
+  // linking) — admin-only, mirroring CoordinationNotes.tsx's own canEdit gate.
+  useEffect(() => {
+    if (!isAdmin) return;
+    return onSnapshot(
+      collection(db, 'contacts'),
+      (snap) => setContacts(snap.docs.map((d) => ({ id: d.id, ...(d.data() as object) }) as Contact)),
+      (err) => handleFirestoreError(err, OperationType.LIST, 'contacts'),
+    );
+  }, [isAdmin]);
+
   const meName = user?.displayName || user?.email || 'Someone';
+  const uid = user?.uid || '';
 
   const saveMarkdown = async (id: string, md: string) => {
     try {
@@ -95,6 +116,65 @@ export default function EmbedCoordinationDoc() {
       await updateDoc(doc(db, 'board_docs', id), { audience, updatedAt: serverTimestamp(), updatedBy: user?.uid, updatedByName: meName });
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
+    }
+  };
+
+  // Deletes the page and best-effort cleans up its live-collab RTDB node —
+  // mirrors CoordinationNotes.tsx's deleteBoardDoc.
+  const onDelete = async (d: BoardDoc) => {
+    if (!window.confirm(`Delete "${d.title}"? This removes the page for everyone.`)) return;
+    try {
+      await deleteDoc(doc(db, 'board_docs', d.id));
+      if (rtdb) {
+        try {
+          await dbRemove(dbRef(rtdb, `board_docs_rtdb/${d.id}`));
+        } catch {
+          /* live state cleanup is best-effort */
+        }
+      }
+    } catch (e) {
+      handleFirestoreError(e, OperationType.DELETE, 'board_docs');
+    }
+  };
+
+  // "Save to archive" — prefills the note form; the actual board_notes write
+  // happens when the user confirms via addNote below. Mirrors
+  // CoordinationNotes.tsx's promoteDoc, minus the live-editing-preview branch
+  // (this embed always shows exactly one, already-active doc).
+  const onPromote = (d: BoardDoc) => {
+    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(d.md) });
+  };
+
+  const addNote = async (fields: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => {
+    try {
+      const ref = doc(collection(db, 'board_notes'));
+      await setDoc(ref, {
+        type: fields.type,
+        series: fields.series,
+        title: fields.title.trim() || 'Untitled note',
+        body: fields.body.trim(),
+        date: todayISO(),
+        contributorIds: [uid],
+        tags: fields.tags,
+        sessionId: activeDoc?.id || '',
+        createdAt: serverTimestamp(),
+        createdBy: uid,
+        createdByName: meName,
+        updatedAt: serverTimestamp(),
+        updatedBy: uid,
+        updatedByName: meName,
+      });
+      logActivity({
+        action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
+        targetId: ref.id,
+        targetName: fields.title || 'Note',
+        targetType: 'comment',
+        type: 'create',
+        description: fields.series,
+      });
+      setNoteForm(null);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.CREATE, 'board_notes');
     }
   };
 
@@ -130,14 +210,30 @@ export default function EmbedCoordinationDoc() {
         onSaveMarkdown={saveMarkdown}
         onSaveTitle={saveTitle}
         onSaveAudience={saveAudience}
-        onPromote={() => {}}
-        onDelete={() => {}}
+        onPromote={onPromote}
+        onDelete={onDelete}
         team={team}
         onToast={() => {}}
-        contacts={[]}
-        onSelectContact={() => {}}
-        onOpenContactModal={() => {}}
+        contacts={contacts}
+        onSelectContact={setSelectedContact}
+        onOpenContactModal={setIsDetailsModalOpen}
       />
+      <ContactDetailsModal
+        isOpen={isDetailsModalOpen}
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedContact(null);
+        }}
+        contact={selectedContact}
+      />
+      {noteForm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div onClick={() => setNoteForm(null)} className="fixed inset-0 bg-scrim/55 backdrop-blur-sm" />
+          <div className="relative w-full max-w-md z-[101]">
+            <NoteForm initial={noteForm} seriesOptions={BOARD_SERIES} onCancel={() => setNoteForm(null)} onSave={addNote} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
