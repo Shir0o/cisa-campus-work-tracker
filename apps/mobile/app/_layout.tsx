@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -22,6 +23,14 @@ function RootNavigator() {
     HankenGrotesk_400Regular,
     HankenGrotesk_600SemiBold,
   });
+
+  useEffect(() => {
+    if (fontError) {
+      // Non-fatal — falls back to the system font below, but this should never
+      // happen with bundled fonts, so surface it for debugging.
+      console.error('Failed to load bundled fonts:', fontError);
+    }
+  }, [fontError]);
 
   if (loading || (!fontsLoaded && !fontError)) {
     return (
