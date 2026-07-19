@@ -6,6 +6,7 @@ import { useFonts } from 'expo-font';
 import { Newsreader_500Medium } from '@expo-google-fonts/newsreader';
 import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from '@expo-google-fonts/hanken-grotesk';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
@@ -65,7 +66,9 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
-            <RootNavigator />
+            <BottomSheetModalProvider>
+              <RootNavigator />
+            </BottomSheetModalProvider>
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
