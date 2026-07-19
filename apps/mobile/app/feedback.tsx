@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Pressable, ScrollView, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import ViewShot, { captureRef } from 'react-native-view-shot';
 import { kindMeta, type FeedbackKind } from '@cisa/core';
 import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
@@ -10,16 +11,27 @@ import { submitFeedback } from '../src/lib/data/feedback';
 import { FeedbackKindPicker } from '../src/components/feedback/FeedbackKindPicker';
 
 const MESSAGE_MAX = 5000;
+// Firestore rules cap `screenshot` at 200000 chars — stay comfortably under.
+const SCREENSHOT_MAX_CHARS = 190_000;
+// A full-resolution capture of a desktop-width screen alone gets close to
+// that cap, leaving no margin — downscale to a diagnostic-sized thumbnail.
+const CAPTURE_MAX_WIDTH = 480;
 
 // Leave a note — ported from src/views/SubmitFeedback.tsx. Any signed-in
 // role can submit (ROUTE_MIN_ROLE['/feedback'] = 'viewer'), reached from
 // "More". Writes directly to Firestore (see data/feedback.ts) rather than
-// through web's /api/feedback server route — screenshot capture and
-// GitHub-issue auto-creation are deferred (see MIGRATION.md).
+// through web's /api/feedback server route — GitHub-issue auto-creation is
+// still deferred (see MIGRATION.md). Screenshot capture is a best-effort
+// capture of *this* form screen, not the screen the user was complaining
+// about — web's floating FAB captures whatever page it's opened from, but
+// mobile's Feedback is a routed screen reached only from "More", so the
+// "offending" screen is already unmounted by the time this form is open.
 export default function FeedbackScreen() {
   const router = useRouter();
   const { colors, spacing, radius } = useTheme();
   const { user, uid } = useAuth();
+  const viewShotRef = useRef<ViewShot>(null);
+  const captureSize = useRef<{ width: number; height: number } | null>(null);
 
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
@@ -44,6 +56,27 @@ export default function FeedbackScreen() {
     if (!uid || !message.trim()) return;
     setLoading(true);
     setError(null);
+
+    // Best-effort — a failed capture must never block submitting the note.
+    // Downscaled to a thumbnail width so it stays well under the rules' cap
+    // regardless of the device's screen size or pixel density. Skipped
+    // entirely (rather than falling back to an unconstrained capture) if
+    // onLayout hasn't reported a size yet — react-native-view-shot's web
+    // shim only resizes when both width AND height are given, so a
+    // width-only fallback wouldn't actually bound the capture on web.
+    let screenshot: string | undefined;
+    const size = captureSize.current;
+    if (size) {
+      try {
+        const width = Math.min(CAPTURE_MAX_WIDTH, size.width);
+        const height = Math.round(width * (size.height / size.width));
+        const base64 = await captureRef(viewShotRef, { format: 'jpg', quality: 0.6, result: 'base64', width, height });
+        if (base64.length <= SCREENSHOT_MAX_CHARS) screenshot = `data:image/jpeg;base64,${base64}`;
+      } catch {
+        // no screenshot this time
+      }
+    }
+
     try {
       await submitFeedback({
         uid,
@@ -51,6 +84,7 @@ export default function FeedbackScreen() {
         userName: user?.displayName || 'Anonymous User',
         kind,
         message: message.trim(),
+        screenshot,
       });
       setSent(true);
       setMessage('');
@@ -105,49 +139,58 @@ export default function FeedbackScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}
-        keyboardShouldPersistTaps="handled"
+      <ViewShot
+        ref={viewShotRef}
+        style={{ flex: 1 }}
+        options={{ format: 'jpg', quality: 0.6 }}
+        onLayout={(e) => {
+          captureSize.current = { width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height };
+        }}
       >
-        <View style={{ gap: 4 }}>
-          <AppText variant="title">Leave a note</AppText>
-          <AppText variant="body" color={colors.onSurfaceVariant}>
-            Ideas, friction, appreciation — all welcome. Your note goes straight to the team.
-          </AppText>
-        </View>
-
-        {error && (
-          <View style={{ backgroundColor: colors.errorContainer, borderRadius: radius.md, padding: 12 }}>
-            <AppText variant="body" color={colors.onErrorContainer}>
-              {error}
+        <ScrollView
+          contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.md }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={{ gap: 4 }}>
+            <AppText variant="title">Leave a note</AppText>
+            <AppText variant="body" color={colors.onSurfaceVariant}>
+              Ideas, friction, appreciation — all welcome. Your note goes straight to the team.
             </AppText>
           </View>
-        )}
 
-        <View style={{ gap: 6 }}>
-          <AppText variant="label" color={colors.onSurfaceVariant}>
-            What kind of note is it?
-          </AppText>
-          <FeedbackKindPicker value={kind} onChange={setKind} />
-        </View>
+          {error && (
+            <View style={{ backgroundColor: colors.errorContainer, borderRadius: radius.md, padding: 12 }}>
+              <AppText variant="body" color={colors.onErrorContainer}>
+                {error}
+              </AppText>
+            </View>
+          )}
 
-        <View style={{ gap: 6 }}>
-          <AppText variant="label" color={colors.onSurfaceVariant}>
-            Your note
-          </AppText>
-          <TextInput
-            style={inputStyle}
-            value={message}
-            onChangeText={(v) => setMessage(v.slice(0, MESSAGE_MAX))}
-            placeholder={kindMeta(kind).placeholder}
-            placeholderTextColor={colors.onSurfaceVariant}
-            multiline
-            maxLength={MESSAGE_MAX}
-          />
-        </View>
+          <View style={{ gap: 6 }}>
+            <AppText variant="label" color={colors.onSurfaceVariant}>
+              What kind of note is it?
+            </AppText>
+            <FeedbackKindPicker value={kind} onChange={setKind} />
+          </View>
 
-        <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading || !message.trim()} full />
-      </ScrollView>
+          <View style={{ gap: 6 }}>
+            <AppText variant="label" color={colors.onSurfaceVariant}>
+              Your note
+            </AppText>
+            <TextInput
+              style={inputStyle}
+              value={message}
+              onChangeText={(v) => setMessage(v.slice(0, MESSAGE_MAX))}
+              placeholder={kindMeta(kind).placeholder}
+              placeholderTextColor={colors.onSurfaceVariant}
+              multiline
+              maxLength={MESSAGE_MAX}
+            />
+          </View>
+
+          <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading || !message.trim()} full />
+        </ScrollView>
+      </ViewShot>
     </Screen>
   );
 }

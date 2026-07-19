@@ -5,6 +5,7 @@ import {
   sessionsNewestFirst,
   whoWeMissed,
   avgAttendance,
+  buildAttendanceCsv,
 } from '../src/attendance';
 import type { Contact, Event } from '../src/types';
 
@@ -112,5 +113,29 @@ describe('avgAttendance', () => {
     ];
     // slots: a=2, b=1, c=0 -> 3 total / 2 events = 1.5 -> rounds to 2
     expect(avgAttendance(contacts, events)).toBe(2);
+  });
+});
+
+describe('buildAttendanceCsv', () => {
+  it('builds a quoted header row plus one quoted row per contact', () => {
+    const events = [event({ id: 'e1', name: 'Bible Study', date: '2026-07-13' })];
+    const contacts = [contact({ id: 'a', name: 'Alex', role: 'Student', attendance: { e1: true } })];
+    const csv = buildAttendanceCsv(contacts, events);
+    const [header, row] = csv.split('\n');
+    expect(header).toBe('"Name","Role","Bible Study (2026-07-13)"');
+    expect(row).toBe('"Alex","Student","Present"');
+  });
+
+  it('maps attendance values to Present/Late/Absent/None', () => {
+    const events = [
+      event({ id: 'e1' }),
+      event({ id: 'e2' }),
+      event({ id: 'e3' }),
+      event({ id: 'e4' }),
+    ];
+    const c = contact({ attendance: { e1: true, e2: 'late', e3: 'absent' } });
+    const csv = buildAttendanceCsv([c], events);
+    const [, row] = csv.split('\n');
+    expect(row).toBe('"Alex","Student","Present","Late","Absent","None"');
   });
 });

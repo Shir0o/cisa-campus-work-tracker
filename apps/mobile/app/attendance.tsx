@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import type { Event } from '@cisa/core';
-import { Screen, AppText } from '../src/components/ui';
+import { format } from 'date-fns';
+import { buildAttendanceCsv, type Event } from '@cisa/core';
+import { Screen, AppText, IconButton } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useAuth } from '../src/lib/AuthProvider';
 import { useAttendanceData } from '../src/lib/useAttendanceData';
+import { exportCsv } from '../src/lib/exportCsv';
 import { GatheringHero } from '../src/components/attendance/GatheringHero';
 import { MissedList } from '../src/components/attendance/MissedList';
 import { GatheringTypeFilterPills } from '../src/components/attendance/GatheringTypeFilterPills';
@@ -30,12 +32,29 @@ export default function Attendance() {
     Alert.alert(name, "Contact details aren't wired up yet — coming in a later pass.");
   };
 
+  // Ungated, matching web's Attendance.tsx — unlike "Log a gathering"/"Sync
+  // sheet", Export isn't admin-only there.
+  const onExport = () => {
+    if (data.contacts.length === 0 || data.events.length === 0) return;
+    const csv = buildAttendanceCsv(data.contacts, data.events);
+    void exportCsv(csv, `attendance_report_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+  };
+
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: spacing.md,
+          paddingTop: spacing.sm,
+        }}
+      >
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </Pressable>
+        <IconButton name="download-outline" onPress={onExport} size={36} />
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40, gap: spacing.xl }}>
