@@ -50,6 +50,6 @@ this app on Expo/React 18.3 — hoisting would clash). Instead:
   bundled; text falls back to system fonts until we add
   `@expo-google-fonts/newsreader` + `@expo-google-fonts/hanken-grotesk` and load
   them in `app/_layout.tsx`.
-- **Auth screens** + native Google Sign-In (`@react-native-google-signin`).
+- **Auth screens** for the remaining flows (password reset, etc.).
 - **Live data**: screens are scaffolds; Firestore wiring is Phase 2.
 - **Collab editor** WebView spike (Phase 0 gate) and the hard screens (Phase 4).

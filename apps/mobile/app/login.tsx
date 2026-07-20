@@ -5,16 +5,17 @@ import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useAuth } from '../src/lib/AuthProvider';
 
-// Email/password sign-in. Native Google Sign-In is a separate Phase 0.5 spike
-// (@react-native-google-signin — popup sign-in doesn't exist in RN).
+// Email/password + native Google Sign-In (@react-native-google-signin —
+// popup sign-in doesn't exist in RN).
 export default function Login() {
   const { colors, spacing, radius } = useTheme();
   const router = useRouter();
-  const { signInWithEmail } = useAuth();
+  const { signInWithEmail, signInWithGoogle } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const inputStyle = {
     borderWidth: 1,
@@ -36,6 +37,19 @@ export default function Login() {
       setError(e instanceof Error ? e.message : 'Sign-in failed.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const submitGoogle = async () => {
+    setError(null);
+    setGoogleSubmitting(true);
+    try {
+      await signInWithGoogle();
+      router.replace('/');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Google sign-in failed.');
+    } finally {
+      setGoogleSubmitting(false);
     }
   };
 
@@ -78,6 +92,18 @@ export default function Login() {
           title={submitting ? 'Signing in…' : 'Sign in'}
           onPress={submit}
           disabled={submitting || !email || !password}
+          full
+        />
+
+        <AppText variant="caption" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
+          or
+        </AppText>
+
+        <Button
+          title={googleSubmitting ? 'Signing in…' : 'Sign in with Google'}
+          onPress={submitGoogle}
+          disabled={googleSubmitting || submitting}
+          variant="secondary"
           full
         />
 
