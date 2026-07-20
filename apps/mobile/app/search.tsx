@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import type { Contact, QuickAction } from '@cisa/core';
@@ -26,7 +26,7 @@ export default function SearchScreen() {
   const [showAddSheet, setShowAddSheet] = useState(false);
 
   const onOpenContact = (contact: Contact) => {
-    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    router.push(`/contact/${contact.id}`);
   };
 
   const onQuickAction = (action: QuickAction) => {

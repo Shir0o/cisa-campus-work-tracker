@@ -681,6 +681,84 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       `localhost:3000` — a live-infrastructure change needing the user's
       explicit go-ahead, same as Native Google Sign-In below.
 
+### ✅ Contact Detail screen — DONE, verified live against all four e2e role users
+- [x] **A real Contact Detail screen (`apps/mobile/app/contact/[contactId].tsx`)** —
+      ported `src/components/modals/ContactDetailsModal.tsx` (2300+ lines, 6
+      tabs), building against its `isMobile` branch as the design/behavior
+      oracle, same convention as Coordination Notes/Messages/Attendance.
+      Overview (info grid, tag add/remove, notes) + an admin-only Edit/Delete
+      form (same field set as `AddContactSheet.tsx`); Conversations (the
+      interaction log, author/admin-gated inline edit, a per-interaction
+      "Alongside" thread toggle); Alongside (the walking-together thread —
+      genuinely new RN UI, no existing screen renders a thread's message
+      list + reactions + kind-tagged compose box, unlike every other tab
+      which reuses an already-proven CRUD-list pattern); Prayer (read + add,
+      simpler than the standalone Prayer tab's `PrayerThreadCard` — no status
+      cycling/burden editing here); Discussion (one level of threaded team
+      comments); History (a per-contact audit timeline reusing
+      `packages/core/src/history.ts`'s already-tested `humanize()`). Closes 8
+      of the 9 existing `onOpenContact` placeholders scattered across My Day,
+      People, Prayer, History, Answered, Attendance, Search, and
+      LandingTrainee — Messages' `ChatDetailsSheet` is deliberately left as a
+      placeholder, since its `otherMember` is a team user (`AppUser`), not a
+      `Contact`, and there's no FK between the two to navigate to.
+      New `packages/core/src/contactDetail.ts` (pure, unit-tested: the
+      edit-form field diff, the interaction-type-to-activity-type map, the
+      delete audit-log text) and new/extended
+      `packages/core/src/data/{contacts,threads,activities,prayers,
+      interactions,comments}.ts`, all following the established
+      injected-`db` pattern (interactions/comments are wholly new modules;
+      the other four gained a single-contact/single-doc variant alongside
+      their existing team-wide one — e.g. `subscribeContact` next to
+      `subscribeContacts`). Added `'/contact': 'viewer'` to
+      `packages/core/src/permissions.ts`'s `ROUTE_MIN_ROLE` — the route has
+      no `NAV_ITEMS` entry, so `canAccessRoute` would otherwise default it
+      to `admin` and 403 every non-admin caller; this is the same
+      easy-to-miss step every "no tab, no More card" pushed route needs
+      (matches History/Answered's own guard comments).
+      **Bug found + fixed during verification**: `data/comments.ts`'s
+      `addComment` initially only wrote `parentId` when replying (mirroring
+      the web modal's own `handleAddComment` verbatim), omitting the field
+      entirely for a top-level comment — but the deployed `comments` create
+      rule's `data.parentId == null || (data.parentId is string && ...)`
+      check accesses that field unconditionally, so a genuinely-absent
+      `parentId` fails the check and the write is denied with "Missing or
+      insufficient permissions." Reproduced live (an uncaught error, not a
+      quiet console warning) the first time a top-level Discussion comment
+      was posted against real Firestore rules. Fixed by always writing
+      `parentId: input.parentId ?? null` — a pre-existing bug in the
+      untouched web app too (same conditional-omission pattern in
+      `ContactDetailsModal.tsx`), fixed here only for mobile's new module.
+      Verified live: **Full-timer (admin)** — opened from My Day's "From the
+      team" inbox both bare and via "Open the conversation" (lands on the
+      Alongside tab with the right interaction's thread), edit → save (diff
+      text shows up live in that same contact's own History tab), tag
+      add/remove, logging an interaction, adding a prayer (composes
+      `logActivity` itself, since the shared `addPrayer` wrapper doesn't —
+      confirmed it surfaces in History too), posting + reacting to an
+      Alongside message, and a threaded Discussion reply — all against real
+      Firestore. Delete's confirmation is `Alert.alert`, a documented no-op
+      on Expo web (this migration's known limitation) — the button dispatch
+      itself was verified, but the actual delete path needs Simulator
+      verification. **Trainee (manager)** — opened via LandingTrainee's
+      "Open" action; correct trainee-flavored Alongside compose kinds
+      (Note/Question/Comment/Encourage, no Follow-up/nudge) and no Edit
+      button. **Student (operator)** — opened via People; every compose
+      surface writable (tags, interactions, comments, threads, prayers),
+      still no Edit button. **Community (viewer)** — opened via the Prayer
+      tab; every tab renders read-only (no compose boxes, no tag-add pill,
+      no reaction taps), and the route itself isn't blocked (per the
+      `ROUTE_MIN_ROLE` fix above). **Also found, flagged separately (not
+      fixed here)**: closing the "From the team" inbox item's action sheet
+      (`FromTeamInbox.tsx`, built on the shared `Sheet.tsx`/
+      `@gorhom/bottom-sheet` primitive) leaves an invisible, full-viewport,
+      click-blocking backdrop behind on Expo web — reproduced with a
+      purely local action ("Mark scanned", no navigation involved), so it's
+      a pre-existing bug in the shared sheet primitive itself (likely a
+      react-native-web + Reanimated dismiss-animation issue), not something
+      this screen introduced. Worth a dedicated look since the same `Sheet`
+      primitive backs 12 other sheets across the app.
+
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
       **"CISA Campus Work Tracker"** (was the shorter "CISA Campus"; the
@@ -827,6 +905,24 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     (`eas login`/`eas init`, an Apple/Google developer account, and an
     actual TestFlight/Play build) and Phase 6 (web unification) — neither
     is something an agent can complete unassisted.
+16. ~~Contact Detail screen~~ — **done** (see the entry above), found by
+    auditing the codebase for the next unblocked unit of work: route-level
+    Phase 6 parity turned out to already be complete (every web route has a
+    mobile equivalent), but `ContactDetailsModal.tsx` had never been
+    ported, leaving 9 `onOpenContact` placeholders across nearly every
+    mobile screen. Porting it closed 8 of them at once (Messages'
+    `ChatDetailsSheet` doesn't apply — see the entry above) and, along the
+    way, fixed a live Firestore-rules bug in the new comments module (a
+    missing `parentId` field failing the create rule) and surfaced a
+    pre-existing `Sheet`/`@gorhom/bottom-sheet` web bug (stuck backdrop
+    after closing `FromTeamInbox`'s sheet), flagged separately rather than
+    fixed here since it's unrelated to this screen and affects a primitive
+    shared by 12 other sheets. What's left overall: the user-account-linking
+    part of Phase 5 (`eas login`/`eas init`, an Apple/Google developer
+    account, an actual TestFlight/Play build), the flagged Sheet-backdrop
+    bug, and Phase 6 (retiring the old web app, reconciling React
+    versions) — none of these are something an agent can complete
+    unassisted.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { Contact } from '@cisa/core';
 import { Screen } from '../ui';
@@ -30,8 +30,15 @@ export function MyDayScreen() {
 
   const firstName = (user?.displayName || 'friend').split(' ')[0];
 
-  const onOpenContact = (contact: Contact) => {
-    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+  const onOpenContact = (contact: Contact, opts?: { tab: 'thread'; interactionId?: string | null }) => {
+    router.push({
+      pathname: '/contact/[contactId]',
+      params: {
+        contactId: contact.id,
+        ...(opts?.tab ? { tab: opts.tab } : {}),
+        ...(opts?.interactionId ? { interactionId: opts.interactionId } : {}),
+      },
+    });
   };
 
   return (

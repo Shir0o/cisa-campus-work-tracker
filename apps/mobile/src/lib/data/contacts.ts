@@ -1,7 +1,8 @@
 // Contacts/stages/touches reads + contact creation — thin mobile wrapper
 // around the shared @cisa/core logic (behind an injected `db`).
+import { collection, getDocs } from 'firebase/firestore';
 import * as core from '@cisa/core';
-import type { Contact, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
+import type { Contact, ContactEditFields, ContactNotifyPayload, NewContactInput, Stage, Touch } from '@cisa/core';
 import { db, handleFirestoreError, logActivity, OperationType, sendNotification } from '../firebase';
 
 export function subscribeContacts(
@@ -9,6 +10,15 @@ export function subscribeContacts(
   onError?: (e: unknown) => void,
 ): () => void {
   return core.subscribeContacts(db, cb, onError);
+}
+
+/** Live subscription to a single contact (Contact Detail screen). */
+export function subscribeContact(
+  contactId: string,
+  cb: (contact: Contact | null) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeContact(db, contactId, cb, onError);
 }
 
 export function subscribeStages(
@@ -86,5 +96,92 @@ export async function moveContactStage(
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+  }
+}
+
+/** Save Contact Detail's edit form; logs a diff-based description (mirrors
+ * the web modal's handleUpdate). */
+export async function updateContact(
+  contact: Contact,
+  edits: ContactEditFields,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  try {
+    const fullName = `${edits.firstName} ${edits.lastName}`.trim();
+    const changes = core.diffContactFields(contact, edits);
+    await core.updateContact(
+      db,
+      contact.id,
+      {
+        name: fullName,
+        initials: (edits.firstName.charAt(0) + (edits.lastName.charAt(0) || '')).toUpperCase(),
+        role: edits.role,
+        location: edits.location,
+        email: edits.email,
+        phone: edits.phone,
+        stage: edits.stage,
+        tags: edits.tags,
+        notes: edits.notes,
+        spiritualBackground: edits.spiritualBackground,
+      },
+      by,
+    );
+    void logActivity({
+      action: changes.length > 0 ? `updated ${changes.join(', ')} for` : 'updated contact details for',
+      targetId: contact.id,
+      targetName: fullName,
+      targetType: 'contact',
+      type: 'edit',
+      description: changes.join('\n'),
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+  }
+}
+
+/** Add/remove a tag from Contact Detail's Overview tab. */
+export async function updateContactTags(
+  contact: Contact,
+  updatedTags: string[],
+  verb: 'added' | 'removed',
+  tag: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  const prevTags = contact.tags ?? [];
+  try {
+    await core.updateContactTags(db, contact.id, updatedTags, by);
+    void logActivity({
+      action: `${verb} tag #${tag} ${verb === 'removed' ? 'from' : 'to'}`,
+      targetId: contact.id,
+      targetName: contact.name,
+      targetType: 'contact',
+      type: 'edit',
+      description: `Tags: [${prevTags.join(', ')}] → [${updatedTags.join(', ')}]`,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `contacts/${contact.id}`);
+  }
+}
+
+/** Delete a contact, first capturing its subcollection counts for the audit
+ * log (mirrors the web modal's handleDelete). */
+export async function deleteContact(contact: Contact): Promise<void> {
+  try {
+    const [interactionsSnap, commentsSnap] = await Promise.all([
+      getDocs(collection(db, 'contacts', contact.id, 'interactions')),
+      getDocs(collection(db, 'contacts', contact.id, 'comments')),
+    ]);
+    const fieldsLog = core.contactDeleteFieldsLog(contact, interactionsSnap.size, commentsSnap.size);
+    await core.deleteContact(db, contact.id);
+    void logActivity({
+      action: 'deleted contact',
+      targetId: contact.id,
+      targetName: contact.name,
+      targetType: 'contact',
+      type: 'alert',
+      description: fieldsLog,
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `contacts/${contact.id}`);
   }
 }

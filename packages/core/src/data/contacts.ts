@@ -5,6 +5,7 @@ import {
   addDoc,
   collection,
   collectionGroup,
+  deleteDoc,
   doc,
   limit,
   onSnapshot,
@@ -27,6 +28,20 @@ export function subscribeContacts(
     query(collection(db, "contacts")),
     (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[]),
     (e) => (onError ? onError(e) : console.error("contacts subscription error", e)),
+  );
+}
+
+/** Live subscription to a single contact (Contact Detail screen). */
+export function subscribeContact(
+  db: Firestore,
+  contactId: string,
+  cb: (contact: Contact | null) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    doc(db, "contacts", contactId),
+    (snap) => cb(snap.exists() ? ({ id: snap.id, ...snap.data() } as Contact) : null),
+    (e) => (onError ? onError(e) : console.error("contact subscription error", e)),
   );
 }
 
@@ -190,4 +205,56 @@ export async function moveContactStage(
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,
   });
+}
+
+export interface ContactUpdateFields {
+  name: string;
+  initials: string;
+  role: string;
+  location: string;
+  email: string;
+  phone: string;
+  stage: string;
+  tags: string[];
+  notes: string;
+  spiritualBackground: string;
+}
+
+/** Save the Contact Detail edit form (mirrors ContactDetailsModal's
+ * handleUpdate). Activity logging (the field diff) is left to each platform,
+ * so this stays a plain write. */
+export async function updateContact(
+  db: Firestore,
+  contactId: string,
+  patch: ContactUpdateFields,
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  await updateDoc(doc(db, "contacts", contactId), {
+    ...patch,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid ?? null,
+    updatedByName: by.name ?? null,
+  });
+}
+
+/** Persist an add/remove tag edit from Contact Detail's Overview tab. */
+export async function updateContactTags(
+  db: Firestore,
+  contactId: string,
+  tags: string[],
+  by: { uid?: string | null; name?: string | null },
+): Promise<void> {
+  await updateDoc(doc(db, "contacts", contactId), {
+    tags,
+    updatedAt: new Date().toISOString(),
+    updatedBy: by.uid ?? null,
+    updatedByName: by.name ?? null,
+  });
+}
+
+/** Delete a contact (Contact Detail's Delete action). Subcollection counts
+ * for the audit log are gathered by the caller before calling this, since
+ * fetching them is a platform-agnostic read best composed at the call site. */
+export async function deleteContact(db: Firestore, contactId: string): Promise<void> {
+  await deleteDoc(doc(db, "contacts", contactId));
 }

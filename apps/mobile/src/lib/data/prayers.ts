@@ -26,6 +26,16 @@ export function subscribeAllPrayers(
   return core.subscribeAllPrayers(db, cb, onError);
 }
 
+/** Live subscription to a single contact's prayers (Contact Detail's Prayer
+ * tab). */
+export function subscribeContactPrayers(
+  contactId: string,
+  cb: (prayers: PrayerRecord[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeContactPrayers(db, contactId, cb, onError);
+}
+
 export async function addPrayer(
   input: { contactId: string; burden: string },
   by: { uid?: string | null; name?: string | null },

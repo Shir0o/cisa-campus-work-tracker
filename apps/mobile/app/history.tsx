@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { Screen, AppText } from '../src/components/ui';
@@ -47,8 +47,7 @@ export default function History() {
   });
 
   const onOpenContact = (contactId: string) => {
-    const contact = data.openContact(contactId);
-    if (contact) Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    router.push(`/contact/${contactId}`);
   };
 
   return (

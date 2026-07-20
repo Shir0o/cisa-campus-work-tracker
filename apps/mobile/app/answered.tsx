@@ -1,4 +1,4 @@
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { toneForAnsweredId } from '@cisa/core';
@@ -19,8 +19,8 @@ export default function Answered() {
   const data = useAnsweredData();
 
   const onOpenContact = (contactId?: string) => {
-    const contact = data.openContact(contactId);
-    if (contact) Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    if (!contactId) return;
+    router.push(`/contact/${contactId}`);
   };
 
   const isEmpty = data.recent.length === 0 && data.earlier.length === 0;
