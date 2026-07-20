@@ -41,6 +41,14 @@
             "useFrameworks": "static"
           }
         }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon-foreground.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#eaeef4"
+        }
       ]
     ],
     "experiments": {

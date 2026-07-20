@@ -33,6 +33,23 @@ this app on Expo/React 18.3 — hoisting would clash). Instead:
   [`tsconfig.json`](./tsconfig.json).
 - `date-fns` (core's only runtime dep) is declared here so Metro finds it.
 
+## App-store delivery (EAS Build)
+
+`eas-cli` is a local devDependency (`npx eas ...` resolves without a global
+install) and [`eas.json`](./eas.json) has `development`/`preview`/`production`
+build profiles. The project isn't linked to an Expo account yet — that step
+needs your own Expo/Apple/Google credentials, which can't be done for you:
+
+```bash
+npx eas login          # your Expo account
+npx eas init            # links/creates the EAS project, writes extra.eas.projectId to app.json
+npx eas build --platform ios --profile preview      # or --platform android
+```
+
+An Apple Developer / Google Play account (and, for iOS, `eas build`'s
+interactive credential setup or an existing distribution certificate) is
+needed before a build can go to TestFlight or a Play internal track.
+
 ## What's in place (Phase 0)
 
 - Theme from the web app's Material tokens (`src/theme/`), light + dark, warm

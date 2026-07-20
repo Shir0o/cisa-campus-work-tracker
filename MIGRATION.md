@@ -696,8 +696,33 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       matching the brand purple). Verified live on Expo web (favicon renders,
       no asset-resolution errors). Still open below: splash *image* (only
       `splash.backgroundColor` is set) and EAS Build config.
-- [ ] Splash image, EAS Build config
-- [ ] Internal TestFlight / Play internal build on a physical device
+- [x] **Splash image, EAS Build config** — done: `expo-splash-screen` is
+      configured in `app.json` (via `npx expo install`) reusing the existing
+      `adaptive-icon-foreground.png` (already brand-correct, already has
+      safe-zone padding for a centered icon) on the existing
+      `splash.backgroundColor` (`#eaeef4`) rather than commissioning new art.
+      `apps/mobile/app/_layout.tsx` now calls `SplashScreen.
+      preventAutoHideAsync()` at module scope and `hideAsync()` once
+      `!loading && (fontsLoaded || fontError)` — the native splash now stays
+      up through the auth/font-loading window instead of auto-hiding
+      instantly and flashing the `ActivityIndicator` spinner separately.
+      Verified live on the iOS Simulator (Xcode 26.3): `npx expo prebuild
+      --platform ios --clean` + `pod install` (needed `LANG=en_US.UTF-8` —
+      this environment's Ruby/CocoaPods combo throws a Unicode-normalization
+      error otherwise) + `npx expo run:ios`, screenshot confirms the cream
+      sheep mark centered on the light background before the app UI
+      appears, no console errors. `eas-cli` (`21.0.2`) is now a devDependency
+      so `npx eas` resolves locally, and `apps/mobile/eas.json` has the
+      standard `development`/`preview`/`production` build profiles (the same
+      shape `eas build:configure` would scaffold). **Not done**: linking the
+      project to an Expo account (`eas login`/`eas init`, which would
+      populate `extra.eas.projectId`) — needs the user's own Expo
+      credentials, which can't be entered on their behalf. See
+      `apps/mobile/SETUP.md`'s new "App-store delivery" section for the
+      remaining manual steps.
+- [ ] Internal TestFlight / Play internal build on a physical device — blocked
+      on the `eas login`/`eas init` step above, plus the user's own Apple
+      Developer / Google Play accounts.
 - [ ] (Optional) `expo-notifications` for OS push (in-app notifications are
       Firestore docs today)
 
@@ -787,13 +812,21 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     Phase 5 app-store delivery (splash image, EAS Build config, a
     TestFlight/Play internal build). Neither is blocked on the other — pick
     based on what the user wants next.
-14. ~~Native Google Sign-In~~ — **done** (see the Phase 0.5 entry above) —
+14. ~~Splash image, EAS Build config~~ — **done** (see the Phase 5 entry
+    above). What was left at the time: Native Google Sign-In (Phase 0.5,
+    still needed the user's go-ahead), and the rest of Phase 5 — `eas
+    login`/`eas init` (the user's own Expo account) followed by an Internal
+    TestFlight/Play build (the user's own Apple/Google accounts). Phase 6
+    (web unification) remains untouched.
+15. ~~Native Google Sign-In~~ — **done** (see the Phase 0.5 entry above) —
     **Phase 0.5 is now fully complete**, no open items left in it. The
     user's go-ahead unblocked the two Firebase project registrations; both
     of the doc's remaining open questions (provider already enabled, SHA-1
     attachable via REST) resolved cleanly with no manual console step
-    needed. What's left overall: Phase 5 app-store delivery (splash image,
-    EAS Build config, a TestFlight/Play internal build).
+    needed. What's left overall: the user-account-linking part of Phase 5
+    (`eas login`/`eas init`, an Apple/Google developer account, and an
+    actual TestFlight/Play build) and Phase 6 (web unification) — neither
+    is something an agent can complete unassisted.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
