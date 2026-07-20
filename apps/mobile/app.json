@@ -13,14 +13,16 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.cisa.campus"
+      "bundleIdentifier": "com.cisa.campus",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.cisa.campus",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon-foreground.png",
         "backgroundColor": "#5c5595"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
@@ -31,6 +33,15 @@
       "expo-router",
       "expo-font",
       "expo-asset",
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
       [
         "expo-splash-screen",
         {

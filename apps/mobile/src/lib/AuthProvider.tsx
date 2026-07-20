@@ -1,12 +1,19 @@
 // Minimal mobile auth context — a slim counterpart to the web app's
 // AuthProvider (src/components/AuthProvider.tsx). Deliberately skips the web
-// provider's invitation/auto-provisioning and Google-popup/Sheets logic:
-// dev/e2e users already have an approved /users/{uid} doc, and native Google
-// Sign-In is a separate Phase 0.5 spike (popup sign-in doesn't exist in RN).
+// provider's invitation/auto-provisioning logic: dev/e2e users already have
+// an approved /users/{uid} doc. Google sign-in uses the native SDK
+// (popup sign-in doesn't exist in RN) rather than the web app's
+// signInWithPopup; the Sheets spreadsheets.readonly scope recovery isn't
+// ported here — see MIGRATION.md's Phase 0.5 entry.
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut, type User } from 'firebase/auth';
+import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, db, signIn } from './firebase';
+
+GoogleSignin.configure({
+  webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
+});
 
 export type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -17,6 +24,7 @@ interface AuthContextValue {
   isApproved: boolean;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logOut: () => Promise<void>;
 }
 
@@ -69,6 +77,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     signInWithEmail: async (email, password) => {
       await signIn(email.trim(), password);
+    },
+    signInWithGoogle: async () => {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (response.type === 'cancelled') return;
+      await signInWithCredential(auth, GoogleAuthProvider.credential(response.data.idToken));
     },
     logOut: () => signOut(auth),
   };

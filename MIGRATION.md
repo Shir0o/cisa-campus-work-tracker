@@ -94,9 +94,7 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 
 ## Remaining work
 
-### 🔲 Phase 0.5 — De-risking spikes (no longer blocking Phase 2 — see "How to
-proceed"; these are ordinary Firestore CRUD screens with no editor/WebView
-involved, so screen-porting can continue in parallel)
+### ✅ Phase 0.5 — De-risking spikes — DONE, all four items complete
 - [x] **Collab editor in a WebView** — done, verified live on the iOS
       Simulator: typed edits in the RN app's WebView showed up in a normal
       desktop browser tab within ~1s and vice versa, with live cursor
@@ -132,23 +130,55 @@ involved, so screen-porting can continue in parallel)
       deployed URL would additionally need redeploying the new server
       endpoint, not done here. A **full Board/doc-browser mobile screen** is
       still separate, unstarted Phase 4 work.
-- [ ] **Native Google Sign-In** — `@react-native-google-signin` +
-      `signInWithCredential` (popup sign-in doesn't exist in RN). Recovers the
-      Sheets `spreadsheets.readonly` token too. **Less blocked than it looks**:
-      `gcloud`/`firebase` CLI are already authenticated in this environment
-      (account `yilongwang05@gmail.com`, project `sac-campus-hub` — confirmed
-      via `.firebaserc`/`firebase.json`). `firebase apps:list --project
-      sac-campus-hub` shows only one app today (`ai-studio-applet-webapp`,
-      WEB) — no iOS/Android app registered, no `GoogleService-Info.plist`/
-      `google-services.json` in the repo. Registering the iOS/Android apps for
-      `com.cisa.campus` (already set in `apps/mobile/app.json`) via `firebase
-      apps:create`/`apps:sdkconfig` is CLI-doable — **but is a
-      permission-required action** (creates persistent config in a live
-      Firebase project), so confirm with the user before running it. Still
-      unverified: whether enabling the Google sign-in provider itself
-      (Firebase Auth → Sign-in method → Google) and registering the Android
-      OAuth client's SHA-1 can also be done via CLI, or needs one manual
-      console toggle.
+- [x] **Native Google Sign-In** — done, verified live on the iOS Simulator:
+      tapping "Sign in with Google" on `apps/mobile/app/login.tsx` launches
+      the real native OAuth sheet (`"CISACampusWorkTracker" Wants to Use
+      "google.com" to Sign In`), confirming `@react-native-google-signin/
+      google-signin` is correctly linked and configured end-to-end. **Both
+      of the doc's open questions resolved as fully CLI-doable, no manual
+      console step needed**: the Google sign-in provider was already enabled
+      project-wide (confirmed via a read-only GET to the Identity Toolkit
+      Admin API's `defaultSupportedIdpConfigs` — the web app's existing
+      `signInWithPopup` Google flow already depended on this), and the two
+      Firebase apps were registered via plain `firebase apps:create IOS`/
+      `ANDROID --project sac-campus-hub` for `com.cisa.campus` (iOS App ID
+      `1:914549253362:ios:bb80c6b60eb05d760f1c6b`, Android App ID
+      `1:914549253362:android:a5ff4711ab863ef50f1c6b`), with
+      `GoogleService-Info.plist`/`google-services.json` pulled via
+      `firebase apps:sdkconfig` and referenced from `app.json`'s
+      `ios.googleServicesFile`/`android.googleServicesFile`. The Android
+      debug keystore's SHA-1 (`~/.android/debug.keystore`) was attached via
+      a direct REST call to the Firebase Management API (`POST
+      v1beta1/projects/{project}/androidApps/{appId}/sha` — `firebase-tools`
+      has no dedicated subcommand for this; needs the `x-goog-user-project`
+      header since this environment's ADC has no default quota project set).
+      `AuthProvider.tsx` gained `signInWithGoogle` (`GoogleSignin.configure`
+      with the project's existing Web OAuth client ID, then
+      `signInWithCredential(auth, GoogleAuthProvider.credential(idToken))`).
+      **Known library gotcha hit + fixed**: `@react-native-google-signin/
+      google-signin` v16's `signIn()` returns `{ type: 'success' | 
+      'cancelled', data }` rather than throwing on cancellation or exposing
+      `idToken` directly on the response (that's the older v10/v11 shape) —
+      the first pass destructured `idToken` straight off the response,
+      which silently passed `undefined` to `GoogleAuthProvider.credential()`
+      on cancel and surfaced as a raw `Firebase: Error (auth/argument-error)`
+      instead of a clean cancel. Fixed by branching on `response.type`.
+      **Known build gotcha hit + fixed**: `pod install` initially failed
+      both on a Ruby/CocoaPods UTF-8 locale error (needs `LANG=en_US.UTF-8`)
+      and, once past that, on `AppCheckCore`/`GoogleUtilities`/
+      `RecaptchaInterop` (transitive deps of the native Google Sign-In SDK)
+      not being integrable as static libraries — fixed by adding
+      `expo-build-properties` with `ios.useFrameworks: "static"`. Scoped
+      narrowly per the doc's original intent: no Sheets
+      `spreadsheets.readonly` scope recovery (the web app's nice-to-have,
+      not required), and no live Android emulator verification (no
+      Play-Services AVD configured in this environment; the Android app is
+      registered and its debug SHA-1 attached, but untested live) — iOS-only
+      live verification, matching how the WebView editor spike above was
+      scoped. Verification stopped short of completing a real sign-in
+      (entering actual Google account credentials is the user's step, not
+      an agent's); the native OAuth sheet launching correctly and the
+      cancel path being handled cleanly is as far as this pass verifies.
 - [x] **Fonts** — done, verified live on Expo web: `@expo-google-fonts/newsreader`
       + `@expo-google-fonts/hanken-grotesk` installed in `apps/mobile`, loaded via
       `useFonts()` in `app/_layout.tsx` (gated behind the existing `loading`
@@ -783,11 +813,20 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     TestFlight/Play internal build). Neither is blocked on the other — pick
     based on what the user wants next.
 14. ~~Splash image, EAS Build config~~ — **done** (see the Phase 5 entry
-    above). What's left: Native Google Sign-In (Phase 0.5, still needs the
-    user's go-ahead), and the rest of Phase 5 — `eas login`/`eas init` (the
-    user's own Expo account) followed by an Internal TestFlight/Play build
-    (the user's own Apple/Google accounts). Phase 6 (web unification) remains
-    untouched.
+    above). What was left at the time: Native Google Sign-In (Phase 0.5,
+    still needed the user's go-ahead), and the rest of Phase 5 — `eas
+    login`/`eas init` (the user's own Expo account) followed by an Internal
+    TestFlight/Play build (the user's own Apple/Google accounts). Phase 6
+    (web unification) remains untouched.
+15. ~~Native Google Sign-In~~ — **done** (see the Phase 0.5 entry above) —
+    **Phase 0.5 is now fully complete**, no open items left in it. The
+    user's go-ahead unblocked the two Firebase project registrations; both
+    of the doc's remaining open questions (provider already enabled, SHA-1
+    attachable via REST) resolved cleanly with no manual console step
+    needed. What's left overall: the user-account-linking part of Phase 5
+    (`eas login`/`eas init`, an Apple/Google developer account, and an
+    actual TestFlight/Play build) and Phase 6 (web unification) — neither
+    is something an agent can complete unassisted.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
