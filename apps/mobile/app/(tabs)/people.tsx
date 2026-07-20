@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { canAccessRoute, type Contact, type NewContactInput } from '@cisa/core';
 import { Screen, AppText, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -13,17 +14,17 @@ import { ContactRow } from '../../src/components/people/ContactRow';
 import { AddContactSheet } from '../../src/components/people/AddContactSheet';
 
 // People / Directory — the full team contact list (design: views/contacts.jsx,
-// screenshots/dir-*.png). Contact-detail navigation is a Phase 2 placeholder,
-// matching Prayer's onOpenContact.
+// screenshots/dir-*.png).
 export default function People() {
   const { colors, spacing } = useTheme();
+  const router = useRouter();
   const { user, uid, role } = useAuth();
   const data = usePeopleData(uid);
   const season = useActiveSeason();
   const [showAddSheet, setShowAddSheet] = useState(false);
 
   const onOpenContact = (contact: Contact) => {
-    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    router.push(`/contact/${contact.id}`);
   };
 
   const handleAddContact = async (input: NewContactInput) => {

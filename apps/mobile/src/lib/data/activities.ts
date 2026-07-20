@@ -11,3 +11,13 @@ export function subscribeActivities(
 ): () => void {
   return core.subscribeActivities(db, cb, onError);
 }
+
+/** Live subscription to a single contact's audit history (Contact Detail's
+ * "Looking back" tab). */
+export function subscribeContactActivities(
+  contactId: string,
+  cb: (activities: Hist[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeContactActivities(db, contactId, cb, onError);
+}

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { hasMinRole, type Contact } from '@cisa/core';
 import { Screen, AppText, Button } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
@@ -9,17 +10,17 @@ import { PrayerThreadCard } from '../../src/components/prayer/PrayerThreadCard';
 import { HoldPrayerSheet } from '../../src/components/prayer/HoldPrayerSheet';
 
 // Prayer / "On our hearts" — the full team prayer list (design:
-// views/prayer.jsx, screenshots/prayer*.png). Contact-detail navigation is a
-// Phase 2 placeholder, matching My Day's onOpenContact.
+// views/prayer.jsx, screenshots/prayer*.png).
 export default function Prayer() {
   const { colors, spacing } = useTheme();
+  const router = useRouter();
   const { uid, user, role } = useAuth();
   const isOperator = hasMinRole(role, 'operator');
   const data = usePrayerData(uid, user?.displayName ?? null);
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const onOpenContact = (contact: Contact) => {
-    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    router.push(`/contact/${contact.id}`);
   };
 
   const heldIds = useMemo(() => new Set(data.entries.map((e) => e.contact.id)), [data.entries]);

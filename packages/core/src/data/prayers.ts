@@ -1,6 +1,6 @@
 // Shared (contact) prayer status writes — shared Firestore logic behind an
 // injected `db`. Mirrors the web app's src/lib/prayers.ts.
-import { addDoc, collection, doc, onSnapshot, query, updateDoc, type Firestore } from "firebase/firestore";
+import { addDoc, collection, doc, onSnapshot, query, updateDoc, where, type Firestore } from "firebase/firestore";
 import type { PrayerRecord } from "../types";
 
 /** Live subscription to every team prayer, normalizing legacy docs (mirrors
@@ -34,6 +34,26 @@ export function subscribeAllPrayers(
       cb(list);
     },
     (e) => (onError ? onError(e) : console.error("prayers subscription error", e)),
+  );
+}
+
+/** Live subscription to a single contact's prayers, newest first (Contact
+ * Detail's Prayer tab). */
+export function subscribeContactPrayers(
+  db: Firestore,
+  contactId: string,
+  cb: (prayers: PrayerRecord[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    query(collection(db, "prayers"), where("contactId", "==", contactId)),
+    (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }) as PrayerRecord)
+        .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+      cb(list);
+    },
+    (e) => (onError ? onError(e) : console.error("contact prayers subscription error", e)),
   );
 }
 

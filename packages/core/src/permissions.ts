@@ -36,6 +36,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
+  '/contact': 'viewer',
 };
 
 export interface NavItem {

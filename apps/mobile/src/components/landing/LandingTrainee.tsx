@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { connectedLabel, relTime, type Contact, type InboxItem } from '@cisa/core';
@@ -100,7 +100,7 @@ export function LandingTrainee() {
   const firstName = (user?.displayName || 'friend').split(' ')[0];
 
   const onOpenContact = (contact: Contact) => {
-    Alert.alert(contact.name, "Contact details aren't wired up yet — coming in a later pass.");
+    router.push(`/contact/${contact.id}`);
   };
 
   const contactById = (id?: string) => data.contacts.find((c) => c.id === id);

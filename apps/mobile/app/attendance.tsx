@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
@@ -28,8 +28,8 @@ export default function Attendance() {
   const data = useAttendanceData(uid, user?.displayName ?? null, role);
   const [openSession, setOpenSession] = useState<Event | null>(null);
 
-  const onOpenContact = (name: string) => {
-    Alert.alert(name, "Contact details aren't wired up yet — coming in a later pass.");
+  const onOpenContact = (contactId: string) => {
+    router.push(`/contact/${contactId}`);
   };
 
   // Ungated, matching web's Attendance.tsx — unlike "Log a gathering"/"Sync
@@ -70,7 +70,7 @@ export default function Attendance() {
           </AppText>
         ) : (
           <>
-            <MissedList missed={data.missed} onOpenContact={(c) => onOpenContact(c.name)} />
+            <MissedList missed={data.missed} onOpenContact={(c) => onOpenContact(c.id)} />
 
             <View style={{ gap: spacing.sm }}>
               <AppText variant="heading">When we met</AppText>
