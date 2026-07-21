@@ -6,6 +6,7 @@ import {
   DUE_PRESETS,
   duePresetToISO,
   presetForDue,
+  toLocalDate,
   type DuePresetKey,
   type Task,
 } from '@cisa/core';
@@ -133,6 +134,7 @@ export function OnTheHorizon({
             const done = task.status === 'completed';
             const isEditing = editingId === task.id;
             const first = i === 0 && assignedTasks.length === 0;
+            const dueDate = toLocalDate(task.dueDate);
             return (
               <View
                 key={task.id}
@@ -182,9 +184,9 @@ export function OnTheHorizon({
                       >
                         {task.title}
                       </Text>
-                      {task.dueDate && (
+                      {dueDate && (
                         <Text style={{ fontSize: 12, color: colors.onSurfaceVariant, marginTop: 3 }}>
-                          Due: {format(new Date(task.dueDate), 'MMM d')}
+                          Due: {format(dueDate, 'MMM d')}
                         </Text>
                       )}
                     </View>

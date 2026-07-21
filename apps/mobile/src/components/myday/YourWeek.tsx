@@ -1,6 +1,6 @@
 import { Text, View } from 'react-native';
-import { format, isValid } from 'date-fns';
-import type { Event } from '@cisa/core';
+import { format } from 'date-fns';
+import { toLocalDate, type Event } from '@cisa/core';
 import { AppText, Card, SectionHead } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 
@@ -9,6 +9,7 @@ export function YourWeek({ thisWeek }: { thisWeek: { ev: Event; ms: number }[] }
   const { colors, radius, typography } = useTheme();
   const featured = thisWeek[0];
   const rest = thisWeek.slice(1);
+  const featuredDate = featured ? toLocalDate(featured.ev.date) : null;
 
   return (
     <View>
@@ -31,7 +32,7 @@ export function YourWeek({ thisWeek }: { thisWeek: { ev: Event; ms: number }[] }
             }}
           >
             <Text style={{ fontSize: 11, fontWeight: '700', letterSpacing: 1, color: colors.primary, textTransform: 'uppercase' }}>
-              {isValid(new Date(featured.ev.date)) ? format(new Date(featured.ev.date), 'EEEE, MMM d') : 'This week'}
+              {featuredDate ? format(featuredDate, 'EEEE, MMM d') : 'This week'}
               {featured.ev.location ? ` · ${featured.ev.location}` : ''}
             </Text>
             <Text
@@ -54,7 +55,7 @@ export function YourWeek({ thisWeek }: { thisWeek: { ev: Event; ms: number }[] }
           {rest.length > 0 && (
             <Card style={{ padding: 0 }}>
               {rest.map(({ ev }, i) => {
-                const d = new Date(ev.date);
+                const d = toLocalDate(ev.date);
                 return (
                   <View
                     key={ev.id}
@@ -69,10 +70,10 @@ export function YourWeek({ thisWeek }: { thisWeek: { ev: Event; ms: number }[] }
                   >
                     <View style={{ width: 40, alignItems: 'center' }}>
                       <Text style={{ fontFamily: typography.fontSerif, fontSize: 20, color: colors.onSurface, lineHeight: 22 }}>
-                        {isValid(d) ? format(d, 'd') : '–'}
+                        {d ? format(d, 'd') : '–'}
                       </Text>
                       <Text style={{ fontSize: 10, color: colors.onSurfaceVariant, textTransform: 'uppercase' }}>
-                        {isValid(d) ? format(d, 'MMM') : ''}
+                        {d ? format(d, 'MMM') : ''}
                       </Text>
                     </View>
                     <View style={{ flex: 1 }}>

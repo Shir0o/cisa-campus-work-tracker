@@ -15,6 +15,7 @@ import {
   duePresetToISO,
   presetForDue,
   dueChip,
+  toLocalDate,
   thisWeekEvents,
   splitPrayers,
   type Touch,
@@ -188,6 +189,18 @@ describe('due-date presets', () => {
     const overdue = new Date();
     overdue.setDate(overdue.getDate() - 3);
     expect(dueChip(overdue.toISOString().slice(0, 10))).toEqual({ label: 'Overdue', tone: 'overdue' });
+  });
+
+  it('parses a bare yyyy-MM-dd as a local-day date, not UTC midnight', () => {
+    // A naive `new Date('2026-07-21')` is UTC midnight, which is the previous
+    // day in any behind-UTC timezone — toLocalDate must not do that.
+    const d = toLocalDate('2026-07-21');
+    expect(d).not.toBeNull();
+    expect(d!.getFullYear()).toBe(2026);
+    expect(d!.getMonth()).toBe(6); // 0-indexed: July
+    expect(d!.getDate()).toBe(21);
+    expect(toLocalDate(null)).toBeNull();
+    expect(toLocalDate(undefined)).toBeNull();
   });
 });
 
