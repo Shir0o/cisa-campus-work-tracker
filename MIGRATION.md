@@ -748,16 +748,83 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       still no Edit button. **Community (viewer)** — opened via the Prayer
       tab; every tab renders read-only (no compose boxes, no tag-add pill,
       no reaction taps), and the route itself isn't blocked (per the
-      `ROUTE_MIN_ROLE` fix above). **Also found, flagged separately (not
-      fixed here)**: closing the "From the team" inbox item's action sheet
-      (`FromTeamInbox.tsx`, built on the shared `Sheet.tsx`/
-      `@gorhom/bottom-sheet` primitive) leaves an invisible, full-viewport,
-      click-blocking backdrop behind on Expo web — reproduced with a
-      purely local action ("Mark scanned", no navigation involved), so it's
-      a pre-existing bug in the shared sheet primitive itself (likely a
-      react-native-web + Reanimated dismiss-animation issue), not something
-      this screen introduced. Worth a dedicated look since the same `Sheet`
-      primitive backs 12 other sheets across the app.
+      `ROUTE_MIN_ROLE` fix above). **Also found, flagged separately, and
+      since fixed** (`d8b205a`, #155): closing the "From the team" inbox
+      item's action sheet (`FromTeamInbox.tsx`, built on the shared
+      `Sheet.tsx`/`@gorhom/bottom-sheet` primitive) used to leave an
+      invisible, full-viewport, click-blocking backdrop behind on Expo web —
+      reproduced with a purely local action ("Mark scanned", no navigation
+      involved), a pre-existing bug in the shared sheet primitive itself
+      (`@gorhom/bottom-sheet`'s backdrop only flips `pointer-events` to
+      `none` once its Reanimated close animation crosses a threshold index,
+      and that animation runs on `requestAnimationFrame` on web, which can
+      stall indefinitely). `Sheet.tsx`'s `SheetBackdrop` now gates
+      hit-testing on the `visible` prop directly instead, independent of any
+      animation completing — fixes it uniformly for all 12 sheets sharing
+      the primitive, verified live on Expo web by probing the backdrop DOM
+      node's `pointer-events` before/after.
+
+### ✅ Log tab ("Quick Capture") — DONE, verified live against real Firestore
+- [x] **A real Quick Capture flow behind the Log tab** — since the tab bar
+      was first scaffolded, `apps/mobile/app/(tabs)/_layout.tsx`'s Log tab
+      had only ever shown `Alert.alert('Log a moment', "Quick capture isn't
+      wired up yet — coming in a later pass.")`, never tracked as an open
+      item in this doc despite being one of the app's six primary tabs. Built
+      against the Claude Design project's dedicated mobile file
+      `views/quick-capture.jsx` — not the desktop `LogInteractionModal.tsx`
+      (a batch multi-contact logger) — since it's purpose-built for this
+      exact FAB tab and is genuinely different in shape: a single-contact,
+      four-step flow (who → note → saved → optional reminder/prayer) with
+      inline new-contact creation and a "heads-up to the contact's creator"
+      on the reminder step, mirroring `apps/mobile/src/lib/data/comments.ts`'s
+      existing creator-notify pattern. New pure `packages/core/src/
+      quickCapture.ts` (unit-tested, packages/core now 209/209 tests): the six
+      capture kinds, a "mine-first, most-recently-touched-first" recents sort
+      (the **opposite** direction from Directory's longest-since-touched
+      sort — an easy mix-up, called out explicitly in the code), search
+      matching, and reminder due-date presets. Widened
+      `interactionActivityType` in `contactDetail.ts` to cover the six new
+      kinds for the activity-log entry. No new Firestore data-layer functions
+      were needed — the flow composes already-existing
+      `addContact`/`addInteraction`/`addTodo`/`addPrayer`/`sendNotification`.
+      Gated to non-viewer roles (`href: null` for Community, matching the
+      desktop modal's own `role === 'viewer'` gate). **No native date-picker
+      dependency exists anywhere in the app** (the existing task-due-date
+      composer, `DUE_PRESETS`, also sticks to fixed presets for the same
+      reason) — the reminder step drops the design's "Pick a date" option to
+      match, and the note step uses a plain Today/Yesterday toggle instead of
+      a full date field.
+      **Bug found + fixed during verification**: the first cut of
+      `reminderDueDate` returned a full ISO datetime (`toISOString()`, ~24
+      chars) for a task's `dueDate`. The deployed `tasks` Firestore rule caps
+      `dueDate` at 20 chars, so every reminder write silently failed with
+      "Missing or insufficient permissions" — reproduced live as the Full-
+      timer (admin) user, an uncaught error, not a quiet console warning.
+      Fixed by matching `myday.ts`'s existing `duePresetToISO` format exactly
+      (a bare `yyyy-MM-dd`, local-date arithmetic via `date-fns`'s `format`)
+      — the same format the app's own native "Add a task" composer already
+      uses. Verified live on Expo web (mobile viewport) as the e2e Full-timer:
+      logged a moment against an existing contact (multiple kinds, the
+      Today/Yesterday toggle), set a reminder (confirmed it lands on My Day's
+      task list and — separately reproduced — that it silently failed before
+      the fix), added an inline prayer (confirmed on the Prayer tab's data
+      layer via the same `addPrayer` call Prayer itself uses), navigated to
+      the real Contact Detail screen via "Open X's page", and created a
+      **brand-new contact** end to end via "Someone new" (confirmed the
+      contact, its season cohort tag, default "First Contact" stage, and the
+      logged interaction all landed correctly, and that it then appears in
+      My Day's "Your sheep" and Directory). Role gating verified against the
+      e2e Community (viewer) user: the Log tab is absent from the bottom bar,
+      and a direct URL to `/log` renders only the inert placeholder screen —
+      no interaction data or write path reachable. **Not verified this
+      pass**: a live cross-role reminder heads-up notification (the
+      `contact.createdBy !== me` branch) — the code path mirrors
+      `comments.ts`'s already-verified pattern exactly, but wasn't
+      independently re-triggered live due to session/auth friction in this
+      environment. **Deferred**: voice-to-text note dictation (the design
+      uses the browser's Web Speech API, not portable to React Native
+      without a new native speech-recognition dependency + a mic-permission
+      flow) — the note field is a plain text input for now.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
@@ -917,12 +984,29 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     pre-existing `Sheet`/`@gorhom/bottom-sheet` web bug (stuck backdrop
     after closing `FromTeamInbox`'s sheet), flagged separately rather than
     fixed here since it's unrelated to this screen and affects a primitive
-    shared by 12 other sheets. What's left overall: the user-account-linking
+    shared by 12 other sheets. That Sheet-backdrop bug was fixed
+    immediately after, in `d8b205a` (#155) — see the entry above.
+17. ~~Fix the stuck bottom-sheet backdrop bug~~ — **done** (`d8b205a`, #155,
+    see the entry above) — the flagged-separately item from the Contact
+    Detail pass. What's left overall at this point: the user-account-linking
     part of Phase 5 (`eas login`/`eas init`, an Apple/Google developer
-    account, an actual TestFlight/Play build), the flagged Sheet-backdrop
-    bug, and Phase 6 (retiring the old web app, reconciling React
-    versions) — none of these are something an agent can complete
-    unassisted.
+    account, an actual TestFlight/Play build) and Phase 6 (retiring the old
+    web app, reconciling React versions) — neither is something an agent can
+    complete unassisted. Auditing the rest of the app for undocumented gaps
+    turned up one more: the **Log** bottom tab
+    (`apps/mobile/app/(tabs)/_layout.tsx`) has, since the tab bar was first
+    scaffolded, only ever shown `Alert.alert('Log a moment', "Quick capture
+    isn't wired up yet — coming in a later pass.")` — never tracked as an
+    open item in this doc despite being one of the six primary tabs.
+18. ~~Log tab ("Quick Capture")~~ — **done** (see the entry above), verified
+    live on Expo web against real Firestore as the e2e Full-timer and
+    Community users, including a real Firestore-rules bug found and fixed
+    (a task `dueDate` format silently exceeding the deployed rule's 20-char
+    cap). What's left overall: the user-account-linking part of Phase 5
+    (`eas login`/`eas init`, an Apple/Google developer account, an actual
+    TestFlight/Play build) and Phase 6 (retiring the old web app,
+    reconciling React versions) — neither is something an agent can
+    complete unassisted.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

@@ -21,6 +21,7 @@ export * from './settings';
 export * from './search';
 export * from './chat';
 export * from './contactDetail';
+export * from './quickCapture';
 export * from './utils';
 export * from './data/todos';
 export * from './data/prayers';
