@@ -6,9 +6,10 @@ import { AppText, Avatar, Sheet } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 
 // Room info sheet — direct chats show the other member's profile (a
-// "View Directory Contact Profile" placeholder, matching People/Journey's
-// deferred contact-detail navigation); group chats show the member roster,
-// an invite flow, and Leave Group. Design oracle: web's ChatDetailsModal.tsx.
+// "View Directory Contact Profile" placeholder — a chat member is an AppUser,
+// not a Contact, and there's no FK between the two to navigate to); group
+// chats show the member roster, an invite flow, and Leave Group. Design
+// oracle: web's ChatDetailsModal.tsx.
 export function ChatDetailsSheet({
   visible,
   room,

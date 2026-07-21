@@ -63,10 +63,9 @@ needed before a build can go to TestFlight or a Play internal track.
 
 ## Not yet done (next)
 
-- **Fonts**: Newsreader + Hanken Grotesk are referenced by name but not yet
-  bundled; text falls back to system fonts until we add
-  `@expo-google-fonts/newsreader` + `@expo-google-fonts/hanken-grotesk` and load
-  them in `app/_layout.tsx`.
-- **Auth screens** for the remaining flows (password reset, etc.).
-- **Live data**: screens are scaffolds; Firestore wiring is Phase 2.
-- **Collab editor** WebView spike (Phase 0 gate) and the hard screens (Phase 4).
+- **Password reset** — `app/login.tsx` has no forgot-password entry point yet,
+  even though `src/lib/firebase.ts` already has Firebase Auth wired for it.
+- **App-store delivery**'s account-linking step (`eas login`/`eas init`) and
+  Phase 6 (web unification) — see [`MIGRATION.md`](../../MIGRATION.md) for
+  the full status; everything else it once listed here (fonts, the collab
+  editor WebView spike, live Firestore data) has since shipped.

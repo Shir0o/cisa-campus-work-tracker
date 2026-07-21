@@ -45,10 +45,16 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
 }
 
 /** Maps a logged interaction's `type` to the activity feed's narrower
- * `Activity['type']` union (`handleAddInteraction`'s mapping). */
+ * `Activity['type']` union (`handleAddInteraction`'s mapping). Also covers
+ * Quick Capture's kind vocabulary (gospel/appointment/gathering/phone/text/
+ * meet — see quickCapture.ts), which doesn't otherwise overlap with the
+ * Conversations tab's chat/call/meeting/email set. */
 export function interactionActivityType(type: string): Activity["type"] {
   if (type === "meeting") return "event";
   if (type === "chat") return "comment";
+  if (type === "phone") return "call";
+  if (type === "appointment" || type === "gathering") return "event";
+  if (type === "gospel" || type === "text" || type === "meet") return "comment";
   return type as Activity["type"];
 }
 

@@ -97,6 +97,15 @@ describe('interactionActivityType', () => {
     expect(interactionActivityType('call')).toBe('call');
     expect(interactionActivityType('email')).toBe('email');
   });
+
+  it('maps Quick Capture kinds to activity types', () => {
+    expect(interactionActivityType('phone')).toBe('call');
+    expect(interactionActivityType('appointment')).toBe('event');
+    expect(interactionActivityType('gathering')).toBe('event');
+    expect(interactionActivityType('gospel')).toBe('comment');
+    expect(interactionActivityType('text')).toBe('comment');
+    expect(interactionActivityType('meet')).toBe('comment');
+  });
 });
 
 describe('contactDeleteFieldsLog', () => {
