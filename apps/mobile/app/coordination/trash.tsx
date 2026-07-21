@@ -7,7 +7,7 @@ import { Screen, AppText, Card } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { handleFirestoreError, OperationType } from '../../src/lib/firebase';
-import { deleteBoardDoc, restoreBoardDoc, subscribeTrashedBoardDocs } from '../../src/lib/data/board';
+import { deleteBoardDoc, purgeExpiredTrash, restoreBoardDoc, subscribeTrashedBoardDocs } from '../../src/lib/data/board';
 
 // Trash for "The Board" (board_docs) — soft-deleted pages, admin-only
 // (matches board_docs' delete rule, which is admin-only). Restore brings a
@@ -27,6 +27,7 @@ export default function CoordinationTrash() {
       (list) => {
         setDocs(list);
         setLoading(false);
+        void purgeExpiredTrash(list);
       },
       (e) => handleFirestoreError(e, OperationType.LIST, 'board_docs (trash)', { rethrow: false }),
     );

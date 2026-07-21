@@ -15,6 +15,11 @@ vi.mock('../components/AuthProvider', () => ({
 // ── Router seam (the view reads location.state for the My Day deep-link) ──────
 vi.mock('react-router-dom', () => ({
   useLocation: () => ({ state: null }),
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
 }));
 
 // ── TipTap (thin seam) ──────────────────────────────────────────────────────
@@ -478,8 +483,8 @@ describe('CoordinationNotes', () => {
 
   // ── 6. Delete doc ─────────────────────────────────────────────────────────
   describe('delete doc', () => {
-    it('soft-deletes (sets deletedAt) after confirm when clicking delete button, without hard-deleting', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('soft-deletes (sets deletedAt) immediately when clicking delete, with no confirm, and shows an Undo snackbar', async () => {
+      const confirmSpy = vi.spyOn(window, 'confirm');
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
@@ -495,10 +500,11 @@ describe('CoordinationNotes', () => {
         expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deletedAt: 'mock-timestamp' }));
       });
       expect(deleteDoc).not.toHaveBeenCalled();
+      expect(confirmSpy).not.toHaveBeenCalled();
+      expect(await screen.findByText('Page moved to Trash')).toBeInTheDocument();
     });
 
-    it('does not soft-delete when confirm is cancelled', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
+    it('restores the page (sets deletedAt: null) when clicking Undo on the snackbar', async () => {
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
@@ -506,11 +512,82 @@ describe('CoordinationNotes', () => {
         expect(screen.getByTitle('Delete this page')).toBeInTheDocument();
       });
 
-      const updateCallsBefore = (updateDoc as any).mock.calls.length;
       fireEvent.click(screen.getByTitle('Delete this page'));
 
-      expect((updateDoc as any).mock.calls.length).toBe(updateCallsBefore);
-      expect(deleteDoc).not.toHaveBeenCalled();
+      const undoBtn = await screen.findByRole('button', { name: 'Undo' });
+      fireEvent.click(undoBtn);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { deletedAt: null });
+      });
+    });
+  });
+
+  // ── 6b. Pin to top ────────────────────────────────────────────────────────
+  describe('pin doc', () => {
+    it('pins an unpinned page when clicking its pin toggle', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const pinButtons = await screen.findAllByTitle('Pin to top');
+      fireEvent.click(pinButtons[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { pinned: true });
+      });
+    });
+
+    it('renders a pinned page first among others in the same week group', async () => {
+      const pinnedTodayDoc = {
+        id: 'doc-pinned',
+        data: () => ({
+          title: 'Pinned today doc',
+          date: today,
+          weekday: 'Monday',
+          md: '',
+          pinned: true,
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      };
+      // Both docs land in the "This week" group (mockDocs[0] is dated `today`,
+      // mockDocs[1] is old enough to fall under "Earlier") — pinning should
+      // move the pinned doc ahead of the other "This week" doc.
+      setupSnapshots({ docs: [mockDocs[0], pinnedTodayDoc], notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText('Pinned today doc');
+      const titles = screen.getAllByText(/Pinned today doc|— Monday/).map((el) => el.textContent);
+      expect(titles[0]).toBe('Pinned today doc');
+    });
+
+    it('does not show a pin toggle for non-admins', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(traineeAuth);
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText('Pages');
+      expect(screen.queryByTitle('Pin to top')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── 6c. Trash entry point ────────────────────────────────────────────────
+  describe('Trash link', () => {
+    it('shows a Trash link for admins, pointing at /coordination/trash', async () => {
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const trashLink = await screen.findByTitle('Trash');
+      expect(trashLink).toHaveAttribute('href', '/coordination/trash');
+    });
+
+    it('hides the Trash link for non-admins', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(traineeAuth);
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await screen.findByText('Pages');
+      expect(screen.queryByTitle('Trash')).not.toBeInTheDocument();
     });
   });
 

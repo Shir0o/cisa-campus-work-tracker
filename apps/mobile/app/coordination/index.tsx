@@ -7,6 +7,7 @@ import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useBoardListData } from '../../src/lib/useBoardListData';
 import { DocCard } from '../../src/components/coordination/DocCard';
+import { pinBoardDoc } from '../../src/lib/data/board';
 
 // Coordination Notes / "The Board" — the Pages list (design oracle: web's
 // src/views/CoordinationNotes.tsx's Pages rail + src/views/
@@ -81,7 +82,13 @@ export default function CoordinationList() {
               <SectionHead title={section.title} />
               <View style={{ gap: 8 }}>
                 {section.data.map((doc) => (
-                  <DocCard key={doc.id} doc={doc} isAdmin={isAdmin} onPress={() => router.push(`/coordination/${doc.id}`)} />
+                  <DocCard
+                    key={doc.id}
+                    doc={doc}
+                    isAdmin={isAdmin}
+                    onPress={() => router.push(`/coordination/${doc.id}`)}
+                    onTogglePin={() => pinBoardDoc(doc, !doc.pinned)}
+                  />
                 ))}
               </View>
             </View>

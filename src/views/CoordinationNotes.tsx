@@ -20,9 +20,11 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { ref as dbRef, remove as dbRemove } from 'firebase/database';
 import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { useLocation } from 'react-router-dom';
+import { softDeleteBoardDoc, restoreBoardDoc, pinBoardDoc } from '../lib/data/board';
+import { useUndoSnack } from '../hooks/useUndoSnack';
+import { UndoSnackbar } from '../components/UndoSnackbar';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -60,6 +62,7 @@ import {
   Globe,
   RotateCw,
   Link2,
+  Pin,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -99,6 +102,7 @@ import {
   DOC_STATUS,
   sessionStatus,
   docByDateDesc,
+  docSortOrder,
   newDocMarkdown,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
@@ -542,6 +546,8 @@ export default function CoordinationNotes() {
     flashTimer.current = setTimeout(() => setFlash(null), 2800);
   };
 
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+
   const handleToggleTodo = async (todoId: string, done: boolean) => {
     const todo = todos.find((t) => t.id === todoId);
     if (!todo) return;
@@ -736,7 +742,7 @@ export default function CoordinationNotes() {
 
   const grouped = useMemo(() => {
     const g: Record<string, BoardDoc[]> = { 'This week': [], Earlier: [] };
-    [...docs].sort(docByDateDesc).forEach((d) => {
+    [...docs].sort(docSortOrder).forEach((d) => {
       (g[docGroup(d.date)] ||= []).push(d);
     });
     return g;
@@ -812,17 +818,10 @@ export default function CoordinationNotes() {
   };
 
   const deleteBoardDoc = async (d: BoardDoc) => {
-    if (!window.confirm(`Delete "${d.title}"? It'll move to Trash and can be restored later.`)) return;
     try {
-      await updateDoc(doc(db, 'board_docs', d.id), { deletedAt: serverTimestamp() });
-      if (rtdb) {
-        try {
-          await dbRemove(dbRef(rtdb, `board_docs_rtdb/${d.id}`));
-        } catch {
-          /* live state cleanup is best-effort */
-        }
-      }
+      await softDeleteBoardDoc(d);
       if (activeId === d.id) setActiveId(null);
+      showUndoSnack('Page moved to Trash', () => restoreBoardDoc(d));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -1259,6 +1258,16 @@ export default function CoordinationNotes() {
                       <Plus className="w-3.5 h-3.5" />
                     </button>
                   )}
+                  {isAdmin && (
+                    <Link
+                      to="/coordination/trash"
+                      title="Trash"
+                      aria-label="Trash"
+                      className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Link>
+                  )}
                   <button
                     onClick={togglePages}
                     title="Collapse pages"
@@ -1287,6 +1296,7 @@ export default function CoordinationNotes() {
                             canEdit={canEdit}
                             liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
                             onClick={() => setActiveId(d.id)}
+                            onTogglePin={isAdmin ? () => pinBoardDoc(d, !d.pinned) : undefined}
                           />
                         ))}
                       </div>
@@ -1570,6 +1580,8 @@ export default function CoordinationNotes() {
         </div>
       )}
 
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
+
       <ContactDetailsModal
         isOpen={isDetailsModalOpen}
         onClose={() => setIsDetailsModalOpen(false)}
@@ -1586,51 +1598,70 @@ function DocRow({
   canEdit,
   liveMd,
   onClick,
+  onTogglePin,
 }: {
   d: BoardDoc;
   active: boolean;
   canEdit: boolean;
   liveMd?: string;
   onClick: () => void;
+  onTogglePin?: () => void;
 }) {
   const md = liveMd ?? d.md;
   const open = mdOpenTasks(md);
   const isToday = sessionStatus(d.date) === 'today';
   const audience = audienceOf(d);
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        'w-[232px] lg:w-full grid grid-cols-[42px_1fr] gap-3 items-start text-left p-2.5 rounded-[10px] border transition-colors mt-0 lg:mt-0.5 shrink-0',
+        'relative w-[232px] lg:w-full group rounded-[10px] border transition-colors mt-0 lg:mt-0.5 shrink-0',
         active ? 'bg-stage-accent-soft border-stage-accent/40' : 'border-transparent hover:bg-surface',
       )}
     >
-      <span className="flex flex-col items-center pt-0.5">
-        <span className={cn('text-[10.5px] font-bold tracking-wider uppercase', active ? 'text-stage-accent' : 'text-on-surface-variant/70')}>
-          {weekdayShort(d.date)}
+      <button onClick={onClick} className="w-full grid grid-cols-[42px_1fr] gap-3 items-start text-left p-2.5">
+        <span className="flex flex-col items-center pt-0.5">
+          <span className={cn('text-[10.5px] font-bold tracking-wider uppercase', active ? 'text-stage-accent' : 'text-on-surface-variant/70')}>
+            {weekdayShort(d.date)}
+          </span>
+          <span className={cn('font-serif text-[22px] leading-none', active || isToday ? 'text-stage-accent' : 'text-on-surface-variant')}>
+            {dayNum(d.date)}
+          </span>
         </span>
-        <span className={cn('font-serif text-[22px] leading-none', active || isToday ? 'text-stage-accent' : 'text-on-surface-variant')}>
-          {dayNum(d.date)}
+        <span className="min-w-0 flex flex-col gap-0.5">
+          <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-5">{d.title}</span>
+          <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{mdPreview(md)}</span>
+          <span className="flex items-center gap-2 mt-1">
+            {isToday && (
+              <span className="text-[10.5px] font-bold tracking-wide uppercase text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
+                Today
+              </span>
+            )}
+            {open > 0 && canEdit && (
+              <span className="text-[11.5px] text-on-surface-variant/80 bg-surface-variant border border-outline-variant rounded-full px-2 py-px">
+                {open} to do
+              </span>
+            )}
+            {(canEdit || audience !== 'everyone') && <AudienceBadge audience={audience} size="xs" />}
+          </span>
         </span>
-      </span>
-      <span className="min-w-0 flex flex-col gap-0.5">
-        <span className="text-sm font-semibold text-on-surface leading-snug truncate">{d.title}</span>
-        <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{mdPreview(md)}</span>
-        <span className="flex items-center gap-2 mt-1">
-          {isToday && (
-            <span className="text-[10.5px] font-bold tracking-wide uppercase text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
-              Today
-            </span>
+      </button>
+      {onTogglePin && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onTogglePin();
+          }}
+          title={d.pinned ? 'Unpin' : 'Pin to top'}
+          aria-label={d.pinned ? 'Unpin' : 'Pin to top'}
+          className={cn(
+            'absolute top-0.5 right-0.5 p-2 rounded-md transition-colors',
+            d.pinned ? 'text-stage-accent' : 'text-on-surface-variant/50 opacity-0 group-hover:opacity-100 hover:text-stage-accent',
           )}
-          {open > 0 && canEdit && (
-            <span className="text-[11.5px] text-on-surface-variant/80 bg-surface-variant border border-outline-variant rounded-full px-2 py-px">
-              {open} to do
-            </span>
-          )}
-          {(canEdit || audience !== 'everyone') && <AudienceBadge audience={audience} size="xs" />}
-        </span>
-      </span>
-    </button>
+        >
+          <Pin className="w-3.5 h-3.5" fill={d.pinned ? 'currentColor' : 'none'} />
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -1790,6 +1821,94 @@ function NoteComposer({
   );
 }
 
+// ── Link Composer Popover (insert a link with custom display text) ─────────
+function LinkComposer({
+  anchorRect,
+  initialText,
+  onClose,
+  onInsert,
+}: {
+  anchorRect: { top: number; left: number };
+  initialText: string;
+  onClose: () => void;
+  onInsert: (text: string, href: string) => void;
+}) {
+  const [text, setText] = useState(initialText);
+  const [href, setHref] = useState('');
+
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  React.useLayoutEffect(() => {
+    const h = cardRef.current?.offsetHeight ?? 160;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const left = Math.min(Math.max(anchorRect.left - 160, 12), vw - 332);
+    let top = anchorRect.top + 14;
+    if (top + h > vh - 12) top = Math.max(12, anchorRect.top - h - 14);
+    setPos({ left, top });
+  }, [anchorRect]);
+
+  const canInsert = text.trim().length > 0 && href.trim().length > 0;
+
+  const handleInsert = () => {
+    if (!canInsert) return;
+    onInsert(text.trim(), href.trim());
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100]" onClick={onClose}>
+      <div
+        ref={cardRef}
+        onClick={(e) => e.stopPropagation()}
+        style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
+        className="bg-surface rounded-2xl border border-outline-variant p-4 shadow-xl flex flex-col space-y-3"
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-serif text-sm font-semibold text-on-surface">Insert link</h3>
+          <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <input
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="Text to display"
+          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+          autoFocus
+        />
+        <input
+          value={href}
+          onChange={(e) => setHref(e.target.value)}
+          placeholder="https://example.com"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') handleInsert();
+          }}
+          className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
+        />
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button
+            onClick={onClose}
+            className="px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded-xl hover:bg-surface-container transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleInsert}
+            disabled={!canInsert}
+            className="px-3 py-1.5 bg-primary text-on-primary text-xs font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
+          >
+            Insert link
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── The live document editor ──────────────────────────────────────────────────
 export function DocEditor({
   doc: d,
@@ -1848,7 +1967,9 @@ export function DocEditor({
   const [fab, setFab] = useState<{ text: string; lines: string[]; top: number; left: number } | null>(null);
   const [todoFromSelection, setTodoFromSelection] = useState<{ rect: { top: number; left: number }; text: string; lines?: string[] } | null>(null);
   const [noteFromSelection, setNoteFromSelection] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
+  const [linkComposer, setLinkComposer] = useState<{ rect: { top: number; left: number }; text: string } | null>(null);
   const [assignMenuOpen, setAssignMenuOpen] = useState(false);
+  const linkBtnRef = useRef<HTMLButtonElement>(null);
 
   const refreshSelectionFab = () => {
     if (todoFromSelection || noteFromSelection || showSource) {
@@ -1892,6 +2013,39 @@ export function DocEditor({
     if (!fab) return;
     setNoteFromSelection({ rect: { top: fab.top, left: fab.left }, text: fab.text });
     setFab(null);
+  };
+
+  const openLinkFromFab = () => {
+    if (!fab) return;
+    setLinkComposer({ rect: { top: fab.top, left: fab.left }, text: fab.text });
+    setFab(null);
+  };
+
+  const openLinkFromToolbar = () => {
+    if (!editor) return;
+    const { from, to, empty } = editor.state.selection;
+    const text = empty ? '' : editor.state.doc.textBetween(from, to, ' ');
+    const rect = linkBtnRef.current?.getBoundingClientRect();
+    setLinkComposer({ rect: { top: rect ? rect.bottom : 80, left: rect ? rect.left : 80 }, text });
+  };
+
+  // Inserts a link with custom display text. If the selection is unchanged,
+  // just applies the link mark; otherwise replaces the selection (or inserts
+  // at the cursor when nothing was selected) with the new linked text.
+  const insertLink = (text: string, hrefInput: string) => {
+    if (!editor || !text.trim()) return;
+    const trimmedHref = hrefInput.trim();
+    if (!trimmedHref) return;
+    const href = /^[a-z][a-z0-9+.-]*:/i.test(trimmedHref) ? trimmedHref : `https://${trimmedHref}`;
+    const { from, to, empty } = editor.state.selection;
+    const selectedText = empty ? '' : editor.state.doc.textBetween(from, to, ' ');
+    if (!empty && selectedText === text) {
+      chain().extendMarkRange('link').setLink({ href }).run();
+      return;
+    }
+    let c = chain();
+    if (!empty) c = c.deleteSelection();
+    c.insertContent({ type: 'text', text, marks: [{ type: 'link', attrs: { href } }] }).run();
   };
 
   const handleAssignDirectly = async (member: TeamMember) => {
@@ -2381,13 +2535,16 @@ export function DocEditor({
     on,
     title: t,
     children,
+    btnRef,
   }: {
     onClick: () => void;
     on?: boolean;
     title: string;
     children: React.ReactNode;
+    btnRef?: React.Ref<HTMLButtonElement>;
   }) => (
     <button
+      ref={btnRef}
       type="button"
       title={t}
       aria-label={t}
@@ -2507,6 +2664,9 @@ export function DocEditor({
               </ToolBtn>
               <ToolBtn title="Italic" on={editor.isActive('italic')} onClick={() => chain().toggleItalic().run()}>
                 <Italic className="w-4 h-4" />
+              </ToolBtn>
+              <ToolBtn title="Link" btnRef={linkBtnRef} on={editor.isActive('link')} onClick={openLinkFromToolbar}>
+                <Link2 className="w-4 h-4" />
               </ToolBtn>
             </div>
             <span className="w-px h-5 bg-outline-variant mx-1.5" />
@@ -2791,6 +2951,16 @@ export function DocEditor({
 
           <div className="w-px h-4 bg-surface/20" />
 
+          <button
+            onClick={openLinkFromFab}
+            className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
+            title="Turn into a link"
+          >
+            <Link2 className="w-3.5 h-3.5" /> Link
+          </button>
+
+          <div className="w-px h-4 bg-surface/20" />
+
           <div className="relative">
             <button
               onClick={() => setAssignMenuOpen(!assignMenuOpen)}
@@ -2845,6 +3015,16 @@ export function DocEditor({
           meUid={meUid}
           meName={meName}
           sessionId={d.id}
+        />
+      )}
+
+      {/* Link Composer — toolbar button or the selection pill menu */}
+      {linkComposer && (
+        <LinkComposer
+          anchorRect={linkComposer.rect}
+          initialText={linkComposer.text}
+          onClose={() => setLinkComposer(null)}
+          onInsert={insertLink}
         />
       )}
     </div>

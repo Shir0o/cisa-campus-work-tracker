@@ -349,6 +349,70 @@ describe('FeedbackList View', () => {
     });
   });
 
+  // ── "Not auto-synced" indicator ─────────────────────────────────────
+
+  it('shows a "Not auto-synced" label when an item has no GitHub issue linked', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User', email: 'admin@example.com', getIdToken: vi.fn().mockResolvedValue('mock-token') },
+      isAdmin: true,
+    });
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockFeedback.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: mockFeedback.length });
+      return vi.fn();
+    });
+
+    render(<FeedbackList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Bug when clicking save')).toBeInTheDocument();
+    });
+
+    // Neither mockFeedback item has a githubIssueUrl, so both rows show it.
+    expect(screen.getAllByText('Not auto-synced')).toHaveLength(mockFeedback.length);
+  });
+
+  it('does not show "Not auto-synced" once an item has a linked GitHub issue', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User', email: 'admin@example.com', getIdToken: vi.fn().mockResolvedValue('mock-token') },
+      isAdmin: true,
+    });
+
+    const mockFeedbackWithIssue = [
+      {
+        id: 'f3',
+        data: () => ({
+          userName: 'Charlie',
+          userEmail: 'charlie@example.com',
+          message: 'GitHub link test message',
+          type: 'bug',
+          kind: 'off',
+          status: 'new',
+          archived: false,
+          githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/789',
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockFeedbackWithIssue.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: 1 });
+      return vi.fn();
+    });
+
+    render(<FeedbackList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('#789')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Not auto-synced')).not.toBeInTheDocument();
+  });
+
   it('resolves issue shorthand number and handles Enter/Escape key down', async () => {
     (useAuth as any).mockReturnValue({
       user: {

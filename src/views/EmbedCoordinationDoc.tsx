@@ -12,8 +12,10 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { signInWithCustomToken } from 'firebase/auth';
 import { doc, onSnapshot, updateDoc, collection, setDoc, serverTimestamp } from 'firebase/firestore';
-import { ref as dbRef, remove as dbRemove } from 'firebase/database';
-import { auth, db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { auth, db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { softDeleteBoardDoc, restoreBoardDoc } from '../lib/data/board';
+import { useUndoSnack } from '../hooks/useUndoSnack';
+import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAuth } from '../components/AuthProvider';
 import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type NoteFormInitial } from './CoordinationNotes';
 import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
@@ -37,6 +39,7 @@ export default function EmbedCoordinationDoc() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   useEffect(() => {
     if (attemptedSignIn || loading || user) return;
@@ -123,16 +126,9 @@ export default function EmbedCoordinationDoc() {
   // cleans up its live-collab RTDB node — mirrors CoordinationNotes.tsx's
   // deleteBoardDoc.
   const onDelete = async (d: BoardDoc) => {
-    if (!window.confirm(`Delete "${d.title}"? It'll move to Trash and can be restored later.`)) return;
     try {
-      await updateDoc(doc(db, 'board_docs', d.id), { deletedAt: serverTimestamp() });
-      if (rtdb) {
-        try {
-          await dbRemove(dbRef(rtdb, `board_docs_rtdb/${d.id}`));
-        } catch {
-          /* live state cleanup is best-effort */
-        }
-      }
+      await softDeleteBoardDoc(d);
+      showUndoSnack('Page moved to Trash', () => restoreBoardDoc(d));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -235,6 +231,7 @@ export default function EmbedCoordinationDoc() {
           </div>
         </div>
       )}
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </div>
   );
 }

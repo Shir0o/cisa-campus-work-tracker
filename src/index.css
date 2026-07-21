@@ -376,16 +376,18 @@
   pointer-events: none;
 }
 
-/* remote collaboration carets (class names kept across cursor→caret rename) */
+/* remote collaboration carets (class names kept across cursor→caret→carets renames) */
 .collaboration-cursor__caret,
-.collaboration-caret__caret {
+.collaboration-caret__caret,
+.collaboration-carets__caret {
   position: relative;
   display: inline;
   pointer-events: none;
   user-select: none;
 }
 .collaboration-cursor__caret::before,
-.collaboration-caret__caret::before {
+.collaboration-caret__caret::before,
+.collaboration-carets__caret::before {
   content: "";
   position: absolute;
   top: 0;
@@ -396,7 +398,8 @@
   clip-path: polygon(0 0, 0 85%, 22% 63%, 44% 100%, 60% 90%, 38% 54%, 60% 54%);
 }
 .collaboration-cursor__label,
-.collaboration-caret__label {
+.collaboration-caret__label,
+.collaboration-carets__label {
   border-radius: 4px;
   color: #fff;
   font-size: 11px;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMediaQuery } from "../lib/useMediaQuery";
 import MyDayMobile from "./MyDayMobile";
 import {
@@ -12,7 +12,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { format, isValid } from "date-fns";
 import {
@@ -75,6 +75,8 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import FromTraineesInbox from "../components/landing/FromTraineesInbox";
+import { UndoSnackbar } from "../components/UndoSnackbar";
+import { useUndoSnack } from "../hooks/useUndoSnack";
 
 interface MyTask {
   id: string;
@@ -142,52 +144,6 @@ function DuePresetPills({
         </button>
       ))}
     </div>
-  );
-}
-
-// ── Undo snackbar for archived prayers ──
-function UndoSnackbar({
-  undoSnack,
-  onClose,
-}: {
-  undoSnack: { message: string; onUndo: () => void } | null;
-  onClose: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {undoSnack && (
-        <div className="fixed bottom-20 lg:bottom-6 left-1/2 -translate-x-1/2 z-[250] pointer-events-none w-full max-w-sm px-4">
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95, transition: { duration: 0.15 } }}
-            className="pointer-events-auto bg-surface-container-highest/95 backdrop-blur-xl border border-outline-variant rounded-2xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4 w-full ring-1 ring-white/10"
-          >
-            <span className="text-sm font-medium text-on-surface">
-              {undoSnack.message}
-            </span>
-            <div className="flex items-center gap-3 shrink-0">
-              <button
-                onClick={() => {
-                  undoSnack.onUndo();
-                  onClose();
-                }}
-                className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition-all"
-              >
-                Undo
-              </button>
-              <button
-                onClick={onClose}
-                className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
-                aria-label="Close snackbar"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
   );
 }
 
@@ -513,38 +469,7 @@ export default function MyDay() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
 
-  const [undoSnack, setUndoSnack] = useState<{
-    message: string;
-    onUndo: () => void;
-  } | null>(null);
-
-  const snackTimerRef = React.useRef<NodeJS.Timeout | null>(null);
-
-  const showUndoSnack = (message: string, onUndo: () => void) => {
-    if (snackTimerRef.current) {
-      clearTimeout(snackTimerRef.current);
-    }
-    setUndoSnack({ message, onUndo });
-    snackTimerRef.current = setTimeout(() => {
-      setUndoSnack(null);
-    }, 5000);
-  };
-
-  const closeUndoSnack = () => {
-    if (snackTimerRef.current) {
-      clearTimeout(snackTimerRef.current);
-      snackTimerRef.current = null;
-    }
-    setUndoSnack(null);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (snackTimerRef.current) {
-        clearTimeout(snackTimerRef.current);
-      }
-    };
-  }, []);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
   const handleUpdatePersonalPrayer = async (id: string, patch: any) => {
     if (!uid) return;

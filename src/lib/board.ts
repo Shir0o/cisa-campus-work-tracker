@@ -170,6 +170,7 @@ export interface BoardDoc {
   updatedBy?: string;
   updatedByName?: string;
   deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
+  pinned?: boolean; // pinned pages sort first in the Pages list
 }
 
 // ── Audience / visibility (design Session 3) ──────────────────────────────────
@@ -265,6 +266,10 @@ export const dayNum = (date: string): string => {
 
 // Sort docs newest → oldest for the Pages list.
 export const docByDateDesc = (a: BoardDoc, b: BoardDoc) => b.date.localeCompare(a.date);
+
+// Pinned pages float to the top; otherwise newest → oldest.
+export const docSortOrder = (a: BoardDoc, b: BoardDoc) =>
+  (Number(!!b.pinned) - Number(!!a.pinned)) || docByDateDesc(a, b);
 
 // Starter body for a brand-new page.
 export const newDocMarkdown = (): string =>

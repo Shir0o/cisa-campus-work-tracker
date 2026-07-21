@@ -10,6 +10,7 @@ import {
   weekdayShort,
   dayNum,
   docByDateDesc,
+  docSortOrder,
   newDocMarkdown,
   audienceOf,
   boardLevelForRole,
@@ -155,6 +156,25 @@ describe('Board Pure Helpers', () => {
 
       const sorted = [d1, d2, d3].sort(docByDateDesc);
       expect(sorted.map(d => d.date)).toEqual(['2026-06-18', '2026-06-17', '2026-06-16']);
+    });
+  });
+
+  describe('docSortOrder', () => {
+    it('floats pinned docs to the top regardless of date', () => {
+      const d1 = { date: '2026-06-16', pinned: false } as BoardDoc;
+      const d2 = { date: '2026-06-18', pinned: false } as BoardDoc;
+      const d3 = { date: '2026-06-14', pinned: true } as BoardDoc;
+
+      const sorted = [d1, d2, d3].sort(docSortOrder);
+      expect(sorted.map((d) => d.date)).toEqual(['2026-06-14', '2026-06-18', '2026-06-16']);
+    });
+
+    it('falls back to newest-first among docs with the same pinned state', () => {
+      const d1 = { date: '2026-06-16', pinned: true } as BoardDoc;
+      const d2 = { date: '2026-06-18', pinned: true } as BoardDoc;
+
+      const sorted = [d1, d2].sort(docSortOrder);
+      expect(sorted.map((d) => d.date)).toEqual(['2026-06-18', '2026-06-16']);
     });
   });
 

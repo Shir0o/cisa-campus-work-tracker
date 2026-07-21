@@ -8,12 +8,13 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  Timestamp,
   updateDoc,
   where,
   type Firestore,
 } from "firebase/firestore";
 import { ref as dbRef, remove as dbRemove, type Database } from "firebase/database";
-import { boardAudiencesForRole, docByDateDesc, isTrashedBoardDoc, type BoardDoc } from "../board";
+import { boardAudiencesForRole, docByDateDesc, docSortOrder, isTrashedBoardDoc, type BoardDoc } from "../board";
 import type { AppRole } from "../permissions";
 
 function mapDoc(d: { id: string; data: () => Record<string, any> }): BoardDoc {
@@ -39,7 +40,7 @@ export function subscribeBoardDocs(
   if (role === "admin") {
     return onSnapshot(
       query(collection(db, "board_docs"), orderBy("date", "desc")),
-      (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docByDateDesc)),
+      (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docSortOrder)),
       (e) => (onError ? onError(e) : console.error("board docs subscription error", e)),
     );
   }
@@ -50,7 +51,7 @@ export function subscribeBoardDocs(
   }
   return onSnapshot(
     query(collection(db, "board_docs"), where("audience", "in", audiences)),
-    (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docByDateDesc)),
+    (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docSortOrder)),
     (e) => (onError ? onError(e) : console.error("board docs subscription error", e)),
   );
 }
@@ -114,4 +115,27 @@ export async function deleteBoardDoc(db: Firestore, rtdb: Database | null, board
       // best-effort — the Firestore delete already succeeded
     }
   }
+}
+
+/** Pins/unpins a page so it sorts first in the Pages list. */
+export async function pinBoardDoc(db: Firestore, boardDoc: Pick<BoardDoc, "id">, pinned: boolean): Promise<void> {
+  await updateDoc(doc(db, "board_docs", boardDoc.id), { pinned });
+}
+
+const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+/** True once a trashed doc has sat in Trash for 30+ days and is due for
+ * permanent purge. Pure so it's testable without a Firestore mock. */
+export function isExpiredTrash(deletedAt: unknown, now: number = Date.now()): boolean {
+  const ms = deletedAt instanceof Timestamp ? deletedAt.toDate().getTime() : null;
+  return ms !== null && now - ms >= TRASH_TTL_MS;
+}
+
+/** Lazy sweep: permanently deletes any Trash doc older than 30 days. Called
+ * whenever a Trash view loads — there's no scheduled server-side job, so
+ * a page only actually vanishes once someone next opens Trash. Best-effort
+ * and fire-and-forget from the caller's perspective. */
+export async function purgeExpiredTrash(db: Firestore, rtdb: Database | null, docs: BoardDoc[]): Promise<void> {
+  const expired = docs.filter((d) => isExpiredTrash(d.deletedAt));
+  await Promise.allSettled(expired.map((d) => deleteBoardDoc(db, rtdb, d)));
 }

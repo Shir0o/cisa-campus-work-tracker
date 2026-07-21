@@ -10,39 +10,71 @@ import { useAuth } from '../components/AuthProvider';
 // the live Pages-list preview (#66), which the null-editor suite can't reach.
 
 // Captured editor config + the fake editor instance, shared with the mock factory.
-const h = vi.hoisted(() => ({ config: null as any, editor: null as any }));
+const h = vi.hoisted(() => ({ config: null as any, editor: null as any, chain: null as any }));
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 
-vi.mock('react-router-dom', () => ({ useLocation: () => ({ state: null }) }));
+vi.mock('react-router-dom', () => ({
+  useLocation: () => ({ state: null }),
+  Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
+    <a href={to} {...rest}>
+      {children}
+    </a>
+  ),
+}));
 
 vi.mock('@tiptap/react', () => ({
+  // Real TipTap's useEditor returns a stable editor instance across
+  // re-renders (only recreating it if its deps change) — mirror that here
+  // by reusing h.editor/h.chain once created, instead of minting a fresh
+  // pair (and losing prior mock-call history / state.selection overrides)
+  // on every render. Reset h.editor to null in beforeEach for a clean editor
+  // per test.
   useEditor: (config: any) => {
-    const chain: any = {};
-    ['focus', 'toggleHeading', 'setParagraph', 'toggleBold', 'toggleItalic', 'toggleBulletList', 'toggleOrderedList', 'toggleTaskList', 'toggleBlockquote', 'run'].forEach(
-      (m) => {
-        chain[m] = () => chain;
-      },
-    );
-    const editor = {
-      isActive: () => false,
-      isEmpty: true,
-      on: () => {},
-      off: () => {},
-      commands: { setContent: () => {} },
-      chain: () => chain,
-      storage: {
-        markdown: {
-          // Distinct from the seeded doc so the live update is observable.
-          getMarkdown: () => '# Live heading\n\n- [ ] one\n- [ ] two',
-          parser: { parse: (md: string) => `PARSED::${md}` },
+    if (!h.editor) {
+      const chain: any = {};
+      [
+        'focus',
+        'toggleHeading',
+        'setParagraph',
+        'toggleBold',
+        'toggleItalic',
+        'toggleBulletList',
+        'toggleOrderedList',
+        'toggleTaskList',
+        'toggleBlockquote',
+        'extendMarkRange',
+        'setLink',
+        'deleteSelection',
+        'insertContent',
+        'run',
+      ].forEach((m) => {
+        chain[m] = vi.fn(() => chain);
+      });
+      h.editor = {
+        isActive: () => false,
+        isEmpty: true,
+        on: () => {},
+        off: () => {},
+        commands: { setContent: () => {} },
+        chain: () => chain,
+        state: {
+          selection: { from: 0, to: 0, empty: true },
+          doc: { textBetween: () => '' },
         },
-      },
-    };
-    config.onCreate?.({ editor });
+        storage: {
+          markdown: {
+            // Distinct from the seeded doc so the live update is observable.
+            getMarkdown: () => '# Live heading\n\n- [ ] one\n- [ ] two',
+            parser: { parse: (md: string) => `PARSED::${md}` },
+          },
+        },
+      };
+      h.chain = chain;
+    }
+    config.onCreate?.({ editor: h.editor });
     h.config = config;
-    h.editor = editor;
-    return editor;
+    return h.editor;
   },
   EditorContent: () => <div data-testid="tiptap-editor">Editor</div>,
 }));
@@ -156,6 +188,7 @@ describe('CoordinationNotes — live editor behavior', () => {
     vi.clearAllMocks();
     h.config = null;
     h.editor = null;
+    h.chain = null;
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
     setupSnapshots();
   });
@@ -235,6 +268,78 @@ describe('CoordinationNotes — live editor behavior', () => {
       vi.useRealTimers();
 
       expect(screen.queryByText('2 to do')).not.toBeInTheDocument();
+    });
+  });
+
+  // ── Insert link with custom display text ────────────────────────────────────
+  describe('insert link', () => {
+    it('opens the link composer from the toolbar Link button', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      fireEvent.click(screen.getByTitle('Link'));
+
+      expect(screen.getByRole('heading', { name: 'Insert link' })).toBeInTheDocument();
+    });
+
+    it('inserts new linked text at the cursor when nothing is selected', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+      h.editor.state.selection = { from: 0, to: 0, empty: true };
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.change(screen.getByPlaceholderText('Text to display'), { target: { value: 'my page' } });
+      fireEvent.change(screen.getByPlaceholderText('https://example.com'), { target: { value: 'example.com' } });
+      // Clicking "Insert link" also closes the composer, which re-renders
+      // DocEditor and (per the mocked useEditor) mints a brand-new chain/editor —
+      // capture the chain in use *before* that click so we inspect the one the
+      // insert actually ran on, not the fresh post-close replacement.
+      const chainUsed = h.chain;
+      fireEvent.click(screen.getByRole('button', { name: 'Insert link' }));
+
+      expect(chainUsed.deleteSelection).not.toHaveBeenCalled();
+      expect(chainUsed.insertContent).toHaveBeenCalledWith({
+        type: 'text',
+        text: 'my page',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+      });
+    });
+
+    it('applies the link to the existing selection when the display text is unchanged', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+      h.editor.state.selection = { from: 0, to: 5, empty: false };
+      h.editor.state.doc.textBetween = () => 'Hello';
+
+      fireEvent.click(screen.getByTitle('Link'));
+      // The Display Text field is prefilled with the selection ("Hello") — left untouched.
+      fireEvent.change(screen.getByPlaceholderText('https://example.com'), { target: { value: 'example.com' } });
+      const chainUsed = h.chain;
+      fireEvent.click(screen.getByRole('button', { name: 'Insert link' }));
+
+      expect(chainUsed.extendMarkRange).toHaveBeenCalledWith('link');
+      expect(chainUsed.setLink).toHaveBeenCalledWith({ href: 'https://example.com' });
+      expect(chainUsed.deleteSelection).not.toHaveBeenCalled();
+    });
+
+    it('replaces the selection when the display text is edited', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+      h.editor.state.selection = { from: 0, to: 5, empty: false };
+      h.editor.state.doc.textBetween = () => 'Hello';
+
+      fireEvent.click(screen.getByTitle('Link'));
+      fireEvent.change(screen.getByPlaceholderText('Text to display'), { target: { value: 'Goodbye' } });
+      fireEvent.change(screen.getByPlaceholderText('https://example.com'), { target: { value: 'example.com' } });
+      const chainUsed = h.chain;
+      fireEvent.click(screen.getByRole('button', { name: 'Insert link' }));
+
+      expect(chainUsed.deleteSelection).toHaveBeenCalled();
+      expect(chainUsed.insertContent).toHaveBeenCalledWith({
+        type: 'text',
+        text: 'Goodbye',
+        marks: [{ type: 'link', attrs: { href: 'https://example.com' } }],
+      });
     });
   });
 

@@ -66,6 +66,7 @@ Your application relies on database configurations and external APIs. You can ke
    * `GEMINI_API_KEY`: Google Gemini Generative AI credentials.
    * `GROUPME_BOT_ID` and `GROUPME_ACC_TOKEN`: External bot integrations.
    * `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`: External SMS configurations.
+   * `GITHUB_TOKEN`, `GITHUB_REPO`, and `GITHUB_WEBHOOK_SECRET`: Send Feedback's two-way GitHub Issues sync — auto-creating/updating issues and receiving inbound issue-state webhooks. Without these, Send Feedback still works, but issue creation/sync is silently skipped (admins fall back to the manual "Create Issue"/"Link" buttons).
 4. Click **Deploy**.
 
 ---
@@ -79,6 +80,7 @@ Use this URL to wire up your live third-party callback integrations exactly like
 
 * **Siri, GroupMe & API clients**: `https://<gcp-runner-url>/api/webhook/groupme`
 * **Twilio SMS Webhooks**: `https://<gcp-runner-url>/api/webhook/sms`
+* **GitHub Issues Webhook** (repo Settings → Webhooks, `issues` events, secret matching `GITHUB_WEBHOOK_SECRET`): `https://<gcp-runner-url>/api/webhook/github`
 
 ---
 

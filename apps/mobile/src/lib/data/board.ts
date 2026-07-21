@@ -50,3 +50,15 @@ export async function deleteBoardDoc(boardDoc: Pick<BoardDoc, 'id'>): Promise<vo
     handleFirestoreError(e, OperationType.DELETE, `board_docs/${boardDoc.id}`);
   }
 }
+
+export async function pinBoardDoc(boardDoc: Pick<BoardDoc, 'id'>, pinned: boolean): Promise<void> {
+  try {
+    await core.pinBoardDoc(db, boardDoc, pinned);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `board_docs/${boardDoc.id}`);
+  }
+}
+
+export async function purgeExpiredTrash(docs: BoardDoc[]): Promise<void> {
+  await core.purgeExpiredTrash(db, rtdb, docs);
+}
