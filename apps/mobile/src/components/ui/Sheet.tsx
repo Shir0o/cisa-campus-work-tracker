@@ -3,17 +3,50 @@
 // `visible`/`onClose` API every caller already used with plain Modal, so no
 // caller needed to change.
 import { useCallback, useEffect, useMemo, useRef, useState, type ElementRef } from 'react';
-import { View, type LayoutChangeEvent } from 'react-native';
+import { Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from 'react-native-reanimated';
 import {
-  BottomSheetBackdrop,
   BottomSheetFooter,
   BottomSheetModal,
   BottomSheetScrollView,
+  useBottomSheetTimingConfigs,
   type BottomSheetBackdropProps,
   type BottomSheetFooterProps,
 } from '@gorhom/bottom-sheet';
 import { useTheme } from '../../theme/ThemeProvider';
+
+// The library's own BottomSheetBackdrop only flips pointer-events to 'none' once its
+// Reanimated-driven close animation crosses a threshold index — on web that animation is
+// driven entirely by requestAnimationFrame, which can stall indefinitely (a backgrounded
+// tab, a slow device) and never complete. When that happens the backdrop is left mid-fade
+// with pointer-events stuck 'auto': a full-viewport, barely-visible layer that silently
+// swallows every click behind it. This backdrop instead gates hit-testing on the `visible`
+// prop directly — a plain React state flip that never depends on an animation finishing.
+// The animated fade is purely decorative (`pointerEvents="none"`), so it's harmless if it
+// never settles.
+function SheetBackdrop({
+  animatedIndex,
+  visible,
+  onClose,
+}: BottomSheetBackdropProps & { visible: boolean; onClose: () => void }) {
+  const fadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(animatedIndex.value, [-1, 0], [0, 0.35], Extrapolation.CLAMP),
+  }));
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, fadeStyle]} pointerEvents="none" />
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={onClose}
+        accessibilityRole="button"
+        accessibilityLabel="Bottom sheet backdrop"
+        accessibilityHint="Tap to close the bottom sheet"
+      />
+    </View>
+  );
+}
 
 export function Sheet({
   visible,
@@ -37,6 +70,15 @@ export function Sheet({
   // https://github.com/gorhom/react-native-bottom-sheet/issues/1751. Explicit
   // snapPoints + enableDynamicSizing={false} is the confirmed-working fix.
   const snapPoints = useMemo(() => [`${Math.round((maxHeightRatio ?? 0.85) * 100)}%`], [maxHeightRatio]);
+  // The library's default open/close animation is a spring, driven on web by Reanimated's
+  // requestAnimationFrame-based driver. That driver can stall before reaching its rest
+  // threshold (e.g. while the tab is backgrounded) and never fires again, leaving the sheet's
+  // index — and the backdrop's pointer-events, which only flip to 'none' once the index
+  // crosses -1 — stuck mid-close forever, blocking clicks under a barely-visible backdrop.
+  // A duration-bound timing animation always reaches its end value, so force it on web only;
+  // native (already reliable — the animation runs on the UI thread) keeps the spring feel.
+  const timingConfigs = useBottomSheetTimingConfigs({});
+  const animationConfigs = Platform.OS === 'web' ? timingConfigs : undefined;
   const ref = useRef<ElementRef<typeof BottomSheetModal>>(null);
   const everPresented = useRef(false);
   // Measured so the scroll content's bottom padding always clears the footer,
@@ -56,10 +98,8 @@ export function Sheet({
   // Stable identities so the backdrop/footer only remount when what they
   // actually depend on changes, not on every unrelated Sheet re-render.
   const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => (
-      <BottomSheetBackdrop {...props} appearsOnIndex={0} disappearsOnIndex={-1} opacity={0.35} pressBehavior="close" />
-    ),
-    [],
+    (props: BottomSheetBackdropProps) => <SheetBackdrop {...props} visible={visible} onClose={onClose} />,
+    [visible, onClose],
   );
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
@@ -76,6 +116,7 @@ export function Sheet({
       onDismiss={onClose}
       snapPoints={snapPoints}
       enableDynamicSizing={false}
+      animationConfigs={animationConfigs}
       backgroundStyle={{
         backgroundColor: colors.surface,
         borderTopLeftRadius: radius.lg,
