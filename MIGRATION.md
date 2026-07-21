@@ -564,11 +564,17 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       don't call that API. Verified live on Expo web against My Day, People,
       and The Journey: open/close, backdrop-tap-to-close, the pinned footer
       staying visible while scrolling/typing through the 8-field add-contact
-      form, and no console errors. **Not verified this pass**: native
-      pan-gesture drag physics, and an Android-specific `Pressable`-inside-a-
-      sheet touch nuance the library's own troubleshooting docs warn about —
-      no simulator/device was available here; worth a follow-up check on a
-      real device. This closes out Phase 3 completely.
+      form, and no console errors. **Native drag physics now verified**: a
+      later pass (this environment gained a working iOS Simulator — see the
+      Coordination Notes entry below) opened `AddContactSheet` and
+      drag-dismissed it via a real gesture on the iPhone 16e Simulator —
+      smooth native animation, no crash, and the underlying screen stayed
+      fully interactive after close (confirming the stuck-backdrop fix below
+      holds on-device too, not just on Expo web). **Still not verified**: the
+      Android-specific `Pressable`-inside-a-sheet touch nuance the library's
+      own troubleshooting docs warn about — no Android emulator/AVD is
+      configured in this environment (only iOS Simulator); worth a follow-up
+      check on a real Android device. This closes out Phase 3 completely.
 
 ### ✅ Phase 4 — High-risk screens (all three screens DONE)
 - [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
@@ -668,18 +674,28 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       wasted Firestore call after the fix; a direct URL to an out-of-audience
       doc is denied at the rules layer as a defense-in-depth check; the
       "Coordination Notes" card on "More" still navigates correctly post
-      file-restructure. **Not verified this pass** (needs the iOS Simulator,
-      not available in this environment): the admin WebView flow's
-      `mint-custom-token` fetch hits a CORS preflight failure when tested via
-      a real browser (Expo web) — expected and pre-existing, since that
-      endpoint has no CORS handling and the original Phase 0.5 spike was only
-      ever verified via the Simulator's direct native fetch (no browser CORS
-      enforcement) for this exact reason; contacts-picking/promote/delete
-      inside the WebView editor remain unverified live. **Still deferred**:
-      redeploying `/api/mint-custom-token` to the live backend (+ adding CORS)
-      so it works off a deployed URL for a real device, not just
-      `localhost:3000` — a live-infrastructure change needing the user's
-      explicit go-ahead, same as Native Google Sign-In below.
+      file-restructure. **Admin WebView flow now verified**: this environment
+      gained a working iOS Simulator (`xcrun simctl` shows bootable iPhone
+      runtimes; Xcode present) — the prior "not available in this
+      environment" blocker no longer holds. Booted an iPhone 16e Simulator
+      (`npx expo run:ios`, plus the root web app's own dev server on
+      `:3000`), signed in as the e2e Full-timer, opened a real doc from "The
+      Board," and confirmed the `mint-custom-token` fetch succeeds (a native
+      fetch bypasses the browser CORS preflight that blocks this on Expo
+      web) and the live collaborative editor loads with full chrome
+      (formatting toolbar, audience selector, "Save to archive," delete). A
+      non-destructive edit (toggling a checklist item) round-tripped through
+      "Saving…" → "✓ Saved" against real Firestore, confirming the write path
+      works end to end. **Scope note**: contacts-picking/"Save to
+      archive"/delete inside the editor were intentionally **not** exercised
+      against real docs this pass — this project's Board holds the team's
+      actual pastoral-care notes, and delete has no undo, so a full mutation
+      test would need a disposable seeded doc rather than live team data;
+      worth doing next time with one. **Still deferred**: redeploying
+      `/api/mint-custom-token` to the live backend (+ adding CORS) so it
+      works off a deployed URL for a real device, not just `localhost:3000`
+      — a live-infrastructure change needing the user's explicit go-ahead,
+      same as Native Google Sign-In below.
 
 ### ✅ Contact Detail screen — DONE, verified live against all four e2e role users
 - [x] **A real Contact Detail screen (`apps/mobile/app/contact/[contactId].tsx`)** —
@@ -739,8 +755,15 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       Alongside message, and a threaded Discussion reply — all against real
       Firestore. Delete's confirmation is `Alert.alert`, a documented no-op
       on Expo web (this migration's known limitation) — the button dispatch
-      itself was verified, but the actual delete path needs Simulator
-      verification. **Trainee (manager)** — opened via LandingTrainee's
+      itself was verified there, and the full path is **now verified live on
+      the iOS Simulator**: created a disposable throwaway contact, opened its
+      Edit form as the Full-timer, tapped "Delete contact," confirmed the
+      native `Alert.alert` ("Delete contact? … This can't be undone." /
+      Cancel / Delete) rendered and functioned correctly, tapped Delete, and
+      confirmed the contact was actually removed from Firestore (the
+      directory's count dropped back down and the contact no longer appeared
+      in search) with a clean navigate-back — no test data left behind.
+      **Trainee (manager)** — opened via LandingTrainee's
       "Open" action; correct trainee-flavored Alongside compose kinds
       (Note/Question/Comment/Encourage, no Follow-up/nudge) and no Edit
       button. **Student (operator)** — opened via People; every compose
@@ -1061,6 +1084,36 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     real production-only bug along the way: the exported bundle silently
     shipped with no Firebase API key (an `env` alias defeated Expo's static
     `EXPO_PUBLIC_*` inlining), which dev mode never surfaced. What's left
+    overall: the user-account-linking part of Phase 5 (`eas login`/`eas
+    init`, an Apple/Google developer account, an actual TestFlight/Play
+    build), retiring the old web app (needs the user's hosting decision),
+    and reconciling React versions (deferred, higher-risk) — none of these
+    are something an agent can complete unassisted.
+20. ~~iOS Simulator verification pass~~ — **done**. Every item MIGRATION.md
+    still listed as open (TestFlight build, `expo-notifications`, retiring
+    the old web app, React version reconciliation) genuinely needs the
+    user's own accounts or a hosting decision — but auditing the environment
+    found something the doc didn't know: a working iOS Simulator is now
+    available here (it wasn't in earlier sessions), which several
+    already-shipped screens had explicitly flagged as unverified for exactly
+    that reason. Closed all three: Coordination Notes' admin WebView flow
+    (mint-custom-token native fetch + live collab editor), Contact Detail's
+    delete confirmation (native `Alert.alert` → real Firestore delete →
+    navigate-back, using a disposable throwaway contact so no real data was
+    touched), and the shared `Sheet.tsx` primitive's native drag-to-dismiss
+    physics (see their respective entries above for detail). No bugs found;
+    all three worked as designed. Android-side verification (Google Sign-In,
+    the `Pressable`-in-sheet nuance) stays open — no emulator/AVD is
+    configured in this environment. **Environment gotcha hit**: this
+    environment runs multiple worktrees of this repo at once, and Metro
+    (port 8081) was already occupied by another worktree's `expo run:ios`
+    process when this pass's build ran; Expo silently proceeded against the
+    already-running server rather than starting a fresh one on this
+    worktree's tree. Confirmed no risk to this pass's findings by diffing
+    the three files actually exercised (`ContactEditForm.tsx`,
+    `coordination/[docId].tsx`, `Sheet.tsx`) against that worktree's copies —
+    byte-identical — but worth checking for port conflicts before trusting a
+    Simulator pass's results in a multi-worktree environment. What's left
     overall: the user-account-linking part of Phase 5 (`eas login`/`eas
     init`, an Apple/Google developer account, an actual TestFlight/Play
     build), retiring the old web app (needs the user's hosting decision),
