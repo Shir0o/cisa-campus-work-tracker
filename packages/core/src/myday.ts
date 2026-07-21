@@ -160,7 +160,7 @@ export function presetForDue(dueDate?: string | null): DuePresetKey {
 // Parse a due date to a Date in the *local* day. A bare `yyyy-MM-dd` is
 // otherwise parsed as UTC midnight, which lands on the previous day in
 // behind-UTC timezones — so build it locally.
-const toLocalDate = (s?: string | null): Date | null => {
+export const toLocalDate = (s?: string | null): Date | null => {
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
