@@ -25,7 +25,12 @@ import {
   updateContact as updateContactApi,
   updateContactTags as updateContactTagsApi,
 } from './data/contacts';
-import { addInteraction as addInteractionApi, subscribeInteractions, updateInteraction as updateInteractionApi } from './data/interactions';
+import {
+  addInteraction as addInteractionApi,
+  deleteInteraction as deleteInteractionApi,
+  subscribeInteractions,
+  updateInteraction as updateInteractionApi,
+} from './data/interactions';
 import { addComment as addCommentApi, subscribeComments } from './data/comments';
 import { subscribeContactActivities } from './data/activities';
 import { addPrayer as addPrayerApi, subscribeContactPrayers } from './data/prayers';
@@ -161,6 +166,11 @@ export function useContactDetailData(contactId: string) {
     updateInteraction: async (interactionId: string, patch: { content: string; dateTime: string; type: string }) => {
       if (!contact) return;
       await updateInteractionApi(contactId, contact.name, interactionId, patch);
+    },
+
+    deleteInteraction: async (interaction: Interaction) => {
+      if (!contact) return;
+      await deleteInteractionApi(contactId, contact.name, interaction);
     },
 
     addComment: async (input: { text: string; parentId?: string | null }) => {

@@ -7,6 +7,7 @@ import {
   canSeeBoardDoc,
   boardAudiencesForRole,
   boardLevelForRole,
+  isTrashedBoardDoc,
   mdPreview,
   mdOpenTasks,
 } from '../src/board';
@@ -56,6 +57,14 @@ describe('board audience / visibility', () => {
     expect(boardAudiencesForRole('admin')).toEqual([]); // unconstrained
     expect(boardAudiencesForRole('manager')).toEqual(['trainees', 'everyone']);
     expect(boardAudiencesForRole('operator')).toEqual(['everyone']);
+  });
+});
+
+describe('board trash', () => {
+  it('treats a doc as trashed only once deletedAt is set', () => {
+    expect(isTrashedBoardDoc({})).toBe(false);
+    expect(isTrashedBoardDoc({ deletedAt: null })).toBe(false);
+    expect(isTrashedBoardDoc({ deletedAt: new Date() })).toBe(true);
   });
 });
 

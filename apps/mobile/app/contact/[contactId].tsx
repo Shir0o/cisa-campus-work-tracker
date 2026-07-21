@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { canAccessRoute, countFor, threadsFor, type ThreadKind } from '@cisa/core';
-import { Screen, AppText } from '../../src/components/ui';
+import { canAccessRoute, countFor, threadsFor, type Interaction, type ThreadKind } from '@cisa/core';
+import { Screen, AppText, Snackbar } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useContactDetailData } from '../../src/lib/useContactDetailData';
@@ -37,6 +37,29 @@ export default function ContactDetail() {
   const canWrite = role !== 'viewer';
   const isAdmin = role === 'admin';
   const contactThreadCount = useMemo(() => countFor(data.threadMessages, null), [data.threadMessages]);
+
+  // Deleting an interaction gives a brief undo window via a Snackbar instead
+  // of an Alert.alert confirm — the Snackbar's "Undo" action is the
+  // confirmation. Held here (not in ConversationsTab) so it can render above
+  // the tab's own ScrollView rather than inside its scrollable content.
+  const [pendingDelete, setPendingDelete] = useState<Interaction | null>(null);
+  const pendingDeleteRef = useRef<Interaction | null>(null);
+  pendingDeleteRef.current = pendingDelete;
+  useEffect(
+    () => () => {
+      // If this screen unmounts (e.g. the user navigates away) while a
+      // delete is still in its undo window, commit it immediately rather
+      // than silently reviving the interaction next time it's opened.
+      if (pendingDeleteRef.current) void data.deleteInteraction(pendingDeleteRef.current);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  const commitPendingDelete = async () => {
+    const toDelete = pendingDelete;
+    setPendingDelete(null);
+    if (toDelete) await data.deleteInteraction(toDelete);
+  };
 
   if (!canAccessRoute(role, '/contact')) {
     return (
@@ -129,7 +152,7 @@ export default function ContactDetail() {
 
         {activeTab === 'interactions' ? (
           <ConversationsTab
-            interactions={data.interactions}
+            interactions={data.interactions.filter((i) => i.id !== pendingDelete?.id)}
             loading={data.interactionsLoading}
             threadMessages={data.threadMessages}
             meStaffId={uid ?? ''}
@@ -138,6 +161,7 @@ export default function ContactDetail() {
             initialOpenThreadId={interactionId ?? null}
             onAdd={data.addInteraction}
             onUpdate={data.updateInteraction}
+            onDelete={setPendingDelete}
             onPostThread={(id, input) => data.postThreadMessage({ interactionId: id, ...input })}
             onToggleReaction={data.toggleReaction}
           />
@@ -163,6 +187,15 @@ export default function ContactDetail() {
 
         {activeTab === 'history' ? <HistoryTab activities={data.activities} loading={data.activitiesLoading} /> : null}
       </ScrollView>
+
+      {pendingDelete ? (
+        <Snackbar
+          message="Interaction deleted"
+          actionLabel="Undo"
+          onAction={() => setPendingDelete(null)}
+          onDismiss={commitPendingDelete}
+        />
+      ) : null}
     </Screen>
   );
 }

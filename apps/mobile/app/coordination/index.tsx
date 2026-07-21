@@ -35,10 +35,15 @@ export default function CoordinationList() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
           <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
         </Pressable>
+        {isAdmin ? (
+          <Pressable onPress={() => router.push('/coordination/trash')} hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="trash-outline" size={20} color={colors.onSurfaceVariant} />
+          </Pressable>
+        ) : null}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40, gap: spacing.lg }}>

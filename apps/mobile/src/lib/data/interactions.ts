@@ -55,3 +55,19 @@ export async function updateInteraction(
     handleFirestoreError(e, OperationType.UPDATE, `contacts/${contactId}/interactions/${interactionId}`);
   }
 }
+
+export async function deleteInteraction(contactId: string, contactName: string, interaction: Interaction): Promise<void> {
+  try {
+    await core.deleteInteraction(db, contactId, interaction.id);
+    void logActivity({
+      action: 'deleted an interaction for',
+      targetId: contactId,
+      targetName: contactName,
+      targetType: 'contact',
+      type: 'edit',
+      description: interaction.content.trim(),
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `contacts/${contactId}/interactions/${interaction.id}`);
+  }
+}

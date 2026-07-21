@@ -598,7 +598,11 @@ export default function CoordinationNotes() {
     const unsubDocs = onSnapshot(
       docsQuery,
       (snap) => {
-        setDocs(snap.docs.map((d) => ({ id: d.id, md: '', title: 'Untitled page', ...(d.data() as object) }) as BoardDoc));
+        setDocs(
+          snap.docs
+            .map((d) => ({ id: d.id, md: '', title: 'Untitled page', ...(d.data() as object) }) as BoardDoc)
+            .filter((d) => !d.deletedAt),
+        );
         setLoadingDocs(false);
       },
       (err) => {
@@ -808,9 +812,9 @@ export default function CoordinationNotes() {
   };
 
   const deleteBoardDoc = async (d: BoardDoc) => {
-    if (!window.confirm(`Delete "${d.title}"? This removes the page for everyone.`)) return;
+    if (!window.confirm(`Delete "${d.title}"? It'll move to Trash and can be restored later.`)) return;
     try {
-      await deleteDoc(doc(db, 'board_docs', d.id));
+      await updateDoc(doc(db, 'board_docs', d.id), { deletedAt: serverTimestamp() });
       if (rtdb) {
         try {
           await dbRemove(dbRef(rtdb, `board_docs_rtdb/${d.id}`));
@@ -820,7 +824,7 @@ export default function CoordinationNotes() {
       }
       if (activeId === d.id) setActiveId(null);
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, 'board_docs');
+      handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
   };
 

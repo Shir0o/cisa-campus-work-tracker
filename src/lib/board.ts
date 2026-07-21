@@ -169,6 +169,7 @@ export interface BoardDoc {
   updatedAt?: unknown;
   updatedBy?: string;
   updatedByName?: string;
+  deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
 }
 
 // ── Audience / visibility (design Session 3) ──────────────────────────────────

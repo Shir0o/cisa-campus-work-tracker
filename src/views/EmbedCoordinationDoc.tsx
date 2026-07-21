@@ -11,7 +11,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { signInWithCustomToken } from 'firebase/auth';
-import { doc, onSnapshot, updateDoc, collection, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, collection, setDoc, serverTimestamp } from 'firebase/firestore';
 import { ref as dbRef, remove as dbRemove } from 'firebase/database';
 import { auth, db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
@@ -119,12 +119,13 @@ export default function EmbedCoordinationDoc() {
     }
   };
 
-  // Deletes the page and best-effort cleans up its live-collab RTDB node —
-  // mirrors CoordinationNotes.tsx's deleteBoardDoc.
+  // Soft-deletes the page (moves it to Trash, restorable) and best-effort
+  // cleans up its live-collab RTDB node — mirrors CoordinationNotes.tsx's
+  // deleteBoardDoc.
   const onDelete = async (d: BoardDoc) => {
-    if (!window.confirm(`Delete "${d.title}"? This removes the page for everyone.`)) return;
+    if (!window.confirm(`Delete "${d.title}"? It'll move to Trash and can be restored later.`)) return;
     try {
-      await deleteDoc(doc(db, 'board_docs', d.id));
+      await updateDoc(doc(db, 'board_docs', d.id), { deletedAt: serverTimestamp() });
       if (rtdb) {
         try {
           await dbRemove(dbRef(rtdb, `board_docs_rtdb/${d.id}`));
@@ -133,7 +134,7 @@ export default function EmbedCoordinationDoc() {
         }
       }
     } catch (e) {
-      handleFirestoreError(e, OperationType.DELETE, 'board_docs');
+      handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
   };
 
