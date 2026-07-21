@@ -23,6 +23,11 @@ export function Snackbar({
 }) {
   const { colors, radius, spacing } = useTheme();
 
+  // Deliberately only depends on `duration`, not `onDismiss`/`onAction`: those
+  // props are recreated as new closures on every parent re-render (e.g. any
+  // of useContactDetailData's live Firestore listeners firing), and this
+  // effect re-running on every one of those would keep resetting the
+  // countdown — the toast could end up never auto-dismissing.
   useEffect(() => {
     const timer = setTimeout(onDismiss, duration);
     return () => clearTimeout(timer);
