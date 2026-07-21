@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { Timestamp } from 'firebase/firestore';
+
+// isExpiredTrash is pure and never touches db/rtdb, but importing the module
+// pulls in ../lib/firebase, which eagerly initializes a real Firebase app at
+// import time — mock it so this test doesn't need a valid API key/project.
+vi.mock('../lib/firebase', () => ({ db: {}, rtdb: {} }));
+
 import { isExpiredTrash } from '../lib/data/board';
 
 describe('isExpiredTrash', () => {
