@@ -26,6 +26,7 @@ export function ConversationsTab({
   initialOpenThreadId,
   onAdd,
   onUpdate,
+  onDelete,
   onPostThread,
   onToggleReaction,
 }: {
@@ -38,6 +39,11 @@ export function ConversationsTab({
   initialOpenThreadId?: string | null;
   onAdd: (input: { content: string; dateTime: string; type: string }) => Promise<void>;
   onUpdate: (interactionId: string, patch: { content: string; dateTime: string; type: string }) => Promise<void>;
+  // Requests a delete — the caller owns the undo-window/commit timing (and
+  // the Snackbar UI for it) since that needs to render above this tab's
+  // scrollable content, not inside it. `interactions` is expected to already
+  // exclude whatever's mid-undo.
+  onDelete: (interaction: Interaction) => void;
   onPostThread: (interactionId: string | null, input: { kind: ThreadKind; body: string }) => void;
   onToggleReaction: (messageId: string, emoji: string) => void;
 }) {
@@ -158,14 +164,19 @@ export function ConversationsTab({
                       <AppText variant="caption">{new Date(interaction.dateTime).toLocaleDateString()}</AppText>
                     </View>
                     {canWrite && (isAdmin || meStaffId === interaction.userId) ? (
-                      <Pressable
-                        onPress={() => {
-                          setEditingId(interaction.id);
-                          setEditContent(interaction.content);
-                        }}
-                      >
-                        <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Edit</Text>
-                      </Pressable>
+                      <View style={{ flexDirection: 'row', gap: 14 }}>
+                        <Pressable
+                          onPress={() => {
+                            setEditingId(interaction.id);
+                            setEditContent(interaction.content);
+                          }}
+                        >
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary }}>Edit</Text>
+                        </Pressable>
+                        <Pressable onPress={() => onDelete(interaction)}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: colors.error }}>Delete</Text>
+                        </Pressable>
+                      </View>
                     ) : null}
                   </View>
                   <View style={{ padding: 10, borderRadius: radius.md, borderTopLeftRadius: 2, backgroundColor: colors.surfaceContainerHigh, borderWidth: 1, borderColor: colors.outlineVariant }}>

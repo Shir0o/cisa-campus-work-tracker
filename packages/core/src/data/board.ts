@@ -7,11 +7,13 @@ import {
   onSnapshot,
   orderBy,
   query,
+  serverTimestamp,
+  updateDoc,
   where,
   type Firestore,
 } from "firebase/firestore";
 import { ref as dbRef, remove as dbRemove, type Database } from "firebase/database";
-import { boardAudiencesForRole, docByDateDesc, type BoardDoc } from "../board";
+import { boardAudiencesForRole, docByDateDesc, isTrashedBoardDoc, type BoardDoc } from "../board";
 import type { AppRole } from "../permissions";
 
 function mapDoc(d: { id: string; data: () => Record<string, any> }): BoardDoc {
@@ -37,7 +39,7 @@ export function subscribeBoardDocs(
   if (role === "admin") {
     return onSnapshot(
       query(collection(db, "board_docs"), orderBy("date", "desc")),
-      (snap) => cb(snap.docs.map(mapDoc).sort(docByDateDesc)),
+      (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docByDateDesc)),
       (e) => (onError ? onError(e) : console.error("board docs subscription error", e)),
     );
   }
@@ -48,8 +50,23 @@ export function subscribeBoardDocs(
   }
   return onSnapshot(
     query(collection(db, "board_docs"), where("audience", "in", audiences)),
-    (snap) => cb(snap.docs.map(mapDoc).sort(docByDateDesc)),
+    (snap) => cb(snap.docs.map(mapDoc).filter((d) => !isTrashedBoardDoc(d)).sort(docByDateDesc)),
     (e) => (onError ? onError(e) : console.error("board docs subscription error", e)),
+  );
+}
+
+/** Live subscription to soft-deleted pages (Trash) — admin-only, mirroring
+ * the main list's admin branch (an unconstrained read `board_docs` rules
+ * only grant to `isAdmin()`), inverted to show only trashed docs. */
+export function subscribeTrashedBoardDocs(
+  db: Firestore,
+  cb: (docs: BoardDoc[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return onSnapshot(
+    query(collection(db, "board_docs"), orderBy("date", "desc")),
+    (snap) => cb(snap.docs.map(mapDoc).filter(isTrashedBoardDoc).sort(docByDateDesc)),
+    (e) => (onError ? onError(e) : console.error("trashed board docs subscription error", e)),
   );
 }
 
@@ -67,8 +84,27 @@ export function subscribeBoardDoc(
   );
 }
 
-/** Deletes a page and best-effort cleans up its live-collab RTDB node so it
- * doesn't orphan. Confirmation is the caller's concern. */
+/** Soft-deletes a page (moves it to Trash) and best-effort cleans up its
+ * live-collab RTDB node so it doesn't orphan. Confirmation is the caller's
+ * concern. Recoverable via `restoreBoardDoc`. */
+export async function softDeleteBoardDoc(db: Firestore, rtdb: Database | null, boardDoc: Pick<BoardDoc, "id">): Promise<void> {
+  await updateDoc(doc(db, "board_docs", boardDoc.id), { deletedAt: serverTimestamp() });
+  if (rtdb) {
+    try {
+      await dbRemove(dbRef(rtdb, `board_docs_rtdb/${boardDoc.id}`));
+    } catch {
+      // best-effort — the Firestore update already succeeded
+    }
+  }
+}
+
+/** Restores a page out of Trash. */
+export async function restoreBoardDoc(db: Firestore, boardDoc: Pick<BoardDoc, "id">): Promise<void> {
+  await updateDoc(doc(db, "board_docs", boardDoc.id), { deletedAt: null });
+}
+
+/** Permanently deletes a page — only meant to be called from Trash, on an
+ * already soft-deleted doc ("Delete Forever"). */
 export async function deleteBoardDoc(db: Firestore, rtdb: Database | null, boardDoc: Pick<BoardDoc, "id">): Promise<void> {
   await deleteDoc(doc(db, "board_docs", boardDoc.id));
   if (rtdb) {

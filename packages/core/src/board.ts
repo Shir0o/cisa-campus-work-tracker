@@ -163,7 +163,12 @@ export interface BoardDoc {
   updatedAt?: unknown;
   updatedBy?: string;
   updatedByName?: string;
+  deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
 }
+
+// A soft-deleted page (see `deletedAt`) is hidden from the main Pages list
+// and only shown in Trash, where it can be restored or purged for good.
+export const isTrashedBoardDoc = (doc: Pick<BoardDoc, 'deletedAt'>): boolean => !!doc.deletedAt;
 
 // ── Audience / visibility (design Session 3) ──────────────────────────────────
 // Each page is tagged so trainees and students can share the Board without seeing

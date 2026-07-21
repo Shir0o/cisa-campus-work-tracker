@@ -4,6 +4,7 @@
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   onSnapshot,
   orderBy,
@@ -73,4 +74,9 @@ export async function updateInteraction(
     dateTime: patch.dateTime,
     type: patch.type,
   });
+}
+
+/** Delete an interaction. The delete rule allows the owner or a manager. */
+export async function deleteInteraction(db: Firestore, contactId: string, interactionId: string): Promise<void> {
+  await deleteDoc(doc(db, "contacts", contactId, "interactions", interactionId));
 }

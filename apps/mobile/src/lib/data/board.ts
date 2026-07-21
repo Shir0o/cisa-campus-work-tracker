@@ -20,6 +20,29 @@ export function subscribeBoardDoc(
   return core.subscribeBoardDoc(db, docId, cb, onError);
 }
 
+export function subscribeTrashedBoardDocs(
+  cb: (docs: BoardDoc[]) => void,
+  onError?: (e: unknown) => void,
+): () => void {
+  return core.subscribeTrashedBoardDocs(db, cb, onError);
+}
+
+export async function softDeleteBoardDoc(boardDoc: Pick<BoardDoc, 'id'>): Promise<void> {
+  try {
+    await core.softDeleteBoardDoc(db, rtdb, boardDoc);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `board_docs/${boardDoc.id}`);
+  }
+}
+
+export async function restoreBoardDoc(boardDoc: Pick<BoardDoc, 'id'>): Promise<void> {
+  try {
+    await core.restoreBoardDoc(db, boardDoc);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `board_docs/${boardDoc.id}`);
+  }
+}
+
 export async function deleteBoardDoc(boardDoc: Pick<BoardDoc, 'id'>): Promise<void> {
   try {
     await core.deleteBoardDoc(db, rtdb, boardDoc);
