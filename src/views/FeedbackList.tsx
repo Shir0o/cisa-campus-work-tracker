@@ -480,7 +480,13 @@ export default function FeedbackList() {
                             </button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-wide"
+                              title="No GitHub issue was auto-created for this item — the server-side GitHub integration may not be configured. Use Create Issue or Link to attach one manually."
+                            >
+                              Not auto-synced
+                            </span>
                             <button
                               onClick={() => handleCreateGitHubIssue(item)}
                               className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-primary hover:bg-primary/20 font-bold text-xs rounded-full transition-all border-none cursor-pointer"

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { Timestamp } from 'firebase/firestore';
 import {
   sessionStatus,
   todayISO,
@@ -8,9 +9,12 @@ import {
   boardAudiencesForRole,
   boardLevelForRole,
   isTrashedBoardDoc,
+  docSortOrder,
   mdPreview,
   mdOpenTasks,
+  type BoardDoc,
 } from '../src/board';
+import { isExpiredTrash } from '../src/data/board';
 
 describe('board date + status helpers', () => {
   it('derives session status from the date', () => {
@@ -65,6 +69,43 @@ describe('board trash', () => {
     expect(isTrashedBoardDoc({})).toBe(false);
     expect(isTrashedBoardDoc({ deletedAt: null })).toBe(false);
     expect(isTrashedBoardDoc({ deletedAt: new Date() })).toBe(true);
+  });
+});
+
+describe('docSortOrder', () => {
+  it('floats pinned docs to the top regardless of date', () => {
+    const d1 = { date: '2026-06-16', pinned: false } as BoardDoc;
+    const d2 = { date: '2026-06-18', pinned: false } as BoardDoc;
+    const d3 = { date: '2026-06-14', pinned: true } as BoardDoc;
+    expect([d1, d2, d3].sort(docSortOrder).map((d) => d.date)).toEqual(['2026-06-14', '2026-06-18', '2026-06-16']);
+  });
+
+  it('falls back to newest-first among docs with the same pinned state', () => {
+    const d1 = { date: '2026-06-16', pinned: true } as BoardDoc;
+    const d2 = { date: '2026-06-18', pinned: true } as BoardDoc;
+    expect([d1, d2].sort(docSortOrder).map((d) => d.date)).toEqual(['2026-06-18', '2026-06-16']);
+  });
+});
+
+describe('isExpiredTrash', () => {
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const now = new Date('2026-07-01T00:00:00Z').getTime();
+
+  it('is false for a doc with no deletedAt', () => {
+    expect(isExpiredTrash(undefined, now)).toBe(false);
+    expect(isExpiredTrash(null, now)).toBe(false);
+  });
+
+  it('is false just under 30 days, true once 30 days have elapsed', () => {
+    const justUnder = Timestamp.fromMillis(now - THIRTY_DAYS_MS + 1000);
+    const exactly30 = Timestamp.fromMillis(now - THIRTY_DAYS_MS);
+    expect(isExpiredTrash(justUnder, now)).toBe(false);
+    expect(isExpiredTrash(exactly30, now)).toBe(true);
+  });
+
+  it('is true well past 30 days', () => {
+    const wayOld = Timestamp.fromMillis(now - THIRTY_DAYS_MS * 3);
+    expect(isExpiredTrash(wayOld, now)).toBe(true);
   });
 });
 

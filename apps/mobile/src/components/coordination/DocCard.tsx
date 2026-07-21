@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { DOC_STATUS, dayNum, mdPreview, sessionStatus, weekdayShort, type BoardDoc } from '@cisa/core';
 import { AppText, Card, StatusPill } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -8,7 +9,17 @@ import { AudienceBadge } from './AudienceBadge';
 // pills, one-line preview. Design oracle: web's src/views/CoordinationNotes.tsx
 // DocRow, adapted for a native card since that oracle's row assumes a hover
 // sidebar (a desktop-only layout with no direct mobile equivalent).
-export function DocCard({ doc, isAdmin, onPress }: { doc: BoardDoc; isAdmin: boolean; onPress: () => void }) {
+export function DocCard({
+  doc,
+  isAdmin,
+  onPress,
+  onTogglePin,
+}: {
+  doc: BoardDoc;
+  isAdmin: boolean;
+  onPress: () => void;
+  onTogglePin?: () => void;
+}) {
   const { colors, radius, spacing } = useTheme();
   const status = sessionStatus(doc.date);
   const statusMeta = DOC_STATUS[status];
@@ -46,6 +57,16 @@ export function DocCard({ doc, isAdmin, onPress }: { doc: BoardDoc; isAdmin: boo
             {mdPreview(doc.md)}
           </AppText>
         </View>
+
+        {isAdmin && onTogglePin ? (
+          <Pressable onPress={onTogglePin} hitSlop={8} style={{ padding: 4, alignSelf: 'flex-start' }}>
+            <Ionicons
+              name={doc.pinned ? 'bookmark' : 'bookmark-outline'}
+              size={18}
+              color={doc.pinned ? colors.primary : colors.onSurfaceVariant}
+            />
+          </Pressable>
+        ) : null}
       </View>
     </Card>
   );

@@ -36,6 +36,7 @@ import SubmitFeedback from "./views/SubmitFeedback";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 
 const CoordinationNotes = React.lazy(() => import("./views/CoordinationNotes"));
+const CoordinationTrash = React.lazy(() => import("./views/CoordinationTrash"));
 const Messages = React.lazy(() => import("./views/Messages"));
 const EmbedCoordinationDoc = React.lazy(() => import("./views/EmbedCoordinationDoc"));
 
@@ -520,6 +521,28 @@ export default function App() {
                           }
                         >
                           <CoordinationNotes />
+                        </React.Suspense>
+                      </DashboardLayout>
+                    </RoleGuard>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/coordination/trash"
+                element={
+                  <ProtectedRoute>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <React.Suspense
+                          fallback={
+                            <div className="p-8 space-y-6">
+                              <Skeleton className="h-10 w-64" />
+                              <Skeleton className="h-96 w-full rounded-3xl" />
+                            </div>
+                          }
+                        >
+                          <CoordinationTrash />
                         </React.Suspense>
                       </DashboardLayout>
                     </RoleGuard>
