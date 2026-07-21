@@ -253,7 +253,7 @@ describe('EmbedCoordinationDoc', () => {
   });
 
   describe('delete', () => {
-    it('deletes the doc and best-effort cleans up its RTDB node when confirmed', async () => {
+    it('soft-deletes (sets deletedAt) and best-effort cleans up its RTDB node when confirmed, without hard-deleting', async () => {
       const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
       mockAuthState({ user: { uid: 'u1', displayName: 'Tony Wang' }, isAdmin: true, loading: false });
       render(<EmbedCoordinationDoc />);
@@ -261,8 +261,9 @@ describe('EmbedCoordinationDoc', () => {
 
       fireEvent.click(screen.getByText('delete-doc'));
 
-      await waitFor(() => expect(deleteDoc).toHaveBeenCalled());
+      await waitFor(() => expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deletedAt: expect.anything() })));
       expect(dbRemove).toHaveBeenCalled();
+      expect(deleteDoc).not.toHaveBeenCalled();
       confirmSpy.mockRestore();
     });
 

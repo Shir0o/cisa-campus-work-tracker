@@ -478,7 +478,7 @@ describe('CoordinationNotes', () => {
 
   // ── 6. Delete doc ─────────────────────────────────────────────────────────
   describe('delete doc', () => {
-    it('calls deleteDoc after confirm when clicking delete button', async () => {
+    it('soft-deletes (sets deletedAt) after confirm when clicking delete button, without hard-deleting', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true);
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
@@ -492,11 +492,12 @@ describe('CoordinationNotes', () => {
       fireEvent.click(screen.getByTitle('Delete this page'));
 
       await waitFor(() => {
-        expect(deleteDoc).toHaveBeenCalled();
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deletedAt: 'mock-timestamp' }));
       });
+      expect(deleteDoc).not.toHaveBeenCalled();
     });
 
-    it('does not call deleteDoc when confirm is cancelled', async () => {
+    it('does not soft-delete when confirm is cancelled', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(false);
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
@@ -505,8 +506,10 @@ describe('CoordinationNotes', () => {
         expect(screen.getByTitle('Delete this page')).toBeInTheDocument();
       });
 
+      const updateCallsBefore = (updateDoc as any).mock.calls.length;
       fireEvent.click(screen.getByTitle('Delete this page'));
 
+      expect((updateDoc as any).mock.calls.length).toBe(updateCallsBefore);
       expect(deleteDoc).not.toHaveBeenCalled();
     });
   });
