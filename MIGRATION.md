@@ -872,10 +872,56 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       Firestore docs today)
 
 ### 🔲 Phase 6 — Web unification (now the real end state, no SEO caveat)
-- [ ] Turn on Expo Router web; reach parity with the current web app
-- [ ] Retire the old React web app → one codebase for web + iOS + Android
+- [x] **Turn on Expo Router web; reach parity with the current web app** — route
+      parity turned out to already be complete (a route-by-route comparison of
+      `src/App.tsx`'s 14 web routes against `apps/mobile/app/` found every web
+      screen already has a mobile equivalent — no dead stubs). What was
+      actually missing was a *production* web build: `apps/mobile/package.json`
+      only had `"web": "expo start --web"` (dev server), never
+      `expo export -p web`. Added `"build:web": "expo export -p web"` and ran
+      it. **Bug found + fixed during verification**: the export built clean
+      (0 errors) but the resulting static bundle threw
+      `Firebase: Error (auth/invalid-api-key)` on load — `src/lib/firebase.ts`
+      read env vars via `const env = process.env; env.EXPO_PUBLIC_FIREBASE_API_KEY`,
+      and Expo's babel plugin that inlines `EXPO_PUBLIC_*` vars into a
+      production bundle only statically replaces the literal
+      `process.env.EXPO_PUBLIC_X` expression shape — the `env` alias defeated
+      it, so the value silently came through as `undefined` in the exported
+      bundle (dev mode masked this, since Metro's dev server injects a live,
+      fully-populated `process.env` object at runtime instead of relying on
+      static replacement). Fixed by referencing `process.env.EXPO_PUBLIC_X`
+      directly for each var. Verified live: re-exported, statically served
+      `apps/mobile/dist` (new `mobile-web-dist` config in `.claude/launch.json`,
+      port 8092, `npx serve`), logged in as the e2e Full-timer against real
+      Firestore, confirmed 0 console errors, client-side nav across Home →
+      People → More → History ("Looking back") → Settings (all real data),
+      and both Light/Dark themes rendering correctly.
+- [ ] Retire the old React web app → one codebase for web + iOS + Android —
+      **blocked on an operational decision, not code.** There's no CI workflow
+      deploying either app; three competing, undocumented-in-CI deployment
+      docs exist at the repo root (`CLOUDFLARE_DEPLOYMENT.md` — Cloudflare
+      Pages only, `HYBRID_DEPLOYMENT.md` — Cloudflare Pages + GCP Cloud Run,
+      `GCLOUD_DEPLOYMENT.md` — Cloud Run only), no `wrangler.toml`, and
+      `firebase.json` only configures Firestore/RTDB rules, not hosting.
+      Retiring the old app means the user picking which (if any) of these is
+      real production and replacing it with a deployed `apps/mobile` web
+      export — not something to decide silently. Relatedly,
+      `apps/mobile/app.json`'s `web.output` is `"single"` (one HTML file, all
+      client-side routing) rather than `"static"` — confirmed live that a hard
+      reload on a nested path (e.g. `/settings`) 404s on a plain static server
+      with no rewrite rule. Whatever host is eventually chosen will need a
+      catch-all rewrite to `index.html` (e.g. Cloudflare Pages' `_redirects`
+      file with `/* /index.html 200`) for deep-linking/hard-reload to work.
 - [ ] Reconcile React versions (web 19 vs Expo 18.3) and optionally adopt true
-      npm workspaces at that point
+      npm workspaces at that point — **deferred as a separate, higher-risk
+      pass, per explicit user choice this session.** Getting to React 19 means
+      bumping the Expo SDK itself (52→53+), which touches ~15 pinned native
+      dependencies (`react-native-reanimated`, `-gesture-handler`, `-screens`,
+      `-svg`, `-webview`, `@gorhom/bottom-sheet`,
+      `@react-native-google-signin/google-signin`, `expo-build-properties`,
+      etc.) across every already-shipped, already-verified screen — real
+      regression risk, warranting its own dedicated pass with full
+      re-verification afterward rather than folding it into this one.
 
 ---
 
@@ -1007,6 +1053,19 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     TestFlight/Play build) and Phase 6 (retiring the old web app,
     reconciling React versions) — neither is something an agent can
     complete unassisted.
+19. ~~Phase 6 kickoff: production web export~~ — **done** (see the Phase 6
+    entry above), picked because it was the one Phase 6 item with no
+    external blocker (unlike retiring the old app, which needs the user to
+    resolve three competing deployment docs; or reconciling React versions,
+    a deliberately-deferred, higher-risk Expo SDK bump). Found and fixed a
+    real production-only bug along the way: the exported bundle silently
+    shipped with no Firebase API key (an `env` alias defeated Expo's static
+    `EXPO_PUBLIC_*` inlining), which dev mode never surfaced. What's left
+    overall: the user-account-linking part of Phase 5 (`eas login`/`eas
+    init`, an Apple/Google developer account, an actual TestFlight/Play
+    build), retiring the old web app (needs the user's hosting decision),
+    and reconciling React versions (deferred, higher-risk) — none of these
+    are something an agent can complete unassisted.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and
