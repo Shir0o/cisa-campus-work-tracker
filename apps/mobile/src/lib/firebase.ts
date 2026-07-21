@@ -31,21 +31,26 @@ const staticConfig = {
   messagingSenderId: '914549253362',
 };
 
-const env = process.env;
-
+// NOTE: each EXPO_PUBLIC_* var below must be a literal `process.env.EXPO_PUBLIC_X`
+// expression (not aliased/destructured) — Expo's babel plugin statically replaces
+// only that exact shape when building a production web export; an alias like
+// `const env = process.env` defeats it, leaving a dead runtime lookup that's
+// undefined in the exported bundle (dev mode masks this via a live process.env
+// polyfill, so it only surfaces after `expo export -p web`).
 const firebaseConfig = {
-  apiKey: env.EXPO_PUBLIC_FIREBASE_API_KEY || staticConfig.apiKey,
-  authDomain: env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || staticConfig.authDomain,
-  projectId: env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || staticConfig.projectId,
-  appId: env.EXPO_PUBLIC_FIREBASE_APP_ID || staticConfig.appId,
-  storageBucket: env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || staticConfig.storageBucket,
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || staticConfig.apiKey,
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || staticConfig.authDomain,
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || staticConfig.projectId,
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || staticConfig.appId,
+  storageBucket:
+    process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || staticConfig.storageBucket,
   messagingSenderId:
-    env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || staticConfig.messagingSenderId,
+    process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || staticConfig.messagingSenderId,
 };
 
 const firestoreDatabaseId =
-  env.EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID || staticConfig.firestoreDatabaseId;
-const databaseURL = env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || undefined;
+  process.env.EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID || staticConfig.firestoreDatabaseId;
+const databaseURL = process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || undefined;
 
 if (__DEV__ && !firebaseConfig.apiKey) {
   console.warn(

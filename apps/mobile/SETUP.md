@@ -22,6 +22,19 @@ npm run android  # Android emulator (needs Android Studio)
 # or: npx expo start  → press w / i / a, or scan the QR with Expo Go
 ```
 
+## Production web build
+
+```bash
+npm run build:web   # expo export -p web → static output in dist/
+```
+
+`web.output` is `"single"` (one HTML file, all routing client-side) — serving
+`dist/` from any static host needs a catch-all rewrite to `index.html` for
+deep links / hard reloads on nested paths (e.g. Cloudflare Pages' `_redirects`
+with `/* /index.html 200`); without one, a direct load of a nested path 404s.
+No such host is wired up yet — see [`MIGRATION.md`](../../MIGRATION.md)'s
+Phase 6 section.
+
 ## How the shared package resolves
 
 `@cisa/core` is NOT installed via npm workspaces (the web app is on React 19,
@@ -65,7 +78,9 @@ needed before a build can go to TestFlight or a Play internal track.
 
 - **Password reset** — `app/login.tsx` has no forgot-password entry point yet,
   even though `src/lib/firebase.ts` already has Firebase Auth wired for it.
-- **App-store delivery**'s account-linking step (`eas login`/`eas init`) and
-  Phase 6 (web unification) — see [`MIGRATION.md`](../../MIGRATION.md) for
-  the full status; everything else it once listed here (fonts, the collab
-  editor WebView spike, live Firestore data) has since shipped.
+- **App-store delivery**'s account-linking step (`eas login`/`eas init`),
+  retiring the old web app (blocked on the user picking a real deploy
+  target), and reconciling React versions (deferred, higher-risk Expo SDK
+  bump) — see [`MIGRATION.md`](../../MIGRATION.md) for the full status;
+  everything else it once listed here (fonts, the collab editor WebView
+  spike, live Firestore data, the production web export) has since shipped.
