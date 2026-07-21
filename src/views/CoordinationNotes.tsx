@@ -1654,7 +1654,7 @@ function DocRow({
           title={d.pinned ? 'Unpin' : 'Pin to top'}
           aria-label={d.pinned ? 'Unpin' : 'Pin to top'}
           className={cn(
-            'absolute top-1.5 right-1.5 p-1 rounded-md transition-colors',
+            'absolute top-0.5 right-0.5 p-2 rounded-md transition-colors',
             d.pinned ? 'text-stage-accent' : 'text-on-surface-variant/50 opacity-0 group-hover:opacity-100 hover:text-stage-accent',
           )}
         >
