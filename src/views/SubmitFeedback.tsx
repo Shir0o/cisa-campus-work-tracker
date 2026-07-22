@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, ArrowRight } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Send, ArrowRight, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useNavigate } from 'react-router-dom';
@@ -34,15 +33,16 @@ export default function SubmitFeedback() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
-    const fabBtn = document.getElementById('feedback-fab-btn');
     try {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
-
       const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
         scale: 1.0,
+        ignoreElements: (el) =>
+          el.id === 'feedback-fab-btn' ||
+          el.getAttribute('role') === 'dialog' ||
+          Boolean(el.closest('[role="dialog"]')),
       });
 
       let finalCanvas = canvas;
@@ -66,8 +66,6 @@ export default function SubmitFeedback() {
       }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
-    } finally {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {
@@ -180,8 +178,9 @@ export default function SubmitFeedback() {
                       <button
                         key={k.id}
                         type="button"
+                        disabled={isSubmitting}
                         onClick={() => setKind(k.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer ${
+                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                           on
                             ? `${tone.softBg} border-transparent ${tone.text} shadow-xs`
                             : 'bg-surface border-outline-variant text-on-surface hover:bg-surface-container-high'
@@ -205,13 +204,14 @@ export default function SubmitFeedback() {
                 <textarea
                   id="form-message"
                   required
+                  disabled={isSubmitting}
                   rows={6}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   maxLength={5000}
                   placeholder={activeMeta.placeholder}
-                  className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none"
+                  className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
                 />
                 <div className="flex justify-between items-center mt-2 px-1 text-xs text-on-surface-variant">
                   <span>{user?.displayName || 'You'} · {roleLabel(role)}</span>
@@ -223,8 +223,9 @@ export default function SubmitFeedback() {
               <div className="flex items-center gap-3 justify-end pt-2 border-t border-outline-variant">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => navigate(-1)}
-                  className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors"
+                  className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-default"
                 >
                   Back
                 </button>
@@ -233,8 +234,17 @@ export default function SubmitFeedback() {
                   disabled={isSubmitting || !message.trim()}
                   className="py-2.5 px-6 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
                 >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? 'Sending…' : 'Send'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Send</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -279,3 +289,4 @@ export default function SubmitFeedback() {
     </PageContainer>
   );
 }
+
