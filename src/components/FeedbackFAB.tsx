@@ -53,23 +53,29 @@ export default function FeedbackFAB() {
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
-        scale: 1.5,
+        scale: 1.0,
       });
 
       let finalCanvas = canvas;
-      const maxDim = 1600;
+      const maxDim = 1000;
       if (canvas.width > maxDim || canvas.height > maxDim) {
         const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width * scale;
-        tempCanvas.height = canvas.height * scale;
+        tempCanvas.width = Math.round(canvas.width * scale);
+        tempCanvas.height = Math.round(canvas.height * scale);
         const ctx = tempCanvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
           finalCanvas = tempCanvas;
         }
       }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
+      if (screenshot.length > 600000) {
+        screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
+      }
+      if (screenshot.length > 600000) {
+        screenshot = '';
+      }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
     } finally {
