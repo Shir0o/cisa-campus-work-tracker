@@ -8,6 +8,9 @@ import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
 
+const MAX_SCREENSHOT_DIMENSION = 1000;
+const MAX_PAYLOAD_LENGTH = 600000;
+
 export default function FeedbackFAB() {
   const { user, role } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -57,9 +60,8 @@ export default function FeedbackFAB() {
       });
 
       let finalCanvas = canvas;
-      const maxDim = 1000;
-      if (canvas.width > maxDim || canvas.height > maxDim) {
-        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+      if (canvas.width > MAX_SCREENSHOT_DIMENSION || canvas.height > MAX_SCREENSHOT_DIMENSION) {
+        const scale = Math.min(MAX_SCREENSHOT_DIMENSION / canvas.width, MAX_SCREENSHOT_DIMENSION / canvas.height);
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = Math.round(canvas.width * scale);
         tempCanvas.height = Math.round(canvas.height * scale);
@@ -70,10 +72,10 @@ export default function FeedbackFAB() {
         }
       }
       screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
-      if (screenshot.length > 600000) {
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
         screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
       }
-      if (screenshot.length > 600000) {
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
         screenshot = '';
       }
     } catch (err) {
