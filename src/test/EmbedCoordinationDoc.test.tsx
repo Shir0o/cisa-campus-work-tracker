@@ -293,7 +293,10 @@ describe('EmbedCoordinationDoc', () => {
 
       fireEvent.click(screen.getByText('save-note'));
 
-      await waitFor(() => expect(setDoc).toHaveBeenCalled());
+      await waitFor(() => {
+        expect(setDoc).toHaveBeenCalled();
+        expect(screen.queryByTestId('note-form')).not.toBeInTheDocument();
+      });
       const [, notePayload] = (setDoc as any).mock.calls[0];
       expect(notePayload).toMatchObject({
         title: 'Saved title',
@@ -302,7 +305,6 @@ describe('EmbedCoordinationDoc', () => {
         contributorIds: ['u1'],
       });
       expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: 'saved a record' }));
-      expect(screen.queryByTestId('note-form')).not.toBeInTheDocument();
     });
 
     it('closes the note form on cancel without writing', () => {

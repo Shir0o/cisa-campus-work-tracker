@@ -10,6 +10,9 @@ import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedb
 import { FeedbackKind } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 
+const MAX_SCREENSHOT_DIMENSION = 1000;
+const MAX_PAYLOAD_LENGTH = 600000;
+
 export default function SubmitFeedback() {
   const { user, role } = useAuth();
   const navigate = useNavigate();
@@ -39,23 +42,28 @@ export default function SubmitFeedback() {
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
-        scale: 1.5,
+        scale: 1.0,
       });
 
       let finalCanvas = canvas;
-      const maxDim = 1600;
-      if (canvas.width > maxDim || canvas.height > maxDim) {
-        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+      if (canvas.width > MAX_SCREENSHOT_DIMENSION || canvas.height > MAX_SCREENSHOT_DIMENSION) {
+        const scale = Math.min(MAX_SCREENSHOT_DIMENSION / canvas.width, MAX_SCREENSHOT_DIMENSION / canvas.height);
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width * scale;
-        tempCanvas.height = canvas.height * scale;
+        tempCanvas.width = Math.round(canvas.width * scale);
+        tempCanvas.height = Math.round(canvas.height * scale);
         const ctx = tempCanvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
           finalCanvas = tempCanvas;
         }
       }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
+      }
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = '';
+      }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
     } finally {
