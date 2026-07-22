@@ -741,9 +741,9 @@ export default function CoordinationNotes() {
   };
 
   const grouped = useMemo(() => {
-    const g: Record<string, BoardDoc[]> = { 'This week': [], Earlier: [] };
+    const g: Record<DocGroup, BoardDoc[]> = { Pinned: [], 'This week': [], Earlier: [] };
     [...docs].sort(docSortOrder).forEach((d) => {
-      (g[docGroup(d.date)] ||= []).push(d);
+      (g[docGroup(d)] ||= []).push(d);
     });
     return g;
   }, [docs]);

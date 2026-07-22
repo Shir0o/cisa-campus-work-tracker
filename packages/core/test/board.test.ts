@@ -24,9 +24,12 @@ describe('board date + status helpers', () => {
     expect(sessionStatus('not-a-date')).toBe('upcoming');
   });
 
-  it('files old dates under Earlier and today under This week', () => {
+  it('files old dates under Earlier, today under This week, and pinned docs under Pinned', () => {
     expect(docGroup(todayISO())).toBe('This week');
     expect(docGroup('2000-01-01')).toBe('Earlier');
+    expect(docGroup('2000-01-01', true)).toBe('Pinned');
+    expect(docGroup({ date: '2000-01-01', pinned: true })).toBe('Pinned');
+    expect(docGroup({ date: todayISO(), pinned: false })).toBe('This week');
   });
 });
 

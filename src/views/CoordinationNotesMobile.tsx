@@ -168,6 +168,7 @@ export default function CoordinationNotesMobile({
 
   // Otherwise, list view
   const docGroup = (d: BoardDoc) => {
+    if (d.pinned) return 'Pinned';
     const dDate = new Date(d.date);
     const today = new Date();
     today.setHours(0,0,0,0);
@@ -232,6 +233,11 @@ export default function CoordinationNotesMobile({
               >
                 <div className="flex-1 min-w-0 pr-4 bdm-card-main">
                   <div className="flex flex-wrap items-center gap-1.5 mb-1.5 bdm-card-tags">
+                    {d.pinned && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent bdm-pinned">
+                        Pinned
+                      </span>
+                    )}
                     {isToday && (
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-on-primary bdm-today">
                         Today

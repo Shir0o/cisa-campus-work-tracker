@@ -236,13 +236,20 @@ export const canViewBoard = (role: AppRole | string | null): boolean => boardLev
 export const canViewBoardNotes = (role: AppRole | string | null): boolean => boardLevelForRole(role) >= 1;
 export const canEditBoard = (isAdmin: boolean): boolean => isAdmin;
 
-// The two list groups, in order.
-export const DOC_GROUPS = ['This week', 'Earlier'] as const;
+// The list groups, in order (Pinned float to their own section at top).
+export const DOC_GROUPS = ['Pinned', 'This week', 'Earlier'] as const;
 export type DocGroup = (typeof DOC_GROUPS)[number];
 
-// A page is "This week" if its date falls in the current week (Mon–Sun);
+// A page is "Pinned" if its pinned flag is true;
+// "This week" if its date falls in the current week (Mon–Sun);
 // everything else is filed under "Earlier".
-export const docGroup = (date: string): DocGroup => {
+export const docGroup = (
+  dateOrDoc: string | { date: string; pinned?: boolean },
+  pinned?: boolean,
+): DocGroup => {
+  const isPinned = typeof dateOrDoc === 'object' ? !!dateOrDoc.pinned : !!pinned;
+  if (isPinned) return 'Pinned';
+  const date = typeof dateOrDoc === 'object' ? dateOrDoc.date : dateOrDoc;
   const d = parseISO(date);
   return isValid(d) && isThisWeek(d, { weekStartsOn: 1 }) ? 'This week' : 'Earlier';
 };
