@@ -82,6 +82,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
 import {
   BoardDoc,
+  DocGroup,
   BoardNote,
   NoteType,
   BOARD_SERIES,

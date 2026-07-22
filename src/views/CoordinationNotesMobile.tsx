@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, Check, Plus, Search, X, CheckSquare, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { BoardDoc, Audience, BOARD_AUDIENCE } from '../lib/board';
+import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
 import { mdPreview, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 
@@ -167,16 +167,7 @@ export default function CoordinationNotesMobile({
   }
 
   // Otherwise, list view
-  const docGroup = (d: BoardDoc) => {
-    if (d.pinned) return 'Pinned';
-    const dDate = new Date(d.date);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const diff = (dDate.getTime() - today.getTime()) / (24*3600*1000);
-    if (diff === 0) return 'This week';
-    if (diff > 0) return 'Upcoming';
-    return 'Past sessions';
-  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 page dash bd-page bdoc-page bdm" data-role="ft">
