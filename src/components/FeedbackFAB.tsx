@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Pencil, X } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Pencil, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 import { roleLabel } from '../lib/permissions';
@@ -46,17 +45,16 @@ export default function FeedbackFAB() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
-    const fabBtn = document.getElementById('feedback-fab-btn');
-    const dialogPanel = document.querySelector('div[role="dialog"]');
     try {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
-      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'hidden';
-
       const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
         scale: 1.0,
+        ignoreElements: (el) =>
+          el.id === 'feedback-fab-btn' ||
+          el.getAttribute('role') === 'dialog' ||
+          Boolean(el.closest('[role="dialog"]')),
       });
 
       let finalCanvas = canvas;
@@ -80,9 +78,6 @@ export default function FeedbackFAB() {
       }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
-    } finally {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
-      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {
@@ -235,8 +230,9 @@ export default function FeedbackFAB() {
                         <button
                           key={k.id}
                           type="button"
+                          disabled={phase === 'busy'}
                           onClick={() => setKind(k.id)}
-                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer ${
+                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                             on
                               ? `${TONE_CLASSES[k.tone].chip} border-transparent font-medium`
                               : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
@@ -251,6 +247,7 @@ export default function FeedbackFAB() {
                   <textarea
                     ref={areaRef}
                     value={message}
+                    disabled={phase === 'busy'}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => {
                       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
@@ -259,7 +256,7 @@ export default function FeedbackFAB() {
                     maxLength={600}
                     placeholder={activeMeta.placeholder}
                     aria-label="Your note"
-                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow"
+                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
                   />
 
                   <div className="flex items-center justify-between gap-3">
@@ -270,9 +267,16 @@ export default function FeedbackFAB() {
                       type="button"
                       onClick={submit}
                       disabled={!canSend}
-                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer"
+                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer flex items-center gap-1.5"
                     >
-                      {phase === 'busy' ? 'Sending…' : 'Send'}
+                      {phase === 'busy' ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending…</span>
+                        </>
+                      ) : (
+                        'Send'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -284,3 +288,4 @@ export default function FeedbackFAB() {
     </>
   );
 }
+
