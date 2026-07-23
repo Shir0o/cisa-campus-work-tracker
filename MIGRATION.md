@@ -575,6 +575,24 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       own troubleshooting docs warn about — no Android emulator/AVD is
       configured in this environment (only iOS Simulator); worth a follow-up
       check on a real Android device. This closes out Phase 3 completely.
+      **Second bug found + fixed on a later native-build verification pass**:
+      opening any sheet (first caught via `InviteSheet`) crashed with
+      `ReanimatedError: Property 'window' doesn't exist` on a real native iOS
+      build — never surfaced on Expo web, where this Reanimated code path
+      doesn't execute the same way. Root cause was upstream in
+      `@gorhom/bottom-sheet@5.2.14` itself (a regression introduced in that
+      exact version — see the Changelog's `[Unreleased]` entry for the full
+      root-cause writeup and links), not anything in `Sheet.tsx`. Patched via
+      `patch-package` (`apps/mobile/patches/@gorhom+bottom-sheet+5.2.14.patch`).
+      Re-verified live on the iOS Simulator across 11 of the 12 sheets —
+      `InviteSheet`, `EditRoleSheet`, `RemoveAccessSheet`, `AddContactSheet`,
+      `HoldPrayerSheet`, `MoveSheet`, `QuickCaptureSheet`, `RosterSheet`,
+      `CreateChatSheet`, `ChatDetailsSheet`, `HistoryFilterSheet` — no crashes.
+      `ContactsPickerSheet` (My Day) wasn't independently reached via UI
+      navigation in that pass (a nested-scroll gesture issue on My Day's feed
+      blocked scrolling to its trigger, unrelated to this bug) but shares the
+      identical `Sheet.tsx`/`useAnimatedLayout` code path already proven fixed
+      — worth a quick direct check next time My Day is touched.
 
 ### ✅ Phase 4 — High-risk screens (all three screens DONE)
 - [x] ~~The Journey (dnd-kit → gesture-based move / MoveSheet)~~ — done,
