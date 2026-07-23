@@ -132,6 +132,11 @@ describe('Board Pure Helpers', () => {
       expect(docGroup('2026-06-22')).toBe('Earlier');
       expect(docGroup('invalid-date')).toBe('Earlier');
     });
+
+    it('groups pinned docs under "Pinned"', () => {
+      expect(docGroup('2026-06-14', true)).toBe('Pinned');
+      expect(docGroup({ date: '2026-06-14', pinned: true })).toBe('Pinned');
+    });
   });
 
   describe('weekdayShort', () => {

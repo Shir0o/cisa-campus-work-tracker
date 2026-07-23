@@ -82,6 +82,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
 import {
   BoardDoc,
+  DocGroup,
   BoardNote,
   NoteType,
   BOARD_SERIES,
@@ -741,9 +742,9 @@ export default function CoordinationNotes() {
   };
 
   const grouped = useMemo(() => {
-    const g: Record<string, BoardDoc[]> = { 'This week': [], Earlier: [] };
+    const g: Record<DocGroup, BoardDoc[]> = { Pinned: [], 'This week': [], Earlier: [] };
     [...docs].sort(docSortOrder).forEach((d) => {
-      (g[docGroup(d.date)] ||= []).push(d);
+      (g[docGroup(d)] ||= []).push(d);
     });
     return g;
   }, [docs]);

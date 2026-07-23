@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, Edit3, Check, Plus, Search, X, CheckSquare, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { BoardDoc, Audience, BOARD_AUDIENCE } from '../lib/board';
+import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
 import { mdPreview, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 
@@ -167,15 +167,7 @@ export default function CoordinationNotesMobile({
   }
 
   // Otherwise, list view
-  const docGroup = (d: BoardDoc) => {
-    const dDate = new Date(d.date);
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const diff = (dDate.getTime() - today.getTime()) / (24*3600*1000);
-    if (diff === 0) return 'This week';
-    if (diff > 0) return 'Upcoming';
-    return 'Past sessions';
-  };
+
 
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 page dash bd-page bdoc-page bdm" data-role="ft">
@@ -232,6 +224,11 @@ export default function CoordinationNotesMobile({
               >
                 <div className="flex-1 min-w-0 pr-4 bdm-card-main">
                   <div className="flex flex-wrap items-center gap-1.5 mb-1.5 bdm-card-tags">
+                    {d.pinned && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent bdm-pinned">
+                        Pinned
+                      </span>
+                    )}
                     {isToday && (
                       <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-on-primary bdm-today">
                         Today
