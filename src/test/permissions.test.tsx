@@ -100,10 +100,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
-    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages', '/answered'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -246,7 +246,7 @@ describe('Sidebar nav items', () => {
   it('admin: sees all nav items with the home labeled "My Day"', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'];
+    const labels = ['My Day', 'The Journey', 'People', 'Shared Calendar', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }

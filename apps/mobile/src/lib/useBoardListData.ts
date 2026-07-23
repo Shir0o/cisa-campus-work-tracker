@@ -30,8 +30,8 @@ export function useBoardListData() {
   }, [uid, role]);
 
   const sections = useMemo(() => {
-    const byGroup: Record<DocGroup, BoardDoc[]> = { 'This week': [], Earlier: [] };
-    for (const d of docs) byGroup[docGroup(d.date)].push(d);
+    const byGroup: Record<DocGroup, BoardDoc[]> = { Pinned: [], 'This week': [], Earlier: [] };
+    for (const d of docs) byGroup[docGroup(d)].push(d);
     return DOC_GROUPS.map((title) => ({ title, data: byGroup[title] })).filter((s) => s.data.length > 0);
   }, [docs]);
 

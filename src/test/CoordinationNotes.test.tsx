@@ -537,7 +537,7 @@ describe('CoordinationNotes', () => {
       });
     });
 
-    it('renders a pinned page first among others in the same week group', async () => {
+    it('renders a pinned page in its own Pinned section at the top of the Pages rail', async () => {
       const pinnedTodayDoc = {
         id: 'doc-pinned',
         data: () => ({
@@ -550,13 +550,11 @@ describe('CoordinationNotes', () => {
           updatedAt: 'mock-ts',
         }),
       };
-      // Both docs land in the "This week" group (mockDocs[0] is dated `today`,
-      // mockDocs[1] is old enough to fall under "Earlier") — pinning should
-      // move the pinned doc ahead of the other "This week" doc.
       setupSnapshots({ docs: [mockDocs[0], pinnedTodayDoc], notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
       await screen.findByText('Pinned today doc');
+      expect(screen.getByText('Pinned')).toBeInTheDocument();
       const titles = screen.getAllByText(/Pinned today doc|— Monday/).map((el) => el.textContent);
       expect(titles[0]).toBe('Pinned today doc');
     });

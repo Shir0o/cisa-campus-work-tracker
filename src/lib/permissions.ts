@@ -37,12 +37,14 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
+  'https://shared-calendar-6u6.pages.dev/': 'viewer',
 };
 
 export interface NavItem {
   href: string;
   label: string;
   minRole: AppRole;
+  isExternal?: boolean;
 }
 
 // Field Notes (#10) — warm, human nav labels. Route hrefs are unchanged; only
@@ -51,6 +53,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
+  { href: 'https://shared-calendar-6u6.pages.dev/', label: 'Shared Calendar', minRole: 'viewer', isExternal: true },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },

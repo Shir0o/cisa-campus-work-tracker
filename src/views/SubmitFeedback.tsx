@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Send, ArrowRight } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Send, ArrowRight, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useNavigate } from 'react-router-dom';
@@ -9,6 +8,9 @@ import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
 import PageContainer from '../components/layout/PageContainer';
+
+const MAX_SCREENSHOT_DIMENSION = 1000;
+const MAX_PAYLOAD_LENGTH = 600000;
 
 export default function SubmitFeedback() {
   const { user, role } = useAuth();
@@ -31,35 +33,39 @@ export default function SubmitFeedback() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
-    const fabBtn = document.getElementById('feedback-fab-btn');
     try {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
-
       const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
-        scale: 1.5,
+        scale: 1.0,
+        ignoreElements: (el) =>
+          el.id === 'feedback-fab-btn' ||
+          el.getAttribute('role') === 'dialog' ||
+          Boolean(el.closest('[role="dialog"]')),
       });
 
       let finalCanvas = canvas;
-      const maxDim = 1600;
-      if (canvas.width > maxDim || canvas.height > maxDim) {
-        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+      if (canvas.width > MAX_SCREENSHOT_DIMENSION || canvas.height > MAX_SCREENSHOT_DIMENSION) {
+        const scale = Math.min(MAX_SCREENSHOT_DIMENSION / canvas.width, MAX_SCREENSHOT_DIMENSION / canvas.height);
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width * scale;
-        tempCanvas.height = canvas.height * scale;
+        tempCanvas.width = Math.round(canvas.width * scale);
+        tempCanvas.height = Math.round(canvas.height * scale);
         const ctx = tempCanvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
           finalCanvas = tempCanvas;
         }
       }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
+      }
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = '';
+      }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
-    } finally {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {
@@ -172,8 +178,9 @@ export default function SubmitFeedback() {
                       <button
                         key={k.id}
                         type="button"
+                        disabled={isSubmitting}
                         onClick={() => setKind(k.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer ${
+                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                           on
                             ? `${tone.softBg} border-transparent ${tone.text} shadow-xs`
                             : 'bg-surface border-outline-variant text-on-surface hover:bg-surface-container-high'
@@ -197,13 +204,14 @@ export default function SubmitFeedback() {
                 <textarea
                   id="form-message"
                   required
+                  disabled={isSubmitting}
                   rows={6}
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   maxLength={5000}
                   placeholder={activeMeta.placeholder}
-                  className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none"
+                  className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
                 />
                 <div className="flex justify-between items-center mt-2 px-1 text-xs text-on-surface-variant">
                   <span>{user?.displayName || 'You'} · {roleLabel(role)}</span>
@@ -215,8 +223,9 @@ export default function SubmitFeedback() {
               <div className="flex items-center gap-3 justify-end pt-2 border-t border-outline-variant">
                 <button
                   type="button"
+                  disabled={isSubmitting}
                   onClick={() => navigate(-1)}
-                  className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors"
+                  className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-default"
                 >
                   Back
                 </button>
@@ -225,8 +234,17 @@ export default function SubmitFeedback() {
                   disabled={isSubmitting || !message.trim()}
                   className="py-2.5 px-6 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 transition-opacity disabled:opacity-50"
                 >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? 'Sending…' : 'Send'}
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Sending…</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4" />
+                      <span>Send</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -271,3 +289,4 @@ export default function SubmitFeedback() {
     </PageContainer>
   );
 }
+

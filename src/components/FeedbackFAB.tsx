@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Pencil, X } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { Pencil, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
+
+const MAX_SCREENSHOT_DIMENSION = 1000;
+const MAX_PAYLOAD_LENGTH = 600000;
 
 export default function FeedbackFAB() {
   const { user, role } = useAuth();
@@ -43,38 +45,39 @@ export default function FeedbackFAB() {
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
-    const fabBtn = document.getElementById('feedback-fab-btn');
-    const dialogPanel = document.querySelector('div[role="dialog"]');
     try {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'hidden';
-      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'hidden';
-
       const html2canvas = (await import('html2canvas-pro')).default;
       const canvas = await html2canvas(document.body, {
         logging: false,
         useCORS: true,
-        scale: 1.5,
+        scale: 1.0,
+        ignoreElements: (el) =>
+          el.id === 'feedback-fab-btn' ||
+          el.getAttribute('role') === 'dialog' ||
+          Boolean(el.closest('[role="dialog"]')),
       });
 
       let finalCanvas = canvas;
-      const maxDim = 1600;
-      if (canvas.width > maxDim || canvas.height > maxDim) {
-        const scale = Math.min(maxDim / canvas.width, maxDim / canvas.height);
+      if (canvas.width > MAX_SCREENSHOT_DIMENSION || canvas.height > MAX_SCREENSHOT_DIMENSION) {
+        const scale = Math.min(MAX_SCREENSHOT_DIMENSION / canvas.width, MAX_SCREENSHOT_DIMENSION / canvas.height);
         const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = canvas.width * scale;
-        tempCanvas.height = canvas.height * scale;
+        tempCanvas.width = Math.round(canvas.width * scale);
+        tempCanvas.height = Math.round(canvas.height * scale);
         const ctx = tempCanvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(canvas, 0, 0, tempCanvas.width, tempCanvas.height);
           finalCanvas = tempCanvas;
         }
       }
-      screenshot = finalCanvas.toDataURL('image/jpeg', 0.85);
+      screenshot = finalCanvas.toDataURL('image/jpeg', 0.65);
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = finalCanvas.toDataURL('image/jpeg', 0.4);
+      }
+      if (screenshot.length > MAX_PAYLOAD_LENGTH) {
+        screenshot = '';
+      }
     } catch (err) {
       console.error('Failed to capture screenshot:', err);
-    } finally {
-      if (fabBtn) (fabBtn as HTMLElement).style.visibility = 'visible';
-      if (dialogPanel) (dialogPanel as HTMLElement).style.visibility = 'visible';
     }
 
     const payload = {
@@ -227,8 +230,9 @@ export default function FeedbackFAB() {
                         <button
                           key={k.id}
                           type="button"
+                          disabled={phase === 'busy'}
                           onClick={() => setKind(k.id)}
-                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer ${
+                          className={`text-[12.5px] rounded-full px-3 py-1 border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                             on
                               ? `${TONE_CLASSES[k.tone].chip} border-transparent font-medium`
                               : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
@@ -243,6 +247,7 @@ export default function FeedbackFAB() {
                   <textarea
                     ref={areaRef}
                     value={message}
+                    disabled={phase === 'busy'}
                     onChange={(e) => setMessage(e.target.value)}
                     onKeyDown={(e) => {
                       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
@@ -251,7 +256,7 @@ export default function FeedbackFAB() {
                     maxLength={600}
                     placeholder={activeMeta.placeholder}
                     aria-label="Your note"
-                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow"
+                    className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
                   />
 
                   <div className="flex items-center justify-between gap-3">
@@ -262,9 +267,16 @@ export default function FeedbackFAB() {
                       type="button"
                       onClick={submit}
                       disabled={!canSend}
-                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer"
+                      className="shrink-0 py-1.5 px-4 bg-primary text-on-primary font-semibold rounded-full text-[13px] hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-default border-none cursor-pointer flex items-center gap-1.5"
                     >
-                      {phase === 'busy' ? 'Sending…' : 'Send'}
+                      {phase === 'busy' ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Sending…</span>
+                        </>
+                      ) : (
+                        'Send'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -276,3 +288,4 @@ export default function FeedbackFAB() {
     </>
   );
 }
+

@@ -136,6 +136,42 @@ describe('User Feedback Feature', () => {
       expect(closeBtn).toHaveAttribute('aria-expanded', 'true');
     });
 
+    it('displays loading indication and keeps fab button visible while submitting', async () => {
+      let resolveFetch: (val: any) => void = () => {};
+      (global.fetch as any).mockImplementationOnce(
+        () => new Promise((resolve) => { resolveFetch = resolve; })
+      );
+
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      const fabBtn = document.querySelector('#feedback-fab-btn') as HTMLElement;
+      expect(fabBtn).toBeInTheDocument();
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      const textarea = screen.getByRole('textbox', { name: /Your note/i });
+      await userAct.type(textarea, 'Testing loading indication');
+
+      const sendBtn = screen.getByRole('button', { name: 'Send' });
+      await userAct.click(sendBtn);
+
+      // FAB button remains visible (not hidden via inline style)
+      expect(fabBtn.style.visibility).not.toBe('hidden');
+
+      // Loading state visible
+      expect(screen.getByText('Sending…')).toBeInTheDocument();
+
+      // Resolve API call
+      resolveFetch({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+      });
+    });
+
     it('keeps panel in idle phase when API returns error', async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,

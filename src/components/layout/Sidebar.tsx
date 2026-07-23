@@ -17,7 +17,9 @@ import {
   FileText,
   LogOut,
   X,
-  Sun
+  Sun,
+  CalendarDays,
+  ExternalLink,
 } from 'lucide-react';
 import { cn, getUserAvatar } from '../../lib/utils';
 
@@ -73,6 +75,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
     '/': Sunrise,
     '/board': Kanban,
     '/directory': Contact,
+    'https://shared-calendar-6u6.pages.dev/': CalendarDays,
     '/history': HistoryIcon,
     '/attendance': CalendarCheck,
     '/prayer': HeartHandshake,
@@ -178,37 +181,63 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           )}
         >
           {navItems.map((item) => (
-            <NavLink
-              key={item.href}
-              to={item.href}
-              onClick={() => setIsMobileMenuOpen(false)}
-              className={({ isActive }) => cn(
-                "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
-                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
-                isActive
-                  ? "bg-stage-accent-soft text-on-surface font-medium"
-                  : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
-              )}
-              title={effectiveIsCollapsed ? item.label : undefined}
-            >
-              {({ isActive }) => (
-                <>
-                  {/* Accent left-rail on the active item */}
-                  {isActive && !effectiveIsCollapsed && (
-                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
-                  )}
-                  <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
-                  <motion.span
-                    initial={false}
-                    animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
-                    transition={{ duration: 0.2 }}
-                    className="whitespace-nowrap overflow-hidden"
-                  >
-                    {item.label}
-                  </motion.span>
-                </>
-              )}
-            </NavLink>
+            item.isExternal ? (
+              <a
+                key={item.href}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11 text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface",
+                  effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3"
+                )}
+                title={effectiveIsCollapsed ? item.label : undefined}
+              >
+                <item.icon className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
+                <motion.span
+                  initial={false}
+                  animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                  transition={{ duration: 0.2 }}
+                  className="whitespace-nowrap overflow-hidden flex items-center gap-1.5"
+                >
+                  <span>{item.label}</span>
+                  <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                </motion.span>
+              </a>
+            ) : (
+              <NavLink
+                key={item.href}
+                to={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) => cn(
+                  "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
+                  effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
+                  isActive
+                    ? "bg-stage-accent-soft text-on-surface font-medium"
+                    : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
+                )}
+                title={effectiveIsCollapsed ? item.label : undefined}
+              >
+                {({ isActive }) => (
+                  <>
+                    {/* Accent left-rail on the active item */}
+                    {isActive && !effectiveIsCollapsed && (
+                      <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
+                    )}
+                    <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                    <motion.span
+                      initial={false}
+                      animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                      transition={{ duration: 0.2 }}
+                      className="whitespace-nowrap overflow-hidden"
+                    >
+                      {item.label}
+                    </motion.span>
+                  </>
+                )}
+              </NavLink>
+            )
           ))}
         </div>
 
