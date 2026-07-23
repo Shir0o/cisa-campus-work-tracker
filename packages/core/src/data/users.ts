@@ -85,6 +85,13 @@ export async function changeUserRole(db: Firestore, uid: string, newRole: AppRol
   await updateDoc(doc(db, "users", uid), { role: newRole, updatedAt: serverTimestamp() });
 }
 
+/** Best-effort remote push token registration — the owner writing to their
+ * own doc. `pushToken` is otherwise unused until Phase 5's `eas init` step
+ * unblocks minting a real one (see MIGRATION.md). */
+export async function setPushToken(db: Firestore, uid: string, pushToken: string | null): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { pushToken, updatedAt: serverTimestamp() });
+}
+
 export interface SendInvitationInput {
   email: string;
   role: AppRole;

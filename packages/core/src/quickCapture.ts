@@ -89,3 +89,28 @@ export function reminderDueDate(preset: ReminderPreset, now: number = Date.now()
   d.setDate(d.getDate() + REMINDER_PRESET_DAYS[preset]);
   return format(d, "yyyy-MM-dd");
 }
+
+// A fixed local hour for the OS reminder notification to fire at — arbitrary
+// but reasonable (morning). Kept separate from reminderDueDate(), which must
+// stay a bare yyyy-MM-dd for the Firestore tasks rule's 20-char cap (see
+// above) — this is the full instant a local notification actually schedules
+// against.
+const REMINDER_NOTIFICATION_HOUR = 9;
+
+/** Full local Date+time a reminder's OS notification should fire at, for the
+ * given preset. Same day reminderDueDate() resolves to, at a fixed hour. */
+export function reminderNotificationTrigger(preset: ReminderPreset, now: number = Date.now()): Date {
+  const d = new Date(now);
+  d.setDate(d.getDate() + REMINDER_PRESET_DAYS[preset]);
+  d.setHours(REMINDER_NOTIFICATION_HOUR, 0, 0, 0);
+  return d;
+}
+
+/** Title/body for a reminder's local notification — title mirrors the
+ * Firestore task's own title, body is just the contact's name for context. */
+export function reminderNotificationContent(
+  reminderTitle: string,
+  contactName: string,
+): { title: string; body: string } {
+  return { title: reminderTitle, body: contactName };
+}
