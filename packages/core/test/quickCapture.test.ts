@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { quickCaptureRecents, quickCaptureSearchMatches, reminderDueDate } from '../src/quickCapture';
+import { format } from 'date-fns';
+import {
+  quickCaptureRecents,
+  quickCaptureSearchMatches,
+  reminderDueDate,
+  reminderNotificationTrigger,
+  reminderNotificationContent,
+} from '../src/quickCapture';
 import type { Touch } from '../src/myday';
 import type { Contact } from '../src/types';
 
@@ -103,5 +110,32 @@ describe('reminderDueDate', () => {
     const week = new Date(reminderDueDate('week', NOW)).getTime();
     expect(Math.round((few - tom) / DAY_MS)).toBe(2);
     expect(Math.round((week - tom) / DAY_MS)).toBe(6);
+  });
+});
+
+describe('reminderNotificationTrigger', () => {
+  it('lands on the same day reminderDueDate resolves to, at 9 AM local', () => {
+    const trigger = reminderNotificationTrigger('tom', NOW);
+    const dueDate = reminderDueDate('tom', NOW);
+    expect(format(trigger, 'yyyy-MM-dd')).toBe(dueDate);
+    expect(trigger.getHours()).toBe(9);
+    expect(trigger.getMinutes()).toBe(0);
+  });
+
+  it('resolves the three fixed presets +1/+3/+7 days apart, same as reminderDueDate', () => {
+    const tom = reminderNotificationTrigger('tom', NOW).getTime();
+    const few = reminderNotificationTrigger('few', NOW).getTime();
+    const week = reminderNotificationTrigger('week', NOW).getTime();
+    expect(Math.round((few - tom) / DAY_MS)).toBe(2);
+    expect(Math.round((week - tom) / DAY_MS)).toBe(6);
+  });
+});
+
+describe('reminderNotificationContent', () => {
+  it('uses the reminder title as the notification title and contact name as body', () => {
+    expect(reminderNotificationContent('Follow up with Alex', 'Alex')).toEqual({
+      title: 'Follow up with Alex',
+      body: 'Alex',
+    });
   });
 });

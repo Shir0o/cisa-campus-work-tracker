@@ -12,6 +12,8 @@ import {
   quickCaptureRecents,
   quickCaptureSearchMatches,
   reminderDueDate,
+  reminderNotificationContent,
+  reminderNotificationTrigger,
   type Contact,
   type QuickCaptureKindId,
   type ReminderPreset,
@@ -27,6 +29,7 @@ import { addInteraction } from '../../lib/data/interactions';
 import { addTodo } from '../../lib/data/todos';
 import { addPrayer } from '../../lib/data/prayers';
 import { sendNotification } from '../../lib/firebase';
+import { ensureNotificationPermission, scheduleReminderNotification } from '../../lib/notifications';
 
 type Step = 'who' | 'newname' | 'note' | 'done';
 
@@ -194,6 +197,20 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
         },
         { uid, name: user?.displayName ?? '' },
       );
+
+      // Real OS-level ping, on top of today's Firestore-only task doc — even
+      // if the app is closed by the time it fires. Best-effort: silently
+      // skipped if permission is denied or on web.
+      const granted = await ensureNotificationPermission();
+      if (granted) {
+        const { title: notifTitle, body } = reminderNotificationContent(title, savedContact.name);
+        void scheduleReminderNotification({
+          title: notifTitle,
+          body,
+          trigger: reminderNotificationTrigger(remindPreset),
+        });
+      }
+
       if (savedContact.createdBy && savedContact.createdBy !== uid) {
         void sendNotification({
           userId: savedContact.createdBy,

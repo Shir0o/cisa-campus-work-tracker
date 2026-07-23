@@ -80,12 +80,14 @@ service cloud.firestore {
                       );
 
       allow update: if isValidId(userId) && (
-                      (isManager() && isValidUser(incoming())) || 
-                      (isOwner(userId) && 
-                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']) &&
+                      (isManager() && isValidUser(incoming())) ||
+                      (isOwner(userId) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt', 'pushToken']) &&
                        incoming().email == existing().email &&
                        incoming().role == existing().role &&
                        incoming().approved == existing().approved &&
+                       (!('pushToken' in incoming()) || incoming().pushToken == null ||
+                        (incoming().pushToken is string && incoming().pushToken.size() <= 200)) &&
                        isValidUser(incoming()))
                     );
       allow delete: if isValidId(userId) && isAdmin();

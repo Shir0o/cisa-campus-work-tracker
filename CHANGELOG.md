@@ -7,6 +7,52 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile — `expo-notifications` local reminder notifications, code done
+  and unit-tested; live permission-request verification blocked by a found
+  bug (not silently claimed as working).** Installed `expo-notifications` +
+  its config plugin; new `packages/core/src/quickCapture.ts`
+  `reminderNotificationTrigger`/`reminderNotificationContent` (unit-tested,
+  packages/core now 218/218) compute a real OS-notification trigger `Date`
+  for a Quick Capture reminder, kept separate from `reminderDueDate` (which
+  must stay a bare `yyyy-MM-dd` for the Firestore rule's 20-char cap). New
+  `apps/mobile/src/lib/notifications.ts` + `usePushRegistration.ts` (every
+  call guarded `Platform.OS !== 'web'`) and a new Settings
+  `NotificationsSettings.tsx` card. Added `AppUser.pushToken` +
+  `firestore.rules` widening — proven via 3 new cases in the existing
+  emulator-backed `src/test/firestore.rules.test.ts` suite (65/65 passing).
+  Verified live on Expo web: clean "Not available on web" fallback, no
+  console errors. **Found a real, reproducible bug on the iOS Simulator**:
+  tapping "Enable notifications" hangs the entire app with no crash/error
+  (reproduced 5+ times, including after a full simulator reboot) — likely
+  an `expo-notifications` incompatibility with React Native's Bridgeless/
+  New Architecture mode. Not fixed this pass, per explicit user choice; see
+  `MIGRATION.md`'s Phase 5 entry for the full writeup. Remote push (a real
+  Expo push token + server-side dispatch) remains deferred behind `eas
+  init` and new server infrastructure, same as previously.
+
+### Fixed
+- **A pre-existing, unrelated bug found while verifying the above**:
+  opening Settings' "Add someone" (`InviteSheet`, built on the shared
+  `Sheet.tsx`/`@gorhom/bottom-sheet` primitive used by 12 sheets) crashes
+  the app on the iOS Simulator with `Uncaught Error: Property 'window'
+  doesn't exist`, rooted in `@gorhom/bottom-sheet`'s `useAnimatedLayout` +
+  `react-native-reanimated`. Not caused by the notifications work (no
+  dependency versions changed) — flagged as a separate follow-up task
+  rather than fixed here, since it's unrelated and affects a shared
+  primitive.
+- **`MIGRATION.md` documentation catch-up.** Two already-merged PRs (#160,
+  #161 — mobile delete-with-undo for interactions, soft-delete/Trash/pin for
+  Coordination Notes) had shipped real features the doc never mentioned;
+  added a full entry documenting them. Separately, the doc claimed the
+  Phase 3 Notifications `firestore.rules` fix was "committed but not yet
+  deployed" — stale: `gh run list --workflow=deploy-firestore-rules.yml`
+  shows it deployed successfully on 2026-07-15. Live-reverified against the
+  e2e Student (operator) and Community (viewer) users on Expo web:
+  "Mark all read" and the per-item set-aside action both succeed with no
+  `permission-denied` for either role — the doc now reflects this is fully
+  closed.
+
+### Added
 - **Coordination notes — pinned notes now appear at the top in a dedicated "Pinned" section.** Added `"Pinned"` as the top section in `DOC_GROUPS` (`packages/core/src/board.ts` and `src/lib/board.ts`) and updated `docGroup` so pinned coordination notes float above date dividers ("This week", "Earlier") into their own section across Web and Mobile.
 - **Navigation — added external link to standalone Shared Calendar.** Added `Shared Calendar` nav link (`https://shared-calendar-6u6.pages.dev/`) opening in a new tab to `NAV_ITEMS` in `src/lib/permissions.ts` and updated `Sidebar.tsx` to support external links with `ExternalLink` indicators.
 - **Web — coordination notes ("The Board") deletes now show the same undo-snackbar UX as mobile's interactions/Trash work, instead of a blocking confirm dialog.** `CoordinationNotes.tsx` and `EmbedCoordinationDoc.tsx` both used `window.confirm` + an inline `updateDoc({deletedAt})` for delete; replaced with an immediate soft-delete + a 5s "Page moved to Trash / Undo" snackbar (`restoreBoardDoc` on Undo). Extracted `MyDay.tsx`'s existing `UndoSnackbar`/`showUndoSnack` pattern (previously local to that file, used for archived-prayer undo) into shared `src/hooks/useUndoSnack.ts` + `src/components/UndoSnackbar.tsx`, now used in three places. Added a new `src/lib/data/board.ts` (web has no dependency on `@cisa/core`, so this mirrors `packages/core/src/data/board.ts`'s `softDeleteBoardDoc`/`restoreBoardDoc`/`deleteBoardDoc` for the web app).

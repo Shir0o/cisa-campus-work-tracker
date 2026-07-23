@@ -11,6 +11,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
+import { usePushRegistration } from '../src/lib/usePushRegistration';
 
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.
@@ -24,6 +25,7 @@ function RootNavigator() {
   const { mode, colors } = useTheme();
   const { user, loading } = useAuth();
   const pathname = usePathname();
+  usePushRegistration();
   const [fontsLoaded, fontError] = useFonts({
     Newsreader_500Medium,
     HankenGrotesk_400Regular,
