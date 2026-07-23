@@ -10,6 +10,7 @@ import { useTeamData } from '../src/lib/useTeamData';
 import { ProfileHeader } from '../src/components/settings/ProfileHeader';
 import { RolesReference } from '../src/components/settings/RolesReference';
 import { AppearancePicker } from '../src/components/settings/AppearancePicker';
+import { NotificationsSettings } from '../src/components/settings/NotificationsSettings';
 import { MemberRow } from '../src/components/settings/MemberRow';
 import { PendingMemberRow } from '../src/components/settings/PendingMemberRow';
 import { InviteRow } from '../src/components/settings/InviteRow';
@@ -72,6 +73,8 @@ export default function SettingsScreen() {
         <RolesReference currentRole={role} />
 
         <AppearancePicker />
+
+        <NotificationsSettings />
 
         {canManage && (
           <View style={{ gap: spacing.sm }}>

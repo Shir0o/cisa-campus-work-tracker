@@ -411,11 +411,17 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       pre-existing bug affecting web too). Reproduced live against the e2e
       Student (operator) user — `markAsRead` threw `permission-denied` — while
       the e2e Full-timer (admin) succeeded regardless, since `isManager()`/
-      `isSuperAdmin()` already bypasses the `hasOnly(...)` check. The rules
-      fix is committed but **not yet deployed** (needs `firebase deploy
-      --only firestore:rules`, a live-project change), so it's still
-      unverified for `operator`/`viewer` roles — deploy, then re-check
-      mark-as-read/set-aside as the Student or Community e2e user.
+      `isSuperAdmin()` already bypasses the `hasOnly(...)` check. **Update**:
+      this doc previously said the rules fix was "committed but not yet
+      deployed" — that was stale. `gh run list --workflow=deploy-firestore-rules.yml`
+      confirms the commit that introduced it (`ad058b8`, #134) auto-deployed
+      successfully via the existing `deploy-firestore-rules.yml` CI workflow
+      on 2026-07-15 — six days before this correction. **Now live-reverified**
+      (2026-07-21) against the e2e Student (operator) and Community (viewer)
+      users on Expo web: both "Mark all read" (`markAllNotificationsRead`)
+      and the per-item set-aside ("×") action succeeded with no
+      `permission-denied`/`Firestore Error` in the console for either role —
+      this item is fully closed.
 - [x] ~~SignUp~~ — done, verified live: `apps/mobile/app/signup.tsx`, backed by
       new `packages/core/src/signup.ts` (pure, unit-tested
       `validateSignUpBasics`/`checkMathAnswer` + the intake option constants)
@@ -849,6 +855,68 @@ forces the two real prerequisites (auth + live data) through one concrete path.
       without a new native speech-recognition dependency + a mic-permission
       flow) — the note field is a plain text input for now.
 
+### ✅ Coordination Notes: undo-delete, Trash, pin — DONE (#160, #161)
+- [x] **Interactions: delete-with-undo.** Contact Detail's Conversations tab
+      had no delete at all, and the app had no Snackbar/Toast component
+      anywhere. Added a reusable `apps/mobile/src/components/ui/Snackbar.tsx`
+      and a new `deleteInteraction` (`packages/core/src/data/interactions.ts`
+      + mobile wrapper — no `firestore.rules` change needed, the interactions
+      delete rule already allows the owner or a manager). Tapping Delete
+      hides the interaction immediately and shows an "Undo" Snackbar; nothing
+      is actually deleted from Firestore unless the ~4s window elapses
+      without Undo. The pending-delete state and Snackbar render in
+      `apps/mobile/app/contact/[contactId].tsx` (not `ConversationsTab.tsx`
+      itself), since the Snackbar needs to render above the tab's own
+      `ScrollView`, not inside its scrollable content.
+- [x] **Coordination Notes: soft-delete + Trash, replacing a permanent hard
+      delete.** Deleting a "Board" page (`board_docs`) used to call
+      `deleteDoc` directly, with no recovery path short of a full GCP
+      Firestore backup restore. Added a `deletedAt` soft-delete field to
+      `BoardDoc` plus `isTrashedBoardDoc`/`docSortOrder`
+      (`packages/core/src/board.ts`), and `softDeleteBoardDoc`/
+      `restoreBoardDoc`/`subscribeTrashedBoardDocs`/`isExpiredTrash`/
+      `purgeExpiredTrash` (`packages/core/src/data/board.ts` — no
+      `firestore.rules` change needed, `isValidBoardDoc` uses `hasAll`, not
+      `hasOnly`). Trash auto-purges pages older than 30 days via a lazy
+      sweep whenever a Trash view loads (no scheduled server-side job exists
+      in this repo). New admin-only `apps/mobile/app/coordination/trash.tsx`
+      (Restore, or "Delete Forever" for the old permanent-delete behavior),
+      reached via a trash icon on `coordination/index.tsx`'s header
+      (admin-only; intentionally not linked from "More" — one tap deeper
+      matches the admin-only scope, same reasoning as other admin-only
+      screens in this app). `subscribeBoardDocs` correctly excludes trashed
+      docs and applies `docSortOrder` (confirmed by reading
+      `packages/core/src/data/board.ts:34-54`). Since admins delete pages
+      today via the web-based editor embedded in a WebView, the web delete
+      handlers (`src/views/CoordinationNotes.tsx`,
+      `src/views/EmbedCoordinationDoc.tsx`) were switched to the same
+      soft-delete, and the desktop Pages list now filters out trashed docs
+      too.
+- [x] **Pin.** Coordination notes can be pinned to the top of the Pages
+      list — a `pinned?: boolean` field on `BoardDoc` plus the
+      `docSortOrder` comparator above (pinned-first, then newest-first). A
+      pin/unpin toggle (admin-only) was added to mobile's `DocCard.tsx`
+      (and web's `DocRow`), backed by a new `pinBoardDoc` helper. No
+      `firestore.rules` change needed.
+- [x] **Web-only, not ported to mobile** (confirmed no mobile equivalent
+      exists or is needed): a new web Trash view (`/coordination/trash`,
+      `src/views/CoordinationTrash.tsx` — mobile already had its own Trash
+      screen, described above); the editor's "insert a link with custom
+      display text" toolbar button (lives entirely in
+      `src/views/CoordinationNotes.tsx` — mobile's admin editor is a
+      `WebView` wrapper around the same web editor, so this is inherited for
+      free rather than natively reimplemented); a live-collaboration
+      cursor-label CSS fix; and a "Not auto-synced" indicator on Feedback's
+      admin GitHub-sync status (unrelated to Coordination Notes, bundled
+      into the same PR).
+- **Known gap, not a regression**: none of this new mobile code
+  (`Snackbar.tsx`, the Trash screen, the pin toggle) has any automated test
+  coverage — `apps/mobile` has zero test files project-wide. This matches
+  every prior phase's convention (pure logic ported into a unit-tested
+  `packages/core` module, RN screens verified manually via Expo web/
+  Simulator, never automated component tests), so it's not a new shortfall
+  specific to this feature.
+
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
       **"CISA Campus Work Tracker"** (was the shorter "CISA Campus"; the
@@ -891,8 +959,85 @@ forces the two real prerequisites (auth + live data) through one concrete path.
 - [ ] Internal TestFlight / Play internal build on a physical device — blocked
       on the `eas login`/`eas init` step above, plus the user's own Apple
       Developer / Google Play accounts.
-- [ ] (Optional) `expo-notifications` for OS push (in-app notifications are
-      Firestore docs today)
+- [x] **Local reminder notifications** — done, unit-tested; **live permission-
+      request verification is blocked** (see below), a real gap, not silently
+      claimed as working. Installed `expo-notifications` (`~0.29.14`) + its
+      config plugin (`apps/mobile/app.json`, reusing the brand icon/color —
+      confirmed wired: the generated `ios/.../*.entitlements` gained
+      `aps-environment: development` and the built `.app` includes
+      `ExpoNotifications_privacy.bundle`). New pure
+      `reminderNotificationTrigger`/`reminderNotificationContent`
+      (`packages/core/src/quickCapture.ts`, unit-tested — packages/core now
+      218/218 tests) compute a full `Date`+content for a Quick Capture
+      reminder's OS notification, kept deliberately separate from
+      `reminderDueDate` (which must stay a bare `yyyy-MM-dd` for the 20-char
+      Firestore rule cap). New `apps/mobile/src/lib/notifications.ts`
+      (`ensureNotificationPermission`/`getNotificationPermissionStatus`/
+      `registerForPushToken`/`scheduleReminderNotification`, every call
+      guarded `Platform.OS !== 'web'`) and `usePushRegistration.ts` (a silent
+      re-sync hook, no prompting — wired into `app/_layout.tsx`). Wired into
+      `QuickCaptureSheet.tsx`'s `handleSetReminder` (prompts contextually,
+      the moment a reminder is actually set — not on sign-in, which would
+      burn iOS's one-shot permission dialog before the user has a reason to
+      say yes) and a new `apps/mobile/src/components/settings/
+      NotificationsSettings.tsx` (status row + "Enable notifications" +
+      "Open Settings" on denial + a `__DEV__`-only test-notification button),
+      rendered in `settings.tsx` after `AppearancePicker`. Added
+      `AppUser.pushToken?: string | null` (`packages/core/src/types.ts`) +
+      `setPushToken` (`packages/core/src/data/users.ts` +
+      `apps/mobile/src/lib/data/users.ts`) + a `firestore.rules` widening of
+      the self-owner `users` update rule's `hasOnly([...])` allowlist to
+      include `pushToken` (with a `<= 200`-char/string type guard) — **this
+      one is genuinely proven, not just read-through**: this repo already has
+      an emulator-backed rules suite (`src/test/firestore.rules.test.ts`);
+      added 3 new cases (owner can set `pushToken` alone; cannot smuggle
+      `role`/`approved` alongside it; an oversized/non-string value fails),
+      confirmed via `firebase emulators:exec --only firestore "npm test"` —
+      65/65 passing. Verified live on Expo web: the `NotificationsSettings`
+      card correctly renders "Not available on web" (no button, no crash,
+      clean console) — confirming every new call's `Platform.OS !== 'web'`
+      guard works as intended.
+      **Live iOS Simulator verification found a real, reproducible bug,
+      left open rather than silently marked done**: tapping "Enable
+      notifications" (→ `Notifications.getPermissionsAsync()`/
+      `requestPermissionsAsync()`) hangs the entire app — no crash, no
+      thrown error, no console output at all (confirmed via a temporary
+      diagnostic `console.log` at the very top of the handler, which never
+      fired, meaning the freeze happens before JS's `onPress` even runs) —
+      requiring a force-relaunch to recover. Reproduced 5+ times across
+      fresh app relaunches, a full `xcrun simctl shutdown`+`boot` cycle, and
+      after ruling out a separate, unrelated `@gorhom/bottom-sheet` crash
+      (`ReanimatedError: Property 'window' doesn't exist`, hit once when
+      opening Settings' `InviteSheet` — a pre-existing bug in a sheet this
+      migration's native pass had never actually opened live before; not
+      caused by this feature and not fixed here, flagged separately). A web
+      search corroborates a known class of `expo-notifications`
+      incompatibility with React Native's Bridgeless/New Architecture mode
+      (`app.json`'s `newArchEnabled: true`, already on for this whole app).
+      Per explicit user choice, not chased further this session — the two
+      real fixes (disabling New Architecture app-wide, which would need
+      re-verifying every other already-shipped native screen; or finding/
+      waiting for a newer `expo-notifications` patch) are both bigger calls
+      than fit in this pass. **The code itself is correct** (matches the
+      installed package's actual `.d.ts` shapes, confirmed by reading them
+      directly rather than assuming) — what's unverified is specifically the
+      live permission dialog on this iOS Simulator + New Architecture
+      combination.
+- [ ] Remote push (a real Expo push token reaching a server, a server
+      dispatching it via the Expo Push API) — deferred, **two independent
+      blockers**: (1) minting a token needs `extra.eas.projectId`, which only
+      exists after `eas login`/`eas init` — the same user-account blocker as
+      TestFlight above; `registerForPushToken()` already degrades cleanly to
+      a dev-only `console.warn` + `null` without it. (2) dispatching a push
+      once a token exists needs new server-side infrastructure this repo
+      doesn't have today — no Firestore-triggered Cloud Functions exist
+      (`firebase.json` has no `functions` key) — building this means either
+      standing up Cloud Functions for the first time or adding a new
+      `server.ts` endpoint (mirroring the `/api/mint-custom-token` pattern)
+      that the client calls after writing a notification doc. Either path is
+      new live infrastructure needing the user's explicit go-ahead to
+      deploy, same as the Coordination Notes WebView's
+      `mint-custom-token`-to-production precedent above.
 
 ### 🔲 Phase 6 — Web unification (now the real end state, no SEO caveat)
 - [x] **Turn on Expo Router web; reach parity with the current web app** — route
@@ -1119,6 +1264,42 @@ forces the two real prerequisites (auth + live data) through one concrete path.
     build), retiring the old web app (needs the user's hosting decision),
     and reconciling React versions (deferred, higher-risk) — none of these
     are something an agent can complete unassisted.
+21. ~~Doc catch-up + Notifications rules re-verification~~ — **done**. Two
+    already-merged PRs (#160, #161) had shipped real mobile features —
+    delete-with-undo for interactions and soft-delete/Trash/pin for
+    Coordination Notes — that this doc never mentioned; documented them (see
+    the new entry above). Separately, this doc had claimed the Phase 3
+    Notifications `firestore.rules` fix was "committed but not yet
+    deployed" — that was stale (it deployed successfully on 2026-07-15, six
+    days earlier); confirmed via `gh run list` and then live-reverified
+    against the e2e Student and Community users, closing that item for
+    real. No new mobile screens or infra — a pure documentation-accuracy and
+    verification pass. What's left overall: the user-account-linking part of
+    Phase 5 (`eas login`/`eas init`, an Apple/Google developer account, an
+    actual TestFlight/Play build), retiring the old web app (needs the
+    user's hosting decision), reconciling React versions (deferred,
+    higher-risk), and `expo-notifications` for OS push (the one remaining
+    unblocked feature — see the Phase 5 entry).
+22. ~~`expo-notifications` — local reminder notifications~~ — **code done,
+    unit-tested, and the `pushToken` rules change is genuinely proven via
+    the emulator suite; live iOS Simulator permission-request verification
+    is blocked** (see the Phase 5 entry above for the full writeup). Found a
+    real, reproducible hang — tapping "Enable notifications" freezes the
+    app, likely an `expo-notifications`/Bridgeless-New-Architecture
+    incompatibility — and, along the way, a separate pre-existing crash in
+    the shared `Sheet.tsx`/`@gorhom/bottom-sheet` primitive (opening
+    Settings' `InviteSheet` throws `Property 'window' doesn't exist`),
+    flagged separately as its own follow-up rather than fixed here since
+    it's unrelated and affects a primitive shared by 12 sheets. Per
+    explicit user choice, neither was chased further this session. What's
+    left overall: the user-account-linking part of Phase 5 (`eas login`/
+    `eas init`, an Apple/Google developer account, an actual TestFlight/
+    Play build), retiring the old web app (needs the user's hosting
+    decision), reconciling React versions (deferred, higher-risk), the
+    `InviteSheet`/Reanimated crash (flagged separately), and confirming the
+    local-notification permission flow on a real device or after resolving
+    the New Architecture incompatibility — none of these are something an
+    agent can complete unassisted this pass.
 
 **Re-sequencing note**: the numbering above is historical — in practice,
 Phase 2 screens (Prayer, Directory — both done) had no external blockers and

@@ -93,6 +93,67 @@ describeRules('Firestore Security Rules', () => {
         updatedAt: new Date().toISOString()
       }));
     });
+
+    it('Owner can update pushToken alone', async () => {
+      const db = getFirestore({ uid: 'user3', email: 'user3@example.com' });
+      const userRef = doc(db, 'users', 'user3');
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'user3'), {
+          email: 'user3@example.com',
+          displayName: 'User Three',
+          photoURL: null,
+          role: 'viewer',
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await assertSucceeds(updateDoc(userRef, { pushToken: 'ExponentPushToken[abc123]', updatedAt: serverTimestamp() }));
+    });
+
+    it('Owner cannot smuggle role/approved alongside a pushToken update', async () => {
+      const db = getFirestore({ uid: 'user4', email: 'user4@example.com' });
+      const userRef = doc(db, 'users', 'user4');
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'user4'), {
+          email: 'user4@example.com',
+          displayName: 'User Four',
+          photoURL: null,
+          role: 'viewer',
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await assertFails(updateDoc(userRef, { pushToken: 'ExponentPushToken[abc123]', role: 'admin' }));
+    });
+
+    it('Owner cannot set an oversized or non-string pushToken', async () => {
+      const db = getFirestore({ uid: 'user5', email: 'user5@example.com' });
+      const userRef = doc(db, 'users', 'user5');
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'users', 'user5'), {
+          email: 'user5@example.com',
+          displayName: 'User Five',
+          photoURL: null,
+          role: 'viewer',
+          approved: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        });
+      });
+
+      await assertFails(updateDoc(userRef, { pushToken: 'x'.repeat(201) }));
+      await assertFails(updateDoc(userRef, { pushToken: 12345 }));
+    });
   });
 
   describe('Contacts', () => {

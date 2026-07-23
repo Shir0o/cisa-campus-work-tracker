@@ -42,6 +42,16 @@ export async function changeUserRole(uid: string, newRole: AppRole): Promise<voi
   }
 }
 
+/** Best-effort — called from a silent background sync (usePushRegistration),
+ * so a failure just logs rather than throwing/crashing. */
+export async function setPushToken(uid: string, pushToken: string | null): Promise<void> {
+  try {
+    await core.setPushToken(db, uid, pushToken);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `users/${uid}`, { rethrow: false });
+  }
+}
+
 export async function sendInvitation(input: { email: string; role: AppRole; invitedBy: string }): Promise<void> {
   const email = input.email.trim().toLowerCase();
   try {

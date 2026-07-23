@@ -174,6 +174,7 @@ export interface AppUser {
   photoURL: string;
   approved: boolean;
   role: 'admin' | 'manager' | 'operator' | 'viewer';
+  pushToken?: string | null;
 }
 
 export interface Invitation {

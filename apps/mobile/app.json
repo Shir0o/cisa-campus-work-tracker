@@ -35,6 +35,13 @@
       "expo-asset",
       "@react-native-google-signin/google-signin",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/adaptive-icon-foreground.png",
+          "color": "#5c5595"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
