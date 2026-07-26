@@ -31,7 +31,11 @@ export default function ContactDetail() {
   const data = useContactDetailData(contactId);
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<ContactDetailTab>(
-    interactionId ? 'interactions' : tab === 'thread' ? 'thread' : 'overview',
+    interactionId
+      ? 'interactions'
+      : tab === 'thread' || tab === 'prayer'
+        ? tab
+        : 'overview',
   );
 
   const canWrite = role !== 'viewer';

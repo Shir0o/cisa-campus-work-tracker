@@ -3,7 +3,7 @@
 // uid's cache is hydrated once in the background and listeners are notified
 // when it resolves).
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const INBOX_READ_PREFIX = 'cisa.inbox.read.';
 
@@ -95,9 +95,15 @@ export const InboxReads = {
   },
 };
 
-/** Subscribe a component to inbox read-state; re-renders on any change. */
+/** Subscribe a component to inbox read-state; re-renders on any change.
+ *
+ * Returns a NEW wrapper on every emission. `InboxReads` is a module-level
+ * singleton whose identity never changes, so returning it directly left any
+ * `useMemo`/`useEffect` that listed it as a dependency stale — the re-render
+ * happened, but the derived value did not recompute. */
 export function useInboxReads(): typeof InboxReads {
-  const [, force] = useState(0);
-  useEffect(() => InboxReads.subscribe(() => force((n) => n + 1)), []);
-  return InboxReads;
+  const [version, setVersion] = useState(0);
+  useEffect(() => InboxReads.subscribe(() => setVersion((n) => n + 1)), []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- `version` IS the input.
+  return useMemo(() => ({ ...InboxReads }), [version]);
 }

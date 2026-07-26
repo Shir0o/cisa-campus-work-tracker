@@ -7,6 +7,28 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — the trainee's home is now a focus queue, not a dashboard.**
+  Ported the Claude Design project's mobile v2 direction (`MOBILE-V2.md`,
+  direction 02 "One at a Time"): one actionable card at a time on a cream sheet
+  floating in a deep-green room, "Later" advances (swipe or button), and the
+  queue *ends* in an all-clear + "Dates worth knowing" + a look back at the
+  week. No metrics, no infinite scroll, no recurring gatherings. Five card
+  kinds — a to-do due now, a message from the full-timer who cares for you, a
+  follow-up you promised, someone gone quiet, a prayer to carry — each wired to
+  the existing data modules (`setTodoDone`/`updateTodo`, `toggleReaction`/
+  `addThreadMessage`, `InboxReads`, `sms:`, Quick Capture). New
+  `packages/core/src/queue.ts` holds the ordering as a pure `buildQueue()`
+  (group order, "later" re-queue, and a day cap that never holds back a to-do
+  that is actually due), covered by 18 new tests — packages/core now 236/236.
+  New `apps/mobile/src/theme/v2.ts` carries the v2 palette (light green room +
+  the `mobile-night.css` dark layer), Manrope 500–800 + Instrument Serif, radii
+  and the five card-kind tones, kept separate from the Material token set every
+  other screen still uses. `LandingTrainee.tsx` is no longer routed to but is
+  left on disk. Not in this pass: the ☰ drawer (bottom tabs stay), the v2
+  Settings screen and its editable prefs (the queue reads the defaults), and
+  the blue-room tint. One deliberate shortfall: "I prayed just now" marks the
+  card done for the day only — `PrayerRecord` has no `prayedBy` field and
+  adding one is a Firestore-rules change.
 - **Mobile — `expo-notifications` local reminder notifications, code done
   and unit-tested; live permission-request verification blocked by a found
   bug (not silently claimed as working).** Installed `expo-notifications` +

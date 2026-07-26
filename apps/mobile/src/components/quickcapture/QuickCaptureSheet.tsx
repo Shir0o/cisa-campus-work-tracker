@@ -38,7 +38,17 @@ type Step = 'who' | 'newname' | 'note' | 'done';
 // views/quick-capture.jsx, NOT the desktop LogInteractionModal.tsx (a
 // different, batch multi-contact flow — this is single-contact,
 // purpose-built for the tab bar's center FAB). See MIGRATION.md.
-export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function QuickCaptureSheet({
+  visible,
+  onClose,
+  initialContact,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** Open straight on this person's note step — the v2 focus queue's "Log what
+   * happened" already knows who it's about. */
+  initialContact?: Contact | null;
+}) {
   const { colors, radius, spacing } = useTheme();
   const { uid, user } = useAuth();
   const season = useActiveSeason();
@@ -48,9 +58,11 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
 
-  const [step, setStep] = useState<Step>('who');
+  // With an initialContact the "who" step is already answered, so open on the
+  // note. The Log tab passes none and lands on "who" exactly as before.
+  const [step, setStep] = useState<Step>(initialContact ? 'note' : 'who');
   const [query, setQuery] = useState('');
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(initialContact ?? null);
   const [isNew, setIsNew] = useState(false);
   const [newName, setNewName] = useState('');
 
@@ -86,9 +98,9 @@ export function QuickCaptureSheet({ visible, onClose }: { visible: boolean; onCl
   }, [visible]);
 
   const reset = () => {
-    setStep('who');
+    setStep(initialContact ? 'note' : 'who');
     setQuery('');
-    setSelectedContact(null);
+    setSelectedContact(initialContact ?? null);
     setIsNew(false);
     setNewName('');
     setKind('gospel');
