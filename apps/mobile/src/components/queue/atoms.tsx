@@ -335,7 +335,7 @@ export function Reactions({
               borderRadius: 14,
               borderWidth: 1.5,
               borderColor: on ? c.reactOnBorder : c.border,
-              backgroundColor: on ? c.reactOnBg : c.card2,
+              backgroundColor: on ? c.reactOnBg : c.react,
               alignItems: 'center',
               justifyContent: 'center',
             }}

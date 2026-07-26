@@ -11,7 +11,6 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ON_CAMPUS_DEFAULT,
   firstName,
   getUserInitials,
   isOnCampus,
@@ -52,13 +51,13 @@ export function QueueScreen() {
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
 
-  const { queue, queueState } = data;
+  const { queue, queueState, queuePrefs } = data;
   // The queue rebuilds continuously (handling a card shortens it), so the
   // pointer is clamped on read rather than corrected in an effect.
   const at = queue.length === 0 ? 0 : Math.min(index, queue.length - 1);
   const current = queue[at];
 
-  const onCampus = isOnCampus(ON_CAMPUS_DEFAULT);
+  const onCampus = isOnCampus(queuePrefs.prefs.onCampus);
 
   const api: QueueCardApi = {
     handle: (id) => {
@@ -148,6 +147,7 @@ export function QueueScreen() {
             setShowAll(false);
           }}
           onBack={() => setShowAll(false)}
+          onOpenSettings={() => router.push('/queue-settings')}
         />
       </SafeAreaView>
     );
@@ -206,7 +206,7 @@ export function QueueScreen() {
             header={
               onCampus ? (
                 <OnCampusStrip
-                  window={ON_CAMPUS_DEFAULT}
+                  window={queuePrefs.prefs.onCampus}
                   onPress={() => {
                     setLogFor(null);
                     setLogOpen(true);

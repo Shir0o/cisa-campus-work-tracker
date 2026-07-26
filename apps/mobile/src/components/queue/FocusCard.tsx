@@ -2,9 +2,10 @@
    value's `.value` IS its API; the React Compiler rule reads it as mutating a
    hook result. This is the only file in the app that uses useSharedValue. */
 // Mobile v2 — the focus card shell. Direction 02 ("One at a Time"): one clean
-// cream sheet floating in the room, sized to its content and capped by the room.
-// A tone pill instead of a header band, a scrolling body, and a foot that never
-// scrolls — card content must never slide under the chrome.
+// white sheet that ALWAYS fills the room between the meta row and the floor, so
+// a short card spans the height instead of floating as a stub and its actions
+// rest on the floor. A tone pill instead of a header band, a scrolling body, and
+// a foot that never scrolls — card content must never slide under the chrome.
 import React from 'react';
 import { AccessibilityInfo, Platform, ScrollView, Text, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -94,8 +95,7 @@ export function FocusCard({
       <Animated.View
         style={[
           {
-            flexShrink: 1,
-            maxHeight: '100%',
+            flex: 1,
             backgroundColor: c.card,
             borderRadius: radius.card,
             overflow: 'hidden',
@@ -104,7 +104,7 @@ export function FocusCard({
           cardStyle,
         ]}
       >
-        <View style={{ flexShrink: 1, paddingTop: 24, paddingHorizontal: 24, paddingBottom: 2 }}>
+        <View style={{ flex: 1, minHeight: 0, paddingTop: 24, paddingHorizontal: 24, paddingBottom: 2 }}>
           {header}
           <ScrollView
             showsVerticalScrollIndicator={false}

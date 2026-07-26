@@ -37,7 +37,7 @@ export interface V2Palette {
   /** Tint behind the ☰-style circular chrome buttons. */
   roomChip: string;
 
-  // The card — a cream sheet in the light room, a dark sheet at night.
+  // The card — a white sheet in the light room, a dark sheet at night.
   card: string;
   card2: string;
   cardInk: string;
@@ -55,6 +55,9 @@ export interface V2Palette {
   note: string;
   noteLabel: string;
   noteInk: string;
+  /** The reaction chips' resting state. A shade off `card2`: on the white card
+   * the notes/about tint would read as a filled button. */
+  react: string;
 
   // Buttons.
   primary: string;
@@ -104,21 +107,22 @@ const lightV2: V2Palette = {
   roomFaint: '#8dae97',
   roomChip: 'rgba(238,241,233,0.10)',
 
-  card: '#f4f1e6',
-  card2: '#eae5d3',
+  card: '#ffffff',
+  card2: '#f4f2ee',
   cardInk: '#16332b',
   cardInk2: '#5f7a68',
   cardInk3: '#7d8b7f',
-  line: '#ddd7c4',
-  border: '#cfc8b2',
+  line: '#e6e3dc',
+  border: '#dcd8d0',
 
   ask: '#9c4a1c',
   said: '#1e3a30',
   why: '#2c4a3c',
-  quoteLine: '#ddd7c4',
-  note: '#eae5d3',
+  quoteLine: '#e6e3dc',
+  note: '#f4f2ee',
   noteLabel: '#8b7d5c',
   noteInk: '#3b5346',
+  react: '#fbfaf8',
 
   primary: '#16332b',
   onPrimary: '#f4f1e6',
@@ -142,7 +146,7 @@ const lightV2: V2Palette = {
   mark: '#f4f1e6',
   onMark: '#16332b',
 
-  field: '#fbf9f1',
+  field: '#fbfaf8',
   datebox: 'rgba(244,241,230,0.07)',
   dateboxLine: 'rgba(244,241,230,0.12)',
 
@@ -181,6 +185,7 @@ const darkV2: V2Palette = {
   note: '#243429',
   noteLabel: '#8e9a92',
   noteInk: '#ccd6cf',
+  react: '#243429',
 
   primary: '#31614e',
   onPrimary: '#eaf3ec',

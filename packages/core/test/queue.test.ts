@@ -1,9 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
+  ON_CAMPUS_DEFAULT,
   QUEUE_PREF_DEFAULTS,
   buildQueue,
   dueInDays,
+  hourLabel,
   isOnCampus,
+  normalizeOnCampusWindow,
+  normalizeQueuePrefs,
+  onCampusSummary,
   personColor,
   queueDates,
   queueWeek,
@@ -372,5 +377,121 @@ describe('queue helpers', () => {
     expect(isOnCampus(undefined, wed2pm)).toBe(true);
     expect(isOnCampus(undefined, wed9am)).toBe(false);
     expect(isOnCampus(undefined, mon2pm)).toBe(false);
+  });
+});
+
+describe('queue preferences', () => {
+  describe('normalizeQueuePrefs', () => {
+    it('falls back to the defaults for nothing at all', () => {
+      expect(normalizeQueuePrefs(null)).toEqual(QUEUE_PREF_DEFAULTS);
+      expect(normalizeQueuePrefs(undefined)).toEqual(QUEUE_PREF_DEFAULTS);
+      expect(normalizeQueuePrefs({})).toEqual(QUEUE_PREF_DEFAULTS);
+    });
+
+    it('falls back per field, so one bad value does not throw the set away', () => {
+      expect(normalizeQueuePrefs({ quietDays: 'soon', quietMax: 3 })).toEqual({
+        ...QUEUE_PREF_DEFAULTS,
+        quietMax: 3,
+      });
+      expect(normalizeQueuePrefs({ dayCap: NaN, prayers: 5 })).toEqual({
+        ...QUEUE_PREF_DEFAULTS,
+        prayers: 5,
+      });
+    });
+
+    it('clamps each field to its own range', () => {
+      expect(normalizeQueuePrefs({ quietDays: 99, quietMax: 99, prayers: 99, dayCap: 999 })).toEqual({
+        quietDays: 14,
+        quietMax: 5,
+        prayers: 8,
+        dayCap: 30,
+      });
+      expect(normalizeQueuePrefs({ quietDays: -4, quietMax: -4, dayCap: 1 })).toMatchObject({
+        quietDays: 1,
+        quietMax: 1,
+        dayCap: 3,
+      });
+      expect(normalizeQueuePrefs({ quietDays: 2.6 }).quietDays).toBe(3);
+    });
+
+    it('keeps 0 where 0 is a real answer — "All" for the day cap, "none" for prayers', () => {
+      expect(normalizeQueuePrefs({ dayCap: 0, prayers: 0 })).toMatchObject({ dayCap: 0, prayers: 0 });
+      // …but not where it is out of range.
+      expect(normalizeQueuePrefs({ quietDays: 0, quietMax: 0 })).toMatchObject({ quietDays: 1, quietMax: 1 });
+    });
+  });
+
+  describe('normalizeOnCampusWindow', () => {
+    it('falls back to the default window for junk', () => {
+      expect(normalizeOnCampusWindow(null)).toEqual(ON_CAMPUS_DEFAULT);
+      expect(normalizeOnCampusWindow({ days: 'tuesday' })).toEqual(ON_CAMPUS_DEFAULT);
+    });
+
+    it('dedupes, sorts and drops out-of-range days', () => {
+      expect(normalizeOnCampusWindow({ days: [5, 1, 5, 9, -1], from: 9, to: 11 })).toEqual({
+        days: [1, 5],
+        from: 9,
+        to: 11,
+      });
+    });
+
+    it('falls back whole when the window could never open', () => {
+      expect(normalizeOnCampusWindow({ days: [], from: 9, to: 11 })).toEqual(ON_CAMPUS_DEFAULT);
+      expect(normalizeOnCampusWindow({ days: [2], from: 15, to: 12 })).toEqual(ON_CAMPUS_DEFAULT);
+      expect(normalizeOnCampusWindow({ days: [2], from: 13, to: 13 })).toEqual(ON_CAMPUS_DEFAULT);
+    });
+
+    it('keeps a valid custom window as-is, and a normalized one still opens', () => {
+      const w = normalizeOnCampusWindow({ days: [1, 4], from: 10, to: 16 });
+      expect(w).toEqual({ days: [1, 4], from: 10, to: 16 });
+      // Monday 2pm is inside it; Wednesday 2pm (the default window) is not.
+      expect(isOnCampus(w, new Date(2026, 6, 13, 14, 0, 0).getTime())).toBe(true);
+      expect(isOnCampus(w, new Date(2026, 6, 15, 14, 0, 0).getTime())).toBe(false);
+    });
+  });
+
+  describe('saying the window out loud', () => {
+    it('turns an hour into words', () => {
+      expect([0, 9, 12, 15, 23].map(hourLabel)).toEqual(['12am', '9am', '12pm', '3pm', '11pm']);
+    });
+
+    it('summarizes one, two and three days', () => {
+      expect(onCampusSummary(ON_CAMPUS_DEFAULT)).toBe('Tue & Wed, 12pm–3pm');
+      expect(onCampusSummary({ days: [4], from: 9, to: 10 })).toBe('Thu, 9am–10am');
+      expect(onCampusSummary({ days: [1, 3, 5], from: 13, to: 17 })).toBe('Mon, Wed & Fri, 1pm–5pm');
+    });
+
+    it('says so rather than lying when no day is set', () => {
+      expect(onCampusSummary({ days: [], from: 12, to: 15 })).toBe('No days set');
+    });
+  });
+
+  describe('buildQueue under the trainee’s own prefs', () => {
+    const quietFolks = input({
+      contacts: [
+        contact({ id: 'a', lastSeen: iso(-4) }),
+        contact({ id: 'b', lastSeen: iso(-20) }),
+        contact({ id: 'c', lastSeen: iso(-11) }),
+      ],
+    });
+
+    it('holds quiet cards back until the trainee’s own quiet threshold', () => {
+      expect(buildQueue(quietFolks).map((c) => c.id)).toEqual(['quiet:b', 'quiet:c']);
+      // Raise the bar past 4 days and the most-recently-seen person drops out,
+      // even though there is room for them.
+      const patient = buildQueue(quietFolks, { ...QUEUE_PREF_DEFAULTS, quietDays: 7, quietMax: 5 });
+      expect(patient.map((c) => c.id)).toEqual(['quiet:b', 'quiet:c']);
+      const eager = buildQueue(quietFolks, { ...QUEUE_PREF_DEFAULTS, quietDays: 1, quietMax: 5 });
+      expect(eager.map((c) => c.id)).toEqual(['quiet:b', 'quiet:c', 'quiet:a']);
+    });
+
+    it('carries no prayers at all when the trainee asks for none', () => {
+      const withPrayers = input({
+        contacts: [contact()],
+        prayers: [prayer({ id: 'p1' }), prayer({ id: 'p2', date: iso(-1) })],
+      });
+      expect(buildQueue(withPrayers).map((c) => c.id)).toEqual(['pray:p2', 'pray:p1']);
+      expect(buildQueue(withPrayers, { ...QUEUE_PREF_DEFAULTS, prayers: 0 }).map((c) => c.id)).toEqual([]);
+    });
   });
 });
