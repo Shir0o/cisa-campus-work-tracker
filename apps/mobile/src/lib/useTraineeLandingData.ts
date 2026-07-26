@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { collection, collectionGroup, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import {
-  QUEUE_PREF_DEFAULTS,
   buildQueue,
   fullTimerOf,
   queueDates,
@@ -34,6 +33,7 @@ import {
 import { subscribeAllThreads } from './data/threads';
 import { useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
+import { useQueuePrefs } from './queuePrefs';
 
 // Same path-segment convention as useMyDayData's collection-group ingestion:
 // contacts/{contactId}/interactions/{id} → segment 1 is the contactId.
@@ -52,6 +52,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
   const [error, setError] = useState<string | null>(null);
   const inbox = useInboxReads();
   const queueState = useQueueState(uid);
+  const queuePrefs = useQueuePrefs(uid);
 
   useEffect(() => {
     if (!uid) return;
@@ -149,23 +150,27 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
   const weighedIn = useMemo(() => weighedInContactIds(threads, ft), [threads, ft]);
 
   // Mobile v2 — the focus queue. Pure derivation in @cisa/core; the per-day
-  // handled/later state comes from AsyncStorage via useQueueState. `inbox` is a
-  // fresh wrapper per read-state change (see useInboxReads), so acknowledging a
-  // message invalidates this memo.
+  // handled/later state comes from AsyncStorage via useQueueState, and how much
+  // the day holds is the trainee's own call (useQueuePrefs → the "Your queue"
+  // screen). `inbox` is a fresh wrapper per read-state change (see
+  // useInboxReads), so acknowledging a message invalidates this memo.
   const queue = useMemo(
     () =>
-      buildQueue({
-        uid: uid ?? '',
-        fullTimer: ft,
-        contacts,
-        tasks,
-        threads,
-        interactions,
-        prayers: contactPrayers,
-        isRead: (id: string) => (uid ? inbox.isRead(uid, id) : false),
-        handled: queueState.handled,
-        later: queueState.later,
-      }),
+      buildQueue(
+        {
+          uid: uid ?? '',
+          fullTimer: ft,
+          contacts,
+          tasks,
+          threads,
+          interactions,
+          prayers: contactPrayers,
+          isRead: (id: string) => (uid ? inbox.isRead(uid, id) : false),
+          handled: queueState.handled,
+          later: queueState.later,
+        },
+        queuePrefs.prefs,
+      ),
     [
       uid,
       ft,
@@ -177,6 +182,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       inbox,
       queueState.handled,
       queueState.later,
+      queuePrefs.prefs,
     ],
   );
   const dates = useMemo(() => queueDates(events), [events]);
@@ -194,7 +200,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
 
     // The focus queue (v2 home).
     queue,
-    queuePrefs: QUEUE_PREF_DEFAULTS,
+    queuePrefs,
     queueState,
     dates,
     week,

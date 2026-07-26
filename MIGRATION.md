@@ -935,6 +935,55 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   Simulator, never automated component tests), so it's not a new shortfall
   specific to this feature.
 
+### 🟡 Mobile v2 — the trainee's focus queue (shipped, still catching up to the design)
+The design project (`019e2501-…`, `MOBILE-V2.md`) rebuilt mobile from scratch
+with the **trainee as the primary user**: not a dashboard, a full-screen focus
+queue. #168 ported the queue itself; this section tracks the port against the
+design as it keeps moving.
+
+- [x] ~~The queue~~ (#168) — `src/components/queue/*`, ordering as a pure
+      `buildQueue()` in `packages/core/src/queue.ts`, the v2 palette in
+      `src/theme/v2.ts`. Five card kinds, "Later" advances, the queue ENDS.
+- [x] ~~The **Jul 26, 2026** design revision, item 1: the focus card is WHITE
+      and always fills the room.~~ It was a cream (`#f4f1e6`) content-sized
+      sheet that floated as a stub on a short card; `FocusCard` is now
+      `flex: 1` with a `minHeight: 0` body (direction 02, "One at a Time"), so
+      the actions rest on the floor. `lightV2`'s interior tints were retuned
+      for the white ground — hairlines `#e6e3dc`, notes/about `#f4f2ee`,
+      outline `#dcd8d0` — and a new `react` token (`#fbfaf8`) splits the
+      reaction chips off `card2`, which the revision tints differently.
+      **Night mode is untouched**, exactly as the revision specifies.
+      Knock-on, and intended: `AllTodayList` rows and `EndOfQueue` share
+      `c.card`, so they go white too.
+- [x] ~~The trainee's own queue settings~~ — the piece #168 deferred
+      ("the queue reads the defaults"). `buildQueue` and `isOnCampus` already
+      took a `QueuePrefs` / `OnCampusWindow`; nothing on the phone could set
+      them, which made the day-cap note ("N more are waiting for tomorrow")
+      unactionable. Now: `packages/core/src/queue.ts` gained
+      `normalizeQueuePrefs` / `normalizeOnCampusWindow` / `hourLabel` /
+      `onCampusSummary` (15 new tests, core 236 → 251);
+      `apps/mobile/src/lib/queuePrefs.ts` is the AsyncStorage store
+      (`cisa.m2.prefs.<uid>`, the design's own key), a direct sibling of
+      `queueState.ts`; and `app/queue-settings.tsx` is the v2-styled screen,
+      reachable from "Everything today" → *How today is built* and from a
+      trainee-only row on `/settings`.
+      **Two deliberate departures from the prototype's `M2Settings`:**
+      (1) prefs are **device-local**, not Firestore — putting them in
+      `UserPreferences` would mean widening `firestore.rules` and deploying it
+      first, and the design treats them as phone settings; (2) **"How it
+      looks" is not on the v2 screen** — `AppearancePicker` on `/settings`
+      already owns light/dark app-wide for every role, and two controls over
+      one piece of state is a bug waiting to happen.
+- [ ] **The full-timer v2 home** (revision item 2) — an at-a-glance widgets
+      home on warm paper (`Mobile Today - hybrid.html` state B): At a glance ·
+      Needs you today · From the team · Gone quiet in your care · Prayers to
+      carry · the week-ahead strip. Full-timers still get `MyDayScreen`.
+- [ ] **The member v2 app** (student + community) — `M2Member`'s calm
+      single-scroll home + Prayer / Messages / You. Both roles still get
+      `LandingStudent` / `LandingCommunity`.
+- [ ] **The ☰ drawer** and the **blue-room tint** — the bottom tab bar carries
+      navigation today, and only the green room is ported.
+
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
       **"CISA Campus Work Tracker"** (was the shorter "CISA Campus"; the

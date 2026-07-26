@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { hasMinRole, type AppRole, type AppUser } from '@cisa/core';
+import { hasMinRole, pickLandingForRole, type AppRole, type AppUser } from '@cisa/core';
 import { Screen, AppText, Button, Card, InlineInput } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useAuth } from '../src/lib/AuthProvider';
@@ -73,6 +73,22 @@ export default function SettingsScreen() {
         <RolesReference currentRole={role} />
 
         <AppearancePicker />
+
+        {/* Mobile v2 lives on its own screen, in its own language — this is
+            just the way in for someone who came looking here first. */}
+        {pickLandingForRole(role) === 'trainee' && (
+          <Card onPress={() => router.push('/queue-settings')}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+              <View style={{ flex: 1 }}>
+                <AppText variant="heading">Your queue</AppText>
+                <AppText variant="caption" color={colors.onSurfaceVariant}>
+                  When you're on campus, and how much a day holds.
+                </AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.onSurfaceVariant} />
+            </View>
+          </Card>
+        )}
 
         <NotificationsSettings />
 

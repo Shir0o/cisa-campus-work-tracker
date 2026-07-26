@@ -18,12 +18,15 @@ export function AllTodayList({
   held,
   onPick,
   onBack,
+  onOpenSettings,
 }: {
   cards: QueueCard[];
   currentId?: string;
   held: number;
   onPick: (index: number) => void;
   onBack: () => void;
+  /** "How today is built" — the queue's own settings. */
+  onOpenSettings: () => void;
 }) {
   const { c, font, radius } = useV2Theme();
 
@@ -124,6 +127,15 @@ export function AllTodayList({
             {held} more {held === 1 ? 'is' : 'are'} waiting for tomorrow — a day only holds so much.
           </Text>
         )}
+
+        {/* How much a day holds, and when someone counts as quiet, are the
+            trainee's own call — this is where they'd wonder. */}
+        <Pressable
+          onPress={onOpenSettings}
+          style={{ minHeight: 44, justifyContent: 'center', marginTop: held > 0 ? 2 : 16, marginHorizontal: 4 }}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk3 }}>How today is built  →</Text>
+        </Pressable>
       </ScrollView>
     </View>
   );

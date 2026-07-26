@@ -6,7 +6,40 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Changed
+- **Mobile v2 — the focus card is now WHITE and always fills the room**, per
+  the Claude Design project's Jul 26, 2026 revision to `MOBILE-V2.md`. It was
+  a cream (`#f4f1e6`) content-sized sheet that floated as a stub whenever a
+  card was short; `FocusCard` is now `flex: 1` with a `minHeight: 0` body
+  (direction 02, "One at a Time"), so the actions rest on the floor. The
+  light palette's interior tints were retuned for the white ground —
+  hairlines `#e6e3dc`, notes/about `#f4f2ee`, outline `#dcd8d0` — plus a new
+  `react` token (`#fbfaf8`) so the reaction chips stop sharing `card2` with
+  the "about" chip, which the revision tints differently. Ink and night mode
+  are untouched.
+
 ### Added
+- **Mobile v2 — the trainee can now tune their own queue** (the piece #168
+  deferred as "the queue reads the defaults"). `buildQueue` and `isOnCampus`
+  already accepted a `QueuePrefs` / `OnCampusWindow`, but nothing on the
+  phone could change either — which left the day-cap note ("N more are
+  waiting for tomorrow — a day only holds so much") with no way to act on
+  it. New v2-styled `app/queue-settings.tsx` ("Your queue") sets the
+  on-campus window (days + from/until) and when to nudge you (quiet-after
+  days, quiet people at a time, prayers to carry, how much a day holds),
+  plus "Bring back today's queue"; it's reachable from *Everything today →
+  How today is built* and from a trainee-only row on Settings. New
+  `packages/core/src/queue.ts` helpers `normalizeQueuePrefs`,
+  `normalizeOnCampusWindow`, `hourLabel` and `onCampusSummary` validate
+  everything read back off the device, covered by 15 new tests —
+  packages/core now 251/251. New `apps/mobile/src/lib/queuePrefs.ts` is the
+  AsyncStorage store (`cisa.m2.prefs.<uid>`, the design's own key), a direct
+  sibling of `queueState.ts`. Two deliberate departures from the design's
+  `M2Settings`: the prefs are **device-local**, not Firestore (putting them
+  in `UserPreferences` would mean widening `firestore.rules` and deploying it
+  first, and these are phone settings), and **"How it looks" is not
+  duplicated onto the v2 screen** — Settings' `AppearancePicker` already owns
+  light/dark app-wide for every role.
 - **Mobile v2 — the trainee's home is now a focus queue, not a dashboard.**
   Ported the Claude Design project's mobile v2 direction (`MOBILE-V2.md`,
   direction 02 "One at a Time"): one actionable card at a time on a cream sheet

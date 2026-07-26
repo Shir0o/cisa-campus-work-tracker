@@ -55,14 +55,44 @@ export interface QueuePrefs {
   dayCap: number;
 }
 
-// Ported from M2_PREF_DEFAULTS. The v2 Settings screen makes these the trainee's
-// own call; until it lands, everyone gets these.
+// Ported from M2_PREF_DEFAULTS. These are the starting point; the v2 "Your
+// queue" screen makes each one the trainee's own call.
 export const QUEUE_PREF_DEFAULTS: QueuePrefs = {
   quietDays: 2,
   quietMax: 2,
   prayers: 3,
   dayCap: 8,
 };
+
+/** Bounds each pref is clamped to. `dayCap` also accepts 0, meaning uncapped. */
+const PREF_RANGE: Record<keyof QueuePrefs, [number, number]> = {
+  quietDays: [1, 14],
+  quietMax: [1, 5],
+  prayers: [0, 8],
+  dayCap: [3, 30],
+};
+
+const clamp = (n: number, [lo, hi]: [number, number]) => Math.min(hi, Math.max(lo, Math.round(n)));
+
+/** Prefs come back from device storage, so nothing about them is trusted: each
+ * field is clamped on its own, and anything unusable falls back to the default
+ * for that field alone rather than throwing the whole set away. */
+export function normalizeQueuePrefs(raw: unknown): QueuePrefs {
+  const src = (raw ?? {}) as Partial<Record<keyof QueuePrefs, unknown>>;
+  const read = (key: keyof QueuePrefs): number => {
+    const v = src[key];
+    if (typeof v !== "number" || !Number.isFinite(v)) return QUEUE_PREF_DEFAULTS[key];
+    // 0 is a real answer for dayCap ("All") and for prayers ("none today").
+    if (v === 0 && (key === "dayCap" || key === "prayers")) return 0;
+    return clamp(v, PREF_RANGE[key]);
+  };
+  return {
+    quietDays: read("quietDays"),
+    quietMax: read("quietMax"),
+    prayers: read("prayers"),
+    dayCap: read("dayCap"),
+  };
+}
 
 /** Kinds of message from your full-timer that earn a card. */
 const MSG_KINDS: ThreadKind[] = ["question", "comment", "nudge", "encouragement"];
@@ -370,6 +400,45 @@ export const ON_CAMPUS_DEFAULT: OnCampusWindow = { days: [2, 3], from: 12, to: 1
 export function isOnCampus(w: OnCampusWindow = ON_CAMPUS_DEFAULT, now: number = Date.now()): boolean {
   const d = new Date(now);
   return w.days.includes(d.getDay()) && d.getHours() >= w.from && d.getHours() < w.to;
+}
+
+/** Same contract as normalizeQueuePrefs, for the window. One that can't be made
+ * sense of (no days, or from >= to) falls back whole — half a window would
+ * silently never open. */
+export function normalizeOnCampusWindow(raw: unknown): OnCampusWindow {
+  const src = (raw ?? {}) as Partial<Record<keyof OnCampusWindow, unknown>>;
+  const days = Array.isArray(src.days)
+    ? [
+        ...new Set(
+          src.days.filter((d): d is number => typeof d === "number" && d >= 0 && d <= 6).map((d) => Math.round(d)),
+        ),
+      ].sort((a, b) => a - b)
+    : [];
+  const hour = (v: unknown, fallback: number) =>
+    typeof v === "number" && Number.isFinite(v) ? clamp(v, [0, 23]) : fallback;
+  const from = hour(src.from, ON_CAMPUS_DEFAULT.from);
+  const to = hour(src.to, ON_CAMPUS_DEFAULT.to);
+  if (days.length === 0 || from >= to) return { ...ON_CAMPUS_DEFAULT };
+  return { days, from, to };
+}
+
+/** "12pm", "3pm", "12am". The one place an hour becomes words — the on-campus
+ * strip and the settings screen must not disagree about when the window ends. */
+export const hourLabel = (h: number): string => `${h % 12 === 0 ? 12 : h % 12}${h >= 12 ? "pm" : "am"}`;
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+/** "Tue & Wed, 12pm–3pm" — the window in one line. */
+export function onCampusSummary(w: OnCampusWindow): string {
+  if (w.days.length === 0) return "No days set";
+  const names = [...w.days].sort((a, b) => a - b).map((d) => DAY_NAMES[d]);
+  const days =
+    names.length === 1
+      ? names[0]
+      : names.length === 2
+        ? `${names[0]} & ${names[1]}`
+        : `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`;
+  return `${days}, ${hourLabel(w.from)}–${hourLabel(w.to)}`;
 }
 
 /** Days since someone was last seen — the number behind "N days quiet". */

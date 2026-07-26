@@ -3,14 +3,8 @@
 // body and does not scroll away.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import type { OnCampusWindow } from '@cisa/core';
+import { hourLabel, type OnCampusWindow } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
-
-const hour = (h: number) => {
-  const suffix = h >= 12 ? 'pm' : 'am';
-  const twelve = h % 12 === 0 ? 12 : h % 12;
-  return `${twelve}${suffix}`;
-};
 
 export function OnCampusStrip({ window: w, onPress }: { window: OnCampusWindow; onPress: () => void }) {
   const { c, font, radius } = useV2Theme();
@@ -43,7 +37,7 @@ export function OnCampusStrip({ window: w, onPress }: { window: OnCampusWindow; 
       <View style={{ flex: 1 }}>
         <Text style={{ fontFamily: font.extra, fontSize: 13.5, color: c.onWindow }}>You're on campus right now</Text>
         <Text style={{ fontFamily: font.semi, fontSize: 12.5, lineHeight: 16, color: c.onWindowSub, marginTop: 3 }}>
-          Log someone in about twenty seconds — until {hour(w.to)}.
+          Log someone in about twenty seconds — until {hourLabel(w.to)}.
         </Text>
       </View>
     </Pressable>
