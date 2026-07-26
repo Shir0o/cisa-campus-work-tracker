@@ -9,7 +9,7 @@
 //
 // Subscriptions and writes stay in each app's data layer; this is the behavior
 // oracle, so it stays trivially testable (see test/queue.test.ts).
-import { DAY_MS, daysSince, parseMs } from "./myday";
+import { DAY_MS, daysSince, parseMs, toLocalDate } from "./myday";
 import { traineeMyPeople } from "./landing";
 import { firstName } from "./history";
 import type { Contact, Event, Interaction, PrayerRecord, Task } from "./types";
@@ -87,12 +87,20 @@ export function personColor(id?: string | null): string {
   return PERSON_TONES[h % PERSON_TONES.length];
 }
 
-/** Whole days from today to `iso`. Negative = in the past. */
+/** Whole days from today to `iso`, in the reader's own days. Negative = past.
+ *
+ * Must go through `toLocalDate`, not `parseMs`: a to-do's `dueDate` is a bare
+ * `yyyy-MM-dd` written in LOCAL time by `duePresetToISO`, but `new Date()`
+ * parses that form as UTC midnight — which lands on the previous day
+ * everywhere behind UTC, so every due date read one day early ("Due today" for
+ * a to-do due tomorrow, "Overdue" for one due today). Full ISO instants fall
+ * through `toLocalDate` unchanged, so `daysAgoWords` still counts local days.
+ * Same helper `dueChip` uses; keep them in step. */
 export function dueInDays(iso?: string | null, now: number = Date.now()): number | null {
-  const ms = parseMs(iso);
-  if (ms == null) return null;
+  const due = toLocalDate(iso);
+  if (due == null) return null;
   const startOf = (t: number) => new Date(t).setHours(0, 0, 0, 0);
-  return Math.round((startOf(ms) - startOf(now)) / DAY_MS);
+  return Math.round((startOf(due.getTime()) - startOf(now)) / DAY_MS);
 }
 
 export function daysAgoWords(iso?: string | null, now: number = Date.now()): string {

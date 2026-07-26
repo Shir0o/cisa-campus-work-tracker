@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   QUEUE_PREF_DEFAULTS,
   buildQueue,
@@ -280,6 +280,47 @@ describe('queue helpers', () => {
     expect(dueInDays(new Date(NOW + DAY_MS).toISOString(), NOW)).toBe(1);
     expect(dueInDays(new Date(NOW - 3 * DAY_MS).toISOString(), NOW)).toBe(-3);
     expect(dueInDays(null, NOW)).toBeNull();
+  });
+
+  // Regression: a to-do's `dueDate` is a bare `yyyy-MM-dd` written in LOCAL
+  // time, but `new Date('2026-07-15')` parses as UTC midnight — which is the
+  // PREVIOUS day everywhere behind UTC. That read every due date one day early:
+  // "Due today" for a to-do due tomorrow, "Overdue" for one due today.
+  describe('bare yyyy-MM-dd due dates, in a behind-UTC timezone', () => {
+    const realTZ = process.env.TZ;
+    beforeAll(() => {
+      process.env.TZ = 'America/Los_Angeles';
+    });
+    afterAll(() => {
+      process.env.TZ = realTZ;
+    });
+
+    const localNoon = new Date(2026, 6, 14, 12, 0, 0).getTime(); // Jul 14, local
+
+    it('reads a date-only due date as that local calendar day', () => {
+      expect(dueInDays('2026-07-14', localNoon)).toBe(0); // today, not "overdue"
+      expect(dueInDays('2026-07-15', localNoon)).toBe(1); // tomorrow, not "today"
+      expect(dueInDays('2026-07-12', localNoon)).toBe(-2);
+    });
+
+    it('labels a to-do due today "Due today", not "Overdue"', () => {
+      const q = buildQueue(
+        input({
+          now: localNoon,
+          tasks: [
+            task({ id: 'today', dueDate: '2026-07-14' }),
+            task({ id: 'tomorrow', dueDate: '2026-07-15' }),
+            task({ id: 'late', dueDate: '2026-07-12' }),
+            task({ id: 'far-off', dueDate: '2026-07-20' }),
+          ],
+        }),
+      );
+      expect(q.map((c) => [c.id, c.label])).toEqual([
+        ['todo:today', 'Due today'],
+        ['todo:tomorrow', 'Due tomorrow'],
+        ['todo:late', 'Overdue'],
+      ]);
+    });
   });
 
   it('gives a person the same colour every time', () => {

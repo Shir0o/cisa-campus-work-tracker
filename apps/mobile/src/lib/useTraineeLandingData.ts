@@ -89,6 +89,14 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       (snap) => setTasks(snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Task[]),
       (e) => onLoadError(e, 'tasks'),
     );
+    // The 500 cap is deliberate, and matches useMyDayData: this is a LIVE
+    // collection-group subscription over every contact's interactions, so
+    // dropping the limit would stream the whole team's history into a phone.
+    // What it costs when a busy team pushes this trainee's own people past the
+    // newest 500: the "you last talked …" line on a follow-up/quiet card goes
+    // missing (`last` is null and both cards already render without it). No
+    // card appears or disappears — those come from tasks/threads/contacts/
+    // prayers, which are each scoped to this user.
     const unsubInteractions = onSnapshot(
       query(collectionGroup(db, 'interactions'), orderBy('createdAt', 'desc'), limit(500)),
       (snap) =>
