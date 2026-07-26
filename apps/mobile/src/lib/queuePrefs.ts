@@ -51,9 +51,13 @@ const emit = () =>
     }
   });
 
+// Storage failures stay non-fatal — the queue must keep working on the defaults
+// rather than take the screen down — but they are not silent. These prefs exist
+// ONLY on the device, so a swallowed write is the difference between "my
+// settings didn't stick" and no evidence at all.
 const save = (uid: string) => {
-  AsyncStorage.setItem(keyFor(uid), JSON.stringify(cache[uid])).catch(() => {
-    /* ignore unavailable storage */
+  AsyncStorage.setItem(keyFor(uid), JSON.stringify(cache[uid])).catch((e) => {
+    console.warn('Could not save queue preferences; they will not survive a restart.', e);
   });
 };
 
@@ -66,8 +70,10 @@ function hydrate(uid: string) {
       cache[uid] = normalize(JSON.parse(raw));
       emit();
     })
-    .catch(() => {
-      /* ignore malformed/unavailable storage */
+    .catch((e) => {
+      // Also catches a malformed payload from JSON.parse — worth seeing, since
+      // the queue then quietly rebuilds on the defaults.
+      console.warn('Could not read saved queue preferences; using the defaults.', e);
     });
 }
 
