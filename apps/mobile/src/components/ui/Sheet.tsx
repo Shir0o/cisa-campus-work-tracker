@@ -54,6 +54,7 @@ export function Sheet({
   children,
   maxHeightRatio,
   footer,
+  backgroundColor,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -62,6 +63,10 @@ export function Sheet({
   maxHeightRatio?: number;
   /** Rendered pinned to the bottom, above the keyboard — for an action row that used to sit outside the old ScrollView. */
   footer?: React.ReactNode;
+  /** Overrides the sheet's surface. Mobile v2 screens are on their own palette
+   * (src/theme/v2.ts) and would otherwise show a Material surface behind their
+   * rounded top. Defaults to the theme's `surface`. */
+  backgroundColor?: string;
 }) {
   const { colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
@@ -118,7 +123,7 @@ export function Sheet({
       enableDynamicSizing={false}
       animationConfigs={animationConfigs}
       backgroundStyle={{
-        backgroundColor: colors.surface,
+        backgroundColor: backgroundColor ?? colors.surface,
         borderTopLeftRadius: radius.lg,
         borderTopRightRadius: radius.lg,
       }}
