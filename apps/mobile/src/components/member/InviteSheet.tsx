@@ -65,11 +65,21 @@ function InviteBody({
         {message}
       </Text>
       <Pressable
+        // Close only once the OS share sheet has resolved. Dismissing this
+        // bottom sheet in the same tick races the native modal presentation on
+        // iOS — two modals transitioning at once, and the share sheet can fail
+        // to appear at all. `finally` so a share the OS refuses to present
+        // still closes, rather than leaving a sheet that no longer does
+        // anything.
         onPress={() => {
-          void Share.share({ message }).then((result) => {
-            if (result.action === Share.sharedAction) onShared();
-          });
-          onClose();
+          void Share.share({ message })
+            .then((result) => {
+              if (result.action === Share.sharedAction) onShared();
+            })
+            .catch(() => {
+              /* nothing to say — the invitation is still on screen behind it */
+            })
+            .finally(onClose);
         }}
         style={({ pressed }) => ({
           height: 54,
