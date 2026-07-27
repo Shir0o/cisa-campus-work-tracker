@@ -1,17 +1,25 @@
-// Mobile v2 — "the trainee app" visual language, ported from the Claude Design
-// project's mobile.css (`.m2.deck`, the green room) and mobile-night.css
-// (`.m2.night`). See MOBILE-V2.md there for the rationale.
+// Mobile v2 — the visual language, ported from the Claude Design project's
+// mobile.css (`.m2.deck`, the green room), mobile-night.css (`.m2.night`) and
+// mobile-blue.css (`.m2.blue`, the navy tint). See MOBILE-V2.md there.
 //
 // This is DELIBERATELY separate from tokens.ts: v2 does not inherit the Field
 // Notes / Material palette, and every other screen in the app still depends on
 // that one. Only v2 components read from here.
 //
-// Hard rules the design carries (do not relax them):
+// TWO ROOMS, one set of tokens (see V2Room below):
+//   • 'queue' — the trainee's deep-green room, the focus queue.
+//   • 'ft'    — the full-timer's room: warm paper with white widgets by day,
+//               near-black navy by night. Direction 05, "Widgets".
+//
+// Hard rules the design carries, everywhere (do not relax them):
 //   • every touch target ≥ 44px
-//   • no text ink lighter than cardInk3 (#7d8b7f light / #8e9a92 dark)
-//   • the card's foot never scrolls — only its body does
-//   • no metrics, no KPI tiles, no recurring gatherings anywhere in v2
-import { useMemo } from 'react';
+//   • no text ink lighter than the room's own cardInk3
+//   • a card's foot never scrolls — only its body does
+//
+// One rule belongs to the TRAINEE's room alone: no metrics, no KPI tiles, no
+// recurring gatherings. The full-timer's room departs from it on purpose — its
+// "At a glance" tiles and week-ahead strip ARE direction 05.
+import { createContext, useContext, useMemo } from 'react';
 import { useTheme } from './ThemeProvider';
 import type { ThemeMode } from './tokens';
 
@@ -224,7 +232,100 @@ const darkV2: V2Palette = {
   },
 };
 
-export const v2Palettes: Record<ThemeMode, V2Palette> = { light: lightV2, dark: darkV2 };
+// ── the full-timer's room ──────────────────────────────────────────────────
+// Same tokens, a different room. The design forces the navy tint on the FT app
+// (`m2 deck mem ft blue`) so full-timers and members never read as the same
+// place, and the Jul 26 revision put its LIGHT mode on warm paper with white
+// widgets. Every green→navy value below is mobile-blue.css's own mapping
+// (16332b→17293f, 5f7a68→607182, 7d8b7f→7e8598, …); the cream paper,
+// terracotta, violet, amber and semantic green are deliberately unchanged, so
+// the interior tints #169 tuned for the white card carry straight over.
+
+const lightFt: V2Palette = {
+  ...lightV2,
+
+  // the room is paper now, so its ink is dark rather than cream
+  room: '#eceae6',
+  roomInk: '#17293f',
+  roomInk2: '#607182',
+  roomInk3: '#7e8598',
+  roomFaint: '#7e8598',
+  roomChip: 'rgba(23,41,63,0.06)',
+
+  cardInk: '#17293f',
+  cardInk2: '#607182',
+  cardInk3: '#7e8598',
+  said: '#1f3145',
+  why: '#2d4055',
+  noteInk: '#3c4a5d',
+
+  primary: '#17293f',
+  onPrimary: '#f4f1e6',
+  // "the opposite of the room" — dark on paper, where it was cream on green
+  inverse: '#17293f',
+  onInverse: '#f4f1e6',
+  mark: '#17293f',
+  onMark: '#f4f1e6',
+
+  reactOnBorder: '#17293f',
+  reactOnBg: '#dfe6ee',
+
+  // the week-ahead chips are white widgets, not translucent cut-outs
+  datebox: '#ffffff',
+  dateboxLine: '#e6e3dc',
+};
+
+const darkFt: V2Palette = {
+  ...darkV2,
+
+  room: '#0a1220',
+  roomInk: '#e9edf4',
+  roomInk2: '#ccd4e0',
+  roomInk3: '#a3adbc',
+  roomFaint: '#8e97a6',
+  roomChip: 'rgba(233,237,244,0.08)',
+
+  card: '#1a2433',
+  card2: '#232f41',
+  cardInk: '#e9edf4',
+  cardInk2: '#ccd4e0',
+  cardInk3: '#8e97a6',
+  line: 'rgba(233,237,244,0.10)',
+  border: '#313c4e',
+
+  said: '#ccd4e0',
+  why: '#ccd4e0',
+  quoteLine: '#313c4e',
+  note: '#232f41',
+  noteLabel: '#8e97a6',
+  noteInk: '#ccd4e0',
+  react: '#232f41',
+
+  primary: '#31506e',
+  onPrimary: '#eaeff5',
+  inverse: '#e9edf4',
+  onInverse: '#0a1220',
+  mark: '#31506e',
+  onMark: '#eaeff5',
+
+  field: '#232f41',
+  datebox: '#1a2433',
+  dateboxLine: 'rgba(233,237,244,0.10)',
+};
+
+/** Which room a v2 screen is standing in. */
+export type V2Room = 'queue' | 'ft';
+
+export const v2Palettes: Record<V2Room, Record<ThemeMode, V2Palette>> = {
+  queue: { light: lightV2, dark: darkV2 },
+  ft: { light: lightFt, dark: darkFt },
+};
+
+/** Screens declare their room by wrapping themselves in a provider; everything
+ * below reads it. A context rather than a `useV2Theme(room)` argument so the
+ * shared v2 primitives (components/queue/atoms) can be reused in either room
+ * without knowing which one they're in. */
+export const V2RoomContext = createContext<V2Room>('queue');
 
 // Manrope 500–800 throughout; Instrument Serif for the one end-of-queue
 // headline. Tracking is tight (−.03em) on the display weights.
@@ -276,6 +377,7 @@ export const v2Shadow = {
 
 export interface V2Theme {
   mode: ThemeMode;
+  room: V2Room;
   c: V2Palette;
   font: typeof v2Font;
   radius: typeof v2Radius;
@@ -283,11 +385,20 @@ export interface V2Theme {
 }
 
 /** One hook for every v2 component. Follows the app's light/dark the same way
- * the rest of the app does — v2 is a second palette, not a second app. */
+ * the rest of the app does — v2 is a second palette, not a second app — and the
+ * room it is standing in, which defaults to the trainee's. */
 export function useV2Theme(): V2Theme {
   const { mode } = useTheme();
+  const room = useContext(V2RoomContext);
   return useMemo(
-    () => ({ mode, c: v2Palettes[mode], font: v2Font, radius: v2Radius, shadow: v2Shadow }),
-    [mode],
+    () => ({
+      mode,
+      room,
+      c: v2Palettes[room][mode],
+      font: v2Font,
+      radius: v2Radius,
+      shadow: v2Shadow,
+    }),
+    [mode, room],
   );
 }

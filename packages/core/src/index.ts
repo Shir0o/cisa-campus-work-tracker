@@ -8,6 +8,7 @@ export * from './board';
 export * from './seasons';
 export * from './myday';
 export * from './queue';
+export * from './ftHome';
 export * from './prayerThread';
 export * from './directory';
 export * from './history';

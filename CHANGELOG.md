@@ -18,7 +18,45 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   the "about" chip, which the revision tints differently. Ink and night mode
   are untouched.
 
+### Fixed
+- **A bottom sheet that mounted already-visible never opened.** `Sheet` calls
+  `BottomSheetModal.present()` from the effect that watches `visible`, but the
+  call is silently dropped when it lands in the same commit the modal mounted
+  in — the ref is live, the registration with the root provider isn't finished,
+  and since `visible` never transitions again nothing retries. Every sheet keyed
+  by the person it's about hits this: changing that person remounts the sheet in
+  the very render that opens it. The present is now deferred by one macrotask
+  (`setTimeout`, not `requestAnimationFrame` — rAF never fires while the tab is
+  backgrounded, the same stall the backdrop is already written to survive).
+
 ### Added
+- **Mobile v2 — the full-timer's home is now an at-a-glance widgets screen**,
+  porting the design project's `M2FT` (`MOBILE-V2.md`, "the FULL-TIMER app" +
+  its Jul 26, 2026 revision item 2): direction 05 "Widgets" on a warm paper
+  room by day, near-black navy by night. Full-timers land on
+  `src/components/ft/FtHomeScreen.tsx` instead of the Material `MyDayScreen`.
+  Shape: date + greeting + one honest summary line → two quick tiles (Log a
+  moment / Hand something over) → **At a glance** → **Needs you today** →
+  **From the team** → **Gone quiet in your care** → **Prayers to carry** →
+  **The week ahead** strip. Powers are people actions only — log, encourage,
+  write back, hand a to-do over, pray; Board pages, gatherings and kinds stay
+  on the desktop site, which is what the foot line says. All the derivations
+  are a pure `packages/core/src/ftHome.ts` with 45 new tests (core 251 → 296);
+  live data comes from a new `useFtHomeData` sibling of
+  `useTraineeLandingData`, and every write goes through the existing
+  `data/todos`, `data/threads` and `data/inboxReads` modules. `theme/v2.ts`
+  gained a second **room** (`V2Room` + `V2RoomContext`) so the paper/navy
+  palette sits beside the trainee's green one, whose literals are untouched.
+  Three substitutions the mock data allowed and this schema doesn't, each
+  documented in the module: the glance's second tile is **"Next gathering"**
+  off the next upcoming `Event` (there is no huddle entity, and `Event` has no
+  time of day, so the design's "Team prayer" time cannot be built); **"weighs
+  heavy" is `status === "ongoing"`** (no priority field exists on a prayer);
+  and **"I prayed just now" is device-local**, sharing `queueState`'s per-day
+  `handled` map exactly as the trainee queue's identical button does, rather
+  than widening `firestore.rules` for a shared "who prayed today". As with
+  #168's `LandingTrainee`, `MyDayScreen` and `components/myday/*` are left on
+  disk but no longer routed to.
 - **Mobile v2 — the trainee can now tune their own queue** (the piece #168
   deferred as "the queue reads the defaults"). `buildQueue` and `isOnCampus`
   already accepted a `QueuePrefs` / `OnCampusWindow`, but nothing on the

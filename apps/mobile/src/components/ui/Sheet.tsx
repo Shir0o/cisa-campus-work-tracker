@@ -91,13 +91,26 @@ export function Sheet({
   const [footerHeight, setFooterHeight] = useState(0);
   const onFooterLayout = useCallback((e: LayoutChangeEvent) => setFooterHeight(e.nativeEvent.layout.height), []);
 
+  // `present()` is silently DROPPED when it lands in the same commit the modal
+  // mounted in — the ref is already live, but BottomSheetModal has not finished
+  // registering itself with the root provider, so the call goes nowhere and, as
+  // `visible` never transitions again, nothing retries. That happens whenever a
+  // sheet is keyed by the person it's about (the queue's and the full-timer
+  // home's log/note sheets all are): changing that person REMOUNTS the sheet in
+  // the same render that opens it, and it never appears. One macrotask later
+  // the registration is done and the call takes. setTimeout, not
+  // requestAnimationFrame — rAF never fires while the tab is backgrounded,
+  // which is the same stall the backdrop above is written to survive.
   useEffect(() => {
     if (visible) {
-      everPresented.current = true;
-      ref.current?.present();
-    } else if (everPresented.current) {
-      ref.current?.dismiss();
+      const t = setTimeout(() => {
+        everPresented.current = true;
+        ref.current?.present();
+      }, 0);
+      return () => clearTimeout(t);
     }
+    if (everPresented.current) ref.current?.dismiss();
+    return undefined;
   }, [visible]);
 
   // Stable identities so the backdrop/footer only remount when what they
