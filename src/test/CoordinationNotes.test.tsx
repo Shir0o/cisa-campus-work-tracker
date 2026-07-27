@@ -742,6 +742,244 @@ describe('CoordinationNotes', () => {
     });
   });
 
+  // ── 9b. Note tabs (Active / Archive / Trash) ──────────────────────────────
+  describe('note tabs', () => {
+    it('switches to Archive tab and hides active notes', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Sprint planning')).toBeInTheDocument();
+      });
+
+      // Click Archive tab — active notes should disappear since none are archived
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+
+      await waitFor(() => {
+        expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument();
+        expect(screen.queryByText('Morning reflection')).not.toBeInTheDocument();
+      });
+    });
+
+    it('switches to Trash tab and shows trashed notes', async () => {
+      const trashedNotes = [
+        { id: 'note-t1', data: () => ({ type: 'record', series: 'Team', title: 'Trashed note', body: 'gone', tags: [], date: today, contributorIds: ['u-admin'], createdBy: 'u-admin', deletedAt: 'mock-ts' }) },
+        ...mockNotes,
+      ];
+      setupSnapshots({ docs: mockDocs, notes: trashedNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Active tab should not show trashed note
+      await waitFor(() => {
+        expect(screen.getByText('Sprint planning')).toBeInTheDocument();
+        expect(screen.queryByText('Trashed note')).not.toBeInTheDocument();
+      });
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Trashed note')).toBeInTheDocument();
+        expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument();
+      });
+    });
+
+    it('switches back to Active tab and shows active notes again', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => expect(screen.getByText('Sprint planning')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+      await waitFor(() => expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Active' }));
+      await waitFor(() => expect(screen.getByText('Sprint planning')).toBeInTheDocument());
+    });
+  });
+
+  // ── 9c. Edit note ─────────────────────────────────────────────────────────
+  describe('edit note', () => {
+    it('opens the note form pre-filled when clicking the Edit button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Edit note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Edit note')[0]);
+
+      // The form should appear with the note's title pre-filled
+      await waitFor(() => {
+        const titleInput = screen.getByPlaceholderText(/a short title/i) as HTMLInputElement;
+        expect(titleInput.value).toBe('Sprint planning');
+      });
+
+      // Should show "Update note" instead of "Save record"
+      expect(screen.getByRole('button', { name: /update note/i })).toBeInTheDocument();
+    });
+
+    it('submits an edit via updateDoc when clicking Update note', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Edit note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Edit note')[0]);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/a short title/i)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByPlaceholderText(/a short title/i), {
+        target: { value: 'Updated title' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /update note/i }));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ title: 'Updated title' }),
+        );
+      });
+    });
+  });
+
+  // ── 9d. Archive note ──────────────────────────────────────────────────────
+  describe('archive note', () => {
+    it('archives a note when clicking the Archive button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Archive note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Archive note')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ archivedAt: expect.anything() }),
+        );
+      });
+    });
+  });
+
+  // ── 9e. Restore note from Trash ───────────────────────────────────────────
+  describe('restore note from trash', () => {
+    it('restores a note when clicking the Restore button in the Trash tab', async () => {
+      const trashedNotes = [
+        { id: 'note-t1', data: () => ({ type: 'record', series: 'Team', title: 'Trashed note', body: 'oops', tags: [], date: today, contributorIds: ['u-admin'], createdBy: 'u-admin', deletedAt: 'mock-ts' }) },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: trashedNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Trashed note')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle('Restore note'));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          { deletedAt: null },
+        );
+      });
+    });
+  });
+
+  // ── 9f. Display mode toggle ───────────────────────────────────────────────
+  describe('note display mode', () => {
+    it('toggles note display mode when clicking the mode button on a note card', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Switch to checklist mode').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Switch to checklist mode')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ displayMode: 'list' }),
+        );
+      });
+    });
+
+    it('toggles NoteForm text/list format button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      fireEvent.click(screen.getByRole('button', { name: /new record/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Text format')).toBeInTheDocument();
+      });
+
+      // Click the toggle to switch to list
+      fireEvent.click(screen.getByText('Text format'));
+
+      await waitFor(() => {
+        expect(screen.getByText('List format')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ── 9g. Checklist item toggle ─────────────────────────────────────────────
+  describe('note checklist items', () => {
+    it('renders checklist items and toggles them', async () => {
+      const checklistNotes = [
+        {
+          id: 'note-cl',
+          data: () => ({
+            type: 'record',
+            series: 'Team',
+            title: 'Checklist note',
+            body: '- [ ] Item A\n- [x] Item B',
+            tags: [],
+            date: today,
+            contributorIds: ['u-admin'],
+            createdBy: 'u-admin',
+            displayMode: 'list',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: checklistNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Checklist note')).toBeInTheDocument();
+        expect(screen.getByText('Item A')).toBeInTheDocument();
+        expect(screen.getByText('Item B')).toBeInTheDocument();
+      });
+
+      // Check the first unchecked item
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes[0]).not.toBeChecked();
+      expect(checkboxes[1]).toBeChecked();
+
+      fireEvent.click(checkboxes[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ body: '- [x] Item A\n- [x] Item B' }),
+        );
+      });
+    });
+  });
+
   // ── 10. Notes search ──────────────────────────────────────────────────────
   describe('notes search', () => {
     it('filters notes by search query', async () => {
