@@ -72,6 +72,18 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ### Changed
 - **Coordination Series Options**: Updated board series choices to `['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']`, removing "Friday Gatherings" and replacing "Retreat" with "Conferences/Trainings".
 
+### Fixed
+- **The mobile app builds and runs on a physical Android device.**
+  `expo-build-properties` was pinned to `^57.0.6` — an SDK 57 release sitting on
+  an SDK 52 project — which fails `expo start`'s version check and the Gradle
+  config step; it is now `~0.13.3`. Note that Expo Go can never run this app:
+  `@react-native-google-signin/google-signin` is a native module, so every route
+  throws `TurboModuleRegistry.getEnforcing('RNGoogleSignin')` there. Use
+  `npx expo run:android` (a real debug build) instead — see `apps/mobile/SETUP.md`.
+- **`apps/mobile/app.json` is linked to a real EAS project**
+  (`@twang26/cisa-campus`), unblocking the `extra.eas.projectId` dependency that
+  Phase 5's store delivery and remote push both sat behind (`MIGRATION.md`).
+
 ### Added
 - **Coordination Notes Management & Display Modes**: Added edit, archive, soft-delete (trash bin), restore, permanent delete, and list/text mode toggles with interactive checklist rendering to Coordination Notes & Learnings.
 - **To-Do Subtasks**: Added interactive subtask checklist support to To-Do creation, editing, and task rows with progress counts (`x/y`).
