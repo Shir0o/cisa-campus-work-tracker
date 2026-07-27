@@ -805,4 +805,90 @@ describe('Messages View Component', () => {
     // Verify cisa-* test account direct room is NOT rendered
     expect(screen.queryByText('cisa-test-account')).not.toBeInTheDocument();
   });
+
+  // Announcement rooms — everyone reads, only Full-timers post. The composer
+  // has to disappear for everyone else, or the send fails at the rules layer
+  // with no explanation.
+  describe('announcement rooms', () => {
+    const announcementRoom = {
+      id: 'room-ann',
+      type: 'announcement' as const,
+      name: 'Weekly notes',
+      memberIds: ['u1', 'u2'],
+      createdById: 'u2',
+      createdByName: 'Mei',
+      createdAt: { seconds: 100000 },
+      lastMessage: {
+        text: 'Reading week is coming',
+        senderId: 'u2',
+        senderName: 'Mei',
+        timestamp: { seconds: 100005 },
+      },
+    };
+
+    const renderWithAnnouncement = () => {
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? mockMessages : [announcementRoom];
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item as any;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+      return render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+    };
+
+    const openTheRoom = () => {
+      fireEvent.click(screen.getByText('Weekly notes').closest('button')!);
+    };
+
+    it('names the room and lets a Full-timer post in it', async () => {
+      renderWithAnnouncement();
+      openTheRoom();
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/replies go to the team directly/i)).not.toBeInTheDocument();
+    });
+
+    it('replaces the composer with the reason for everyone else', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
+      renderWithAnnouncement();
+      openTheRoom();
+
+      await waitFor(() => {
+        expect(screen.getByText(/replies go to the team directly/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByPlaceholderText(/Type a message/i)).not.toBeInTheDocument();
+    });
+
+    it('leaves the composer alone in a group room', async () => {
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument();
+      });
+    });
+  });
 });

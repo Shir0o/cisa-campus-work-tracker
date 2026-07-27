@@ -5,24 +5,33 @@ import type { AppUser } from '@cisa/core';
 import { AppText, Avatar, Sheet } from '../ui';
 import { useTheme } from '../../theme/ThemeProvider';
 
-type Tab = 'direct' | 'group';
+type Tab = 'direct' | 'group' | 'announcement';
 
-// "Start Conversation" bottom sheet — tabbed Direct Message / New Group,
-// mirroring web's CreateChatModal.tsx. `users` is already the approved,
-// non-test, non-self candidate pool (see useMessagesData's candidateUsers);
-// this sheet only adds its own search box on top, same local-filter pattern
-// as prayer/HoldPrayerSheet.tsx.
+// "Start Conversation" bottom sheet — tabbed Direct Message / New Group /
+// Announcement, mirroring web's CreateChatModal.tsx. `users` is already the
+// approved, non-test, non-self candidate pool (see useMessagesData's
+// candidateUsers); this sheet only adds its own search box on top, same
+// local-filter pattern as prayer/HoldPrayerSheet.tsx.
+//
+// An announcement takes the same two inputs as a group — it IS a group room
+// everyone reads and only Full-timers post to — so the two share a form and
+// differ only in which create call runs. `canAnnounce` mirrors the
+// firestore.rules gate; without it the tab isn't offered.
 export function CreateChatSheet({
   visible,
   users,
+  canAnnounce = false,
   onStartDirectChat,
   onCreateGroup,
+  onCreateAnnouncement,
   onClose,
 }: {
   visible: boolean;
   users: AppUser[];
+  canAnnounce?: boolean;
   onStartDirectChat: (targetUser: AppUser) => Promise<void>;
   onCreateGroup: (groupName: string, memberUids: string[]) => Promise<void>;
+  onCreateAnnouncement?: (name: string, memberUids: string[]) => Promise<void>;
   onClose: () => void;
 }) {
   const { colors, radius, spacing, typography } = useTheme();
@@ -64,11 +73,13 @@ export function CreateChatSheet({
     }
   };
 
-  const handleCreateGroup = async () => {
+  const handleCreateRoom = async () => {
     if (!groupName.trim() || selectedUids.length === 0) return;
+    const create = tab === 'announcement' ? onCreateAnnouncement : onCreateGroup;
+    if (!create) return;
     setLoading(true);
     try {
-      await onCreateGroup(groupName.trim(), selectedUids);
+      await create(groupName.trim(), selectedUids);
       reset();
     } finally {
       setLoading(false);
@@ -81,10 +92,10 @@ export function CreateChatSheet({
       onClose={close}
       maxHeightRatio={0.85}
       footer={
-        tab === 'group' ? (
+        tab !== 'direct' ? (
           <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.outlineVariant, backgroundColor: colors.surface }}>
             <Pressable
-              onPress={handleCreateGroup}
+              onPress={handleCreateRoom}
               disabled={loading || !groupName.trim() || selectedUids.length === 0}
               style={{
                 paddingVertical: 12,
@@ -95,7 +106,13 @@ export function CreateChatSheet({
               }}
             >
               <Text style={{ color: colors.onPrimary, fontWeight: '700', fontSize: 15 }}>
-                {loading ? 'Creating group…' : `Create Group (${selectedUids.length})`}
+                {loading
+                  ? tab === 'announcement'
+                    ? 'Creating announcement…'
+                    : 'Creating group…'
+                  : tab === 'announcement'
+                    ? `Create Announcement (${selectedUids.length})`
+                    : `Create Group (${selectedUids.length})`}
               </Text>
             </Pressable>
           </View>
@@ -112,7 +129,9 @@ export function CreateChatSheet({
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: spacing.lg, marginTop: 12 }}>
-        {(['direct', 'group'] as Tab[]).map((t) => {
+        {((canAnnounce && onCreateAnnouncement
+          ? ['direct', 'group', 'announcement']
+          : ['direct', 'group']) as Tab[]).map((t) => {
           const on = tab === t;
           return (
             <Pressable
@@ -130,7 +149,7 @@ export function CreateChatSheet({
               }}
             >
               <Text style={{ fontSize: 13, fontWeight: '600', color: on ? colors.onPrimary : colors.onSurface }}>
-                {t === 'direct' ? 'Direct Message' : 'New Group'}
+                {t === 'direct' ? 'Direct Message' : t === 'group' ? 'New Group' : 'Announcement'}
               </Text>
             </Pressable>
           );
@@ -156,12 +175,21 @@ export function CreateChatSheet({
         />
       </View>
 
-      {tab === 'group' ? (
-        <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8 }}>
+      {tab !== 'direct' ? (
+        <View style={{ paddingHorizontal: spacing.lg, marginBottom: 8, gap: 8 }}>
+          {tab === 'announcement' && (
+            <AppText variant="caption" color={colors.onSurfaceVariant}>
+              Everyone here reads it; only Full-timers can post.
+            </AppText>
+          )}
           <TextInput
             value={groupName}
             onChangeText={setGroupName}
-            placeholder="Group name (e.g. Outreach Team)"
+            placeholder={
+              tab === 'announcement'
+                ? 'Announcement name (e.g. Weekly notes)'
+                : 'Group name (e.g. Outreach Team)'
+            }
             placeholderTextColor={colors.onSurfaceVariant}
             style={{
               borderWidth: 1,
@@ -197,7 +225,7 @@ export function CreateChatSheet({
                   padding: 10,
                   borderRadius: radius.md,
                   backgroundColor:
-                    tab === 'group' && checked
+                    tab !== 'direct' && checked
                       ? colors.primaryContainer
                       : pressed
                         ? colors.surfaceVariant
@@ -214,7 +242,7 @@ export function CreateChatSheet({
                     {u.email}
                   </Text>
                 </View>
-                {tab === 'group' ? (
+                {tab !== 'direct' ? (
                   <Ionicons
                     name={checked ? 'checkmark-circle' : 'ellipse-outline'}
                     size={20}

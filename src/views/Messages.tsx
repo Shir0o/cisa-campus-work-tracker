@@ -232,16 +232,22 @@ export default function Messages() {
   };
 
   const getRoomName = (room: ChatRoom) => {
+    if (room.type === 'announcement') return room.name || 'Announcement';
     if (room.type === 'group') return room.name || 'Group';
     const otherUid = room.memberIds.find(id => id !== currentUser?.uid);
     return otherUid ? usersCache[otherUid]?.displayName || 'Direct Chat' : 'Direct Chat';
   };
 
   const getRoomPhoto = (room: ChatRoom) => {
-    if (room.type === 'group') return null;
+    if (room.type !== 'direct') return null;
     const otherUid = room.memberIds.find(id => id !== currentUser?.uid);
     return otherUid ? usersCache[otherUid]?.photoURL || '' : '';
   };
+
+  // Only a Full-timer posts in an announcement room — the same gate
+  // firestore.rules applies, so a member sees a note instead of a composer
+  // whose send would be denied. Mirrors canPostToRoom in @cisa/core.
+  const canPostToActiveRoom = !activeRoom || activeRoom.type !== 'announcement' || isAdmin;
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -697,6 +703,13 @@ export default function Messages() {
             </div>
 
             {/* Composer tray (for mentions & attachments list) */}
+            {!canPostToActiveRoom ? (
+              <div className="px-6 py-5 bg-surface border-t border-outline-variant shrink-0">
+                <p className="text-sm text-on-surface-variant text-center leading-relaxed">
+                  This one's an announcement — replies go to the team directly.
+                </p>
+              </div>
+            ) : (
             <div className="px-6 py-2 bg-surface border-t border-outline-variant relative z-20 shrink-0">
               {/* Mentions list autocomplete */}
               {mentionSearch !== null && (
@@ -777,6 +790,7 @@ export default function Messages() {
                 </button>
               </form>
             </div>
+            )}
           </>
         ) : (
           /* Empty Chat Area Placeholder */

@@ -17,11 +17,33 @@ export function getDirectChatId(uid1: string, uid2: string): string {
   return `direct_${sorted[0]}_${sorted[1]}`;
 }
 
+/** A room the whole audience reads but only Full-timers post to — the design's
+ * "broadcast" conversation (MOBILE-V2.md, the member app's "Announcements").
+ * Rooms written before the type existed have no `type` field at all, so this
+ * is a positive test rather than a `!== 'direct' && !== 'group'`. */
+export function isAnnouncement(room: ChatRoom): boolean {
+  return room.type === "announcement";
+}
+
+/** Client-side mirror of the firestore.rules gate on
+ * chatRooms/{id}/messages create: in an announcement room only a Full-timer
+ * may post. Everywhere else, membership is the rule (admins read every room,
+ * so `isAdmin` covers posting into one they aren't a member of). */
+export function canPostToRoom(
+  room: ChatRoom,
+  currentUid: string | null | undefined,
+  isAdmin: boolean,
+): boolean {
+  if (isAnnouncement(room)) return isAdmin;
+  return isAdmin || (!!currentUid && room.memberIds.includes(currentUid));
+}
+
 export function getRoomName(
   room: ChatRoom,
   currentUid: string | null | undefined,
   usersCache: Record<string, ChatUserSummary>,
 ): string {
+  if (room.type === "announcement") return room.name || "Announcement";
   if (room.type === "group") return room.name || "Group";
   const otherUid = room.memberIds.find((id) => id !== currentUid);
   return (otherUid && usersCache[otherUid]?.displayName) || "Direct Chat";
@@ -32,7 +54,7 @@ export function getRoomPhoto(
   currentUid: string | null | undefined,
   usersCache: Record<string, ChatUserSummary>,
 ): string | null {
-  if (room.type === "group") return null;
+  if (room.type !== "direct") return null;
   const otherUid = room.memberIds.find((id) => id !== currentUid);
   return (otherUid && usersCache[otherUid]?.photoURL) || null;
 }
@@ -134,6 +156,10 @@ export function messagePreviewText(text: string, attachments?: ChatAttachment[])
 
 export function groupCreatedSystemMessage(creatorName: string, groupName: string): string {
   return `${creatorName} created group "${groupName}"`;
+}
+
+export function announcementCreatedSystemMessage(creatorName: string, name: string): string {
+  return `${creatorName} started announcements for "${name}"`;
 }
 
 export function membersAddedSystemMessage(inviterName: string, addedNames: string[]): string {

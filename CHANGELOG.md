@@ -6,6 +6,33 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Added
+- **Announcement conversations** — a chat room the whole audience reads and
+  only Full-timers post to, the design's "broadcast" (`MOBILE-V2.md`).
+  `ChatRoom['type']` gains `'announcement'`; `firestore.rules` gates both
+  creating one and posting to one on `isAdmin()`, and stops a member flipping
+  the room's kind to get around it. `canPostToRoom` in `@cisa/core` is the
+  client-side mirror, so web and mobile both show "replies go to the team
+  directly" instead of a composer whose write would be denied. Full-timers
+  create one from an admin-only third tab on the existing Create-chat modal
+  (web) and sheet (mobile) — a group and an announcement take the same two
+  inputs, so they share a form and differ only in which call runs.
+- **The schema mobile v2's member app needs**, landing ahead of the screens
+  that use it (`prayerRequests`, `hospitalityOffers/{uid}`): the shared
+  `@cisa/core` data modules, the `firestore.rules` for both, and
+  `hospitality.ts`'s availability vocabulary. A prayer request is deliberately
+  NOT a `Prayer` — that entity hangs off a `contactId`, and a member is a user
+  account, not a contact — and it is a top-level collection rather than a
+  `users/{uid}` subcollection precisely because staff must be able to list
+  every open ask in one subscription. A hospitality offer's doc id IS the uid,
+  so a household has one standing offer that gets updated rather than a pile
+  of stale ones.
+- **19 new emulator-backed cases in `src/test/firestore.rules.test.ts`**
+  (65 → 84) covering all three: a member writing their own request/offer, a
+  member denied someone else's, staff reading, only staff listing the open
+  homes, and a non-admin denied both creating an announcement room and posting
+  into one.
+
 ### Changed
 - **Mobile v2 — the focus card is now WHITE and always fills the room**, per
   the Claude Design project's Jul 26, 2026 revision to `MOBILE-V2.md`. It was

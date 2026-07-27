@@ -26,6 +26,7 @@ import {
   getDirectChatId,
   getOrCreateDirectChat,
   createGroupChat,
+  createAnnouncementRoom,
   sendMessage,
   inviteToGroup,
   leaveGroup
@@ -111,6 +112,51 @@ describe('chat.ts services', () => {
         timestamp: 'SERVER_TS',
         type: 'system'
       });
+    });
+  });
+
+  describe('createAnnouncementRoom', () => {
+    it('writes the announcement type, so the rules can gate posting to it', async () => {
+      const roomId = await createAnnouncementRoom(
+        'Weekly notes',
+        ['u2', 'u3'],
+        { uid: 'u1', displayName: 'Mei Tanaka' }
+      );
+
+      expect(roomId).toBe('new-doc-id');
+      expect(mockAddDoc).toHaveBeenNthCalledWith(1, 'col:chatRooms', {
+        type: 'announcement',
+        name: 'Weekly notes',
+        memberIds: ['u1', 'u2', 'u3'],
+        createdById: 'u1',
+        createdByName: 'Mei Tanaka',
+        createdAt: 'SERVER_TS'
+      });
+    });
+
+    it("attributes the genesis message to the creator's real uid", async () => {
+      // Not the 'system' sentinel createGroupChat uses: the messages create
+      // rule checks `senderId == request.auth.uid` and drops the write
+      // otherwise.
+      await createAnnouncementRoom('Weekly notes', [], { uid: 'u1', displayName: 'Mei Tanaka' });
+
+      expect(mockAddDoc).toHaveBeenNthCalledWith(2, 'col:chatRooms/new-doc-id/messages', {
+        roomId: 'new-doc-id',
+        text: 'Mei Tanaka started announcements for "Weekly notes"',
+        senderId: 'u1',
+        senderName: 'System',
+        timestamp: 'SERVER_TS',
+        type: 'system'
+      });
+    });
+
+    it('de-duplicates the creator out of the member list', async () => {
+      await createAnnouncementRoom('Weekly notes', ['u1', 'u2'], { uid: 'u1', displayName: 'Mei' });
+      expect(mockAddDoc).toHaveBeenNthCalledWith(
+        1,
+        'col:chatRooms',
+        expect.objectContaining({ memberIds: ['u1', 'u2'] })
+      );
     });
   });
 

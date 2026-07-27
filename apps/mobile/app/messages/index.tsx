@@ -102,6 +102,12 @@ export default function Messages() {
       <CreateChatSheet
         visible={showCreateSheet}
         users={data.candidateUsers}
+        canAnnounce={data.canAnnounce}
+        onCreateAnnouncement={async (name, uids) => {
+          const roomId = await data.createAnnouncement(name, uids);
+          setShowCreateSheet(false);
+          router.push(`/messages/${roomId}`);
+        }}
         onStartDirectChat={async (targetUser) => {
           const roomId = await data.startDirectChat(targetUser);
           setShowCreateSheet(false);

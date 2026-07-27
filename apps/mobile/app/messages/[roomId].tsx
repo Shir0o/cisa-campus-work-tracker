@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { getRoomName, getRoomPhoto } from '@cisa/core';
+import { canPostToRoom, getRoomName, getRoomPhoto } from '@cisa/core';
 import { Screen, AppText, Avatar, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -17,13 +17,16 @@ export default function ChatThread() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
   const router = useRouter();
   const { colors, spacing } = useTheme();
-  const { uid } = useAuth();
+  const { uid, role } = useAuth();
   const data = useChatThreadData(roomId);
   const [text, setText] = useState('');
   const [showDetails, setShowDetails] = useState(false);
 
   const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
   const photo = data.room ? getRoomPhoto(data.room, uid, data.usersCache) : null;
+  // In an announcement room only a Full-timer posts — show the reason rather
+  // than a composer whose send firestore.rules would deny.
+  const canPost = !data.room || canPostToRoom(data.room, uid, role === 'admin');
 
   const handleSend = async () => {
     if (!text.trim()) return;
@@ -54,7 +57,11 @@ export default function ChatThread() {
           <AppText variant="heading" numberOfLines={1}>
             {name || 'Loading…'}
           </AppText>
-          {data.room?.type === 'group' ? (
+          {data.room?.type === 'announcement' ? (
+            <AppText variant="caption" color={colors.onSurfaceVariant}>
+              Announcement · {data.room.memberIds.length} people
+            </AppText>
+          ) : data.room?.type === 'group' ? (
             <AppText variant="caption" color={colors.onSurfaceVariant}>
               {data.room.memberIds.length} members
             </AppText>
@@ -108,21 +115,29 @@ export default function ChatThread() {
           )}
         </ScrollView>
 
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            gap: 10,
-            padding: spacing.md,
-            borderTopWidth: 1,
-            borderTopColor: colors.outlineVariant,
-          }}
-        >
-          <View style={{ flex: 1 }}>
-            <InlineInput value={text} onChangeText={setText} placeholder="Type a message..." multiline style={{ maxHeight: 100 }} />
+        {canPost ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-end',
+              gap: 10,
+              padding: spacing.md,
+              borderTopWidth: 1,
+              borderTopColor: colors.outlineVariant,
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <InlineInput value={text} onChangeText={setText} placeholder="Type a message..." multiline style={{ maxHeight: 100 }} />
+            </View>
+            <IconButton name="send" onPress={handleSend} tone="accent" />
           </View>
-          <IconButton name="send" onPress={handleSend} tone="accent" />
-        </View>
+        ) : (
+          <View style={{ padding: spacing.lg, borderTopWidth: 1, borderTopColor: colors.outlineVariant }}>
+            <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center' }}>
+              This one's an announcement — replies go to the team directly.
+            </AppText>
+          </View>
+        )}
       </KeyboardAvoidingView>
 
       {data.room ? (

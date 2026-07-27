@@ -77,6 +77,41 @@ export async function createGroupChat(
 }
 
 /**
+ * Creates an announcement room — everyone in it reads, only Full-timers post.
+ * firestore.rules only lets an admin create one, so this is a staff-only call.
+ */
+export async function createAnnouncementRoom(
+  name: string,
+  memberUids: string[],
+  currentUser: { uid: string; displayName: string }
+): Promise<string> {
+  const allMembers = Array.from(new Set([currentUser.uid, ...memberUids]));
+
+  const roomRef = await addDoc(collection(db, 'chatRooms'), {
+    type: 'announcement',
+    name,
+    memberIds: allMembers,
+    createdById: currentUser.uid,
+    createdByName: currentUser.displayName,
+    createdAt: serverTimestamp(),
+  });
+
+  // Post system genesis message. senderId must be the acting uid, not the
+  // 'system' sentinel createGroupChat uses — the messages create rule checks
+  // `senderId == request.auth.uid` and silently drops the write otherwise.
+  await addDoc(collection(db, 'chatRooms', roomRef.id, 'messages'), {
+    roomId: roomRef.id,
+    text: `${currentUser.displayName} started announcements for "${name}"`,
+    senderId: currentUser.uid,
+    senderName: 'System',
+    timestamp: serverTimestamp(),
+    type: 'system',
+  });
+
+  return roomRef.id;
+}
+
+/**
  * Sends a message and updates the room's last message preview.
  */
 export async function sendMessage(

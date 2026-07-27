@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Search, MessageSquare, Users, Loader2 } from 'lucide-react';
+import { X, Search, MessageSquare, Users, Megaphone, Loader2 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { AppUser } from '../../types';
 import { useAuth } from '../AuthProvider';
-import { getOrCreateDirectChat, createGroupChat } from '../../services/chat';
+import { getOrCreateDirectChat, createGroupChat, createAnnouncementRoom } from '../../services/chat';
 import { getUserInitials } from '../../lib/utils';
 
 interface CreateChatModalProps {
@@ -15,8 +15,11 @@ interface CreateChatModalProps {
 }
 
 export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: CreateChatModalProps) {
-  const { user: currentUser } = useAuth();
-  const [tab, setTab] = useState<'direct' | 'group'>('direct');
+  const { user: currentUser, role } = useAuth();
+  // Only a Full-timer may open an announcement room — the same gate
+  // firestore.rules applies to a chatRooms create with type 'announcement'.
+  const canAnnounce = role === 'admin';
+  const [tab, setTab] = useState<'direct' | 'group' | 'announcement'>('direct');
   const [users, setUsers] = useState<AppUser[]>([]);
   const [search, setSearch] = useState('');
   const [groupName, setGroupName] = useState('');
@@ -90,12 +93,15 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
     }
   };
 
-  const handleCreateGroupChat = async (e: React.FormEvent) => {
+  // One form for both room kinds — an announcement is a group everyone reads
+  // and only Full-timers post to, so the inputs are identical.
+  const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser || !groupName.trim() || selectedUids.length === 0) return;
+    const create = tab === 'announcement' ? createAnnouncementRoom : createGroupChat;
     setLoading(true);
     try {
-      const roomId = await createGroupChat(
+      const roomId = await create(
         groupName.trim(),
         selectedUids,
         { uid: currentUser.uid, displayName: currentUser.displayName || 'Member' }
@@ -103,7 +109,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
       onSelectRoom(roomId);
       onClose();
     } catch (error) {
-      console.error('Failed to create group chat:', error);
+      console.error(`Failed to create ${tab} chat:`, error);
     } finally {
       setLoading(false);
     }
@@ -180,6 +186,22 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                 <Users className="w-4 h-4" />
                 New Group
               </button>
+              {canAnnounce && (
+                <button
+                  onClick={() => {
+                    setTab('announcement');
+                    setSearch('');
+                  }}
+                  className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                    tab === 'announcement'
+                      ? 'bg-primary text-on-primary shadow-sm'
+                      : 'text-on-surface-variant hover:bg-surface-container-high'
+                  }`}
+                >
+                  <Megaphone className="w-4 h-4" />
+                  Announcement
+                </button>
+              )}
             </div>
 
             {/* Search Input */}
@@ -238,16 +260,26 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   ))
                 )
               ) : (
-                /* GROUP TAB */
-                <form id="create-group-form" onSubmit={handleCreateGroupChat} className="space-y-4">
+                /* GROUP / ANNOUNCEMENT TAB — same inputs, different room type */
+                <form id="create-group-form" onSubmit={handleCreateRoom} className="space-y-4">
+                  {tab === 'announcement' && (
+                    <p className="text-xs text-on-surface-variant leading-relaxed px-1">
+                      Everyone here reads it; only Full-timers can post. Replies come
+                      back to the team directly.
+                    </p>
+                  )}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-on-surface-variant px-1 uppercase tracking-wider">
-                      Group Name
+                      {tab === 'announcement' ? 'Announcement Name' : 'Group Name'}
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Outreach Team, Trainee Hub"
+                      placeholder={
+                        tab === 'announcement'
+                          ? 'e.g. Weekly notes, Campus updates'
+                          : 'e.g. Outreach Team, Trainee Hub'
+                      }
                       value={groupName}
                       onChange={(e) => setGroupName(e.target.value)}
                       className="w-full h-11 px-4 rounded-xl bg-surface border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface"
@@ -256,7 +288,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-on-surface-variant px-1 uppercase tracking-wider block">
-                      Invite Members ({selectedUids.length} selected)
+                      {tab === 'announcement' ? 'Who receives it' : 'Invite Members'} ({selectedUids.length} selected)
                     </label>
                     <div className="space-y-2 max-h-[170px] overflow-y-auto p-1">
                       {filteredUsers.length === 0 ? (
@@ -311,8 +343,8 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               )}
             </div>
 
-            {/* Footer (only for Group chat) */}
-            {tab === 'group' && (
+            {/* Footer (only for the Group / Announcement form) */}
+            {tab !== 'direct' && (
               <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex gap-3 bg-surface-container-low">
                 <button
                   type="button"
@@ -328,7 +360,11 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
-                    <span className="animate-pulse">Creating group...</span>
+                    <span className="animate-pulse">
+                      {tab === 'announcement' ? 'Creating announcement...' : 'Creating group...'}
+                    </span>
+                  ) : tab === 'announcement' ? (
+                    'Create Announcement'
                   ) : (
                     'Create Group'
                   )}
