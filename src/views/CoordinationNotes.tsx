@@ -63,6 +63,8 @@ import {
   RotateCw,
   Link2,
   Pin,
+  Archive,
+  Edit3,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -488,7 +490,7 @@ function ReadOnlyDoc({
 // Exported alongside NoteForm/addNote's shape so EmbedCoordinationDoc.tsx's
 // admin-only "Save to archive" flow can reuse them (see MIGRATION.md
 // "Coordination Notes / The Board").
-export type NoteFormInitial = { type?: NoteType; series?: string; title?: string; body?: string };
+export type NoteFormInitial = { id?: string; type?: NoteType; series?: string; title?: string; body?: string; displayMode?: 'text' | 'list' };
 
 // Guess which series a page belongs to from its title (first-word match).
 export function guessSeries(title: string): string {
@@ -556,6 +558,7 @@ export default function CoordinationNotes() {
   const [q, setQ] = useState('');
   const [series, setSeries] = useState('All');
   const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
+  const [noteTab, setNoteTab] = useState<'active' | 'archived' | 'trash'>('active');
   // The note form holds optional prefill so "Save to archive" can seed it from a page.
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
@@ -856,33 +859,50 @@ export default function CoordinationNotes() {
   };
 
   // ── notes ──────────────────────────────────────────────────────────────────
-  const addNote = async (fields: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => {
+  const addNote = async (fields: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => {
     try {
-      const ref = doc(collection(db, 'board_notes'));
-      await setDoc(ref, {
-        type: fields.type,
-        series: fields.series,
-        title: fields.title.trim() || 'Untitled note',
-        body: fields.body.trim(),
-        date: todayISO(),
-        contributorIds: [uid],
-        tags: fields.tags,
-        sessionId: active?.id || '',
-        createdAt: serverTimestamp(),
-        createdBy: uid,
-        createdByName: meName,
-        updatedAt: serverTimestamp(),
-        updatedBy: uid,
-        updatedByName: meName,
-      });
-      logActivity({
-        action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
-        targetId: ref.id,
-        targetName: fields.title || 'Note',
-        targetType: 'comment',
-        type: 'create',
-        description: fields.series,
-      } as never);
+      if (fields.id) {
+        await updateDoc(doc(db, 'board_notes', fields.id), {
+          type: fields.type,
+          series: fields.series,
+          title: fields.title.trim() || 'Untitled note',
+          body: fields.body.trim(),
+          tags: fields.tags,
+          displayMode: fields.displayMode || 'text',
+          updatedAt: serverTimestamp(),
+          updatedBy: uid,
+          updatedByName: meName,
+        });
+        showToast('Note updated.');
+      } else {
+        const ref = doc(collection(db, 'board_notes'));
+        await setDoc(ref, {
+          type: fields.type,
+          series: fields.series,
+          title: fields.title.trim() || 'Untitled note',
+          body: fields.body.trim(),
+          date: todayISO(),
+          contributorIds: [uid],
+          tags: fields.tags,
+          displayMode: fields.displayMode || 'text',
+          sessionId: active?.id || '',
+          createdAt: serverTimestamp(),
+          createdBy: uid,
+          createdByName: meName,
+          updatedAt: serverTimestamp(),
+          updatedBy: uid,
+          updatedByName: meName,
+        });
+        logActivity({
+          action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
+          targetId: ref.id,
+          targetName: fields.title || 'Note',
+          targetType: 'comment',
+          type: 'create',
+          description: fields.series,
+        } as never);
+        showToast('Note saved.');
+      }
       setNoteForm(null);
     } catch (e) {
       handleFirestoreError(e, OperationType.CREATE, 'board_notes');
@@ -897,8 +917,26 @@ export default function CoordinationNotes() {
     document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
-  const removeNote = async (n: BoardNote) => {
-    if (!window.confirm(`Remove "${n.title}" from the archive?`)) return;
+  const softDeleteNote = async (n: BoardNote) => {
+    try {
+      await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: serverTimestamp() });
+      showUndoSnack('Note moved to Trash', () => updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null }));
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
+    }
+  };
+
+  const restoreNote = async (n: BoardNote) => {
+    try {
+      await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null });
+      showToast('Note restored from Trash.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
+    }
+  };
+
+  const removeNoteForever = async (n: BoardNote) => {
+    if (!window.confirm(`Permanently delete "${n.title}" from Trash?`)) return;
     try {
       await deleteDoc(doc(db, 'board_notes', n.id));
     } catch (e) {
@@ -906,9 +944,55 @@ export default function CoordinationNotes() {
     }
   };
 
+  const toggleArchiveNote = async (n: BoardNote) => {
+    try {
+      const isArchived = !!n.archivedAt;
+      await updateDoc(doc(db, 'board_notes', n.id), { archivedAt: isArchived ? null : serverTimestamp() });
+      showToast(isArchived ? 'Note unarchived.' : 'Note archived.');
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
+    }
+  };
+
+  const toggleNoteDisplayMode = async (n: BoardNote) => {
+    try {
+      const newMode = n.displayMode === 'list' ? 'text' : 'list';
+      let newBody = n.body;
+      if (newMode === 'list') {
+        newBody = n.body
+          .split('\n')
+          .map((l) => (l.trim().startsWith('- [') ? l : `- [ ] ${l}`))
+          .join('\n');
+      }
+      await updateDoc(doc(db, 'board_notes', n.id), { displayMode: newMode, body: newBody });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
+    }
+  };
+
+  const toggleNoteChecklistItem = async (n: BoardNote, lineIdx: number, done: boolean) => {
+    try {
+      const lines = n.body.split('\n');
+      if (lineIdx < 0 || lineIdx >= lines.length) return;
+      const curLine = lines[lineIdx];
+      const itemText = curLine.replace(/^\s*-\s*\[[ xX]\]\s*/, '');
+      lines[lineIdx] = done ? `- [x] ${itemText}` : `- [ ] ${itemText}`;
+      await updateDoc(doc(db, 'board_notes', n.id), { body: lines.join('\n') });
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
+    }
+  };
+
   const ql = q.trim().toLowerCase();
   const filteredNotes = useMemo(() => {
     return notes.filter((n) => {
+      if (noteTab === 'trash') {
+        if (!n.deletedAt) return false;
+      } else if (noteTab === 'archived') {
+        if (n.deletedAt || !n.archivedAt) return false;
+      } else {
+        if (n.deletedAt || n.archivedAt) return false;
+      }
       if (series !== 'All' && n.series !== series) return false;
       if (kind === 'Records' && n.type !== 'record') return false;
       if (kind === 'Learnings' && n.type !== 'learning') return false;
@@ -918,7 +1002,7 @@ export default function CoordinationNotes() {
       }
       return true;
     });
-  }, [notes, series, kind, ql]);
+  }, [notes, noteTab, series, kind, ql]);
 
   const seriesOptions = useMemo(() => {
     const set = new Set<string>(BOARD_SERIES);
@@ -1109,7 +1193,7 @@ export default function CoordinationNotes() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search notes — e.g. “Friday gathering”, “retreat”, “welcome”…"
+            placeholder="Search notes — e.g. “Small Groups”, “Conferences/Trainings”, “welcome”…"
             className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
           />
           {q && (
@@ -1118,19 +1202,35 @@ export default function CoordinationNotes() {
             </button>
           )}
         </div>
-        <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-          {(['All', 'Records', 'Learnings'] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setKind(k)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
-              )}
-            >
-              {k}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+            {(['active', 'archived', 'trash'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setNoteTab(t)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
+                  noteTab === t ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                {t === 'trash' ? 'Trash' : t === 'archived' ? 'Archive' : 'Active'}
+              </button>
+            ))}
+          </div>
+          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+            {(['All', 'Records', 'Learnings'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                  kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1153,19 +1253,35 @@ export default function CoordinationNotes() {
       </div>
 
       {/* note cards */}
-      {notes.length > 0 && (
-        filteredNotes.length === 0 ? (
-          <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-            No notes match that yet — try a different word or series.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredNotes.map((n) => (
-              <NoteCard key={n.id} n={n} memberById={memberById} onRemove={canEdit ? removeNote : undefined} />
+      {notes.length === 0 ? (
+        <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
+          No notes yet — wrap a page and save what you learned.
+        </div>
+      ) : filteredNotes.length === 0 ? (
+        <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
+          No notes match that yet — try a different word, filter, or series.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {filteredNotes.map((n) => (
+              <NoteCard
+                key={n.id}
+                n={n}
+                memberById={memberById}
+                canEdit={canEdit}
+                noteTab={noteTab}
+                onEdit={(note) => setNoteForm({ id: note.id, type: note.type, series: note.series, title: note.title, body: note.body, displayMode: note.displayMode || 'text' })}
+                onSoftDelete={softDeleteNote}
+                onRestore={restoreNote}
+                onRemoveForever={removeNoteForever}
+                onToggleArchive={toggleArchiveNote}
+                onToggleDisplayMode={toggleNoteDisplayMode}
+                onToggleChecklistItem={toggleNoteChecklistItem}
+              />
             ))}
           </div>
         )
-      )}
+      }
     </section>
   ) : null;
 
@@ -1479,106 +1595,7 @@ export default function CoordinationNotes() {
       )}
 
       {/* Notes & learnings */}
-      {canSeeNotes && (
-      <section id="board-notes-section">
-        <SectionHead
-          title="Notes & learnings"
-          sub="Every page becomes a record — running it again? Find last time's notes."
-          action={
-            canEdit ? (
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setNoteForm({ type: 'record' })}
-                  className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-                >
-                  <Plus className="w-4 h-4" /> New record
-                </button>
-                <button
-                  onClick={() => setNoteForm({ type: 'learning' })}
-                  className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
-                >
-                  <NotebookPen className="w-4 h-4" /> New learning
-                </button>
-              </div>
-            ) : undefined
-          }
-        />
-
-        {canEdit && noteForm && (
-          <NoteForm initial={noteForm} seriesOptions={BOARD_SERIES} onCancel={() => setNoteForm(null)} onSave={addNote} />
-        )}
-
-        {/* controls */}
-        <div className="flex flex-col sm:flex-row gap-2.5 mb-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/50" />
-            <input
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              placeholder="Search notes — e.g. “Friday gathering”, “retreat”, “welcome”…"
-              className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
-            />
-            {q && (
-              <button onClick={() => setQ('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-on-surface">
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-            {(['All', 'Records', 'Learnings'] as const).map((k) => (
-              <button
-                key={k}
-                onClick={() => setKind(k)}
-                className={cn(
-                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                  kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
-                )}
-              >
-                {k}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* series chips */}
-        <div className="flex flex-wrap gap-2 mb-4">
-          {seriesOptions.map((s) => (
-            <button
-              key={s}
-              onClick={() => setSeries(s)}
-              className={cn(
-                'px-3 py-1 rounded-full text-xs font-medium border transition-colors',
-                series === s
-                  ? 'bg-stage-accent border-stage-accent text-white'
-                  : 'bg-surface border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-on-surface',
-              )}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-
-        {/* note cards */}
-        {loadingNotes ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            <Skeleton className="h-40 w-full rounded-2xl" />
-            <Skeleton className="h-40 w-full rounded-2xl" />
-          </div>
-        ) : filteredNotes.length === 0 ? (
-          <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-            {notes.length === 0
-              ? 'No notes yet — wrap a page and save what you learned.'
-              : 'No notes match that yet — try a different word or series.'}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {filteredNotes.map((n) => (
-              <NoteCard key={n.id} n={n} memberById={memberById} onRemove={canEdit ? removeNote : undefined} />
-            ))}
-          </div>
-        )}
-      </section>
-      )}
+      {NotesSectionComponent}
 
       <p className="text-center text-sm text-on-surface-variant/70 pt-2 flex items-center justify-center gap-2">
         <Feather className="w-3.5 h-3.5" />{' '}
@@ -3141,15 +3158,36 @@ export function DocEditor({
 function NoteCard({
   n,
   memberById,
+  canEdit,
+  noteTab,
+  onEdit,
+  onSoftDelete,
+  onRestore,
+  onRemoveForever,
+  onToggleArchive,
+  onToggleDisplayMode,
+  onToggleChecklistItem,
   onRemove,
 }: {
   n: BoardNote;
   memberById: Map<string, TeamMember>;
+  canEdit?: boolean;
+  noteTab?: 'active' | 'archived' | 'trash';
+  onEdit?: (n: BoardNote) => void;
+  onSoftDelete?: (n: BoardNote) => void;
+  onRestore?: (n: BoardNote) => void;
+  onRemoveForever?: (n: BoardNote) => void;
+  onToggleArchive?: (n: BoardNote) => void;
+  onToggleDisplayMode?: (n: BoardNote) => void;
+  onToggleChecklistItem?: (n: BoardNote, lineIdx: number, done: boolean) => void;
   onRemove?: (n: BoardNote) => void;
 }) {
   const isLearning = n.type === 'learning';
   const ageDays = Math.round((Date.now() - new Date(n.date).getTime()) / 86400000);
   const oldRecall = ageDays > 300;
+  const isListMode = n.displayMode === 'list' || (n.body && n.body.split('\n').some((l) => /^\s*-\s*\[[ xX]\]/.test(l)));
+  const lines = n.body ? n.body.split('\n') : [];
+
   return (
     <article
       className={cn(
@@ -3169,24 +3207,112 @@ function NoteCard({
         <span className="inline-flex items-center gap-1 text-on-surface-variant">
           <Tag className="w-3 h-3" /> {n.series}
         </span>
+        {n.archivedAt != null && (
+          <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold uppercase tracking-wider">
+            Archived
+          </span>
+        )}
         <span className="ml-auto inline-flex items-center gap-1.5 text-on-surface-variant/70 whitespace-nowrap">
           {oldRecall && (
             <span className="px-1.5 py-px rounded-full bg-stage-amber-soft text-stage-amber font-semibold text-[10.5px]">1 yr</span>
           )}
           {dateLabelOf(n.date)}
         </span>
-        {onRemove && (
-          <button
-            onClick={() => onRemove(n)}
-            className="p-0.5 text-on-surface-variant/0 group-hover:text-on-surface-variant/50 hover:!text-error transition-colors"
-            title="Remove from archive"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
+
+        {canEdit && (
+          <div className="flex items-center gap-1 ml-1">
+            {onToggleDisplayMode && (
+              <button
+                onClick={() => onToggleDisplayMode(n)}
+                className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                title={isListMode ? 'Switch to text mode' : 'Switch to checklist mode'}
+              >
+                {isListMode ? <Type className="w-3.5 h-3.5" /> : <ListChecks className="w-3.5 h-3.5" />}
+              </button>
+            )}
+            {onEdit && noteTab !== 'trash' && (
+              <button
+                onClick={() => onEdit(n)}
+                className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                title="Edit note"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {onToggleArchive && noteTab !== 'trash' && (
+              <button
+                onClick={() => onToggleArchive(n)}
+                className={cn('p-1 transition-colors', n.archivedAt ? 'text-primary' : 'text-on-surface-variant/50 hover:text-primary')}
+                title={n.archivedAt ? 'Unarchive note' : 'Archive note'}
+              >
+                <Archive className="w-3.5 h-3.5" />
+              </button>
+            )}
+            {noteTab === 'trash' ? (
+              <>
+                {onRestore && (
+                  <button
+                    onClick={() => onRestore(n)}
+                    className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                    title="Restore note"
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {onRemoveForever && (
+                  <button
+                    onClick={() => onRemoveForever(n)}
+                    className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
+                    title="Delete forever"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </>
+            ) : (
+              (onSoftDelete || onRemove) && (
+                <button
+                  onClick={() => (onSoftDelete ? onSoftDelete(n) : onRemove?.(n))}
+                  className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
+                  title="Move to Trash"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )
+            )}
+          </div>
         )}
       </div>
+
       <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">{n.title}</h4>
-      {n.body && <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">{n.body}</p>}
+
+      {n.body && (
+        isListMode ? (
+          <div className="space-y-1.5 mb-3.5 text-sm text-on-surface-variant">
+            {lines.map((line, idx) => {
+              const isChecked = /^\s*-\s*\[[xX]\]/.test(line);
+              const cleanText = line.replace(/^\s*-\s*\[[ xX]\]\s*/, '');
+              return (
+                <label key={idx} className="flex items-start gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={isChecked}
+                    onChange={(e) => onToggleChecklistItem?.(n, idx, e.target.checked)}
+                    disabled={!canEdit}
+                    className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary"
+                  />
+                  <span className={cn('leading-normal', isChecked && 'line-through opacity-60')}>
+                    {cleanText}
+                  </span>
+                </label>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">{n.body}</p>
+        )
+      )}
+
       <div className="flex items-center gap-3 mt-auto">
         <div className="flex -space-x-2">
           {(n.contributorIds || []).slice(0, 4).map((id) => (
@@ -3211,52 +3337,87 @@ export function NoteForm({
   seriesOptions: string[];
   initial?: NoteFormInitial;
   onCancel: () => void;
-  onSave: (f: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => void;
+  onSave: (f: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => void;
 }) {
   const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
   const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
+  const [displayMode, setDisplayMode] = useState<'text' | 'list'>(initial?.displayMode ?? 'text');
+
+  const toggleMode = () => {
+    if (displayMode === 'text') {
+      const formatted = body
+        .split('\n')
+        .map((l) => (l.trim().startsWith('- [') ? l : `- [ ] ${l}`))
+        .join('\n');
+      setBody(formatted);
+      setDisplayMode('list');
+    } else {
+      const plain = body
+        .split('\n')
+        .map((l) => l.replace(/^\s*-\s*\[[ xX]\]\s*/, ''))
+        .join('\n');
+      setBody(plain);
+      setDisplayMode('text');
+    }
+  };
 
   const field =
     'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
 
   return (
     <div className="mb-4 p-4 rounded-2xl bg-surface border border-outline-variant space-y-3">
-      <div className="flex flex-wrap items-center gap-2.5">
-        <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-          {(['record', 'learning'] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setType(k)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
-              )}
-            >
-              {k}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-center justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
+            {(['record', 'learning'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => setType(k)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
+                  type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                {k}
+              </button>
+            ))}
+          </div>
+          <select
+            value={series}
+            onChange={(e) => setSeries(e.target.value)}
+            className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent"
+          >
+            {seriesOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </div>
-        <select
-          value={series}
-          onChange={(e) => setSeries(e.target.value)}
-          className="bg-surface border border-outline-variant rounded-xl px-2.5 py-2 text-sm text-on-surface-variant focus:outline-none focus:border-stage-accent"
+        <button
+          type="button"
+          onClick={toggleMode}
+          className={cn(
+            'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-colors',
+            displayMode === 'list'
+              ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40'
+              : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
+          )}
+          title={displayMode === 'list' ? 'Switch to text format' : 'Switch to checklist format'}
         >
-          {seriesOptions.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+          {displayMode === 'list' ? <ListChecks className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
+          <span>{displayMode === 'list' ? 'List format' : 'Text format'}</span>
+        </button>
       </div>
       <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A short title — what this was about" className={field} />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        rows={3}
-        placeholder="What happened, or what you learned…"
-        className={cn(field, 'resize-y leading-relaxed')}
+        rows={4}
+        placeholder={displayMode === 'list' ? "- [ ] First item\n- [ ] Second item" : "What happened, or what you learned…"}
+        className={cn(field, 'resize-y leading-relaxed font-sans')}
       />
       <div className="flex gap-2.5 justify-end">
         <button
@@ -3266,11 +3427,11 @@ export function NoteForm({
           Cancel
         </button>
         <button
-          onClick={() => onSave({ type, series, title, body, tags: [] })}
+          onClick={() => onSave({ id: initial?.id, type, series, title, body, tags: [], displayMode })}
           disabled={!title.trim()}
           className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
         >
-          {type === 'learning' ? 'Save learning' : 'Save record'}
+          {initial?.id ? 'Update note' : type === 'learning' ? 'Save learning' : 'Save record'}
         </button>
       </div>
     </div>

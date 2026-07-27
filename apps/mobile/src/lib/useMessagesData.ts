@@ -6,7 +6,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { filterChatUsers, filterRooms, isRoomUnread, type AppUser, type ChatRoom } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
-import { createGroupChat, getOrCreateDirectChat, subscribeChatRooms } from './data/chat';
+import {
+  createAnnouncementRoom,
+  createGroupChat,
+  getOrCreateDirectChat,
+  subscribeChatRooms,
+} from './data/chat';
 import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
 
@@ -67,6 +72,9 @@ export function useMessagesData() {
     isUnread,
     loading,
     error,
+    // The firestore.rules gate on creating an announcement room, so the sheet
+    // only offers the tab when the write would actually land.
+    canAnnounce: isAdmin,
 
     startDirectChat: (targetUser: AppUser): Promise<string> => {
       if (!uid) return Promise.reject(new Error('not signed in'));
@@ -78,6 +86,10 @@ export function useMessagesData() {
     createGroup: (groupName: string, memberUids: string[]): Promise<string> => {
       if (!uid) return Promise.reject(new Error('not signed in'));
       return createGroupChat(groupName, memberUids, { uid, displayName: user?.displayName || 'Member' });
+    },
+    createAnnouncement: (name: string, memberUids: string[]): Promise<string> => {
+      if (!uid) return Promise.reject(new Error('not signed in'));
+      return createAnnouncementRoom(name, memberUids, { uid, displayName: user?.displayName || 'Member' });
     },
   };
 }

@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { ftInboxVisible, type FtInboxRow } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
-import { FtAction, FtEmpty, FtRow, FtWidget } from './FtWidget';
+import { WidgetAction, WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
 
 export function FromTeam({
   rows,
@@ -26,15 +26,15 @@ export function FromTeam({
   const rest = rows.length - shown.length;
 
   return (
-    <FtWidget
+    <Widget
       label="From the team"
       count={unread}
       link={expanded ? 'Show less' : rest > 0 ? `Everything else (${rest}) →` : null}
       onLink={() => setExpanded((v) => !v)}
     >
-      {shown.length === 0 && <FtEmpty>All scanned.</FtEmpty>}
+      {shown.length === 0 && <WidgetEmpty>All scanned.</WidgetEmpty>}
       {shown.map((row, i) => (
-        <FtRow key={row.item.id} first={i === 0}>
+        <WidgetRow key={row.item.id} first={i === 0}>
           <View style={{ flexDirection: 'row', gap: 12 }}>
             <PersonMark name={row.who} id={row.item.by} size={34} radius={11} fontSize={12} />
             <View style={{ flex: 1, opacity: row.unread ? 1 : 0.66 }}>
@@ -76,17 +76,17 @@ export function FromTeam({
                 </Text>
               )}
               <View style={{ flexDirection: 'row', gap: 18, marginTop: 2 }}>
-                <FtAction
+                <WidgetAction
                   label={row.reply === 'write-back' ? 'Write back' : 'Encourage'}
                   onPress={() => onReply(row)}
                 />
-                <FtAction label="Open" onPress={() => onOpen(row.item.contactId)} />
-                <FtAction label={row.unread ? 'Scanned' : 'Unscan'} onPress={() => onScan(row)} />
+                <WidgetAction label="Open" onPress={() => onOpen(row.item.contactId)} />
+                <WidgetAction label={row.unread ? 'Scanned' : 'Unscan'} onPress={() => onScan(row)} />
               </View>
             </View>
           </View>
-        </FtRow>
+        </WidgetRow>
       ))}
-    </FtWidget>
+    </Widget>
   );
 }

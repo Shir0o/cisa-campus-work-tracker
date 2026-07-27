@@ -7,7 +7,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import type { FtCarrying, FtNextGathering } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
-import { FtSech } from './FtWidget';
+import { Sech } from '../v2/Widget';
 
 function Tile({
   dot,
@@ -105,7 +105,7 @@ export function FtGlance({
   const { c } = useV2Theme();
   return (
     <View>
-      <FtSech label="At a glance" />
+      <Sech label="At a glance" />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Tile
           dot={c.tones.pray.dot}

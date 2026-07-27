@@ -19,6 +19,7 @@ import {
   canViewBoard,
   canViewBoardNotes,
   canEditBoard,
+  BOARD_SERIES,
   type BoardSession,
   type BoardDoc,
 } from '../lib/board';
@@ -270,6 +271,12 @@ describe('Board Pure Helpers', () => {
     it('grants editing to full-timers (admins) only', () => {
       expect(canEditBoard(true)).toBe(true);
       expect(canEditBoard(false)).toBe(false);
+    });
+  });
+
+  describe('BOARD_SERIES', () => {
+    it('has the updated series options without Friday Gathering and with Conferences/Trainings', () => {
+      expect(BOARD_SERIES).toEqual(['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']);
     });
   });
 });

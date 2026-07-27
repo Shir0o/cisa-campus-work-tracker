@@ -4,14 +4,14 @@ import React from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import type { FtWeekChip } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
-import { FtSech } from './FtWidget';
+import { Sech } from '../v2/Widget';
 
 export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
   const { c, font, radius } = useV2Theme();
   if (chips.length === 0) return null;
   return (
     <View>
-      <FtSech label="The week ahead" />
+      <Sech label="The week ahead" />
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}

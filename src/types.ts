@@ -73,6 +73,12 @@ export interface SystemActivity {
   createdAt: string;
 }
 
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -90,6 +96,7 @@ export interface Task {
   sourceDocId?: string | null;
   sourceDocTitle?: string | null;
   createdAt?: unknown;
+  subtasks?: Subtask[];
 }
 
 export interface Comment {
@@ -230,7 +237,10 @@ export interface ChatAttachment {
 
 export interface ChatRoom {
   id: string;
-  type: 'direct' | 'group';
+  // 'announcement' is a room the whole audience reads but only Full-timers can
+  // post to (mobile v2's member "Announcements"). Kept in step with
+  // packages/core/src/types.ts; firestore.rules is what enforces it.
+  type: 'direct' | 'group' | 'announcement';
   name?: string;
   memberIds: string[];
   createdById: string;

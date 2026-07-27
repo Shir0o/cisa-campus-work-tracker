@@ -55,6 +55,21 @@ export async function createGroupChat(
   }
 }
 
+/** A room its audience reads but only Full-timers post to. The rules only let
+ * an admin create one. */
+export async function createAnnouncementRoom(
+  name: string,
+  memberUids: string[],
+  currentUser: { uid: string; displayName: string },
+): Promise<string> {
+  try {
+    return await core.createAnnouncementRoom(db, name, memberUids, currentUser);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, 'chatRooms');
+    throw e;
+  }
+}
+
 /** Sends a message and notifies every other member's bell. */
 export async function sendMessage(
   roomId: string,

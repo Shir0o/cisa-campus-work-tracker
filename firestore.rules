@@ -365,6 +365,56 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // 9b. Prayer Requests — a Student or Community member asking the team to
+    // pray for THEM (mobile v2's member app). Distinct from /prayers, which
+    // hangs off a contactId: the asker is a user account, not a contact. The
+    // asker owns their rows; staff (manager and up) read every row, which is
+    // how the ask reaches the Full-timer home's "Prayers to carry".
+    match /prayerRequests/{requestId} {
+      function isValidPrayerRequest(data) {
+        return data.keys().hasAll(['uid', 'name', 'body', 'status', 'createdAt', 'updatedAt']) &&
+               isValidId(data.uid) &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 128 &&
+               data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
+               data.status in ['open', 'answered'] &&
+               data.createdAt is string && data.createdAt.size() <= 64 &&
+               data.updatedAt is string && data.updatedAt.size() <= 64;
+      }
+
+      allow get: if isApprovedUser() && (isOwner(existing().uid) || isManager());
+      // The member's own list filters on uid; the staff list filters on status.
+      // Both are approved-user reads — a member listing everyone's requests is
+      // the one thing this opens up, and these are asks meant for the team.
+      allow list: if isApprovedUser();
+      allow create: if isApprovedUser() && isOwner(incoming().uid) && isValidPrayerRequest(incoming());
+      // "God answered this" is the asker's to say; staff can close one out too.
+      allow update: if isApprovedUser() && (isOwner(existing().uid) || isManager()) &&
+                      isValidPrayerRequest(incoming()) && incoming().uid == existing().uid;
+      allow delete: if isOwner(existing().uid) || isManager();
+    }
+
+    // 9c. Hospitality Offers — a Community member's standing offer to host
+    // students at their table (mobile v2's "Open your home"). Doc id IS the
+    // uid, so one household has one offer.
+    match /hospitalityOffers/{userId} {
+      function isValidOffer(data) {
+        return data.keys().hasAll(['uid', 'name', 'availability', 'seats', 'note', 'updatedAt']) &&
+               data.uid == userId &&
+               data.name is string && data.name.size() > 0 && data.name.size() <= 128 &&
+               data.availability is list && data.availability.size() <= 8 &&
+               data.seats is string && data.seats.size() <= 128 &&
+               data.note is string && data.note.size() <= 2000 &&
+               data.updatedAt is string && data.updatedAt.size() <= 64;
+      }
+
+      allow get: if isApprovedUser() && (isOwner(userId) || isManager());
+      // Staff list every open home; a member only ever reads their own doc by
+      // id, so the list rule is staff-only.
+      allow list: if isManager();
+      allow create, update: if isApprovedUser() && isOwner(userId) && isValidOffer(incoming());
+      allow delete: if isOwner(userId) || isManager();
+    }
+
     // 10. Tasks Collection
     match /tasks/{taskId} {
       function isValidTask(data) {
@@ -508,17 +558,29 @@ service cloud.firestore {
       function isRoomMember() {
         return isSignedIn() && request.auth.uid in resource.data.memberIds;
       }
-      
+
+      // An announcement room is one everybody in it reads but only Full-timers
+      // post to (mobile v2's member "Announcements"). Mirrored client-side by
+      // canPostToRoom() in packages/core/src/chat.ts.
+      function isAnnouncementRoom(roomData) {
+        return roomData.get('type', 'group') == 'announcement';
+      }
+
       // Admins (Full-timers) can view all chats. Other users must be members.
       allow read: if isSignedIn() && (isRoomMember() || isAdmin());
-      
-      // Create room: creator must be in the memberIds array and matches auth user
-      allow create: if isSignedIn() && 
-                    request.resource.data.createdById == request.auth.uid &&
-                    request.auth.uid in request.resource.data.memberIds;
 
-      // Update room: Admins can update any room. Members can update their rooms.
-      allow update: if isSignedIn() && (isRoomMember() || isAdmin());
+      // Create room: creator must be in the memberIds array and matches auth
+      // user. Only a Full-timer may open an announcement room.
+      allow create: if isSignedIn() &&
+                    request.resource.data.createdById == request.auth.uid &&
+                    request.auth.uid in request.resource.data.memberIds &&
+                    (!isAnnouncementRoom(incoming()) || isAdmin());
+
+      // Update room: Admins can update any room. Members can update their
+      // rooms — but only a Full-timer may change what KIND of room it is, or a
+      // member could flip an announcement to a group and post into it.
+      allow update: if isSignedIn() && (isRoomMember() || isAdmin()) &&
+                    (isAdmin() || incoming().get('type', 'group') == existing().get('type', 'group'));
       allow delete: if isSignedIn() && isAdmin();
 
       // Messages subcollection
@@ -527,11 +589,15 @@ service cloud.firestore {
           get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) ||
           isAdmin()
         );
-        
-        allow create: if isSignedIn() && 
+
+        // In an announcement room only Full-timers post; everyone else reads.
+        // The parent room is already fetched for the membership check, so the
+        // type check costs no extra document read.
+        allow create: if isSignedIn() &&
                       (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) || isAdmin()) &&
+                      (isAdmin() || !isAnnouncementRoom(get(/databases/$(database)/documents/chatRooms/$(roomId)).data)) &&
                       request.resource.data.senderId == request.auth.uid;
-                      
+
         allow update, delete: if false; // Messages are immutable
       }
     }
