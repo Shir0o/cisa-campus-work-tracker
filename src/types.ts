@@ -230,7 +230,10 @@ export interface ChatAttachment {
 
 export interface ChatRoom {
   id: string;
-  type: 'direct' | 'group';
+  // 'announcement' is a room the whole audience reads but only Full-timers can
+  // post to (mobile v2's member "Announcements"). Kept in step with
+  // packages/core/src/types.ts; firestore.rules is what enforces it.
+  type: 'direct' | 'group' | 'announcement';
   name?: string;
   memberIds: string[];
   createdById: string;

@@ -231,7 +231,11 @@ export interface ChatAttachment {
 
 export interface ChatRoom {
   id: string;
-  type: 'direct' | 'group';
+  // 'announcement' is a room the whole audience reads but only Full-timers can
+  // post to — the design's "broadcast" conversation (MOBILE-V2.md, the member
+  // app's "Announcements" block). Enforced in firestore.rules; `canPostToRoom`
+  // in ./chat is the client-side mirror of that rule.
+  type: 'direct' | 'group' | 'announcement';
   name?: string;
   memberIds: string[];
   createdById: string;
@@ -243,6 +247,32 @@ export interface ChatRoom {
     senderName: string;
     timestamp: unknown;
   };
+}
+
+// A member asking the team to pray for them (MOBILE-V2.md, the member app's
+// "Ask the team to pray"). Deliberately NOT a `Prayer`: that entity hangs off a
+// `contactId`, and a member is a user account, not a contact. Lives at
+// prayerRequests/{id}; the asker owns it, staff read it.
+export interface PrayerRequest {
+  id: string;
+  uid: string;
+  name: string;
+  body: string;
+  status: 'open' | 'answered';
+  createdAt: string;
+  updatedAt: string;
+}
+
+// A Community member offering their table (MOBILE-V2.md, "Open your home").
+// One doc per household at hospitalityOffers/{uid}, so re-offering updates the
+// standing offer rather than piling up.
+export interface HospitalityOffer {
+  uid: string;
+  name: string;
+  availability: string[];
+  seats: string;
+  note: string;
+  updatedAt: string;
 }
 
 export interface ChatMessage {

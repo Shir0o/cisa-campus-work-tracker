@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import {
+  announcementCreatedSystemMessage,
+  canPostToRoom,
   getDirectChatId,
   getRoomName,
   getRoomPhoto,
+  isAnnouncement,
   isRoomUnread,
   sortRoomsByRecency,
   filterRooms,
@@ -64,6 +67,11 @@ describe('getRoomName', () => {
     expect(getRoomName(room({ type: 'group', name: '' }), 'me', {})).toBe('Group');
   });
 
+  it('returns the announcement name, falling back to "Announcement"', () => {
+    expect(getRoomName(room({ type: 'announcement', name: 'Weekly notes' }), 'me', {})).toBe('Weekly notes');
+    expect(getRoomName(room({ type: 'announcement' }), 'me', {})).toBe('Announcement');
+  });
+
   it('returns the other member\'s cached display name for a direct chat', () => {
     expect(getRoomName(room(), 'me', usersCache)).toBe('Them Person');
   });
@@ -76,8 +84,9 @@ describe('getRoomName', () => {
 });
 
 describe('getRoomPhoto', () => {
-  it('is always null for a group', () => {
+  it('is always null for a group or an announcement', () => {
     expect(getRoomPhoto(room({ type: 'group', name: 'X' }), 'me', { them: { displayName: 'T', photoURL: 'p' } })).toBeNull();
+    expect(getRoomPhoto(room({ type: 'announcement', name: 'X' }), 'me', { them: { displayName: 'T', photoURL: 'p' } })).toBeNull();
   });
 
   it('returns the other member\'s cached photo, or null when missing', () => {
@@ -210,5 +219,44 @@ describe('system message builders', () => {
     expect(membersAddedSystemMessage('Alice', ['Bob'])).toBe('Alice added Bob to the group');
     expect(membersAddedSystemMessage('Alice', ['Bob', 'Carol'])).toBe('Alice added Bob, Carol to the group');
     expect(memberLeftSystemMessage('Bob')).toBe('Bob left the group');
+    expect(announcementCreatedSystemMessage('Mei', 'Weekly notes')).toBe(
+      'Mei started announcements for "Weekly notes"',
+    );
+  });
+});
+
+describe('isAnnouncement', () => {
+  it('is true only for the announcement type', () => {
+    expect(isAnnouncement(room({ type: 'announcement' }))).toBe(true);
+    expect(isAnnouncement(room({ type: 'group' }))).toBe(false);
+    expect(isAnnouncement(room())).toBe(false);
+  });
+
+  it('is false for a room written before the type existed', () => {
+    // Rooms created by earlier builds have no `type` field at all.
+    expect(isAnnouncement(room({ type: undefined as unknown as ChatRoom['type'] }))).toBe(false);
+  });
+});
+
+describe('canPostToRoom', () => {
+  it('lets only a Full-timer post in an announcement room', () => {
+    const ann = room({ type: 'announcement', memberIds: ['me', 'boss'] });
+    expect(canPostToRoom(ann, 'boss', true)).toBe(true);
+    expect(canPostToRoom(ann, 'me', false)).toBe(false);
+  });
+
+  it('lets any member post in a direct or group room', () => {
+    expect(canPostToRoom(room(), 'me', false)).toBe(true);
+    expect(canPostToRoom(room({ type: 'group' }), 'me', false)).toBe(true);
+  });
+
+  it('keeps a non-member out of a room they can see but do not belong to', () => {
+    expect(canPostToRoom(room({ memberIds: ['a', 'b'] }), 'me', false)).toBe(false);
+    expect(canPostToRoom(room({ memberIds: ['a', 'b'] }), null, false)).toBe(false);
+  });
+
+  it('lets an admin post in any non-announcement room they can read', () => {
+    // Mirrors the rules' admin read/write bypass on chatRooms.
+    expect(canPostToRoom(room({ type: 'group', memberIds: ['a', 'b'] }), 'boss', true)).toBe(true);
   });
 });

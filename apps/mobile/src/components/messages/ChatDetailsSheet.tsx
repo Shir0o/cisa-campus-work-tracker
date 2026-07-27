@@ -85,7 +85,11 @@ export function ChatDetailsSheet({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.lg }}>
         <Text style={{ fontFamily: typography.fontSerif, fontSize: 18, fontWeight: '500', color: colors.onSurface }}>
-          {room.type === 'group' ? 'Group Details' : 'Conversation Details'}
+          {room.type === 'group'
+            ? 'Group Details'
+            : room.type === 'announcement'
+              ? 'Announcement Details'
+              : 'Conversation Details'}
         </Text>
         <Pressable onPress={close} hitSlop={8} style={{ padding: 6 }}>
           <Ionicons name="close" size={18} color={colors.onSurfaceVariant} />

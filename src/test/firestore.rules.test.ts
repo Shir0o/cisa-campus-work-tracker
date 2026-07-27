@@ -5,6 +5,7 @@ import {
   RulesTestEnvironment 
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   doc,
   getDoc,
   getDocs,
@@ -606,6 +607,289 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDocs(query(collectionGroup(db, 'rsvps'))));
       // Filtered to someone else → denied.
       await assertFails(getDocs(query(collectionGroup(db, 'rsvps'), where('uid', '==', 'admin1'))));
+    });
+  });
+
+  // The three collections mobile v2's member app writes to. See MOBILE-V2.md
+  // and firestore.rules sections 9b / 9c / chatRooms.
+  describe('Member app — prayer requests, hospitality, announcements', () => {
+    const seedMemberUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'student2'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'community1'), { role: 'viewer', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+      });
+    };
+
+    // ── prayer requests ──────────────────────────────────────────────────────
+    const newRequest = (over: Record<string, unknown> = {}) => ({
+      uid: 'student1',
+      name: 'Lila Chen',
+      body: 'Midterms are wrecking me',
+      status: 'open',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...over,
+    });
+    const seedRequest = async (id: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'prayerRequests', id), newRequest(over));
+      });
+    };
+
+    it('PR1: a student can ask the team to pray for them', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'student1' });
+      await assertSucceeds(setDoc(doc(db, 'prayerRequests', 'pr1'), newRequest()));
+    });
+
+    it('PR2: nobody can file a request in someone else\'s name', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'student2' });
+      await assertFails(setDoc(doc(db, 'prayerRequests', 'pr2'), newRequest({ uid: 'student1' })));
+    });
+
+    it('PR3: an empty or oversized body is rejected', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'student1' });
+      await assertFails(setDoc(doc(db, 'prayerRequests', 'pr3'), newRequest({ body: '' })));
+      await assertFails(
+        setDoc(doc(db, 'prayerRequests', 'pr4'), newRequest({ body: 'a'.repeat(6000) })),
+      );
+    });
+
+    it('PR4: the asker can mark their own request answered', async () => {
+      await seedMemberUsers();
+      await seedRequest('pr5');
+      const db = getFirestore({ uid: 'student1' });
+      await assertSucceeds(
+        updateDoc(doc(db, 'prayerRequests', 'pr5'), {
+          status: 'answered',
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    });
+
+    it('PR5: staff can close one out, another member cannot', async () => {
+      await seedMemberUsers();
+      await seedRequest('pr6');
+      const staff = getFirestore({ uid: 'ft1' });
+      await assertSucceeds(
+        updateDoc(doc(staff, 'prayerRequests', 'pr6'), {
+          status: 'answered',
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+      const other = getFirestore({ uid: 'student2' });
+      await assertFails(
+        updateDoc(doc(other, 'prayerRequests', 'pr6'), {
+          status: 'open',
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    });
+
+    it('PR6: an update cannot reassign a request to someone else', async () => {
+      await seedMemberUsers();
+      await seedRequest('pr7');
+      const db = getFirestore({ uid: 'student1' });
+      await assertFails(
+        updateDoc(doc(db, 'prayerRequests', 'pr7'), {
+          uid: 'student2',
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+    });
+
+    it('PR7: a signed-out visitor can neither read nor write one', async () => {
+      await seedMemberUsers();
+      await seedRequest('pr8');
+      const db = getFirestore();
+      await assertFails(getDoc(doc(db, 'prayerRequests', 'pr8')));
+      await assertFails(setDoc(doc(db, 'prayerRequests', 'pr9'), newRequest()));
+    });
+
+    // ── hospitality offers ───────────────────────────────────────────────────
+    const newOffer = (over: Record<string, unknown> = {}) => ({
+      uid: 'community1',
+      name: 'Grace Okafor',
+      availability: ['sunday'],
+      seats: '3–4 students',
+      note: '',
+      updatedAt: new Date().toISOString(),
+      ...over,
+    });
+    const seedOffer = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'hospitalityOffers', 'community1'), newOffer());
+      });
+    };
+
+    it('HO1: a Community member can open their home, and update the offer', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'community1' });
+      await assertSucceeds(setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer()));
+      await assertSucceeds(
+        setDoc(
+          doc(db, 'hospitalityOffers', 'community1'),
+          newOffer({ availability: ['weeknight', 'sunday'] }),
+        ),
+      );
+    });
+
+    it('HO2: nobody can write an offer under someone else\'s uid', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'student1' });
+      await assertFails(
+        setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer({ uid: 'community1' })),
+      );
+    });
+
+    it('HO3: the doc id must match the uid inside it', async () => {
+      await seedMemberUsers();
+      const db = getFirestore({ uid: 'community1' });
+      await assertFails(
+        setDoc(doc(db, 'hospitalityOffers', 'community1'), newOffer({ uid: 'student1' })),
+      );
+    });
+
+    it('HO4: staff read every offer; another member reads none but their own', async () => {
+      await seedMemberUsers();
+      await seedOffer();
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'hospitalityOffers', 'community1')));
+      await assertSucceeds(
+        getDoc(doc(getFirestore({ uid: 'community1' }), 'hospitalityOffers', 'community1')),
+      );
+      await assertFails(
+        getDoc(doc(getFirestore({ uid: 'student1' }), 'hospitalityOffers', 'community1')),
+      );
+    });
+
+    it('HO5: only staff can list the open homes', async () => {
+      await seedMemberUsers();
+      await seedOffer();
+      await assertSucceeds(getDocs(query(collection(getFirestore({ uid: 'ft1' }), 'hospitalityOffers'))));
+      await assertFails(
+        getDocs(query(collection(getFirestore({ uid: 'community1' }), 'hospitalityOffers'))),
+      );
+    });
+
+    it('HO6: the owner can withdraw their offer', async () => {
+      await seedMemberUsers();
+      await seedOffer();
+      const db = getFirestore({ uid: 'community1' });
+      await assertSucceeds(deleteDoc(doc(db, 'hospitalityOffers', 'community1')));
+    });
+
+    // ── announcement rooms ───────────────────────────────────────────────────
+    const seedRoom = async (id: string, type: string) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'chatRooms', id), {
+          type,
+          name: 'Weekly notes',
+          memberIds: ['ft1', 'student1'],
+          createdById: 'ft1',
+          createdByName: 'Mei',
+          createdAt: serverTimestamp(),
+        });
+      });
+    };
+    const newChatMsg = (senderId: string) => ({
+      roomId: 'room1',
+      text: 'Hello everyone',
+      senderId,
+      senderName: 'Someone',
+      timestamp: serverTimestamp(),
+      type: 'text',
+    });
+
+    it('AN1: only a Full-timer can open an announcement room', async () => {
+      await seedMemberUsers();
+      const room = {
+        type: 'announcement',
+        name: 'Weekly notes',
+        memberIds: ['student1', 'ft1'],
+        createdByName: 'Someone',
+        createdAt: serverTimestamp(),
+      };
+      await assertSucceeds(
+        setDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'roomA'), {
+          ...room,
+          createdById: 'ft1',
+        }),
+      );
+      await assertFails(
+        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'roomB'), {
+          ...room,
+          createdById: 'student1',
+        }),
+      );
+    });
+
+    it('AN2: a member can still open a plain group room', async () => {
+      await seedMemberUsers();
+      await assertSucceeds(
+        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'roomC'), {
+          type: 'group',
+          name: 'Study crew',
+          memberIds: ['student1', 'student2'],
+          createdById: 'student1',
+          createdByName: 'Lila',
+          createdAt: serverTimestamp(),
+        }),
+      );
+    });
+
+    it('AN3: in an announcement room only a Full-timer can post', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'announcement');
+      await assertSucceeds(
+        setDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), newChatMsg('ft1')),
+      );
+      await assertFails(
+        setDoc(
+          doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m2'),
+          newChatMsg('student1'),
+        ),
+      );
+    });
+
+    it('AN4: a member of the room can still read every announcement in it', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'announcement');
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'chatRooms/room1/messages/m0'), newChatMsg('ft1'));
+      });
+      await assertSucceeds(
+        getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m0')),
+      );
+    });
+
+    it('AN5: a group room is unaffected — a member posts as before', async () => {
+      await seedMemberUsers();
+      await seedRoom('room2', 'group');
+      await assertSucceeds(
+        setDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room2/messages/m3'), {
+          ...newChatMsg('student1'),
+          roomId: 'room2',
+        }),
+      );
+    });
+
+    it('AN6: a member cannot flip an announcement into a group to post in it', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'announcement');
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), { type: 'group' }),
+      );
+      // A member can still update the room in ways that leave the kind alone.
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1'), {
+          memberIds: ['ft1', 'student1', 'student2'],
+        }),
+      );
     });
   });
 
