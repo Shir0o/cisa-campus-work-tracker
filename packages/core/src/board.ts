@@ -30,7 +30,7 @@ export const CATEGORY_ORDER: BoardCategory[] = ['care', 'gathering', 'outreach',
 export type NoteType = 'record' | 'learning';
 
 // Default event series; stored as a plain string so new ones are free-form.
-export const BOARD_SERIES = ['Friday Gathering', 'Small Groups', 'Outreach', 'Retreat', 'Team'];
+export const BOARD_SERIES = ['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team'];
 
 // ── Firestore document shapes ───────────────────────────────────────────────
 export interface AgendaAction {
@@ -95,6 +95,9 @@ export interface BoardNote {
   updatedAt?: unknown;
   updatedBy?: string;
   updatedByName?: string;
+  deletedAt?: unknown;
+  archivedAt?: unknown;
+  displayMode?: 'text' | 'list';
 }
 
 // ── Pure helpers ────────────────────────────────────────────────────────────

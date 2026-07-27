@@ -73,6 +73,12 @@ export interface SystemActivity {
   createdAt: string;
 }
 
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -90,6 +96,7 @@ export interface Task {
   sourceDocId?: string | null;
   sourceDocTitle?: string | null;
   createdAt?: unknown;
+  subtasks?: Subtask[];
 }
 
 export interface Comment {

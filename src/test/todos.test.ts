@@ -30,6 +30,7 @@ import {
   updateTodo,
   setTodoDone,
   deleteTodo,
+  toggleSubtask,
 } from '../lib/todos';
 import { handleFirestoreError } from '../lib/firebase';
 
@@ -140,9 +141,9 @@ describe('todos.ts', () => {
 
   // ── Firestore writes ─────────────────────────────────────────────────────
   describe('addTodo', () => {
-    it('writes to the tasks collection with all fields', async () => {
+    it('writes to the tasks collection with all fields including subtasks', async () => {
       await addTodo(
-        { title: '  Hello  ', assigneeId: 'u2', dueDate: '2026-07-01', source: { docId: 'bd1', docTitle: 'Page' } },
+        { title: '  Hello  ', assigneeId: 'u2', dueDate: '2026-07-01', source: { docId: 'bd1', docTitle: 'Page' }, subtasks: [{ id: 'st1', title: 'Sub 1', done: false }] },
         { uid: 'u1', name: 'Tony' },
       );
       expect(mockAddDoc).toHaveBeenCalledWith('col:tasks', expect.objectContaining({
@@ -156,6 +157,7 @@ describe('todos.ts', () => {
         sourceDocId: 'bd1',
         sourceDocTitle: 'Page',
         createdAt: 'SERVER_TS',
+        subtasks: [{ id: 'st1', title: 'Sub 1', done: false }],
       }));
     });
 
@@ -181,11 +183,12 @@ describe('todos.ts', () => {
   });
 
   describe('updateTodo', () => {
-    it('writes a partial patch to the task doc', async () => {
-      await updateTodo('t1', { title: '  New title  ', dueDate: '2026-08-01' });
+    it('writes a partial patch to the task doc including subtasks', async () => {
+      await updateTodo('t1', { title: '  New title  ', dueDate: '2026-08-01', subtasks: [{ id: 'st1', title: 'Sub 1', done: true }] });
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:tasks/t1', {
         title: 'New title',
         dueDate: '2026-08-01',
+        subtasks: [{ id: 'st1', title: 'Sub 1', done: true }],
       });
     });
 
@@ -198,6 +201,22 @@ describe('todos.ts', () => {
       mockUpdateDoc.mockRejectedValueOnce(new Error('boom'));
       await updateTodo('t1', { title: 'X' });
       expect(handleFirestoreError).toHaveBeenCalled();
+    });
+  });
+
+  describe('toggleSubtask', () => {
+    it('toggles the target subtask done state and updates task doc', async () => {
+      const subtasks = [
+        { id: 'st1', title: 'Sub 1', done: false },
+        { id: 'st2', title: 'Sub 2', done: false },
+      ];
+      await toggleSubtask('t1', subtasks, 'st1', true);
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:tasks/t1', {
+        subtasks: [
+          { id: 'st1', title: 'Sub 1', done: true },
+          { id: 'st2', title: 'Sub 2', done: false },
+        ],
+      });
     });
   });
 

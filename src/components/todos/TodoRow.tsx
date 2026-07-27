@@ -1,6 +1,6 @@
-import { Check, FileText, Trash2 } from "lucide-react";
+import { Check, FileText, Trash2, ListChecks } from "lucide-react";
 import { cn, getUserInitials } from "../../lib/utils";
-import { dueChip, dueToneClass, type TodoPerson } from "../../lib/todos";
+import { dueChip, dueToneClass, toggleSubtask, type TodoPerson, type SubtaskItem } from "../../lib/todos";
 
 // A reusable initials/photo avatar — shared with the to-do composer.
 export function PersonAvatar({
@@ -40,6 +40,7 @@ export interface TodoItem {
   assigneeId?: string | null;
   contactId?: string | null;
   contactName?: string | null;
+  subtasks?: SubtaskItem[];
 }
 
 const firstName = (name?: string | null) => (name ? name.split(" ")[0] : "");
@@ -70,11 +71,23 @@ export default function TodoRow({
 }) {
   const isDone = todo.status === "completed";
   const due = isDone ? null : dueChip(todo.dueDate);
+  const subtasks = todo.subtasks || [];
+  const completedSubtasksCount = subtasks.filter((s) => s.done).length;
+  const hasSubtasks = subtasks.length > 0;
   const hasMeta =
     (showAssignee && assignee) ||
     todo.createdByName ||
     (todo.sourceDocId && todo.sourceDocTitle) ||
-    (todo.contactId && todo.contactName);
+    (todo.contactId && todo.contactName) ||
+    hasSubtasks;
+
+  const handleSubtaskToggle = async (subtaskId: string, done: boolean) => {
+    try {
+      await toggleSubtask(todo.id, subtasks, subtaskId, done);
+    } catch {
+      // ignore
+    }
+  };
 
   return (
     <div
@@ -97,18 +110,48 @@ export default function TodoRow({
       </button>
 
       <div className="min-w-0 flex-1">
-        <button
-          type="button"
-          onClick={onEdit ? () => onEdit(todo) : undefined}
-          disabled={!onEdit}
-          className={cn(
-            "block text-left w-full text-on-surface",
-            isDone && "line-through text-on-surface-variant",
-            onEdit && "hover:text-primary transition-colors cursor-pointer",
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onEdit ? () => onEdit(todo) : undefined}
+            disabled={!onEdit}
+            className={cn(
+              "block text-left text-on-surface flex-1",
+              isDone && "line-through text-on-surface-variant",
+              onEdit && "hover:text-primary transition-colors cursor-pointer",
+            )}
+          >
+            {todo.title}
+          </button>
+          {hasSubtasks && (
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/50">
+              <ListChecks className="w-3 h-3 text-primary" />
+              {completedSubtasksCount}/{subtasks.length}
+            </span>
           )}
-        >
-          {todo.title}
-        </button>
+        </div>
+
+        {/* Subtask checklist list */}
+        {hasSubtasks && (
+          <div className="mt-2 space-y-1.5 pl-1 border-l-2 border-outline-variant/40">
+            {subtasks.map((st) => (
+              <label
+                key={st.id}
+                className="flex items-center gap-2 text-xs text-on-surface-variant hover:text-on-surface cursor-pointer select-none"
+              >
+                <input
+                  type="checkbox"
+                  checked={st.done}
+                  onChange={(e) => handleSubtaskToggle(st.id, e.target.checked)}
+                  className="w-3.5 h-3.5 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary"
+                />
+                <span className={cn(st.done && "line-through text-on-surface-variant/60")}>
+                  {st.title}
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
 
         {hasMeta && (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-sm text-on-surface-variant">
