@@ -80,6 +80,12 @@ export function presetForDue(dueDate?: string | null): DuePresetKey {
 }
 
 // ── Firestore writes (shared by My Day + The Board) ──────────────────────────
+export interface SubtaskItem {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 export interface NewTodo {
   title: string;
   assigneeId: string | null;
@@ -87,6 +93,7 @@ export interface NewTodo {
   source?: { docId: string; docTitle: string } | null;
   contactId?: string | null;
   contactName?: string | null;
+  subtasks?: SubtaskItem[];
 }
 
 export async function addTodo(input: NewTodo, me: { uid: string; name: string }): Promise<string> {
@@ -105,6 +112,7 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
       sourceDocId: input.source?.docId ?? null,
       sourceDocTitle: input.source?.docTitle ?? null,
       createdAt: serverTimestamp(),
+      subtasks: input.subtasks ?? [],
     });
     return docRef?.id ?? 'mock-task-id';
   } catch (e) {
@@ -115,17 +123,23 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
 
 export async function updateTodo(
   id: string,
-  patch: { title?: string; assigneeId?: string | null; dueDate?: string | null },
+  patch: { title?: string; assigneeId?: string | null; dueDate?: string | null; subtasks?: SubtaskItem[] },
 ): Promise<void> {
   try {
     const clean: Record<string, unknown> = {};
     if (patch.title !== undefined) clean.title = patch.title.trim();
     if (patch.assigneeId !== undefined) clean.assigneeId = patch.assigneeId;
     if (patch.dueDate !== undefined) clean.dueDate = patch.dueDate;
+    if (patch.subtasks !== undefined) clean.subtasks = patch.subtasks;
     await updateDoc(doc(db, "tasks", id), clean);
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, "tasks");
   }
+}
+
+export async function toggleSubtask(id: string, currentSubtasks: SubtaskItem[], subtaskId: string, done: boolean): Promise<void> {
+  const updated = (currentSubtasks || []).map((s) => (s.id === subtaskId ? { ...s, done } : s));
+  await updateTodo(id, { subtasks: updated });
 }
 
 export async function setTodoDone(id: string, done: boolean): Promise<void> {

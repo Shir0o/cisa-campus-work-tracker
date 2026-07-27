@@ -7,6 +7,13 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Changed
+- **Coordination Series Options**: Updated board series choices to `['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']`, removing "Friday Gatherings" and replacing "Retreat" with "Conferences/Trainings".
+
+### Added
+- **Coordination Notes Management & Display Modes**: Added edit, archive, soft-delete (trash bin), restore, permanent delete, and list/text mode toggles with interactive checklist rendering to Coordination Notes & Learnings.
+- **To-Do Subtasks**: Added interactive subtask checklist support to To-Do creation, editing, and task rows with progress counts (`x/y`).
+
+### Changed
 - **Mobile v2 — the focus card is now WHITE and always fills the room**, per
   the Claude Design project's Jul 26, 2026 revision to `MOBILE-V2.md`. It was
   a cream (`#f4f1e6`) content-sized sheet that floated as a stub whenever a

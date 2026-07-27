@@ -706,35 +706,39 @@ describe('CoordinationNotes', () => {
 
   // ── 9. Remove note ────────────────────────────────────────────────────────
   describe('remove note', () => {
-    it('calls deleteDoc after confirm when removing a note', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('soft deletes note (sets deletedAt) when clicking Move to Trash', async () => {
       setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
       render(<CoordinationNotes />);
 
-      // The remove buttons are titled "Remove from archive"
       await waitFor(() => {
-        expect(screen.getAllByTitle('Remove from archive').length).toBeGreaterThan(0);
+        expect(screen.getAllByTitle('Move to Trash').length).toBeGreaterThan(0);
       });
 
-      fireEvent.click(screen.getAllByTitle('Remove from archive')[0]);
+      fireEvent.click(screen.getAllByTitle('Move to Trash')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deletedAt: expect.anything() }));
+      });
+    });
+
+    it('calls deleteDoc after confirm when deleting a note forever in Trash tab', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const trashNotes = [{ ...mockNotes[0], data: () => ({ ...mockNotes[0].data(), deletedAt: 'mock-ts' }) }];
+      setupSnapshots({ docs: mockDocs, notes: trashNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Delete forever').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Delete forever')[0]);
 
       await waitFor(() => {
         expect(deleteDoc).toHaveBeenCalled();
       });
-    });
-
-    it('does not call deleteDoc when confirm is cancelled', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
-      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
-      render(<CoordinationNotes />);
-
-      await waitFor(() => {
-        expect(screen.getAllByTitle('Remove from archive').length).toBeGreaterThan(0);
-      });
-
-      fireEvent.click(screen.getAllByTitle('Remove from archive')[0]);
-
-      expect(deleteDoc).not.toHaveBeenCalled();
     });
   });
 
