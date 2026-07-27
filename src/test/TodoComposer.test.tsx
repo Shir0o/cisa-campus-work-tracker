@@ -285,4 +285,21 @@ describe('TodoComposer', () => {
     fireEvent.click(removeBtn);
     expect(screen.queryByPlaceholderText('Subtask 1')).not.toBeInTheDocument();
   });
+
+  it('renders unanchored modal with scroll container styling to prevent overflow cutoff', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText('What needs doing?');
+    const card = textarea.closest('.bg-surface');
+    expect(card).not.toBeNull();
+    expect(card?.className).toContain('max-h-[calc(100vh-2rem)]');
+    expect(card?.className).toContain('overflow-y-auto');
+  });
 });
