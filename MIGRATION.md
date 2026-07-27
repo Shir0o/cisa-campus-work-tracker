@@ -935,11 +935,11 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   Simulator, never automated component tests), so it's not a new shortfall
   specific to this feature.
 
-### 🟡 Mobile v2 — the trainee's focus queue (shipped, still catching up to the design)
+### 🟡 Mobile v2 — the staff apps (shipped, still catching up to the design)
 The design project (`019e2501-…`, `MOBILE-V2.md`) rebuilt mobile from scratch
 with the **trainee as the primary user**: not a dashboard, a full-screen focus
-queue. #168 ported the queue itself; this section tracks the port against the
-design as it keeps moving.
+queue, with a widgets home beside it for the full-timer. #168 ported the queue
+itself; this section tracks the port against the design as it keeps moving.
 
 - [x] ~~The queue~~ (#168) — `src/components/queue/*`, ordering as a pure
       `buildQueue()` in `packages/core/src/queue.ts`, the v2 palette in
@@ -974,15 +974,54 @@ design as it keeps moving.
       looks" is not on the v2 screen** — `AppearancePicker` on `/settings`
       already owns light/dark app-wide for every role, and two controls over
       one piece of state is a bug waiting to happen.
-- [ ] **The full-timer v2 home** (revision item 2) — an at-a-glance widgets
-      home on warm paper (`Mobile Today - hybrid.html` state B): At a glance ·
-      Needs you today · From the team · Gone quiet in your care · Prayers to
-      carry · the week-ahead strip. Full-timers still get `MyDayScreen`.
+- [x] ~~**The full-timer v2 home** (revision item 2)~~ — the at-a-glance
+      widgets home on warm paper (`Mobile Today - hybrid.html` state B):
+      greeting + summary · two quick tiles · At a glance · Needs you today ·
+      From the team · Gone quiet in your care · Prayers to carry · the
+      week-ahead strip. `app/(tabs)/index.tsx`'s `default:` arm now renders
+      `src/components/ft/FtHomeScreen.tsx`; the derivations are a pure
+      `packages/core/src/ftHome.ts` (45 new tests, core 251 → 296) and the live
+      data a new `src/lib/useFtHomeData.ts`.
+      **The design's four-tab FT shell is deliberately NOT ported** — same call
+      #168 made about the ☰ drawer: the bottom tab bar already carries
+      navigation, so every widget link routes into the app's own screens
+      (`/prayer`, `/people`, `/journey`, `/attendance`, `/contact/[id]`) and
+      there is no separate "Prayer log" screen.
+      **`theme/v2.ts` now holds two rooms**, selected by a `V2RoomContext` that
+      every v2 component reads: the trainee's green (literals untouched) and the
+      full-timer's paper/navy, whose green→navy values are `mobile-blue.css`'s
+      own mapping. A bottom sheet needs the provider twice — once outside
+      `<Sheet>` and once around its children — because `BottomSheetModal` hands
+      those children to the app-root provider, which renders them at *its*
+      position in the React tree.
+      **Three substitutions**, each documented in `ftHome.ts`: the glance's
+      second tile is "Next gathering" off the next upcoming `Event` (no huddle
+      entity exists, and `Event` carries no time of day, so the design's "Team
+      prayer" time cannot be built); "weighs heavy" is `status === "ongoing"`
+      (no priority field on a prayer); and "I prayed just now" is device-local,
+      sharing `queueState`'s per-day `handled` map exactly as the trainee
+      queue's identical button does, rather than widening `firestore.rules`.
+      **Deliberate duplication**, recorded so it doesn't read as an accident:
+      `useFtHomeData` repeats `useMyDayData`'s contacts/stages/events/prayers/
+      interactions/comments subscriptions rather than extending it, because
+      `MyDayScreen` still reads that hook and this change leaves it alone —
+      the same call #168 made with `useTraineeLandingData`.
+      **Known gap**: orphaning `MyDayScreen` also orphans `ContactsPickerSheet`,
+      so the "who are my people" picker is unreachable on mobile. The new home
+      still *honours* the preference (`personalContactIdsOf` falls back to
+      created-by-me when unset), so a full-timer who picked their people on the
+      web keeps them; picking a new one is a desktop job for now.
+      Also fixed along the way, in shared `components/ui/Sheet.tsx`: a sheet
+      that MOUNTED already-visible never opened, because `present()` is dropped
+      when it lands in the modal's own mount commit. It is now deferred one
+      macrotask. Every sheet keyed by the person it's about was affected.
 - [ ] **The member v2 app** (student + community) — `M2Member`'s calm
       single-scroll home + Prayer / Messages / You. Both roles still get
       `LandingStudent` / `LandingCommunity`.
-- [ ] **The ☰ drawer** and the **blue-room tint** — the bottom tab bar carries
-      navigation today, and only the green room is ported.
+- [ ] **The ☰ drawer** — the bottom tab bar carries navigation today, for both
+      staff roles. (The blue room is no longer outstanding: the full-timer home
+      ported it as the `ft` room in `theme/v2.ts`. What's left is offering it as
+      a *tint the trainee can pick*, which the design drives from Tweaks.)
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now

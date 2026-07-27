@@ -1,0 +1,82 @@
+// Mobile v2 — "Needs you today". The to-dos owed today, checkable in place.
+// Ported from the design's `.ftw-todo` rows.
+import React from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { dueChip, type FtTodoSplit, type Task } from '@cisa/core';
+import { useV2Theme } from '../../theme/v2';
+import { FtEmpty, FtRow, FtWidget } from './FtWidget';
+
+export function NeedsYouToday({
+  todos,
+  onDone,
+  onOpenBoard,
+}: {
+  todos: FtTodoSplit;
+  onDone: (task: Task) => void;
+  onOpenBoard: () => void;
+}) {
+  const { c, font } = useV2Theme();
+  const later = todos.laterThisWeek.length;
+  return (
+    <FtWidget
+      label="Needs you today"
+      count={todos.today.length}
+      link={later ? `${later} more later this week →` : null}
+      onLink={onOpenBoard}
+    >
+      {todos.today.length === 0 && <FtEmpty>Nothing due today.</FtEmpty>}
+      {todos.today.map((t, i) => {
+        const chip = dueChip(t.dueDate);
+        return (
+          <FtRow key={t.id} first={i === 0}>
+            <Pressable
+              onPress={() => onDone(t)}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 12,
+                minHeight: 44,
+                opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <View
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 7,
+                  borderWidth: 1.5,
+                  borderColor: c.border,
+                  marginTop: 1,
+                }}
+              />
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    fontFamily: font.bold,
+                    fontSize: 15.5,
+                    lineHeight: 21,
+                    color: c.cardInk,
+                  }}
+                >
+                  {t.title}
+                </Text>
+                {!!chip && (
+                  <Text
+                    style={{
+                      fontFamily: font.semi,
+                      fontSize: 12,
+                      color: chip.tone === 'overdue' ? c.tones.follow.text : c.cardInk3,
+                      marginTop: 4,
+                    }}
+                  >
+                    {chip.label}
+                  </Text>
+                )}
+              </View>
+            </Pressable>
+          </FtRow>
+        );
+      })}
+    </FtWidget>
+  );
+}
