@@ -38,6 +38,7 @@ export default function TodoComposer({
   meName,
   onClose,
   onSaved,
+  onCreated,
 }: {
   mode: "create" | "edit";
   anchorRect?: { top: number; left: number } | null;
@@ -49,6 +50,7 @@ export default function TodoComposer({
   meName: string;
   onClose: () => void;
   onSaved?: (message: string) => void;
+  onCreated?: (tasks: { id: string; title: string; assigneeId: string | null; assigneeName: string | null }[]) => void;
 }) {
   const [texts, setTexts] = useState<string[]>(() =>
     initialTexts && initialTexts.length > 0 ? initialTexts : [initial?.text ?? ""],
@@ -117,8 +119,10 @@ export default function TodoComposer({
         }
         onSaved?.("To-do updated.");
       } else {
+        const createdList: { id: string; title: string; assigneeId: string | null; assigneeName: string | null }[] = [];
         for (const valText of validTexts) {
           const newId = await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null }, { uid: meUid, name: meName });
+          createdList.push({ id: newId, title: valText, assigneeId, assigneeName: who?.name || null });
           if (typeof logActivity === "function") {
             logActivity({
               action: 'added task',
@@ -140,13 +144,17 @@ export default function TodoComposer({
             });
           }
         }
+        if (createdList.length > 0) {
+          onCreated?.(createdList);
+        }
         const msg = validTexts.length > 1
           ? `Created ${validTexts.length} tasks for ${assigneeId === meUid ? "yourself" : first}.`
           : (assigneeId === meUid ? "Added to your day." : `Sent to ${first} — it's on their day now.`);
         onSaved?.(msg);
       }
       onClose();
-    } catch {
+    } catch (e) {
+      console.error('TodoComposer commit error:', e);
       setSaving(false);
     }
   };

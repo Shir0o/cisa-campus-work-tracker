@@ -281,3 +281,133 @@ export const docSortOrder = (a: BoardDoc, b: BoardDoc) =>
 // Starter body for a brand-new page.
 export const newDocMarkdown = (): string =>
   `# Untitled page\n\nStart writing — everyone on the team sees your edits live.\n`;
+
+// ── Doc-linked Tasks & Notes (Markdown Sync Helpers) ─────────────────────────
+
+export interface ParsedDocTask {
+  id: string;
+  done: boolean;
+  title: string;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  rawLine: string;
+}
+
+export interface ParsedDocNote {
+  id: string;
+  type: NoteType;
+  rawLine: string;
+}
+
+export function formatDocTaskMarkdown(task: {
+  id: string;
+  title: string;
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+  done?: boolean;
+}): string {
+  const checkbox = task.done ? '[x]' : '[ ]';
+  const namePart = task.assigneeName ? ` (@${task.assigneeName.trim()})` : '';
+  const assigneeAttr = task.assigneeId ? ` assignee:${task.assigneeId}` : '';
+  return `- ${checkbox} ${task.title.trim()}${namePart} <!-- task:${task.id}${assigneeAttr} -->`;
+}
+
+export function formatDocNoteMarkdown(note: {
+  id: string;
+  title: string;
+  body?: string;
+  type: NoteType;
+  series?: string;
+}): string {
+  const typeLabel = note.type === 'learning' ? 'Learning' : 'Record';
+  const bodyText = note.body ? ` — ${note.body.trim()}` : '';
+  return `> 📝 **Note (${typeLabel})**: ${note.title.trim()}${bodyText} <!-- note:${note.id} type:${note.type} -->`;
+}
+
+export function parseDocTasks(markdown: string): ParsedDocTask[] {
+  const tasks: ParsedDocTask[] = [];
+  const lines = markdown.split('\n');
+  const taskRegex = /-\s*\[([ xX])\]\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
+
+  for (const line of lines) {
+    const match = taskRegex.exec(line);
+    if (match) {
+      const done = match[1].toLowerCase() === 'x';
+      let titleWithAssignee = match[2].trim();
+      let assigneeName: string | null = null;
+
+      const atMatch = /\s*\(@([^)]+)\)$/.exec(titleWithAssignee);
+      if (atMatch) {
+        assigneeName = atMatch[1];
+        titleWithAssignee = titleWithAssignee.slice(0, atMatch.index).trim();
+      }
+
+      tasks.push({
+        id: match[3],
+        done,
+        title: titleWithAssignee,
+        assigneeId: match[4] || null,
+        assigneeName,
+        rawLine: line,
+      });
+    }
+  }
+
+  return tasks;
+}
+
+export function parseDocNotes(markdown: string): ParsedDocNote[] {
+  const notes: ParsedDocNote[] = [];
+  const lines = markdown.split('\n');
+  const noteRegex = /<!--\s*note:([^\s>]+)(?:\s+type:([^\s>]+))?\s*-->/;
+
+  for (const line of lines) {
+    const match = noteRegex.exec(line);
+    if (match) {
+      notes.push({
+        id: match[1],
+        type: (match[2] as NoteType) || 'record',
+        rawLine: line,
+      });
+    }
+  }
+
+  return notes;
+}
+
+export function syncMarkdownWithTasks(
+  markdown: string,
+  tasksMap: Map<string, { title: string; status: string; assigneeId: string | null }>,
+  teamMap: Map<string, { name: string }>,
+): string {
+  const lines = markdown.split('\n');
+  let changed = false;
+  const taskRegex = /-\s*\[([ xX])\]\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
+
+  const newLines = lines.map((line) => {
+    const match = taskRegex.exec(line);
+    if (!match) return line;
+    const taskId = match[3];
+    const task = tasksMap.get(taskId);
+    if (!task) return line;
+
+    const isDone = task.status === 'completed';
+    const assigneeName = task.assigneeId ? teamMap.get(task.assigneeId)?.name?.split(' ')[0] || null : null;
+    const updatedLine = formatDocTaskMarkdown({
+      id: taskId,
+      title: task.title,
+      assigneeId: task.assigneeId,
+      assigneeName,
+      done: isDone,
+    });
+
+    if (updatedLine !== line) {
+      changed = true;
+      return updatedLine;
+    }
+    return line;
+  });
+
+  return changed ? newLines.join('\n') : markdown;
+}
+
