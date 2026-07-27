@@ -12,7 +12,7 @@
 // hiding things here.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { agoLabel, type MemberRole } from '@cisa/core';
+import { memberAgo, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useMemberPrayerData } from '../../lib/useMemberPrayerData';
 import { useV2Theme } from '../../theme/v2';
@@ -209,7 +209,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
                 <PrayerCard
                   key={ask.id}
                   title={ask.body}
-                  meta={`The team is praying · ${agoLabel(ask.createdAt)}`}
+                  meta={`The team is praying · ${memberAgo(ask.createdAt)}`}
                 >
                   <InlineLink
                     label="God answered this →"
@@ -247,7 +247,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </Text>
             )}
             {data.onYourHeart.open.map((p) => (
-              <PrayerCard key={p.id} title={p.title} meta={`Since ${agoLabel(p.date)}`}>
+              <PrayerCard key={p.id} title={p.title} meta={`Since ${memberAgo(p.date)}`}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <CarryButton
                     carried={data.carriedToday(p.id)}

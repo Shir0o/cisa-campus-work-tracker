@@ -4,7 +4,7 @@
 // actually wrote, and the copy promises nothing more than that.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { agoLabel, firstName, type MemberNote } from '@cisa/core';
+import { memberAgo, firstName, type MemberNote } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
 
@@ -32,7 +32,7 @@ export function NoteFromTeam({
             A note from {firstName(note.fromName)}
           </Text>
           <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }}>
-            {agoLabel(note.at)}
+            {memberAgo(note.at)}
           </Text>
         </View>
       </View>

@@ -4,7 +4,7 @@
 // replaced by "replies go to the team directly".
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
-import { agoLabel, type MemberAnnouncement } from '@cisa/core';
+import { memberAgo, type MemberAnnouncement } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { Sech } from '../v2/Widget';
 
@@ -49,7 +49,7 @@ export function Announcements({
                 {row.name}
               </Text>
               <Text style={{ fontFamily: font.medium, fontSize: 12, color: c.cardInk3 }}>
-                {agoLabel(row.at)}
+                {memberAgo(row.at)}
               </Text>
             </View>
             <Text

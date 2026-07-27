@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { agoLabel, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
+import { memberAgo, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { useV2Theme } from '../../theme/v2';
@@ -93,7 +93,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
               </View>
               <View style={{ alignItems: 'flex-end', gap: 5 }}>
                 <Text style={{ fontFamily: font.medium, fontSize: 11.5, color: c.cardInk3 }}>
-                  {last ? agoLabel(last.timestamp as string | null) : ''}
+                  {last ? memberAgo(last.timestamp as string | null) : ''}
                 </Text>
                 {unread && (
                   <View

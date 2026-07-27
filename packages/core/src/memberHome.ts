@@ -18,8 +18,9 @@
 // `noteFromTheTeam` reads the newest direct message from ANY full-timer
 // instead, and the copy says "from {name}", never "who cares for you".
 import { format } from "date-fns";
+import { ftLastHeard } from "./ftHome";
 import { firstName } from "./history";
-import { DAY_MS, parseMs, toLocalDate, type PersonalPrayer } from "./myday";
+import { DAY_MS, daysSince, parseMs, toLocalDate, type PersonalPrayer } from "./myday";
 import { pickLandingForRole, type AppRole } from "./permissions";
 import { upcomingEventsForRsvp } from "./rsvp";
 import type { ChatMessage, ChatRoom, Contact, Event, PrayerRecord, PrayerRequest } from "./types";
@@ -85,6 +86,18 @@ export function memberWhenWords(date: string, now: number = Date.now()): string 
   if (days < 0) return "already been";
   if (days < 7) return format(d, "EEEE");
   return `in ${days} days`;
+}
+
+/** "today" · "yesterday" · "3 days ago" from a timestamp.
+ *
+ * The member screens carry ISO dates, not day counts, and `agoLabel` prints
+ * "0 days ago" for something that happened an hour ago — which reads as a bug
+ * on a request you just sent. The phrasing is `ftLastHeard`'s, reused rather
+ * than restated so the two rooms say the same words for the same gap. */
+export function memberAgo(iso: string | null | undefined, now: number = Date.now()): string {
+  const ms = parseMs(iso);
+  if (ms == null) return "a while ago";
+  return ftLastHeard(daysSince(ms, now));
 }
 
 export interface MemberUpcoming {

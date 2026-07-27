@@ -3,6 +3,7 @@ import {
   MEMBER_TABS,
   announcementRows,
   inviteMessage,
+  memberAgo,
   memberAsks,
   memberEventSub,
   memberFoot,
@@ -185,6 +186,30 @@ describe('memberWhenWords', () => {
 
   it('is empty for a date it cannot read', () => {
     expect(memberWhenWords('', NOW)).toBe('');
+  });
+});
+
+describe('memberAgo', () => {
+  it('says "today" for something that just happened, never "0 days ago"', () => {
+    // The whole reason this exists: agoLabel prints "0 days ago" for a request
+    // sent a moment ago, which reads as a bug.
+    expect(memberAgo(iso(0), NOW)).toBe('today');
+    expect(memberAgo(new Date(NOW - 60_000).toISOString(), NOW)).toBe('today');
+  });
+
+  it('names yesterday, then counts the days', () => {
+    expect(memberAgo(iso(-1), NOW)).toBe('yesterday');
+    expect(memberAgo(iso(-4), NOW)).toBe('4 days ago');
+  });
+
+  it('does not go negative for a timestamp in the future', () => {
+    expect(memberAgo(iso(2), NOW)).toBe('today');
+  });
+
+  it('says something rather than nothing when the date is missing or unreadable', () => {
+    expect(memberAgo(null, NOW)).toBe('a while ago');
+    expect(memberAgo(undefined, NOW)).toBe('a while ago');
+    expect(memberAgo('not a date', NOW)).toBe('a while ago');
   });
 });
 
