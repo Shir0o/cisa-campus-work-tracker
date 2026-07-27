@@ -112,6 +112,8 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   backgrounded, the same stall the backdrop is already written to survive).
 
 ### Added
+- **Doc-Todo & Notes/Learnings linking and bi-directional sync on the Board (`/coordination`)**:
+  When a task or note/learning is created from document text selection (or assigned via `@`), it is automatically formatted and inserted into the doc markdown with linked task metadata (`- [ ] title (@AssigneeName) <!-- task:id assignee:uid -->`) or note metadata (`> 📝 **Note (Record/Learning)**: title — body <!-- note:id type:type -->`). Tasks show assignee badges directly on the document, and bi-directional sync keeps task/note status, titles, and assignees updated in real time between the document markdown and Firestore `tasks` / `board_notes`.
 - **Mobile v2 — the full-timer's home is now an at-a-glance widgets screen**,
   porting the design project's `M2FT` (`MOBILE-V2.md`, "the FULL-TIMER app" +
   its Jul 26, 2026 revision item 2): direction 05 "Widgets" on a warm paper

@@ -1560,8 +1560,9 @@ describe('CoordinationNotes', () => {
       const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
       fireEvent.click(aiBtn);
 
-      // Verify both suggested tasks are visible
-      expect(await screen.findByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
+      const titleTextarea = await screen.findByDisplayValue('Confirm Friday setlist with Beatriz');
+      expect(titleTextarea).toBeInTheDocument();
+      fireEvent.change(titleTextarea, { target: { value: 'Confirm Friday setlist edited' } });
       expect(screen.getByDisplayValue('Another suggestion to dismiss')).toBeInTheDocument();
 
       // Interact with When date input
@@ -1570,10 +1571,11 @@ describe('CoordinationNotes', () => {
         fireEvent.change(dateInput, { target: { value: '2026-07-20' } });
       }
 
-      // Interact with Contact select
-      const contactSelects = screen.getAllByRole('combobox');
-      if (contactSelects.length > 0) {
-        fireEvent.change(contactSelects[0], { target: { value: 'c-beatriz' } });
+      // Interact with Who and Contact selects
+      const selects = document.querySelectorAll('select');
+      if (selects.length >= 2) {
+        fireEvent.change(selects[0], { target: { value: 'u2' } });
+        fireEvent.change(selects[1], { target: { value: 'c-beatriz' } });
       }
 
       // Interact with Priority button
@@ -2134,6 +2136,85 @@ describe('CoordinationNotes', () => {
 
       // Verify that TodoComposer popover opens and parses the 3 tasks
       expect(await screen.findByText('New to-dos (3)')).toBeInTheDocument();
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('opens NoteComposer on selection Note click and saves note', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Important takeaway note text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Verify bubble menu shows Note/Learning button
+      const noteBtn = await screen.findByText(/Note\/Learning/i);
+      expect(noteBtn).toBeInTheDocument();
+      fireEvent.click(noteBtn);
+
+      // NoteComposer popover should open
+      const titleInput = await screen.findByPlaceholderText('Note title');
+      expect(titleInput).toBeInTheDocument();
+      fireEvent.change(titleInput, { target: { value: 'Learning Note Title' } });
+
+      const saveBtn = screen.getByRole('button', { name: /Save note/i });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => expect(setDoc).toHaveBeenCalled());
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('handles direct assignment via @ button in selection menu', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Directly assigned task text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      const assignMenuBtn = await screen.findByText('Assign');
+      expect(assignMenuBtn).toBeInTheDocument();
+      fireEvent.click(assignMenuBtn);
+
+      const assignUserBtn = await screen.findByText('Tony Wang');
+      expect(assignUserBtn).toBeInTheDocument();
+      fireEvent.click(assignUserBtn);
+
+      await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
       getSelectionSpy.mockRestore();
     });

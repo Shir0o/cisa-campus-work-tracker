@@ -107,6 +107,11 @@ import {
   docByDateDesc,
   docSortOrder,
   newDocMarkdown,
+  formatDocTaskMarkdown,
+  formatDocNoteMarkdown,
+  parseDocTasks,
+  parseDocNotes,
+  syncMarkdownWithTasks,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -114,7 +119,7 @@ import remarkGfm from 'remark-gfm';
 import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
-import { setTodoDone, deleteTodo, addTodo } from '../lib/todos';
+import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -372,6 +377,28 @@ const HeadingWithAnchor = ({
   );
 };
 
+const renderWithAssigneeBadges = (content: React.ReactNode): React.ReactNode => {
+  if (typeof content !== 'string') {
+    if (Array.isArray(content)) {
+      return React.Children.map(content, (child) => renderWithAssigneeBadges(child));
+    }
+    return content;
+  }
+  const parts = content.split(/(\(@[^)]+\))/g);
+  if (parts.length <= 1) return content;
+  return parts.map((part, i) => {
+    if (part.startsWith('(@') && part.endsWith(')')) {
+      const name = part.slice(2, -1);
+      return (
+        <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 ml-1.5 font-sans not-italic">
+          @{name}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
 // ── Read-only page render for non-editors (Trainees + Students) ───────────────
 // No TipTap/Yjs — just the durable markdown rendered with react-markdown so a
 // viewer never loads collaborative editing or writes presence.
@@ -379,7 +406,7 @@ const READONLY_MD: Components = {
   h1: ({ children }) => <HeadingWithAnchor level={2} className="font-serif text-2xl text-on-surface mt-6 mb-2 first:mt-0">{children}</HeadingWithAnchor>,
   h2: ({ children }) => <HeadingWithAnchor level={3} className="font-serif text-xl text-on-surface mt-5 mb-2">{children}</HeadingWithAnchor>,
   h3: ({ children }) => <HeadingWithAnchor level={4} className="font-semibold text-on-surface mt-4 mb-1.5">{children}</HeadingWithAnchor>,
-  p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{children}</p>,
+  p: ({ children }) => <p className="text-[15px] text-on-surface-variant leading-relaxed my-2">{renderWithAssigneeBadges(children)}</p>,
   ul: ({ children, className }) => (
     <ul className={cn('my-2 space-y-1 text-[15px] text-on-surface-variant', className?.includes('contains-task-list') ? 'list-none pl-1' : 'pl-5')}>
       {children}
@@ -387,7 +414,7 @@ const READONLY_MD: Components = {
   ),
   ol: ({ children }) => <ol className="pl-5 my-2 space-y-1 text-[15px] text-on-surface-variant">{children}</ol>,
   li: ({ children, className }) => (
-    <li className={cn('leading-relaxed', className?.includes('task-list-item') && 'list-none flex items-start gap-2')}>{children}</li>
+    <li className={cn('leading-relaxed', className?.includes('task-list-item') && 'list-none flex items-start gap-2')}>{renderWithAssigneeBadges(children)}</li>
   ),
   a: ({ children, href }) => (
     <a href={href} target="_blank" rel="noreferrer" className="text-stage-accent underline">
@@ -1444,6 +1471,7 @@ export default function CoordinationNotes() {
                   contacts={contacts}
                   onSelectContact={setSelectedContact}
                   onOpenContactModal={setIsDetailsModalOpen}
+                  todos={todos}
                 />
               ) : (
                 <ReadOnlyDoc key={active.id} doc={active} pagesCollapsed={pagesCollapsed} onTogglePages={togglePages} />
@@ -1690,6 +1718,7 @@ function NoteComposer({
   seriesOptions,
   onClose,
   onSaved,
+  onCreated,
   meUid,
   meName,
   sessionId,
@@ -1699,6 +1728,7 @@ function NoteComposer({
   seriesOptions: string[];
   onClose: () => void;
   onSaved?: (msg: string) => void;
+  onCreated?: (note: { id: string; title: string; body: string; type: NoteType; series: string }) => void;
   meUid: string;
   meName: string;
   sessionId: string;
@@ -1727,11 +1757,13 @@ function NoteComposer({
     setSaving(true);
     try {
       const ref = doc(collection(db, 'board_notes'));
+      const noteTitle = title.trim() || 'Untitled note';
+      const noteBody = body.trim();
       await setDoc(ref, {
         type,
         series,
-        title: title.trim() || 'Untitled note',
-        body: body.trim(),
+        title: noteTitle,
+        body: noteBody,
         date: todayISO(),
         contributorIds: [meUid],
         tags: [],
@@ -1751,6 +1783,7 @@ function NoteComposer({
         type: 'create',
         description: series,
       } as never);
+      onCreated?.({ id: ref.id, title: noteTitle, body: noteBody, type, series });
       onSaved?.(`Note saved to ${series}.`);
       onClose();
     } catch (e) {
@@ -1945,6 +1978,7 @@ export function DocEditor({
   contacts,
   onSelectContact,
   onOpenContactModal,
+  todos = [],
 }: {
   doc: BoardDoc;
   meUid: string;
@@ -1962,6 +1996,7 @@ export function DocEditor({
   contacts: Contact[];
   onSelectContact: (c: Contact | null) => void;
   onOpenContactModal: (open: boolean) => void;
+  todos?: Task[];
 }) {
   const { user } = useAuth();
 
@@ -2076,9 +2111,10 @@ export function DocEditor({
     if (sel) sel.removeAllRanges();
 
     try {
+      const createdItems: string[] = [];
       if (lines.length > 1) {
         for (const line of lines) {
-          await addTodo(
+          const newId = await addTodo(
             {
               title: line,
               assigneeId: member.uid,
@@ -2087,10 +2123,19 @@ export function DocEditor({
             },
             { uid: meUid, name: meName }
           );
+          createdItems.push(
+            formatDocTaskMarkdown({
+              id: newId,
+              title: line,
+              assigneeId: member.uid,
+              assigneeName: member.name.split(' ')[0],
+              done: false,
+            })
+          );
         }
         onToast(`Created ${lines.length} tasks assigned to ${member.name.split(' ')[0]}.`);
       } else {
-        await addTodo(
+        const newId = await addTodo(
           {
             title: fab.text,
             assigneeId: member.uid,
@@ -2099,7 +2144,21 @@ export function DocEditor({
           },
           { uid: meUid, name: meName }
         );
+        createdItems.push(
+          formatDocTaskMarkdown({
+            id: newId,
+            title: fab.text,
+            assigneeId: member.uid,
+            assigneeName: member.name.split(' ')[0],
+            done: false,
+          })
+        );
         onToast(`Task assigned to ${member.name.split(' ')[0]}.`);
+      }
+
+      if (editor && createdItems.length > 0) {
+        const replacement = createdItems.join('\n');
+        editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, replacement)).run();
       }
     } catch (e) {
       console.error(e);
@@ -2144,6 +2203,21 @@ export function DocEditor({
     saveTimer.current = setTimeout(() => {
       onSaveMarkdown(d.id, md);
       setSaved(true);
+
+      // Bi-directional sync: check if tasks in doc changed status/title/assignee
+      const docTasks = parseDocTasks(md);
+      for (const dt of docTasks) {
+        const existing = todos.find((t) => t.id === dt.id);
+        if (existing) {
+          const isDone = existing.status === 'completed';
+          if (isDone !== dt.done) {
+            void setTodoDone(dt.id, dt.done);
+          }
+          if (dt.title && (existing.title !== dt.title || (dt.assigneeId && existing.assigneeId !== dt.assigneeId))) {
+            void updateTodo(dt.id, { title: dt.title, assigneeId: dt.assigneeId ?? existing.assigneeId });
+          }
+        }
+      }
     }, 1200);
   };
 
@@ -2261,6 +2335,19 @@ export function DocEditor({
     update();
     return () => awareness.off('change', update);
   }, [awareness]);
+
+  // Bi-directional sync: Sync external task updates (e.g. from sidebar/MyDay) back to doc markdown
+  useEffect(() => {
+    if (!editor || !todos || todos.length === 0) return;
+    const currentMd = editorMarkdown(editor);
+    const tasksMap = new Map(todos.map((t) => [t.id, { title: t.title, status: t.status, assigneeId: t.assigneeId || null }]));
+    const teamMap = new Map(team.map((m) => [m.uid, { name: m.name }]));
+
+    const syncedMd = syncMarkdownWithTasks(currentMd, tasksMap, teamMap);
+    if (syncedMd !== currentMd) {
+      editor.commands.setContent(editorMdToHtml(editor, syncedMd));
+    }
+  }, [todos, team, editor]);
 
   // realtime provider + first-open seeding (falls back to Firestore-only)
   useEffect(() => {
@@ -3019,6 +3106,20 @@ export function DocEditor({
           meName={meName}
           onClose={() => setTodoFromSelection(null)}
           onSaved={onToast}
+          onCreated={(createdTasks) => {
+            if (!editor) return;
+            const mdLines = createdTasks.map((t) =>
+              formatDocTaskMarkdown({
+                id: t.id,
+                title: t.title,
+                assigneeId: t.assigneeId,
+                assigneeName: t.assigneeName ? t.assigneeName.split(' ')[0] : null,
+                done: false,
+              })
+            );
+            const replacement = mdLines.join('\n');
+            editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, replacement)).run();
+          }}
         />
       )}
 
@@ -3033,6 +3134,11 @@ export function DocEditor({
           meUid={meUid}
           meName={meName}
           sessionId={d.id}
+          onCreated={(createdNote) => {
+            if (!editor) return;
+            const mdLine = formatDocNoteMarkdown(createdNote);
+            editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, mdLine)).run();
+          }}
         />
       )}
 
