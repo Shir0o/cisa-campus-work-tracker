@@ -19,7 +19,6 @@ import {
   getGreeting,
   type Contact,
   type FtInboxRow,
-  type PrayerRecord,
   type Task,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
@@ -28,12 +27,13 @@ import { useV2Theme } from '../../theme/v2';
 import { QuickCaptureSheet } from '../quickcapture/QuickCaptureSheet';
 import { Snackbar } from '../ui';
 import { PersonMark } from '../queue/atoms';
-import { FtRoom } from './FtWidget';
+import { Room } from '../v2/Widget';
 import { FtGlance } from './FtGlance';
 import { NeedsYouToday } from './NeedsYouToday';
 import { FromTeam } from './FromTeam';
 import { GoneQuiet } from './GoneQuiet';
 import { PrayersToCarry } from './PrayersToCarry';
+import { HomesOpen } from './HomesOpen';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
 import { FtTodoSheet } from './FtTodoSheet';
@@ -42,9 +42,9 @@ import { FtTodoSheet } from './FtTodoSheet';
  * including the screen itself — so the home is two components, not one. */
 export function FtHomeScreen() {
   return (
-    <FtRoom>
+    <Room room="ft">
       <FtHome />
-    </FtRoom>
+    </Room>
   );
 }
 
@@ -260,14 +260,26 @@ function FtHome() {
         />
 
         <PrayersToCarry
-          prayers={data.openPrayers}
-          contacts={data.contacts}
+          rows={data.carryRows}
           prayedToday={data.prayedToday}
-          onPray={(p: PrayerRecord) => {
-            data.markPrayed(p.id);
+          onPray={(row) => {
+            data.markPrayed(row.id);
             setToast('Prayed. Held before God.');
           }}
+          onAnswered={(row) => {
+            if (row.requestId) void data.markRequestAnswered(row.requestId);
+            setToast('Thank God. They’ll see it’s answered.');
+          }}
           onOpenPrayers={() => router.push('/prayer')}
+        />
+
+        <HomesOpen
+          offers={data.homesOpen}
+          onMessage={(offer) => {
+            void data.messageThem(offer.uid, offer.name).then((roomId) => {
+              if (roomId) router.push(`/messages/${roomId}`);
+            });
+          }}
         />
 
         <WeekAhead chips={data.weekAhead} />

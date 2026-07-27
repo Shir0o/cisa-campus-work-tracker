@@ -20,7 +20,7 @@ import type { InboxItem } from "./inbox";
 import { DAY_MS, parseMs, toLocalDate, type Leader } from "./myday";
 import { dueInDays } from "./queue";
 import { firstName } from "./history";
-import type { Contact, Event, PrayerRecord, Task } from "./types";
+import type { Contact, Event, HospitalityOffer, PrayerRecord, PrayerRequest, Task } from "./types";
 
 /** A person is "gone quiet" once this many days have passed since a touch. */
 export const FT_QUIET_DAYS = 10;
@@ -191,20 +191,79 @@ export function ftOpenPrayers(prayers: PrayerRecord[]): PrayerRecord[] {
     );
 }
 
+/** One line in "Prayers to carry" — a contact's open prayer, or a member who
+ * asked the team to pray for them (MOBILE-V2.md's "Ask the team to pray"). The
+ * two land in the same widget because they are the same act: someone asked. */
+export interface FtCarryRow {
+  /** Prefixed by source, so a prayer id and a request id can never collide. */
+  id: string;
+  burden: string;
+  /** "Rio", or null when the prayer has no contact behind it. */
+  who: string | null;
+  heavy: boolean;
+  /** True when a member asked for this themselves, rather than staff logging it. */
+  asked: boolean;
+  prayerId?: string;
+  requestId?: string;
+}
+
+/** Members' own asks first — someone reached out and is waiting — then the
+ * open prayers on contacts in `ftOpenPrayers` order. */
+export function ftCarryRows(
+  open: PrayerRecord[],
+  requests: PrayerRequest[],
+  contacts: Contact[],
+): FtCarryRow[] {
+  const asks: FtCarryRow[] = requests
+    .filter((r) => r.status === "open")
+    .sort((a, b) => (parseMs(b.createdAt) ?? 0) - (parseMs(a.createdAt) ?? 0))
+    .map((r) => ({
+      id: `ask:${r.id}`,
+      burden: r.body,
+      who: firstName(r.name),
+      heavy: false,
+      asked: true,
+      requestId: r.id,
+    }));
+  const logged: FtCarryRow[] = open.map((p) => {
+    const c = contacts.find((x) => x.id === p.contactId);
+    return {
+      id: `prayer:${p.id}`,
+      burden: p.burden,
+      who: c ? firstName(c.name) : null,
+      heavy: ftWeighsHeavy(p),
+      asked: false,
+      prayerId: p.id,
+    };
+  });
+  return [...asks, ...logged];
+}
+
 export interface FtCarrying {
   count: number;
   /** "Rio — a job before graduation", or the empty line. */
   detail: string;
 }
 
-export function ftCarrying(open: PrayerRecord[], contacts: Contact[]): FtCarrying {
-  const top = open[0];
+/** The glance tile over the same rows the widget shows, so the number on the
+ * tile and the rows underneath can never disagree. */
+export function ftCarrying(rows: FtCarryRow[]): FtCarrying {
+  const top = rows[0];
   if (!top) return { count: 0, detail: "Nothing open right now" };
-  const c = contacts.find((x) => x.id === top.contactId);
   return {
-    count: open.length,
-    detail: c ? `${firstName(c.name)} — ${top.burden}` : top.burden,
+    count: rows.length,
+    detail: top.who ? `${top.who} — ${top.burden}` : top.burden,
   };
+}
+
+// ── homes open to students ─────────────────────────────────────────────────
+
+/** The Community members with room at their table, newest offer first. An
+ * offer with no times left on it is a withdrawn one — it doesn't show. */
+export function ftHomesOpen(offers: HospitalityOffer[]): HospitalityOffer[] {
+  return offers
+    .filter((o) => o.availability.length > 0)
+    .sort((a, b) => (parseMs(b.updatedAt) ?? 0) - (parseMs(a.updatedAt) ?? 0));
 }
 
 // ── the calendar: the glance tile and the week-ahead strip ─────────────────

@@ -2,19 +2,29 @@ import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { canPostToRoom, getRoomName, getRoomPhoto } from '@cisa/core';
+import { canPostToRoom, getRoomName, getRoomPhoto, memberRoleOf } from '@cisa/core';
 import { Screen, AppText, Avatar, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useChatThreadData } from '../../src/lib/useChatThreadData';
 import { MessageBubble } from '../../src/components/messages/MessageBubble';
 import { ChatDetailsSheet } from '../../src/components/messages/ChatDetailsSheet';
+import { MemberThreadScreen } from '../../src/components/member/MemberThreadScreen';
 
 // A single Messages thread — header, day-grouped message stream, composer.
 // Design oracle: web's src/views/Messages.tsx active-chat pane. No @-mention
 // autocomplete and no attachment picker in this first pass (see MIGRATION.md).
+//
+// Members get the v2 thread; see messages/index.tsx for why the fork lives on
+// the route rather than in the tab bar.
 export default function ChatThread() {
   const { roomId } = useLocalSearchParams<{ roomId: string }>();
+  const { role } = useAuth();
+  if (memberRoleOf(role)) return <MemberThreadScreen roomId={roomId} />;
+  return <StaffChatThread roomId={roomId} />;
+}
+
+function StaffChatThread({ roomId }: { roomId: string }) {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { uid, role } = useAuth();

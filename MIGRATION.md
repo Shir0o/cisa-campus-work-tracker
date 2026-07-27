@@ -935,7 +935,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   Simulator, never automated component tests), so it's not a new shortfall
   specific to this feature.
 
-### 🟡 Mobile v2 — the staff apps (shipped, still catching up to the design)
+### 🟡 Mobile v2 — the role apps (all four shipped, still catching up to the design)
 The design project (`019e2501-…`, `MOBILE-V2.md`) rebuilt mobile from scratch
 with the **trainee as the primary user**: not a dashboard, a full-screen focus
 queue, with a widgets home beside it for the full-timer. #168 ported the queue
@@ -1015,9 +1015,68 @@ itself; this section tracks the port against the design as it keeps moving.
       that MOUNTED already-visible never opened, because `present()` is dropped
       when it lands in the modal's own mount commit. It is now deferred one
       macrotask. Every sheet keyed by the person it's about was affected.
-- [ ] **The member v2 app** (student + community) — `M2Member`'s calm
-      single-scroll home + Prayer / Messages / You. Both roles still get
-      `LandingStudent` / `LandingCommunity`.
+- [x] ~~**The member v2 app** (student + community)~~ — `M2Member`'s calm
+      single-scroll home plus Prayer / Messages / You, all in v2. Every role
+      shape in the design is now ported.
+      `src/components/member/*`, derivations in a pure
+      `packages/core/src/memberHome.ts` (46 new tests, core 296 → 369 with the
+      three collections below), live data in `useMemberHomeData` /
+      `useMemberPrayerData`.
+      **The design's four-tab member shell is NOT ported**, same call #168 and
+      #170 made: the app's bottom bar carries navigation, so Home and Prayer
+      are the existing tabs and Messages / You are reached through More. Each
+      of those four routes forks on a new
+      `memberRoleOf(role)` — `(tabs)/index.tsx`, `(tabs)/prayer.tsx`,
+      `messages/index.tsx` + `messages/[roomId].tsx`, and `settings.tsx`.
+      Forking on the ROUTE rather than in the tab bar is deliberate: a deep
+      link (a home card's "Write back", a notification) then lands on the right
+      screen for whoever opened it.
+      **No third room in `theme/v2.ts`** — the design puts the member app in
+      the same green room as the trainee (`.m2 deck mem` carries no `blue`;
+      only the FT app forces navy), so member screens declare
+      `Room room="queue"` and reuse `lightV2`/`darkV2` untouched.
+      `components/ft/FtWidget.tsx` moved to **`components/v2/Widget.tsx`**
+      (`Sech` · `Widget` · `WidgetRow` · `WidgetAction` · `WidgetEmpty`, plus a
+      generic `Room` provider replacing `FtRoom`) — nothing in it was ever
+      full-timer-specific, and it now has two consumers.
+      **One substitution**, documented in `memberHome.ts`: the design's "a note
+      from the person who cares for you" reads a `caredById` off a mock
+      persona. There is no student↔full-timer care relationship in this schema
+      — no link at all between a user account and a `Contact` — so
+      `noteFromTheTeam` reads the newest direct message from any full-timer,
+      and the copy says "A note from {name}", never "who cares for you".
+      **Three things the design describes and the schema had no room for, now
+      built for real** (the user's call over omitting them or faking them
+      device-local — each has a staff-side surface, or the member would be
+      talking into a void):
+      1. `prayerRequests` — a member asking the team to pray for THEM. Not a
+         `Prayer`: that entity hangs off a `contactId`, and a member is a user
+         account, not a contact. Open requests join the full-timer home's
+         "Prayers to carry" via `ftCarryRows`, which flattens asks and logged
+         prayers into one list (asks first) — and `ftCarrying` now reads those
+         same rows, so the glance tile's number and the widget's rows can't
+         disagree.
+      2. `hospitalityOffers/{uid}` — Community's "Open your home", one standing
+         offer per household (doc id IS the uid, so re-offering updates rather
+         than piles up). Staff see them in a new "Homes open to students"
+         widget with a "Message them" that opens the DM.
+      3. `ChatRoom['type']` gains **`'announcement'`** — the design's broadcast:
+         everyone reads, only Full-timers post. `firestore.rules` gates both
+         creating one and posting to one on `isAdmin()`, and blocks a member
+         flipping the room's kind to get around it. `canPostToRoom` in
+         `@cisa/core` mirrors that client-side, so web and mobile both show
+         "replies go to the team directly" instead of a composer whose write
+         would be denied. Authoring is an admin-only third tab on the existing
+         Create-chat modal (web) and sheet (mobile) — without it no
+         announcement could ever exist.
+      All three carry emulator-backed cases in `src/test/firestore.rules.test.ts`
+      (19 new, 65 → 84). **They only work once the rules ship**: until
+      `deploy-firestore-rules.yml` runs on merge, the member writes come back
+      `permission-denied` (verified — they fail gracefully through
+      `handleFirestoreError`, nothing crashes), and every new subscription
+      degrades quietly to empty rather than failing its screen.
+      `LandingStudent` / `LandingCommunity` are left on disk but no longer
+      routed to, as #168/#170 left `LandingTrainee` and `components/myday/*`.
 - [ ] **The ☰ drawer** — the bottom tab bar carries navigation today, for both
       staff roles. (The blue room is no longer outstanding: the full-timer home
       ported it as the `ft` room in `theme/v2.ts`. What's left is offering it as

@@ -2,19 +2,31 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { canAccessRoute } from '@cisa/core';
+import { canAccessRoute, memberRoleOf } from '@cisa/core';
 import { Screen, AppText, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
 import { ChatRoomRow } from '../../src/components/messages/ChatRoomRow';
 import { CreateChatSheet } from '../../src/components/messages/CreateChatSheet';
+import { MemberMessagesScreen } from '../../src/components/member/MemberMessagesScreen';
 
 // Messages — the private direct/group chat room list (design oracle: web's
 // src/views/Messages.tsx sidebar). No bottom-tab slot (the 6-tab bar is
 // full), so this is a pushed route reached from "More", following
 // Notifications/Search's back-nav pattern.
+//
+// Members get the v2 list instead. Branching HERE rather than in the tab bar
+// keeps every deep link (a home card's "Write back", a notification) landing on
+// the right screen for whoever opened it.
 export default function Messages() {
+  const { role } = useAuth();
+  const memberRole = memberRoleOf(role);
+  if (memberRole) return <MemberMessagesScreen role={memberRole} />;
+  return <StaffMessages />;
+}
+
+function StaffMessages() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { uid, role } = useAuth();

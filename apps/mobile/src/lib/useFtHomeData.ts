@@ -18,8 +18,10 @@ import {
 } from 'firebase/firestore';
 import {
   deriveLeaders,
+  ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
+  ftHomesOpen,
   ftInboxRows,
   ftNextGathering,
   ftOpenPrayers,
@@ -31,10 +33,12 @@ import {
   type AppUser,
   type Contact,
   type Event,
+  type HospitalityOffer,
   type InboxItem,
   type Interaction,
   type Leader,
   type PrayerRecord,
+  type PrayerRequest,
   type Stage,
   type Task,
   type ThreadKind,
@@ -46,6 +50,9 @@ import { setTodoDone, addTodo } from './data/todos';
 import { addThreadMessage, subscribeAllThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { subscribeUsers } from './data/users';
+import { setPrayerRequestStatus, subscribeOpenPrayerRequests } from './data/prayerRequests';
+import { subscribeHospitalityOffers } from './data/hospitality';
+import { getOrCreateDirectChat } from './data/chat';
 import { InboxReads, useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 
@@ -67,6 +74,8 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   const [comments, setComments] = useState<Touch[]>([]);
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
   const [team, setTeam] = useState<AppUser[]>([]);
+  const [requests, setRequests] = useState<PrayerRequest[]>([]);
+  const [offers, setOffers] = useState<HospitalityOffer[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +156,11 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     // Also quiet: the roster only fills the "who" chips on a hand-it-over, and
     // that list degrades to just "Me" rather than failing the screen.
     const unsubTeam = subscribeUsers(setTeam, () => setTeam([]));
+    // Both quiet on error for the same reason as threads above: until
+    // firestore.rules ships these two collections the reads are
+    // permission-denied, and neither is worth failing the whole screen over.
+    const unsubRequests = subscribeOpenPrayerRequests(setRequests, () => setRequests([]));
+    const unsubOffers = subscribeHospitalityOffers(setOffers, () => setOffers([]));
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
       setPrefContactIds(prefs.personalContactIds ?? null),
     );
@@ -161,6 +175,8 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
       unsubComments();
       unsubThreads();
       unsubTeam();
+      unsubRequests();
+      unsubOffers();
       unsubPrefs();
     };
   }, [uid]);
@@ -225,7 +241,14 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
 
   // ── prayers, and the calendar ─────────────────────────────────────────────
   const openPrayers = useMemo(() => ftOpenPrayers(prayers), [prayers]);
-  const carrying = useMemo(() => ftCarrying(openPrayers, contacts), [openPrayers, contacts]);
+  // Members' own asks ride in the same widget as the prayers staff logged, and
+  // the glance tile counts the same rows so the two can't disagree.
+  const carryRows = useMemo(
+    () => ftCarryRows(openPrayers, requests, contacts),
+    [openPrayers, requests, contacts],
+  );
+  const carrying = useMemo(() => ftCarrying(carryRows), [carryRows]);
+  const homesOpen = useMemo(() => ftHomesOpen(offers), [offers]);
   const nextGathering = useMemo(() => ftNextGathering(events), [events]);
   const weekAhead = useMemo(() => ftWeekAhead(events), [events]);
 
@@ -263,7 +286,9 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     unreadCount,
     quiet,
     openPrayers,
+    carryRows,
     carrying,
+    homesOpen,
     nextGathering,
     weekAhead,
     assignees,
@@ -308,7 +333,23 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     // Firestore. It shares queueState's per-day `handled` map — safe because
     // pickLandingForRole sends a manager to the queue and an admin here, so no
     // one user writes both.
-    prayedToday: (prayerId: string) => !!queueState.handled[prayerCardId(prayerId)],
-    markPrayed: (prayerId: string) => queueState.handle(prayerCardId(prayerId)),
+    // Keyed by the carry row's own prefixed id, so a member's ask and a logged
+    // prayer can be marked independently.
+    prayedToday: (rowId: string) => !!queueState.handled[prayerCardId(rowId)],
+    markPrayed: (rowId: string) => queueState.handle(prayerCardId(rowId)),
+
+    /** Close out a member's ask — "the team prayed, and God answered". Unlike
+     * "I prayed just now" this one is real and shared: the asker sees it. */
+    markRequestAnswered: (requestId: string) => setPrayerRequestStatus(requestId, 'answered'),
+
+    /** Opens (or finds) the DM with someone — how "Homes open to students"
+     * turns an offer into a conversation. Returns the room id to route to. */
+    messageThem: (theirUid: string, theirName: string): Promise<string | null> =>
+      uid
+        ? getOrCreateDirectChat(
+            { uid, displayName: meName },
+            { uid: theirUid, displayName: theirName },
+          )
+        : Promise.resolve(null),
   };
 }
