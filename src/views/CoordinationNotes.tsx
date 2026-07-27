@@ -119,7 +119,7 @@ import remarkGfm from 'remark-gfm';
 import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
-import { setTodoDone, deleteTodo, addTodo } from '../lib/todos';
+import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -1718,6 +1718,7 @@ function NoteComposer({
   seriesOptions,
   onClose,
   onSaved,
+  onCreated,
   meUid,
   meName,
   sessionId,
