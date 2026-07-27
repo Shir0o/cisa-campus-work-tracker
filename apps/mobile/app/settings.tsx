@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { hasMinRole, pickLandingForRole, type AppRole, type AppUser } from '@cisa/core';
+import { hasMinRole, memberRoleOf, pickLandingForRole, type AppRole, type AppUser } from '@cisa/core';
 import { Screen, AppText, Button, Card, InlineInput } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useAuth } from '../src/lib/AuthProvider';
@@ -17,13 +17,24 @@ import { InviteRow } from '../src/components/settings/InviteRow';
 import { EditRoleSheet } from '../src/components/settings/EditRoleSheet';
 import { RemoveAccessSheet } from '../src/components/settings/RemoveAccessSheet';
 import { InviteSheet } from '../src/components/settings/InviteSheet';
+import { MemberYouScreen } from '../src/components/member/MemberYouScreen';
 
 // Settings — ported in full from src/views/Settings.tsx: profile, a static
 // roles reference, appearance, and (Trainee+) full team management. Deferred
 // (see MIGRATION.md): the Quick Add/Integrations playground + webhook
 // console (server-side dev tooling) and the embedded feedback list (mobile
 // already has this as its own /feedback-admin route).
+//
+// Members land on the v2 "You" screen instead — none of the team management
+// below is theirs, and the design gives them a much shorter page.
 export default function SettingsScreen() {
+  const { role } = useAuth();
+  const memberRole = memberRoleOf(role);
+  if (memberRole) return <MemberYouScreen role={memberRole} />;
+  return <StaffSettings />;
+}
+
+function StaffSettings() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { user, uid, role, isApproved } = useAuth();

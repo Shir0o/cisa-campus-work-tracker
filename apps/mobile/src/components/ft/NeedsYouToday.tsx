@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { dueChip, type FtTodoSplit, type Task } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
-import { FtEmpty, FtRow, FtWidget } from './FtWidget';
+import { WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
 
 export function NeedsYouToday({
   todos,
@@ -18,17 +18,17 @@ export function NeedsYouToday({
   const { c, font } = useV2Theme();
   const later = todos.laterThisWeek.length;
   return (
-    <FtWidget
+    <Widget
       label="Needs you today"
       count={todos.today.length}
       link={later ? `${later} more later this week →` : null}
       onLink={onOpenBoard}
     >
-      {todos.today.length === 0 && <FtEmpty>Nothing due today.</FtEmpty>}
+      {todos.today.length === 0 && <WidgetEmpty>Nothing due today.</WidgetEmpty>}
       {todos.today.map((t, i) => {
         const chip = dueChip(t.dueDate);
         return (
-          <FtRow key={t.id} first={i === 0}>
+          <WidgetRow key={t.id} first={i === 0}>
             <Pressable
               onPress={() => onDone(t)}
               style={({ pressed }) => ({
@@ -74,9 +74,9 @@ export function NeedsYouToday({
                 )}
               </View>
             </Pressable>
-          </FtRow>
+          </WidgetRow>
         );
       })}
-    </FtWidget>
+    </Widget>
   );
 }

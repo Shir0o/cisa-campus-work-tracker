@@ -6,7 +6,7 @@ import { firstName, type ThreadKind } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme } from '../../theme/v2';
 import { PrimaryButton, SecondaryButton } from '../queue/atoms';
-import { FtRoom } from './FtWidget';
+import { Room } from '../v2/Widget';
 
 /** Three lines a full-timer can send with one tap. Verbatim from the design. */
 const CANNED = [
@@ -34,9 +34,9 @@ interface FtNoteSheetProps {
  * this one carries the room itself. */
 export function FtNoteSheet(props: FtNoteSheetProps) {
   return (
-    <FtRoom>
+    <Room room="ft">
       <NoteSheetBody {...props} />
-    </FtRoom>
+    </Room>
   );
 }
 
@@ -61,7 +61,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
 
   return (
     <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.8} backgroundColor={c.card}>
-      <FtRoom>
+      <Room room="ft">
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text
             style={{
@@ -161,7 +161,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             </Text>
           )}
         </View>
-      </FtRoom>
+      </Room>
     </Sheet>
   );
 }

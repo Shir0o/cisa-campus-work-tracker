@@ -17,21 +17,57 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   create one from an admin-only third tab on the existing Create-chat modal
   (web) and sheet (mobile) — a group and an announcement take the same two
   inputs, so they share a form and differ only in which call runs.
-- **The schema mobile v2's member app needs**, landing ahead of the screens
-  that use it (`prayerRequests`, `hospitalityOffers/{uid}`): the shared
-  `@cisa/core` data modules, the `firestore.rules` for both, and
-  `hospitality.ts`'s availability vocabulary. A prayer request is deliberately
-  NOT a `Prayer` — that entity hangs off a `contactId`, and a member is a user
-  account, not a contact — and it is a top-level collection rather than a
-  `users/{uid}` subcollection precisely because staff must be able to list
-  every open ask in one subscription. A hospitality offer's doc id IS the uid,
-  so a household has one standing offer that gets updated rather than a pile
-  of stale ones.
+- **The schema mobile v2's member app needs** (`prayerRequests`,
+  `hospitalityOffers/{uid}`): the shared `@cisa/core` data modules, the
+  `firestore.rules` for both, and `hospitality.ts`'s availability vocabulary. A
+  prayer request is deliberately NOT a `Prayer` — that entity hangs off a
+  `contactId`, and a member is a user account, not a contact — and it is a
+  top-level collection rather than a `users/{uid}` subcollection precisely
+  because staff must be able to list every open ask in one subscription. A
+  hospitality offer's doc id IS the uid, so a household has one standing offer
+  that gets updated rather than a pile of stale ones.
 - **19 new emulator-backed cases in `src/test/firestore.rules.test.ts`**
   (65 → 84) covering all three: a member writing their own request/offer, a
   member denied someone else's, staff reading, only staff listing the open
   homes, and a non-admin denied both creating an announcement room and posting
   into one.
+- **Mobile v2 — the member app (Student · Community), the last role shape.**
+  Ported the design project's `M2Member` (`MOBILE-V2.md`, "the MEMBER app"):
+  a calm single scroll, not a dashboard and not the trainee's queue, because
+  members browse. Students and Community members now land on
+  `src/components/member/MemberHomeScreen.tsx` instead of the Material
+  `LandingStudent` / `LandingCommunity`, and their Prayer, Messages and "You"
+  screens are v2 too. Shape: date + greeting + one honest line → **the next
+  thing** as the one hero (RSVP, students also get "Bring a friend") → **a note
+  from the team** → **announcements** → **also coming up** → Community's **Open
+  your home** / a student's **Bring someone with you** → foot line. No CRM
+  anywhere: no stages, no owners, no contact ids, no metrics. Derivations are a
+  pure `packages/core/src/memberHome.ts` with 46 tests; live data comes from
+  `useMemberHomeData` / `useMemberPrayerData`, siblings of `useFtHomeData`.
+  As #168/#170 both did, the app's own bottom tab bar stays and the design's
+  four-tab member shell is not ported — Prayer is the existing tab, Messages
+  and You are reached through More, and each of those routes forks on
+  `memberRoleOf(role)` so deep links still land on the right screen for
+  whoever opened them. One substitution is documented in the module header:
+  the design's "the person who cares for you" has no equivalent here (there is
+  no student↔full-timer relationship, and no link at all between a user account
+  and a `Contact`), so `noteFromTheTeam` reads the newest direct message from
+  any full-timer and the copy promises only that.
+- **What members send now reaches a Full-timer.** The two member powers the
+  design describes — "Ask the team to pray" and "Open your home" — write to the
+  `prayerRequests` / `hospitalityOffers` collections shipped alongside, and
+  each lands somewhere real on the full-timer's home rather than sitting in a
+  collection nobody reads. Open requests join **"Prayers to carry"** as rows a
+  Full-timer can pray for and mark answered: `ftCarryRows` flattens a member's
+  ask and a logged prayer into one list (asks first, because someone reached
+  out and is waiting), and `ftCarrying` now reads those same rows, so the "At a
+  glance" tile's number and the widget under it can't disagree. Offers fill a
+  new **"Homes open to students"** widget — read-only, with a "Message them"
+  that opens the DM, because matching a student to a table is a conversation,
+  not a button.
+- **Announcement conversations** (shipped in the PR below this one) surface on
+  the member home as their own block, and open into a thread with the reason in
+  place of a composer.
 
 ### Changed
 - **Mobile v2 — the focus card is now WHITE and always fills the room**, per

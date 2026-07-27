@@ -10,6 +10,7 @@ export * from './myday';
 export * from './queue';
 export * from './ftHome';
 export * from './hospitality';
+export * from './memberHome';
 export * from './prayerThread';
 export * from './directory';
 export * from './history';
