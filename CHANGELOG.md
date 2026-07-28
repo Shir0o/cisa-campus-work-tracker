@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Smart NLP date parsing for `/coordination` text to to-do conversion.** Integrated `chrono-node` to automatically detect natural language dates (e.g., "by tomorrow", "next Friday", "Aug 15") when converting selected text on `/coordination` or typing in the `TodoComposer` popup, setting the parsed date as the task's `dueDate`.
 - **Full screen mode for `/coordination` board docs** — added a full screen mode toggle option for reading and collaborative editing of coordination pages on `/coordination` (`CoordinationNotes.tsx`). Displays a Full Screen / Exit Full Screen button in the document header toolbar that expands the workspace into a full-screen view with HTML5 Fullscreen API integration and Esc key support.
 - **Announcement conversations** — a chat room the whole audience reads and
   only Full-timers post to, the design's "broadcast" (`MOBILE-V2.md`).
