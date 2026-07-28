@@ -114,7 +114,8 @@ import {
   formatDocNoteMarkdown,
   parseDocTasks,
   parseDocNotes,
-  syncMarkdownWithTasks,
+  collectDocTaskNodes,
+  planDocTaskEdits,
 } from '../lib/board';
 import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 import ReactMarkdown, { type Components } from 'react-markdown';
@@ -2371,6 +2372,22 @@ export function DocEditor({
     };
   }, [editor]);
 
+  // Push a raw-source edit into the editor. This one *is* a whole-document rewrite —
+  // that is what editing the Markdown by hand means — so only do it when the text really
+  // changed, and put the caret back where it was instead of at the end of the document.
+  const pushMarkdownToEditor = (md: string) => {
+    if (!editor || md === editorMarkdown(editor)) return;
+    const { from, to } = editor.state.selection;
+    editor.commands.setContent(md);
+    const end = editor.state.doc.content.size;
+    editor.commands.setTextSelection({ from: Math.min(from, end), to: Math.min(to, end) });
+  };
+
+  const scheduleMarkdownPush = (md: string) => {
+    if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
+    markdownSyncTimer.current = setTimeout(() => pushMarkdownToEditor(md), 1000);
+  };
+
   // Sync editor markdown to markdownSource state when editor updates
   useEffect(() => {
     if (!editor || !showSource) return;
@@ -2404,17 +2421,40 @@ export function DocEditor({
     return () => awareness.off('change', update);
   }, [awareness, meUid]);
 
-  // Bi-directional sync: Sync external task updates (e.g. from sidebar/MyDay) back to doc markdown
+  // Bi-directional sync: reflect task updates made elsewhere (the sidebar, My Day, a
+  // teammate) in this page's checklist lines.
+  //
+  // This patches only the lines that actually went stale. It must never rebuild the
+  // document — `setContent` here rewrote the whole Y.Doc on every tasks/users snapshot,
+  // which dropped the caret at the bottom of the page, lost whatever was selected, and
+  // buried real edits under whole-doc entries in the Yjs undo stack (#174).
   useEffect(() => {
-    if (!editor || !todos || todos.length === 0) return;
-    const currentMd = editorMarkdown(editor);
+    if (!editor || todos.length === 0) return;
     const tasksMap = new Map(todos.map((t) => [t.id, { title: t.title, status: t.status, assigneeId: t.assigneeId || null }]));
     const teamMap = new Map(team.map((m) => [m.uid, { name: m.name }]));
 
-    const syncedMd = syncMarkdownWithTasks(currentMd, tasksMap, teamMap);
-    if (syncedMd !== currentMd) {
-      editor.commands.setContent(editorMdToHtml(editor, syncedMd));
+    const { state } = editor;
+    const nodes = collectDocTaskNodes(state.doc);
+    const edits = planDocTaskEdits(nodes, tasksMap, teamMap, editor.isFocused ? state.selection : null);
+    if (edits.length === 0) return;
+
+    const tr = state.tr;
+    for (const edit of edits) {
+      if (edit.text) {
+        tr.replaceWith(
+          tr.mapping.map(edit.text.from),
+          tr.mapping.map(edit.text.to),
+          state.schema.text(edit.text.value),
+        );
+      }
+      if (edit.checked !== undefined) {
+        const pos = tr.mapping.map(edit.pos);
+        const node = tr.doc.nodeAt(pos);
+        if (node) tr.setNodeMarkup(pos, undefined, { ...node.attrs, checked: edit.checked });
+      }
     }
+    // Someone else's change is not something *you* should be able to undo.
+    if (tr.docChanged) editor.view.dispatch(tr.setMeta('addToHistory', false));
   }, [todos, team, editor]);
 
   // realtime provider + first-open seeding (falls back to Firestore-only)
@@ -2594,7 +2634,7 @@ export function DocEditor({
 
   const applyLinks = () => {
     if (!editor || !insightsData?.updatedMarkdown) return;
-    editor.commands.setContent(insightsData.updatedMarkdown);
+    pushMarkdownToEditor(insightsData.updatedMarkdown);
     setLinksApplied(true);
   };
 
@@ -2614,10 +2654,7 @@ export function DocEditor({
         const renumbered = renumberMarkdownLists(newVal);
         setMarkdownSource(renumbered);
         
-        if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
-        markdownSyncTimer.current = setTimeout(() => {
-          if (editor) editor.commands.setContent(renumbered);
-        }, 1000);
+        scheduleMarkdownPush(renumbered);
         
         requestAnimationFrame(() => {
           textarea.selectionStart = textarea.selectionEnd = start + insert.length;
@@ -2632,10 +2669,7 @@ export function DocEditor({
           const renumbered = renumberMarkdownLists(newVal);
           setMarkdownSource(renumbered);
           
-          if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
-          markdownSyncTimer.current = setTimeout(() => {
-            if (editor) editor.commands.setContent(renumbered);
-          }, 1000);
+          scheduleMarkdownPush(renumbered);
           
           requestAnimationFrame(() => {
             textarea.selectionStart = textarea.selectionEnd = Math.max(lineStartIdx, start - 2);
@@ -2656,11 +2690,8 @@ export function DocEditor({
       const renumbered = renumberMarkdownLists(newVal);
       setMarkdownSource(renumbered);
       
-      if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
-      markdownSyncTimer.current = setTimeout(() => {
-        if (editor) editor.commands.setContent(renumbered);
-      }, 1000);
-      
+      scheduleMarkdownPush(renumbered);
+
       requestAnimationFrame(() => {
         textarea.selectionStart = textarea.selectionEnd = start + insert.length;
       });
@@ -2910,9 +2941,7 @@ export function DocEditor({
             onClick={() => {
               if (showSource) {
                 if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
-                if (editor) {
-                  editor.commands.setContent(markdownSource);
-                }
+                pushMarkdownToEditor(markdownSource);
               }
               setShowSource((v) => !v);
             }}
@@ -2953,12 +2982,7 @@ export function DocEditor({
                 
                 setMarkdownSource(renumbered);
                 
-                if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
-                markdownSyncTimer.current = setTimeout(() => {
-                  if (editor) {
-                    editor.commands.setContent(renumbered);
-                  }
-                }, 1000);
+                scheduleMarkdownPush(renumbered);
                 
                 requestAnimationFrame(() => {
                   textarea.selectionStart = start;

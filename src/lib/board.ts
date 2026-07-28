@@ -6,6 +6,7 @@
 // record or a learning, findable by event series. Mirrors the design's `BoardFT`.
 
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { AppRole } from './permissions';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
@@ -302,6 +303,18 @@ export interface ParsedDocNote {
   rawLine: string;
 }
 
+/** The text a task line carries *after* its checkbox — i.e. what a `taskItem` node holds. */
+export function formatDocTaskText(task: {
+  id: string;
+  title: string;
+  assigneeId?: string | null;
+  assigneeName?: string | null;
+}): string {
+  const namePart = task.assigneeName ? ` (@${task.assigneeName.trim()})` : '';
+  const assigneeAttr = task.assigneeId ? ` assignee:${task.assigneeId}` : '';
+  return `${task.title.trim()}${namePart} <!-- task:${task.id}${assigneeAttr} -->`;
+}
+
 export function formatDocTaskMarkdown(task: {
   id: string;
   title: string;
@@ -310,9 +323,7 @@ export function formatDocTaskMarkdown(task: {
   done?: boolean;
 }): string {
   const checkbox = task.done ? '[x]' : '[ ]';
-  const namePart = task.assigneeName ? ` (@${task.assigneeName.trim()})` : '';
-  const assigneeAttr = task.assigneeId ? ` assignee:${task.assigneeId}` : '';
-  return `- ${checkbox} ${task.title.trim()}${namePart} <!-- task:${task.id}${assigneeAttr} -->`;
+  return `- ${checkbox} ${formatDocTaskText(task)}`;
 }
 
 export function formatDocNoteMarkdown(note: {
@@ -327,33 +338,34 @@ export function formatDocNoteMarkdown(note: {
   return `> 📝 **Note (${typeLabel})**: ${note.title.trim()}${bodyText} <!-- note:${note.id} type:${note.type} -->`;
 }
 
+const TASK_TEXT_RE = /^\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
+const TASK_CHECKBOX_RE = /-\s*\[([ xX])\]\s*(.*)$/;
+
+/** Parse the text of one task line (no checkbox) — the `taskItem` counterpart of `parseDocTasks`. */
+export function parseDocTaskText(text: string): Omit<ParsedDocTask, 'done' | 'rawLine'> | null {
+  const match = TASK_TEXT_RE.exec(text);
+  if (!match) return null;
+
+  let title = match[1].trim();
+  let assigneeName: string | null = null;
+  const atMatch = /\s*\(@([^)]+)\)$/.exec(title);
+  if (atMatch) {
+    assigneeName = atMatch[1];
+    title = title.slice(0, atMatch.index).trim();
+  }
+
+  return { id: match[2], title, assigneeId: match[3] || null, assigneeName };
+}
+
 export function parseDocTasks(markdown: string): ParsedDocTask[] {
   const tasks: ParsedDocTask[] = [];
-  const lines = markdown.split('\n');
-  const taskRegex = /-\s*\[([ xX])\]\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
 
-  for (const line of lines) {
-    const match = taskRegex.exec(line);
-    if (match) {
-      const done = match[1].toLowerCase() === 'x';
-      let titleWithAssignee = match[2].trim();
-      let assigneeName: string | null = null;
-
-      const atMatch = /\s*\(@([^)]+)\)$/.exec(titleWithAssignee);
-      if (atMatch) {
-        assigneeName = atMatch[1];
-        titleWithAssignee = titleWithAssignee.slice(0, atMatch.index).trim();
-      }
-
-      tasks.push({
-        id: match[3],
-        done,
-        title: titleWithAssignee,
-        assigneeId: match[4] || null,
-        assigneeName,
-        rawLine: line,
-      });
-    }
+  for (const line of markdown.split('\n')) {
+    const checkbox = TASK_CHECKBOX_RE.exec(line);
+    if (!checkbox) continue;
+    const parsed = parseDocTaskText(checkbox[2]);
+    if (!parsed) continue;
+    tasks.push({ ...parsed, done: checkbox[1].toLowerCase() === 'x', rawLine: line });
   }
 
   return tasks;
@@ -378,39 +390,82 @@ export function parseDocNotes(markdown: string): ParsedDocNote[] {
   return notes;
 }
 
-export function syncMarkdownWithTasks(
-  markdown: string,
+/** One checklist line as it currently stands in the editor, with its document positions. */
+export interface DocTaskNode {
+  pos: number;
+  textFrom: number;
+  textTo: number;
+  checked: boolean;
+  text: string;
+}
+
+/** A change to make to one checklist line. Absent fields are already correct. */
+export interface DocTaskEdit {
+  pos: number;
+  checked?: boolean;
+  text?: { from: number; to: number; value: string };
+}
+
+/** Find every checklist line in the document, with the range its text occupies. */
+export function collectDocTaskNodes(doc: ProseMirrorNode): DocTaskNode[] {
+  const nodes: DocTaskNode[] = [];
+
+  doc.descendants((node, pos) => {
+    if (node.type.name !== 'taskItem') return;
+    const para = node.firstChild;
+    if (!para?.isTextblock) return;
+    const textFrom = pos + 2; // into the taskItem, then into its paragraph
+    nodes.push({
+      pos,
+      textFrom,
+      textTo: textFrom + para.content.size,
+      checked: node.attrs.checked === true,
+      text: para.textContent,
+    });
+  });
+
+  return nodes;
+}
+
+/**
+ * Work out which checklist lines a task change made elsewhere (the sidebar, My Day, a
+ * teammate) has left stale.
+ *
+ * Deliberately node-level and minimal: the caller patches only these lines, so the
+ * document is never replaced wholesale and the caret never moves. A line the current
+ * `selection` touches is left alone — it re-syncs once the caret moves off it, rather
+ * than rewriting text out from under someone mid-sentence.
+ */
+export function planDocTaskEdits(
+  nodes: DocTaskNode[],
   tasksMap: Map<string, { title: string; status: string; assigneeId: string | null }>,
   teamMap: Map<string, { name: string }>,
-): string {
-  const lines = markdown.split('\n');
-  let changed = false;
-  const taskRegex = /-\s*\[([ xX])\]\s*(.*?)\s*<!--\s*task:([^\s>]+)(?:\s+assignee:([^\s>]+))?\s*-->/;
+  selection: { from: number; to: number } | null,
+): DocTaskEdit[] {
+  const edits: DocTaskEdit[] = [];
 
-  const newLines = lines.map((line) => {
-    const match = taskRegex.exec(line);
-    if (!match) return line;
-    const taskId = match[3];
-    const task = tasksMap.get(taskId);
-    if (!task) return line;
+  for (const node of nodes) {
+    const parsed = parseDocTaskText(node.text);
+    if (!parsed) continue;
+    const task = tasksMap.get(parsed.id);
+    if (!task) continue;
+    if (selection && selection.from <= node.textTo && selection.to >= node.textFrom) continue;
 
-    const isDone = task.status === 'completed';
+    const checked = task.status === 'completed';
     const assigneeName = task.assigneeId ? teamMap.get(task.assigneeId)?.name?.split(' ')[0] || null : null;
-    const updatedLine = formatDocTaskMarkdown({
-      id: taskId,
+    const value = formatDocTaskText({
+      id: parsed.id,
       title: task.title,
       assigneeId: task.assigneeId,
       assigneeName,
-      done: isDone,
     });
 
-    if (updatedLine !== line) {
-      changed = true;
-      return updatedLine;
-    }
-    return line;
-  });
+    const edit: DocTaskEdit = { pos: node.pos };
+    if (node.checked !== checked) edit.checked = checked;
+    if (node.text !== value) edit.text = { from: node.textFrom, to: node.textTo, value };
+    if (edit.checked !== undefined || edit.text) edits.push(edit);
+  }
 
-  return changed ? newLines.join('\n') : markdown;
+  return edits;
 }
 
