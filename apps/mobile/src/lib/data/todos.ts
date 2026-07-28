@@ -2,7 +2,7 @@
 // with the web app in @cisa/core (behind an injected `db`); this file just
 // supplies the mobile `db` + this app's error handling.
 import * as core from '@cisa/core';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
 
 export {
   DUE_PRESETS,
@@ -17,9 +17,9 @@ export {
 export async function addTodo(
   input: core.NewTodo,
   me: { uid: string; name: string },
-): Promise<void> {
+): Promise<string | undefined> {
   try {
-    await core.addTodo(db, input, me);
+    return await core.addTodo(db, input, me, (payload) => void sendNotification(payload));
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, 'tasks');
   }
@@ -28,17 +28,34 @@ export async function addTodo(
 export async function updateTodo(
   id: string,
   patch: { title?: string; assigneeId?: string | null; dueDate?: string | null },
+  context?: { oldAssigneeId?: string | null; title?: string; meName?: string; meUid?: string },
 ): Promise<void> {
   try {
-    await core.updateTodo(db, id, patch);
+    await core.updateTodo(
+      db,
+      id,
+      patch,
+      context,
+      (payload) => void sendNotification(payload),
+    );
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, 'tasks');
   }
 }
 
-export async function setTodoDone(id: string, done: boolean): Promise<void> {
+export async function setTodoDone(
+  id: string,
+  done: boolean,
+  context?: { createdById?: string | null; title?: string; completerName?: string; completerUid?: string },
+): Promise<void> {
   try {
-    await core.setTodoDone(db, id, done);
+    await core.setTodoDone(
+      db,
+      id,
+      done,
+      context,
+      (payload) => void sendNotification(payload),
+    );
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, 'tasks');
   }
@@ -51,3 +68,4 @@ export async function deleteTodo(id: string): Promise<void> {
     handleFirestoreError(e, OperationType.DELETE, 'tasks');
   }
 }
+

@@ -1355,7 +1355,47 @@ The current local date is: ${currentDate}.`,
     }
   });
 
+  // Remote Push Dispatch: sends an Expo push notification to target user's registered pushToken
+  app.post("/api/send-push", async (req, res) => {
+    try {
+      const { userId, title, body, data } = req.body;
+      if (!userId || !title) {
+        return res.status(400).json({ success: false, error: "userId and title are required" });
+      }
+
+      const db = getAdminDb();
+      const userSnap = await db.collection("users").doc(userId).get();
+      const pushToken = userSnap.data()?.pushToken;
+
+      if (!pushToken || typeof pushToken !== "string") {
+        return res.status(200).json({ success: true, pushSent: false, reason: "No pushToken registered for user" });
+      }
+
+      const pushResponse = await fetch("https://exp.host/--/api/v2/push/send", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          to: pushToken,
+          sound: "default",
+          title: title,
+          body: body || "",
+          data: data || {},
+        }),
+      });
+
+      const pushResult = await pushResponse.json();
+      res.status(200).json({ success: true, pushSent: true, result: pushResult });
+    } catch (error: any) {
+      console.error("Send Push Error: ", error);
+      res.status(500).json({ success: false, error: error.message || "Failed to send push notification" });
+    }
+  });
+
   // Endpoint 3: Public endpoint to verify that the Gemini API is configured
+
   app.get("/api/quick-add/status", (req, res) => {
     res.json({
       geminiConfigured: !!process.env.GEMINI_API_KEY,

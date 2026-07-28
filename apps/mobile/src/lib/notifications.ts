@@ -92,3 +92,24 @@ export async function scheduleReminderNotification(input: {
     return null;
   }
 }
+
+/** Schedules a local OS due-date notification for a to-do (defaults to 9:00 AM on due date). */
+export async function scheduleTodoDueNotification(todo: {
+  id?: string;
+  title: string;
+  dueDate?: string | null;
+}): Promise<string | null> {
+  if (IS_WEB || !todo.dueDate) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(todo.dueDate);
+  if (!m) return null;
+
+  const trigger = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 9, 0, 0);
+  if (trigger.getTime() <= Date.now()) return null;
+
+  return scheduleReminderNotification({
+    title: 'To-do due today',
+    body: `Due today: ${todo.title.length > 100 ? todo.title.slice(0, 100) + '…' : todo.title}`,
+    trigger,
+  });
+}
+

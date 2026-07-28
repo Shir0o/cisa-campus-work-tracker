@@ -49,3 +49,4 @@ export * from './data/chat';
 export * from './data/board';
 export * from './data/interactions';
 export * from './data/comments';
+export * from './todoNotifications';
