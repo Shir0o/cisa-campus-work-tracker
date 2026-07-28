@@ -80,7 +80,15 @@ vi.mock('@tiptap/react', () => ({
 }));
 vi.mock('@tiptap/starter-kit', () => ({ StarterKit: { configure: () => ({}) } }));
 vi.mock('@tiptap/extension-collaboration', () => ({ Collaboration: { configure: () => ({}) } }));
-vi.mock('@tiptap/extension-collaboration-caret', () => ({ CollaborationCaret: { configure: () => ({}) } }));
+let caretConfig: { user?: { uid?: string; name?: string; color?: string } } | null = null;
+vi.mock('@tiptap/extension-collaboration-caret', () => ({
+  CollaborationCaret: {
+    configure: (cfg: { user?: { uid?: string; name?: string; color?: string } }) => {
+      caretConfig = cfg;
+      return {};
+    },
+  },
+}));
 vi.mock('@tiptap/extension-task-list', () => ({ TaskList: { configure: () => ({}) } }));
 vi.mock('@tiptap/extension-task-item', () => ({ TaskItem: { configure: () => ({}) } }));
 vi.mock('@tiptap/extension-placeholder', () => ({ Placeholder: { configure: () => ({}) } }));
@@ -97,6 +105,8 @@ vi.mock('yjs', () => {
   }
   return { Doc: MockDoc };
 });
+// Peers a test wants "in the room"; keyed by Yjs clientID, as awareness is.
+const awarenessStates = new Map<number, { user?: { uid?: string; name?: string; color?: string } }>();
 vi.mock('y-protocols/awareness', () => {
   class MockAwareness {
     setLocalStateField() {}
@@ -104,7 +114,7 @@ vi.mock('y-protocols/awareness', () => {
     off() {}
     destroy() {}
     getStates() {
-      return new Map();
+      return awarenessStates;
     }
     get clientID() {
       return 1;
@@ -189,8 +199,43 @@ describe('CoordinationNotes — live editor behavior', () => {
     h.config = null;
     h.editor = null;
     h.chain = null;
+    awarenessStates.clear();
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
     setupSnapshots();
+  });
+
+  // ── duplicate presence avatars ─────────────────────────────────────────────
+  describe('live presence stack', () => {
+    const kevin = { uid: 'u-kevin', name: 'Kevin Munga', color: '#b5503f' };
+
+    it('shows one avatar per person however many sessions they hold', async () => {
+      // A clientID is minted per editor mount, so one person routinely holds several.
+      awarenessStates.set(2, { user: kevin });
+      awarenessStates.set(3, { user: kevin });
+      awarenessStates.set(4, { user: kevin });
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      expect(screen.getAllByTitle('Kevin Munga')).toHaveLength(1);
+      expect(screen.getByTitle('1 other editing')).toBeInTheDocument();
+    });
+
+    it('leaves you out of the stack even when your own second tab is present', async () => {
+      awarenessStates.set(5, { user: { uid: 'u-admin', name: 'Tony Wang', color: '#7d5a86' } });
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      // The stack renders only when there is someone else; your own name still
+      // appears elsewhere on the page as a team-member avatar, so assert on the stack.
+      expect(screen.queryByTitle(/other(s)? editing/)).not.toBeInTheDocument();
+    });
+
+    it('publishes the uid alongside the caret name so peers can be told apart', async () => {
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      expect(caretConfig).toMatchObject({ user: { uid: 'u-admin', name: 'Tony Wang' } });
+    });
   });
 
   // ── #67 — rich (HTML) paste is normalized through Markdown ─────────────────
