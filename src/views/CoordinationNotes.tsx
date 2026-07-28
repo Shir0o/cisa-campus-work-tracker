@@ -65,6 +65,8 @@ import {
   Pin,
   Archive,
   Edit3,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -436,42 +438,60 @@ function ReadOnlyDoc({
   doc: d,
   pagesCollapsed,
   onTogglePages,
+  isFullscreen,
+  onToggleFullscreen,
 }: {
   doc: BoardDoc;
   pagesCollapsed: boolean;
   onTogglePages: () => void;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
   return (
     <div className="flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
       {/* head */}
-      <div className="flex items-center gap-2.5 flex-wrap px-5 lg:px-8 pt-4">
-        {pagesCollapsed && (
+      <div className="flex items-center justify-between gap-2.5 flex-wrap px-5 lg:px-8 pt-4">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {pagesCollapsed && (
+            <button
+              type="button"
+              onClick={onTogglePages}
+              title="Show pages"
+              aria-label="Show pages"
+              className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+            >
+              <PanelLeftOpen className="w-[18px] h-[18px]" />
+            </button>
+          )}
+          {st && (
+            <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
+              {st.label}
+            </span>
+          )}
+          <span className="text-[13px] text-on-surface-variant font-medium">
+            {weekdayOf(d.date)}, {dateLabelOf(d.date)}
+            {d.time ? ` · ${d.time}` : ''}
+          </span>
+          {d.place && (
+            <span className="inline-flex items-center gap-1 text-[13px] text-on-surface-variant/70">
+              <MapPin className="w-3.5 h-3.5" /> {d.place}
+            </span>
+          )}
+          <AudienceBadge audience={audienceOf(d)} />
+        </div>
+        {onToggleFullscreen && (
           <button
             type="button"
-            onClick={onTogglePages}
-            title="Show pages"
-            aria-label="Show pages"
-            className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
+            onClick={onToggleFullscreen}
+            title={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
+            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
           >
-            <PanelLeftOpen className="w-[18px] h-[18px]" />
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
           </button>
         )}
-        {st && (
-          <span className={cn('inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium', STATUS_CHIP[st.tone] || STATUS_CHIP[''])}>
-            {st.label}
-          </span>
-        )}
-        <span className="text-[13px] text-on-surface-variant font-medium">
-          {weekdayOf(d.date)}, {dateLabelOf(d.date)}
-          {d.time ? ` · ${d.time}` : ''}
-        </span>
-        {d.place && (
-          <span className="inline-flex items-center gap-1 text-[13px] text-on-surface-variant/70">
-            <MapPin className="w-3.5 h-3.5" /> {d.place}
-          </span>
-        )}
-        <AudienceBadge audience={audienceOf(d)} />
       </div>
 
       <h1 className="font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
@@ -548,6 +568,44 @@ export default function CoordinationNotes() {
       localStorage.setItem('board_pages_collapsed', String(!v));
       return !v;
     });
+
+  // Fullscreen mode state & handlers for distraction-free editing/viewing
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = () => {
+    const next = !isFullscreen;
+    setIsFullscreen(next);
+    if (next) {
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+    } else {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+        if (document.fullscreenElement && document.exitFullscreen) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
 
   // Live Markdown of the page currently being edited, so its Pages-list row
   // (preview + "to do" count) reflects edits immediately rather than waiting for
@@ -1380,8 +1438,9 @@ export default function CoordinationNotes() {
           <div
             data-testid="coordination-notes-workspace"
             className={cn(
-              'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)]',
+              'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)] transition-all',
               pagesCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[300px_1fr]',
+              isFullscreen && 'fixed inset-0 z-50 rounded-none border-0 shadow-2xl h-screen w-screen min-h-0 lg:h-screen lg:min-h-0 bg-surface',
             )}
           >
             {/* Pages list */}
@@ -1473,9 +1532,18 @@ export default function CoordinationNotes() {
                   onSelectContact={setSelectedContact}
                   onOpenContactModal={setIsDetailsModalOpen}
                   todos={todos}
+                  isFullscreen={isFullscreen}
+                  onToggleFullscreen={toggleFullscreen}
                 />
               ) : (
-                <ReadOnlyDoc key={active.id} doc={active} pagesCollapsed={pagesCollapsed} onTogglePages={togglePages} />
+                <ReadOnlyDoc
+                  key={active.id}
+                  doc={active}
+                  pagesCollapsed={pagesCollapsed}
+                  onTogglePages={togglePages}
+                  isFullscreen={isFullscreen}
+                  onToggleFullscreen={toggleFullscreen}
+                />
               )
             ) : (
               <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
@@ -1980,6 +2048,8 @@ export function DocEditor({
   onSelectContact,
   onOpenContactModal,
   todos = [],
+  isFullscreen,
+  onToggleFullscreen,
 }: {
   doc: BoardDoc;
   meUid: string;
@@ -1998,6 +2068,8 @@ export function DocEditor({
   onSelectContact: (c: Contact | null) => void;
   onOpenContactModal: (open: boolean) => void;
   todos?: Task[];
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }) {
   const { user } = useAuth();
 
@@ -2702,6 +2774,18 @@ export function DocEditor({
           >
             <Tag className="w-3.5 h-3.5" /> Save to archive
           </button>
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
+              aria-label={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
+            </button>
+          )}
           {peers.length > 0 && (
             <div className="flex -space-x-1.5" title={`${peers.length} other${peers.length === 1 ? '' : 's'} editing`}>
               {peers.slice(0, 4).map((p) => (
