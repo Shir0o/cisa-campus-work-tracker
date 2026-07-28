@@ -73,6 +73,27 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - **Coordination Series Options**: Updated board series choices to `['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']`, removing "Friday Gatherings" and replacing "Retreat" with "Conferences/Trainings".
 
 ### Fixed
+- **On `/coordination`, editing a page threw your caret to the bottom, wiped what you
+  had selected, and made Cmd/Ctrl+Z jump to the end of the document.** All three came
+  from one line in the bi-directional task sync added by #174: the effect serialized the
+  *whole* page to Markdown, diffed it line-by-line against Firestore, and on any
+  difference called `editor.commands.setContent(...)` — a whole-document delete+insert.
+  With `Collaboration` active that rewrites the entire `Y.Doc`, so ProseMirror mapped
+  the selection to the end of the new document, the Markdown round trip lost anything
+  Markdown can't express, and (since `StarterKit` runs with `undoRedo: false` and Yjs
+  owns history) each rewrite landed in the undo stack as one giant entry. It fired
+  constantly, because `todos`/`team` are fresh arrays on every Firestore snapshot —
+  including the snapshots the editor's own 1.2s save triggers — and because comparing
+  serialized Markdown lines against `formatDocTaskMarkdown` output reads as "changed"
+  forever for any indented task or any title containing Markdown punctuation. The sync
+  now works on `taskItem` *nodes*: `planDocTaskEdits` (`src/lib/board.ts`) works out
+  which checklist lines actually went stale, and the editor patches just those in one
+  transaction marked `addToHistory: false`, so a teammate's change is never something
+  you can undo. The line your caret is in is skipped and re-syncs once you move off it.
+  `syncMarkdownWithTasks` is gone, replaced by `formatDocTaskText`/`parseDocTaskText`
+  so both directions share one format. Markdown source view took the same treatment:
+  its five whole-document rewrites now go through one helper that no-ops when the text
+  is unchanged and restores the caret otherwise.
 - **The Board showed the same person three or four times in its live-presence stack,
   and repeated their name label inside the editor.** Confirmed against production
   RTDB: `board_docs_rtdb/{docId}/awareness` held five frozen client nodes against one

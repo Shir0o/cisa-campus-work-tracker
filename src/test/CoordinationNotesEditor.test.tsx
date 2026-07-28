@@ -10,7 +10,13 @@ import { useAuth } from '../components/AuthProvider';
 // the live Pages-list preview (#66), which the null-editor suite can't reach.
 
 // Captured editor config + the fake editor instance, shared with the mock factory.
-const h = vi.hoisted(() => ({ config: null as any, editor: null as any, chain: null as any }));
+// `tr` holds the last transaction the component built, so the task-sync tests can
+// inspect exactly what it patched.
+const h = vi.hoisted(() => ({ config: null as any, editor: null as any, chain: null as any, tr: null as any }));
+
+// The one checklist line the fake document contains, at node position 4.
+const TASK_NODE_POS = 4;
+const taskNodeText = 'Review PRs (@Bob) <!-- task:task-1 assignee:u-bob -->';
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
 
@@ -51,16 +57,60 @@ vi.mock('@tiptap/react', () => ({
       ].forEach((m) => {
         chain[m] = vi.fn(() => chain);
       });
+      // One taskItem node, the shape the task-sync walk reads: a paragraph child
+      // holding the line's text, and a `checked` attr for the checkbox.
+      const taskNode = {
+        type: { name: 'taskItem' },
+        attrs: { checked: false },
+        firstChild: {
+          isTextblock: true,
+          content: { size: taskNodeText.length },
+          textContent: taskNodeText,
+        },
+      };
       h.editor = {
         isActive: () => false,
         isEmpty: true,
+        isFocused: false,
         on: () => {},
         off: () => {},
-        commands: { setContent: () => {} },
+        commands: { setContent: vi.fn(), setTextSelection: vi.fn() },
         chain: () => chain,
+        view: { dispatch: vi.fn() },
         state: {
           selection: { from: 0, to: 0, empty: true },
-          doc: { textBetween: () => '' },
+          schema: { text: (value: string) => ({ text: value }) },
+          doc: {
+            textBetween: () => '',
+            content: { size: 200 },
+            descendants: (fn: (node: unknown, pos: number) => void) => fn(taskNode, TASK_NODE_POS),
+          },
+          // A recording stand-in for a ProseMirror transaction.
+          get tr() {
+            const tr: any = {
+              docChanged: false,
+              meta: {} as Record<string, unknown>,
+              steps: [] as any[],
+              mapping: { map: (p: number) => p },
+              doc: { nodeAt: () => taskNode },
+              replaceWith(from: number, to: number, node: { text: string }) {
+                tr.steps.push({ kind: 'replaceWith', from, to, value: node.text });
+                tr.docChanged = true;
+                return tr;
+              },
+              setNodeMarkup(pos: number, _type: unknown, attrs: Record<string, unknown>) {
+                tr.steps.push({ kind: 'setNodeMarkup', pos, attrs });
+                tr.docChanged = true;
+                return tr;
+              },
+              setMeta(key: string, value: unknown) {
+                tr.meta[key] = value;
+                return tr;
+              },
+            };
+            h.tr = tr;
+            return tr;
+          },
         },
         storage: {
           markdown: {
@@ -173,6 +223,11 @@ const teamFixture = [
     id: 'u-admin',
     data: () => ({ uid: 'u-admin', displayName: 'Tony Wang', email: 'yilongwang05@gmail.com', approved: true, role: 'admin' }),
   },
+  // The assignee named in the fake document's checklist line.
+  {
+    id: 'u-bob',
+    data: () => ({ uid: 'u-bob', displayName: 'Bob Smith', email: 'bob@example.com', approved: true, role: 'operator' }),
+  },
 ];
 
 const adminAuth = {
@@ -183,11 +238,15 @@ const adminAuth = {
   loading: false,
 };
 
+// The `tasks` snapshot a test wants the page to receive; empty by default.
+let tasksFixture: { id: string; data: () => object }[] = [];
+
 function setupSnapshots() {
   (onSnapshot as ReturnType<typeof vi.fn>).mockImplementation((ref: { path?: string }, callback: (snap: unknown) => void) => {
     const path = ref?.path || '';
     if (path === 'board_docs') callback({ docs: docsFixture, size: docsFixture.length });
     else if (path === 'users') callback({ docs: teamFixture, size: teamFixture.length });
+    else if (path === 'tasks') callback({ docs: tasksFixture, size: tasksFixture.length });
     else callback({ docs: [], size: 0 });
     return vi.fn();
   });
@@ -199,6 +258,8 @@ describe('CoordinationNotes — live editor behavior', () => {
     h.config = null;
     h.editor = null;
     h.chain = null;
+    h.tr = null;
+    tasksFixture = [];
     awarenessStates.clear();
     (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
     setupSnapshots();
@@ -235,6 +296,76 @@ describe('CoordinationNotes — live editor behavior', () => {
       await waitFor(() => expect(h.config).not.toBeNull());
 
       expect(caretConfig).toMatchObject({ user: { uid: 'u-admin', name: 'Tony Wang' } });
+    });
+  });
+
+  // ── task changes made elsewhere never rebuild the document ─────────────────
+  // Rebuilding it dropped the caret at the bottom of the page, lost the selection,
+  // and buried real edits under whole-doc entries in the Yjs undo stack (#174).
+  describe('external task sync', () => {
+    const task = (over: object = {}) => [
+      { id: 'task-1', data: () => ({ title: 'Review PRs', status: 'open', assigneeId: 'u-bob', ...over }) },
+    ];
+
+    it('patches the stale checkbox instead of replacing the whole document', async () => {
+      tasksFixture = task({ status: 'completed' });
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      expect(h.editor.commands.setContent).not.toHaveBeenCalled();
+      expect(h.editor.view.dispatch).toHaveBeenCalledTimes(1);
+      expect(h.tr.steps).toEqual([{ kind: 'setNodeMarkup', pos: TASK_NODE_POS, attrs: { checked: true } }]);
+    });
+
+    it('keeps someone else’s change out of your undo stack', async () => {
+      tasksFixture = task({ status: 'completed' });
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.editor.view.dispatch).toHaveBeenCalled());
+
+      expect(h.tr.meta.addToHistory).toBe(false);
+    });
+
+    it('rewrites only the renamed line, leaving the rest of the page alone', async () => {
+      tasksFixture = task({ title: 'Review all PRs' });
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.editor.view.dispatch).toHaveBeenCalled());
+
+      expect(h.editor.commands.setContent).not.toHaveBeenCalled();
+      expect(h.tr.steps).toEqual([
+        {
+          kind: 'replaceWith',
+          from: TASK_NODE_POS + 2,
+          to: TASK_NODE_POS + 2 + taskNodeText.length,
+          value: 'Review all PRs (@Bob) <!-- task:task-1 assignee:u-bob -->',
+        },
+      ]);
+    });
+
+    it('touches nothing when the page already agrees with the to-dos', async () => {
+      tasksFixture = task();
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      expect(h.editor.view.dispatch).not.toHaveBeenCalled();
+      expect(h.editor.commands.setContent).not.toHaveBeenCalled();
+    });
+
+    it('leaves the line alone while your caret is inside it', async () => {
+      tasksFixture = task({ status: 'completed' });
+      h.editor = null; // rebuilt below with the caret parked in the task line
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+      h.editor.isFocused = true;
+      h.editor.state.selection = { from: TASK_NODE_POS + 5, to: TASK_NODE_POS + 5, empty: true };
+      h.editor.view.dispatch.mockClear();
+
+      // A later snapshot (a second person's edit) must not rewrite the line you're in.
+      tasksFixture = task({ status: 'completed', title: 'Review all PRs' });
+      act(() => setupSnapshots());
+      render(<CoordinationNotes />);
+      await waitFor(() => expect(h.config).not.toBeNull());
+
+      expect(h.editor.view.dispatch).not.toHaveBeenCalled();
     });
   });
 

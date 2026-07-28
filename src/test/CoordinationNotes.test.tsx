@@ -26,8 +26,17 @@ vi.mock('react-router-dom', () => ({
 const mockEditor = {
   commands: {
     setContent: vi.fn(),
+    setTextSelection: vi.fn(),
   },
   isEmpty: false,
+  isFocused: false,
+  // Enough ProseMirror surface for the caret-preserving Markdown push and the
+  // task-sync walk; a doc with no task nodes means the walk finds nothing to patch.
+  state: {
+    selection: { from: 0, to: 0 },
+    doc: { content: { size: 0 }, descendants: () => {} },
+  },
+  view: { dispatch: vi.fn() },
   storage: {
     markdown: {
       getMarkdown: () => '# Team standup\n- [x] Review goals',
