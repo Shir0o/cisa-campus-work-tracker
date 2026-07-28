@@ -82,6 +82,7 @@ import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
 import { RtdbYjsProvider } from '../lib/yjsRtdbProvider';
+import { peersFromAwareness, type Peer } from '../lib/presence';
 import {
   BoardDoc,
   DocGroup,
@@ -2011,7 +2012,7 @@ export function DocEditor({
   const [live, setLive] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [markdownSource, setMarkdownSource] = useState('');
-  const [peers, setPeers] = useState<{ id: number; name: string; color: string }[]>([]);
+  const [peers, setPeers] = useState<Peer[]>([]);
   const [title, setTitle] = useState(d.title);
 
   // Highlight → floating bubble menu over selection:
@@ -2242,7 +2243,9 @@ export function DocEditor({
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: 'Write the page — a heading, some notes, a checklist…' }),
       Collaboration.configure({ document: ydoc }),
-      CollaborationCaret.configure({ provider: { awareness }, user: { name: meName, color: meColor } }),
+      // `uid` rides along untouched by the caret's renderer, and is what lets the
+      // presence stack tell one person's several sessions apart from several people.
+      CollaborationCaret.configure({ provider: { awareness }, user: { uid: meUid, name: meName, color: meColor } }),
     ],
     editorProps: {
       attributes: { class: 'bdoc-prose', spellcheck: 'false' },
@@ -2321,20 +2324,13 @@ export function DocEditor({
     }
   }, [markdownSource, showSource]);
 
-  // presence
+  // presence — one face per person, not one per socket (see lib/presence)
   useEffect(() => {
-    const update = () => {
-      const out: { id: number; name: string; color: string }[] = [];
-      awareness.getStates().forEach((s: { user?: { name?: string; color?: string } }, id: number) => {
-        if (id === awareness.clientID) return;
-        out.push({ id, name: s.user?.name || 'Someone', color: s.user?.color || '#888' });
-      });
-      setPeers(out);
-    };
+    const update = () => setPeers(peersFromAwareness(awareness.getStates(), awareness.clientID, meUid));
     awareness.on('change', update);
     update();
     return () => awareness.off('change', update);
-  }, [awareness]);
+  }, [awareness, meUid]);
 
   // Bi-directional sync: Sync external task updates (e.g. from sidebar/MyDay) back to doc markdown
   useEffect(() => {
@@ -2710,7 +2706,7 @@ export function DocEditor({
             <div className="flex -space-x-1.5" title={`${peers.length} other${peers.length === 1 ? '' : 's'} editing`}>
               {peers.slice(0, 4).map((p) => (
                 <span
-                  key={p.id}
+                  key={p.key}
                   className="w-6 h-6 rounded-full ring-2 ring-surface text-white text-[10px] font-semibold grid place-items-center"
                   style={{ background: p.color }}
                   title={p.name}

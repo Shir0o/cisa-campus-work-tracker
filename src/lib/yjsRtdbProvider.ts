@@ -23,6 +23,7 @@ import {
 } from 'y-protocols/awareness';
 import {
   ref,
+  child,
   push,
   get,
   set,
@@ -75,6 +76,9 @@ export class RtdbYjsProvider {
   private appliedKeys = new Set<string>();
   private destroyed = false;
   private onSynced?: (degraded: boolean) => void;
+  // Only true once `onDisconnect` is armed. Publishing before that (or in degraded
+  // mode, where it's never armed) writes a presence node nothing can ever remove.
+  private presenceArmed = false;
 
   constructor(database: Database, docId: string, doc: Y.Doc, opts: RtdbProviderOptions = {}) {
     this.doc = doc;
@@ -89,7 +93,12 @@ export class RtdbYjsProvider {
 
     this.doc.on('update', this.handleDocUpdate);
     this.awareness.on('update', this.handleAwarenessUpdate);
-    if (typeof window !== 'undefined') window.addEventListener('beforeunload', this.handleUnload);
+    // `beforeunload` never fires in iOS Safari or the mobile WebView — `pagehide`
+    // does, and is the last chance to drop our node before onDisconnect has to.
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', this.handleUnload);
+      window.addEventListener('pagehide', this.handleUnload);
+    }
 
     void this.bootstrap();
   }
@@ -151,6 +160,7 @@ export class RtdbYjsProvider {
 
     // publish our presence + auto-remove it when we disconnect
     onDisconnect(this.myAwarenessRef).remove();
+    this.presenceArmed = true;
     this.publishAwareness();
   }
 
@@ -181,12 +191,23 @@ export class RtdbYjsProvider {
     origin: unknown,
   ) => {
     if (origin === this || this.destroyed) return;
+    // y-protocols drops a peer that hasn't heartbeated in 30s, but only from our own
+    // copy — the RTDB node lives on and haunts everyone who opens the page next. Take
+    // it out too. A peer that was merely offline republishes on its next heartbeat.
+    if (origin === 'timeout') this.reap(removed);
     const mine = this.awareness.clientID;
     if ([...added, ...updated, ...removed].includes(mine)) this.publishAwareness();
   };
 
+  private reap(clientIds: number[]) {
+    for (const id of clientIds) {
+      if (id === this.awareness.clientID) continue;
+      set(child(this.awarenessRef, String(id)), null).catch(() => {});
+    }
+  }
+
   private publishAwareness() {
-    if (this.destroyed) return;
+    if (this.destroyed || !this.presenceArmed) return;
     const state = this.awareness.getLocalState();
     if (state == null) {
       set(this.myAwarenessRef, null).catch(() => {});
@@ -207,7 +228,10 @@ export class RtdbYjsProvider {
     this.destroyed = true;
     this.doc.off('update', this.handleDocUpdate);
     this.awareness.off('update', this.handleAwarenessUpdate);
-    if (typeof window !== 'undefined') window.removeEventListener('beforeunload', this.handleUnload);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('beforeunload', this.handleUnload);
+      window.removeEventListener('pagehide', this.handleUnload);
+    }
     this.unsubs.forEach((u) => {
       try {
         u();
@@ -216,11 +240,9 @@ export class RtdbYjsProvider {
       }
     });
     this.unsubs = [];
-    try {
-      onDisconnect(this.myAwarenessRef).cancel();
-    } catch {
-      /* noop */
-    }
+    // Deliberately leave the onDisconnect armed: this write is best-effort, and if the
+    // tab closes before it lands, the server-side remove is the only thing left that
+    // can clear the node. The clientID is never reused, so a late remove is a no-op.
     set(this.myAwarenessRef, null).catch(() => {});
     removeAwarenessStates(this.awareness, [this.awareness.clientID], 'local');
   }
