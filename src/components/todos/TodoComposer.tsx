@@ -16,6 +16,8 @@ import {
 } from "../../lib/todos";
 import { PersonAvatar } from "./TodoRow";
 
+import { parseSmartDate } from "../../lib/dateParser";
+
 const POPOVER_W = 320;
 
 export interface TodoComposerInitial {
@@ -58,11 +60,18 @@ export default function TodoComposer({
     initialTexts && initialTexts.length > 0 ? initialTexts : [initial?.text ?? ""],
   );
   const [assigneeId, setAssigneeId] = useState<string | null>(initial?.assigneeId ?? null);
+
+  const [isManualDueOverride, setIsManualDueOverride] = useState<boolean>(initial?.dueDate !== undefined);
+
+  const initialText = initialTexts && initialTexts.length > 0 ? initialTexts[0] : (initial?.text ?? "");
+  const initialParsedDate = initial?.dueDate === undefined && initialText ? parseSmartDate(initialText).isoDate : null;
+  const effectiveInitialDue = initial?.dueDate !== undefined ? initial?.dueDate : (initialParsedDate ?? undefined);
+
   const [dueKey, setDueKey] = useState<DuePresetKey>(() =>
-    initial?.dueDate !== undefined ? presetForDue(initial?.dueDate) : "week",
+    effectiveInitialDue !== undefined ? presetForDue(effectiveInitialDue) : "week",
   );
   const [customDate, setCustomDate] = useState<string>(
-    initial?.dueDate && presetForDue(initial.dueDate) === "custom" ? initial.dueDate : "",
+    effectiveInitialDue && presetForDue(effectiveInitialDue) === "custom" ? effectiveInitialDue : "",
   );
   const [subtasks, setSubtasks] = useState<SubtaskItem[]>(() => initial?.subtasks ?? []);
   const [saving, setSaving] = useState(false);
@@ -143,7 +152,12 @@ export default function TodoComposer({
         const createdList: { id: string; title: string; assigneeId: string | null; assigneeName: string | null }[] = [];
         for (let i = 0; i < validTexts.length; i++) {
           const valText = validTexts[i];
-          const newId = await addTodo({ title: valText, assigneeId, dueDate: due, source: source ?? null, subtasks: i === 0 ? validSubtasks : [] }, { uid: meUid, name: meName });
+          let taskDue = due;
+          if (!isManualDueOverride && validTexts.length > 1) {
+            const parsed = parseSmartDate(valText);
+            if (parsed.isoDate) taskDue = parsed.isoDate;
+          }
+          const newId = await addTodo({ title: valText, assigneeId, dueDate: taskDue, source: source ?? null, subtasks: i === 0 ? validSubtasks : [] }, { uid: meUid, name: meName });
           createdList.push({ id: newId, title: valText, assigneeId, assigneeName: who?.name || null });
           if (typeof logActivity === "function") {
             logActivity({
@@ -197,6 +211,30 @@ export default function TodoComposer({
       : { position: "fixed" as const, left: -9999, top: -9999, width: POPOVER_W, zIndex: 100 }
     : undefined;
 
+  const handleTextChange = (idx: number, val: string) => {
+    const copy = [...texts];
+    copy[idx] = val;
+    setTexts(copy);
+    if (!isManualDueOverride && idx === 0) {
+      const parsed = parseSmartDate(val);
+      if (parsed.isoDate) {
+        const preset = presetForDue(parsed.isoDate);
+        setDueKey(preset);
+        setCustomDate(preset === "custom" ? parsed.isoDate : "");
+      }
+    }
+  };
+
+  const handleDuePresetClick = (key: DuePresetKey) => {
+    setIsManualDueOverride(true);
+    setDueKey(key);
+  };
+
+  const handleCustomDateChange = (dateStr: string) => {
+    setIsManualDueOverride(true);
+    setCustomDate(dateStr);
+  };
+
   return (
     <div
       className={cn(
@@ -241,11 +279,7 @@ export default function TodoComposer({
                 type="text"
                 value={t}
                 autoFocus={idx === 0}
-                onChange={(e) => {
-                  const copy = [...texts];
-                  copy[idx] = e.target.value;
-                  setTexts(copy);
-                }}
+                onChange={(e) => handleTextChange(idx, e.target.value)}
                 placeholder={`Task ${idx + 1}`}
                 className="w-full h-9 rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
               />
@@ -256,7 +290,7 @@ export default function TodoComposer({
             ref={taRef}
             value={texts[0] || ""}
             rows={2}
-            onChange={(e) => setTexts([e.target.value])}
+            onChange={(e) => handleTextChange(0, e.target.value)}
             placeholder="What needs doing?"
             spellCheck={false}
             className="w-full resize-none rounded-xl bg-surface-container-low border border-outline-variant/60 px-3 py-2 text-sm text-on-surface outline-none focus:border-primary transition-colors"
@@ -333,7 +367,7 @@ export default function TodoComposer({
           {DUE_PRESETS.map((p) => (
             <button
               key={p.key}
-              onClick={() => setDueKey(p.key)}
+              onClick={() => handleDuePresetClick(p.key)}
               className={cn(
                 "px-3 h-8 rounded-full border text-xs font-medium transition-colors",
                 dueKey === p.key
@@ -345,7 +379,7 @@ export default function TodoComposer({
             </button>
           ))}
           <button
-            onClick={() => setDueKey("custom")}
+            onClick={() => handleDuePresetClick("custom")}
             className={cn(
               "px-3 h-8 rounded-full border text-xs font-medium transition-colors",
               dueKey === "custom"
@@ -358,7 +392,7 @@ export default function TodoComposer({
         </div>
         {dueKey === "custom" && (
           <div className="mt-2">
-            <DatePicker label="Due date" value={customDate} onChange={setCustomDate} />
+            <DatePicker label="Due date" value={customDate} onChange={handleCustomDateChange} />
           </div>
         )}
 

@@ -123,6 +123,7 @@ import { Task, Contact } from '../types';
 import TodoComposer, { type TodoComposerInitial } from '../components/todos/TodoComposer';
 import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
 import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
+import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -2187,11 +2188,12 @@ export function DocEditor({
       const createdItems: string[] = [];
       if (lines.length > 1) {
         for (const line of lines) {
+          const parsed = parseSmartDate(line);
           const newId = await addTodo(
             {
               title: line,
               assigneeId: member.uid,
-              dueDate: null,
+              dueDate: parsed.isoDate,
               source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
             },
             { uid: meUid, name: meName }
@@ -2208,11 +2210,12 @@ export function DocEditor({
         }
         onToast(`Created ${lines.length} tasks assigned to ${member.name.split(' ')[0]}.`);
       } else {
+        const parsed = parseSmartDate(fab.text);
         const newId = await addTodo(
           {
             title: fab.text,
             assigneeId: member.uid,
-            dueDate: null,
+            dueDate: parsed.isoDate,
             source: { docId: d.id, docTitle: title || d.title || 'Untitled page' },
           },
           { uid: meUid, name: meName }

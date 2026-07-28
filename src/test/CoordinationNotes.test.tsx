@@ -2105,6 +2105,52 @@ describe('CoordinationNotes', () => {
       getSelectionSpy.mockRestore();
     });
 
+    it('parses natural language dates when directly assigning selected text from menu', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Submit report by tomorrow',
+        removeAllRanges: vi.fn(),
+      };
+
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Click "Assign" button to open member dropdown
+      fireEvent.click(await screen.findByText('Assign'));
+
+      // Click on team member "Tony Wang"
+      const memberBtn = screen.getByText('Tony Wang');
+      fireEvent.click(memberBtn);
+
+      // Verify direct assignment extracts date and sets dueDate
+      await waitFor(() => {
+        expect(addDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            title: 'Submit report by tomorrow',
+            assigneeId: 'u-admin',
+            dueDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+          })
+        );
+      });
+
+      getSelectionSpy.mockRestore();
+    });
+
     it('parses selection task list hierarchy correctly', async () => {
       const mockRange = {
         commonAncestorContainer: null as any,

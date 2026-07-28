@@ -302,4 +302,36 @@ describe('TodoComposer', () => {
     expect(card?.className).toContain('max-h-[calc(100vh-2rem)]');
     expect(card?.className).toContain('overflow-y-auto');
   });
+
+  it('automatically sets due date when initial text contains natural language date', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        initial={{ text: 'Call client tomorrow', assigneeId: null }}
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    const tomorrowBtn = screen.getByRole('button', { name: /Tomorrow/i });
+    expect(tomorrowBtn.className).toContain('bg-primary');
+  });
+
+  it('updates due date dynamically when user types a date into the input box', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    const input = screen.getByPlaceholderText('What needs doing?');
+    fireEvent.change(input, { target: { value: 'Submit report by tomorrow' } });
+
+    const tomorrowBtn = screen.getByRole('button', { name: /Tomorrow/i });
+    expect(tomorrowBtn.className).toContain('bg-primary');
+  });
 });
