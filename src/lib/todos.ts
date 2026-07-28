@@ -1,8 +1,50 @@
 import { addDoc, collection, deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import { format } from "date-fns";
-import { db, handleFirestoreError, OperationType } from "./firebase";
+import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
+
+function firstName(name?: string | null): string {
+  if (!name || !name.trim()) return "Someone";
+  return name.trim().split(/\s+/)[0];
+}
+
+export function buildAssignmentNotificationPayload(params: {
+  assigneeId: string;
+  title: string;
+  assignerName?: string | null;
+  todoId?: string;
+}) {
+  const who = firstName(params.assignerName);
+  const truncatedTitle = params.title.length > 300 ? params.title.slice(0, 300) + "…" : params.title;
+  return {
+    userId: params.assigneeId,
+    title: "New to-do",
+    message: `${who} assigned you: ${truncatedTitle}`,
+    type: "assignment" as const,
+    link: "/",
+    targetId: params.todoId,
+  };
+}
+
+export function buildCompletionNotificationPayload(params: {
+  createdById: string;
+  title: string;
+  completerName?: string | null;
+  todoId?: string;
+}) {
+  const who = firstName(params.completerName);
+  const truncatedTitle = params.title.length > 300 ? params.title.slice(0, 300) + "…" : params.title;
+  return {
+    userId: params.createdById,
+    title: "To-do completed",
+    message: `${who} completed: ${truncatedTitle}`,
+    type: "success" as const,
+    link: "/",
+    targetId: params.todoId,
+  };
+}
 
 const DAY_MS = 86_400_000;
+
 
 // A person a to-do can be assigned to. Structurally compatible with the
 // CoordinationNotes `TeamMember` shape, kept generic so both the composer and
@@ -106,16 +148,28 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
       sourceDocTitle: input.source?.docTitle ?? null,
       createdAt: serverTimestamp(),
     });
-    return docRef?.id ?? 'mock-task-id';
+    const newId = docRef?.id ?? "mock-task-id";
+    if (input.assigneeId && input.assigneeId !== me.uid) {
+      void sendNotification(
+        buildAssignmentNotificationPayload({
+          assigneeId: input.assigneeId,
+          title: input.title,
+          assignerName: me.name,
+          todoId: newId,
+        }),
+      );
+    }
+    return newId;
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "tasks");
-    return 'failed-task-id';
+    return "failed-task-id";
   }
 }
 
 export async function updateTodo(
   id: string,
   patch: { title?: string; assigneeId?: string | null; dueDate?: string | null },
+  context?: { oldAssigneeId?: string | null; title?: string; meName?: string; meUid?: string },
 ): Promise<void> {
   try {
     const clean: Record<string, unknown> = {};
@@ -123,14 +177,47 @@ export async function updateTodo(
     if (patch.assigneeId !== undefined) clean.assigneeId = patch.assigneeId;
     if (patch.dueDate !== undefined) clean.dueDate = patch.dueDate;
     await updateDoc(doc(db, "tasks", id), clean);
+
+    if (
+      patch.assigneeId &&
+      patch.assigneeId !== context?.oldAssigneeId &&
+      patch.assigneeId !== context?.meUid
+    ) {
+      void sendNotification(
+        buildAssignmentNotificationPayload({
+          assigneeId: patch.assigneeId,
+          title: patch.title || context?.title || "To-do",
+          assignerName: context?.meName,
+          todoId: id,
+        }),
+      );
+    }
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, "tasks");
   }
 }
 
-export async function setTodoDone(id: string, done: boolean): Promise<void> {
+export async function setTodoDone(
+  id: string,
+  done: boolean,
+  context?: { createdById?: string | null; title?: string; completerName?: string; completerUid?: string },
+): Promise<void> {
   try {
     await updateDoc(doc(db, "tasks", id), { status: done ? "completed" : "pending" });
+    if (
+      done &&
+      context?.createdById &&
+      context.createdById !== context.completerUid
+    ) {
+      void sendNotification(
+        buildCompletionNotificationPayload({
+          createdById: context.createdById,
+          title: context.title || "To-do",
+          completerName: context.completerName,
+          todoId: id,
+        }),
+      );
+    }
   } catch (e) {
     handleFirestoreError(e, OperationType.UPDATE, "tasks");
   }
@@ -143,3 +230,4 @@ export async function deleteTodo(id: string): Promise<void> {
     handleFirestoreError(e, OperationType.DELETE, "tasks");
   }
 }
+

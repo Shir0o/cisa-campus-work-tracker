@@ -11,6 +11,8 @@ import { Notification } from '../../types';
 import { cn, ntfWhen } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
+import { showWebPushNotification } from '../../lib/webPush';
+
 type Tone = 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
 
 function typeToTone(type: Notification['type']): Tone {
@@ -59,6 +61,7 @@ export default function NotificationCenter() {
 
     let localNotifs: Notification[] = [];
     let globalNotifs: Notification[] = [];
+    let isInitialPersonal = true;
 
     const updateCombined = () => {
       const combined = [...localNotifs, ...globalNotifs]
@@ -96,6 +99,21 @@ export default function NotificationCenter() {
       localNotifs = snap.docs
         .map(mapDoc)
         .filter((n: any) => !n.dismissedBy?.includes(auth.currentUser?.uid)) as Notification[];
+
+      if (!isInitialPersonal) {
+        snap.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const notif = mapDoc(change.doc);
+            if (!notif.read && auth.currentUser && notif.userId === auth.currentUser.uid) {
+              void showWebPushNotification(notif.title, {
+                body: notif.message,
+                data: { link: notif.link || '/', targetId: notif.targetId },
+              });
+            }
+          }
+        });
+      }
+      isInitialPersonal = false;
       updateCombined();
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
 
@@ -108,6 +126,7 @@ export default function NotificationCenter() {
 
     return () => { unsubPersonal(); unsubGlobal(); };
   }, []);
+
 
   useEffect(() => {
     if (!isOpen) return;

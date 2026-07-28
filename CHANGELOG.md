@@ -30,7 +30,9 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   backgrounded, the same stall the backdrop is already written to survive).
 
 ### Added
+- **Push Notifications on Assigned and Created To-dos (Web & Mobile)** — Standardized to-do notification dispatch for task assignment, reassignment, completion, and due dates across both web and mobile applications. Added pure payload builders and due-date search logic (`todoNotifications.ts`) in `@cisa/core` (with 5 new unit tests, bringing `@cisa/core` tests to 301/301). Integrated notification triggers into `addTodo`, `updateTodo`, and `setTodoDone` across core, web (`src/lib/todos.ts`), and mobile (`apps/mobile/src/lib/data/todos.ts`). Added Web Browser Push Notification support (`src/lib/webPush.ts` & `public/sw.js` service worker) for desktop browser notifications, local OS due-date scheduling (`scheduleTodoDueNotification`) in mobile `notifications.ts`, and a server remote push dispatch endpoint (`/api/send-push`) in `server.ts` targeting registered user push tokens via the Expo Push API.
 - **Mobile v2 — the full-timer's home is now an at-a-glance widgets screen**,
+
   porting the design project's `M2FT` (`MOBILE-V2.md`, "the FULL-TIMER app" +
   its Jul 26, 2026 revision item 2): direction 05 "Widgets" on a warm paper
   room by day, near-black navy by night. Full-timers land on
