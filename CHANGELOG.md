@@ -101,6 +101,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   are untouched.
 
 ### Fixed
+- **DatePicker on `/coordination` page to-do editing overflow fixed.** `DatePicker` now dynamically checks available vertical viewport space when opened and flips its dropdown calendar above the input field (`bottom-full`) when space below is limited. `DatePicker`'s dropdown container also gained max-height clamping (`max-h-[min(380px,80vh)]`) and scrolling, and `TodoComposer` was updated to use flexible centering and dynamic repositioning on layout size changes.
 - **A bottom sheet that mounted already-visible never opened.** `Sheet` calls
   `BottomSheetModal.present()` from the effect that watches `visible`, but the
   call is silently dropped when it lands in the same commit the modal mounted

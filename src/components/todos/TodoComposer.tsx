@@ -89,8 +89,9 @@ export default function TodoComposer({
     const left = Math.min(Math.max(anchorRect.left - POPOVER_W / 2, 12), vw - POPOVER_W - 12);
     let top = anchorRect.top + 14;
     if (top + h > vh - 12) top = Math.max(12, anchorRect.top - h - 14);
+    top = Math.min(top, Math.max(12, vh - h - 12));
     setPos({ left, top });
-  }, [anchorRect]);
+  }, [anchorRect, dueKey, customDate, texts.length]);
 
   const resolvedDue = (): string | null => {
     if (dueKey === "custom") return customDate || null;
@@ -214,7 +215,7 @@ export default function TodoComposer({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         className={cn(
-          "bg-surface rounded-2xl border border-outline-variant shadow-xl p-4 text-on-surface max-h-[85vh] overflow-y-auto custom-scrollbar",
+          "bg-surface rounded-2xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
           !anchorRect && "w-full max-w-[min(92vw,360px)]",
         )}
       >
