@@ -39,17 +39,41 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
   const [viewDate, setViewDate] = useState(selectedDate && isValid(selectedDate) ? selectedDate : startOfToday());
   const [view, setView] = useState<'calendar' | 'month' | 'year'>('calendar');
 
-  // Handle clicking outside to close
+  const [placement, setPlacement] = useState<'bottom' | 'top'>('bottom');
+
+  // Handle placement & clicking outside to close
   useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePlacement = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const spaceAbove = rect.top;
+        if (spaceBelow < 380 && spaceAbove > spaceBelow) {
+          setPlacement('top');
+        } else {
+          setPlacement('bottom');
+        }
+      }
+    };
+
+    updatePlacement();
+    window.addEventListener('resize', updatePlacement);
+    window.addEventListener('scroll', updatePlacement, true);
+
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
         setIsOpen(false);
       }
     };
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+
+    return () => {
+      window.removeEventListener('resize', updatePlacement);
+      window.removeEventListener('scroll', updatePlacement, true);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [isOpen]);
 
   const handleDateSelect = (date: Date) => {
@@ -182,10 +206,13 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            initial={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute left-0 right-0 mt-2 z-[110] bg-surface-container-highest rounded-3xl shadow-2xl border border-outline-variant overflow-hidden"
+            exit={{ opacity: 0, y: placement === 'top' ? -10 : 10, scale: 0.95 }}
+            className={cn(
+              "absolute left-0 right-0 z-[110] bg-surface-container-highest rounded-3xl shadow-2xl border border-outline-variant overflow-hidden max-h-[min(380px,80vh)] overflow-y-auto custom-scrollbar",
+              placement === 'top' ? "bottom-full mb-2" : "top-full mt-2"
+            )}
           >
             {/* M3 Header */}
             <div className="bg-surface-container px-6 py-4 border-b border-outline-variant">
@@ -242,8 +269,8 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
                     animate={{ opacity: 1 }}
                     className="grid grid-cols-7 gap-1"
                   >
-                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(day => (
-                      <div key={day} className="h-10 flex items-center justify-center text-[10px] font-bold text-on-surface-variant uppercase">
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                      <div key={`${day}-${idx}`} className="h-10 flex items-center justify-center text-[10px] font-bold text-on-surface-variant uppercase">
                         {day}
                       </div>
                     ))}

@@ -73,6 +73,7 @@ After completing a feature or bug fix:
 
 ## 6. Testing Policy
 
+- **TDD (Test-Driven Development)**: Write tests first, then implement. Red → Green → Refactor.
 - **Unit Tests**: Coverage thresholds are enforced in `vitest.config.ts`.
 - **Ratcheting**: Thresholds must never be lowered; they should only go up as coverage improves.
 - **New Code**: All new features and bug fixes must ship with matching unit tests.

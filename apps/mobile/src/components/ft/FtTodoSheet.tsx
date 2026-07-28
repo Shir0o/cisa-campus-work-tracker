@@ -6,7 +6,7 @@ import { duePresetToISO, firstName, type AppUser, type Contact } from '@cisa/cor
 import { Sheet } from '../ui';
 import { useV2Theme } from '../../theme/v2';
 import { PrimaryButton, SecondaryButton } from '../queue/atoms';
-import { FtRoom } from './FtWidget';
+import { Room } from '../v2/Widget';
 
 interface FtTodoSheetProps {
   visible: boolean;
@@ -22,9 +22,9 @@ interface FtTodoSheetProps {
  * this one carries the room itself. */
 export function FtTodoSheet(props: FtTodoSheetProps) {
   return (
-    <FtRoom>
+    <Room room="ft">
       <TodoSheetBody {...props} />
-    </FtRoom>
+    </Room>
   );
 }
 
@@ -99,7 +99,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
 
   return (
     <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} backgroundColor={c.card}>
-      <FtRoom>
+      <Room room="ft">
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text
             style={{
@@ -171,7 +171,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
             <SecondaryButton title="Cancel" onPress={onClose} />
           </View>
         </View>
-      </FtRoom>
+      </Room>
     </Sheet>
   );
 }

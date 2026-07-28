@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   FT_SUMMARY_EMPTY,
+  ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
+  ftHomesOpen,
   ftInboxRows,
   ftInboxVisible,
   ftLastHeard,
@@ -15,7 +17,14 @@ import {
 } from '../src/ftHome';
 import type { InboxItem } from '../src/inbox';
 import type { Leader } from '../src/myday';
-import type { Contact, Event, PrayerRecord, Task } from '../src/types';
+import type {
+  Contact,
+  Event,
+  HospitalityOffer,
+  PrayerRecord,
+  PrayerRequest,
+  Task,
+} from '../src/types';
 
 const NOW = new Date('2026-07-15T09:00:00Z').getTime(); // a Wednesday
 const DAY_MS = 86_400_000;
@@ -53,6 +62,27 @@ const prayer = (overrides: Partial<PrayerRecord> = {}): PrayerRecord => ({
   burden: 'A job before graduation',
   status: 'pending',
   updatedAt: iso(-3),
+  ...overrides,
+});
+
+const request = (overrides: Partial<PrayerRequest> = {}): PrayerRequest => ({
+  id: 'r1',
+  uid: 'u-student',
+  name: 'Lila Chen',
+  body: 'Midterms are wrecking me',
+  status: 'open',
+  createdAt: iso(-1),
+  updatedAt: iso(-1),
+  ...overrides,
+});
+
+const offer = (overrides: Partial<HospitalityOffer> = {}): HospitalityOffer => ({
+  uid: 'u-community',
+  name: 'Grace Okafor',
+  availability: ['sunday'],
+  seats: '3–4 students',
+  note: '',
+  updatedAt: iso(-2),
   ...overrides,
 });
 
@@ -358,27 +388,101 @@ describe('ftWeighsHeavy', () => {
   });
 });
 
+describe('ftCarryRows', () => {
+  it('flattens a logged prayer into a row that names who it is for', () => {
+    expect(ftCarryRows([prayer()], [], [contact()])).toEqual([
+      {
+        id: 'prayer:p1',
+        burden: 'A job before graduation',
+        who: 'Rio',
+        heavy: false,
+        asked: false,
+        prayerId: 'p1',
+      },
+    ]);
+  });
+
+  it('puts a member who asked ahead of the prayers staff logged', () => {
+    const rows = ftCarryRows([prayer()], [request()], [contact()]);
+    expect(rows.map((r) => r.id)).toEqual(['ask:r1', 'prayer:p1']);
+    expect(rows[0]).toMatchObject({ who: 'Lila', asked: true, requestId: 'r1' });
+  });
+
+  it('leaves an answered ask out', () => {
+    const rows = ftCarryRows([], [request({ status: 'answered' })], []);
+    expect(rows).toEqual([]);
+  });
+
+  it('orders asks newest first', () => {
+    const rows = ftCarryRows(
+      [],
+      [request(), request({ id: 'r2', name: 'Kofi Mensah', createdAt: iso(0) })],
+      [],
+    );
+    expect(rows.map((r) => r.who)).toEqual(['Kofi', 'Lila']);
+  });
+
+  it('carries the heavy flag through from the prayer', () => {
+    const rows = ftCarryRows([prayer({ status: 'ongoing' })], [], [contact()]);
+    expect(rows[0].heavy).toBe(true);
+  });
+
+  it('prefixes ids so a prayer and a request can never collide', () => {
+    const rows = ftCarryRows([prayer({ id: 'x' })], [request({ id: 'x' })], []);
+    expect(rows.map((r) => r.id)).toEqual(['ask:x', 'prayer:x']);
+  });
+
+  it('leaves `who` null when the prayer has outlived its contact', () => {
+    expect(ftCarryRows([prayer({ contactId: 'gone' })], [], [contact()])[0].who).toBeNull();
+  });
+});
+
 describe('ftCarrying', () => {
-  it('counts what is open and names the one on top', () => {
-    const open = [prayer(), prayer({ id: 'p2', contactId: 'c1' })];
-    expect(ftCarrying(open, [contact()])).toEqual({
+  it('counts the rows and names the one on top', () => {
+    const rows = ftCarryRows([prayer(), prayer({ id: 'p2' })], [], [contact()]);
+    expect(ftCarrying(rows)).toEqual({
       count: 2,
       detail: 'Rio — A job before graduation',
     });
   });
 
+  it('counts a member ask alongside the logged prayers', () => {
+    const rows = ftCarryRows([prayer()], [request()], [contact()]);
+    expect(ftCarrying(rows)).toEqual({
+      count: 2,
+      detail: 'Lila — Midterms are wrecking me',
+    });
+  });
+
   it('says so plainly when nothing is open', () => {
-    expect(ftCarrying([], [contact()])).toEqual({
+    expect(ftCarrying([])).toEqual({
       count: 0,
       detail: 'Nothing open right now',
     });
   });
 
   it('still reads when the prayer has outlived its contact', () => {
-    expect(ftCarrying([prayer({ contactId: 'gone' })], [contact()])).toEqual({
+    const rows = ftCarryRows([prayer({ contactId: 'gone' })], [], [contact()]);
+    expect(ftCarrying(rows)).toEqual({
       count: 1,
       detail: 'A job before graduation',
     });
+  });
+});
+
+describe('ftHomesOpen', () => {
+  it('lists the open homes, newest offer first', () => {
+    const older = offer();
+    const newer = offer({ uid: 'u2', name: 'Sam Reyes', updatedAt: iso(0) });
+    expect(ftHomesOpen([older, newer]).map((o) => o.uid)).toEqual(['u2', 'u-community']);
+  });
+
+  it('drops an offer with no times left on it — that is a withdrawn one', () => {
+    expect(ftHomesOpen([offer({ availability: [] })])).toEqual([]);
+  });
+
+  it('is empty when nobody has offered', () => {
+    expect(ftHomesOpen([])).toEqual([]);
   });
 });
 

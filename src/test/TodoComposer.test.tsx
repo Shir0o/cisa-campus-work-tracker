@@ -112,9 +112,14 @@ describe('TodoComposer', () => {
     fireEvent.click(screen.getByRole('button', { name: /Priya/ }));
     expect(add).toBeEnabled();
 
-    // Verify task inputs are rendered
-    expect(screen.getByPlaceholderText('Task 1')).toHaveValue('Task 1');
+    // Verify task inputs are rendered and editable
+    const task1Input = screen.getByPlaceholderText('Task 1');
+    expect(task1Input).toHaveValue('Task 1');
+    fireEvent.change(task1Input, { target: { value: 'Task 1 edited' } });
     expect(screen.getByPlaceholderText('Task 2')).toHaveValue('Task 2');
+
+    // Click a due date preset pill
+    fireEvent.click(screen.getByRole('button', { name: /Tomorrow/i }));
 
     // Add them
     fireEvent.click(add);
@@ -230,5 +235,71 @@ describe('TodoComposer', () => {
     // The "Pick a date…" button should be styled as active (bg-primary)
     const pickBtn = screen.getByRole('button', { name: /Pick a date/i });
     expect(pickBtn.className).toContain('bg-primary');
+  });
+
+  it('calls onCreated callback with created task details upon submission', async () => {
+    const onCreated = vi.fn();
+    (todos.addTodo as ReturnType<typeof vi.fn>).mockResolvedValueOnce('new-task-id-123');
+
+    render(
+      <TodoComposer
+        mode="create"
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+        onCreated={onCreated}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('What needs doing?'), { target: { value: 'New task with callback' } });
+    fireEvent.click(screen.getByRole('button', { name: /Priya/ }));
+    fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
+
+    await waitFor(() => expect(onCreated).toHaveBeenCalled());
+    expect(onCreated).toHaveBeenCalledWith([
+      { id: 'new-task-id-123', title: 'New task with callback', assigneeId: 'u2', assigneeName: 'Priya Anand' },
+    ]);
+  });
+
+  it('allows adding, editing, and removing subtasks', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+
+    const addSubtaskBtn = screen.getByRole('button', { name: /Add subtask/i });
+    fireEvent.click(addSubtaskBtn);
+
+    const subtaskInput = screen.getByPlaceholderText('Subtask 1');
+    expect(subtaskInput).toBeInTheDocument();
+    fireEvent.change(subtaskInput, { target: { value: 'First subtask' } });
+    expect(subtaskInput).toHaveValue('First subtask');
+
+    const removeBtn = screen.getByTitle('Remove subtask');
+    fireEvent.click(removeBtn);
+    expect(screen.queryByPlaceholderText('Subtask 1')).not.toBeInTheDocument();
+  });
+
+  it('renders unanchored modal with scroll container styling to prevent overflow cutoff', () => {
+    render(
+      <TodoComposer
+        mode="create"
+        team={team}
+        meUid="u1"
+        meName="Tony Wang"
+        onClose={vi.fn()}
+      />,
+    );
+    const textarea = screen.getByPlaceholderText('What needs doing?');
+    const card = textarea.closest('.bg-surface');
+    expect(card).not.toBeNull();
+    expect(card?.className).toContain('max-h-[calc(100vh-2rem)]');
+    expect(card?.className).toContain('overflow-y-auto');
   });
 });

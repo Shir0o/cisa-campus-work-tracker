@@ -300,4 +300,34 @@ describe('DatePicker', () => {
     fireEvent.focus(input);
     fireEvent.keyDown(input, { key: 'Enter' });
   });
+
+  it('adjusts placement to top when vertical space below is limited', () => {
+    // Mock getBoundingClientRect for containerRef
+    const originalGetBoundingClientRect = Element.prototype.getBoundingClientRect;
+    Element.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
+      top: 500,
+      bottom: 544,
+      left: 100,
+      right: 300,
+      width: 200,
+      height: 44,
+      x: 100,
+      y: 500,
+      toJSON: () => {},
+    });
+
+    try {
+      render(<DatePicker label="Date" value="" onChange={vi.fn()} />);
+      fireEvent.click(screen.getByRole('button', { name: 'Toggle calendar picker' }));
+
+      // Header should be rendered inside overlay container with top placement styling
+      const header = screen.getByText('Select date');
+      const overlayContainer = header.closest('.absolute');
+      expect(overlayContainer).not.toBeNull();
+      expect(overlayContainer?.className).toContain('bottom-full');
+      expect(overlayContainer?.className).toContain('max-h-[min(380px,80vh)]');
+    } finally {
+      Element.prototype.getBoundingClientRect = originalGetBoundingClientRect;
+    }
+  });
 });

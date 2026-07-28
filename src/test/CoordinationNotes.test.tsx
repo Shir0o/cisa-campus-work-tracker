@@ -706,35 +706,277 @@ describe('CoordinationNotes', () => {
 
   // ── 9. Remove note ────────────────────────────────────────────────────────
   describe('remove note', () => {
-    it('calls deleteDoc after confirm when removing a note', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(true);
+    it('soft deletes note (sets deletedAt) when clicking Move to Trash', async () => {
       setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
       render(<CoordinationNotes />);
 
-      // The remove buttons are titled "Remove from archive"
       await waitFor(() => {
-        expect(screen.getAllByTitle('Remove from archive').length).toBeGreaterThan(0);
+        expect(screen.getAllByTitle('Move to Trash').length).toBeGreaterThan(0);
       });
 
-      fireEvent.click(screen.getAllByTitle('Remove from archive')[0]);
+      fireEvent.click(screen.getAllByTitle('Move to Trash')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ deletedAt: expect.anything() }));
+      });
+    });
+
+    it('calls deleteDoc after confirm when deleting a note forever in Trash tab', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true);
+      const trashNotes = [{ ...mockNotes[0], data: () => ({ ...mockNotes[0].data(), deletedAt: 'mock-ts' }) }];
+      setupSnapshots({ docs: mockDocs, notes: trashNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Delete forever').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Delete forever')[0]);
 
       await waitFor(() => {
         expect(deleteDoc).toHaveBeenCalled();
       });
     });
+  });
 
-    it('does not call deleteDoc when confirm is cancelled', async () => {
-      vi.spyOn(window, 'confirm').mockReturnValue(false);
+  // ── 9b. Note tabs (Active / Archive / Trash) ──────────────────────────────
+  describe('note tabs', () => {
+    it('switches to Archive tab and hides active notes', async () => {
       setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
       render(<CoordinationNotes />);
 
       await waitFor(() => {
-        expect(screen.getAllByTitle('Remove from archive').length).toBeGreaterThan(0);
+        expect(screen.getByText('Sprint planning')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getAllByTitle('Remove from archive')[0]);
+      // Click Archive tab — active notes should disappear since none are archived
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
 
-      expect(deleteDoc).not.toHaveBeenCalled();
+      await waitFor(() => {
+        expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument();
+        expect(screen.queryByText('Morning reflection')).not.toBeInTheDocument();
+      });
+    });
+
+    it('switches to Trash tab and shows trashed notes', async () => {
+      const trashedNotes = [
+        { id: 'note-t1', data: () => ({ type: 'record', series: 'Team', title: 'Trashed note', body: 'gone', tags: [], date: today, contributorIds: ['u-admin'], createdBy: 'u-admin', deletedAt: 'mock-ts' }) },
+        ...mockNotes,
+      ];
+      setupSnapshots({ docs: mockDocs, notes: trashedNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Active tab should not show trashed note
+      await waitFor(() => {
+        expect(screen.getByText('Sprint planning')).toBeInTheDocument();
+        expect(screen.queryByText('Trashed note')).not.toBeInTheDocument();
+      });
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Trashed note')).toBeInTheDocument();
+        expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument();
+      });
+    });
+
+    it('switches back to Active tab and shows active notes again', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => expect(screen.getByText('Sprint planning')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+      await waitFor(() => expect(screen.queryByText('Sprint planning')).not.toBeInTheDocument());
+
+      fireEvent.click(screen.getByRole('button', { name: 'Active' }));
+      await waitFor(() => expect(screen.getByText('Sprint planning')).toBeInTheDocument());
+    });
+  });
+
+  // ── 9c. Edit note ─────────────────────────────────────────────────────────
+  describe('edit note', () => {
+    it('opens the note form pre-filled when clicking the Edit button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Edit note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Edit note')[0]);
+
+      // The form should appear with the note's title pre-filled
+      await waitFor(() => {
+        const titleInput = screen.getByPlaceholderText(/a short title/i) as HTMLInputElement;
+        expect(titleInput.value).toBe('Sprint planning');
+      });
+
+      // Should show "Update note" instead of "Save record"
+      expect(screen.getByRole('button', { name: /update note/i })).toBeInTheDocument();
+    });
+
+    it('submits an edit via updateDoc when clicking Update note', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Edit note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Edit note')[0]);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/a short title/i)).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByPlaceholderText(/a short title/i), {
+        target: { value: 'Updated title' },
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /update note/i }));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ title: 'Updated title' }),
+        );
+      });
+    });
+  });
+
+  // ── 9d. Archive note ──────────────────────────────────────────────────────
+  describe('archive note', () => {
+    it('archives a note when clicking the Archive button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Archive note').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Archive note')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ archivedAt: expect.anything() }),
+        );
+      });
+    });
+  });
+
+  // ── 9e. Restore note from Trash ───────────────────────────────────────────
+  describe('restore note from trash', () => {
+    it('restores a note when clicking the Restore button in the Trash tab', async () => {
+      const trashedNotes = [
+        { id: 'note-t1', data: () => ({ type: 'record', series: 'Team', title: 'Trashed note', body: 'oops', tags: [], date: today, contributorIds: ['u-admin'], createdBy: 'u-admin', deletedAt: 'mock-ts' }) },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: trashedNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      // Switch to Trash tab
+      fireEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Trashed note')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTitle('Restore note'));
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          { deletedAt: null },
+        );
+      });
+    });
+  });
+
+  // ── 9f. Display mode toggle ───────────────────────────────────────────────
+  describe('note display mode', () => {
+    it('toggles note display mode when clicking the mode button on a note card', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getAllByTitle('Switch to checklist mode').length).toBeGreaterThan(0);
+      });
+
+      fireEvent.click(screen.getAllByTitle('Switch to checklist mode')[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ displayMode: 'list' }),
+        );
+      });
+    });
+
+    it('toggles NoteForm text/list format button', async () => {
+      setupSnapshots({ docs: mockDocs, notes: mockNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      fireEvent.click(screen.getByRole('button', { name: /new record/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Text format')).toBeInTheDocument();
+      });
+
+      // Click the toggle to switch to list
+      fireEvent.click(screen.getByText('Text format'));
+
+      await waitFor(() => {
+        expect(screen.getByText('List format')).toBeInTheDocument();
+      });
+    });
+  });
+
+  // ── 9g. Checklist item toggle ─────────────────────────────────────────────
+  describe('note checklist items', () => {
+    it('renders checklist items and toggles them', async () => {
+      const checklistNotes = [
+        {
+          id: 'note-cl',
+          data: () => ({
+            type: 'record',
+            series: 'Team',
+            title: 'Checklist note',
+            body: '- [ ] Item A\n- [x] Item B',
+            tags: [],
+            date: today,
+            contributorIds: ['u-admin'],
+            createdBy: 'u-admin',
+            displayMode: 'list',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: checklistNotes, team: mockTeam });
+      render(<CoordinationNotes />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Checklist note')).toBeInTheDocument();
+        expect(screen.getByText('Item A')).toBeInTheDocument();
+        expect(screen.getByText('Item B')).toBeInTheDocument();
+      });
+
+      // Check the first unchecked item
+      const checkboxes = screen.getAllByRole('checkbox');
+      expect(checkboxes[0]).not.toBeChecked();
+      expect(checkboxes[1]).toBeChecked();
+
+      fireEvent.click(checkboxes[0]);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({ body: '- [x] Item A\n- [x] Item B' }),
+        );
+      });
     });
   });
 
@@ -1318,8 +1560,9 @@ describe('CoordinationNotes', () => {
       const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
       fireEvent.click(aiBtn);
 
-      // Verify both suggested tasks are visible
-      expect(await screen.findByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
+      const titleTextarea = await screen.findByDisplayValue('Confirm Friday setlist with Beatriz');
+      expect(titleTextarea).toBeInTheDocument();
+      fireEvent.change(titleTextarea, { target: { value: 'Confirm Friday setlist edited' } });
       expect(screen.getByDisplayValue('Another suggestion to dismiss')).toBeInTheDocument();
 
       // Interact with When date input
@@ -1328,10 +1571,11 @@ describe('CoordinationNotes', () => {
         fireEvent.change(dateInput, { target: { value: '2026-07-20' } });
       }
 
-      // Interact with Contact select
-      const contactSelects = screen.getAllByRole('combobox');
-      if (contactSelects.length > 0) {
-        fireEvent.change(contactSelects[0], { target: { value: 'c-beatriz' } });
+      // Interact with Who and Contact selects
+      const selects = document.querySelectorAll('select');
+      if (selects.length >= 2) {
+        fireEvent.change(selects[0], { target: { value: 'u2' } });
+        fireEvent.change(selects[1], { target: { value: 'c-beatriz' } });
       }
 
       // Interact with Priority button
@@ -1892,6 +2136,85 @@ describe('CoordinationNotes', () => {
 
       // Verify that TodoComposer popover opens and parses the 3 tasks
       expect(await screen.findByText('New to-dos (3)')).toBeInTheDocument();
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('opens NoteComposer on selection Note click and saves note', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Important takeaway note text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      // Verify bubble menu shows Note/Learning button
+      const noteBtn = await screen.findByText(/Note\/Learning/i);
+      expect(noteBtn).toBeInTheDocument();
+      fireEvent.click(noteBtn);
+
+      // NoteComposer popover should open
+      const titleInput = await screen.findByPlaceholderText('Note title');
+      expect(titleInput).toBeInTheDocument();
+      fireEvent.change(titleInput, { target: { value: 'Learning Note Title' } });
+
+      const saveBtn = screen.getByRole('button', { name: /Save note/i });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => expect(setDoc).toHaveBeenCalled());
+
+      getSelectionSpy.mockRestore();
+    });
+
+    it('handles direct assignment via @ button in selection menu', async () => {
+      const mockRange = {
+        commonAncestorContainer: null as any,
+        getBoundingClientRect: () => ({ top: 100, left: 100, width: 80, height: 20 }),
+      };
+      
+      const mockSelection = {
+        isCollapsed: false,
+        rangeCount: 1,
+        getRangeAt: () => mockRange,
+        toString: () => 'Directly assigned task text',
+        removeAllRanges: vi.fn(),
+      };
+      
+      const getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as any);
+
+      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, tasks: [] });
+      render(<CoordinationNotes />);
+
+      const editor = screen.getByTestId('tiptap-editor');
+      mockRange.commonAncestorContainer = editor;
+
+      fireEvent.mouseUp(editor);
+
+      const assignMenuBtn = await screen.findByText('Assign');
+      expect(assignMenuBtn).toBeInTheDocument();
+      fireEvent.click(assignMenuBtn);
+
+      const assignUserBtn = await screen.findByText('Tony Wang');
+      expect(assignUserBtn).toBeInTheDocument();
+      fireEvent.click(assignUserBtn);
+
+      await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
       getSelectionSpy.mockRestore();
     });

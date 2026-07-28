@@ -60,6 +60,15 @@
     ],
     "experiments": {
       "typedRoutes": false
+    },
+    "owner": "twang26",
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "17af80aa-7612-4442-ba7a-8332dbb466b9"
+      }
     }
   }
 }

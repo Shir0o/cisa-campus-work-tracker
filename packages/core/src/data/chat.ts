@@ -19,6 +19,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import {
+  announcementCreatedSystemMessage,
   getDirectChatId,
   groupCreatedSystemMessage,
   memberLeftSystemMessage,
@@ -137,16 +138,18 @@ export async function getOrCreateDirectChat(
   return roomId;
 }
 
-export async function createGroupChat(
+async function createRoomWithGenesis(
   db: Firestore,
-  groupName: string,
+  type: "group" | "announcement",
+  name: string,
   memberUids: string[],
   currentUser: { uid: string; displayName: string },
+  genesisText: string,
 ): Promise<string> {
   const allMembers = Array.from(new Set([currentUser.uid, ...memberUids]));
   const roomRef = await addDoc(collection(db, "chatRooms"), {
-    type: "group",
-    name: groupName,
+    type,
+    name,
     memberIds: allMembers,
     createdById: currentUser.uid,
     createdByName: currentUser.displayName,
@@ -154,7 +157,7 @@ export async function createGroupChat(
   });
   await addDoc(collection(db, "chatRooms", roomRef.id, "messages"), {
     roomId: roomRef.id,
-    text: groupCreatedSystemMessage(currentUser.displayName, groupName),
+    text: genesisText,
     // The `messages` create rule requires `senderId == request.auth.uid` —
     // the literal `'system'` sentinel web's services/chat.ts uses fails that
     // check (a live, verified bug in the shipped app: it silently drops every
@@ -167,6 +170,40 @@ export async function createGroupChat(
     type: "system",
   });
   return roomRef.id;
+}
+
+export async function createGroupChat(
+  db: Firestore,
+  groupName: string,
+  memberUids: string[],
+  currentUser: { uid: string; displayName: string },
+): Promise<string> {
+  return createRoomWithGenesis(
+    db,
+    "group",
+    groupName,
+    memberUids,
+    currentUser,
+    groupCreatedSystemMessage(currentUser.displayName, groupName),
+  );
+}
+
+/** A room its audience reads but only Full-timers post to. The rules only let
+ * an admin create one, so this is a staff-only call. */
+export async function createAnnouncementRoom(
+  db: Firestore,
+  name: string,
+  memberUids: string[],
+  currentUser: { uid: string; displayName: string },
+): Promise<string> {
+  return createRoomWithGenesis(
+    db,
+    "announcement",
+    name,
+    memberUids,
+    currentUser,
+    announcementCreatedSystemMessage(currentUser.displayName, name),
+  );
 }
 
 export interface ChatNotifyPayload {

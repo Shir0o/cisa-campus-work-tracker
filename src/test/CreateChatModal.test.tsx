@@ -29,6 +29,7 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../services/chat', () => ({
   getOrCreateDirectChat: vi.fn().mockResolvedValue('direct-room-id'),
   createGroupChat: vi.fn().mockResolvedValue('group-room-id'),
+  createAnnouncementRoom: vi.fn().mockResolvedValue('announcement-room-id'),
 }));
 
 // Mock motion
@@ -53,8 +54,15 @@ describe('CreateChatModal Component', () => {
     vi.clearAllMocks();
     (useAuth as any).mockReturnValue({
       user: { uid: 'u1', displayName: 'Current User' },
+      role: 'manager',
     });
   });
+
+  const asFullTimer = () =>
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u1', displayName: 'Current User' },
+      role: 'admin',
+    });
 
   const setupOnSnapshot = (usersData: any[]) => {
     (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
@@ -165,6 +173,45 @@ describe('CreateChatModal Component', () => {
       );
       expect(mockOnSelectRoom).toHaveBeenCalledWith('group-room-id');
       expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  // Announcements — a room the whole audience reads and only Full-timers post
+  // to. The tab mirrors the firestore.rules gate on creating one.
+  it('offers the Announcement tab only to a Full-timer', async () => {
+    setupOnSnapshot(mockUsers);
+    const { unmount } = render(
+      <CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />
+    );
+    expect(screen.queryByRole('button', { name: /Announcement/i })).not.toBeInTheDocument();
+    unmount();
+
+    asFullTimer();
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+    expect(screen.getByRole('button', { name: /Announcement/i })).toBeInTheDocument();
+  });
+
+  it('creates an announcement room, and says who can post in it', async () => {
+    asFullTimer();
+    setupOnSnapshot(mockUsers);
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    expect(screen.getByText(/only Full-timers can post/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Weekly notes/i), {
+      target: { value: 'Weekly notes' },
+    });
+    fireEvent.click(screen.getByText('Alice Green').closest('div')!);
+    fireEvent.click(screen.getByRole('button', { name: /Create Announcement/i }));
+
+    await waitFor(() => {
+      expect(chatService.createAnnouncementRoom).toHaveBeenCalledWith('Weekly notes', ['u2'], {
+        uid: 'u1',
+        displayName: 'Current User',
+      });
+      expect(chatService.createGroupChat).not.toHaveBeenCalled();
+      expect(mockOnSelectRoom).toHaveBeenCalledWith('announcement-room-id');
     });
   });
 

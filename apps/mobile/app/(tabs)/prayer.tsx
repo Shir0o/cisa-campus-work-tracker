@@ -1,17 +1,30 @@
 import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { hasMinRole, type Contact } from '@cisa/core';
+import { hasMinRole, memberRoleOf, type Contact } from '@cisa/core';
 import { Screen, AppText, Button } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { usePrayerData } from '../../src/lib/usePrayerData';
 import { PrayerThreadCard } from '../../src/components/prayer/PrayerThreadCard';
 import { HoldPrayerSheet } from '../../src/components/prayer/HoldPrayerSheet';
+import { MemberPrayerScreen } from '../../src/components/member/MemberPrayerScreen';
 
 // Prayer / "On our hearts" — the full team prayer list (design:
 // views/prayer.jsx, screenshots/prayer*.png).
+//
+// Students and Community members get the v2 member Prayer screen instead: their
+// own asks and the people on their heart, or a read-only window into what the
+// team is carrying. Branching here rather than in the tab bar keeps the app's
+// one shared bar, as #168 and #170 both did.
 export default function Prayer() {
+  const { role } = useAuth();
+  const memberRole = memberRoleOf(role);
+  if (memberRole) return <MemberPrayerScreen role={memberRole} />;
+  return <TeamPrayer />;
+}
+
+function TeamPrayer() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
   const { uid, user, role } = useAuth();
