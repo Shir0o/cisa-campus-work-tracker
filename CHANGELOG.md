@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Full screen mode for `/coordination` board docs** — added a full screen mode toggle option for reading and collaborative editing of coordination pages on `/coordination` (`CoordinationNotes.tsx`). Displays a Full Screen / Exit Full Screen button in the document header toolbar that expands the workspace into a full-screen view with HTML5 Fullscreen API integration and Esc key support.
 - **Announcement conversations** — a chat room the whole audience reads and
   only Full-timers post to, the design's "broadcast" (`MOBILE-V2.md`).
   `ChatRoom['type']` gains `'announcement'`; `firestore.rules` gates both

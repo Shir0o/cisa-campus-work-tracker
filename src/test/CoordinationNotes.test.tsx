@@ -2219,5 +2219,51 @@ describe('CoordinationNotes', () => {
       getSelectionSpy.mockRestore();
     });
   });
+
+  // ── Full screen mode ────────────────────────────────────────────────────────
+  describe('full screen mode', () => {
+    it('renders full screen toggle button and toggles workspace full screen mode', async () => {
+      const mockDocs = [
+        {
+          id: 'doc-1',
+          data: () => ({
+            title: 'Weekly Meeting',
+            date: today,
+            weekday: 'Monday',
+            time: '14:00',
+            place: 'Room A',
+            audience: 'team',
+            md: 'Meeting content',
+            pinned: false,
+            createdBy: 'u-1',
+            updatedAt: today,
+          }),
+        },
+      ];
+
+      setupSnapshots({ docs: mockDocs });
+      render(<CoordinationNotes />);
+
+      const fullScreenBtn = await screen.findByRole('button', { name: /full screen mode/i });
+      expect(fullScreenBtn).toBeInTheDocument();
+
+      const workspace = screen.getByTestId('coordination-notes-workspace');
+      expect(workspace).not.toHaveClass('fixed');
+
+      // Click to enter full screen
+      fireEvent.click(fullScreenBtn);
+
+      const exitFullScreenBtn = await screen.findByRole('button', { name: /exit full screen/i });
+      expect(exitFullScreenBtn).toBeInTheDocument();
+      expect(workspace).toHaveClass('fixed');
+      expect(workspace).toHaveClass('z-50');
+
+      // Click to exit full screen
+      fireEvent.click(exitFullScreenBtn);
+
+      expect(screen.getByRole('button', { name: /full screen mode/i })).toBeInTheDocument();
+      expect(workspace).not.toHaveClass('fixed');
+    });
+  });
 });
 
