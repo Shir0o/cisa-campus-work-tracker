@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Github,
   Link,
-  Unlink
+  Unlink,
+  ZoomIn,
+  X
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import PageContainer from '../components/layout/PageContainer';
@@ -41,6 +43,11 @@ const getGitHubIssueUrl = (item: Feedback) => {
 \`\`\`text
 ${item.message}
 \`\`\`
+
+### Diagnostics
+- **URL:** ${item.url || 'N/A'}
+- **Viewport:** ${item.viewport || 'N/A'}
+- **User Agent:** ${item.userAgent || 'N/A'}
 
 ---
 *Created from CISA Campus Work Tracker user feedback.*`;
@@ -75,10 +82,21 @@ export default function FeedbackList() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | FeedbackKind>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'new' | 'in_progress' | 'resolved'>('all');
+  const [statusFilter, setStatusFilter] = useState<'unresolved' | 'all' | 'new' | 'in_progress' | 'resolved'>('unresolved');
   const [archiveFilter, setArchiveFilter] = useState<'active' | 'archived' | 'all'>('active');
   const [isLinkingId, setIsLinkingId] = useState<string | null>(null);
   const [linkInput, setLinkInput] = useState('');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setEnlargedImage(null);
+    };
+    if (enlargedImage) {
+      window.addEventListener('keydown', handleEsc);
+    }
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [enlargedImage]);
 
   useEffect(() => {
     if (!hasAccess) {
@@ -208,7 +226,12 @@ export default function FeedbackList() {
       item.userEmail?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesKind = activeTab === 'all' || resolveKind(item) === activeTab;
-    const matchesStatus = statusFilter === 'all' || item.status === statusFilter;
+    const matchesStatus =
+      statusFilter === 'all'
+        ? true
+        : statusFilter === 'unresolved'
+        ? item.status !== 'resolved'
+        : item.status === statusFilter;
 
     const isArchived = item.archived === true;
     const matchesArchive = 
@@ -343,10 +366,11 @@ export default function FeedbackList() {
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
               >
+                <option value="unresolved">Unresolved Only (Default)</option>
                 <option value="all">All Statuses</option>
-                <option value="new">New</option>
-                <option value="in_progress">In Progress</option>
-                <option value="resolved">Resolved</option>
+                <option value="new">New Only</option>
+                <option value="in_progress">In Progress Only</option>
+                <option value="resolved">Resolved Only</option>
               </select>
             </div>
 
@@ -584,8 +608,20 @@ export default function FeedbackList() {
                     <summary className="font-semibold select-none hover:text-primary list-item">
                       View Screenshot
                     </summary>
-                    <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface shadow-xs">
-                      <img src={item.screenshot} alt="Captured Screenshot" className="w-full object-contain max-h-[400px]" />
+                    <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface shadow-xs relative group">
+                      <img
+                        src={item.screenshot}
+                        alt="Captured Screenshot"
+                        className="w-full object-contain max-h-[400px] cursor-zoom-in transition-transform group-hover:scale-[1.01]"
+                        onClick={() => setEnlargedImage(item.screenshot)}
+                        title="Click to enlarge screenshot"
+                      />
+                      <div
+                        onClick={() => setEnlargedImage(item.screenshot)}
+                        className="absolute bottom-2 right-2 px-2.5 py-1 bg-surface/90 text-on-surface text-[11px] font-medium rounded-lg border border-outline-variant/50 shadow-xs backdrop-blur-xs flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <ZoomIn className="w-3.5 h-3.5" /> Click to enlarge
+                      </div>
                     </div>
                   </details>
                 )}
@@ -595,6 +631,41 @@ export default function FeedbackList() {
           </AnimatePresence>
         </div>
       )}
+
+      {/* Enlarged Screenshot Modal Overlay */}
+      <AnimatePresence>
+        {enlargedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setEnlargedImage(null)}
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center cursor-zoom-out"
+            aria-label="Enlarged screenshot view"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl border border-outline-variant/30 shadow-2xl bg-surface p-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setEnlargedImage(null)}
+                aria-label="Close enlarged screenshot"
+                className="absolute top-4 right-4 p-2 bg-surface/90 text-on-surface rounded-full hover:bg-surface border border-outline-variant/40 shadow-md transition-all z-10 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <img
+                src={enlargedImage}
+                alt="Enlarged Screenshot"
+                className="max-w-full max-h-[85vh] object-contain rounded-xl"
+              />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 }

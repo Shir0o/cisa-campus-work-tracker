@@ -2,6 +2,9 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
+  query,
+  where,
   setDoc,
   addDoc,
   updateDoc,
@@ -31,15 +34,36 @@ export async function getOrCreateDirectChat(
   const roomRef = doc(db, 'chatRooms', roomId);
   const roomDoc = await getDoc(roomRef);
 
-  if (!roomDoc.exists()) {
-    await setDoc(roomRef, {
-      type: 'direct',
-      memberIds: [currentUser.uid, targetUser.uid],
-      createdById: currentUser.uid,
-      createdByName: currentUser.displayName,
-      createdAt: serverTimestamp(),
-    });
+  if (roomDoc.exists()) {
+    return roomId;
   }
+
+  // Check if a direct room with these memberIds already exists under another ID
+  try {
+    const q = query(
+      collection(db, 'chatRooms'),
+      where('type', '==', 'direct'),
+      where('memberIds', 'array-contains', currentUser.uid)
+    );
+    const snap = await getDocs(q);
+    const existing = snap.docs.find((d) => {
+      const data = d.data();
+      return Array.isArray(data.memberIds) && data.memberIds.includes(targetUser.uid);
+    });
+    if (existing) {
+      return existing.id;
+    }
+  } catch (err) {
+    console.error('Error checking existing direct chat:', err);
+  }
+
+  await setDoc(roomRef, {
+    type: 'direct',
+    memberIds: [currentUser.uid, targetUser.uid],
+    createdById: currentUser.uid,
+    createdByName: currentUser.displayName,
+    createdAt: serverTimestamp(),
+  });
 
   return roomId;
 }

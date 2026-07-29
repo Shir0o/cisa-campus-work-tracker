@@ -24,11 +24,47 @@ export const mdPreview = (md: string | undefined): string => {
     t = t
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/\*(.+?)\*/g, '$1')
+      .replace(/~~(.+?)~~/g, '$1')
       .replace(/`(.+?)`/g, '$1')
       .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
     if (t) return t;
   }
   return 'Empty page';
+};
+
+// Clean, concise 1-2 sentence summary of a doc — for under the title in the sidebar.
+export const mdSummary = (md: string | undefined): string => {
+  if (!md) return 'Empty page';
+  const lines = md
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const textParts: string[] = [];
+  for (const l of lines) {
+    if (/^#{1,3}\s/.test(l)) continue; // skip headings
+    if (/^\*\*.*\*\*$/.test(l)) continue; // skip bold-only meta line
+    let t = l
+      .replace(/^\s*[-*]\s+\[( |x|X)\]\s+/, '') // task marker
+      .replace(/^\s*[-*]\s+/, '') // bullet
+      .replace(/^\s*\d+\.\s+/, '') // ordered
+      .replace(/^>\s?/, ''); // quote
+    t = t
+      .replace(/\*\*(.+?)\*\*/g, '$1')
+      .replace(/\*(.+?)\*/g, '$1')
+      .replace(/~~(.+?)~~/g, '$1')
+      .replace(/`(.+?)`/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/<!--.*?-->/g, '') // strip HTML comments
+      .trim();
+    if (t) {
+      textParts.push(t);
+      if (textParts.join(' ').length >= 120) break;
+    }
+  }
+  if (textParts.length === 0) return 'Empty page';
+  const full = textParts.join(' ');
+  if (full.length <= 130) return full;
+  return full.slice(0, 127).trim() + '…';
 };
 
 // Count of open ("[ ]") checklist items — for the "x to do" hint.
@@ -77,6 +113,18 @@ turndown.addRule('styledBold', {
 turndown.addRule('styledItalic', {
   filter: (node) => node.nodeName === 'SPAN' && styleOf(node, 'fontStyle') === 'italic',
   replacement: (content) => (content.trim() ? `_${content}_` : content),
+});
+
+turndown.addRule('styledStrikethrough', {
+  filter: (node) => {
+    if (['DEL', 'S', 'STRIKE'].includes(node.nodeName)) return true;
+    if (node.nodeName === 'SPAN') {
+      const dec = (node as HTMLElement).style?.textDecoration?.toLowerCase() ?? '';
+      return dec.includes('line-through');
+    }
+    return false;
+  },
+  replacement: (content) => (content.trim() ? `~~${content}~~` : content),
 });
 
 turndown.addRule('tableSection', {

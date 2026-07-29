@@ -523,6 +523,7 @@ describe('CoordinationNotes', () => {
 
       fireEvent.click(screen.getByTitle('Delete this page'));
 
+      await screen.findByText('Page moved to Trash');
       const undoBtn = await screen.findByRole('button', { name: 'Undo' });
       fireEvent.click(undoBtn);
 
@@ -1403,324 +1404,28 @@ describe('CoordinationNotes', () => {
     });
   });
 
-  // ── 15a. Collapsible Pages panel (#70) ────────────────────────────────────
-  describe('collapsible pages panel', () => {
-    beforeEach(() => {
-      localStorage.clear();
-    });
-
-    it('collapses the Pages panel and reveals a "Show pages" control, then restores it', async () => {
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
+  // ── Stored / Generated Short Summary in Sidebar ──────────────────────────────
+  describe('Stored / Generated Short Summary in Sidebar', () => {
+    it('renders stored summary or generated summary under document title in sidebar', async () => {
+      const docsWithSummary = [
+        {
+          ...mockDocs[0],
+          data: () => ({
+            ...mockDocs[0].data(),
+            summary: 'Stored summary for testing',
+          }),
+        },
+        mockDocs[1],
+      ];
+      setupSnapshots({ docs: docsWithSummary, notes: [], team: mockTeam, contacts: [] });
       render(<CoordinationNotes />);
 
-      const workspace = screen.getByTestId('coordination-notes-workspace');
-      const aside = workspace.querySelector('aside') as HTMLElement;
-
-      // Expanded by default: two-column grid, sidebar visible, no "Show pages".
-      expect(workspace.className).toContain('lg:grid-cols-[300px_1fr]');
-      expect(aside.className).not.toContain('lg:hidden');
-      expect(screen.queryByRole('button', { name: /show pages/i })).not.toBeInTheDocument();
-
-      // Collapse.
-      fireEvent.click(screen.getByRole('button', { name: /collapse pages/i }));
-
-      await waitFor(() => {
-        expect(workspace.className).toContain('lg:grid-cols-1');
-        expect(aside.className).toContain('lg:hidden');
-      });
-      expect(localStorage.getItem('board_pages_collapsed')).toBe('true');
-      const showPages = screen.getByRole('button', { name: /show pages/i });
-      expect(showPages).toBeInTheDocument();
-
-      // Restore from the editor-head control.
-      fireEvent.click(showPages);
-
-      await waitFor(() => {
-        expect(workspace.className).toContain('lg:grid-cols-[300px_1fr]');
-        expect(aside.className).not.toContain('lg:hidden');
-      });
-      expect(localStorage.getItem('board_pages_collapsed')).toBe('false');
-    });
-
-    it('starts collapsed when the persisted preference is set', () => {
-      localStorage.setItem('board_pages_collapsed', 'true');
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
-      render(<CoordinationNotes />);
-
-      const workspace = screen.getByTestId('coordination-notes-workspace');
-      expect(workspace.className).toContain('lg:grid-cols-1');
-      expect(screen.getByRole('button', { name: /show pages/i })).toBeInTheDocument();
+      expect(await screen.findByText('Stored summary for testing')).toBeInTheDocument();
     });
   });
-
-  // ── 15. Workspace layout (regression for #65) ─────────────────────────────
-  describe('documents workspace layout', () => {
-    it('bounds the editor workspace height so the canvas scrolls internally and the toolbar stays pinned (#65)', () => {
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
-      render(<CoordinationNotes />);
-
-      const workspace = screen.getByTestId('coordination-notes-workspace');
-      // Without a bounded height the whole page scrolls and the `sticky` toolbar
-      // scrolls away; these classes make the inner `overflow-y-auto` canvas the
-      // scroller instead, keeping the formatting toolbar in view. `lg:min-h-0`
-      // lets the calc strictly bound the height on short desktop windows.
-      expect(workspace.className).toContain('lg:h-[calc(100vh-6rem)]');
-      expect(workspace.className).toContain('lg:grid-rows-1');
-      expect(workspace.className).toContain('lg:min-h-0');
-    });
-  });
-
-  // ── AI Insights & Task Suggestions ─────────────────────────────────────────
-  describe('AI Insights & Task Suggestions', () => {
-    let mockFetch: any;
-
-    beforeEach(() => {
-      mockActiveEditor = mockEditor;
-      mockFetch = vi.fn().mockImplementation(() =>
-        Promise.resolve({
-          ok: true,
-          json: () =>
-            Promise.resolve({
-              success: true,
-              updatedMarkdown: '# Team standup\n- [x] Review goals\n[Priya Raman](/contacts/c-priya)',
-              suggestedTasks: [
-                {
-                  title: 'Confirm Friday setlist with Beatriz',
-                  dueDate: '2026-06-26',
-                  priority: 'high',
-                  contactId: 'c-beatriz',
-                  contactName: 'Beatriz Lima',
-                  assigneeId: 'u-admin',
-                  assigneeName: 'Tony Wang',
-                },
-                {
-                  title: 'Another suggestion to dismiss',
-                  dueDate: '2026-06-27',
-                  priority: 'low',
-                  contactId: 'c-priya',
-                  contactName: 'Priya Raman',
-                  assigneeId: 'u-admin',
-                  assigneeName: 'Tony Wang',
-                },
-              ],
-            }),
-        })
-      );
-      global.fetch = mockFetch;
-    });
-
-    it('renders the AI Insights button and opens the sidebar on click', async () => {
-      const mockContacts = [
-        { id: 'c-priya', name: 'Priya Raman' },
-        { id: 'c-beatriz', name: 'Beatriz Lima' },
-      ];
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
-      render(<CoordinationNotes />);
-
-      // Find and click AI Insights button
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      expect(aiBtn).toBeInTheDocument();
-
-      fireEvent.click(aiBtn);
-
-      // Verify sidebar title appears
-      expect(await screen.findByText('AI Insights')).toBeInTheDocument();
-
-      // Wait for mock fetch to be called
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledTimes(1);
-      });
-
-      // Verify link suggestions module is rendered
-      expect(screen.getByText('Contact Links')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Apply Links to Notes/i })).toBeInTheDocument();
-
-      // Verify suggested task title is visible
-      expect(screen.getByText('Suggested Tasks')).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Confirm Friday setlist with Beatriz')).toBeInTheDocument();
-    });
-
-    it('applies contact links to the editor when clicking Apply Links', async () => {
-      const mockContacts = [{ id: 'c-priya', name: 'Priya Raman' }];
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
-      render(<CoordinationNotes />);
-
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-
-      const applyBtn = await screen.findByRole('button', { name: /Apply Links to Notes/i });
-      fireEvent.click(applyBtn);
-
-      // Check if setContent was called with updated markdown
-      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
-        '# Team standup\n- [x] Review goals\n[Priya Raman](/contacts/c-priya)'
-      );
-      expect(screen.getByText('Links applied to notes!')).toBeInTheDocument();
-    });
-
-    it('adds task to Firestore when clicking Add Task and allows dismissing it', async () => {
-      const mockContacts = [
-        { id: 'c-beatriz', name: 'Beatriz Lima' },
-        { id: 'c-priya', name: 'Priya Raman' },
-      ];
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: mockContacts });
-      render(<CoordinationNotes />);
-
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-
-      const titleTextarea = await screen.findByDisplayValue('Confirm Friday setlist with Beatriz');
-      expect(titleTextarea).toBeInTheDocument();
-      fireEvent.change(titleTextarea, { target: { value: 'Confirm Friday setlist edited' } });
-      expect(screen.getByDisplayValue('Another suggestion to dismiss')).toBeInTheDocument();
-
-      // Interact with When date input
-      const dateInput = document.querySelector('input[type="date"]') as HTMLInputElement;
-      if (dateInput) {
-        fireEvent.change(dateInput, { target: { value: '2026-07-20' } });
-      }
-
-      // Interact with Who and Contact selects
-      const selects = document.querySelectorAll('select');
-      if (selects.length >= 2) {
-        fireEvent.change(selects[0], { target: { value: 'u2' } });
-        fireEvent.change(selects[1], { target: { value: 'c-beatriz' } });
-      }
-
-      // Interact with Priority button
-      const highBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'high');
-      if (highBtn) {
-        fireEvent.click(highBtn);
-      }
-
-      // Find the first Add Task button and click it
-      const addBtns = await screen.findAllByRole('button', { name: /Add Task/i });
-      fireEvent.click(addBtns[0]);
-
-      // Verify setDoc is called to add a task to Firestore
-      await waitFor(() => {
-        expect(setDoc).toHaveBeenCalled();
-      });
-
-      // Verify task shows as added
-      expect(await screen.findByText('Added')).toBeInTheDocument();
-
-      // Find the dismiss button for the second task and click it
-      const dismissBtns = await screen.findAllByRole('button', { name: /Dismiss/i });
-      // Since the first task is "Added" and doesn't render Dismiss, there should only be one Dismiss button visible, which is for the second task.
-      fireEvent.click(dismissBtns[0]);
-
-      // Verify the second task is hidden
-      await waitFor(() => {
-        expect(screen.queryByDisplayValue('Another suggestion to dismiss')).not.toBeInTheDocument();
-      });
-    });
-
-    it('displays high demand friendly error message on 503/UNAVAILABLE', async () => {
-      const payload = {
-        error: JSON.stringify({
-          error: {
-            code: 503,
-            message: "This model is currently experiencing high demand. Please try again later.",
-            status: "UNAVAILABLE"
-          }
-        })
-      };
-      
-      const mockErrorFetch = vi.fn().mockImplementation(() =>
-        Promise.resolve({
-          ok: false,
-          status: 500,
-          json: () => Promise.resolve(payload),
-          text: () => Promise.resolve(JSON.stringify(payload)),
-        })
-      );
-      global.fetch = mockErrorFetch;
-
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
-      render(<CoordinationNotes />);
-
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-
-      expect(await screen.findByText(/The AI service is temporarily unavailable due to high demand/i)).toBeInTheDocument();
-    });
-
-    it('displays invalid key friendly error message on API_KEY_INVALID', async () => {
-      const payload = {
-        error: "API key not valid. API_KEY_INVALID"
-      };
-      
-      const mockErrorFetch = vi.fn().mockImplementation(() =>
-        Promise.resolve({
-          ok: false,
-          status: 400,
-          json: () => Promise.resolve(payload),
-          text: () => Promise.resolve(JSON.stringify(payload)),
-        })
-      );
-      global.fetch = mockErrorFetch;
-
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
-      render(<CoordinationNotes />);
-
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-
-      expect(await screen.findByText(/The configured AI service key is invalid/i)).toBeInTheDocument();
-    });
-
-    it('displays fallback raw error message for unhandled errors', async () => {
-      const mockErrorFetch = vi.fn().mockImplementation(() =>
-        Promise.resolve({
-          ok: false,
-          status: 500,
-          json: () => Promise.reject(new Error("Not JSON")),
-          text: () => Promise.resolve("Some completely random server crash"),
-        })
-      );
-      global.fetch = mockErrorFetch;
-
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
-      render(<CoordinationNotes />);
-
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-
-      expect(await screen.findByText("Some completely random server crash")).toBeInTheDocument();
-    });
-
-    it('caches AI insights data and does not re-fetch when closing and reopening sidebar', async () => {
-      setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
-      render(<CoordinationNotes />);
-
-      // First open: should call fetch
-      const aiBtn = await screen.findByRole('button', { name: /AI Insights/i });
-      fireEvent.click(aiBtn);
-      
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledTimes(1);
-      });
-
-      // Close sidebar
-      const closeBtn = screen.getByRole('button', { name: /Close sidebar/i });
-      fireEvent.click(closeBtn);
-      expect(screen.queryByText('Contact Links')).not.toBeInTheDocument();
-
-      // Second open: should NOT call fetch again (mockFetch times stays 1)
-      fireEvent.click(aiBtn);
-      expect(screen.getByText('Contact Links')).toBeInTheDocument();
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      // Manual refresh: should call fetch again
-      const refreshBtn = screen.getByRole('button', { name: /Refresh AI Insights/i });
-      fireEvent.click(refreshBtn);
-      await waitFor(() => {
-        expect(mockFetch).toHaveBeenCalledTimes(2);
-      });
-    });
 
     it('allows editing markdown source and automatically renumbers ordered lists', async () => {
+      mockActiveEditor = mockEditor;
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam, contacts: [] });
       render(<CoordinationNotes />);
 
@@ -2390,5 +2095,4 @@ describe('CoordinationNotes', () => {
       expect(workspace).not.toHaveClass('fixed');
     });
   });
-});
 

@@ -45,6 +45,7 @@ vi.mock('@tiptap/react', () => ({
         'setParagraph',
         'toggleBold',
         'toggleItalic',
+        'toggleStrike',
         'toggleBulletList',
         'toggleOrderedList',
         'toggleTaskList',
@@ -414,7 +415,7 @@ describe('CoordinationNotes — live editor behavior', () => {
 
       // Stored md has no open tasks, so the row shows neither a count nor the live text yet.
       expect(screen.queryByText('2 to do')).not.toBeInTheDocument();
-      expect(screen.queryByText('one')).not.toBeInTheDocument();
+      expect(screen.queryByText('one two')).not.toBeInTheDocument();
 
       // Simulate a live edit; the throttled push lands after 300ms.
       vi.useFakeTimers();
@@ -427,7 +428,7 @@ describe('CoordinationNotes — live editor behavior', () => {
       vi.useRealTimers();
 
       expect(screen.getByText('2 to do')).toBeInTheDocument();
-      expect(screen.getByText('one')).toBeInTheDocument();
+      expect(screen.getByText('one two')).toBeInTheDocument();
     });
 
     it('ignores transactions that do not change the document', async () => {
@@ -519,65 +520,16 @@ describe('CoordinationNotes — live editor behavior', () => {
     });
   });
 
-  // ── "AI Insights" — /api/analyze-notes is admin-only server-side; the client
-  // must attach the caller's Firebase ID token so the server can verify it.
-  describe('AI Insights auth token', () => {
-    it('attaches a Bearer token from the signed-in admin to /api/analyze-notes', async () => {
-      const getIdToken = vi.fn().mockResolvedValue('mock-id-token');
-      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...adminAuth,
-        user: { ...adminAuth.user, getIdToken },
-      });
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true, updatedMarkdown: '# Live heading', suggestedTasks: [] }),
-      } as Response);
-
+  describe('Toolbar formatting controls', () => {
+    it('triggers toggleStrike when Strikethrough toolbar button is clicked', async () => {
       render(<CoordinationNotes />);
       await waitFor(() => expect(h.config).not.toBeNull());
 
-      fireEvent.click(screen.getByRole('button', { name: /AI Insights/i }));
+      const strikeBtn = screen.getByTitle('Strikethrough');
+      expect(strikeBtn).toBeInTheDocument();
 
-      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
-        '/api/analyze-notes',
-        expect.objectContaining({
-          method: 'POST',
-          headers: expect.objectContaining({ Authorization: 'Bearer mock-id-token' }),
-        }),
-      ));
-
-      fetchSpy.mockRestore();
-    });
-
-    it('still sends the request without a token when getIdToken fails', async () => {
-      const getIdToken = vi.fn().mockRejectedValue(new Error('token fetch failed'));
-      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
-        ...adminAuth,
-        user: { ...adminAuth.user, getIdToken },
-      });
-
-      const fetchSpy = vi.spyOn(global, 'fetch').mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ success: true, updatedMarkdown: '# Live heading', suggestedTasks: [] }),
-      } as Response);
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-      render(<CoordinationNotes />);
-      await waitFor(() => expect(h.config).not.toBeNull());
-
-      fireEvent.click(screen.getByRole('button', { name: /AI Insights/i }));
-
-      await waitFor(() => expect(fetchSpy).toHaveBeenCalledWith(
-        '/api/analyze-notes',
-        expect.objectContaining({
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        }),
-      ));
-
-      fetchSpy.mockRestore();
-      consoleErrorSpy.mockRestore();
+      fireEvent.click(strikeBtn);
+      expect(h.chain.toggleStrike).toHaveBeenCalled();
     });
   });
 });

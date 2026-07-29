@@ -311,16 +311,21 @@ export default function Messages() {
     setMentionSearch(null);
   };
 
-  // Filtered room list
+  // Filtered and deduplicated room list
+  const seenDirectUids = new Set<string>();
   const filteredRooms = rooms.filter((r) => {
     if (r.type === 'direct') {
-      const otherUid = r.memberIds.find(id => id !== currentUser?.uid);
+      const otherUid = r.memberIds.find(id => id !== currentUser?.uid) || r.memberIds[0];
       if (otherUid) {
         const otherUser = usersCache[otherUid];
         if (otherUser) {
           const nameLower = (otherUser.displayName || '').toLowerCase();
           if (nameLower.startsWith('cisa-')) return false;
         }
+        if (seenDirectUids.has(otherUid)) {
+          return false; // Skip duplicate direct chat channel for the same person
+        }
+        seenDirectUids.add(otherUid);
       }
     }
     const name = getRoomName(r).toLowerCase();

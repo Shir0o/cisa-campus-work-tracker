@@ -41,6 +41,7 @@ import {
   NotebookPen,
   Bold,
   Italic,
+  Strikethrough,
   List,
   ListOrdered,
   ListChecks,
@@ -117,7 +118,8 @@ import {
   collectDocTaskNodes,
   planDocTaskEdits,
 } from '../lib/board';
-import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
+import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
+import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Task, Contact } from '../types';
@@ -173,6 +175,45 @@ type MarkdownStorage = {
   markdown: { getMarkdown: () => string; parser: { parse: (md: string) => string } };
 };
 const editorMarkdown = (ed: Editor): string => (ed.storage as unknown as MarkdownStorage).markdown.getMarkdown();
+
+// Prevent caret from jumping to end of document when an undo (Cmd+Z) reverts a change
+// where the caret was located.
+const CaretPreserveExtension = Extension.create({
+  name: 'caretPreserve',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('caretPreserve'),
+        appendTransaction(transactions, oldState, newState) {
+          const isUndoOrRedo = transactions.some(
+            (tr) => tr.getMeta('history$') || tr.getMeta('y-undo$') || tr.getMeta('revert')
+          );
+          if (!isUndoOrRedo) return null;
+
+          const oldSel = oldState.selection;
+          const newSel = newState.selection;
+          const docSize = newState.doc.content.size;
+
+          if (newSel.to >= docSize - 1 && oldSel.to < docSize - 5) {
+            let targetPos = oldSel.from;
+            for (const tr of transactions) {
+              targetPos = tr.mapping.map(targetPos);
+            }
+            const safePos = Math.max(1, Math.min(targetPos, docSize - 1));
+            try {
+              const $pos = newState.doc.resolve(safePos);
+              const sel = TextSelection.near($pos);
+              return newState.tr.setSelection(sel);
+            } catch {
+              return null;
+            }
+          }
+          return null;
+        },
+      }),
+    ];
+  },
+});
 
 function renumberMarkdownLists(text: string): string {
   const lines = text.split('\n');
@@ -427,6 +468,8 @@ const READONLY_MD: Components = {
     </a>
   ),
   strong: ({ children }) => <strong className="font-semibold text-on-surface">{children}</strong>,
+  del: ({ children }) => <del className="line-through text-on-surface-variant/70">{children}</del>,
+  s: ({ children }) => <del className="line-through text-on-surface-variant/70">{children}</del>,
   blockquote: ({ children }) => (
     <blockquote className="border-l-2 border-stage-accent/40 pl-3 my-3 text-on-surface-variant/90 italic">{children}</blockquote>
   ),
@@ -876,7 +919,8 @@ export default function CoordinationNotes() {
 
   const saveMarkdown = async (id: string, md: string) => {
     try {
-      await updateDoc(doc(db, 'board_docs', id), { md, updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: meName });
+      const summary = mdSummary(md);
+      await updateDoc(doc(db, 'board_docs', id), { md, summary, updatedAt: serverTimestamp(), updatedBy: uid, updatedByName: meName });
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -1746,7 +1790,7 @@ function DocRow({
         </span>
         <span className="min-w-0 flex flex-col gap-0.5">
           <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-5">{d.title}</span>
-          <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{mdPreview(md)}</span>
+          <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{d.summary || mdSummary(md)}</span>
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
               <span className="text-[10.5px] font-bold tracking-wide uppercase text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
@@ -2255,18 +2299,6 @@ export function DocEditor({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [fab]);
 
-  // AI Insights States
-  const [analyzing, setAnalyzing] = useState(false);
-  const [showInsights, setShowInsights] = useState(false);
-  const [insightsData, setInsightsData] = useState<{
-    updatedMarkdown: string;
-    suggestedTasks: any[];
-  } | null>(null);
-  const [linksApplied, setLinksApplied] = useState(false);
-  const [addedTasks, setAddedTasks] = useState<Record<number, boolean>>({});
-  const [dismissedTasks, setDismissedTasks] = useState<Record<number, boolean>>({});
-  const [aiError, setAiError] = useState<string | null>(null);
-
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const markdownSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2309,6 +2341,7 @@ export function DocEditor({
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ undoRedo: false }), // Yjs owns history
+      CaretPreserveExtension,
       Table.configure({ resizable: false }),
       TableRow,
       TableHeader,
@@ -2508,137 +2541,6 @@ export function DocEditor({
     setTitle(v);
     if (titleTimer.current) clearTimeout(titleTimer.current);
     titleTimer.current = setTimeout(() => onSaveTitle(d.id, v), 800);
-  };
-
-  const formatFriendlyError = (rawError: string): string => {
-    if (!rawError) return "An unexpected error occurred.";
-    
-    let cleanMsg = rawError.trim();
-
-    const extractMessage = (obj: any): string | null => {
-      if (!obj || typeof obj !== 'object') return null;
-      if (obj.error && typeof obj.error === 'object' && obj.error.message) {
-        return obj.error.message;
-      }
-      if (obj.message && typeof obj.message === 'string') {
-        return obj.message;
-      }
-      if (obj.error && typeof obj.error === 'string') {
-        try {
-          const nested = JSON.parse(obj.error);
-          const nestedMsg = extractMessage(nested);
-          if (nestedMsg) return nestedMsg;
-        } catch {}
-        return obj.error;
-      }
-      return null;
-    };
-
-    try {
-      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
-        const parsed = JSON.parse(cleanMsg);
-        const extracted = extractMessage(parsed);
-        if (extracted) {
-          cleanMsg = extracted;
-        }
-      }
-    } catch {}
-
-    try {
-      if (cleanMsg.startsWith('{') && cleanMsg.endsWith('}')) {
-        const parsed = JSON.parse(cleanMsg);
-        if (parsed.message) {
-          cleanMsg = parsed.message;
-        } else if (parsed.error && typeof parsed.error === 'object' && parsed.error.message) {
-          cleanMsg = parsed.error.message;
-        }
-      }
-    } catch {}
-
-    if (
-      cleanMsg.includes("experiences high demand") || 
-      cleanMsg.includes("high demand") || 
-      cleanMsg.includes("503") || 
-      cleanMsg.includes("UNAVAILABLE")
-    ) {
-      return "The AI service is temporarily unavailable due to high demand. Please try again in a few moments.";
-    }
-    if (
-      cleanMsg.includes("API key not valid") || 
-      cleanMsg.includes("API_KEY_INVALID") ||
-      cleanMsg.includes("API key expired")
-    ) {
-      return "The configured AI service key is invalid. Please contact support or check your server configuration.";
-    }
-
-    return cleanMsg;
-  };
-
-  const analyzeNotes = async () => {
-    if (!editor) return;
-    const text = editorMarkdown(editor);
-    if (!text.trim()) {
-      alert("Please write some notes first before running AI analysis.");
-      return;
-    }
-    setAnalyzing(true);
-    setAiError(null);
-    setInsightsData(null);
-    setLinksApplied(false);
-    setAddedTasks({});
-    setDismissedTasks({});
-    setShowInsights(true);
-
-    try {
-      let token: string | null = null;
-      try {
-        if (user && typeof user.getIdToken === 'function') {
-          token = await user.getIdToken();
-        }
-      } catch (tokenErr) {
-        console.error('Failed to get Firebase ID token:', tokenErr);
-      }
-
-      const headers: HeadersInit = { 'Content-Type': 'application/json' };
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const res = await fetch('/api/analyze-notes', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ text }),
-      });
-      if (!res.ok) {
-        let errMsg = "Failed to analyze notes";
-        try {
-          const errData = await res.json();
-          errMsg = errData.error || errMsg;
-        } catch {
-          try {
-            errMsg = await res.text() || errMsg;
-          } catch {}
-        }
-        throw new Error(errMsg);
-      }
-      const data = await res.json();
-      if (data.success) {
-        setInsightsData(data);
-      } else {
-        throw new Error(data.error || "Analysis failed");
-      }
-    } catch (err: any) {
-      console.error("AI Analysis Error: ", err);
-      setAiError(formatFriendlyError(err.message || String(err)));
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  const applyLinks = () => {
-    if (!editor || !insightsData?.updatedMarkdown) return;
-    pushMarkdownToEditor(insightsData.updatedMarkdown);
-    setLinksApplied(true);
   };
 
   const handleTextareaKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -2884,6 +2786,9 @@ export function DocEditor({
               <ToolBtn title="Italic" on={editor.isActive('italic')} onClick={() => chain().toggleItalic().run()}>
                 <Italic className="w-4 h-4" />
               </ToolBtn>
+              <ToolBtn title="Strikethrough" on={editor.isActive('strike')} onClick={() => chain().toggleStrike().run()}>
+                <Strikethrough className="w-4 h-4" />
+              </ToolBtn>
               <ToolBtn title="Link" btnRef={linkBtnRef} on={editor.isActive('link')} onClick={openLinkFromToolbar}>
                 <Link2 className="w-4 h-4" />
               </ToolBtn>
@@ -2918,30 +2823,6 @@ export function DocEditor({
           <button
             type="button"
             onClick={() => {
-              if (showInsights) {
-                setShowInsights(false);
-              } else {
-                if (insightsData || aiError) {
-                  setShowInsights(true);
-                } else {
-                  analyzeNotes();
-                }
-              }
-            }}
-            disabled={analyzing}
-            title="Analyze notes with AI to link contacts and suggest tasks"
-            className={cn(
-              'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
-              showInsights
-                ? 'bg-stage-accent-soft border-stage-accent/40 text-stage-accent'
-                : 'bg-surface-variant border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent',
-            )}
-          >
-            <Sparkles className={cn("w-3.5 h-3.5", analyzing && "animate-spin text-stage-accent")} /> {analyzing ? 'Analyzing…' : 'AI Insights'}
-          </button>
-          <button
-            type="button"
-            onClick={() => {
               if (showSource) {
                 if (markdownSyncTimer.current) clearTimeout(markdownSyncTimer.current);
                 pushMarkdownToEditor(markdownSource);
@@ -2961,7 +2842,7 @@ export function DocEditor({
         </div>
       </div>
 
-      {/* canvas & sidebar */}
+      {/* canvas */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Editor Content */}
         <div
@@ -3001,139 +2882,6 @@ export function DocEditor({
             <EditorContent editor={editor as Editor} />
           )}
         </div>
-
-        {/* AI Insights Sidebar */}
-        {showInsights && (
-          <aside className="w-[320px] border-l border-outline-variant bg-surface-container-low flex flex-col min-h-0 shrink-0">
-            {/* Sidebar Head */}
-            <div className="flex items-center justify-between p-4 border-b border-outline-variant shrink-0 bg-surface">
-              <span className="font-serif text-lg text-on-surface flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-stage-accent" /> AI Insights
-              </span>
-              <div className="flex items-center gap-1">
-                {insightsData && (
-                  <button
-                    onClick={analyzeNotes}
-                    disabled={analyzing}
-                    className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors disabled:opacity-50"
-                    title="Refresh AI Insights"
-                    aria-label="Refresh AI Insights"
-                  >
-                    <RotateCw className={cn("w-4 h-4", analyzing && "animate-spin")} />
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowInsights(false)}
-                  className="p-1 rounded-md text-on-surface-variant/70 hover:bg-surface-variant hover:text-on-surface transition-colors"
-                  title="Close sidebar"
-                  aria-label="Close sidebar"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Sidebar Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
-              {analyzing ? (
-                <div className="h-60 flex flex-col items-center justify-center text-center p-4">
-                  <div className="relative mb-4 flex items-center justify-center">
-                    <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    <Sparkles className="w-4 h-4 absolute text-stage-accent animate-pulse" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-on-surface mb-1">Reading between the lines...</h4>
-                  <p className="text-xs text-on-surface-variant max-w-[200px]">
-                    Gemini is extracting action items and looking up contact names.
-                  </p>
-                </div>
-              ) : aiError ? (
-                <div className="p-3 bg-error-container/20 border border-error-container/30 rounded-xl text-center space-y-2">
-                  <p className="text-xs text-error font-medium">{aiError}</p>
-                  <button
-                    onClick={analyzeNotes}
-                    className="px-3 py-1.5 bg-error text-white text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                  >
-                    Try again
-                  </button>
-                </div>
-              ) : insightsData ? (
-                <>
-                  {/* Link Suggestions */}
-                  <div className="space-y-2">
-                    <h5 className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant/70">
-                      Contact Links
-                    </h5>
-                    <div className="bg-surface border border-outline-variant rounded-xl p-3 space-y-3">
-                      <p className="text-xs text-on-surface-variant leading-relaxed">
-                        We scanned the notes and matched contact names to their profile database links.
-                      </p>
-                      {linksApplied ? (
-                        <div className="flex items-center gap-1.5 text-xs text-tertiary font-semibold">
-                          <Check className="w-4 h-4" /> Links applied to notes!
-                        </div>
-                      ) : (
-                        <button
-                          onClick={applyLinks}
-                          className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-stage-accent text-white text-xs font-semibold rounded-xl hover:opacity-90 active:scale-[0.98] transition-all"
-                        >
-                          Apply Links to Notes
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Task Suggestions */}
-                  <div className="space-y-2">
-                    <h5 className="text-[11px] font-bold tracking-wider uppercase text-on-surface-variant/70">
-                      Suggested Tasks
-                    </h5>
-                    {insightsData.suggestedTasks.length === 0 ? (
-                      <p className="text-xs text-on-surface-variant/70 italic bg-surface border border-outline-variant rounded-xl p-3">
-                        No tasks found in the text. Try writing something like "Tony to text Jerry on Monday".
-                      </p>
-                    ) : (
-                      <div className="space-y-3">
-                        {insightsData.suggestedTasks.map((t, idx) => {
-                          if (dismissedTasks[idx]) return null;
-                          const isAdded = addedTasks[idx];
-
-                          return (
-                            <SuggestedTaskCard
-                              key={idx}
-                              task={t}
-                              isAdded={isAdded}
-                              contacts={contacts}
-                              team={team}
-                              meUid={meUid}
-                              onAdd={() => setAddedTasks(prev => ({ ...prev, [idx]: true }))}
-                              onDismiss={() => setDismissedTasks(prev => ({ ...prev, [idx]: true }))}
-                              onSaveTask={handleSaveTask}
-                            />
-                          );
-                        })}
-                        {Object.keys(dismissedTasks).length + Object.keys(addedTasks).length === insightsData.suggestedTasks.length && (
-                          <p className="text-xs text-on-surface-variant/70 italic text-center py-2">
-                            All suggestions processed!
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </>
-              ) : (
-                <div className="h-40 flex flex-col items-center justify-center text-center p-4 text-on-surface-variant">
-                  <p className="text-xs italic">Notes must be analyzed first.</p>
-                  <button
-                    onClick={analyzeNotes}
-                    className="mt-3 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-lg hover:opacity-90 transition-opacity"
-                  >
-                    Run AI Analysis
-                  </button>
-                </div>
-              )}
-            </div>
-          </aside>
-        )}
       </div>
 
       {/* Highlight → Selection Menu */}

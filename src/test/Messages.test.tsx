@@ -375,6 +375,61 @@ describe('Messages View Component', () => {
     expect(await screen.findByText('Bob Ross')).toBeInTheDocument();
   });
 
+  it('deduplicates multiple direct message channels for the same recipient in the sidebar', async () => {
+    const mockDuplicateDirectRooms = [
+      {
+        id: 'room-dm-1',
+        type: 'direct' as const,
+        memberIds: ['u1', 'u3'],
+        createdAt: { seconds: 100000 },
+        lastMessage: { text: 'Latest message', senderId: 'u3', senderName: 'Bob', timestamp: { seconds: 100010 } },
+      },
+      {
+        id: 'room-dm-2',
+        type: 'direct' as const,
+        memberIds: ['u1', 'u3'],
+        createdAt: { seconds: 90000 },
+        lastMessage: { text: 'Older message', senderId: 'u3', senderName: 'Bob', timestamp: { seconds: 90005 } },
+      },
+    ];
+
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      const isMessages = q && q.path && q.path.includes('messages');
+      const dataList = isMessages ? [] : mockDuplicateDirectRooms;
+      successCallback({
+        forEach: (fn: any) => {
+          dataList.forEach((item) => {
+            fn({
+              id: item.id,
+              data: () => {
+                const { id, ...rest } = item;
+                return rest;
+              },
+            });
+          });
+        },
+      });
+      return vi.fn();
+    });
+
+    (firestore.getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({ displayName: 'Bob Ross', photoURL: 'bob-photo' }),
+    });
+
+    render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    // Verify Bob Ross only appears ONCE in the sidebar
+    const bobElements = await screen.findAllByText('Bob Ross');
+    expect(bobElements).toHaveLength(1);
+    expect(screen.getByText('Latest message')).toBeInTheDocument();
+    expect(screen.queryByText('Older message')).not.toBeInTheDocument();
+  });
+
   it('handles unread indicators correctly based on localStorage', async () => {
     localStorage.removeItem('chat_read_room1');
 

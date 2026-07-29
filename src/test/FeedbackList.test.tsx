@@ -581,11 +581,19 @@ describe('FeedbackList View', () => {
 
     render(<FeedbackList />);
 
-    // Initial state: Active only -> f-bug, f-req visible. f-arch hidden.
+    // Initial state: Unresolved + Active only -> f-bug (new) visible; f-req (resolved) and f-arch (archived) hidden by default.
+    await waitFor(() => {
+      expect(screen.getByText('Actual bug message')).toBeInTheDocument();
+      expect(screen.queryByText('Actual request message')).not.toBeInTheDocument();
+      expect(screen.queryByText('Archived message')).not.toBeInTheDocument();
+    });
+
+    // Select "All Statuses" to show resolved items as well
+    const statusSelect = screen.getAllByRole('combobox')[0]; // Statuses select
+    fireEvent.change(statusSelect, { target: { value: 'all' } });
     await waitFor(() => {
       expect(screen.getByText('Actual bug message')).toBeInTheDocument();
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
-      expect(screen.queryByText('Archived message')).not.toBeInTheDocument();
     });
 
     // Filter by kind tab: "Something's off"
@@ -604,15 +612,14 @@ describe('FeedbackList View', () => {
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
     });
 
-    // Filter by Status dropdown
-    const statusSelect = screen.getAllByRole('combobox')[0]; // Statuses select
+    // Filter by Status dropdown: 'resolved'
     fireEvent.change(statusSelect, { target: { value: 'resolved' } });
     await waitFor(() => {
       expect(screen.queryByText('Actual bug message')).not.toBeInTheDocument();
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
     });
 
-    // Reset status filter
+    // Reset status filter back to 'all'
     fireEvent.change(statusSelect, { target: { value: 'all' } });
     await waitFor(() => {
       expect(screen.getByText('Actual bug message')).toBeInTheDocument();
@@ -724,6 +731,20 @@ describe('FeedbackList View', () => {
       expect(screen.getByText(/1920x1080/)).toBeInTheDocument();
       expect(screen.getByText(/Chrome\/120.0.0.0/)).toBeInTheDocument();
       expect(screen.getByText('View Screenshot')).toBeInTheDocument();
+    });
+
+    // Click screenshot to open lightbox modal
+    const screenshotImg = screen.getByAltText('Captured Screenshot');
+    fireEvent.click(screenshotImg);
+
+    expect(await screen.findByAltText('Enlarged Screenshot')).toBeInTheDocument();
+
+    // Click close button
+    const closeBtn = screen.getByRole('button', { name: 'Close enlarged screenshot' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText('Enlarged Screenshot')).not.toBeInTheDocument();
     });
   });
 
