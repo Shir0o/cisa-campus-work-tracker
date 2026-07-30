@@ -106,6 +106,21 @@ describe('chat.ts services', () => {
       expect(roomId).toBe('legacy-room-id');
       expect(mockSetDoc).not.toHaveBeenCalled();
     });
+
+    it('falls back gracefully when getDocs throws an error during room lookup', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => false
+      });
+      mockGetDocs.mockRejectedValueOnce(new Error('Permission denied'));
+
+      const roomId = await getOrCreateDirectChat(
+        { uid: 'u1', displayName: 'User One' },
+        { uid: 'u2', displayName: 'User Two' }
+      );
+
+      expect(roomId).toBe('direct_u1_u2');
+      expect(mockSetDoc).toHaveBeenCalled();
+    });
   });
 
   describe('createGroupChat', () => {
