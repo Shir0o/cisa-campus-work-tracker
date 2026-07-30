@@ -581,11 +581,19 @@ describe('FeedbackList View', () => {
 
     render(<FeedbackList />);
 
-    // Initial state: Active only -> f-bug, f-req visible. f-arch hidden.
+    // Initial state: Unresolved + Active only -> f-bug (new) visible; f-req (resolved) and f-arch (archived) hidden by default.
+    await waitFor(() => {
+      expect(screen.getByText('Actual bug message')).toBeInTheDocument();
+      expect(screen.queryByText('Actual request message')).not.toBeInTheDocument();
+      expect(screen.queryByText('Archived message')).not.toBeInTheDocument();
+    });
+
+    // Select "All Statuses" to show resolved items as well
+    const statusSelect = screen.getAllByRole('combobox')[0]; // Statuses select
+    fireEvent.change(statusSelect, { target: { value: 'all' } });
     await waitFor(() => {
       expect(screen.getByText('Actual bug message')).toBeInTheDocument();
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
-      expect(screen.queryByText('Archived message')).not.toBeInTheDocument();
     });
 
     // Filter by kind tab: "Something's off"
@@ -604,15 +612,14 @@ describe('FeedbackList View', () => {
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
     });
 
-    // Filter by Status dropdown
-    const statusSelect = screen.getAllByRole('combobox')[0]; // Statuses select
+    // Filter by Status dropdown: 'resolved'
     fireEvent.change(statusSelect, { target: { value: 'resolved' } });
     await waitFor(() => {
       expect(screen.queryByText('Actual bug message')).not.toBeInTheDocument();
       expect(screen.getByText('Actual request message')).toBeInTheDocument();
     });
 
-    // Reset status filter
+    // Reset status filter back to 'all'
     fireEvent.change(statusSelect, { target: { value: 'all' } });
     await waitFor(() => {
       expect(screen.getByText('Actual bug message')).toBeInTheDocument();
@@ -724,6 +731,93 @@ describe('FeedbackList View', () => {
       expect(screen.getByText(/1920x1080/)).toBeInTheDocument();
       expect(screen.getByText(/Chrome\/120.0.0.0/)).toBeInTheDocument();
       expect(screen.getByText('View Screenshot')).toBeInTheDocument();
+    });
+
+    // Click screenshot to open lightbox modal
+    const screenshotImg = screen.getByAltText('Captured Screenshot');
+    fireEvent.click(screenshotImg);
+
+    expect(await screen.findByAltText('Enlarged Screenshot')).toBeInTheDocument();
+
+    // Click close button
+    const closeBtn = screen.getByRole('button', { name: 'Close enlarged screenshot' });
+    fireEvent.click(closeBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByAltText('Enlarged Screenshot')).not.toBeInTheDocument();
+    });
+
+    // Test Esc key to close enlarged image
+    fireEvent.click(screenshotImg);
+    expect(await screen.findByAltText('Enlarged Screenshot')).toBeInTheDocument();
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByAltText('Enlarged Screenshot')).not.toBeInTheDocument();
+    });
+  });
+
+  it('filters items by new, in_progress, and unresolved statuses', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u-admin', displayName: 'Admin User', email: 'admin@example.com' },
+      isAdmin: true,
+    });
+
+    const mockItems = [
+      {
+        id: 'f1',
+        data: () => ({
+          userName: 'User 1',
+          userEmail: 'u1@example.com',
+          message: 'New item message',
+          type: 'bug',
+          kind: 'off',
+          status: 'new',
+          archived: false,
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+      {
+        id: 'f2',
+        data: () => ({
+          userName: 'User 2',
+          userEmail: 'u2@example.com',
+          message: 'In progress item message',
+          type: 'enhancement',
+          kind: 'request',
+          status: 'in_progress',
+          archived: false,
+          createdAt: '2026-06-16T08:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockItems.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: 2 });
+      return vi.fn();
+    });
+
+    render(<FeedbackList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New item message')).toBeInTheDocument();
+      expect(screen.getByText('In progress item message')).toBeInTheDocument();
+    });
+
+    const statusSelect = screen.getAllByRole('combobox')[0];
+
+    fireEvent.change(statusSelect, { target: { value: 'new' } });
+    await waitFor(() => {
+      expect(screen.getByText('New item message')).toBeInTheDocument();
+      expect(screen.queryByText('In progress item message')).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(statusSelect, { target: { value: 'in_progress' } });
+    await waitFor(() => {
+      expect(screen.queryByText('New item message')).not.toBeInTheDocument();
+      expect(screen.getByText('In progress item message')).toBeInTheDocument();
     });
   });
 

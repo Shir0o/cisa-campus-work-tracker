@@ -163,6 +163,7 @@ export interface BoardDoc {
   date: string; // yyyy-MM-dd
   title: string;
   md: string; // markdown body (derived from the live Y.Doc on save)
+  summary?: string; // short generated/stored summary under title in sidebar
   audience?: Audience; // who the page is open to; missing → 'team' (full-timers only)
   facilitatorId?: string;
   place?: string;

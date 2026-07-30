@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, Edit3, Check, Plus, Search, X, CheckSquare, Users } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
-import { mdPreview, mdOpenTasks } from '../lib/markdown';
+import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 
 interface TeamMember {
@@ -247,7 +247,7 @@ export default function CoordinationNotesMobile({
                     {d.title}
                   </h3>
                   <p className="text-[13px] text-on-surface-variant truncate mt-1 bdm-card-preview">
-                    {mdPreview(d.md)}
+                    {d.summary || mdSummary(d.md)}
                   </p>
                   {openTasksCount > 0 && canEdit && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-primary font-bold bdm-card-todo">

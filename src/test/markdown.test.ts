@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mdPreview, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
+import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
 
 describe('markdown helpers', () => {
   describe('mdPreview', () => {
@@ -30,12 +30,31 @@ describe('markdown helpers', () => {
     });
 
     it('strips rich formatting inline elements', () => {
-      expect(mdPreview('This is **bold** and *italic* and `code` text.')).toBe('This is bold and italic and code text.');
+      expect(mdPreview('This is **bold** and *italic* and ~~strikethrough~~ and `code` text.')).toBe('This is bold and italic and strikethrough and code text.');
       expect(mdPreview('Click [here](https://google.com) to search.')).toBe('Click here to search.');
     });
 
     it('returns "Empty page" if all lines are skipped/empty', () => {
       expect(mdPreview('# Heading 1\n## Heading 2\n**Bold Only**')).toBe('Empty page');
+    });
+  });
+
+  describe('mdSummary', () => {
+    it('returns "Empty page" for empty or missing input', () => {
+      expect(mdSummary(undefined)).toBe('Empty page');
+      expect(mdSummary('')).toBe('Empty page');
+    });
+
+    it('generates a clean short summary from document text', () => {
+      const md = '# Gathering Notes\n\nDiscussed outreach planning for next Friday. Need to book room 102.\n- [ ] Contact venue';
+      expect(mdSummary(md)).toBe('Discussed outreach planning for next Friday. Need to book room 102. Contact venue');
+    });
+
+    it('truncates long content to a concise short summary with ellipsis', () => {
+      const longText = 'A '.repeat(100);
+      const res = mdSummary(longText);
+      expect(res.length).toBeLessThanOrEqual(130);
+      expect(res.endsWith('…')).toBe(true);
     });
   });
 
@@ -108,7 +127,14 @@ describe('markdown helpers', () => {
     });
 
     it('converts Google Docs style-based italic (font-style on spans)', () => {
-      expect(htmlToBoardMarkdown('<span style="font-style:italic">slanted</span>')).toBe('_slanted_');
+      expect(htmlToBoardMarkdown('<span style="font-style:italic">italic</span>')).toBe('_italic_');
+    });
+
+    it('converts del, s, strike and style-based strikethrough to markdown tildes', () => {
+      expect(htmlToBoardMarkdown('<del>deleted</del>')).toBe('~~deleted~~');
+      expect(htmlToBoardMarkdown('<s>struck</s>')).toBe('~~struck~~');
+      expect(htmlToBoardMarkdown('<strike>old</strike>')).toBe('~~old~~');
+      expect(htmlToBoardMarkdown('<span style="text-decoration: line-through">styled</span>')).toBe('~~styled~~');
     });
 
     it('unwraps the Google Docs fake-bold selection wrapper', () => {

@@ -2,15 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as firestore from 'firebase/firestore';
 
 const mockGetDoc = vi.fn();
+const mockGetDocs = vi.fn().mockResolvedValue({ docs: [] });
 const mockSetDoc = vi.fn().mockResolvedValue(undefined);
 const mockAddDoc = vi.fn().mockResolvedValue({ id: 'new-doc-id' });
 const mockUpdateDoc = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('firebase/firestore', () => ({
   getDoc: (...args: any[]) => mockGetDoc(...args),
+  getDocs: (...args: any[]) => mockGetDocs(...args),
   setDoc: (...args: any[]) => mockSetDoc(...args),
   addDoc: (...args: any[]) => mockAddDoc(...args),
   updateDoc: (...args: any[]) => mockUpdateDoc(...args),
+  query: vi.fn((...args: any[]) => `query:${args.join('/')}`),
+  where: vi.fn((field: string, op: string, val: any) => `where:${field}_${op}_${val}`),
   collection: vi.fn((_db: any, ...paths: string[]) => `col:${paths.join('/')}`),
   doc: vi.fn((_db: any, ...paths: string[]) => `doc:${paths.join('/')}`),
   serverTimestamp: vi.fn(() => 'SERVER_TS'),
@@ -79,6 +83,43 @@ describe('chat.ts services', () => {
         createdByName: 'User One',
         createdAt: 'SERVER_TS',
       });
+    });
+
+    it('reuses existing direct room document if one already exists under another ID', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => false
+      });
+      mockGetDocs.mockResolvedValueOnce({
+        docs: [
+          {
+            id: 'legacy-room-id',
+            data: () => ({ type: 'direct', memberIds: ['u1', 'u2'] })
+          }
+        ]
+      });
+
+      const roomId = await getOrCreateDirectChat(
+        { uid: 'u1', displayName: 'User One' },
+        { uid: 'u2', displayName: 'User Two' }
+      );
+
+      expect(roomId).toBe('legacy-room-id');
+      expect(mockSetDoc).not.toHaveBeenCalled();
+    });
+
+    it('falls back gracefully when getDocs throws an error during room lookup', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => false
+      });
+      mockGetDocs.mockRejectedValueOnce(new Error('Permission denied'));
+
+      const roomId = await getOrCreateDirectChat(
+        { uid: 'u1', displayName: 'User One' },
+        { uid: 'u2', displayName: 'User Two' }
+      );
+
+      expect(roomId).toBe('direct_u1_u2');
+      expect(mockSetDoc).toHaveBeenCalled();
     });
   });
 
