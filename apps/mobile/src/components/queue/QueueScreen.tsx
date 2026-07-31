@@ -3,8 +3,9 @@
 // See the design project's MOBILE-V2.md; the visual language lives in
 // src/theme/v2.ts and the ordering in @cisa/core's buildQueue.
 //
-// The bottom tab bar stays (it already carries navigation), so v2's ☰ drawer is
-// not ported — the chrome here is the quiet meta line and the ＋ log button.
+// This shell has no tab bar at all (app/(tabs)/_layout.tsx hides it for the
+// trainee): the chrome is ☰ · the meta line · the ＋ log button, and everything
+// that isn't the queue lives behind the drawer.
 import React from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -15,6 +16,8 @@ import {
   getUserInitials,
   isOnCampus,
   personColor,
+  queueMeta,
+  upNextLine,
   type Contact,
   type QueueCard as QueueCardData,
 } from '@cisa/core';
@@ -30,6 +33,8 @@ import { QueueCard, type QueueCardApi } from './QueueCard';
 import { OnCampusStrip } from './OnCampusStrip';
 import { EndOfQueue } from './EndOfQueue';
 import { AllTodayList } from './AllTodayList';
+import { WeekLookBack } from './WeekLookBack';
+import { DrawerButton, QueueDrawer } from './QueueDrawer';
 import { ReplySheet } from './ReplySheet';
 
 const tomorrowISO = () => {
@@ -46,6 +51,8 @@ export function QueueScreen() {
 
   const [index, setIndex] = React.useState(0);
   const [showAll, setShowAll] = React.useState(false);
+  const [showWeek, setShowWeek] = React.useState(false);
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [logFor, setLogFor] = React.useState<Contact | null>(null);
   const [logOpen, setLogOpen] = React.useState(false);
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
@@ -124,7 +131,9 @@ export function QueueScreen() {
     setToast('Sent.');
   };
 
-  const me = firstName(user?.displayName ?? '') || 'friend';
+  // `firstName('')` answers "Someone", so the fallback has to go INSIDE it —
+  // "That's everything, Someone." is not something to say to anyone.
+  const me = firstName(user?.displayName || 'friend');
 
   // ── loading / error ──────────────────────────────────────────────────────
   if (data.loading) {
@@ -153,7 +162,19 @@ export function QueueScreen() {
     );
   }
 
-  const upNext = queue.slice(at + 1, at + 4);
+  if (showWeek) {
+    return (
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+        <WeekLookBack week={data.week} onBack={() => setShowWeek(false)} />
+      </SafeAreaView>
+    );
+  }
+
+  // The faces on the floor, and the ones they stand for. A card with nobody
+  // behind it calls itself by its label, as the design's `nextName` does.
+  const waiting = queue.slice(at + 1);
+  const upNext = waiting.slice(0, 3);
+  const meta = queueMeta(queue.length, queueState.handledCount);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
@@ -171,13 +192,33 @@ export function QueueScreen() {
         </Text>
       )}
 
-      {/* Chrome in the air above the card: where you are in today. One counter,
-          one source of truth — the pips are retired. */}
-      <View style={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 14 }}>
+      {/* Chrome in the air above the card (the design's `.m2-top`): ☰, then
+          what today holds on the left and where you are in it on the right.
+          The counter spans the WHOLE day — what's left plus what's already been
+          looked after — so working through cards moves it instead of shrinking
+          the day. The pips are retired. */}
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingHorizontal: 18,
+          paddingTop: 10,
+          paddingBottom: 14,
+        }}
+      >
+        <DrawerButton onPress={() => setDrawerOpen(true)} />
         <Pressable
           onPress={() => setShowAll(true)}
           disabled={queue.length === 0}
-          style={{ height: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+          style={{
+            flex: 1,
+            height: 44,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 10,
+          }}
         >
           <Text
             style={{
@@ -186,12 +227,14 @@ export function QueueScreen() {
               letterSpacing: 1.47,
               textTransform: 'uppercase',
               color: c.roomInk2,
+              flexShrink: 1,
             }}
+            numberOfLines={1}
           >
-            {queue.length === 0 ? 'All clear' : `${at + 1} of ${queue.length} today`}
+            {meta.left}
           </Text>
-          {queue.length > 0 && (
-            <Text style={{ fontFamily: font.semi, fontSize: 11, color: c.roomInk3 }}>Everything today</Text>
+          {!!meta.right && (
+            <Text style={{ fontFamily: font.semi, fontSize: 11, color: c.roomInk3 }}>{meta.right}</Text>
           )}
         </Pressable>
       </View>
@@ -221,7 +264,7 @@ export function QueueScreen() {
           firstName={me}
           handledCount={queueState.handledCount}
           dates={data.dates}
-          week={data.week}
+          onLookBack={() => setShowWeek(true)}
           onReset={() => {
             queueState.reset();
             setIndex(0);
@@ -263,12 +306,18 @@ export function QueueScreen() {
               </Text>
             </View>
           ))}
-          {upNext.length > 0 && (
+          {!!current && (
             <Text
-              style={{ fontFamily: font.medium, fontSize: 12, color: c.roomFaint, marginLeft: 10, flexShrink: 1 }}
+              style={{
+                fontFamily: font.medium,
+                fontSize: 12,
+                color: c.roomFaint,
+                marginLeft: upNext.length > 0 ? 10 : 0,
+                flexShrink: 1,
+              }}
               numberOfLines={1}
             >
-              {upNext.length === 1 ? 'One more after this' : `${queue.length - at - 1} more after this`}
+              {upNextLine(waiting.map((k) => (k.contact ? firstName(k.contact.name) : k.label)))}
             </Text>
           )}
         </View>
@@ -312,6 +361,7 @@ export function QueueScreen() {
         onSend={sendReply}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
+      <QueueDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </SafeAreaView>
   );
 }

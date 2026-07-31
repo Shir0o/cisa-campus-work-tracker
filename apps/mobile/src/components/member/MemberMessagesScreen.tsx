@@ -12,7 +12,7 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
-import { MemberBack, MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
+import { MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
 
 export function MemberMessagesScreen({ role }: { role: MemberRole }) {
   return (
@@ -37,7 +37,6 @@ function MemberMessages({ role }: { role: MemberRole }) {
 
   return (
     <MemberScreen loading={data.loading} error={data.error}>
-      <MemberBack />
       <MemberHead
         greeting="Messages"
         intro={

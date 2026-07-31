@@ -11,6 +11,7 @@ export * from './queue';
 export * from './ftHome';
 export * from './hospitality';
 export * from './memberHome';
+export * from './shell';
 export * from './prayerThread';
 export * from './directory';
 export * from './history';

@@ -3,13 +3,13 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, View } fro
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { canPostToRoom, getRoomName, getRoomPhoto, memberRoleOf } from '@cisa/core';
-import { Screen, AppText, Avatar, IconButton, InlineInput } from '../../src/components/ui';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useAuth } from '../../src/lib/AuthProvider';
-import { useChatThreadData } from '../../src/lib/useChatThreadData';
-import { MessageBubble } from '../../src/components/messages/MessageBubble';
-import { ChatDetailsSheet } from '../../src/components/messages/ChatDetailsSheet';
-import { MemberThreadScreen } from '../../src/components/member/MemberThreadScreen';
+import { Screen, AppText, Avatar, IconButton, InlineInput } from '../../../src/components/ui';
+import { useTheme } from '../../../src/theme/ThemeProvider';
+import { useAuth } from '../../../src/lib/AuthProvider';
+import { useChatThreadData } from '../../../src/lib/useChatThreadData';
+import { MessageBubble } from '../../../src/components/messages/MessageBubble';
+import { ChatDetailsSheet } from '../../../src/components/messages/ChatDetailsSheet';
+import { MemberThreadScreen } from '../../../src/components/member/MemberThreadScreen';
 
 // A single Messages thread — header, day-grouped message stream, composer.
 // Design oracle: web's src/views/Messages.tsx active-chat pane. No @-mention

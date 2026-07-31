@@ -1077,10 +1077,44 @@ itself; this section tracks the port against the design as it keeps moving.
       degrades quietly to empty rather than failing its screen.
       `LandingStudent` / `LandingCommunity` are left on disk but no longer
       routed to, as #168/#170 left `LandingTrainee` and `components/myday/*`.
-- [ ] **The ☰ drawer** — the bottom tab bar carries navigation today, for both
-      staff roles. (The blue room is no longer outstanding: the full-timer home
-      ported it as the `ft` room in `theme/v2.ts`. What's left is offering it as
-      a *tint the trainee can pick*, which the design drives from Tweaks.)
+- [x] ~~**The three role shells**, including the ☰ drawer~~ — the last
+      structural gap. Every role had been sharing one Material six-tab bar,
+      which meant a Student got a **People** tab onto the staff directory and a
+      **Log** tab (the design gives members no CRM at all), and Messages / You
+      sat under a generic "More" list. Now `app/(tabs)/_layout.tsx` reads a pure
+      `tabsForRole` from `@cisa/core`'s new `shell.ts` — trainee: no bar, ☰ +
+      `components/queue/QueueDrawer.tsx`; student: Today · Prayer · Messages ·
+      You; community: What's on · Prayer · Messages · You; full-timer: Today ·
+      People · Messages · More (`components/ft/FtMoreScreen.tsx`) — and the bar
+      wears the design's `.mbr-tabs` (words, an active dot, a terracotta unread
+      badge). `MEMBER_TABS` in `memberHome.ts` finally has a consumer.
+      **Messages moved into the tab group** (`app/(tabs)/messages/` with its own
+      nested stack) so the thread opens with the bar under it, as
+      `.mbr-stage` + `.mbr-tabs` do; route groups don't affect paths, so
+      `/messages` and `/messages/[roomId]` are unchanged and every deep link
+      still lands. `people.tsx` and `journey.tsx` gained a back chevron shown
+      only when `isPushedScreen` says the live role reaches them by pushing.
+      Also built: **the full-timer's Prayer log** (`app/prayer-log.tsx`), the
+      design's `FtPrayerLog`, off the same `ftCarryRows` the home widget uses so
+      the glance tile's number and the list can't disagree.
+      **The user's call was strict design fidelity**, and it costs real entry
+      points: the drawer is exactly the design's six rows and More exactly its
+      five, so Search, Notifications, Looking back, Answered, the Welcome form,
+      Leave a note and Notes from the team are unreachable from the phone's
+      shell (routes and deep links still work), and the staff team-prayer
+      screen (hold / set-status / stop-holding) is desktop-only — the Prayer
+      log is read-mostly. Giving those screens a home is the next pass.
+- [ ] **The navy room as a tint the trainee can pick** — the room itself is
+      done (the full-timer home ported it as the `ft` room in `theme/v2.ts`);
+      the design drives the choice from Tweaks, which has no app equivalent yet.
+- [ ] **People · The Journey · Gatherings · The Board · Messages · Settings ·
+      Contact detail in the v2 language.** The design mounts no Field-notes view
+      inside the mobile app at all (`M2People` / `M2Journey` / `M2Gatherings` /
+      `M2Board` / `M2Messages` / `M2Settings` / `M2Contact`); these still render
+      the Material screens, now reached through the right shell.
+      `components/v2/Widget.tsx` already has the `V2Screen` + `V2PersonRow`
+      shell they'll want (the design's `M2Screen` / `M2PersonRow`), built for
+      the Prayer log.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now

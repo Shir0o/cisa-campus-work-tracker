@@ -1,98 +1,132 @@
-import { useState } from 'react';
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { NAV_ITEMS, canAccessRoute } from '@cisa/core';
-import { useTheme } from '../../src/theme/ThemeProvider';
+import { Text, View } from 'react-native';
+import { shellForRole, tabsForRole } from '@cisa/core';
+import { Room } from '../../src/components/v2/Widget';
+import { useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
-import { QuickCaptureSheet } from '../../src/components/quickcapture/QuickCaptureSheet';
+import { useMessagesData } from '../../src/lib/useMessagesData';
 
-// Bottom nav matches the design's mobile shell (views/mobile/app.jsx):
-// Home · People · [Log] · Journey · Prayer, with a raised center capture
-// action. "More" surfaces the rest of NAV_ITEMS (History, Settings, …) — the
-// design's hamburger drawer is a later pass.
-const labelFor = (href: string, fallback: string) =>
-  NAV_ITEMS.find((n) => n.href === href)?.label ?? fallback;
+// The shell — one of three, chosen by role, from the design project
+// (`MOBILE-V2.md`; `views/mobile/{m2,member,ft}.jsx`):
+//
+//   Trainee    no bar at all — the queue fills the screen and ☰ opens a drawer
+//              (src/components/queue/QueueDrawer.tsx)
+//   Student    Today · Prayer · Messages · You
+//   Community  What's on · Prayer · Messages · You
+//   Full-timer Today · People · Messages · More
+//
+// Which route each tab sits on lives in @cisa/core's `tabsForRole`, so the
+// screens that need a back row when they're NOT a tab (people, journey) read
+// the same source rather than repeating the role checks.
+//
+// The bar wears the v2 room (the design's `.mbr-tabs`): words, not invented
+// icons, with a small active dot in the icon slot and a terracotta unread badge
+// on Messages.
+
+/** One button: the design's 5px active dot over the word. Both live in the icon
+ *  slot (`tabBarShowLabel` is off) — react-navigation reserves a fixed height
+ *  for an icon and puts the label under it, which leaves a 5px dot floating
+ *  with the word crushed against the floor of the bar. */
+function TabButton({ focused, color, label }: { focused: boolean; color: string; label: string }) {
+  const { font } = useV2Theme();
+  return (
+    <View style={{ alignItems: 'center', gap: 5 }}>
+      <View
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: 3,
+          backgroundColor: focused ? color : 'transparent',
+        }}
+      />
+      <Text style={{ fontFamily: font.semi, fontSize: 11.5, lineHeight: 16, color }} numberOfLines={1}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+const button =
+  (label: string) =>
+  ({ focused, color }: { focused: boolean; color: string }) => (
+    <TabButton focused={focused} color={color} label={label} />
+  );
 
 export default function TabsLayout() {
-  const { colors } = useTheme();
   const { role } = useAuth();
-  const [quickCaptureOpen, setQuickCaptureOpen] = useState(false);
-  // Tabs tied to a gated NAV_ITEMS route drop out of the bar (href: null) when
-  // the live role doesn't meet its minRole. Home/Prayer stay put — both are
-  // viewer-open; More self-filters.
-  const canPeople = canAccessRoute(role, '/directory');
-  const canJourney = canAccessRoute(role, '/board');
-  // Matches the desktop Quick Capture modal's own `role === 'viewer'` gate —
-  // Community members don't log interactions.
-  const canLog = role !== 'viewer';
+  // The full-timer stands in the paper/navy room; everyone else in the green
+  // one. Screens that set their own Room still win inside.
   return (
-    <>
-      <Tabs
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: colors.primary,
-          tabBarInactiveTintColor: colors.onSurfaceVariant,
-          tabBarStyle: {
-            backgroundColor: colors.surface,
-            borderTopColor: colors.outlineVariant,
+    <Room room={shellForRole(role) === 'ft' ? 'ft' : 'queue'}>
+      <RoleTabs />
+    </Room>
+  );
+}
+
+function RoleTabs() {
+  const { c, font } = useV2Theme();
+  const { role } = useAuth();
+  const messages = useMessagesData();
+
+  const shell = shellForRole(role);
+  const tabs = tabsForRole(role);
+  const titleOf = (name: string) => tabs.find((t) => t.name === name)?.title;
+  // A tab this role doesn't have drops out of the bar — `href: null` keeps the
+  // route reachable by push and by deep link, which is how the drawer and the
+  // full-timer's More reach People, The Journey and the rest.
+  const slot = (name: string, fallback: string) => {
+    const title = titleOf(name);
+    return title ? { title, href: undefined } : { title: fallback, href: null };
+  };
+
+  return (
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: c.roomInk,
+        tabBarInactiveTintColor: c.roomInk3,
+        tabBarShowLabel: false,
+        tabBarStyle:
+          // The trainee's shell has no bar at all: the queue is the screen, and
+          // ☰ carries everything else.
+          shell === 'queue'
+            ? { display: 'none' }
+            : { backgroundColor: c.room, borderTopColor: c.roomChip, borderTopWidth: 1 },
+      }}
+    >
+      <Tabs.Screen
+        name="index"
+        options={{
+          // Home is the one screen every shell keeps reachable — for the
+          // trainee it's the whole app, and the hidden bar is what makes the
+          // missing tabs invisible rather than `href: null`.
+          title: titleOf('index') ?? 'Today',
+          tabBarIcon: button(titleOf('index') ?? 'Today'),
+        }}
+      />
+      <Tabs.Screen name="people" options={{ ...slot('people', 'People'), tabBarIcon: button('People') }} />
+      <Tabs.Screen name="prayer" options={{ ...slot('prayer', 'Prayer'), tabBarIcon: button('Prayer') }} />
+      <Tabs.Screen
+        name="messages"
+        options={{
+          ...slot('messages', 'Messages'),
+          tabBarIcon: button('Messages'),
+          tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
+          tabBarBadgeStyle: {
+            backgroundColor: c.window,
+            color: c.onWindow,
+            fontFamily: font.bold,
+            fontSize: 10,
           },
         }}
-      >
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: labelFor('/', 'Home'),
-            tabBarIcon: ({ color, size }) => <Ionicons name="home-outline" color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="people"
-          options={{
-            title: labelFor('/directory', 'People'),
-            tabBarIcon: ({ color, size }) => <Ionicons name="people-outline" color={color} size={size} />,
-            href: canPeople ? undefined : null,
-          }}
-        />
-        <Tabs.Screen
-          name="log"
-          options={{
-            title: 'Log',
-            tabBarIcon: ({ color, size }) => <Ionicons name="add-circle" color={colors.primary} size={size + 6} />,
-            href: canLog ? undefined : null,
-          }}
-          listeners={{
-            tabPress: (e) => {
-              e.preventDefault();
-              setQuickCaptureOpen(true);
-            },
-          }}
-        />
-        <Tabs.Screen
-          name="journey"
-          options={{
-            title: labelFor('/board', 'Journey'),
-            tabBarIcon: ({ color, size }) => <Ionicons name="git-branch-outline" color={color} size={size} />,
-            href: canJourney ? undefined : null,
-          }}
-        />
-        <Tabs.Screen
-          name="prayer"
-          options={{
-            title: labelFor('/prayer', 'Prayer'),
-            tabBarIcon: ({ color, size }) => <Ionicons name="heart-outline" color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="more"
-          options={{
-            title: 'More',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="ellipsis-horizontal" color={color} size={size} />
-            ),
-          }}
-        />
-      </Tabs>
-      <QuickCaptureSheet visible={quickCaptureOpen} onClose={() => setQuickCaptureOpen(false)} />
-    </>
+      />
+      <Tabs.Screen
+        name="more"
+        options={{ ...slot('more', 'More'), tabBarIcon: button(titleOf('more') ?? 'More') }}
+      />
+      {/* Nobody has The Journey as a tab: the trainee reaches it from the
+          drawer, the full-timer from More. */}
+      <Tabs.Screen name="journey" options={{ title: 'The Journey', href: null }} />
+    </Tabs>
   );
 }

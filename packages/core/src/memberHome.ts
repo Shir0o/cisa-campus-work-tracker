@@ -31,8 +31,8 @@ export const MEMBER_ALSO_COMING = 3;
 export const MEMBER_TEAM_HOLDING = 6;
 
 /** The bottom-tab labels per role — the design's `MBR_TABS`. Kept here so the
- * two member roles read differently ("Today" vs "What's on") from one place,
- * even though this app routes them through its own shared tab bar. */
+ * two member roles read differently ("Today" vs "What's on") from one place;
+ * `tabsForRole` in `shell.ts` pairs them with their routes. */
 export const MEMBER_TABS: Record<"student" | "community", string[]> = {
   student: ["Today", "Prayer", "Messages", "You"],
   community: ["What's on", "Prayer", "Messages", "You"],

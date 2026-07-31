@@ -62,9 +62,10 @@ export function MemberScreen({
   );
 }
 
-/** The way back out of a PUSHED member screen (Messages, You). The two that are
- * bottom-tab destinations — Home and Prayer — don't get one: there's nothing to
- * go back to, and a dead chevron reads as broken. */
+/** The way back out of a PUSHED member screen. All four of the design's tabs —
+ * Today, Prayer, Messages, You — are bottom-tab destinations now, so this is
+ * only for the deep-link routes that land on one ('/settings' → You): there's
+ * nothing to go back to from a tab, and a dead chevron reads as broken. */
 export function MemberBack() {
   const { c, font } = useV2Theme();
   const router = useRouter();
