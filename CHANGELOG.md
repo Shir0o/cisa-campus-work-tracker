@@ -7,6 +7,48 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — the three role shells.** The design project builds mobile as
+  three apps, each with its own frame (`MOBILE-V2.md`;
+  `views/mobile/{m2,member,ft}.jsx`), and `apps/mobile` had ported all four home
+  screens but none of the shells — every role shared one Material six-tab bar.
+  Now: the **trainee** has no tab bar at all (the queue fills the screen and a
+  new ☰ drawer carries People · The Journey · Gatherings · The Board ·
+  Messages · Settings), a **student** gets Today · Prayer · Messages · You, a
+  **Community** member What's on · Prayer · Messages · You, and a
+  **full-timer** Today · People · Messages · More. Which route each tab sits on
+  is a pure `tabsForRole` in `@cisa/core`'s new `shell.ts`, so the bar and the
+  screens that need a back row when they aren't a tab read one source. The bar
+  itself is the design's `.mbr-tabs`: words rather than invented icons, a small
+  active dot, and a terracotta unread badge on Messages. Messages moved into
+  the tab group (`app/(tabs)/messages/`, with its own nested stack) so the
+  thread opens with the bar still under it; its paths are unchanged, so every
+  deep link still lands.
+- **Mobile v2 — the full-timer's Prayer log** (the design's `FtPrayerLog`), the
+  screen `More` opens and the home's "Carrying" tile now points at. It reads
+  the same `ftCarryRows` the "Prayers to carry" widget reads — uncapped here,
+  capped there — so the tile's number and the list's length can't disagree.
+  `FtCarryRow` gained a `contactId` so a row can open the person's page.
+
+### Changed
+- **Mobile v2 — the trainee's queue chrome caught up with the design.** The
+  meta row is now ☰ · "Today · N to look after" · "P of N", and the counter
+  spans the whole day (what's left plus what's already been looked after)
+  instead of only what remains; the floor names who's coming ("Then Ana, Rio,
+  Kofi +2" / "Last one today") instead of counting them; the all-clear reads
+  "That's everything, {name}."; and "Look back at your week" is a pushed
+  screen rather than a list unfolding under the all-clear.
+- **Mobile — screens the design's shells don't have lost their entry point.**
+  Following the design strictly, the drawer is exactly its six rows and the
+  full-timer's More exactly its five, which retires the old generic "More"
+  list: Search, Notifications, Looking back, Answered, the Welcome form, Leave
+  a note and Notes from the team are no longer linked from anywhere on the
+  phone (their routes and deep links still work). Students also lose the People
+  and Log tabs — the design gives members no CRM — and the team prayer screen
+  is now desktop-only for staff: the full-timer's Prayer log is read-mostly,
+  and a trainee meets prayers as queue cards. Logging keeps both its real
+  entry points (the queue's ＋ and the full-timer's "Log a moment"), so the Log
+  tab went with the list.
+
 - **Default Unresolved Filter for User Feedback** — updated `FeedbackList.tsx` status filter to default to `unresolved` (hiding resolved feedbacks and issues by default), while providing an option to view all or resolved-only items in the status dropdown filter.
 - **Enlargeable Feedback Screenshots on Settings Page** — added click-to-enlarge functionality with a full-screen Lightbox overlay modal, zoom cursor styling, hover hint badge, and Esc key/backdrop dismiss support for captured feedback screenshots in `FeedbackList.tsx`.
 - **Direct Chat Channel Deduplication** — deduplicated 1-on-1 direct chat channels by recipient UID in `Messages.tsx` sidebar to prevent multiple chat list entries for the same person, and updated `getOrCreateDirectChat` in `src/services/chat.ts` to check and reuse any existing direct chat channel between the user pair.

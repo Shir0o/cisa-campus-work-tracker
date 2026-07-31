@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { canAccessRoute, type Contact, type NewContactInput } from '@cisa/core';
+import { canAccessRoute, isPushedScreen, type Contact, type NewContactInput } from '@cisa/core';
 import { Screen, AppText, IconButton, InlineInput } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -15,6 +15,9 @@ import { AddContactSheet } from '../../src/components/people/AddContactSheet';
 
 // People / Directory — the full team contact list (design: views/contacts.jsx,
 // screenshots/dir-*.png).
+//
+// It's a tab for the full-timer only; the trainee reaches it from the ☰ drawer
+// and members never do — so the back chevron appears only when it was pushed.
 export default function People() {
   const { colors, spacing } = useTheme();
   const router = useRouter();
@@ -51,6 +54,14 @@ export default function People() {
 
   return (
     <Screen>
+      {isPushedScreen(role, 'people') && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40, gap: spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <View style={{ gap: 4, flex: 1 }}>

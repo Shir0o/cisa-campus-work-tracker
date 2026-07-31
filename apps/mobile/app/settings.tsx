@@ -30,7 +30,7 @@ import { MemberYouScreen } from '../src/components/member/MemberYouScreen';
 export default function SettingsScreen() {
   const { role } = useAuth();
   const memberRole = memberRoleOf(role);
-  if (memberRole) return <MemberYouScreen role={memberRole} />;
+  if (memberRole) return <MemberYouScreen role={memberRole} showBack />;
   return <StaffSettings />;
 }
 

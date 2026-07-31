@@ -1,7 +1,14 @@
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { NAV_ITEMS, canAccessRoute, type Contact, type NewContactInput } from '@cisa/core';
+import { useRouter } from 'expo-router';
+import {
+  NAV_ITEMS,
+  canAccessRoute,
+  isPushedScreen,
+  type Contact,
+  type NewContactInput,
+} from '@cisa/core';
 import { Screen, AppText, Button } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -18,8 +25,12 @@ import { AddContactSheet } from '../../src/components/people/AddContactSheet';
 // stage tabs + a MoveSheet, not drag-and-drop. "Shape the journey" (admin
 // stage management) is out of scope, matching how People defers contact
 // details to a later pass.
+//
+// No shell has this as a tab: the trainee reaches it from the ☰ drawer, the
+// full-timer from More — so it carries its own back chevron.
 export default function Journey() {
   const { colors, spacing } = useTheme();
+  const router = useRouter();
   const { user, uid, role } = useAuth();
   const data = useJourneyData(uid);
   const season = useActiveSeason();
@@ -63,6 +74,14 @@ export default function Journey() {
 
   return (
     <Screen>
+      {isPushedScreen(role, 'journey') && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
+      )}
+
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingBottom: 40, gap: spacing.lg }}>
         <View style={{ gap: 4 }}>
           <AppText variant="label" color={colors.primary}>

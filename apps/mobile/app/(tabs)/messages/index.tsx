@@ -2,19 +2,18 @@ import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { canAccessRoute, memberRoleOf } from '@cisa/core';
-import { Screen, AppText, IconButton, InlineInput } from '../../src/components/ui';
-import { useTheme } from '../../src/theme/ThemeProvider';
-import { useAuth } from '../../src/lib/AuthProvider';
-import { useMessagesData } from '../../src/lib/useMessagesData';
-import { ChatRoomRow } from '../../src/components/messages/ChatRoomRow';
-import { CreateChatSheet } from '../../src/components/messages/CreateChatSheet';
-import { MemberMessagesScreen } from '../../src/components/member/MemberMessagesScreen';
+import { canAccessRoute, isPushedScreen, memberRoleOf } from '@cisa/core';
+import { Screen, AppText, IconButton, InlineInput } from '../../../src/components/ui';
+import { useTheme } from '../../../src/theme/ThemeProvider';
+import { useAuth } from '../../../src/lib/AuthProvider';
+import { useMessagesData } from '../../../src/lib/useMessagesData';
+import { ChatRoomRow } from '../../../src/components/messages/ChatRoomRow';
+import { CreateChatSheet } from '../../../src/components/messages/CreateChatSheet';
+import { MemberMessagesScreen } from '../../../src/components/member/MemberMessagesScreen';
 
 // Messages — the private direct/group chat room list (design oracle: web's
-// src/views/Messages.tsx sidebar). No bottom-tab slot (the 6-tab bar is
-// full), so this is a pushed route reached from "More", following
-// Notifications/Search's back-nav pattern.
+// src/views/Messages.tsx sidebar). It's the third tab in every shell that has a
+// bar (student, community, full-timer) and a drawer row for the trainee.
 //
 // Members get the v2 list instead. Branching HERE rather than in the tab bar
 // keeps every deep link (a home card's "Write back", a notification) landing on
@@ -33,9 +32,8 @@ function StaffMessages() {
   const data = useMessagesData();
   const [showCreateSheet, setShowCreateSheet] = useState(false);
 
-  // The tab bar has no entry for '/messages' at all today (see "More"), so
-  // this guard can never actually trigger — 'viewer' is NAV_ITEMS' floor role
-  // — but it's kept for consistency with every other pushed route's
+  // This guard can never actually trigger — 'viewer' is NAV_ITEMS' floor role
+  // — but it's kept for consistency with every other route's
   // direct-URL/deep-link protection (journey.tsx, history.tsx, people.tsx).
   if (!canAccessRoute(role, '/messages')) {
     return (
@@ -50,11 +48,15 @@ function StaffMessages() {
 
   return (
     <Screen>
-      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
-          <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
-        </Pressable>
-      </View>
+      {/* A tab for the full-timer, a drawer row for the trainee — only the one
+          that pushed here has somewhere to go back to. */}
+      {isPushedScreen(role, 'messages') && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
+          <Pressable onPress={() => router.back()} hitSlop={8} style={{ padding: 6 }}>
+            <Ionicons name="chevron-back" size={22} color={colors.onSurface} />
+          </Pressable>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, gap: spacing.lg }}>
         <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>

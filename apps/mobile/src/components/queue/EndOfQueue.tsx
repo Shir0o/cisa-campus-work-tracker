@@ -1,10 +1,11 @@
 // Mobile v2 — the queue ENDS. All-clear, then the one-off dates worth knowing,
-// then a look back at the week. No metrics: this screen is about being finished,
-// not about how much got done.
+// then a way into the week just gone (WeekLookBack, a pushed screen — this one
+// is about being finished, and a list unfolding underneath undoes that).
+// No metrics anywhere.
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import type { Interaction, QueueDate } from '@cisa/core';
+import { allClearLine, type QueueDate } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { Kicker } from './atoms';
 
@@ -21,17 +22,17 @@ export function EndOfQueue({
   firstName,
   handledCount,
   dates,
-  week,
+  onLookBack,
   onReset,
 }: {
   firstName: string;
   handledCount: number;
   dates: QueueDate[];
-  week: Interaction[];
+  /** Pushes "Your week" — the design keeps it off this screen (WeekLookBack). */
+  onLookBack: () => void;
   onReset: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
-  const [showWeek, setShowWeek] = React.useState(false);
+  const { c, font } = useV2Theme();
 
   return (
     <ScrollView
@@ -55,12 +56,11 @@ export function EndOfQueue({
       </View>
 
       <Text style={{ fontFamily: font.serif, fontSize: 37, lineHeight: 41, color: c.roomInk, marginTop: 20 }}>
-        That's everyone, {firstName}.
+        {"That's everything,\n"}
+        {firstName}.
       </Text>
       <Text style={{ fontFamily: font.medium, fontSize: 15.5, lineHeight: 23, color: c.roomInk2, marginTop: 12 }}>
-        {handledCount > 0
-          ? `You worked through ${handledCount} ${handledCount === 1 ? 'thing' : 'things'} today. Nothing else is waiting on you.`
-          : 'Nothing is waiting on you right now. Come back when something lands.'}
+        {allClearLine(handledCount)}
       </Text>
 
       {dates.length > 0 && (
@@ -117,58 +117,9 @@ export function EndOfQueue({
         </View>
       )}
 
-      <Pressable onPress={() => setShowWeek((v) => !v)} style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>
-          {showWeek ? 'Hide your week' : 'Look back at your week'}
-        </Text>
+      <Pressable onPress={onLookBack} style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}>
+        <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>Look back at your week  →</Text>
       </Pressable>
-
-      {showWeek &&
-        (week.length === 0 ? (
-          <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.roomInk3 }}>
-            You haven't logged a conversation this week yet.
-          </Text>
-        ) : (
-          week.map((i) => (
-            <View
-              key={i.id}
-              style={{
-                backgroundColor: c.card,
-                borderRadius: radius.tile,
-                paddingVertical: 16,
-                paddingHorizontal: 18,
-                marginTop: 10,
-              }}
-            >
-              <Text
-                style={{
-                  fontFamily: font.bold,
-                  fontSize: 10.5,
-                  letterSpacing: 1.26,
-                  textTransform: 'uppercase',
-                  color: c.cardInk3,
-                }}
-              >
-                {new Date(i.dateTime).toLocaleDateString(undefined, { weekday: 'long' })}
-              </Text>
-              <Text
-                style={{
-                  fontFamily: font.extra,
-                  fontSize: 15.5,
-                  lineHeight: 20,
-                  letterSpacing: -0.31,
-                  color: c.cardInk,
-                  marginTop: 10,
-                }}
-              >
-                {i.contactName || 'A conversation'}
-              </Text>
-              <Text style={{ fontFamily: font.medium, fontSize: 14, lineHeight: 21, color: c.cardInk2, marginTop: 6 }}>
-                {i.content}
-              </Text>
-            </View>
-          ))
-        ))}
 
       <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
         <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk3 }}>Bring back today's queue</Text>

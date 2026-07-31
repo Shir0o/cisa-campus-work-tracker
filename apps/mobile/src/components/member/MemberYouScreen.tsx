@@ -24,15 +24,17 @@ const LOOKS: { key: 'light' | 'dark' | 'system'; label: string }[] = [
   { key: 'system', label: 'Match my phone' },
 ];
 
-export function MemberYouScreen({ role }: { role: MemberRole }) {
+/** `showBack` is for the '/settings' deep link, which lands here for a member.
+ * As the "You" tab there is nothing to go back to. */
+export function MemberYouScreen({ role, showBack }: { role: MemberRole; showBack?: boolean }) {
   return (
     <MemberRoom>
-      <MemberYou role={role} />
+      <MemberYou role={role} showBack={showBack} />
     </MemberRoom>
   );
 }
 
-function MemberYou({ role }: { role: MemberRole }) {
+function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean }) {
   const { c, font, radius, shadow } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const { uid, user, role: appRole } = useAuth();
@@ -60,7 +62,7 @@ function MemberYou({ role }: { role: MemberRole }) {
   return (
     <>
       <MemberScreen>
-        <MemberBack />
+        {showBack && <MemberBack />}
         <MemberHead greeting="You" showDate={false} />
 
         <View

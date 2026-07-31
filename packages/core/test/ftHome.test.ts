@@ -397,6 +397,7 @@ describe('ftCarryRows', () => {
         who: 'Rio',
         heavy: false,
         asked: false,
+        contactId: 'c1',
         prayerId: 'p1',
       },
     ]);
@@ -406,6 +407,11 @@ describe('ftCarryRows', () => {
     const rows = ftCarryRows([prayer()], [request()], [contact()]);
     expect(rows.map((r) => r.id)).toEqual(['ask:r1', 'prayer:p1']);
     expect(rows[0]).toMatchObject({ who: 'Lila', asked: true, requestId: 'r1' });
+  });
+
+  // A member is a user account, not a contact — there is no page to open.
+  it('leaves an ask with no contact behind it', () => {
+    expect(ftCarryRows([], [request()], [])[0].contactId).toBeNull();
   });
 
   it('leaves an answered ask out', () => {

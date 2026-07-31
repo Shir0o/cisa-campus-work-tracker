@@ -7,7 +7,8 @@
 // the same shell; nothing in here is full-timer-specific — every value comes
 // from whichever room the provider below puts it in.
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
+import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
 
 /** Puts its children in a room.
@@ -156,6 +157,149 @@ export function WidgetAction({ label, onPress }: { label: string; onPress: () =>
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** A pushed full-screen panel in the v2 language — the design's `M2Screen`
+ * (views/mobile/screens.jsx): back row · title · an optional right-hand note,
+ * then a scrolling body. Same shape as `AllTodayList`'s header, factored out
+ * now that the full-timer's Prayer log needs it too. */
+export function V2Screen({
+  title,
+  note,
+  onBack,
+  children,
+}: {
+  title: string;
+  note?: string;
+  onBack: () => void;
+  children: React.ReactNode;
+}) {
+  const { c, font } = useV2Theme();
+  return (
+    <View style={{ flex: 1, backgroundColor: c.room }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+        }}
+      >
+        <Pressable
+          onPress={onBack}
+          style={{
+            height: 44,
+            paddingHorizontal: 15,
+            borderRadius: 15,
+            backgroundColor: c.roomChip,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>← Back</Text>
+        </Pressable>
+        <Text style={{ fontFamily: font.extra, fontSize: 18, letterSpacing: -0.45, color: c.roomInk }}>
+          {title}
+        </Text>
+        {!!note && (
+          <Text
+            style={{
+              fontFamily: font.semi,
+              fontSize: 12,
+              color: c.roomInk3,
+              marginLeft: 'auto',
+              flexShrink: 1,
+              textAlign: 'right',
+            }}
+            numberOfLines={2}
+          >
+            {note}
+          </Text>
+        )}
+      </View>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 28 }}
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+/** One person on a v2 screen — the design's `M2PersonRow`: colour-stable
+ * avatar · name · sub-line · an optional note, with whatever the screen wants
+ * on the right. */
+export function V2PersonRow({
+  name,
+  colorSeed,
+  sub,
+  note,
+  right,
+  onPress,
+}: {
+  name: string;
+  /** Stable per-person colour, so the same face is the same colour everywhere. */
+  colorSeed: string;
+  sub?: string;
+  note?: string;
+  right?: React.ReactNode;
+  onPress?: () => void;
+}) {
+  const { c, font, radius } = useV2Theme();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => ({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 13,
+        backgroundColor: c.card,
+        borderRadius: radius.row,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        minHeight: 64,
+        marginTop: 9,
+        opacity: pressed ? 0.85 : 1,
+      })}
+    >
+      <View
+        style={{
+          width: 38,
+          height: 38,
+          borderRadius: 19,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: personColor(colorSeed),
+        }}
+      >
+        <Text style={{ fontFamily: font.extra, fontSize: 12.5, color: '#fff' }}>
+          {getUserInitials(name)}
+        </Text>
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text
+          style={{ fontFamily: font.extra, fontSize: 15, letterSpacing: -0.3, color: c.cardInk }}
+          numberOfLines={1}
+        >
+          {name}
+        </Text>
+        {!!sub && (
+          <Text style={{ fontFamily: font.semi, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }} numberOfLines={2}>
+            {sub}
+          </Text>
+        )}
+        {!!note && (
+          <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk2, marginTop: 3 }} numberOfLines={2}>
+            {note}
+          </Text>
+        )}
+      </View>
+      {right}
     </Pressable>
   );
 }

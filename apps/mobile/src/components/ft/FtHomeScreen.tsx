@@ -6,9 +6,9 @@
 // over, pray. Structural work (Board pages, gatherings, kinds) stays on the
 // desktop site, which is what the foot line says out loud.
 //
-// The bottom tab bar stays, as it does on the trainee's queue, so the design's
-// four-tab FT shell is not ported: every widget link routes into the app's own
-// screens instead.
+// This is the "Today" tab of the design's four-tab full-timer shell
+// (Today · People · Messages · More — see app/(tabs)/_layout.tsx); the widget
+// links route into the app's own screens.
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -228,7 +228,7 @@ function FtHome() {
         <FtGlance
           carrying={data.carrying}
           next={data.nextGathering}
-          onOpenPrayers={() => router.push('/prayer')}
+          onOpenPrayers={() => router.push('/prayer-log')}
           onOpenGatherings={() => router.push('/attendance')}
         />
 
@@ -270,7 +270,7 @@ function FtHome() {
             if (row.requestId) void data.markRequestAnswered(row.requestId);
             setToast('Thank God. They’ll see it’s answered.');
           }}
-          onOpenPrayers={() => router.push('/prayer')}
+          onOpenPrayers={() => router.push('/prayer-log')}
         />
 
         <HomesOpen

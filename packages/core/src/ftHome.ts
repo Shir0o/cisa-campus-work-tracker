@@ -203,6 +203,9 @@ export interface FtCarryRow {
   heavy: boolean;
   /** True when a member asked for this themselves, rather than staff logging it. */
   asked: boolean;
+  /** The person the prayer hangs off, so a row can open their page. Null on an
+   *  ask — a member is a user account, not a contact. */
+  contactId: string | null;
   prayerId?: string;
   requestId?: string;
 }
@@ -223,6 +226,7 @@ export function ftCarryRows(
       who: firstName(r.name),
       heavy: false,
       asked: true,
+      contactId: null,
       requestId: r.id,
     }));
   const logged: FtCarryRow[] = open.map((p) => {
@@ -233,6 +237,7 @@ export function ftCarryRows(
       who: c ? firstName(c.name) : null,
       heavy: ftWeighsHeavy(p),
       asked: false,
+      contactId: c ? c.id : null,
       prayerId: p.id,
     };
   });
