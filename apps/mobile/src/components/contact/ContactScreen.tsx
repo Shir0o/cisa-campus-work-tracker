@@ -170,8 +170,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           )}
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
-            <HeroAction label="Text" onPress={() => openMessage(contact.phone)} />
-            <HeroAction label="Call" onPress={() => openCall(contact.phone)} />
+            <HeroAction label="Text" disabled={!contact.phone} onPress={() => openMessage(contact.phone)} />
+            <HeroAction label="Call" disabled={!contact.phone} onPress={() => openCall(contact.phone)} />
             {canWrite && <HeroAction label="Log" dark onPress={() => setSheet('log')} />}
           </View>
         </View>
@@ -350,12 +350,30 @@ function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
   );
 }
 
-/** One of the hero's three thumb-sized actions (`.m2c-acts`). */
-function HeroAction({ label, dark, onPress }: { label: string; dark?: boolean; onPress: () => void }) {
+/** One of the hero's three thumb-sized actions (`.m2c-acts`).
+ *
+ * Text and Call go quiet when we have no number for someone. `openMessage` /
+ * `openCall` already bail on an empty one, so the tap was never unsafe — it just
+ * did nothing, which is worse than saying so. The button stays in place rather
+ * than disappearing: the design's row is three columns wide, and a contact with
+ * no phone would otherwise be left with a lone stretched Log. */
+function HeroAction({
+  label,
+  dark,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  dark?: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
   const { c, font, radius } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
+      accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => ({
         flex: 1,
         height: 48,
@@ -365,7 +383,7 @@ function HeroAction({ label, dark, onPress }: { label: string; dark?: boolean; o
         backgroundColor: dark ? c.cardInk : 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.7 : 1,
+        opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: 14.5, color: dark ? c.card : c.cardInk }}>{label}</Text>
