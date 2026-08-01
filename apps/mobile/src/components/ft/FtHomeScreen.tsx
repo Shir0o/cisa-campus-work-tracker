@@ -24,7 +24,7 @@ import {
 import { useAuth } from '../../lib/AuthProvider';
 import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
-import { QuickCaptureSheet } from '../quickcapture/QuickCaptureSheet';
+import { LogSheet } from '../log/LogSheet';
 import { Snackbar } from '../ui';
 import { PersonMark } from '../queue/atoms';
 import { Room } from '../v2/Widget';
@@ -302,10 +302,12 @@ function FtHome() {
           `visible` a frame after setting that person, so the remount lands
           first. `logFor` / `todoFor` / `noteRow` are deliberately NOT cleared on
           close: swapping the key mid-close would cut the dismiss animation. */}
-      <QuickCaptureSheet
+      <LogSheet
         key={logFor?.id ?? 'anyone'}
         visible={logOpen}
+        room="ft"
         initialContact={logFor}
+        onSaved={setToast}
         onClose={() => setLogOpen(false)}
       />
       <FtTodoSheet

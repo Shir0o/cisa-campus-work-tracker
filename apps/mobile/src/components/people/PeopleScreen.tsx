@@ -13,17 +13,15 @@ import {
   stageToneKey,
   touchWords,
   type Leader,
-  type NewContactInput,
   type Stage,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { usePeopleData } from '../../lib/usePeopleData';
-import { useActiveSeason } from '../../lib/useActiveSeason';
-import { addContact } from '../../lib/data/contacts';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker } from '../queue/atoms';
 import { Room, V2Empty, V2Hint, V2Input, V2PersonRow, V2Screen } from '../v2/Widget';
-import { AddContactSheet } from './AddContactSheet';
+import { Snackbar } from '../ui';
+import { LogSheet } from '../log/LogSheet';
 
 export function PeopleScreen() {
   const { role } = useAuth();
@@ -60,14 +58,10 @@ function PersonRows({ rows, stages, own }: { rows: Leader[]; stages: Stage[]; ow
 function People() {
   const { c } = useV2Theme();
   const router = useRouter();
-  const { user, uid, role } = useAuth();
+  const { uid, role } = useAuth();
   const data = usePeopleData(uid);
-  const season = useActiveSeason();
   const [showAddSheet, setShowAddSheet] = useState(false);
-
-  const handleAddContact = async (input: NewContactInput) => {
-    await addContact(input, { uid, name: user?.displayName });
-  };
+  const [toast, setToast] = useState<string | null>(null);
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const nothing = data.mine.length === 0 && data.rest.length === 0;
@@ -110,16 +104,19 @@ function People() {
         )}
       </V2Screen>
 
-      {/* Still the Material sheet: the design's "＋ New" opens its log sheet in
-          *Someone new*, and this app's equivalent form has no v2 counterpart in
-          screens.jsx. Restyling the sheets is its own pass. */}
-      <AddContactSheet
+      {/* The design's ＋ New opens the log sheet straight in *Someone new*
+          (`init.start`) — v2 has no separate add-contact form. The fuller one
+          (email, phone, stage, tags) stays on the desktop site, as this
+          screen's own roster foot says. */}
+      <LogSheet
         visible={showAddSheet}
-        stages={data.stages}
-        season={season}
-        onSubmit={handleAddContact}
+        room={roomForRole(role)}
+        start="new"
+        onSaved={setToast}
         onClose={() => setShowAddSheet(false)}
       />
+
+      {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
   );
 }

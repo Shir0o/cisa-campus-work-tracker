@@ -1,6 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { format } from 'date-fns';
 import {
+  contactAddedLine,
+  logSavedLine,
+  logSheetFootLine,
+  newContactFromLog,
   quickCaptureRecents,
   quickCaptureSearchMatches,
   reminderDueDate,
@@ -137,5 +141,81 @@ describe('reminderNotificationContent', () => {
       title: 'Follow up with Alex',
       body: 'Alex',
     });
+  });
+});
+
+describe('logSheetFootLine', () => {
+  it('names the real window rather than the design\'s hardcoded Tue & Wed, 12–3', () => {
+    expect(logSheetFootLine({ days: [2, 3], from: 12, to: 15 })).toBe(
+      'This nudge shows up Tue & Wed, 12pm–3pm. Change it in Settings.',
+    );
+  });
+
+  it('follows a window the trainee has moved', () => {
+    expect(logSheetFootLine({ days: [1, 4, 5], from: 9, to: 11 })).toBe(
+      'This nudge shows up Mon, Thu & Fri, 9am–11am. Change it in Settings.',
+    );
+  });
+
+  // The strip and the sheet both read onCampusSummary, so a window with no days
+  // left on it says the same thing in both places instead of inventing copy.
+  it('says nothing is set when every day has been switched off', () => {
+    expect(logSheetFootLine({ days: [], from: 12, to: 15 })).toBe(
+      'This nudge shows up No days set. Change it in Settings.',
+    );
+  });
+});
+
+describe('logSavedLine / contactAddedLine', () => {
+  it('greets by first name only', () => {
+    expect(logSavedLine('Alex Johnson')).toBe('Logged — Alex.');
+    expect(contactAddedLine('Alex Johnson')).toBe('Alex is in. You can add the rest tonight.');
+  });
+
+  it('falls back to "Someone" rather than an empty gap', () => {
+    expect(logSavedLine('')).toBe('Logged — Someone.');
+    expect(contactAddedLine('')).toBe('Someone is in. You can add the rest tonight.');
+  });
+});
+
+describe('newContactFromLog', () => {
+  it('puts "where you met" on location — the field this app labels FIRST MET', () => {
+    // The design tags a new person with where you met; a Contact here has a
+    // `location` field whose own form calls it "FIRST MET / RESIDENCE", so that
+    // is its home. `tags` stays the active-season tag the other addContact
+    // callers already set.
+    expect(
+      newContactFromLog({
+        name: '  Alex Johnson ',
+        where: '  Org fair ',
+        note: '  Plays bass. ',
+        stageLabel: 'First conversation',
+        tags: ['fall-2026'],
+      }),
+    ).toEqual({
+      name: 'Alex Johnson',
+      role: '',
+      location: 'Org fair',
+      email: '',
+      phone: '',
+      stage: 'First conversation',
+      tags: ['fall-2026'],
+      notes: 'Plays bass.',
+      spiritualBackground: '',
+      initials: 'AJ',
+    });
+  });
+
+  it('leaves the two optional fields empty when they were skipped', () => {
+    const input = newContactFromLog({
+      name: 'Alex',
+      where: '',
+      note: '',
+      stageLabel: 'Unassigned',
+      tags: [],
+    });
+    expect(input.location).toBe('');
+    expect(input.notes).toBe('');
+    expect(input.tags).toEqual([]);
   });
 });

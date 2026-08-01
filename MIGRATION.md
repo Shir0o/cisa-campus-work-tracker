@@ -1291,10 +1291,52 @@ itself; this section tracks the port against the design as it keeps moving.
       paper, so a near-black chosen chip reads; ours stands in the role's room, so
       Alongside's composer (which sits on the room, not on a card) inverts the
       pair the way `V2Seg` above it does.
-- [ ] **The sheets in the v2 language.** `QuickCaptureSheet` (the design's
-      `M2LogSheet`) and `AddContactSheet`, both still Material, reached from the
-      person screen's **Log**, the queue's ＋, the full-timer's "Log a moment" and
-      People's ＋ New.
+- [x] ~~**The sheets in the v2 language.**~~ — the design's `M2LogSheet`
+      (`views/mobile/m2.jsx`), and the last Material surface mounted *inside* a
+      v2 shell. `components/log/LogSheet.tsx` is its three modes and no more:
+      **palette** (the two tiles, drawn-not-typed icons per the design's "shapes
+      over glyphs" rule, a *You saw them today* chip row, and a foot naming the
+      real on-campus window through the same `onCampusSummary` the strip uses),
+      **new** and **convo**. It saves, toasts and closes; `visible` flipping true
+      resets the draft *during render* (React's own recipe) rather than in an
+      effect, and only on the way open, so the dismiss animation keeps its words.
+      All four entry points swapped: `QueueScreen`, `FtHomeScreen`,
+      `ContactScreen` and `PeopleScreen` — whose **＋ New** the design points at
+      *Someone new*, so `AddContactSheet` is no longer mounted there (it stays on
+      disk for the unlinked `/search` route, as `/coordination/trash` did).
+      `QueueScreen` now also carries `card.task?.id` into the sheet, so logging a
+      **You said you'd follow up** completes the to-do behind it — the design's
+      `init.taskId`, which this app was dropping. New pure `logSheetFootLine` /
+      `logSavedLine` / `contactAddedLine` / `newContactFromLog` in
+      `quickCapture.ts` (core 458 → 465), reusing `quickCaptureRecents` /
+      `quickCaptureSearchMatches` / `onCampusSummary` rather than restating them,
+      plus `lib/useLogSheetData.ts`, which holds its three listeners only while
+      the sheet is open — it is mounted by three screens at once.
+
+      **Strict design fidelity was the user's call for the fifth time, and here
+      it costs the entire after-save step.** The Material sheet had a fourth
+      "Saved" screen; that shape lives only in the design's PRE-v2
+      `views/quick-capture.jsx`, which the v2 shell does not mount. Gone from the
+      phone: the **follow-up reminder** (a `tasks` doc *and* a scheduled OS
+      notification) — **which leaves a trainee no way to create a follow-up to-do
+      from the phone at all**, so the queue's own `follow` card can only come
+      from a to-do made elsewhere (the full-timer keeps `FtTodoSheet`); the
+      **inline prayer**; **Log another**; **Open {First}'s page**; the
+      **Today/Yesterday** toggle; and, at People's ＋ New, capture of email,
+      phone, pipeline stage, tags, contact group and spiritual background.
+      Orphaned and left on disk: `REMINDER_PRESETS`, `reminderDueDate`,
+      `reminderNotificationTrigger`, `reminderNotificationContent` (core, no web
+      callers either — checked) and `ensureNotificationPermission`.
+      `scheduleReminderNotification` still has one (the to-do due-today
+      scheduler).
+
+      **One substitution.** The design stores "where you met" as a tag; a
+      `Contact` here has `location`, which this app's own new-contact form labels
+      "FIRST MET / RESIDENCE" — so that is its home, and `tags` stays the
+      active-season tag both `addContact` callers already set. Found on the way:
+      the person screen's detail row called that field **"Lives"**, which
+      mislabelled half of what already lands in it; it now reads
+      "First met / lives".
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now

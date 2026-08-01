@@ -7,6 +7,46 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — the log sheet in the design's language.** The last Material
+  surface still mounted *inside* the v2 shells, and the one mobile v2 exists
+  for: "log fast — a conversation in about twenty seconds." The design's
+  `M2LogSheet`, three modes and no more: **Log as you go** (two tiles — *Someone
+  new* / *A conversation* — plus the people you probably saw today as one-tap
+  avatar chips, and a foot naming your real on-campus window); **Someone new**
+  (their name · where you met · one line to remember → *Add {First}* in
+  terracotta); **A conversation** (who, then what it was and what you'll want to
+  remember → *Save it*). It saves, toasts and closes. Every entry point now
+  opens it: the queue's ＋, the on-campus strip, the full-timer's *Log a moment*,
+  a person page's **Log**, and People's **＋ New** — which the design points at
+  *Someone new*, so the sheet replaces the old add-contact form there too.
+  Saving a log from a **You said you'd follow up** card now also completes the
+  to-do behind it (the design's `init.taskId`; that id used to be dropped).
+  New pure `logSheetFootLine` / `logSavedLine` / `contactAddedLine` /
+  `newContactFromLog` in `@cisa/core`, reusing the existing
+  `quickCaptureRecents` / `quickCaptureSearchMatches` / `onCampusSummary`
+  (458 → 465 tests), plus a `useLogSheetData` hook that holds its three
+  Firestore listeners only while the sheet is open.
+
+  **Following the design strictly costs the whole after-save step.** Gone from
+  the phone, all still on the desktop site: the **follow-up reminder** (a
+  Firestore to-do *and* a scheduled OS notification) — which leaves a trainee no
+  way to create a follow-up to-do from the phone, so the queue's own follow-up
+  card can now only come from a to-do made elsewhere; the **inline prayer**;
+  **Log another**; **Open {First}'s page**; and the **Today/Yesterday** toggle
+  (v2 logs now). People's **＋ New** also stops capturing email, phone, pipeline
+  stage, tags, contact group and spiritual background. Left on disk
+  unreferenced, as the previous passes left `data/comments.ts`:
+  `REMINDER_PRESETS`, `reminderDueDate`, `reminderNotificationTrigger`,
+  `reminderNotificationContent` and `ensureNotificationPermission`.
+  `scheduleReminderNotification` keeps its caller (the to-do due-today
+  scheduler), and `AddContactSheet` stays for the unlinked `/search` route.
+
+  **One substitution.** The design tags a new person with where you met; a
+  `Contact` here has a `location` field that the app's own new-contact form
+  labels "FIRST MET / RESIDENCE", so that is where it goes and `tags` stays the
+  active-season tag. The person screen's detail row read **"Lives"**, which
+  mislabelled half of what lands there — it now reads "First met / lives".
+
 - **Mobile v2 — the person screen in the design's language.** The last screen
   in the phone app that still dropped into a Material view mid-flight. Tap
   someone from People, from a queue card, from a DM's "Open {First}'s page →"

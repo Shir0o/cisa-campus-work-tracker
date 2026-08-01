@@ -40,7 +40,8 @@ import { openCall, openEmail, openMessage } from '../../lib/messaging';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton } from '../queue/atoms';
 import { Room, V2Empty, V2Seg } from '../v2/Widget';
-import { QuickCaptureSheet } from '../quickcapture/QuickCaptureSheet';
+import { Snackbar } from '../ui';
+import { LogSheet } from '../log/LogSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
 import { ThreadCompose } from './ThreadCompose';
 import { ThreadMessageRow } from './ThreadMessageRow';
@@ -75,6 +76,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [openStoryId, setOpenStoryId] = useState<string | null>(initialInteractionId ?? null);
   const [showDetails, setShowDetails] = useState(false);
   const [sheet, setSheet] = useState<'log' | 'pray' | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
 
   const canWrite = role !== 'viewer';
   const kinds = useMemo(() => composeKindsFor(!isTrainee(uid)), [uid]);
@@ -298,13 +300,13 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         )}
       </ScrollView>
 
-      {/* The design opens its own `M2LogSheet` here; this app's log flow is
-          Quick Capture, which already takes the person and opens on the note
-          step. It is still the Material sheet — restyling the sheets is its own
-          pass, the same note People's ＋ New carries. */}
-      <QuickCaptureSheet
+      {/* The hero's Log — the design's `M2LogSheet init={{contact}}`, which
+          opens straight on the conversation because it already knows who. */}
+      <LogSheet
         visible={sheet === 'log'}
+        room={roomForRole(role)}
         initialContact={contact}
+        onSaved={setToast}
         onClose={() => setSheet(null)}
       />
 
@@ -318,6 +320,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         }}
         onClose={() => setSheet(null)}
       />
+
+      {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
   );
 }
@@ -559,7 +563,10 @@ function Details({
       <DetailRow label="Phone" value={contact.phone} onPress={() => openCall(contact.phone)} />
       <DetailRow label="Email" value={contact.email} onPress={() => openEmail(contact.email)} />
       <DetailRow label="Instagram" value={contact.instagram} />
-      <DetailRow label="Lives" value={contact.location} />
+      {/* One field, two readings — the new-contact form calls it "FIRST MET /
+          RESIDENCE", and the v2 log sheet fills it from "Where you met". "Lives"
+          alone mislabelled half of what lands here. */}
+      <DetailRow label="First met / lives" value={contact.location} />
       <DetailRow label="Goes by" value={contact.pronouns} />
       <DetailRow label="Known" value={knownMs === null ? null : `${daysSince(knownMs)} days`} />
       <DetailRow label="Cared for by" value={careLine === 'In your care' ? 'You' : contact.createdByName} />
