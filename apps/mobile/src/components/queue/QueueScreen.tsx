@@ -27,7 +27,7 @@ import { setTodoDone, updateTodo } from '../../lib/data/todos';
 import { addThreadMessage, toggleReaction } from '../../lib/data/threads';
 import { InboxReads } from '../../lib/data/inboxReads';
 import { useV2Theme } from '../../theme/v2';
-import { QuickCaptureSheet } from '../quickcapture/QuickCaptureSheet';
+import { LogSheet } from '../log/LogSheet';
 import { Snackbar } from '../ui';
 import { QueueCard, type QueueCardApi } from './QueueCard';
 import { OnCampusStrip } from './OnCampusStrip';
@@ -54,6 +54,8 @@ export function QueueScreen() {
   const [showWeek, setShowWeek] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [logFor, setLogFor] = React.useState<Contact | null>(null);
+  // The to-do behind a follow-up card, so saving the log closes it too.
+  const [logTask, setLogTask] = React.useState<string | null>(null);
   const [logOpen, setLogOpen] = React.useState(false);
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
@@ -93,6 +95,7 @@ export function QueueScreen() {
     openReply: (card) => setReplyTo(card),
     openLog: (card) => {
       setLogFor(card.contact ?? null);
+      setLogTask(card.task?.id ?? null);
       setLogOpen(true);
     },
     react: (card, emoji) => {
@@ -252,6 +255,7 @@ export function QueueScreen() {
                   window={queuePrefs.prefs.onCampus}
                   onPress={() => {
                     setLogFor(null);
+                    setLogTask(null);
                     setLogOpen(true);
                   }}
                 />
@@ -326,6 +330,7 @@ export function QueueScreen() {
           accessibilityLabel="Log a conversation"
           onPress={() => {
             setLogFor(null);
+            setLogTask(null);
             setLogOpen(true);
           }}
           style={[
@@ -345,11 +350,15 @@ export function QueueScreen() {
       </View>
 
       {/* Keyed so the sheet remounts when the person it's about changes — its
-          step/contact are seeded from initialContact at mount. */}
-      <QuickCaptureSheet
+          mode/contact are seeded from initialContact at mount. */}
+      <LogSheet
         key={logFor?.id ?? 'anyone'}
         visible={logOpen}
+        room="queue"
         initialContact={logFor}
+        taskId={logTask}
+        onCampus={queuePrefs.prefs.onCampus}
+        onSaved={setToast}
         // logFor is left alone here: clearing it would swap the key mid-close
         // and cut the dismiss animation. Each opener sets it first.
         onClose={() => setLogOpen(false)}

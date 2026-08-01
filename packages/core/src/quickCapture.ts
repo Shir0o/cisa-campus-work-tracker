@@ -5,7 +5,11 @@
 // writes reuse the already-existing addContact/addInteraction/addTodo/
 // addPrayer wrappers — see the mobile QuickCaptureSheet component.
 import { format } from "date-fns";
+import { firstName } from "./history";
 import { daysSince, lastTouchByContact, parseMs, type Touch } from "./myday";
+import { onCampusSummary, type OnCampusWindow } from "./queue";
+import { getUserInitials } from "./utils";
+import type { NewContactInput } from "./data/contacts";
 import type { Contact } from "./types";
 
 export type QuickCaptureKindId = "gospel" | "appointment" | "gathering" | "phone" | "text" | "meet";
@@ -113,4 +117,63 @@ export function reminderNotificationContent(
   contactName: string,
 ): { title: string; body: string } {
   return { title: reminderTitle, body: contactName };
+}
+
+// ── the v2 log sheet (the design's M2LogSheet, views/mobile/m2.jsx) ─────────
+// Mobile v2 replaced the Quick Capture flow above with a three-mode sheet that
+// saves, toasts and closes. The copy below is the design's, verbatim; it lives
+// here rather than in the component so the phrasing is tested and so the sheet
+// and the on-campus strip cannot disagree about the window.
+
+/** The palette mode's foot. The design hardcodes "Tue & Wed, 12–3" because its
+ * window is a constant; here the trainee owns it in Settings, so the line reads
+ * the real one through the same `onCampusSummary` the strip uses. */
+export function logSheetFootLine(w: OnCampusWindow): string {
+  return `This nudge shows up ${onCampusSummary(w)}. Change it in Settings.`;
+}
+
+/** "Logged — Alex." — the toast after saving a conversation. */
+export const logSavedLine = (name: string): string => `Logged — ${firstName(name)}.`;
+
+/** "Alex is in. You can add the rest tonight." — the toast after adding someone,
+ * and the sheet's own promise that a 20-second capture is enough. */
+export const contactAddedLine = (name: string): string =>
+  `${firstName(name)} is in. You can add the rest tonight.`;
+
+export interface LogSheetNewContact {
+  name: string;
+  /** The design's "Where you met". */
+  where: string;
+  note: string;
+  stageLabel: string;
+  tags: string[];
+}
+
+/** The contact the sheet's *Someone new* mode creates — three answered fields
+ * and nothing else, as the design has it.
+ *
+ * SUBSTITUTION: the design stores "where you met" as a tag on the contact. A
+ * `Contact` here has a `location` field that this app's own new-contact form
+ * labels "FIRST MET / RESIDENCE", so that is where it goes; `tags` stays the
+ * active-season tag every other `addContact` caller sets. */
+export function newContactFromLog({
+  name,
+  where,
+  note,
+  stageLabel,
+  tags,
+}: LogSheetNewContact): NewContactInput {
+  const trimmed = name.trim();
+  return {
+    name: trimmed,
+    role: "",
+    location: where.trim(),
+    email: "",
+    phone: "",
+    stage: stageLabel,
+    tags,
+    notes: note.trim(),
+    spiritualBackground: "",
+    initials: getUserInitials(trimmed),
+  };
 }
