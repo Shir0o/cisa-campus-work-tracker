@@ -1,34 +1,26 @@
-// Live data for the native People (Directory) tab — the full team contact
-// list with search + stage filtering. Mirrors the subscriptions in the web
-// app's src/views/Directory.tsx, using @cisa/core's filterAndSortDirectory
-// as the shared behavior oracle.
+// Live data for the native People screen — the full team contact list, split
+// the way the v2 design reads it: the people in my care first, then everyone
+// else. @cisa/core's splitDirectory is the shared behavior oracle.
 import { useEffect, useMemo, useState } from 'react';
 import {
-  daysSince,
-  filterAndSortDirectory,
-  parseMs,
+  personalContactIdsOf,
+  splitDirectory,
   type Contact,
-  type Leader,
   type Stage,
   type Touch,
 } from '@cisa/core';
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
-
-export interface StagePillCount {
-  stage: Stage;
-  count: number;
-}
+import { subscribeUserPreferences } from './data/userPreferences';
 
 export function usePeopleData(uid: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
+  const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  // A stage's label ("Contact.stage" stores the label, not a doc id), or "all".
-  const [stageFilter, setStageFilter] = useState('all');
 
   useEffect(() => {
     if (!uid) return;
@@ -45,50 +37,38 @@ export function usePeopleData(uid: string | null) {
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
     const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
+    // "In your care" — the picker's choice, else the people I added. Same
+    // notion of ownership as My Day and the full-timer's home.
+    const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
+      setPrefContactIds(prefs.personalContactIds ?? null),
+    );
     return () => {
       unsubContacts();
       unsubStages();
       unsubTouches();
+      unsubPrefs();
     };
   }, [uid]);
 
-  const entries: Leader[] = useMemo(
-    () => filterAndSortDirectory(contacts, touches, { search, stageId: stageFilter }),
-    [contacts, touches, search, stageFilter],
+  const personalContactIds = useMemo(
+    () => personalContactIdsOf(prefContactIds, contacts, uid),
+    [prefContactIds, contacts, uid],
   );
 
-  const stageCounts: StagePillCount[] = useMemo(
-    () => stages.map((stage) => ({ stage, count: contacts.filter((c) => c.stage === stage.label).length })),
-    [stages, contacts],
-  );
-
-  const newCount = useMemo(
-    () =>
-      contacts.filter((c) => {
-        const ms = parseMs(c.createdAt);
-        return ms != null && daysSince(ms) <= 14;
-      }).length,
-    [contacts],
-  );
-
-  const overdueCount = useMemo(
-    () => filterAndSortDirectory(contacts, touches, { search: '', stageId: 'all' }).filter((l) => l.days >= 7).length,
-    [contacts, touches],
+  const { mine, rest } = useMemo(
+    () => splitDirectory(contacts, touches, personalContactIds, search),
+    [contacts, touches, personalContactIds, search],
   );
 
   return {
     contacts,
     stages,
-    entries,
-    stageCounts,
+    mine,
+    rest,
     totalCount: contacts.length,
-    newCount,
-    overdueCount,
     loading,
     error,
     search,
     setSearch,
-    stageFilter,
-    setStageFilter,
   };
 }

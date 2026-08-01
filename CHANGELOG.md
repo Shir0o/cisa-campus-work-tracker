@@ -7,6 +7,20 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — People · The Journey · Gatherings in the design's language.**
+  The three screens the trainee's ☰ drawer and the full-timer's More list reach
+  no longer drop into a Material screen mid-app. **People** is a search over two
+  groups — *In your care*, longest since you talked first, then *Everyone else*
+  with who added them; **The Journey** is the kanban as a horizontal step picker
+  with a "Move a step" sheet per person; **Gatherings** is *Who we've missed*
+  (with a text you can send), the sessions we've had with each roster expanding
+  in place, and *Coming up*. New pure `splitDirectory`, `stageToneKey` and
+  `touchWords` in `@cisa/core` (402 → 412 tests), and `V2Screen`/`V2PersonRow`
+  grew the back row, action slot and stage dot the design's `M2Screen` /
+  `M2PersonRow` carry. Following the design strictly costs some surfaces:
+  People's stage-filter pills, The Journey's "Welcome someone new" button, and
+  Gatherings' hero figures, type filter and **CSV export** are gone — stage
+  filtering is The Journey's job in v2, and export is desktop work.
 - **Mobile v2 — the three role shells.** The design project builds mobile as
   three apps, each with its own frame (`MOBILE-V2.md`;
   `views/mobile/{m2,member,ft}.jsx`), and `apps/mobile` had ported all four home

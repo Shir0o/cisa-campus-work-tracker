@@ -7,7 +7,7 @@
 // the same shell; nothing in here is full-timer-specific — every value comes
 // from whichever room the provider below puts it in.
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
 
@@ -161,22 +161,29 @@ export function WidgetAction({ label, onPress }: { label: string; onPress: () =>
   );
 }
 
-/** A pushed full-screen panel in the v2 language — the design's `M2Screen`
- * (views/mobile/screens.jsx): back row · title · an optional right-hand note,
- * then a scrolling body. Same shape as `AllTodayList`'s header, factored out
- * now that the full-timer's Prayer log needs it too. */
+/** A full-screen panel in the v2 language — the design's `M2Screen`
+ * (views/mobile/screens.jsx): back row · title · either a right-hand action or a
+ * quiet note, then a scrolling body. Same shape as `AllTodayList`'s header,
+ * factored out once the full-timer's Prayer log needed it too.
+ *
+ * `onBack` is optional because the same screen can be a tab for one role and a
+ * pushed screen for another (People is a tab for the full-timer, a drawer row
+ * for the trainee) — pass it only when `isPushedScreen` says so. `action` and
+ * `note` share the right-hand slot, as they do in the design. */
 export function V2Screen({
   title,
   note,
+  action,
   onBack,
   children,
 }: {
   title: string;
   note?: string;
-  onBack: () => void;
+  action?: { label: string; onPress: () => void };
+  onBack?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, radius } = useV2Theme();
   return (
     <View style={{ flex: 1, backgroundColor: c.room }}>
       <View
@@ -188,23 +195,43 @@ export function V2Screen({
           paddingVertical: 10,
         }}
       >
-        <Pressable
-          onPress={onBack}
-          style={{
-            height: 44,
-            paddingHorizontal: 15,
-            borderRadius: 15,
-            backgroundColor: c.roomChip,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+        {!!onBack && (
+          <Pressable
+            onPress={onBack}
+            style={{
+              height: 44,
+              paddingHorizontal: 15,
+              borderRadius: 15,
+              backgroundColor: c.roomChip,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>← Back</Text>
+          </Pressable>
+        )}
+        <Text
+          style={{ fontFamily: font.extra, fontSize: 18, letterSpacing: -0.45, color: c.roomInk, flexShrink: 1 }}
+          numberOfLines={1}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>← Back</Text>
-        </Pressable>
-        <Text style={{ fontFamily: font.extra, fontSize: 18, letterSpacing: -0.45, color: c.roomInk }}>
           {title}
         </Text>
-        {!!note && (
+        {action ? (
+          <Pressable
+            onPress={action.onPress}
+            style={({ pressed }) => ({
+              marginLeft: 'auto',
+              minHeight: 44,
+              justifyContent: 'center',
+              paddingHorizontal: 15,
+              borderRadius: radius.chip,
+              backgroundColor: c.roomChip,
+              opacity: pressed ? 0.65 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk }}>{action.label}</Text>
+          </Pressable>
+        ) : note ? (
           <Text
             style={{
               fontFamily: font.semi,
@@ -218,11 +245,12 @@ export function V2Screen({
           >
             {note}
           </Text>
-        )}
+        ) : null}
       </View>
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 14, paddingBottom: 28 }}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         {children}
       </ScrollView>
@@ -230,15 +258,118 @@ export function V2Screen({
   );
 }
 
+/** A person row with one care action sitting under it, inside the SAME card —
+ * the design's `.m2j-row` + `.m2j-mv` (a hairline, then a full-width link).
+ * The Journey ("Move a step") and Gatherings ("Send a text") both wear it, so
+ * the person row inside goes `flat` and this carries the card. */
+export function V2RowCard({
+  action,
+  onAction,
+  children,
+}: {
+  action?: string;
+  onAction?: () => void;
+  children: React.ReactNode;
+}) {
+  const { c, font, radius } = useV2Theme();
+  return (
+    <View style={{ backgroundColor: c.card, borderRadius: radius.row, marginTop: 9, overflow: 'hidden' }}>
+      {children}
+      {!!action && !!onAction && (
+        <Pressable
+          onPress={onAction}
+          style={({ pressed }) => ({
+            minHeight: 46,
+            justifyContent: 'center',
+            paddingHorizontal: 16,
+            borderTopWidth: 1,
+            borderTopColor: c.line,
+            opacity: pressed ? 0.6 : 1,
+          })}
+        >
+          <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{action}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/** The design's `.m2-input` — one text field on the room. */
+export function V2Input({
+  value,
+  onChangeText,
+  placeholder,
+}: {
+  value: string;
+  onChangeText: (next: string) => void;
+  placeholder: string;
+}) {
+  const { c, font, radius } = useV2Theme();
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={c.cardInk3}
+      autoCorrect={false}
+      style={{
+        minHeight: 48,
+        paddingHorizontal: 16,
+        borderRadius: radius.note,
+        backgroundColor: c.card,
+        fontFamily: font.semi,
+        fontSize: 14.5,
+        color: c.cardInk,
+      }}
+    />
+  );
+}
+
+/** The design's `.m2c-empty` — a quiet line where a list would be, on the room
+ * rather than inside a widget (which is `WidgetEmpty`'s job). */
+export function V2Empty({ children }: { children: string }) {
+  const { c, font } = useV2Theme();
+  return (
+    <Text
+      style={{
+        fontFamily: font.semi,
+        fontSize: 14,
+        lineHeight: 20,
+        color: c.roomInk3,
+        paddingVertical: 18,
+      }}
+    >
+      {children}
+    </Text>
+  );
+}
+
+/** The hint under a section label — the design's `.m2p-hint`. */
+export function V2Hint({ children }: { children: string }) {
+  const { c, font } = useV2Theme();
+  return (
+    <Text style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.roomInk3, marginTop: -4 }}>
+      {children}
+    </Text>
+  );
+}
+
 /** One person on a v2 screen — the design's `M2PersonRow`: colour-stable
  * avatar · name · sub-line · an optional note, with whatever the screen wants
- * on the right. */
+ * on the right.
+ *
+ * The design's own right-hand slot is a stage dot plus a short line
+ * (`<u><s/>{right}</u>`); pass `rightText` and `dot` for that, or `right` for
+ * anything else (the Prayer log puts a button there). */
 export function V2PersonRow({
   name,
   colorSeed,
   sub,
   note,
   right,
+  rightText,
+  dot,
+  flat,
   onPress,
 }: {
   name: string;
@@ -247,6 +378,12 @@ export function V2PersonRow({
   sub?: string;
   note?: string;
   right?: React.ReactNode;
+  rightText?: string;
+  /** The stage dot beside `rightText` — resolve it from `stageToneKey`. */
+  dot?: string;
+  /** Drop the row's own card, for when it sits INSIDE one — the design's
+   * `.m2j-row .m2p-row{background:none;box-shadow:none;border-radius:0}`. */
+  flat?: boolean;
   onPress?: () => void;
 }) {
   const { c, font, radius } = useV2Theme();
@@ -258,12 +395,12 @@ export function V2PersonRow({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 13,
-        backgroundColor: c.card,
-        borderRadius: radius.row,
+        backgroundColor: flat ? 'transparent' : c.card,
+        borderRadius: flat ? 0 : radius.row,
         paddingVertical: 14,
         paddingHorizontal: 16,
         minHeight: 64,
-        marginTop: 9,
+        marginTop: flat ? 0 : 9,
         opacity: pressed ? 0.85 : 1,
       })}
     >
@@ -300,6 +437,17 @@ export function V2PersonRow({
         )}
       </View>
       {right}
+      {!right && !!rightText && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 108 }}>
+          {!!dot && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />}
+          <Text
+            style={{ fontFamily: font.semi, fontSize: 12, color: c.cardInk3, textAlign: 'right', flexShrink: 1 }}
+            numberOfLines={2}
+          >
+            {rightText}
+          </Text>
+        </View>
+      )}
     </Pressable>
   );
 }

@@ -7,6 +7,7 @@ import {
   daysSince,
   lastTouchByContact,
   parseMs,
+  personalContactIdsOf,
   type Contact,
   type Leader,
   type Stage,
@@ -14,6 +15,7 @@ import {
 } from '@cisa/core';
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
+import { subscribeUserPreferences } from './data/userPreferences';
 
 export interface JourneyStage {
   id: string;
@@ -30,6 +32,7 @@ export function useJourneyData(uid: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
+  const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -49,12 +52,22 @@ export function useJourneyData(uid: string | null) {
     );
     const unsubStages = subscribeStages(setStages, (e) => onLoadError(e, 'stages'));
     const unsubTouches = subscribeTouches(setTouches, (e) => onLoadError(e, 'touches'));
+    // The v2 screen puts the people in my care at the top of every step.
+    const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
+      setPrefContactIds(prefs.personalContactIds ?? null),
+    );
     return () => {
       unsubContacts();
       unsubStages();
       unsubTouches();
+      unsubPrefs();
     };
   }, [uid]);
+
+  const personalContactIds = useMemo(
+    () => personalContactIdsOf(prefContactIds, contacts, uid),
+    [prefContactIds, contacts, uid],
+  );
 
   const stageLabels = useMemo(() => new Set(stages.map((s) => s.label)), [stages]);
 
@@ -88,13 +101,18 @@ export function useJourneyData(uid: string | null) {
   const items: Leader[] = useMemo(() => {
     const pool =
       activeStage.id === UNASSIGNED.id ? unmappedContacts : contacts.filter((c) => c.stage === activeStage.label);
-    return pool.map((c) => {
-      const touch = touchMap.get(c.id);
-      const ms = touch?.ms ?? parseMs(c.createdAt);
-      const days = ms == null ? Infinity : daysSince(ms);
-      return { contact: c, days, note: (touch?.note || c.notes || '').trim() };
-    });
-  }, [activeStage, contacts, unmappedContacts, touchMap]);
+    return pool
+      .map((c) => {
+        const touch = touchMap.get(c.id);
+        const ms = touch?.ms ?? parseMs(c.createdAt);
+        const days = ms == null ? Infinity : daysSince(ms);
+        return { contact: c, days, note: (touch?.note || c.notes || '').trim() };
+      })
+      .sort((a, b) => {
+        const mine = Number(personalContactIds.has(b.contact.id)) - Number(personalContactIds.has(a.contact.id));
+        return mine || a.contact.name.localeCompare(b.contact.name);
+      });
+  }, [activeStage, contacts, unmappedContacts, touchMap, personalContactIds]);
 
   return {
     stages,
@@ -104,6 +122,7 @@ export function useJourneyData(uid: string | null) {
     setActiveIndex,
     activeStage,
     items,
+    personalContactIds,
     totalCount: contacts.length,
     loading,
     error,
