@@ -15,6 +15,9 @@ import {
   groupCreatedSystemMessage,
   membersAddedSystemMessage,
   memberLeftSystemMessage,
+  chatRowPreview,
+  chatKindNote,
+  messagesScreenNote,
   type ChatUserSummary,
 } from '../src/chat';
 import type { AppUser, ChatMessage, ChatRoom } from '../src/types';
@@ -258,5 +261,37 @@ describe('canPostToRoom', () => {
   it('lets an admin post in any non-announcement room they can read', () => {
     // Mirrors the rules' admin read/write bypass on chatRooms.
     expect(canPostToRoom(room({ type: 'group', memberIds: ['a', 'b'] }), 'boss', true)).toBe(true);
+  });
+});
+
+describe('mobile v2 Messages copy', () => {
+  it('prefixes a row preview with You, or the sender\'s first name', () => {
+    const withLast = (senderId: string, senderName: string) =>
+      room({ lastMessage: { text: 'see you there', senderId, senderName, timestamp: NOW } });
+    expect(chatRowPreview(withLast('me', 'Me Myself'), 'me')).toBe('You: see you there');
+    expect(chatRowPreview(withLast('them', 'Ana Beltrán'), 'me')).toBe('Ana: see you there');
+  });
+
+  it('says nothing for a room nobody has written in', () => {
+    expect(chatRowPreview(room(), 'me')).toBe('');
+  });
+
+  it('falls back to Someone when the stored sender name is blank', () => {
+    const r = room({ lastMessage: { text: 'hi', senderId: 'x', senderName: '', timestamp: NOW } });
+    expect(chatRowPreview(r, 'me')).toBe('Someone: hi');
+  });
+
+  it('names the kind of room, and stays quiet for a direct chat', () => {
+    expect(chatKindNote(room({ type: 'announcement' }))).toBe('Announcements');
+    expect(chatKindNote(room({ type: 'group', memberIds: ['a', 'b', 'c', 'd'] }))).toBe('4 people');
+    expect(chatKindNote(room({ type: 'group', memberIds: ['a'] }))).toBe('1 person');
+    expect(chatKindNote(room())).toBe('');
+  });
+
+  it('reports what is new, else how many conversations there are', () => {
+    expect(messagesScreenNote(7, 0)).toBe('7');
+    expect(messagesScreenNote(7, 3)).toBe('3 new');
+    expect(messagesScreenNote(1, 1)).toBe('1 new');
+    expect(messagesScreenNote(0, 0)).toBe('0');
   });
 });

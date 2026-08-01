@@ -1,25 +1,24 @@
-// Live data for the native Messages room list — mirrors the subscriptions in
-// web's src/views/Messages.tsx + src/components/modals/CreateChatModal.tsx.
-// Also backs the "More" tab's unread-room-count badge (same double-listener
-// pattern already accepted for Notifications' badge).
+// Live data for the native Messages room list — mirrors the `chatRooms`
+// subscription in web's src/views/Messages.tsx. Also backs the tab bar's
+// unread-room-count badge (same double-listener pattern already accepted for
+// Notifications' badge).
+//
+// Starting a conversation is no longer among the things this hook does: mobile
+// v2 has no create affordance on either the member or the staff list (the
+// design's `M2Messages` is a list of what you're already part of), so the
+// create/search plumbing came out with the Material sheet that used it.
 import { useEffect, useMemo, useState } from 'react';
-import { filterChatUsers, filterRooms, isRoomUnread, type AppUser, type ChatRoom } from '@cisa/core';
+import { filterRooms, isRoomUnread, type AppUser, type ChatRoom } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
-import {
-  createAnnouncementRoom,
-  createGroupChat,
-  getOrCreateDirectChat,
-  subscribeChatRooms,
-} from './data/chat';
+import { subscribeChatRooms } from './data/chat';
 import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
 
 export function useMessagesData() {
-  const { uid, role, user } = useAuth();
+  const { uid, role } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const reads = useChatReads();
@@ -54,42 +53,13 @@ export function useMessagesData() {
     return map;
   }, [users]);
 
-  const visibleRooms = useMemo(() => filterRooms(rooms, uid, usersCache, search), [rooms, uid, usersCache, search]);
-
-  const candidateUsers = useMemo(() => filterChatUsers(users, uid, ''), [users, uid]);
+  // Still `filterRooms` with an empty query: besides searching, it also strips
+  // the `cisa-` test-fixture rooms out of the list.
+  const visibleRooms = useMemo(() => filterRooms(rooms, uid, usersCache, ''), [rooms, uid, usersCache]);
 
   const isUnread = (room: ChatRoom) => isRoomUnread(room, uid, uid ? reads.getLastRead(uid, room.id) : null);
 
   const unreadCount = useMemo(() => rooms.filter(isUnread).length, [rooms, uid, reads]);
 
-  return {
-    rooms: visibleRooms,
-    usersCache,
-    candidateUsers,
-    search,
-    setSearch,
-    unreadCount,
-    isUnread,
-    loading,
-    error,
-    // The firestore.rules gate on creating an announcement room, so the sheet
-    // only offers the tab when the write would actually land.
-    canAnnounce: isAdmin,
-
-    startDirectChat: (targetUser: AppUser): Promise<string> => {
-      if (!uid) return Promise.reject(new Error('not signed in'));
-      return getOrCreateDirectChat(
-        { uid, displayName: user?.displayName || 'Member' },
-        { uid: targetUser.uid, displayName: targetUser.displayName },
-      );
-    },
-    createGroup: (groupName: string, memberUids: string[]): Promise<string> => {
-      if (!uid) return Promise.reject(new Error('not signed in'));
-      return createGroupChat(groupName, memberUids, { uid, displayName: user?.displayName || 'Member' });
-    },
-    createAnnouncement: (name: string, memberUids: string[]): Promise<string> => {
-      if (!uid) return Promise.reject(new Error('not signed in'));
-      return createAnnouncementRoom(name, memberUids, { uid, displayName: user?.displayName || 'Member' });
-    },
-  };
+  return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading, error };
 }

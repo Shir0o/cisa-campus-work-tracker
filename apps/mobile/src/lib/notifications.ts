@@ -41,14 +41,6 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   return requested.status === 'granted';
 }
 
-/** Read-only permission check for a status row — never prompts. */
-export async function getNotificationPermissionStatus(): Promise<
-  'granted' | 'denied' | 'undetermined' | 'unsupported'
-> {
-  if (IS_WEB) return 'unsupported';
-  return (await Notifications.getPermissionsAsync()).status;
-}
-
 /** Best-effort remote Expo push token. Degrades to `null` (dev-only warning,
  * no throw) when `extra.eas.projectId` is absent — mirrors the Firebase API
  * key guard convention in src/lib/firebase.ts. */

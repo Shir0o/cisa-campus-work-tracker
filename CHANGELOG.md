@@ -7,6 +7,39 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — The Board · Messages · Settings in the design's language.**
+  The last three screens the trainee's ☰ drawer and the full-timer's More list
+  reach no longer drop into a Material screen mid-app. **The Board** is the
+  pages grouped as they already group, each row a date block · title ·
+  "time · place · *who's leading*" · audience pill, opening onto the page
+  itself and a foot naming who keeps it — `facilitatorId` has been stored since
+  Session 3 and shown nowhere, and a new `useFullTimerNames` finally resolves
+  it. **Messages** is the conversations you're part of, newest first, and a
+  thread with a group sender chip and "Open {First}'s page →" in a DM.
+  **Settings** is one screen again, as the design has it: `/queue-settings`
+  folded back in, with the queue blocks shown only to someone who has a queue,
+  so a full-timer gets the me block, the care line, *How it looks* and the
+  foot. New pure `boardRowLine` / `boardKeeperFoot` / `boardCountNote` /
+  `AUDIENCE_TONE_KEY`, `chatRowPreview` / `chatKindNote` / `messagesScreenNote`,
+  `settingsCareLine` / `settingsFoot` / `caredForBy`, `onCampusNowLine` and
+  `contactIdForEmail` in `@cisa/core` (412 → 430 tests).
+
+  **Following the design strictly costs working capability this time, not just
+  surfaces.** Board pages are read-only on the phone: the admin WebView editor,
+  pinning and the Trash entry point are gone (the `/coordination/trash` route
+  still works, it just isn't linked). Messages loses New conversation, chat
+  details, invite, leave and search — **a trainee now has no way to open a
+  conversation**, only to reply in one. Settings loses team management
+  (approve, invite, change role, remove access), the roles reference and the
+  notifications card — **a new signup can now only be approved from the desktop
+  site**, which is what the screen's own foot line says. No notification opt-out
+  was lost: the card only ever offered "Enable" and "Open Settings", and push
+  registration is wired independently of it.
+
+  Two of the design's affordances are **blocked rather than dropped**:
+  per-message reactions and the "kept" pin need fields `ChatMessage` doesn't
+  carry, and `firestore.rules` makes a sent message immutable, so both would
+  need a schema change *and* a rules deploy.
 - **Mobile v2 — People · The Journey · Gatherings in the design's language.**
   The three screens the trainee's ☰ drawer and the full-timer's More list reach
   no longer drop into a Material screen mid-app. **People** is a search over two
@@ -44,6 +77,12 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   `FtCarryRow` gained a `contactId` so a row can open the person's page.
 
 ### Changed
+- **Mobile — `/queue-settings` folded into `/settings`.** The separate "Your
+  queue" screen existed only because the Material `/settings` owned "How it
+  looks" and who you are; now that `/settings` is the design's one settings
+  screen, the split has no reason left. *Everything today → How today is built*
+  and the old trainee-only row both land on `/settings`, and
+  `app/queue-settings.tsx` is gone.
 - **Mobile v2 — the trainee's queue chrome caught up with the design.** The
   meta row is now ☰ · "Today · N to look after" · "P of N", and the counter
   spans the whole day (what's left plus what's already been looked after)

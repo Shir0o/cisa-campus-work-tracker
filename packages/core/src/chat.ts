@@ -3,6 +3,7 @@
 // getRoomName/getRoomPhoto/isUnread/groupMessagesByDay/filteredRooms helpers
 // and src/components/modals/CreateChatModal.tsx's user filter. The Firestore
 // reads/writes live in ./data/chat.ts; this module never touches Firestore.
+import { firstName } from "./history";
 import { parseMs } from "./myday";
 import type { AppUser, ChatAttachment, ChatMessage, ChatRoom } from "./types";
 
@@ -168,4 +169,34 @@ export function membersAddedSystemMessage(inviterName: string, addedNames: strin
 
 export function memberLeftSystemMessage(name: string): string {
   return `${name} left the group`;
+}
+
+// ── Mobile v2 copy (the design's `M2Messages`) ──────────────────────────────
+// The conversation list is three lines per row and nothing else, so each line
+// has to carry its weight. Tested here so the row and the thread head agree.
+
+/** A room row's second line: "You: see you there" / "Ana: see you there".
+ *  Only the sender's first name — a full name eats the preview. */
+export function chatRowPreview(room: ChatRoom, currentUid: string | null | undefined): string {
+  const last = room.lastMessage;
+  if (!last) return "";
+  const who = last.senderId === currentUid ? "You" : firstName(last.senderName);
+  return `${who}: ${last.text}`;
+}
+
+/** What kind of room this is, for the row's third line and the thread's note.
+ *  A direct chat says nothing — the other person's name already said it. */
+export function chatKindNote(room: ChatRoom): string {
+  if (room.type === "announcement") return "Announcements";
+  if (room.type === "group") {
+    const n = room.memberIds.length;
+    return `${n} ${n === 1 ? "person" : "people"}`;
+  }
+  return "";
+}
+
+/** The count beside the Messages title — what's new if anything is, else how
+ *  many conversations there are. */
+export function messagesScreenNote(total: number, unread: number): string {
+  return unread > 0 ? `${unread} new` : String(total);
 }
