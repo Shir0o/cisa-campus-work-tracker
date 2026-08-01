@@ -935,7 +935,7 @@ forces the two real prerequisites (auth + live data) through one concrete path.
   Simulator, never automated component tests), so it's not a new shortfall
   specific to this feature.
 
-### 🟡 Mobile v2 — the role apps (all four shipped, still catching up to the design)
+### 🟡 Mobile v2 — the role apps (every screen is v2; the sheets and the tint are left)
 The design project (`019e2501-…`, `MOBILE-V2.md`) rebuilt mobile from scratch
 with the **trainee as the primary user**: not a dashboard, a full-screen focus
 queue, with a widgets home beside it for the full-timer. #168 ported the queue
@@ -1213,12 +1213,88 @@ itself; this section tracks the port against the design as it keeps moving.
       address they signed up with (`contactIdForEmail`, tested) and the listener
       is only paid for on a direct room. The button therefore appears exactly
       when the person you're messaging is also on the roster under that address.
-- [ ] **Contact detail in the v2 language.** The design's `M2Contact`
-      (`views/mobile/contact.jsx`): the people-first hero, Text / Call / Log, and
-      segmented **Story · Prayers · Alongside** with `M2PrayerSheet` and the
-      thread compose. The last screen still rendering a Field-notes view inside
-      the mobile app. The sheets are still Material too, including the one
-      People's ＋ New opens.
+- [x] ~~**Contact detail in the v2 language**~~ — the design's `M2Contact`
+      (`views/mobile/contact.jsx`), and the last screen in the app that still
+      dropped into a Field-notes view mid-flight. `app/contact/[contactId].tsx`
+      is now params + the `canAccessRoute` guard over
+      `components/contact/ContactScreen.tsx`, standing in `roomForRole(role)`:
+      a back row (+ who's looking after them) · a white hero (avatar, name,
+      year · major, stage dot + "You connected …", "Last time: …") ·
+      **Text / Call / Log** · segmented **Story · Prayers · Alongside**.
+      - **Story** — the logged conversations newest first, each expanding to its
+        own thread ("Alongside · N" / "Think this through together"), then one
+        "Details, notes, how to reach them" disclosure carrying what the Overview
+        tab held, read-only.
+      - **Prayers** — "Pray for {First}" opens the v2 `ContactPrayerSheet`
+        (`M2PrayerSheet`, the double-`Room` recipe `MoveStepSheet` established);
+        open prayers get "I prayed just now" + "Answered", then a quiet *Looking
+        back* group.
+      - **Alongside** — every message on the person, contact-level AND
+        interaction-level merged by time, with reactions and a compose whose
+        kinds shift by viewer.
+      New pure `contactCareLine` / `contactConnectedLine` / `interactionSnippet` /
+      `lastTimeLine` / `storyRowLine` / `splitContactPrayers` / `prayerCardKicker` /
+      `mergedContactThread` / `composeKindsFor` in `contactDetail.ts` and a
+      `v2Label` on `THREAD_KINDS` (core 430 → 458). The v2 kit gained `V2Seg`
+      (the design's `.m2c-seg`; nothing segmented existed) and `V2TextArea`
+      (`.m2-ta`), and `V2Input` picked up the tint + hairline the design gives
+      both — without it the field vanishes on a sheet, whose surface is already
+      `card`.
+
+      **Bug found and fixed on the way, in both directions:**
+      `PrayerRecord.answeredAt` is **display text, not a timestamp** — the web app
+      writes `toLocaleDateString("en-US", {month:"short", day:"numeric"})` ("Jul 13")
+      and prints it straight back (`src/components/landing/PrayerRows.tsx`).
+      Dating a card by it lands in the year 2001; a real prayer rendered
+      "1307 weeks ago". `prayerCardKicker` now only ever *shows* it, and
+      `markPrayerAnswered` writes the same shape rather than an ISO string, which
+      would have surfaced as one on the desktop site. The format is matched, not
+      fixed — fixing it is a web-app change.
+
+      **Strict design fidelity was the user's call for the fourth time, and here
+      it costs the most working capability yet.** The design has three tabs;
+      this screen had six plus an admin edit form. Gone from the phone:
+      **Discussion** (threaded team comments on a contact — `addComment` had no
+      other caller), the per-contact **History** timeline, admin **Edit / Delete
+      contact**, **editing or deleting a logged conversation** (the design's Story
+      is a read-only record, so the undo-delete Snackbar window from #160/#161
+      goes with it), and **tag add/remove**. All of it still works on the desktop
+      site, which is what the design's own Settings foot says of the roster and
+      everything admin. Logging moved to where the design puts it: the hero's
+      **Log**, not a composer inside a tab.
+      `useContactDetailData` dropped the `comments` and `activities`
+      subscriptions and the writes that went with them — two fewer live listeners
+      per open profile. Their thin wrappers (`data/comments.ts`,
+      `subscribeContactActivities`, `updateContact`, `updateContactTags`,
+      `deleteContact`, `updateInteraction`, `deleteInteraction`) are left on disk
+      unreferenced by mobile, as `LandingTrainee` and `components/myday/*` were.
+
+      **Four substitutions, each documented at its call site.** (1) `PrayerRecord`
+      has no `tags`, so the sheet's "Part of life" chips are dropped and its two
+      fields concatenate into `burden`. (2) It has no `prayedBy` either, so
+      "I prayed just now" is device-local off `useQueueState` + `prayerCardId`,
+      exactly as the full-timer's home and the queue's prayer card already are —
+      which also means the design's "{Name} is carrying this too" can't be built.
+      (3) A `Contact` has no `owner`: "In your care" is `personalContactIdsOf`,
+      and the other branch says "{First} added them" rather than "cares for
+      them", matching People's own right-hand line. (4) An `Interaction` has one
+      `content` field where the design's mock splits `title` from `body`, so a
+      Story card is the kicker line and then the staffer's prose, and the hero
+      quotes the first sentence **as written** — lowercasing it, as the design
+      does to its short titles, would mangle the names inside it.
+
+      **Still Material: the log sheet.** The hero's Log opens `QuickCaptureSheet`
+      with `initialContact`, which is exactly what the design's `M2LogSheet
+      init={{contact}}` does, but wearing Material chrome. Restyling the sheets
+      (this one and the one People's ＋ New opens) stays the open item below.
+      One more adaptation the design didn't need: its person screen stands on
+      paper, so a near-black chosen chip reads; ours stands in the role's room, so
+      Alongside's composer (which sits on the room, not on a card) inverts the
+      pair the way `V2Seg` above it does.
+- [ ] **The sheets in the v2 language.** `QuickCaptureSheet` (the design's
+      `M2LogSheet`) and `AddContactSheet`, both still Material, reached from the
+      person screen's **Log**, the queue's ＋, the full-timer's "Log a moment" and
+      People's ＋ New.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now

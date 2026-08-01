@@ -294,7 +294,11 @@ export function V2RowCard({
   );
 }
 
-/** The design's `.m2-input` — one text field on the room. */
+/** The design's `.m2-input` — one text field.
+ *
+ * The tint and hairline are the design's own `.m2-input, .m2-ta` rule, shared
+ * with `V2TextArea` below. They matter on a SHEET, where the surface behind the
+ * field is already `card` and a borderless one disappears into it. */
 export function V2Input({
   value,
   onChangeText,
@@ -316,12 +320,112 @@ export function V2Input({
         minHeight: 48,
         paddingHorizontal: 16,
         borderRadius: radius.note,
-        backgroundColor: c.card,
+        backgroundColor: c.field,
+        borderWidth: 1.5,
+        borderColor: c.border,
         fontFamily: font.semi,
         fontSize: 14.5,
         color: c.cardInk,
       }}
     />
+  );
+}
+
+/** The design's `.m2-ta` — the taller sibling of `V2Input`, for the words
+ * someone actually writes (a prayer's context, a thread message). */
+export function V2TextArea({
+  value,
+  onChangeText,
+  placeholder,
+  minHeight = 104,
+  autoFocus,
+}: {
+  value: string;
+  onChangeText: (next: string) => void;
+  placeholder: string;
+  minHeight?: number;
+  autoFocus?: boolean;
+}) {
+  const { c, font, radius } = useV2Theme();
+  return (
+    <TextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      placeholderTextColor={c.cardInk3}
+      multiline
+      autoFocus={autoFocus}
+      textAlignVertical="top"
+      style={{
+        minHeight,
+        paddingHorizontal: 15,
+        paddingVertical: 14,
+        borderRadius: radius.note,
+        backgroundColor: c.field,
+        borderWidth: 1.5,
+        borderColor: c.border,
+        fontFamily: font.semi,
+        fontSize: 15,
+        lineHeight: 21,
+        color: c.cardInk,
+      }}
+    />
+  );
+}
+
+/** The design's `.m2c-seg` — the person screen's Story · Prayers · Alongside
+ * switch. It rides on the ROOM (between the hero and the list), so the resting
+ * pill is the room's chip tint and the chosen one is the room's inverse, the
+ * same pair the ☰/＋ chrome uses. Counts are quiet, and hidden at zero. */
+export function V2Seg<T extends string>({
+  value,
+  onChange,
+  items,
+}: {
+  value: T;
+  onChange: (next: T) => void;
+  items: { id: T; label: string; count?: number }[];
+}) {
+  const { c, font } = useV2Theme();
+  return (
+    <View style={{ flexDirection: 'row', gap: 6, marginTop: 16, marginBottom: 12 }}>
+      {items.map((item) => {
+        const on = item.id === value;
+        return (
+          <Pressable
+            key={item.id}
+            onPress={() => onChange(item.id)}
+            style={({ pressed }) => ({
+              flex: 1,
+              minHeight: 44,
+              borderRadius: 14,
+              backgroundColor: on ? c.inverse : c.roomChip,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: on ? c.onInverse : c.roomInk2 }}>
+              {item.label}
+            </Text>
+            {!!item.count && (
+              <Text
+                style={{
+                  fontFamily: font.bold,
+                  fontSize: 11,
+                  opacity: 0.6,
+                  color: on ? c.onInverse : c.roomInk2,
+                }}
+              >
+                {item.count}
+              </Text>
+            )}
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 

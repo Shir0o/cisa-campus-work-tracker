@@ -36,15 +36,19 @@ export const THREAD_REACTIONS = ["🙏", "❤️", "🌱", "✅"] as const;
 
 // Each kind gets its own tone + label. Icons live in the Thread component (so
 // this stays free of JSX). nudge = a follow-up reminder, rendered distinctly.
+//
+// `v2Label` is the same kind said in the mobile v2 voice (the design's
+// `M2C_THREAD_KIND`, views/mobile/contact.jsx) — it sits alongside `label`
+// rather than replacing it, so the Material callers keep the terser words.
 export const THREAD_KINDS: Record<
   ThreadKind,
-  { label: string; tone: ThreadTone; verb: string }
+  { label: string; v2Label: string; tone: ThreadTone; verb: string }
 > = {
-  note: { label: "Note", tone: "accent", verb: "noted" },
-  comment: { label: "Comment", tone: "teal", verb: "commented" },
-  question: { label: "Question", tone: "amber", verb: "asked" },
-  encouragement: { label: "Encourage", tone: "violet", verb: "encouraged" },
-  nudge: { label: "Follow-up", tone: "warn", verb: "nudged" },
+  note: { label: "Note", v2Label: "Note", tone: "accent", verb: "noted" },
+  comment: { label: "Comment", v2Label: "Wrote back", tone: "teal", verb: "commented" },
+  question: { label: "Question", v2Label: "A question", tone: "amber", verb: "asked" },
+  encouragement: { label: "Encourage", v2Label: "Encouragement", tone: "violet", verb: "encouraged" },
+  nudge: { label: "Follow-up", v2Label: "Follow-up", tone: "warn", verb: "nudged" },
 };
 
 const norm = (v: string | null | undefined): string | null => v ?? null;
