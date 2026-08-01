@@ -1,40 +1,36 @@
-// Live data for the Contact Detail screen — the contact doc + stages plus
-// its interactions/comments/activities/prayers/threads subcollections, and
-// the write actions each tab needs. Mirrors
-// src/components/modals/ContactDetailsModal.tsx's subscriptions/handlers.
+// Live data for the person screen — the contact doc + stages plus its
+// interactions/prayers/threads subcollections, and the writes its three tabs
+// need.
+//
+// It was written for the Material six-tab screen (ported from
+// src/components/modals/ContactDetailsModal.tsx). The v2 port cut Discussion,
+// History and the admin edit form, so the comments/activities subscriptions and
+// the edit/tag/comment/interaction-edit writes went with them — they had no
+// other caller. The shared modules behind them (data/comments.ts, the tag and
+// contact-edit functions) are untouched; the desktop site still uses them.
 import { useEffect, useMemo, useState } from 'react';
 import {
+  personalContactIdsOf,
   traineesOf,
   walkingRecipient,
-  type Comment,
   type Contact,
-  type ContactEditFields,
-  type Hist,
-  type Interaction,
   type PrayerRecord,
   type Stage,
   type ThreadKind,
   type ThreadMessage,
+  type Interaction,
 } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, logActivity, OperationType } from './firebase';
+import { subscribeContact, subscribeStages } from './data/contacts';
+import { addInteraction as addInteractionApi, subscribeInteractions } from './data/interactions';
 import {
-  deleteContact as deleteContactApi,
-  subscribeContact,
-  subscribeStages,
-  updateContact as updateContactApi,
-  updateContactTags as updateContactTagsApi,
-} from './data/contacts';
-import {
-  addInteraction as addInteractionApi,
-  deleteInteraction as deleteInteractionApi,
-  subscribeInteractions,
-  updateInteraction as updateInteractionApi,
-} from './data/interactions';
-import { addComment as addCommentApi, subscribeComments } from './data/comments';
-import { subscribeContactActivities } from './data/activities';
-import { addPrayer as addPrayerApi, subscribeContactPrayers } from './data/prayers';
+  addPrayer as addPrayerApi,
+  subscribeContactPrayers,
+  updatePrayerStatus,
+} from './data/prayers';
 import { addThreadMessage, subscribeThreads, toggleReaction as toggleReactionApi } from './data/threads';
+import { subscribeUserPreferences } from './data/userPreferences';
 
 export function useContactDetailData(contactId: string) {
   const { uid, user } = useAuth();
@@ -47,13 +43,10 @@ export function useContactDetailData(contactId: string) {
 
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [interactionsLoading, setInteractionsLoading] = useState(true);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [commentsLoading, setCommentsLoading] = useState(true);
-  const [activities, setActivities] = useState<Hist[]>([]);
-  const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
+  const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
 
   useEffect(() => {
     if (!uid || !contactId) return;
@@ -80,22 +73,6 @@ export function useContactDetailData(contactId: string) {
         },
         (e) => onLoadError(e, `contacts/${contactId}/interactions`),
       ),
-      subscribeComments(
-        contactId,
-        (list) => {
-          setComments(list);
-          setCommentsLoading(false);
-        },
-        (e) => onLoadError(e, `contacts/${contactId}/comments`),
-      ),
-      subscribeContactActivities(
-        contactId,
-        (list) => {
-          setActivities(list);
-          setActivitiesLoading(false);
-        },
-        (e) => onLoadError(e, 'activities'),
-      ),
       subscribeContactPrayers(
         contactId,
         (list) => {
@@ -105,6 +82,9 @@ export function useContactDetailData(contactId: string) {
         (e) => onLoadError(e, 'prayers'),
       ),
       subscribeThreads(contactId, setThreadMessages, (e) => onLoadError(e, `contacts/${contactId}/threads`)),
+      // "In your care" — the picker's choice, else the people I added. The same
+      // notion of ownership People, My Day and the full-timer's home all read.
+      subscribeUserPreferences(uid, (prefs) => setPrefContactIds(prefs.personalContactIds ?? null)),
     ];
 
     return () => unsubs.forEach((unsub) => unsub());
@@ -120,6 +100,11 @@ export function useContactDetailData(contactId: string) {
     viewerWalksWithAdder && contact?.createdByName ? `Alongside ${contact.createdByName.split(' ')[0]}` : 'Alongside';
   const threadRecipient = useMemo(() => walkingRecipient(uid, contact?.createdBy), [uid, contact?.createdBy]);
 
+  const inYourCare = useMemo(
+    () => (contact ? personalContactIdsOf(prefContactIds, [contact], uid).has(contact.id) : false),
+    [prefContactIds, contact, uid],
+  );
+
   return {
     contact,
     stages,
@@ -127,60 +112,20 @@ export function useContactDetailData(contactId: string) {
     error,
     interactions,
     interactionsLoading,
-    comments,
-    commentsLoading,
-    activities,
-    activitiesLoading,
     prayers,
     prayersLoading,
     threadMessages,
     walkLabel,
-
-    saveEdit: async (edits: ContactEditFields) => {
-      if (!contact) return;
-      await updateContactApi(contact, edits, by);
-    },
-
-    addTag: async (tag: string) => {
-      if (!contact) return;
-      const current = contact.tags ?? [];
-      if (current.includes(tag)) return;
-      await updateContactTagsApi(contact, [...current, tag], 'added', tag, by);
-    },
-
-    removeTag: async (tag: string) => {
-      if (!contact) return;
-      await updateContactTagsApi(contact, (contact.tags ?? []).filter((t) => t !== tag), 'removed', tag, by);
-    },
-
-    deleteContact: async () => {
-      if (!contact) return;
-      await deleteContactApi(contact);
-    },
+    inYourCare,
 
     addInteraction: async (input: { content: string; dateTime: string; type: string }) => {
       if (!contact || !uid) return;
       await addInteractionApi(contactId, contact.name, input, { uid, name: by.name, photoURL: by.photoURL });
     },
 
-    updateInteraction: async (interactionId: string, patch: { content: string; dateTime: string; type: string }) => {
-      if (!contact) return;
-      await updateInteractionApi(contactId, contact.name, interactionId, patch);
-    },
-
-    deleteInteraction: async (interaction: Interaction) => {
-      if (!contact) return;
-      await deleteInteractionApi(contactId, contact.name, interaction);
-    },
-
-    addComment: async (input: { text: string; parentId?: string | null }) => {
-      if (!contact || !uid) return;
-      await addCommentApi(contactId, contact, input, { uid, name: by.name, photoURL: by.photoURL });
-    },
-
-    // Prayer's data/prayers.ts wrapper stays a plain write (matching the Prayer
-    // tab's own addPrayer) — Contact Detail additionally logs it, since a new
-    // prayer here should surface live in this same screen's History tab.
+    // data/prayers.ts's wrapper stays a plain write (matching the Prayer tab's
+    // own addPrayer) — a prayer written down here is additionally logged, so it
+    // surfaces in "Looking back" and in the person's audit trail on the desk.
     addPrayer: async (input: { burden: string; context?: string }) => {
       if (!contact || !uid) return;
       const burden = [input.burden.trim(), input.context?.trim()].filter(Boolean).join('\n\n');
@@ -192,6 +137,27 @@ export function useContactDetailData(contactId: string) {
         targetType: 'contact',
         type: 'comment',
         description: input.burden.trim(),
+      });
+    },
+
+    // "Answered" on an open prayer. The design also lets you set one down
+    // unanswered; the person screen offers only the glad one, as it does.
+    //
+    // `answeredAt` is a DISPLAY string, not a timestamp — the web app writes
+    // "Jul 13" and prints it straight back (src/components/landing/PrayerRows.tsx),
+    // so an ISO string here would show up as one on the desktop site. The
+    // format is matched rather than fixed; changing it is a web-app change.
+    markPrayerAnswered: async (prayer: PrayerRecord) => {
+      if (!contact) return;
+      const answeredAt = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      await updatePrayerStatus(prayer.id, 'answered', by, null, answeredAt);
+      void logActivity({
+        action: 'marked a prayer answered for',
+        targetId: contactId,
+        targetName: contact.name,
+        targetType: 'contact',
+        type: 'comment',
+        description: prayer.burden,
       });
     },
 

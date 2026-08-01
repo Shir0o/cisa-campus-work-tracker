@@ -7,6 +7,44 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — the person screen in the design's language.** The last screen
+  in the phone app that still dropped into a Material view mid-flight. Tap
+  someone from People, from a queue card, from a DM's "Open {First}'s page →"
+  and the app now stays in the room it was in: a back row naming who's looking
+  after them, a white hero (avatar · name · year · major · stage dot · "You
+  connected …" · "Last time: …"), **Text / Call / Log**, and segmented
+  **Story · Prayers · Alongside**. Story is the logged conversations, each
+  expanding into its own thread, plus one read-only "Details, notes, how to
+  reach them" disclosure; Prayers opens a v2 prayer sheet and offers "I prayed
+  just now" and "Answered", with a quiet *Looking back* group; Alongside merges
+  every message on the person, contact-level and conversation-level, under a
+  compose whose kinds shift by who's writing. New pure `contactCareLine`,
+  `contactConnectedLine`, `interactionSnippet`, `lastTimeLine`, `storyRowLine`,
+  `splitContactPrayers`, `prayerCardKicker`, `mergedContactThread` and
+  `composeKindsFor` in `@cisa/core`, plus a `v2Label` on `THREAD_KINDS`
+  (430 → 458 tests). The v2 kit gained `V2Seg` and `V2TextArea`.
+
+  **Following the design strictly costs the most working capability of the four
+  passes.** The design's person screen has three tabs; this one had six plus an
+  admin edit form. Gone from the phone: **Discussion** (threaded team comments),
+  the per-contact **History** timeline, admin **Edit / Delete contact**,
+  **editing or deleting a logged conversation** — and with it the undo-delete
+  window — and **tag add/remove**. All of it still works on the desktop site.
+  Logging moved to where the design puts it: the hero's **Log** button rather
+  than a composer inside a tab. Two live Firestore listeners per open profile
+  went with the two dropped tabs.
+
+### Fixed
+- **A prayer's "answered" date is display text, and was being read as a
+  timestamp.** The web app writes `answeredAt` as `"Jul 13"` and prints it back
+  verbatim; parsing it as a date lands in the year 2001, so a real prayer on the
+  phone's new person screen read "1307 weeks ago". Prayer cards now only ever
+  *show* that field, dating themselves by when the burden was written down, and
+  marking a prayer answered from the phone writes the same short format the web
+  app does instead of an ISO string — which would otherwise have shown up as one
+  on the desktop site.
+
+### Added
 - **Mobile v2 — The Board · Messages · Settings in the design's language.**
   The last three screens the trainee's ☰ drawer and the full-timer's More list
   reach no longer drop into a Material screen mid-app. **The Board** is the
