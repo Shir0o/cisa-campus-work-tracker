@@ -20,6 +20,7 @@
 // recurring gatherings. The full-timer's room departs from it on purpose — its
 // "At a glance" tiles and week-ahead strip ARE direction 05.
 import { createContext, useContext, useMemo } from 'react';
+import { shellForRole, type AppRole } from '@cisa/core';
 import { useTheme } from './ThemeProvider';
 import type { ThemeMode } from './tokens';
 
@@ -315,6 +316,16 @@ const darkFt: V2Palette = {
 
 /** Which room a v2 screen is standing in. */
 export type V2Room = 'queue' | 'ft';
+
+/** The room a role stands in. The design forces navy on the full-timer's app
+ * alone (`m2 deck mem ft blue`); the trainee and both member roles share the
+ * green room, so only the FT shell maps to 'ft'.
+ *
+ * Screens that more than one role can reach — People, The Journey, Gatherings —
+ * read this rather than hard-coding a room. */
+export function roomForRole(role: AppRole | string | null | undefined): V2Room {
+  return shellForRole(role) === 'ft' ? 'ft' : 'queue';
+}
 
 export const v2Palettes: Record<V2Room, Record<ThemeMode, V2Palette>> = {
   queue: { light: lightV2, dark: darkV2 },

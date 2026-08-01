@@ -4,6 +4,7 @@ import {
   parseMs,
   daysSince,
   connectedLabel,
+  touchWords,
   getGreeting,
   agoLabel,
   lastTouchByContact,
@@ -56,6 +57,17 @@ describe('date helpers', () => {
     expect(connectedLabel(0)).toBe('Connected today');
     expect(connectedLabel(1)).toBe('Last connected yesterday');
     expect(connectedLabel(5)).toBe('Last connected 5 days ago');
+  });
+
+  it('says the same thing more briefly for a v2 row', () => {
+    expect(touchWords(0)).toBe('today');
+    expect(touchWords(1)).toBe('yesterday');
+    expect(touchWords(6)).toBe('6 days ago');
+    // 7–10 read as "last week" rather than rounding straight to "1 week ago"
+    expect(touchWords(7)).toBe('last week');
+    expect(touchWords(10)).toBe('last week');
+    expect(touchWords(21)).toBe('3 weeks ago');
+    expect(touchWords(Infinity)).toBe('not yet');
   });
 
   it('greets by time of day', () => {

@@ -24,6 +24,18 @@ export const connectedLabel = (d: number): string =>
       ? "Last connected yesterday"
       : `Last connected ${d} days ago`;
 
+/** The same fact, said briefly — the design's `m2TouchWords`
+ * (views/mobile/screens.jsx). It rides at the end of a v2 person row, where
+ * `connectedLabel`'s full sentence would not fit beside a name. */
+export const touchWords = (d: number): string => {
+  if (!Number.isFinite(d)) return "not yet";
+  if (d === 0) return "today";
+  if (d === 1) return "yesterday";
+  if (d < 7) return `${d} days ago`;
+  if (d < 11) return "last week";
+  return `${Math.round(d / 7)} weeks ago`;
+};
+
 export const getGreeting = (now: number = Date.now()): string => {
   const hour = new Date(now).getHours();
   if (hour < 12) return "Good morning";

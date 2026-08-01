@@ -1107,14 +1107,55 @@ itself; this section tracks the port against the design as it keeps moving.
 - [ ] **The navy room as a tint the trainee can pick** — the room itself is
       done (the full-timer home ported it as the `ft` room in `theme/v2.ts`);
       the design drives the choice from Tweaks, which has no app equivalent yet.
-- [ ] **People · The Journey · Gatherings · The Board · Messages · Settings ·
-      Contact detail in the v2 language.** The design mounts no Field-notes view
-      inside the mobile app at all (`M2People` / `M2Journey` / `M2Gatherings` /
-      `M2Board` / `M2Messages` / `M2Settings` / `M2Contact`); these still render
-      the Material screens, now reached through the right shell.
-      `components/v2/Widget.tsx` already has the `V2Screen` + `V2PersonRow`
-      shell they'll want (the design's `M2Screen` / `M2PersonRow`), built for
-      the Prayer log.
+- [x] ~~**People · The Journey · Gatherings in the v2 language**~~ — the design's
+      own `views/mobile/screens.jsx` trio, grouped that way because they share
+      one shell. `components/v2/Widget.tsx`'s `V2Screen` / `V2PersonRow` (built
+      for the Prayer log) gained what the design's `M2Screen` / `M2PersonRow`
+      also carry: an optional back row (People is a *tab* for the full-timer and
+      a *pushed* screen for the trainee — `isPushedScreen` decides), a
+      right-hand action, and the stage-dot-plus-line right side. Plus `V2Input`,
+      `V2Empty`, `V2Hint`, `V2RowCard` (the design's `.m2j-row` + `.m2j-mv` —
+      ONE card holding the person row and a hairline care action, which is why
+      `V2PersonRow` gained `flat`), and `roomForRole` in `theme/v2.ts`, since
+      all three screens are reachable by more than one role and must stand in
+      that role's room. `.m2-datebox` came out of `EndOfQueue` into
+      `components/v2/DateBox.tsx` now that Gatherings' "Coming up" needs it too.
+      - **People** — search, then *In your care* (longest since you talked,
+        first) and *Everyone else* (alphabetical, with who added them on the
+        right). New pure `splitDirectory` + `stageToneKey` in `directory.ts` and
+        `touchWords` in `myday.ts` (core 402 → 412 tests); `matchesSearch`
+        widened to the design's field set (name · major · year · hall · tags ·
+        notes).
+      - **The Journey** — the kanban as a horizontal step picker (the active
+        pill scrolled in with `scrollTo`, never `scrollIntoView` — the design's
+        own note), the people at that step with yours first, and a v2
+        `MoveStepSheet` ("now" on the step they're on).
+      - **Gatherings** — *Who we've missed* with a `sms:` action, *When we
+        gathered* with the roster expanding **in place** (the design's shape;
+        the `RosterSheet` modal is gone), *Show earlier · N more*, then *Coming
+        up*.
+
+      **Strict design fidelity was the user's call again, and it costs
+      surfaces:** People's stage-filter pills and its "N new / N overdue" hero,
+      The Journey's "Welcome someone new" button, and Gatherings' hero figures,
+      gathering-type filter and **CSV export** are all gone (`lib/exportCsv.ts`
+      with it — attendance was its only caller). Stage filtering is The
+      Journey's job in v2, and export is desktop work.
+
+      **Two substitutions, both carried forward rather than re-invented.**
+      (1) The design splits People on `c.owner === me`; a `Contact` has no owner
+      here, so "In your care" is `personalContactIdsOf` — the picker's choice,
+      else created-by-me — exactly as My Day and the full-timer's home read it.
+      (2) The design's *Who we've missed* is "absent in 3 of the last 4"; core's
+      tested `whoWeMissed` is "missed the last 2+", so the rule stays and the
+      hint copy says what it actually computes. Also dropped for want of a
+      field: the design prints each step's description under the picker, and
+      `Stage` carries only `{id, label, color, order}`.
+- [ ] **The Board · Messages · Settings · Contact detail in the v2 language.**
+      The design mounts no Field-notes view inside the mobile app at all
+      (`M2Board` / `M2Messages` / `M2Settings` / `M2Contact`); these four still
+      render the Material screens, now reached through the right shell. The
+      sheets are still Material too, including the one People's ＋ New opens.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { filterAndSortDirectory } from '../src/directory';
+import { filterAndSortDirectory, splitDirectory, stageToneKey } from '../src/directory';
 import type { Touch } from '../src/myday';
-import type { Contact } from '../src/types';
+import type { Contact, Stage } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime();
 const DAY_MS = 86_400_000;
@@ -36,6 +36,19 @@ describe('filterAndSortDirectory', () => {
     expect(filterAndSortDirectory(contacts, [], { search: 'biology', stageId: 'all' }, NOW).map((l) => l.contact.id)).toEqual(['a']);
     expect(filterAndSortDirectory(contacts, [], { search: 'south', stageId: 'all' }, NOW).map((l) => l.contact.id)).toEqual(['b']);
     expect(filterAndSortDirectory(contacts, [], { search: '', stageId: 'all' }, NOW)).toHaveLength(2);
+  });
+
+  it('also matches year, tags and notes (the v2 People search)', () => {
+    const contacts = [
+      contact({ id: 'a', name: 'Mei Lin', year: 'Sophomore' }),
+      contact({ id: 'b', name: 'Sam Cho', tags: ['soccer', 'transfer'] }),
+      contact({ id: 'c', name: 'Rio Diaz', notes: 'Met at the club fair' }),
+    ];
+    const ids = (search: string) =>
+      filterAndSortDirectory(contacts, [], { search, stageId: 'all' }, NOW).map((l) => l.contact.id);
+    expect(ids('sophomore')).toEqual(['a']);
+    expect(ids('transfer')).toEqual(['b']);
+    expect(ids('club fair')).toEqual(['c']);
   });
 
   it('filters by exact stage id, "all" bypasses the filter', () => {
@@ -77,5 +90,88 @@ describe('filterAndSortDirectory', () => {
     const result = filterAndSortDirectory(contacts, touches, { search: '', stageId: 'all' }, NOW);
     expect(result[0].contact.id).toBe('never');
     expect(result[0].days).toBe(Infinity);
+  });
+});
+
+describe('splitDirectory', () => {
+  const mineAndRest = (
+    contacts: Contact[],
+    personalIds: Set<string>,
+    touches: Touch[] = [],
+    search = '',
+  ) => {
+    const { mine, rest } = splitDirectory(contacts, touches, personalIds, search, NOW);
+    return { mine: mine.map((l) => l.contact.id), rest: rest.map((l) => l.contact.id) };
+  };
+
+  it('splits on the personal-contacts set', () => {
+    const contacts = [contact({ id: 'a' }), contact({ id: 'b' }), contact({ id: 'c' })];
+    expect(mineAndRest(contacts, new Set(['a', 'c']))).toEqual({ mine: ['a', 'c'], rest: ['b'] });
+  });
+
+  it('an empty personal set puts everyone in "everyone else"', () => {
+    const contacts = [contact({ id: 'a' }), contact({ id: 'b' })];
+    expect(mineAndRest(contacts, new Set())).toEqual({ mine: [], rest: ['a', 'b'] });
+  });
+
+  it('sorts mine longest-since-talked first and the rest alphabetically', () => {
+    const contacts = [
+      contact({ id: 'recent', name: 'Zoe' }),
+      contact({ id: 'stale', name: 'Ana' }),
+      contact({ id: 'other-z', name: 'Zeke' }),
+      contact({ id: 'other-a', name: 'Bo' }),
+    ];
+    const touches: Touch[] = [
+      touch({ contactId: 'recent', ms: NOW - DAY_MS }),
+      touch({ contactId: 'stale', ms: NOW - DAY_MS * 12 }),
+    ];
+    expect(mineAndRest(contacts, new Set(['recent', 'stale']), touches)).toEqual({
+      mine: ['stale', 'recent'],
+      rest: ['other-a', 'other-z'],
+    });
+  });
+
+  it('applies the search to both groups', () => {
+    const contacts = [
+      contact({ id: 'a', name: 'Mei Lin' }),
+      contact({ id: 'b', name: 'Sam Cho' }),
+      contact({ id: 'c', name: 'Mei Chen' }),
+    ];
+    expect(mineAndRest(contacts, new Set(['a', 'b']), [], 'mei')).toEqual({ mine: ['a'], rest: ['c'] });
+  });
+
+  it('reports days the same way the flat list does', () => {
+    const contacts = [contact({ id: 'a' })];
+    const touches: Touch[] = [touch({ contactId: 'a', ms: NOW - DAY_MS * 4 })];
+    const { mine } = splitDirectory(contacts, touches, new Set(['a']), '', NOW);
+    expect(mine[0].days).toBe(4);
+  });
+});
+
+describe('stageToneKey', () => {
+  const stages: Stage[] = ['Met', 'Connected', 'Growing', 'Rooted', 'Sending'].map((label, i) => ({
+    id: `s${i}`,
+    label,
+    color: '',
+    order: i,
+  }));
+
+  it('gives each stage a stable tone, in the design’s order', () => {
+    expect(stages.slice(0, 4).map((s) => stageToneKey(stages, s.label))).toEqual([
+      'ask',
+      'due',
+      'note',
+      'pray',
+    ]);
+  });
+
+  it('wraps past the fourth stage', () => {
+    expect(stageToneKey(stages, 'Sending')).toBe('ask');
+  });
+
+  it('falls back to "note" for an unknown or missing stage', () => {
+    expect(stageToneKey(stages, 'Nowhere')).toBe('note');
+    expect(stageToneKey(stages, undefined)).toBe('note');
+    expect(stageToneKey([], 'Met')).toBe('note');
   });
 });
