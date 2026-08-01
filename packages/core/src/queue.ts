@@ -428,6 +428,15 @@ export const hourLabel = (h: number): string => `${h % 12 === 0 ? 12 : h % 12}${
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** The settings screen's live read on the window: "Right now: you're in the
+ *  window." A window you can't tell the state of is worse than none, and the
+ *  design prints it right under the day/hour chips. */
+export function onCampusNowLine(w: OnCampusWindow = ON_CAMPUS_DEFAULT, now: number = Date.now()): string {
+  return isOnCampus(w, now)
+    ? "Right now: you're in the window."
+    : "Right now: you're outside the window.";
+}
+
 /** "Tue & Wed, 12pm–3pm" — the window in one line. */
 export function onCampusSummary(w: OnCampusWindow): string {
   if (w.days.length === 0) return "No days set";

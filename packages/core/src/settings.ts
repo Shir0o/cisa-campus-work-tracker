@@ -2,7 +2,8 @@
 // search/split derivation. Shared by web (inline in src/views/Settings.tsx)
 // and mobile. Icon/color selection stays out of this module, matching
 // feedback.ts/history.ts's convention.
-import { ROLE_LABELS, type AppRole } from "./permissions";
+import { firstName } from "./history";
+import { ROLE_LABELS, roleLabel, type AppRole } from "./permissions";
 import type { AppUser, Invitation } from "./types";
 
 export interface RoleOption {
@@ -105,4 +106,28 @@ export function splitTeamRoster(users: AppUser[], invitations: Invitation[], sea
 
 export function emailAlreadyRegistered(users: AppUser[], emailLower: string): boolean {
   return users.some((u) => !isTestAccount(u) && u.email.toLowerCase() === emailLower);
+}
+
+// ── Mobile v2 copy (the design's `M2Settings`) ──────────────────────────────
+// The phone's Settings is a short, honest page: who you are, how the app should
+// behave, and one line about what stays on the desktop. No roster, no admin.
+
+/** The line under the me block: "4 people in your care · 2 things looked after
+ *  today". A full-timer has no queue, so pass `null` and the second clause is
+ *  dropped rather than reported as zero. */
+export function settingsCareLine(people: number, handled: number | null): string {
+  const care = `${people} ${people === 1 ? "person" : "people"} in your care`;
+  if (handled === null) return care;
+  return `${care} · ${handled} ${handled === 1 ? "thing" : "things"} looked after today`;
+}
+
+/** The foot. The design says the quiet part out loud — the phone is not where
+ *  the team gets managed. */
+export function settingsFoot(role: AppRole | string | null): string {
+  return `The team roster and everything admin live on the desktop site. Your role here is a label: ${roleLabel(role)}.`;
+}
+
+/** "Ana cares for you", or nothing when nobody is named. */
+export function caredForBy(name: string | null | undefined): string {
+  return name ? `${firstName(name)} cares for you` : "";
 }

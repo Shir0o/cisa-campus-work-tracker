@@ -156,7 +156,7 @@ export function QueueScreen() {
             setShowAll(false);
           }}
           onBack={() => setShowAll(false)}
-          onOpenSettings={() => router.push('/queue-settings')}
+          onOpenSettings={() => router.push('/settings')}
         />
       </SafeAreaView>
     );

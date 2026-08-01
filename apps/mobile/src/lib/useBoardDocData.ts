@@ -1,10 +1,13 @@
 // Live data for a single Board page — powers the native read-only detail
-// screen (non-admin roles; admins go through the WebView editor instead).
+// screen. Every role reads a page here now: mobile v2 has no editor at all
+// (writing a page is desktop work), so the old admin WebView fork is gone.
 import { useEffect, useMemo, useState } from 'react';
 import { canSeeBoardDoc, type BoardDoc } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeBoardDoc } from './data/board';
+import { boardLeaderName } from './useBoardListData';
+import { useFullTimerNames } from './useFullTimerNames';
 
 export function useBoardDocData(docId: string) {
   const { uid, role } = useAuth();
@@ -33,5 +36,8 @@ export function useBoardDocData(docId: string) {
   // can't see (matching the guard pattern used by journey.tsx/history.tsx).
   const allowed = useMemo(() => !doc || canSeeBoardDoc(role, doc), [doc, role]);
 
-  return { doc, loading, error, allowed };
+  const names = useFullTimerNames();
+  const keeperName = doc ? boardLeaderName(doc, names) : null;
+
+  return { doc, loading, error, allowed, keeperName };
 }

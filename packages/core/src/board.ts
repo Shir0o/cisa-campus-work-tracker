@@ -10,6 +10,8 @@
 // colors instead.
 
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
+import { firstName } from './history';
+import type { StageToneKey } from './directory';
 import type { AppRole } from './permissions';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
@@ -191,6 +193,16 @@ export const BOARD_AUDIENCE: Record<Audience, { label: string; sub: string; rank
 // Order shown in the audience picker (most open → most private).
 export const AUDIENCE_ORDER: Audience[] = ['everyone', 'trainees', 'team'];
 
+// The same three tiers as a mobile-v2 tone, so the audience pill on a Board row
+// is painted from the room's palette rather than a second colour vocabulary.
+// Deliberate parity with the Material AudienceBadge this replaces: team reads
+// as the most private (violet), everyone as the most open (green).
+export const AUDIENCE_TONE_KEY: Record<Audience, StageToneKey> = {
+  team: 'pray',
+  trainees: 'due',
+  everyone: 'note',
+};
+
 // A page with no audience defaults to the most private tier.
 export const audienceOf = (doc: Pick<BoardDoc, 'audience'>): Audience => doc.audience ?? 'team';
 
@@ -271,6 +283,30 @@ export const dayNum = (date: string): string => {
   const d = parseISO(date);
   return isValid(d) ? format(d, 'd') : '';
 };
+
+// ── Mobile v2 copy (the design's `M2Board` / `M2BoardDoc`) ───────────────────
+// The Board is read-only on the phone, so what a row and a page SAY is the whole
+// screen. Kept here, tested, so the list row and the open page can't drift.
+
+// The line under a Board row's title: "7pm · Kirkbride · Ana leading". Each
+// segment is optional — a page with none of the three shows no line at all.
+export const boardRowLine = (
+  doc: Pick<BoardDoc, 'time' | 'place'>,
+  leaderName?: string | null,
+): string =>
+  [doc.time, doc.place, leaderName ? `${firstName(leaderName)} leading` : null]
+    .map((s) => (s ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
+
+// The foot of an open page. Naming who keeps it matters more on a phone than on
+// the desktop, where the page is being written in front of you.
+export const boardKeeperFoot = (keeperName?: string | null): string =>
+  `${keeperName ? `${firstName(keeperName)} keeps this page.` : 'The team keeps this page.'} Writing happens on the desktop site — here you're reading.`;
+
+// The count beside the screen title.
+export const boardCountNote = (n: number): string =>
+  n === 0 ? 'No pages' : `${n} ${n === 1 ? 'page' : 'pages'}`;
 
 // Sort docs newest → oldest for the Pages list.
 export const docByDateDesc = (a: BoardDoc, b: BoardDoc) => b.date.localeCompare(a.date);

@@ -5,6 +5,9 @@ import {
   matchesTeamSearch,
   roleOptionsFor,
   splitTeamRoster,
+  settingsCareLine,
+  settingsFoot,
+  caredForBy,
 } from '../src/settings';
 import type { AppUser, Invitation } from '../src/types';
 
@@ -132,5 +135,34 @@ describe('emailAlreadyRegistered', () => {
   it('ignores test-fixture accounts', () => {
     const users = [user({ email: 'cisa-fulltimer@example.com' })];
     expect(emailAlreadyRegistered(users, 'cisa-fulltimer@example.com')).toBe(false);
+  });
+});
+
+describe('mobile v2 Settings copy', () => {
+  it('reports care and what was looked after today', () => {
+    expect(settingsCareLine(1, 1)).toBe('1 person in your care · 1 thing looked after today');
+    expect(settingsCareLine(4, 0)).toBe('4 people in your care · 0 things looked after today');
+    expect(settingsCareLine(4, 2)).toBe('4 people in your care · 2 things looked after today');
+  });
+
+  it('drops the second clause for someone with no queue', () => {
+    // A full-timer has no focus queue, so "0 things looked after" would be a
+    // lie about their day rather than a count.
+    expect(settingsCareLine(12, null)).toBe('12 people in your care');
+    expect(settingsCareLine(0, null)).toBe('0 people in your care');
+  });
+
+  it('ends the page on the role label, through roleLabel', () => {
+    expect(settingsFoot('admin')).toContain('Your role here is a label: Full-timer.');
+    expect(settingsFoot('manager')).toContain('Your role here is a label: Trainee.');
+    expect(settingsFoot(null)).toContain('Your role here is a label: Guest.');
+    expect(settingsFoot('admin')).toMatch(/^The team roster and everything admin live on the desktop site\./);
+  });
+
+  it('names who cares for you, or says nothing', () => {
+    expect(caredForBy('Ana Beltrán')).toBe('Ana cares for you');
+    expect(caredForBy(null)).toBe('');
+    expect(caredForBy('')).toBe('');
+    expect(caredForBy(undefined)).toBe('');
   });
 });

@@ -12,6 +12,11 @@ import {
   docSortOrder,
   mdPreview,
   mdOpenTasks,
+  boardRowLine,
+  boardKeeperFoot,
+  boardCountNote,
+  AUDIENCE_TONE_KEY,
+  AUDIENCE_ORDER,
   type BoardDoc,
 } from '../src/board';
 import { isExpiredTrash } from '../src/data/board';
@@ -136,5 +141,47 @@ describe('mdOpenTasks', () => {
     expect(mdOpenTasks('- [ ] one\n- [x] done\n- [ ] two')).toBe(2);
     expect(mdOpenTasks('no tasks here')).toBe(0);
     expect(mdOpenTasks(undefined)).toBe(0);
+  });
+});
+
+describe('mobile v2 Board copy', () => {
+  it('joins a row line from whichever of time, place and leader exist', () => {
+    expect(boardRowLine({ time: '7pm', place: 'Kirkbride' }, 'Ana Beltrán')).toBe(
+      '7pm · Kirkbride · Ana leading',
+    );
+    expect(boardRowLine({ time: '', place: 'Kirkbride' }, 'Ana Beltrán')).toBe('Kirkbride · Ana leading');
+    expect(boardRowLine({ time: '7pm', place: undefined }, null)).toBe('7pm');
+  });
+
+  it('returns an empty row line when there is nothing to say', () => {
+    // The caller hides the line rather than printing separators around nothing.
+    expect(boardRowLine({ time: undefined, place: undefined }, null)).toBe('');
+    expect(boardRowLine({ time: '  ', place: '' }, undefined)).toBe('');
+  });
+
+  it('names who keeps an open page, or the team when nobody is named', () => {
+    expect(boardKeeperFoot('Mei Tanaka')).toBe(
+      "Mei keeps this page. Writing happens on the desktop site — here you're reading.",
+    );
+    expect(boardKeeperFoot(null)).toBe(
+      "The team keeps this page. Writing happens on the desktop site — here you're reading.",
+    );
+    expect(boardKeeperFoot('')).toBe(
+      "The team keeps this page. Writing happens on the desktop site — here you're reading.",
+    );
+  });
+
+  it('counts pages for the screen note', () => {
+    expect(boardCountNote(0)).toBe('No pages');
+    expect(boardCountNote(1)).toBe('1 page');
+    expect(boardCountNote(7)).toBe('7 pages');
+  });
+
+  it('paints every audience tier with a v2 tone', () => {
+    expect(AUDIENCE_TONE_KEY.team).toBe('pray');
+    expect(AUDIENCE_TONE_KEY.trainees).toBe('due');
+    expect(AUDIENCE_TONE_KEY.everyone).toBe('note');
+    // Every tier the picker offers must have a dot, or a pill renders colourless.
+    AUDIENCE_ORDER.forEach((a) => expect(AUDIENCE_TONE_KEY[a]).toBeTruthy());
   });
 });

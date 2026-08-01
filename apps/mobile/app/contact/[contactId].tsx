@@ -20,9 +20,9 @@ import { HistoryTab } from '../../src/components/contact/HistoryTab';
 // Contact Detail — the full profile: overview/edit, conversations, the
 // "Alongside" walking-together thread, prayer, team discussion, and audit
 // history. Design oracle: ContactDetailsModal.tsx's isMobile branch. Reached
-// from People/Prayer/My Day/History/Answered/Attendance/Search/LandingTrainee
-// (see MIGRATION.md's Contact Detail entry for the 9th call site,
-// Messages' ChatDetailsSheet, left out of scope).
+// from People/Prayer/My Day/History/Answered/Attendance/Search/LandingTrainee,
+// and now from a direct-message thread ("Open {first}'s page →", matched on the
+// address they signed up with — see contactIdForEmail).
 export default function ContactDetail() {
   const { contactId, tab, interactionId } = useLocalSearchParams<{ contactId: string; tab?: string; interactionId?: string }>();
   const router = useRouter();

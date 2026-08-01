@@ -9,6 +9,7 @@ import {
   normalizeOnCampusWindow,
   normalizeQueuePrefs,
   onCampusSummary,
+  onCampusNowLine,
   personColor,
   queueDates,
   queueWeek,
@@ -377,6 +378,17 @@ describe('queue helpers', () => {
     expect(isOnCampus(undefined, wed2pm)).toBe(true);
     expect(isOnCampus(undefined, wed9am)).toBe(false);
     expect(isOnCampus(undefined, mon2pm)).toBe(false);
+  });
+
+  it('says out loud whether the window is open right now', () => {
+    const wed2pm = new Date(2026, 6, 15, 14, 0, 0).getTime();
+    const wed9am = new Date(2026, 6, 15, 9, 0, 0).getTime();
+    const sat2pm = new Date(2026, 6, 18, 14, 0, 0).getTime();
+    expect(onCampusNowLine(undefined, wed2pm)).toBe("Right now: you're in the window.");
+    expect(onCampusNowLine(undefined, wed9am)).toBe("Right now: you're outside the window.");
+    expect(onCampusNowLine(undefined, sat2pm)).toBe("Right now: you're outside the window.");
+    // It follows the trainee's own window, not just the default.
+    expect(onCampusNowLine({ days: [6], from: 13, to: 15 }, sat2pm)).toBe("Right now: you're in the window.");
   });
 });
 

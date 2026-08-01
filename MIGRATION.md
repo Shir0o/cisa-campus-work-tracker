@@ -974,6 +974,12 @@ itself; this section tracks the port against the design as it keeps moving.
       looks" is not on the v2 screen** — `AppearancePicker` on `/settings`
       already owns light/dark app-wide for every role, and two controls over
       one piece of state is a bug waiting to happen.
+      **Superseded (the screens2.jsx pass, below):** departure (2) and the
+      separate screen are both gone. `/settings` IS `M2Settings` now, so it owns
+      "How it looks" itself and there was nothing left to split —
+      `app/queue-settings.tsx` was folded into
+      `components/settings/SettingsScreen.tsx` and both its entry points repointed
+      at `/settings`. Departure (1), device-local prefs, still stands.
 - [x] ~~**The full-timer v2 home** (revision item 2)~~ — the at-a-glance
       widgets home on warm paper (`Mobile Today - hybrid.html` state B):
       greeting + summary · two quick tiles · At a glance · Needs you today ·
@@ -1151,11 +1157,68 @@ itself; this section tracks the port against the design as it keeps moving.
       hint copy says what it actually computes. Also dropped for want of a
       field: the design prints each step's description under the picker, and
       `Stage` carries only `{id, label, color, order}`.
-- [ ] **The Board · Messages · Settings · Contact detail in the v2 language.**
-      The design mounts no Field-notes view inside the mobile app at all
-      (`M2Board` / `M2Messages` / `M2Settings` / `M2Contact`); these four still
-      render the Material screens, now reached through the right shell. The
-      sheets are still Material too, including the one People's ＋ New opens.
+- [x] ~~**The Board · Messages · Settings in the v2 language**~~ — the design's
+      own `views/mobile/screens2.jsx` trio, grouped that way because they share
+      one shell. All three route files are now thin member/staff forks over new
+      components: `components/coordination/{BoardScreen,BoardDocScreen}.tsx`,
+      `components/messages/{MessagesScreen,ChatThreadScreen}.tsx` and
+      `components/settings/SettingsScreen.tsx`, each standing in
+      `roomForRole(role)`. New pure `boardRowLine` / `boardKeeperFoot` /
+      `boardCountNote` / `AUDIENCE_TONE_KEY` in `board.ts`, `chatRowPreview` /
+      `chatKindNote` / `messagesScreenNote` in `chat.ts`, `settingsCareLine` /
+      `settingsFoot` / `caredForBy` in `settings.ts`, `onCampusNowLine` in
+      `queue.ts` and `contactIdForEmail` in `directory.ts` (core 412 → 430).
+      - **The Board** — pages grouped as `useBoardListData` already groups them,
+        each row a date block · title · "time · place · {First} leading" ·
+        audience pill. `facilitatorId` has been written on create since Session 3
+        and rendered nowhere; the new `useFullTimerNames` resolves it (falling
+        back to `createdByName`), so a row and an open page can finally name who
+        keeps it. **Read-only for every role** — the admin WebView editor is
+        gone, and with it the `/api/mint-custom-token` round trip on open.
+      - **Messages** — the list is what you're part of, newest first, with the
+        design's three lines a row; the thread adds a group sender chip,
+        read-only attachment chips and, in a DM, "Open {First}'s page →".
+      - **Settings** — one screen again, as the design has it: `/queue-settings`
+        folded in, since it only ever existed because the Material `/settings`
+        owned "How it looks" and identity. The queue blocks render only when
+        `shellForRole(role) === 'queue'`, so a full-timer — who has no queue —
+        gets the me block, the care line, *How it looks* and the foot.
+
+      **Strict design fidelity was the user's call for the third time, and here
+      it costs working capability, not just surfaces:**
+      (1) Board editing, pinning and the Trash entry point are gone (the route
+      `/coordination/trash` stays on disk unlinked, as Search and Answered did in
+      the shells pass); (2) Messages loses New conversation, chat details, invite,
+      leave and search — **which leaves a trainee no way to open a conversation**,
+      only to reply in one; (3) Settings loses team management (approve, invite,
+      change role, remove access), the roles reference and the notifications card
+      — **so a new signup can now only be approved from the desktop site**
+      (`firestore.rules:45` locks an unapproved user out of everything, and the
+      web app's `src/views/Settings.tsx` is the only other approval UI).
+      No opt-out was lost with the notifications card: it only ever offered
+      "Enable" and "Open Settings", `usePushRegistration` is wired independently
+      at `app/_layout.tsx`, and Quick Capture still asks for permission in
+      context.
+
+      **Two of the design's affordances are blocked, not descoped.**
+      Per-message reactions (🙏❤️🙌) and the "kept" pin need fields
+      `ChatMessage` doesn't carry, and `firestore.rules:601` makes a sent message
+      immutable (`allow update, delete: if false`) — both need a schema change
+      *and* a rules deploy. "⌘↵ to send" was dropped for having no phone
+      equivalent.
+
+      **One substitution.** The design's "Open {first}'s page →" reads a
+      `contactId` straight off the conversation; here a room is user-to-user
+      (`memberIds: uid[]`) and a `Contact` carries no uid, so the join is the
+      address they signed up with (`contactIdForEmail`, tested) and the listener
+      is only paid for on a direct room. The button therefore appears exactly
+      when the person you're messaging is also on the roster under that address.
+- [ ] **Contact detail in the v2 language.** The design's `M2Contact`
+      (`views/mobile/contact.jsx`): the people-first hero, Text / Call / Log, and
+      segmented **Story · Prayers · Alongside** with `M2PrayerSheet` and the
+      thread compose. The last screen still rendering a Field-notes view inside
+      the mobile app. The sheets are still Material too, including the one
+      People's ＋ New opens.
 
 ### 🔲 Phase 5 — App-store delivery
 - [x] ~~App name + app icon~~ — done: `apps/mobile/app.json`'s `name` is now
