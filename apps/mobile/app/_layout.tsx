@@ -18,6 +18,8 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
+import { useRoomTint } from '../src/lib/roomTint';
+import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
 
 // Routes reachable while signed out — the public welcome form (a prospective
@@ -30,7 +32,8 @@ SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
   const { mode, colors } = useTheme();
-  const { user, loading } = useAuth();
+  const { user, uid, loading } = useAuth();
+  const [tint] = useRoomTint(uid);
   const pathname = usePathname();
   usePushRegistration();
   const [fontsLoaded, fontError] = useFonts({
@@ -69,7 +72,7 @@ function RootNavigator() {
   }
 
   return (
-    <>
+    <V2RoomTintContext.Provider value={tint}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -83,7 +86,7 @@ function RootNavigator() {
         <Stack.Screen name="history" />
       </Stack>
       {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
-    </>
+    </V2RoomTintContext.Provider>
   );
 }
 

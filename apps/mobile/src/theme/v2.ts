@@ -176,14 +176,14 @@ const darkV2: V2Palette = {
   roomInk: '#eaefe9',
   roomInk2: '#ccd6cf',
   roomInk3: '#a3afa7',
-  roomFaint: '#8e9a92',
+  roomFaint: '#8e97a6',
   roomChip: 'rgba(234,239,233,0.08)',
 
   card: '#1b2a23',
   card2: '#243429',
   cardInk: '#eaefe9',
   cardInk2: '#ccd6cf',
-  cardInk3: '#8e9a92',
+  cardInk3: '#8e97a6',
   line: 'rgba(234,239,233,0.10)',
   border: '#31423a',
 
@@ -192,7 +192,7 @@ const darkV2: V2Palette = {
   why: '#ccd6cf',
   quoteLine: '#31423a',
   note: '#243429',
-  noteLabel: '#8e9a92',
+  noteLabel: '#8e97a6',
   noteInk: '#ccd6cf',
   react: '#243429',
 
@@ -231,6 +231,80 @@ const darkV2: V2Palette = {
     pray: { band: '#29203a', text: '#c2abdd', dot: '#9784b3' },
     note: { band: '#1c2a1f', text: '#a5c5a8', dot: '#75a078' },
   },
+};
+
+// ── light blue: navy room tint for trainee/member (mobile-blue.css `.m2.deck.blue`) ──
+const lightBlueQueue: V2Palette = {
+  ...lightV2,
+
+  room: '#17293f',
+  roomInk: '#e9edf3',
+  roomInk2: '#9db4cd',
+  roomInk3: '#7d96b2',
+  roomFaint: '#8ba4c1',
+  roomChip: 'rgba(233,237,243,0.10)',
+
+  card: '#ffffff',
+  card2: '#f4f2ee',
+  cardInk: '#17293f',
+  cardInk2: '#607182',
+  cardInk3: '#7e8598',
+  said: '#1f3145',
+  why: '#2d4055',
+  noteInk: '#3c4a5d',
+
+  primary: '#17293f',
+  onPrimary: '#f4f1e6',
+  inverse: '#17293f',
+  onInverse: '#f4f1e6',
+  mark: '#17293f',
+  onMark: '#f4f1e6',
+
+  reactOnBorder: '#17293f',
+  reactOnBg: '#dfe6ee',
+
+  field: '#fbfaf8',
+  datebox: 'rgba(233,237,243,0.07)',
+  dateboxLine: 'rgba(233,237,243,0.12)',
+};
+
+// ── dark blue: navy room tint at night (mobile-blue.css `.m2.blue.night`) ───
+const darkBlueQueue: V2Palette = {
+  ...darkV2,
+
+  room: '#0a1220',
+  roomInk: '#e9edf4',
+  roomInk2: '#ccd4e0',
+  roomInk3: '#a3adbc',
+  roomFaint: '#8e97a6',
+  roomChip: 'rgba(233,237,244,0.08)',
+
+  card: '#1a2433',
+  card2: '#232f41',
+  cardInk: '#e9edf4',
+  cardInk2: '#ccd4e0',
+  cardInk3: '#8e97a6',
+  line: 'rgba(233,237,244,0.10)',
+  border: '#313c4e',
+
+  said: '#ccd4e0',
+  why: '#ccd4e0',
+  quoteLine: '#313c4e',
+  note: '#232f41',
+  noteLabel: '#8e97a6',
+  noteInk: '#ccd4e0',
+  react: '#232f41',
+
+  primary: '#31506e',
+  onPrimary: '#eaeff5',
+  inverse: '#e9edf4',
+  onInverse: '#0a1220',
+  mark: '#31506e',
+  onMark: '#eaeff5',
+
+  field: '#232f41',
+  datebox: '#1a2433',
+  dateboxLine: 'rgba(233,237,244,0.10)',
 };
 
 // ── the full-timer's room ──────────────────────────────────────────────────
@@ -317,6 +391,9 @@ const darkFt: V2Palette = {
 /** Which room a v2 screen is standing in. */
 export type V2Room = 'queue' | 'ft';
 
+/** Room tint option (green vs navy/blue room tint). */
+export type V2RoomTint = 'green' | 'blue';
+
 /** The room a role stands in. The design forces navy on the full-timer's app
  * alone (`m2 deck mem ft blue`); the trainee and both member roles share the
  * green room, so only the FT shell maps to 'ft'.
@@ -325,6 +402,16 @@ export type V2Room = 'queue' | 'ft';
  * read this rather than hard-coding a room. */
 export function roomForRole(role: AppRole | string | null | undefined): V2Room {
   return shellForRole(role) === 'ft' ? 'ft' : 'queue';
+}
+
+export function getV2Palette(room: V2Room, mode: ThemeMode, tint: V2RoomTint = 'green'): V2Palette {
+  if (room === 'ft') {
+    return mode === 'light' ? lightFt : darkFt;
+  }
+  if (tint === 'blue') {
+    return mode === 'light' ? lightBlueQueue : darkBlueQueue;
+  }
+  return mode === 'light' ? lightV2 : darkV2;
 }
 
 export const v2Palettes: Record<V2Room, Record<ThemeMode, V2Palette>> = {
@@ -337,6 +424,9 @@ export const v2Palettes: Record<V2Room, Record<ThemeMode, V2Palette>> = {
  * shared v2 primitives (components/queue/atoms) can be reused in either room
  * without knowing which one they're in. */
 export const V2RoomContext = createContext<V2Room>('queue');
+
+/** Context for room tint preference ('green' | 'blue'). Defaults to 'green'. */
+export const V2RoomTintContext = createContext<V2RoomTint>('green');
 
 // Manrope 500–800 throughout; Instrument Serif for the one end-of-queue
 // headline. Tracking is tight (−.03em) on the display weights.
@@ -389,6 +479,7 @@ export const v2Shadow = {
 export interface V2Theme {
   mode: ThemeMode;
   room: V2Room;
+  tint: V2RoomTint;
   c: V2Palette;
   font: typeof v2Font;
   radius: typeof v2Radius;
@@ -398,14 +489,19 @@ export interface V2Theme {
 /** One hook for every v2 component. Follows the app's light/dark the same way
  * the rest of the app does — v2 is a second palette, not a second app — and the
  * room it is standing in, which defaults to the trainee's. */
-export function useV2Theme(): V2Theme {
+export function useV2Theme(roomOverride?: V2Room, tintOverride?: V2RoomTint): V2Theme {
   const { mode } = useTheme();
-  const room = useContext(V2RoomContext);
+  const contextRoom = useContext(V2RoomContext);
+  const contextTint = useContext(V2RoomTintContext);
+  const room = roomOverride ?? contextRoom;
+  const tint = tintOverride ?? contextTint;
+
   return useMemo(
     () => ({
       mode,
       room,
-      c: v2Palettes[room][mode],
+      tint,
+      c: getV2Palette(room, mode, tint),
       font: v2Font,
       radius: v2Radius,
       shadow: v2Shadow,

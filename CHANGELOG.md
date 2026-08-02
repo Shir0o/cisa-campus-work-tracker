@@ -7,6 +7,13 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — room tint selection (Green vs Navy room).** The design's
+  `mobile-blue.css` defines a room tint option switching the trainee/member
+  room background from deep green (`#16332b` / `#0b1611`) to navy (`#17293f` /
+  `#0a1220`) in both daylight and dark themes. Added `lightBlueQueue` and
+  `darkBlueQueue` palettes in `theme/v2.ts`, a device-local `RoomTintStore`
+  and `useRoomTint` hook (`cisa.m2.tint.<uid>`) in `lib/roomTint.ts`, and a
+  **Room tint** picker under *How it looks* on `/settings`.
 - **Mobile v2 — the log sheet in the design's language.** The last Material
   surface still mounted *inside* the v2 shells, and the one mobile v2 exists
   for: "log fast — a conversation in about twenty seconds." The design's

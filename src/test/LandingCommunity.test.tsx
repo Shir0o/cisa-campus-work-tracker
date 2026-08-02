@@ -103,4 +103,10 @@ describe("LandingCommunity", () => {
     expect(mockNavigate).not.toHaveBeenCalled();
     Object.defineProperty(window, "location", { value: original, writable: true });
   });
+
+  it("navigates to attendance when Full calendar is clicked", () => {
+    render(<LandingCommunity />);
+    fireEvent.click(screen.getByText("Full calendar"));
+    expect(mockNavigate).toHaveBeenCalledWith("/attendance");
+  });
 });
