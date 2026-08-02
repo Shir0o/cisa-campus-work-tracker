@@ -516,6 +516,6 @@ export function useV2Theme(roomOverride?: V2Room, tintOverride?: V2RoomTint): V2
       shadow: v2Shadow,
       fs: (drawnSize: number) => drawnSize * scale,
     }),
-    [mode, room, scale],
+    [mode, room, tint, scale],
   );
 }

@@ -150,6 +150,12 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
   went with the two dropped tabs.
 
 ### Fixed
+- **Switching Room tint left the room on its old colour.** `useV2Theme`
+  computed its palette with `getV2Palette(room, mode, tint)` but left `tint`
+  out of the `useMemo` dependency array, so picking Green or Navy under
+  *Settings → How it looks* only took effect the next time the theme mode or
+  the room happened to change. Both tints now apply immediately, in daylight
+  and dark.
 - **A prayer's "answered" date is display text, and was being read as a
   timestamp.** The web app writes `answeredAt` as `"Jul 13"` and prints it back
   verbatim; parsing it as a date lands in the year 2001, so a real prayer on the
