@@ -506,6 +506,6 @@ export function useV2Theme(roomOverride?: V2Room, tintOverride?: V2RoomTint): V2
       radius: v2Radius,
       shadow: v2Shadow,
     }),
-    [mode, room],
+    [mode, room, tint],
   );
 }
