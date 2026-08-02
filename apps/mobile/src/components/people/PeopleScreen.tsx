@@ -105,14 +105,14 @@ function People() {
       </V2Screen>
 
       {/* The design's ＋ New opens the log sheet straight in *Someone new*
-          (`init.start`) — v2 has no separate add-contact form. The fuller one
-          (email, phone, stage, tags) stays on the desktop site, as this
-          screen's own roster foot says. */}
+          (`init.start`) — v2 has no separate add-contact form. The fuller
+          picture now folds out of the sheet's own "Fill in the rest". */}
       <LogSheet
         visible={showAddSheet}
         room={roomForRole(role)}
         start="new"
         onSaved={setToast}
+        onOpenContact={(id) => router.push(`/contact/${id}`)}
         onClose={() => setShowAddSheet(false)}
       />
 

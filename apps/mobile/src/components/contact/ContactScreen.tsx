@@ -66,7 +66,7 @@ export function ContactScreen(props: ContactScreenProps) {
 }
 
 function Person({ contactId, initialTab, initialInteractionId }: ContactScreenProps) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
   const { uid, role } = useAuth();
   const data = useContactDetailData(contactId);
@@ -138,11 +138,11 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <PersonMark name={contact.name} id={contact.id} size={60} radius={21} fontSize={19} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: font.extra, fontSize: 25, lineHeight: 28, letterSpacing: -0.875, color: c.cardInk }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(25), lineHeight: fs(28), letterSpacing: -0.875, color: c.cardInk }}>
                 {contact.name}
               </Text>
               {!![contact.year, contact.major].filter(Boolean).length && (
-                <Text style={{ fontFamily: font.semi, fontSize: 12.5, lineHeight: 17, color: c.cardInk3, marginTop: 5 }}>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 5 }}>
                   {[contact.year, contact.major].filter(Boolean).join(' · ')}
                 </Text>
               )}
@@ -158,15 +158,15 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 backgroundColor: c.tones[stageToneKey(data.stages, contact.stage)].dot,
               }}
             />
-            <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: c.cardInk2 }}>{contact.stage}</Text>
-            <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: c.border }}>·</Text>
-            <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: c.cardInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.cardInk2 }}>{contact.stage}</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.border }}>·</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.cardInk2 }}>
               {contactConnectedLine(lastTouchDays)}
             </Text>
           </View>
 
           {!!lastTime && (
-            <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2, marginTop: 10 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2, marginTop: 10 }}>
               {lastTime}
             </Text>
           )}
@@ -224,7 +224,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
               onPress={() => setShowDetails(!showDetails)}
               style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4, opacity: pressed ? 0.6 : 1 })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.roomInk2 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.roomInk2 }}>
                 {showDetails ? 'Hide the details' : 'Details, notes, how to reach them'}
               </Text>
             </Pressable>
@@ -328,7 +328,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 
 /** The design's `.m2-ch` on this screen: back, then who's looking after them. */
 function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
       <Pressable
@@ -343,10 +343,10 @@ function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>← Back</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>← Back</Text>
       </Pressable>
       {!!note && (
-        <Text style={{ fontFamily: font.semi, fontSize: 12, color: c.roomInk3, marginLeft: 'auto' }} numberOfLines={1}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.roomInk3, marginLeft: 'auto' }} numberOfLines={1}>
           {note}
         </Text>
       )}
@@ -372,7 +372,7 @@ function HeroAction({
   disabled?: boolean;
   onPress: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -390,7 +390,7 @@ function HeroAction({
         opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 14.5, color: dark ? c.card : c.cardInk }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: dark ? c.card : c.cardInk }}>{label}</Text>
     </Pressable>
   );
 }
@@ -415,11 +415,11 @@ function StoryCard({
   onToggle: () => void;
   children: React.ReactNode;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View style={{ backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 18, paddingVertical: 16 }}>
       <Kicker>{storyRowLine(interaction, meUid)}</Kicker>
-      <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21.75, color: c.said, marginTop: 10 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.said, marginTop: 10 }}>
         {interaction.content}
       </Text>
 
@@ -427,7 +427,7 @@ function StoryCard({
         onPress={onToggle}
         style={({ pressed }) => ({ minHeight: 44, justifyContent: 'flex-end', paddingTop: 14, paddingBottom: 2, opacity: pressed ? 0.6 : 1 })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>
           {open ? 'Hide' : threadCount ? `Alongside · ${threadCount}` : 'Think this through together'}
         </Text>
       </Pressable>
@@ -457,7 +457,7 @@ function PrayerCard({
   onPrayed?: () => void;
   onAnswered?: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -471,8 +471,8 @@ function PrayerCard({
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 16,
-          lineHeight: 20.8,
+          fontSize: fs(16),
+          lineHeight: fs(20.8),
           letterSpacing: -0.4,
           color: done ? c.cardInk2 : c.cardInk,
           marginTop: 10,
@@ -481,7 +481,7 @@ function PrayerCard({
         {prayer.burden}
       </Text>
       {!!prayer.answer && (
-        <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21.75, color: c.cardInk2, marginTop: 7 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.cardInk2, marginTop: 7 }}>
           {prayer.answer}
         </Text>
       )}
@@ -501,7 +501,7 @@ function PrayerCard({
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: prayed ? c.onDeep : c.tones.pray.text }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.onDeep : c.tones.pray.text }}>
               {prayed ? 'Prayed ✓' : 'I prayed just now'}
             </Text>
           </Pressable>
@@ -518,7 +518,7 @@ function PrayerCard({
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.cardInk2 }}>Answered</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk2 }}>Answered</Text>
           </Pressable>
         </View>
       )}
@@ -535,7 +535,7 @@ function Details({
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
   careLine: string;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const knownMs = parseMs(contact.createdAt);
   const tags = contact.tags ?? [];
 
@@ -544,7 +544,7 @@ function Details({
       {!!contact.notes && (
         <View style={{ backgroundColor: c.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
           <Kicker>First impression</Kicker>
-          <Text style={{ fontFamily: font.semi, fontSize: 14, lineHeight: 20.3, color: c.noteInk, marginTop: 7 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.noteInk, marginTop: 7 }}>
             {contact.notes}
           </Text>
         </View>
@@ -554,7 +554,7 @@ function Details({
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 14, marginBottom: 4 }}>
           {tags.map((tag) => (
             <View key={tag} style={{ backgroundColor: c.note, borderRadius: radius.chip, paddingHorizontal: 13, paddingVertical: 7 }}>
-              <Text style={{ fontFamily: font.bold, fontSize: 12, color: c.cardInk2 }}>{tag}</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.cardInk2 }}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -567,6 +567,11 @@ function Details({
           RESIDENCE", and the v2 log sheet fills it from "Where you met". "Lives"
           alone mislabelled half of what lands here. */}
       <DetailRow label="First met / lives" value={contact.location} />
+      {/* The two fields the log sheet's "Fill in the rest" adds — the design
+          asks that they have somewhere to be read. `role` is this app's
+          contact group, which the sheet labels "Part of". */}
+      <DetailRow label="Part of" value={contact.role} />
+      <DetailRow label="Faith, so far" value={contact.spiritualBackground} />
       <DetailRow label="Goes by" value={contact.pronouns} />
       <DetailRow label="Known" value={knownMs === null ? null : `${daysSince(knownMs)} days`} />
       <DetailRow label="Cared for by" value={careLine === 'In your care' ? 'You' : contact.createdByName} />
@@ -575,7 +580,7 @@ function Details({
 }
 
 function DetailRow({ label, value, onPress }: { label: string; value?: string | null; onPress?: () => void }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   if (!value) return null;
   return (
     <Pressable
@@ -593,8 +598,8 @@ function DetailRow({ label, value, onPress }: { label: string; value?: string | 
         opacity: pressed && onPress ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.cardInk3 }}>{label}</Text>
-      <Text style={{ flex: 1, fontFamily: font.semi, fontSize: 14, color: onPress ? c.link : c.cardInk, textAlign: 'right' }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk3 }}>{label}</Text>
+      <Text style={{ flex: 1, fontFamily: font.semi, fontSize: fs(14), color: onPress ? c.link : c.cardInk, textAlign: 'right' }}>
         {value}
       </Text>
     </Pressable>
