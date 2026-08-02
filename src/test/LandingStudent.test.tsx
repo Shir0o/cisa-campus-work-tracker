@@ -102,4 +102,18 @@ describe("LandingStudent", () => {
     fireEvent.click(screen.getByRole("button", { name: "answered" }));
     expect(h.updatePersonalPrayer).toHaveBeenCalledWith("u1", "pp1", { status: "answered", answeredAt: expect.any(String) });
   });
+
+  it("deletes a friend's prayer", () => {
+    h.personalPrayers = [{ id: "pp1", title: "Daniel", contactId: null, date: soonISO, status: "open" }];
+    render(<LandingStudent />);
+    fireEvent.click(screen.getByText("Daniel"));
+    fireEvent.click(screen.getByRole("button", { name: /Delete/i }));
+    expect(h.deletePersonalPrayer).toHaveBeenCalledWith("u1", "pp1");
+  });
+
+  it("navigates to attendance when Full calendar is clicked", () => {
+    render(<LandingStudent />);
+    fireEvent.click(screen.getByText("Full calendar"));
+    expect(mockNavigate).toHaveBeenCalledWith("/attendance");
+  });
 });
