@@ -41,15 +41,17 @@ function hydrate(uid: string) {
     });
 }
 
-function get(uid: string): V2RoomTint {
+function get(uid: string | null | undefined): V2RoomTint {
+  if (!uid) return 'green';
   hydrate(uid);
   return cache[uid] ?? 'green';
 }
 
 export const RoomTintStore = {
-  for: (uid: string): V2RoomTint => get(uid),
+  for: (uid: string | null | undefined): V2RoomTint => get(uid),
 
-  set(uid: string, tint: V2RoomTint) {
+  set(uid: string | null | undefined, tint: V2RoomTint) {
+    if (!uid) return;
     cache[uid] = tint;
     AsyncStorage.setItem(keyFor(uid), tint).catch((e) => {
       console.warn('Could not save room tint preference.', e);
@@ -58,11 +60,12 @@ export const RoomTintStore = {
   },
 };
 
-/** React hook for live room tint reactivity. */
-export function useRoomTint(uid: string): [V2RoomTint, (tint: V2RoomTint) => void] {
+/** React hook for live room tint reactivity. Handles null/undefined uid gracefully. */
+export function useRoomTint(uid: string | null | undefined): [V2RoomTint, (tint: V2RoomTint) => void] {
   const [tint, setTintState] = useState<V2RoomTint>(() => get(uid));
 
   useEffect(() => {
+    if (!uid) return;
     const listener = () => setTintState(get(uid));
     subs.add(listener);
     setTintState(get(uid));
@@ -72,7 +75,9 @@ export function useRoomTint(uid: string): [V2RoomTint, (tint: V2RoomTint) => voi
   }, [uid]);
 
   const setTint = (next: V2RoomTint) => {
-    RoomTintStore.set(uid, next);
+    if (uid) {
+      RoomTintStore.set(uid, next);
+    }
   };
 
   return [tint, setTint];
