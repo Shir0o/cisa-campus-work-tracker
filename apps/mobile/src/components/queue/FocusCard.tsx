@@ -41,7 +41,7 @@ export function FocusCard({
   header?: React.ReactNode;
   onSwipeAway?: () => void;
 }) {
-  const { c, radius, shadow } = useV2Theme();
+  const { c, radius, shadow, fs } = useV2Theme();
   const x = useSharedValue(0);
   const [reduceMotion, setReduceMotion] = React.useState(false);
 
@@ -124,6 +124,6 @@ export function FocusCard({
 
 /** The all-clear / empty variants borrow the card's ink but not its geometry. */
 export function CardText({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
-  return <Text style={{ fontFamily: font.medium, fontSize: 15.5, lineHeight: 23, color: c.cardInk2 }}>{children}</Text>;
+  const { c, font, fs } = useV2Theme();
+  return <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.cardInk2 }}>{children}</Text>;
 }

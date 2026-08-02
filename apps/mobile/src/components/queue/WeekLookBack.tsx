@@ -10,7 +10,7 @@ import { useV2Theme } from '../../theme/v2';
 import { V2Screen } from '../v2/Widget';
 
 export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: () => void }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
 
   return (
     <V2Screen
@@ -22,8 +22,8 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 14.5,
-            lineHeight: 21,
+            fontSize: fs(14.5),
+            lineHeight: fs(21),
             color: c.roomInk3,
             paddingVertical: 18,
           }}
@@ -45,7 +45,7 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
           <Text
             style={{
               fontFamily: font.bold,
-              fontSize: 10.5,
+              fontSize: fs(10.5),
               letterSpacing: 1.26,
               textTransform: 'uppercase',
               color: c.cardInk3,
@@ -56,8 +56,8 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
           <Text
             style={{
               fontFamily: font.extra,
-              fontSize: 15.5,
-              lineHeight: 20,
+              fontSize: fs(15.5),
+              lineHeight: fs(20),
               letterSpacing: -0.31,
               color: c.cardInk,
               marginTop: 10,
@@ -66,7 +66,7 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
             {i.contactName || 'A conversation'}
           </Text>
           {!!i.content && (
-            <Text style={{ fontFamily: font.medium, fontSize: 14, lineHeight: 21, color: c.cardInk2, marginTop: 6 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.cardInk2, marginTop: 6 }}>
               {i.content}
             </Text>
           )}

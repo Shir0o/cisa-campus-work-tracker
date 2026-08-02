@@ -21,7 +21,7 @@ export function NextUp({
   onToggle: () => void;
   onInvite: () => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const sub = memberEventSub(event);
   return (
     <View
@@ -35,7 +35,7 @@ export function NextUp({
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
           color: c.tones.follow.text,
@@ -46,8 +46,8 @@ export function NextUp({
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 25,
-          lineHeight: 30,
+          fontSize: fs(25),
+          lineHeight: fs(30),
           letterSpacing: -0.7,
           color: c.cardInk,
           marginTop: 8,
@@ -59,8 +59,8 @@ export function NextUp({
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 14,
-            lineHeight: 20,
+            fontSize: fs(14),
+            lineHeight: fs(20),
             color: c.cardInk2,
             marginTop: 4,
           }}
@@ -83,7 +83,7 @@ export function NextUp({
           <Text
             style={{
               fontFamily: font.bold,
-              fontSize: 16.5,
+              fontSize: fs(16.5),
               color: going ? c.onGreen : c.onPrimary,
             }}
           >
@@ -107,7 +107,7 @@ export function NextUp({
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 15, color: c.cardInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.cardInk2 }}>
               Bring a friend
             </Text>
           </Pressable>

@@ -40,7 +40,7 @@ export function MemberHomeScreen({ role }: { role: MemberRole }) {
 }
 
 function MemberHome({ role }: { role: MemberRole }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const router = useRouter();
   const data = useMemberHomeData(uid, user?.displayName ?? null);
@@ -91,7 +91,7 @@ function MemberHome({ role }: { role: MemberRole }) {
             }}
           >
             <Text
-              style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2 }}
+              style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}
             >
               Nothing on the calendar just yet — check back soon.
             </Text>
@@ -134,11 +134,11 @@ function MemberHome({ role }: { role: MemberRole }) {
               ...shadow.soft,
             })}
           >
-            <Text style={{ fontFamily: font.extra, fontSize: 15.5, color: c.cardInk }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.cardInk }}>
               Bring someone with you
             </Text>
             <Text
-              style={{ fontFamily: font.medium, fontSize: 13, color: c.cardInk3, marginTop: 3 }}
+              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk3, marginTop: 3 }}
             >
               An invitation you can send in a text
             </Text>

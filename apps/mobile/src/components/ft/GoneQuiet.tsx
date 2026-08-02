@@ -23,7 +23,7 @@ export function GoneQuiet({
   onOpen: (contactId: string) => void;
   onOpenPeople: () => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const shown = quiet.slice(0, FT_WIDGET_ROWS);
   return (
     <Widget
@@ -41,8 +41,8 @@ export function GoneQuiet({
               <Text
                 style={{
                   fontFamily: font.bold,
-                  fontSize: 15.5,
-                  lineHeight: 20,
+                  fontSize: fs(15.5),
+                  lineHeight: fs(20),
                   color: c.cardInk,
                 }}
               >
@@ -51,7 +51,7 @@ export function GoneQuiet({
               <Text
                 style={{
                   fontFamily: font.medium,
-                  fontSize: 13,
+                  fontSize: fs(13),
                   color: c.cardInk2,
                   marginTop: 3,
                 }}

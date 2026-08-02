@@ -42,7 +42,7 @@ function ConversationRow({
   preview: string;
   unread: boolean;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const kind = chatKindNote(room);
   // A DM wears the person's own stable colour; the two kinds of room-for-many
@@ -77,7 +77,7 @@ function ConversationRow({
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: 14, color: c.onPrimary }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(14), color: c.onPrimary }}>
             {name.slice(0, 1).toUpperCase()}
           </Text>
         </View>
@@ -86,22 +86,22 @@ function ConversationRow({
       )}
 
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: 15, color: c.cardInk }}>
+        <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk }}>
           {name}
         </Text>
         <Text
           numberOfLines={1}
-          style={{ fontFamily: font.medium, fontSize: 13, color: c.cardInk2, marginTop: 2 }}
+          style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk2, marginTop: 2 }}
         >
           {preview || 'No messages yet'}
         </Text>
         {!!kind && (
-          <Text style={{ fontFamily: font.semi, fontSize: 11.5, color: c.cardInk3, marginTop: 3 }}>{kind}</Text>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.cardInk3, marginTop: 3 }}>{kind}</Text>
         )}
       </View>
 
       <View style={{ alignItems: 'flex-end', gap: 5 }}>
-        <Text style={{ fontFamily: font.medium, fontSize: 11.5, color: c.cardInk3 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.cardInk3 }}>
           {room.lastMessage ? memberAgo(room.lastMessage.timestamp as string | null) : ''}
         </Text>
         {unread && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: c.tones.follow.dot }} />}
@@ -111,7 +111,7 @@ function ConversationRow({
 }
 
 function Messages() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { uid, role } = useAuth();
   const data = useMessagesData();
@@ -128,7 +128,7 @@ function Messages() {
         onBack={isPushedScreen(role, 'messages') ? back : undefined}
       >
         <Text
-          style={{ fontFamily: font.medium, fontSize: 13.5, lineHeight: 19, color: c.roomInk3, marginBottom: 6 }}
+          style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.roomInk3, marginBottom: 6 }}
         >
           The conversations you're part of — students, the team, and what gets announced.
         </Text>

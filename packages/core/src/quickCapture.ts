@@ -147,14 +147,55 @@ export interface LogSheetNewContact {
   note: string;
   stageLabel: string;
   tags: string[];
+  // ── "Fill in the rest" (the design's `.m2-disc` disclosure) ──────────────
+  // All optional: the sheet opens with the 20-second three and folds the rest
+  // away until it's asked for. Nothing here is required.
+  phone?: string;
+  email?: string;
+  year?: string;
+  /** The design's "Studying". */
+  major?: string;
+  /** The design's "Part of". This app's `Contact.role` IS its contact group —
+   * the new-contact form labels that field "CONTACT GROUP (e.g. Student,
+   * Faculty)" — so the two are the same field, and no `group` is invented. */
+  group?: string;
+  /** The design's "Faith, so far". */
+  background?: string;
+  /** The design's "First met", `yyyy-MM-dd`. Backdates the contact's
+   * `createdAt`, which is what "days known" and the recents sort read. */
+  metISO?: string;
 }
 
-/** The contact the sheet's *Someone new* mode creates — three answered fields
- * and nothing else, as the design has it.
+export type FirstMetPreset = "today" | "week" | "earlier";
+
+/** SUBSTITUTION: the design's "First met" is an `<input type="date">`. This app
+ * has no date-picker dependency (see reminderDueDate's note above) and one
+ * optional field is not a reason to add a native one, so "first met" follows
+ * the app's own established no-picker idiom — fixed presets, like DUE_PRESETS
+ * and REMINDER_PRESETS. Enough to tell "met them today" from "met them a while
+ * back", which is all `createdAt` is read for. */
+export const FIRST_MET_PRESETS: { key: FirstMetPreset; label: string; daysAgo: number }[] = [
+  { key: "today", label: "Today", daysAgo: 0 },
+  { key: "week", label: "This week", daysAgo: 7 },
+  { key: "earlier", label: "Earlier", daysAgo: 30 },
+];
+
+/** The `yyyy-MM-dd` a "first met" preset resolves to. */
+export function firstMetDate(preset: FirstMetPreset, now: number = Date.now()): string {
+  const days = FIRST_MET_PRESETS.find((p) => p.key === preset)?.daysAgo ?? 0;
+  const d = new Date(now);
+  d.setDate(d.getDate() - days);
+  return format(d, "yyyy-MM-dd");
+}
+
+/** The contact the sheet's *Someone new* mode creates — the answered three, plus
+ * whatever the "Fill in the rest" disclosure was given.
  *
- * SUBSTITUTION: the design stores "where you met" as a tag on the contact. A
- * `Contact` here has a `location` field that this app's own new-contact form
- * labels "FIRST MET / RESIDENCE", so that is where it goes; `tags` stays the
+ * SUBSTITUTION: the design stores "where you met" as a tag on the contact and
+ * offers a separate "Lives" field. A `Contact` here has ONE dual-purpose
+ * `location` that this app's own new-contact form labels "FIRST MET /
+ * RESIDENCE", so "where you met" keeps it and the design's "Lives" is dropped
+ * rather than have the two fight over the same field. `tags` stays the
  * active-season tag every other `addContact` caller sets. */
 export function newContactFromLog({
   name,
@@ -162,18 +203,88 @@ export function newContactFromLog({
   note,
   stageLabel,
   tags,
+  phone,
+  email,
+  year,
+  major,
+  group,
+  background,
+  metISO,
 }: LogSheetNewContact): NewContactInput {
   const trimmed = name.trim();
   return {
     name: trimmed,
-    role: "",
+    role: (group ?? "").trim(),
     location: where.trim(),
-    email: "",
-    phone: "",
+    email: (email ?? "").trim(),
+    phone: (phone ?? "").trim(),
     stage: stageLabel,
     tags,
     notes: note.trim(),
-    spiritualBackground: "",
+    spiritualBackground: (background ?? "").trim(),
     initials: getUserInitials(trimmed),
+    year: (year ?? "").trim() || undefined,
+    major: (major ?? "").trim() || undefined,
+    createdAt: metISO || undefined,
+  };
+}
+
+// ── the saved step (the design's `M2LogSheet` mode "saved", Aug 2026) ───────
+// Saving no longer just toasts and closes: the sheet lands on a quiet second
+// beat asking what caring for them wants next. These are its words.
+
+export interface LogSavedBeat {
+  /** The ✓ headline. */
+  head: string;
+  /** The line under it — what was written down, and when. */
+  sub: string;
+  /** The toast the caller fires when the sheet finally closes. */
+  toast: string;
+}
+
+/** The design's `land()`: the head/sub/toast for whichever of the two saves
+ * just happened. */
+export function logSavedBeat(
+  input:
+    | { kind: "convo"; name: string; what: string }
+    | { kind: "contact"; name: string; where: string },
+): LogSavedBeat {
+  const first = firstName(input.name);
+  if (input.kind === "convo") {
+    return {
+      head: "It's written down.",
+      sub: `${input.what} with ${first} · just now`,
+      toast: logSavedLine(input.name),
+    };
+  }
+  const where = input.where.trim();
+  return {
+    head: `${first} is in.`,
+    sub: where ? `Met at ${where} · just now` : "Added just now",
+    toast: contactAddedLine(input.name),
+  };
+}
+
+/** What the follow-up's own text starts as, before you edit it. */
+export const followUpDefaultText = (name: string): string => `Follow up with ${firstName(name)}`;
+
+/** "You'll be reminded — in a few days" — the collapsed row, once it's set. */
+export function reminderSetLine(preset: ReminderPreset): string {
+  const label = REMINDER_PRESETS.find((p) => p.key === preset)?.label ?? "soon";
+  return `You'll be reminded — ${label.toLowerCase()}`;
+}
+
+/** The prayer's collapsed row.
+ *
+ * SUBSTITUTION: the design offers a "Bring it to team prayer" toggle. A
+ * `PrayerRecord` here carries no team flag, and `addPrayer` already writes
+ * `prayerPage: true` — every contact prayer is already on the team's prayer
+ * page — so the toggle is dropped rather than faked, and the line says where it
+ * actually went. Same call as `ContactPrayerSheet` dropping the design's tag
+ * chips. */
+export function prayerAddedLine(name: string): { head: string; sub: string } {
+  return {
+    head: "Added to what we’re praying",
+    sub: `It sits with ${firstName(name)}'s prayers, and on the team's prayer page.`,
   };
 }

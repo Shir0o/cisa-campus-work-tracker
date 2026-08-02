@@ -36,7 +36,7 @@ export function BoardScreen() {
 
 /** The tier a page is open to, as a pill in the room's own palette. */
 export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const audience = audienceOf(doc);
   const tone = c.tones[AUDIENCE_TONE_KEY[audience]];
   return (
@@ -48,7 +48,7 @@ export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
         backgroundColor: tone.band,
       }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 10.5, letterSpacing: 0.3, color: tone.text }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.3, color: tone.text }}>
         {BOARD_AUDIENCE[audience].label}
       </Text>
     </View>
@@ -56,7 +56,7 @@ export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
 }
 
 function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | null }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const line = boardRowLine(doc, leaderName);
 
@@ -77,22 +77,22 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
       })}
     >
       <View style={{ width: 42, alignItems: 'center' }}>
-        <Text style={{ fontFamily: font.extra, fontSize: 17, letterSpacing: -0.5, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.5, color: c.cardInk }}>
           {dayNum(doc.date)}
         </Text>
         <Text
-          style={{ fontFamily: font.bold, fontSize: 9.5, letterSpacing: 0.9, color: c.cardInk3, marginTop: 4 }}
+          style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.9, color: c.cardInk3, marginTop: 4 }}
         >
           {weekdayShort(doc.date).toUpperCase()}
         </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 15, lineHeight: 19, color: c.cardInk }} numberOfLines={2}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.cardInk }} numberOfLines={2}>
           {doc.title}
         </Text>
         {!!line && (
           <Text
-            style={{ fontFamily: font.semi, fontSize: 12.5, lineHeight: 17, color: c.cardInk3, marginTop: 3 }}
+            style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}
             numberOfLines={1}
           >
             {line}
@@ -105,7 +105,7 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
 }
 
 function Board() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const data = useBoardListData();
 
@@ -117,7 +117,7 @@ function Board() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
       <V2Screen title="The Board" note={boardCountNote(data.total)} onBack={back}>
         <Text
-          style={{ fontFamily: font.medium, fontSize: 13.5, lineHeight: 19, color: c.roomInk3, marginBottom: 6 }}
+          style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.roomInk3, marginBottom: 6 }}
         >
           What the team talked through, and what came out of it. Open a page to read it.
         </Text>
@@ -140,7 +140,7 @@ function Board() {
         )}
 
         <Text
-          style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.roomInk3, marginTop: 26 }}
+          style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: 26 }}
         >
           Pages are written and kept on the desktop site.
         </Text>

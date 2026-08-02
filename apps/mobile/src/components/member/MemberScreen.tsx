@@ -29,7 +29,7 @@ export function MemberScreen({
   error?: string | null;
   children: React.ReactNode;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   if (loading) {
     return (
       <SafeAreaView
@@ -52,7 +52,7 @@ export function MemberScreen({
         showsVerticalScrollIndicator={false}
       >
         {!!error && (
-          <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.tones.follow.text }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>
             {error}
           </Text>
         )}
@@ -67,7 +67,7 @@ export function MemberScreen({
  * only for the deep-link routes that land on one ('/settings' → You): there's
  * nothing to go back to from a tab, and a dead chevron reads as broken. */
 export function MemberBack() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const router = useRouter();
   return (
     <Pressable
@@ -80,7 +80,7 @@ export function MemberBack() {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>← Back</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
     </Pressable>
   );
 }
@@ -95,14 +95,14 @@ export function MemberHead({
   intro?: string;
   showDate?: boolean;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View>
       {showDate && (
         <Text
           style={{
             fontFamily: font.bold,
-            fontSize: 10.5,
+            fontSize: fs(10.5),
             letterSpacing: 1.26,
             textTransform: 'uppercase',
             color: c.roomInk3,
@@ -117,8 +117,8 @@ export function MemberHead({
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 28,
-          lineHeight: 32,
+          fontSize: fs(28),
+          lineHeight: fs(32),
           letterSpacing: -0.9,
           color: c.roomInk,
           marginTop: showDate ? 6 : 0,
@@ -130,8 +130,8 @@ export function MemberHead({
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 14.5,
-            lineHeight: 21,
+            fontSize: fs(14.5),
+            lineHeight: fs(21),
             color: c.roomInk2,
             marginTop: 8,
           }}
@@ -145,13 +145,13 @@ export function MemberHead({
 
 /** The quiet italic-ish line that closes a member screen. */
 export function MemberFoot({ children }: { children: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Text
       style={{
         fontFamily: font.medium,
-        fontSize: 12.5,
-        lineHeight: 18,
+        fontSize: fs(12.5),
+        lineHeight: fs(18),
         color: c.roomFaint,
         marginTop: 2,
       }}

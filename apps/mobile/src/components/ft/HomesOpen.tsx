@@ -18,7 +18,7 @@ export function HomesOpen({
   offers: HospitalityOffer[];
   onMessage: (offer: HospitalityOffer) => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const shown = offers.slice(0, FT_WIDGET_ROWS);
   return (
     <Widget label="Homes open to students" count={offers.length}>
@@ -31,8 +31,8 @@ export function HomesOpen({
               <Text
                 style={{
                   fontFamily: font.bold,
-                  fontSize: 15.5,
-                  lineHeight: 20,
+                  fontSize: fs(15.5),
+                  lineHeight: fs(20),
                   color: c.cardInk,
                 }}
               >
@@ -41,8 +41,8 @@ export function HomesOpen({
               <Text
                 style={{
                   fontFamily: font.medium,
-                  fontSize: 13,
-                  lineHeight: 19,
+                  fontSize: fs(13),
+                  lineHeight: fs(19),
                   color: c.cardInk2,
                   marginTop: 3,
                 }}
@@ -53,8 +53,8 @@ export function HomesOpen({
                 <Text
                   style={{
                     fontFamily: font.medium,
-                    fontSize: 13,
-                    lineHeight: 19,
+                    fontSize: fs(13),
+                    lineHeight: fs(19),
                     color: c.cardInk3,
                     marginTop: 4,
                   }}

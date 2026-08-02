@@ -78,7 +78,7 @@ function Choice<T>({
   /** Hour strips are too long for one row — let them run off the edge. */
   scroll?: boolean;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   // An hour strip is longer than the screen, so the chosen hour can start off
   // the right edge — scroll it into view once, the way the design's step picker
   // does (`scrollLeft`, never scrollIntoView).
@@ -110,7 +110,7 @@ function Choice<T>({
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: on ? c.card : c.cardInk2 }}>{o.label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card : c.cardInk2 }}>{o.label}</Text>
       </Pressable>
     );
   });
@@ -118,9 +118,9 @@ function Choice<T>({
   return (
     <View style={{ gap: 10 }}>
       <View>
-        <Text style={{ fontFamily: font.bold, fontSize: 15.5, color: c.cardInk }}>{label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk }}>{label}</Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 17, color: c.cardInk3, marginTop: 3 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}>
             {sub}
           </Text>
         )}
@@ -142,7 +142,7 @@ function Choice<T>({
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const { c, radius } = useV2Theme();
+  const { c, radius, fs } = useV2Theme();
   return (
     <View style={{ gap: 10, marginTop: 20 }}>
       <Kicker onRoom style={{ marginHorizontal: 4 }}>
@@ -154,7 +154,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Settings() {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role } = useAuth();
@@ -204,14 +204,14 @@ function Settings() {
         >
           <PersonMark name={user?.displayName || 'You'} id={uid} size={52} radius={17} fontSize={17} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontFamily: font.extra, fontSize: 17, letterSpacing: -0.4, color: c.cardInk }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.cardInk }}>
               {user?.displayName || 'You'}
             </Text>
-            <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.cardInk2, marginTop: 2 }}>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk2, marginTop: 2 }}>
               {user?.email || ''}
             </Text>
             {!!carer && (
-              <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3, marginTop: 3 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 3 }}>
                 {carer}
               </Text>
             )}
@@ -221,8 +221,8 @@ function Settings() {
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 13.5,
-            lineHeight: 20,
+            fontSize: fs(13.5),
+            lineHeight: fs(20),
             color: c.roomInk2,
             marginTop: 12,
             marginHorizontal: 4,
@@ -235,9 +235,9 @@ function Settings() {
           <Section title="When you're on campus">
             <View style={{ gap: 10 }}>
               <View>
-                <Text style={{ fontFamily: font.bold, fontSize: 15.5, color: c.cardInk }}>The days you're there</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk }}>The days you're there</Text>
                 <Text
-                  style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 17, color: c.cardInk3, marginTop: 3 }}
+                  style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}
                 >
                   {onCampusSummary(w)} — logging gets promoted while you're in it.
                 </Text>
@@ -263,14 +263,14 @@ function Settings() {
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontFamily: font.extra, fontSize: 14, color: on ? c.card : c.cardInk3 }}>
+                      <Text style={{ fontFamily: font.extra, fontSize: fs(14), color: on ? c.card : c.cardInk3 }}>
                         {initial}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <Text style={{ fontFamily: font.semi, fontSize: 12.5, color: c.cardInk2 }}>{onCampusNowLine(w)}</Text>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk2 }}>{onCampusNowLine(w)}</Text>
             </View>
 
             <Choice
@@ -353,7 +353,7 @@ function Settings() {
         {hasQueue && (
           <Section title="Today's queue">
             <View style={{ gap: 12 }}>
-              <Text style={{ fontFamily: font.medium, fontSize: 14, lineHeight: 21, color: c.cardInk2 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.cardInk2 }}>
                 You've dealt with {queueState.handledCount}{' '}
                 {queueState.handledCount === 1 ? 'card' : 'cards'} today. Bringing them back starts the day over — it
                 doesn't undo anything you did.
@@ -372,8 +372,8 @@ function Settings() {
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 12.5,
-            lineHeight: 19,
+            fontSize: fs(12.5),
+            lineHeight: fs(19),
             color: c.roomFaint,
             marginHorizontal: 4,
             marginTop: 26,

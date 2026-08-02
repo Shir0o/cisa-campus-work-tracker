@@ -7,6 +7,74 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **Mobile v2 — the log sheet's second beat, and the fuller person.** The design
+  revised `M2LogSheet` twice after the sheet was first ported; both revisions
+  land here.
+
+  **The "saved" step.** Saving no longer just toasts and closes — it lands on a
+  quiet second beat asking what caring for them wants next: **Come back to
+  {first}** (an editable line + Tomorrow / In a few days / Next week → a to-do
+  assigned to me, carrying `contactId`/`contactName` — *not* `source`, which is
+  the Board-doc link and would render an empty doc chip) · **Something to pray
+  for** (one line → `addPrayer`) · then **Done** / **Log another** (a full reset
+  back to the palette) / **Open {first}'s page →**. This closes the regression
+  the previous pass recorded below: a trainee had **no way to make a follow-up
+  to-do from the phone**, so the queue's own "You said you'd follow up" card
+  could only come from a to-do made on the desktop site. It can now come from
+  the phone, and the reminder is real — setting one also schedules the OS
+  notification, so "your phone will nudge you that morning" is true.
+  `REMINDER_PRESETS`, `reminderDueDate`, `scheduleTodoDueNotification` and
+  `ensureNotificationPermission` — all recorded below as left on disk
+  unreferenced — have callers again.
+  Wiring the design is explicit about: the toast and the queue card go out in
+  `finish()`, on the way OUT, with the card id held in a ref so *Log another*
+  can't hand the same card back twice; a scrim tap on this step **finishes**
+  rather than discards. New optional `onOpenContact` prop, passed by the queue,
+  the full-timer's home and People, and omitted by the person screen — you're
+  already there, so the link hides. The queue now also passes `cardId` and
+  handles the card on save, which is what answers a **gone quiet** card (it has
+  no to-do to complete).
+
+  **"Fill in the rest".** *Someone new* still opens with the 20-second three
+  (name · where you met · one note); a disclosure now folds out phone · email ·
+  year · studying · part of · where they're at · faith so far · first met.
+  Nothing is required. `Part of` and `Faith, so far` render as rows on the
+  person screen. New pure `logSavedBeat` / `followUpDefaultText` /
+  `reminderSetLine` / `prayerAddedLine` / `firstMetDate` in `@cisa/core`, and
+  `newContactFromLog` widened to carry the fuller fields (481 core tests).
+
+  **Four substitutions, all because the design's mock data has fields this
+  app's schema doesn't.** (1) The design offers **"Lives"** beside "Where you
+  met"; a `Contact` here has ONE dual-purpose `location` whose own form labels
+  it "FIRST MET / RESIDENCE", so "where you met" keeps it and "Lives" is
+  dropped rather than have the two fight over one field. (2) **"Bring it to
+  team prayer"** is dropped: a `PrayerRecord` carries no team flag and
+  `addPrayer` already writes `prayerPage: true`, so every contact prayer is
+  already on the team's prayer page — the done-line says so instead. (3) The
+  design's own **year** and **faith** word lists are replaced by the existing
+  `SIGNUP_YEARS` / `SIGNUP_SPIRITUAL_BACKGROUNDS`, so a person added on the
+  phone speaks the same vocabulary as the sign-up form and the web profile
+  rather than opening a second, incompatible one; **"Part of"** is free text
+  into `Contact.role`, which this app's own form already labels "CONTACT
+  GROUP". (4) **"First met"** is a `<input type="date">` in the design; this app
+  has no date-picker dependency and one optional field is no reason to add a
+  native one, so it follows the app's own no-picker idiom — Today / This week /
+  Earlier presets, feeding a new optional `createdAt` on `NewContactInput` that
+  genuinely backdates the contact. Also unported: the design's `HeadsUps.add`
+  FYI to another owner, which has no store here.
+
+- **Mobile v2 — the design's type scale.** Every font size in the design is
+  `calc(var(--m2-fs) * R)` against `--m2-fs: clamp(11px, 1.6vh, 13px)` — 13px on
+  a normal phone, easing to 11px on a short screen so tall screens scroll less.
+  New pure `v2FontScale` / `v2FontSize` in `@cisa/core` (React Native has no
+  `vh` and no `clamp()`), exposed as `fs()` from `useV2Theme()`, and every
+  literal `fontSize`/`lineHeight` in the 51 v2 components now passes through it
+  (421 sizes). **Add new v2 CSS the same way** — a plain `px` size will not
+  scale with the rest of the app. Line heights scale identically or the rhythm
+  breaks. `PersonMark` scales its own mark once, since its size arrives as a
+  drawn-unit prop. Material screens are deliberately untouched: the
+  `useV2Theme` call list is the boundary.
+
 - **Mobile v2 — room tint selection (Green vs Navy room).** The design's
   `mobile-blue.css` defines a room tint option switching the trainee/member
   room background from deep green (`#16332b` / `#0b1611`) to navy (`#17293f` /

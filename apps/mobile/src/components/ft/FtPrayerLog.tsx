@@ -26,7 +26,7 @@ export function FtPrayerLogScreen() {
 }
 
 function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -42,7 +42,7 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: prayed ? c.tones.pray.text : c.cardInk2 }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: prayed ? c.tones.pray.text : c.cardInk2 }}>
         {prayed ? 'Prayed ✓' : 'I prayed'}
       </Text>
     </Pressable>
@@ -50,7 +50,7 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
 }
 
 function FtPrayerLog() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const router = useRouter();
   const data = useFtHomeData(uid, user?.displayName ?? null);
@@ -81,7 +81,7 @@ function FtPrayerLog() {
         onBack={back}
       >
         {rows.length === 0 && (
-          <Text style={{ fontFamily: font.semi, fontSize: 14, color: c.roomInk3, paddingVertical: 20 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.roomInk3, paddingVertical: 20 }}>
             Nothing open right now.
           </Text>
         )}

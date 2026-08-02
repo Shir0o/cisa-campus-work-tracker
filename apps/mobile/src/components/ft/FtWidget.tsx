@@ -34,7 +34,7 @@ export function FtSech({
   link?: string | null;
   onLink?: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -48,7 +48,7 @@ export function FtSech({
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
           color: c.roomInk3,
@@ -67,7 +67,7 @@ export function FtSech({
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: 11, color: c.roomInk2 }}>{count}</Text>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.roomInk2 }}>{count}</Text>
         </View>
       )}
       {!!link && onLink && (
@@ -79,7 +79,7 @@ export function FtSech({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: c.roomInk2 }}>{link}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.roomInk2 }}>{link}</Text>
         </Pressable>
       )}
     </View>
@@ -103,7 +103,7 @@ export function FtWidget({
   onLink?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, radius, shadow } = useV2Theme();
+  const { c, radius, shadow, fs } = useV2Theme();
   return (
     <View>
       <FtSech label={label} count={count} link={link} onLink={onLink} />
@@ -124,7 +124,7 @@ export function FtWidget({
 
 /** The hairline between two rows inside a widget. */
 export function FtRow({ first, children }: { first: boolean; children: React.ReactNode }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -140,7 +140,7 @@ export function FtRow({ first, children }: { first: boolean; children: React.Rea
 
 /** One of the quiet inline actions under a row. */
 export function FtAction({ label, onPress }: { label: string; onPress: () => void }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -151,20 +151,20 @@ export function FtAction({ label, onPress }: { label: string; onPress: () => voi
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
     </Pressable>
   );
 }
 
 /** "Nothing due today." — a widget with nothing in it still says something. */
 export function FtEmpty({ children }: { children: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Text
       style={{
         fontFamily: font.semi,
-        fontSize: 14,
-        lineHeight: 20,
+        fontSize: fs(14),
+        lineHeight: fs(20),
         color: c.cardInk3,
         paddingVertical: 16,
       }}

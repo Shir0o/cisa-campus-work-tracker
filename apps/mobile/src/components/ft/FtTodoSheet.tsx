@@ -35,7 +35,7 @@ const BY_WHEN: { label: string; days: number }[] = [
 ];
 
 function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -53,7 +53,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 13.5,
+          fontSize: fs(13.5),
           color: on ? c.onPrimary : c.cardInk2,
         }}
       >
@@ -64,13 +64,13 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={{ marginTop: 16 }}>
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
           color: c.cardInk3,
@@ -86,7 +86,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtTodoSheetProps) {
   // Remounted per contact by the caller's `key`, so the draft starts fresh.
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const [title, setTitle] = React.useState(contact ? `Check in with ${firstName(contact.name)}` : '');
   const [who, setWho] = React.useState(me);
   const [days, setDays] = React.useState(1);
@@ -104,7 +104,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
           <Text
             style={{
               fontFamily: font.extra,
-              fontSize: 20,
+              fontSize: fs(20),
               letterSpacing: -0.5,
               color: c.cardInk,
             }}
@@ -114,7 +114,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
           <Text
             style={{
               fontFamily: font.semi,
-              fontSize: 13,
+              fontSize: fs(13),
               color: c.cardInk3,
               marginTop: 7,
             }}
@@ -138,7 +138,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
               paddingVertical: 14,
               paddingHorizontal: 15,
               fontFamily: font.semi,
-              fontSize: 15,
+              fontSize: fs(15),
               color: c.cardInk,
               textAlignVertical: 'top',
             }}

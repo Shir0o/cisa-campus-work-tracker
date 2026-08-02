@@ -47,7 +47,7 @@ function StepPill({
   onPress: () => void;
   onLayout: (x: number) => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   // `.m2j-step`: the dot rides ABOVE the label, and the chosen step inverts —
   // near-white on the night room, near-black on paper. A tint difference alone
   // is invisible in the dark rooms.
@@ -75,10 +75,10 @@ function StepPill({
         }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 8 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: active ? c.onInverse : c.cardInk2 }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: active ? c.onInverse : c.cardInk2 }}>
           {tab.label}
         </Text>
-        <Text style={{ fontFamily: font.extra, fontSize: 12, color: active ? c.onInverse : c.cardInk3 }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(12), color: active ? c.onInverse : c.cardInk3 }}>
           {tab.count}
         </Text>
       </View>
@@ -87,7 +87,7 @@ function StepPill({
 }
 
 function Journey() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { user, uid, role } = useAuth();
   const data = useJourneyData(uid);
@@ -123,7 +123,7 @@ function Journey() {
         note={`${data.totalCount} ${data.totalCount === 1 ? 'person' : 'people'}`}
         onBack={isPushedScreen(role, 'journey') ? back : undefined}
       >
-        <Text style={{ fontFamily: font.semi, fontSize: 14, lineHeight: 20, color: c.roomInk2, marginBottom: 14 }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.roomInk2, marginBottom: 14 }}>
           From a first hello toward a church home. Nobody walks it on a schedule.
         </Text>
 

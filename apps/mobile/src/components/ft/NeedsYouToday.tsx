@@ -15,7 +15,7 @@ export function NeedsYouToday({
   onDone: (task: Task) => void;
   onOpenBoard: () => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const later = todos.laterThisWeek.length;
   return (
     <Widget
@@ -53,8 +53,8 @@ export function NeedsYouToday({
                 <Text
                   style={{
                     fontFamily: font.bold,
-                    fontSize: 15.5,
-                    lineHeight: 21,
+                    fontSize: fs(15.5),
+                    lineHeight: fs(21),
                     color: c.cardInk,
                   }}
                 >
@@ -64,7 +64,7 @@ export function NeedsYouToday({
                   <Text
                     style={{
                       fontFamily: font.semi,
-                      fontSize: 12,
+                      fontSize: fs(12),
                       color: chip.tone === 'overdue' ? c.tones.follow.text : c.cardInk3,
                       marginTop: 4,
                     }}

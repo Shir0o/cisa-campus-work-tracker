@@ -12,7 +12,7 @@ import { useV2Theme, type V2ToneKey } from '../../theme/v2';
 // Wraps rather than overflows: the longest label is 312px against a 292px inner
 // width at 360, so a single non-wrapping row would clip.
 export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string; ago?: string }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const t = c.tones[tone];
   return (
     <View
@@ -34,8 +34,8 @@ export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 10.5,
-          lineHeight: 14,
+          fontSize: fs(10.5),
+          lineHeight: fs(14),
           letterSpacing: 1.26,
           color: t.text,
           textTransform: 'uppercase',
@@ -47,8 +47,8 @@ export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string
         <Text
           style={{
             fontFamily: font.semi,
-            fontSize: 11,
-            lineHeight: 14,
+            fontSize: fs(11),
+            lineHeight: fs(14),
             letterSpacing: 0.22,
             color: t.text,
             opacity: 0.78,
@@ -75,7 +75,7 @@ export function PersonMark({
   radius?: number;
   fontSize?: number;
 }) {
-  const { font } = useV2Theme();
+  const { font, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -87,7 +87,10 @@ export function PersonMark({
         backgroundColor: personColor(id || name),
       }}
     >
-      <Text style={{ fontFamily: font.extra, fontSize: fontSize ?? size * 0.31, color: '#fff' }}>
+      {/* `size` and `fontSize` arrive as DRAWN units, so the type scale is
+          applied here, once — never again at the call sites. The mark keeps its
+          drawn diameter: the design's scale moves type, not geometry. */}
+      <Text style={{ fontFamily: font.extra, fontSize: fs(fontSize ?? size * 0.31), color: '#fff' }}>
         {getUserInitials(name)}
       </Text>
     </View>
@@ -97,16 +100,16 @@ export function PersonMark({
 // ── the card's subject: mark over a big name, then who they are ────────────
 // The person's name is ALWAYS the card title. Never a rival headline.
 export function WhoBlock({ name, sub, id }: { name: string; sub?: string; id?: string | null }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={{ marginTop: 22, gap: 16, alignItems: 'flex-start' }}>
       <PersonMark name={name} id={id} />
       <View>
-        <Text style={{ fontFamily: font.extra, fontSize: 31, lineHeight: 33, letterSpacing: -1, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(31), lineHeight: fs(33), letterSpacing: -1, color: c.cardInk }}>
           {name}
         </Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 18, color: c.cardInk3, marginTop: 8 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 8 }}>
             {sub}
           </Text>
         )}
@@ -117,7 +120,7 @@ export function WhoBlock({ name, sub, id }: { name: string; sub?: string; id?: s
 
 // ── "What you wrote down" — a quiet inset note ─────────────────────────────
 export function NoteBlock({ label, children }: { label: string; children: string }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -131,7 +134,7 @@ export function NoteBlock({ label, children }: { label: string; children: string
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           color: c.noteLabel,
           textTransform: 'uppercase',
@@ -140,7 +143,7 @@ export function NoteBlock({ label, children }: { label: string; children: string
       >
         {label}
       </Text>
-      <Text style={{ fontFamily: font.semi, fontSize: 14, lineHeight: 20, color: c.noteInk }}>{children}</Text>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.noteInk }}>{children}</Text>
     </View>
   );
 }
@@ -149,9 +152,9 @@ export function NoteBlock({ label, children }: { label: string; children: string
 
 /** The call to action, under the name. */
 export function Ask({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.bold, fontSize: 18, lineHeight: 25, letterSpacing: -0.22, color: c.ask, marginTop: 20 }}>
+    <Text style={{ fontFamily: font.bold, fontSize: fs(18), lineHeight: fs(25), letterSpacing: -0.22, color: c.ask, marginTop: 20 }}>
       {children}
     </Text>
   );
@@ -159,9 +162,9 @@ export function Ask({ children }: { children: React.ReactNode }) {
 
 /** A big statement of the thing itself (a to-do's text). */
 export function Lead({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.extra, fontSize: 27, lineHeight: 31, letterSpacing: -0.86, color: c.cardInk, marginTop: 22 }}>
+    <Text style={{ fontFamily: font.extra, fontSize: fs(27), lineHeight: fs(31), letterSpacing: -0.86, color: c.cardInk, marginTop: 22 }}>
       {children}
     </Text>
   );
@@ -169,9 +172,9 @@ export function Lead({ children }: { children: React.ReactNode }) {
 
 /** Something someone said — a prayer's burden. */
 export function Said({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.medium, fontSize: 20, lineHeight: 28, letterSpacing: -0.24, color: c.said, marginTop: 18 }}>
+    <Text style={{ fontFamily: font.medium, fontSize: fs(20), lineHeight: fs(28), letterSpacing: -0.24, color: c.said, marginTop: 18 }}>
       {children}
     </Text>
   );
@@ -179,13 +182,13 @@ export function Said({ children }: { children: React.ReactNode }) {
 
 /** Why this matters today — sits below a hairline. */
 export function Why({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Text
       style={{
         fontFamily: font.medium,
-        fontSize: 16,
-        lineHeight: 25,
+        fontSize: fs(16),
+        lineHeight: fs(25),
         color: c.why,
         marginTop: 22,
         paddingTop: 20,
@@ -200,10 +203,10 @@ export function Why({ children }: { children: React.ReactNode }) {
 
 /** A message from your full-timer, quoted. */
 export function Quote({ children }: { children: React.ReactNode }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={{ marginTop: 20, paddingLeft: 16, borderLeftWidth: 3, borderLeftColor: c.quoteLine }}>
-      <Text style={{ fontFamily: font.medium, fontSize: 18, lineHeight: 26, color: c.said }}>{children}</Text>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(18), lineHeight: fs(26), color: c.said }}>{children}</Text>
     </View>
   );
 }
@@ -220,7 +223,7 @@ export function PrimaryButton({
   onPress: () => void;
   tone?: ButtonTone;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const bg = { primary: c.primary, warm: c.warm, deep: c.deep, green: c.green }[tone];
   const fg = { primary: c.onPrimary, warm: c.onWarm, deep: c.onDeep, green: c.onGreen }[tone];
   return (
@@ -235,13 +238,13 @@ export function PrimaryButton({
         opacity: pressed ? 0.85 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 16.5, color: fg }}>{title}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: fg }}>{title}</Text>
     </Pressable>
   );
 }
 
 export function SecondaryButton({ title, onPress }: { title: string; onPress: () => void }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -255,20 +258,20 @@ export function SecondaryButton({ title, onPress }: { title: string; onPress: ()
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 15, color: c.cardInk2 }}>{title}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.cardInk2 }}>{title}</Text>
     </Pressable>
   );
 }
 
 /** The one ghost affordance at the foot of every card. */
 export function LaterButton({ label = 'Later', onPress }: { label?: string; onPress: () => void }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
       style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.cardInk3 }}>{label}  →</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>{label}  →</Text>
     </Pressable>
   );
 }
@@ -285,7 +288,7 @@ export function AboutChip({
   detail?: string;
   onPress: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -304,8 +307,8 @@ export function AboutChip({
       }}
     >
       <PersonMark name={name} id={id} size={26} radius={9} fontSize={10} />
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.cardInk2 }}>{name}</Text>
-      {!!detail && <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.cardInk3 }}>· {detail}</Text>}
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk2 }}>{name}</Text>
+      {!!detail && <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk3 }}>· {detail}</Text>}
     </Pressable>
   );
 }
@@ -320,7 +323,7 @@ export function Reactions({
   mine: string[];
   onPick: (emoji: string) => void;
 }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
       {options.map((e) => {
@@ -340,7 +343,7 @@ export function Reactions({
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontSize: 18 }}>{e}</Text>
+            <Text style={{ fontSize: fs(18) }}>{e}</Text>
           </Pressable>
         );
       })}
@@ -350,13 +353,13 @@ export function Reactions({
 
 // ── a section label, on the room or on the card ────────────────────────────
 export function Kicker({ children, onRoom, style }: { children: string; onRoom?: boolean; style?: StyleProp<ViewStyle> }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={style}>
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
           color: onRoom ? c.roomInk3 : c.cardInk3,

@@ -11,17 +11,17 @@ import { Sech } from '../v2/Widget';
  * `toLocalDate`: a bare yyyy-MM-dd through `new Date()` is UTC midnight, a day
  * early everywhere behind UTC. */
 function DateBlock({ date }: { date: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const d = toLocalDate(date);
   return (
     <View style={{ width: 46, alignItems: 'center' }}>
-      <Text style={{ fontFamily: font.extra, fontSize: 17, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.cardInk }}>
         {d ? format(d, 'd') : '—'}
       </Text>
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 0.8,
           textTransform: 'uppercase',
           color: c.cardInk3,
@@ -43,7 +43,7 @@ export function AlsoComingUp({
   isGoing: (eventId: string) => boolean;
   onToggle: (ev: Event, going: boolean) => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <View>
       <Sech label="Also coming up" />
@@ -72,12 +72,12 @@ export function AlsoComingUp({
             >
               <DateBlock date={ev.date} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: font.bold, fontSize: 14.5, color: c.cardInk }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.cardInk }}>
                   {ev.name}
                 </Text>
                 {!!sub && (
                   <Text
-                    style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }}
+                    style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }}
                   >
                     {sub}
                   </Text>
@@ -99,7 +99,7 @@ export function AlsoComingUp({
                 <Text
                   style={{
                     fontFamily: font.bold,
-                    fontSize: 12.5,
+                    fontSize: fs(12.5),
                     color: going ? c.onGreen : c.cardInk2,
                   }}
                 >

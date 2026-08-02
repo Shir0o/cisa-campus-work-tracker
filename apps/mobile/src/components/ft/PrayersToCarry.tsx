@@ -29,7 +29,7 @@ export function PrayersToCarry({
   onAnswered: (row: FtCarryRow) => void;
   onOpenPrayers: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const shown = rows.slice(0, FT_WIDGET_ROWS);
   return (
     <Widget
@@ -47,8 +47,8 @@ export function PrayersToCarry({
             <Text
               style={{
                 fontFamily: font.bold,
-                fontSize: 15.5,
-                lineHeight: 21,
+                fontSize: fs(15.5),
+                lineHeight: fs(21),
                 color: c.tones.pray.text,
               }}
             >
@@ -57,7 +57,7 @@ export function PrayersToCarry({
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 13,
+                fontSize: fs(13),
                 color: c.tones.pray.text,
                 opacity: 0.75,
                 marginTop: 3,
@@ -89,7 +89,7 @@ export function PrayersToCarry({
                 <Text
                   style={{
                     fontFamily: font.bold,
-                    fontSize: 13.5,
+                    fontSize: fs(13.5),
                     color: prayed ? c.cardInk3 : c.deep,
                   }}
                 >
@@ -107,7 +107,7 @@ export function PrayersToCarry({
                     opacity: pressed ? 0.55 : 1,
                   })}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.tones.pray.text }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.tones.pray.text }}>
                     God answered this
                   </Text>
                 </Pressable>
