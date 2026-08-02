@@ -30,6 +30,7 @@ import { usePeopleData } from '../../lib/usePeopleData';
 import { useQueuePrefs, type QueueSettings } from '../../lib/queuePrefs';
 import { useQueueState } from '../../lib/queueState';
 import { useTheme } from '../../theme/ThemeProvider';
+import { useRoomTint, type V2RoomTint } from '../../lib/roomTint';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, SecondaryButton } from '../queue/atoms';
 import { Room, V2Screen } from '../v2/Widget';
@@ -44,6 +45,11 @@ const LOOKS: { key: 'light' | 'dark' | 'system'; label: string }[] = [
   { key: 'light', label: 'Daylight' },
   { key: 'dark', label: 'Dark' },
   { key: 'system', label: 'Match my phone' },
+];
+
+const TINTS: { key: V2RoomTint; label: string }[] = [
+  { key: 'green', label: 'Green room' },
+  { key: 'blue', label: 'Navy room' },
 ];
 
 export function SettingsScreen() {
@@ -152,6 +158,7 @@ function Settings() {
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role } = useAuth();
+  const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
   const people = usePeopleData(uid);
@@ -333,6 +340,13 @@ function Settings() {
             options={LOOKS.map((l) => ({ value: l.key, label: l.label }))}
             value={scheme}
             onPick={setScheme}
+          />
+          <Choice
+            label="Room tint"
+            sub="Green is the classic trainee room; Navy is the deep night and team paper tone."
+            options={TINTS.map((t) => ({ value: t.key, label: t.label }))}
+            value={tint}
+            onPick={setTint}
           />
         </Section>
 

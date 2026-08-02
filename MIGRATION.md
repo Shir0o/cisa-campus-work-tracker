@@ -1110,9 +1110,12 @@ itself; this section tracks the port against the design as it keeps moving.
       shell (routes and deep links still work), and the staff team-prayer
       screen (hold / set-status / stop-holding) is desktop-only — the Prayer
       log is read-mostly. Giving those screens a home is the next pass.
-- [ ] **The navy room as a tint the trainee can pick** — the room itself is
-      done (the full-timer home ported it as the `ft` room in `theme/v2.ts`);
-      the design drives the choice from Tweaks, which has no app equivalent yet.
+- [x] ~~**The navy room as a tint the trainee can pick**~~ — ported the
+      design's `mobile-blue.css` navy room tint (`#17293f` light / `#0a1220`
+      dark) into `theme/v2.ts` (`lightBlueQueue` / `darkBlueQueue`). Added a
+      device-local `RoomTintStore` and `useRoomTint` hook (`cisa.m2.tint.<uid>`)
+      in `lib/roomTint.ts`, wrapped `RootNavigator` in `V2RoomTintContext`, and
+      added a **Room tint** picker under *How it looks* in `/settings`.
 - [x] ~~**People · The Journey · Gatherings in the v2 language**~~ — the design's
       own `views/mobile/screens.jsx` trio, grouped that way because they share
       one shell. `components/v2/Widget.tsx`'s `V2Screen` / `V2PersonRow` (built
