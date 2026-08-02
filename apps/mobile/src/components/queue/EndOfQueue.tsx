@@ -23,7 +23,7 @@ export function EndOfQueue({
   onLookBack: () => void;
   onReset: () => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
 
   return (
     <ScrollView
@@ -46,11 +46,11 @@ export function EndOfQueue({
         <Ionicons name="checkmark" size={30} color={c.onMark} />
       </View>
 
-      <Text style={{ fontFamily: font.serif, fontSize: 37, lineHeight: 41, color: c.roomInk, marginTop: 20 }}>
+      <Text style={{ fontFamily: font.serif, fontSize: fs(37), lineHeight: fs(41), color: c.roomInk, marginTop: 20 }}>
         {"That's everything,\n"}
         {firstName}.
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: 15.5, lineHeight: 23, color: c.roomInk2, marginTop: 12 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.roomInk2, marginTop: 12 }}>
         {allClearLine(handledCount)}
       </Text>
 
@@ -59,11 +59,11 @@ export function EndOfQueue({
       </View>
 
       <Pressable onPress={onLookBack} style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>Look back at your week  →</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>Look back at your week  →</Text>
       </Pressable>
 
       <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk3 }}>Bring back today's queue</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk3 }}>Bring back today's queue</Text>
       </Pressable>
     </ScrollView>
   );

@@ -17,7 +17,7 @@ export function Announcements({
   label: string;
   onOpen: (roomId: string) => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <View>
       <Sech label={label} count={rows.filter((r) => r.unread).length} />
@@ -45,10 +45,10 @@ export function Announcements({
                   }}
                 />
               )}
-              <Text style={{ fontFamily: font.extra, fontSize: 15, color: c.cardInk, flex: 1 }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk, flex: 1 }}>
                 {row.name}
               </Text>
-              <Text style={{ fontFamily: font.medium, fontSize: 12, color: c.cardInk3 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.cardInk3 }}>
                 {memberAgo(row.at)}
               </Text>
             </View>
@@ -56,8 +56,8 @@ export function Announcements({
               numberOfLines={3}
               style={{
                 fontFamily: font.medium,
-                fontSize: 14,
-                lineHeight: 20,
+                fontSize: fs(14),
+                lineHeight: fs(20),
                 color: c.cardInk2,
                 marginTop: 6,
               }}

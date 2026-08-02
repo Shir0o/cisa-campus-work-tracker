@@ -35,7 +35,7 @@ export function MemberYouScreen({ role, showBack }: { role: MemberRole; showBack
 }
 
 function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const { uid, user, role: appRole } = useAuth();
   const router = useRouter();
@@ -78,8 +78,8 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         >
           <PersonMark name={me} id={uid} size={46} radius={15} fontSize={15} />
           <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: font.extra, fontSize: 17, color: c.cardInk }}>{me}</Text>
-            <Text style={{ fontFamily: font.medium, fontSize: 13, color: c.cardInk3, marginTop: 2 }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.cardInk }}>{me}</Text>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk3, marginTop: 2 }}>
               {roleLabel(appRole)}
             </Text>
           </View>
@@ -90,7 +90,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
           <View style={{ gap: 10 }}>
             {fullTimers.length === 0 && (
               <Text
-                style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.roomInk2 }}
+                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}
               >
                 We'll have someone to connect you with here soon.
               </Text>
@@ -110,10 +110,10 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
               >
                 <PersonMark name={ft.name} id={ft.uid} size={38} radius={13} fontSize={13} />
                 <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: 15, color: c.cardInk }}>
+                  <Text numberOfLines={1} style={{ fontFamily: font.bold, fontSize: fs(15), color: c.cardInk }}>
                     {ft.name}
                   </Text>
-                  <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3 }}>
+                  <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3 }}>
                     Campus team
                   </Text>
                 </View>
@@ -126,7 +126,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                     opacity: pressed ? 0.55 : 1,
                   })}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>
                     Message →
                   </Text>
                 </Pressable>
@@ -162,7 +162,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                   <Text
                     style={{
                       fontFamily: font.bold,
-                      fontSize: 13,
+                      fontSize: fs(13),
                       textAlign: 'center',
                       color: on ? c.cardInk : c.roomInk2,
                     }}
@@ -188,11 +188,11 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                 ...shadow.soft,
               })}
             >
-              <Text style={{ fontFamily: font.extra, fontSize: 15.5, color: c.cardInk }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.cardInk }}>
                 Invite a friend
               </Text>
               <Text
-                style={{ fontFamily: font.medium, fontSize: 13, color: c.cardInk3, marginTop: 3 }}
+                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk3, marginTop: 3 }}
               >
                 An invitation you can send in a text
               </Text>

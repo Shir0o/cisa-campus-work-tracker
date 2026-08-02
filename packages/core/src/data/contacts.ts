@@ -129,6 +129,12 @@ export interface NewContactInput {
   notes: string;
   spiritualBackground: string;
   initials: string;
+  year?: string;
+  major?: string;
+  /** Backdates the contact, for the v2 log sheet's "First met" — everything
+   * that reads how long you've known someone (the profile's "Known … days",
+   * quickCaptureRecents' fallback) reads `createdAt`. Omit for "now". */
+  createdAt?: string;
 }
 
 export interface ContactNotifyPayload {
@@ -157,7 +163,7 @@ export async function addContact(
   const docRef = await addDoc(collection(db, "contacts"), {
     ...input,
     lastSeen: "Just now",
-    createdAt: new Date().toISOString(),
+    createdAt: input.createdAt || new Date().toISOString(),
     serverCreatedAt: serverTimestamp(),
     createdBy: by.uid ?? null,
     createdByName: by.name ?? null,

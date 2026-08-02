@@ -24,14 +24,14 @@ function Body({
   onSubmit: (body: string) => void;
   onClose: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const [body, setBody] = React.useState('');
   return (
     <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
-      <Text style={{ fontFamily: font.extra, fontSize: 21, letterSpacing: -0.6, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.cardInk }}>
         {title}
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}>
         {sub}
       </Text>
       <TextInput
@@ -51,8 +51,8 @@ function Body({
           minHeight: multiline ? 110 : 52,
           textAlignVertical: multiline ? 'top' : 'center',
           fontFamily: font.medium,
-          fontSize: 15,
-          lineHeight: 22,
+          fontSize: fs(15),
+          lineHeight: fs(22),
           color: c.cardInk,
         }}
       />
@@ -72,13 +72,13 @@ function Body({
           opacity: !body.trim() ? 0.45 : pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 16.5, color: c.onDeep }}>{cta}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.onDeep }}>{cta}</Text>
       </Pressable>
       <Pressable
         onPress={onClose}
         style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.cardInk3 }}>Not now</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>Not now</Text>
       </Pressable>
     </View>
   );
@@ -95,7 +95,7 @@ export function AskSheet({
   onClose: () => void;
   onSend: (body: string) => void;
 }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
       <Room room="queue">
@@ -124,7 +124,7 @@ export function OnYourHeartSheet({
   onClose: () => void;
   onAdd: (title: string) => void;
 }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
       <Room room="queue">

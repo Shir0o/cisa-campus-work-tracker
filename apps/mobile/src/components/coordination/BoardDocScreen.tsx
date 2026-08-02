@@ -26,7 +26,7 @@ export function BoardDocScreen({ docId }: { docId: string }) {
 }
 
 function DocBody({ doc }: { doc: BoardDoc }) {
-  const { c, mode } = useV2Theme();
+  const { c, mode, fs } = useV2Theme();
   const elements = useMarkdown(doc.md?.trim() ? doc.md : '_This page is empty._', {
     colorScheme: mode,
     theme: {
@@ -43,7 +43,7 @@ function DocBody({ doc }: { doc: BoardDoc }) {
 }
 
 function BoardDoc({ docId }: { docId: string }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const data = useBoardDocData(docId);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/coordination'));
@@ -63,7 +63,7 @@ function BoardDoc({ docId }: { docId: string }) {
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 2 }}>
               <AudiencePill doc={data.doc} />
-              <Text style={{ fontFamily: font.semi, fontSize: 12.5, color: c.roomInk3 }}>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.roomInk3 }}>
                 {BOARD_AUDIENCE[audienceOf(data.doc)].sub}
               </Text>
             </View>
@@ -81,7 +81,7 @@ function BoardDoc({ docId }: { docId: string }) {
             </View>
 
             <Text
-              style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.roomInk3, marginTop: 22 }}
+              style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: 22 }}
             >
               {boardKeeperFoot(data.keeperName)}
             </Text>

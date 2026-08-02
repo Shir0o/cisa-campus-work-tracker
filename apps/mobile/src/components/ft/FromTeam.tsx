@@ -20,7 +20,7 @@ export function FromTeam({
   onOpen: (contactId: string) => void;
   onScan: (row: FtInboxRow) => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const [expanded, setExpanded] = React.useState(false);
   const shown = ftInboxVisible(rows, expanded);
   const rest = rows.length - shown.length;
@@ -53,8 +53,8 @@ export function FromTeam({
                   style={{
                     flex: 1,
                     fontFamily: font.bold,
-                    fontSize: 15,
-                    lineHeight: 20,
+                    fontSize: fs(15),
+                    lineHeight: fs(20),
                     color: c.cardInk,
                   }}
                 >
@@ -65,8 +65,8 @@ export function FromTeam({
                 <Text
                   style={{
                     fontFamily: font.medium,
-                    fontSize: 13,
-                    lineHeight: 18,
+                    fontSize: fs(13),
+                    lineHeight: fs(18),
                     color: c.cardInk2,
                     marginTop: 4,
                   }}

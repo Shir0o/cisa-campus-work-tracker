@@ -7,7 +7,7 @@
 // the same shell; nothing in here is full-timer-specific — every value comes
 // from whichever room the provider below puts it in.
 import React from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
 
@@ -39,7 +39,7 @@ export function Sech({
   link?: string | null;
   onLink?: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -53,7 +53,7 @@ export function Sech({
       <Text
         style={{
           fontFamily: font.bold,
-          fontSize: 10.5,
+          fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
           color: c.roomInk3,
@@ -72,7 +72,7 @@ export function Sech({
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: 11, color: c.roomInk2 }}>{count}</Text>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.roomInk2 }}>{count}</Text>
         </View>
       )}
       {!!link && onLink && (
@@ -84,7 +84,7 @@ export function Sech({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 12.5, color: c.roomInk2 }}>{link}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.roomInk2 }}>{link}</Text>
         </Pressable>
       )}
     </View>
@@ -108,7 +108,7 @@ export function Widget({
   onLink?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, radius, shadow } = useV2Theme();
+  const { c, radius, shadow, fs } = useV2Theme();
   return (
     <View>
       <Sech label={label} count={count} link={link} onLink={onLink} />
@@ -129,7 +129,7 @@ export function Widget({
 
 /** The hairline between two rows inside a widget. */
 export function WidgetRow({ first, children }: { first: boolean; children: React.ReactNode }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -145,7 +145,7 @@ export function WidgetRow({ first, children }: { first: boolean; children: React
 
 /** One of the quiet inline actions under a row. */
 export function WidgetAction({ label, onPress }: { label: string; onPress: () => void }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -156,7 +156,7 @@ export function WidgetAction({ label, onPress }: { label: string; onPress: () =>
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
     </Pressable>
   );
 }
@@ -183,7 +183,7 @@ export function V2Screen({
   onBack?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View style={{ flex: 1, backgroundColor: c.room }}>
       <View
@@ -207,11 +207,11 @@ export function V2Screen({
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>← Back</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>← Back</Text>
           </Pressable>
         )}
         <Text
-          style={{ fontFamily: font.extra, fontSize: 18, letterSpacing: -0.45, color: c.roomInk, flexShrink: 1 }}
+          style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.45, color: c.roomInk, flexShrink: 1 }}
           numberOfLines={1}
         >
           {title}
@@ -229,13 +229,13 @@ export function V2Screen({
               opacity: pressed ? 0.65 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk }}>{action.label}</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk }}>{action.label}</Text>
           </Pressable>
         ) : note ? (
           <Text
             style={{
               fontFamily: font.semi,
-              fontSize: 12,
+              fontSize: fs(12),
               color: c.roomInk3,
               marginLeft: 'auto',
               flexShrink: 1,
@@ -271,7 +271,7 @@ export function V2RowCard({
   onAction?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View style={{ backgroundColor: c.card, borderRadius: radius.row, marginTop: 9, overflow: 'hidden' }}>
       {children}
@@ -287,7 +287,7 @@ export function V2RowCard({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{action}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{action}</Text>
         </Pressable>
       )}
     </View>
@@ -303,18 +303,25 @@ export function V2Input({
   value,
   onChangeText,
   placeholder,
+  keyboardType,
+  autoCapitalize,
 }: {
   value: string;
   onChangeText: (next: string) => void;
   placeholder: string;
+  /** For the log sheet's phone / email fields — the right keyboard on a phone. */
+  keyboardType?: TextInputProps['keyboardType'];
+  autoCapitalize?: TextInputProps['autoCapitalize'];
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
       placeholderTextColor={c.cardInk3}
+      keyboardType={keyboardType}
+      autoCapitalize={autoCapitalize}
       autoCorrect={false}
       style={{
         minHeight: 48,
@@ -324,7 +331,7 @@ export function V2Input({
         borderWidth: 1.5,
         borderColor: c.border,
         fontFamily: font.semi,
-        fontSize: 14.5,
+        fontSize: fs(14.5),
         color: c.cardInk,
       }}
     />
@@ -346,7 +353,7 @@ export function V2TextArea({
   minHeight?: number;
   autoFocus?: boolean;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <TextInput
       value={value}
@@ -365,8 +372,8 @@ export function V2TextArea({
         borderWidth: 1.5,
         borderColor: c.border,
         fontFamily: font.semi,
-        fontSize: 15,
-        lineHeight: 21,
+        fontSize: fs(15),
+        lineHeight: fs(21),
         color: c.cardInk,
       }}
     />
@@ -386,7 +393,7 @@ export function V2Seg<T extends string>({
   onChange: (next: T) => void;
   items: { id: T; label: string; count?: number }[];
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <View style={{ flexDirection: 'row', gap: 6, marginTop: 16, marginBottom: 12 }}>
       {items.map((item) => {
@@ -407,14 +414,14 @@ export function V2Seg<T extends string>({
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: on ? c.onInverse : c.roomInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.onInverse : c.roomInk2 }}>
               {item.label}
             </Text>
             {!!item.count && (
               <Text
                 style={{
                   fontFamily: font.bold,
-                  fontSize: 11,
+                  fontSize: fs(11),
                   opacity: 0.6,
                   color: on ? c.onInverse : c.roomInk2,
                 }}
@@ -432,13 +439,13 @@ export function V2Seg<T extends string>({
 /** The design's `.m2c-empty` — a quiet line where a list would be, on the room
  * rather than inside a widget (which is `WidgetEmpty`'s job). */
 export function V2Empty({ children }: { children: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Text
       style={{
         fontFamily: font.semi,
-        fontSize: 14,
-        lineHeight: 20,
+        fontSize: fs(14),
+        lineHeight: fs(20),
         color: c.roomInk3,
         paddingVertical: 18,
       }}
@@ -450,9 +457,9 @@ export function V2Empty({ children }: { children: string }) {
 
 /** The hint under a section label — the design's `.m2p-hint`. */
 export function V2Hint({ children }: { children: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.roomInk3, marginTop: -4 }}>
+    <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: -4 }}>
       {children}
     </Text>
   );
@@ -490,7 +497,7 @@ export function V2PersonRow({
   flat?: boolean;
   onPress?: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -518,24 +525,24 @@ export function V2PersonRow({
           backgroundColor: personColor(colorSeed),
         }}
       >
-        <Text style={{ fontFamily: font.extra, fontSize: 12.5, color: '#fff' }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(12.5), color: '#fff' }}>
           {getUserInitials(name)}
         </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          style={{ fontFamily: font.extra, fontSize: 15, letterSpacing: -0.3, color: c.cardInk }}
+          style={{ fontFamily: font.extra, fontSize: fs(15), letterSpacing: -0.3, color: c.cardInk }}
           numberOfLines={1}
         >
           {name}
         </Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.semi, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }} numberOfLines={2}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }} numberOfLines={2}>
             {sub}
           </Text>
         )}
         {!!note && (
-          <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk2, marginTop: 3 }} numberOfLines={2}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk2, marginTop: 3 }} numberOfLines={2}>
             {note}
           </Text>
         )}
@@ -545,7 +552,7 @@ export function V2PersonRow({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 108 }}>
           {!!dot && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />}
           <Text
-            style={{ fontFamily: font.semi, fontSize: 12, color: c.cardInk3, textAlign: 'right', flexShrink: 1 }}
+            style={{ fontFamily: font.semi, fontSize: fs(12), color: c.cardInk3, textAlign: 'right', flexShrink: 1 }}
             numberOfLines={2}
           >
             {rightText}
@@ -558,13 +565,13 @@ export function V2PersonRow({
 
 /** "Nothing due today." — a widget with nothing in it still says something. */
 export function WidgetEmpty({ children }: { children: string }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Text
       style={{
         fontFamily: font.semi,
-        fontSize: 14,
-        lineHeight: 20,
+        fontSize: fs(14),
+        lineHeight: fs(20),
         color: c.cardInk3,
         paddingVertical: 16,
       }}

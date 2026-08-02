@@ -20,7 +20,8 @@
 // recurring gatherings. The full-timer's room departs from it on purpose — its
 // "At a glance" tiles and week-ahead strip ARE direction 05.
 import { createContext, useContext, useMemo } from 'react';
-import { shellForRole, type AppRole } from '@cisa/core';
+import { useWindowDimensions } from 'react-native';
+import { shellForRole, v2FontScale, type AppRole } from '@cisa/core';
 import { useTheme } from './ThemeProvider';
 import type { ThemeMode } from './tokens';
 
@@ -484,6 +485,11 @@ export interface V2Theme {
   font: typeof v2Font;
   radius: typeof v2Radius;
   shadow: typeof v2Shadow;
+  /** The design's type scale (MOBILE-V2.md, "Type scale"): every font size in a
+   * v2 component is a size the app was DRAWN at, and passes through here.
+   * `fontSize: fs(20)`, and line heights too — scaling one without the other
+   * breaks the rhythm. Plain `px` will not scale with the rest of the app. */
+  fs: (drawnSize: number) => number;
 }
 
 /** One hook for every v2 component. Follows the app's light/dark the same way
@@ -495,6 +501,9 @@ export function useV2Theme(roomOverride?: V2Room, tintOverride?: V2RoomTint): V2
   const contextTint = useContext(V2RoomTintContext);
   const room = roomOverride ?? contextRoom;
   const tint = tintOverride ?? contextTint;
+  // The design's `--m2-fs: clamp(11px, 1.6vh, 13px)` — 13px on a normal phone,
+  // easing to 11px on a short one so tall screens scroll less.
+  const scale = v2FontScale(useWindowDimensions().height);
 
   return useMemo(
     () => ({
@@ -505,7 +514,8 @@ export function useV2Theme(roomOverride?: V2Room, tintOverride?: V2RoomTint): V2
       font: v2Font,
       radius: v2Radius,
       shadow: v2Shadow,
+      fs: (drawnSize: number) => drawnSize * scale,
     }),
-    [mode, room, tint],
+    [mode, room, tint, scale],
   );
 }

@@ -24,7 +24,7 @@ function Tile({
   detail: string;
   onPress: () => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -44,7 +44,7 @@ function Tile({
         <Text
           style={{
             fontFamily: font.bold,
-            fontSize: 10.5,
+            fontSize: fs(10.5),
             letterSpacing: 1.26,
             textTransform: 'uppercase',
             color: c.cardInk3,
@@ -56,8 +56,8 @@ function Tile({
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 34,
-          lineHeight: 38,
+          fontSize: fs(34),
+          lineHeight: fs(38),
           letterSpacing: -1.2,
           color: c.cardInk,
           marginTop: 8,
@@ -68,7 +68,7 @@ function Tile({
       <Text
         style={{
           fontFamily: font.semi,
-          fontSize: 13,
+          fontSize: fs(13),
           color: c.cardInk2,
           marginTop: 1,
         }}
@@ -78,8 +78,8 @@ function Tile({
       <Text
         style={{
           fontFamily: font.medium,
-          fontSize: 12,
-          lineHeight: 16,
+          fontSize: fs(12),
+          lineHeight: fs(16),
           color: c.cardInk3,
           marginTop: 8,
         }}
@@ -102,7 +102,7 @@ export function FtGlance({
   onOpenPrayers: () => void;
   onOpenGatherings: () => void;
 }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <View>
       <Sech label="At a glance" />

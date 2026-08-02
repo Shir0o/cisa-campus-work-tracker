@@ -7,7 +7,7 @@ import { useV2Theme } from '../../theme/v2';
 import { Sech } from '../v2/Widget';
 
 export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   if (chips.length === 0) return null;
   return (
     <View>
@@ -33,7 +33,7 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
             <Text
               style={{
                 fontFamily: font.bold,
-                fontSize: 10.5,
+                fontSize: fs(10.5),
                 letterSpacing: 1.26,
                 textTransform: 'uppercase',
                 color: c.cardInk3,
@@ -44,8 +44,8 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
             <Text
               style={{
                 fontFamily: font.extra,
-                fontSize: 16,
-                lineHeight: 21,
+                fontSize: fs(16),
+                lineHeight: fs(21),
                 color: c.cardInk,
                 marginTop: 6,
               }}
@@ -57,7 +57,7 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
               <Text
                 style={{
                   fontFamily: font.medium,
-                  fontSize: 12.5,
+                  fontSize: fs(12.5),
                   color: c.cardInk2,
                   marginTop: 4,
                 }}

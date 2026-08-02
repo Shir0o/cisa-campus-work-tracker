@@ -27,7 +27,7 @@ export function ThreadCompose({
    * inverts, exactly as `V2Seg` above it does. */
   onRoom?: boolean;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const [kind, setKind] = useState<ThreadKind>(kinds[0]);
   const [body, setBody] = useState('');
 
@@ -62,7 +62,7 @@ export function ThreadCompose({
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: on ? chip.onInk : chip.offInk }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? chip.onInk : chip.offInk }}>
                 {THREAD_KINDS[k].v2Label}
               </Text>
             </Pressable>
@@ -89,7 +89,7 @@ export function ThreadCompose({
           opacity: !body.trim() ? 0.45 : pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 15.5, color: chip.onInk }}>Post</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: chip.onInk }}>Post</Text>
       </Pressable>
     </View>
   );

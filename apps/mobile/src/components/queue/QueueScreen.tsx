@@ -44,7 +44,7 @@ const tomorrowISO = () => {
 };
 
 export function QueueScreen() {
-  const { c, font, shadow } = useV2Theme();
+  const { c, font, shadow, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const router = useRouter();
   const data = useTraineeLandingData(uid, user?.displayName ?? null);
@@ -56,6 +56,10 @@ export function QueueScreen() {
   const [logFor, setLogFor] = React.useState<Contact | null>(null);
   // The to-do behind a follow-up card, so saving the log closes it too.
   const [logTask, setLogTask] = React.useState<string | null>(null);
+  // The card the sheet was opened from, handed back when the sheet closes so
+  // the card is looked after once — a "gone quiet" card has no to-do to
+  // complete, so logging is the only thing that answers it.
+  const [logCard, setLogCard] = React.useState<string | null>(null);
   const [logOpen, setLogOpen] = React.useState(false);
   const [replyTo, setReplyTo] = React.useState<QueueCardData | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
@@ -96,6 +100,7 @@ export function QueueScreen() {
     openLog: (card) => {
       setLogFor(card.contact ?? null);
       setLogTask(card.task?.id ?? null);
+      setLogCard(card.id);
       setLogOpen(true);
     },
     react: (card, emoji) => {
@@ -185,7 +190,7 @@ export function QueueScreen() {
         <Text
           style={{
             fontFamily: font.semi,
-            fontSize: 12.5,
+            fontSize: fs(12.5),
             color: c.roomInk2,
             paddingHorizontal: 18,
             paddingTop: 8,
@@ -226,7 +231,7 @@ export function QueueScreen() {
           <Text
             style={{
               fontFamily: font.extra,
-              fontSize: 10.5,
+              fontSize: fs(10.5),
               letterSpacing: 1.47,
               textTransform: 'uppercase',
               color: c.roomInk2,
@@ -237,7 +242,7 @@ export function QueueScreen() {
             {meta.left}
           </Text>
           {!!meta.right && (
-            <Text style={{ fontFamily: font.semi, fontSize: 11, color: c.roomInk3 }}>{meta.right}</Text>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.roomInk3 }}>{meta.right}</Text>
           )}
         </Pressable>
       </View>
@@ -305,7 +310,7 @@ export function QueueScreen() {
                   : c.tones[card.tone].dot,
               }}
             >
-              <Text style={{ fontFamily: font.extra, fontSize: 10.5, color: '#fff' }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(10.5), color: '#fff' }}>
                 {card.contact ? getUserInitials(card.contact.name) : '·'}
               </Text>
             </View>
@@ -314,7 +319,7 @@ export function QueueScreen() {
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 12,
+                fontSize: fs(12),
                 color: c.roomFaint,
                 marginLeft: upNext.length > 0 ? 10 : 0,
                 flexShrink: 1,
@@ -357,8 +362,16 @@ export function QueueScreen() {
         room="queue"
         initialContact={logFor}
         taskId={logTask}
+        cardId={logCard}
         onCampus={queuePrefs.prefs.onCampus}
-        onSaved={setToast}
+        onSaved={(message, cardId) => {
+          setToast(message);
+          if (cardId) {
+            queueState.handle(cardId);
+            setIndex(0);
+          }
+        }}
+        onOpenContact={(id) => router.push(`/contact/${id}`)}
         // logFor is left alone here: clearing it would swap the key mid-close
         // and cut the dismiss animation. Each opener sets it first.
         onClose={() => setLogOpen(false)}

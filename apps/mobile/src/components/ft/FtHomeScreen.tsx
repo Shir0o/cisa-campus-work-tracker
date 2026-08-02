@@ -59,7 +59,7 @@ function QuickTile({
   dark?: boolean;
   onPress: () => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -78,8 +78,8 @@ function QuickTile({
       <Text
         style={{
           fontFamily: font.extra,
-          fontSize: 15.5,
-          lineHeight: 21,
+          fontSize: fs(15.5),
+          lineHeight: fs(21),
           letterSpacing: -0.4,
           color: dark ? c.onInverse : c.cardInk,
         }}
@@ -89,7 +89,7 @@ function QuickTile({
       <Text
         style={{
           fontFamily: font.semi,
-          fontSize: 12.5,
+          fontSize: fs(12.5),
           color: dark ? c.onInverse : c.cardInk3,
           opacity: dark ? 0.72 : 1,
           marginTop: 3,
@@ -102,7 +102,7 @@ function QuickTile({
 }
 
 function FtHome() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const router = useRouter();
   const data = useFtHomeData(uid, user?.displayName ?? null);
@@ -170,7 +170,7 @@ function FtHome() {
           <Text
             style={{
               fontFamily: font.semi,
-              fontSize: 13,
+              fontSize: fs(13),
               color: c.tones.follow.text,
             }}
           >
@@ -184,7 +184,7 @@ function FtHome() {
             <Text
               style={{
                 fontFamily: font.bold,
-                fontSize: 10.5,
+                fontSize: fs(10.5),
                 letterSpacing: 1.26,
                 textTransform: 'uppercase',
                 color: c.roomInk3,
@@ -195,8 +195,8 @@ function FtHome() {
             <Text
               style={{
                 fontFamily: font.extra,
-                fontSize: 28,
-                lineHeight: 32,
+                fontSize: fs(28),
+                lineHeight: fs(32),
                 letterSpacing: -0.9,
                 color: c.roomInk,
                 marginTop: 6,
@@ -207,8 +207,8 @@ function FtHome() {
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 14.5,
-                lineHeight: 21,
+                fontSize: fs(14.5),
+                lineHeight: fs(21),
                 color: c.roomInk2,
                 marginTop: 8,
               }}
@@ -287,8 +287,8 @@ function FtHome() {
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 12.5,
-            lineHeight: 18,
+            fontSize: fs(12.5),
+            lineHeight: fs(18),
             color: c.roomFaint,
             marginTop: 2,
           }}
@@ -308,6 +308,7 @@ function FtHome() {
         room="ft"
         initialContact={logFor}
         onSaved={setToast}
+        onOpenContact={(id) => openContact(id)}
         onClose={() => setLogOpen(false)}
       />
       <FtTodoSheet

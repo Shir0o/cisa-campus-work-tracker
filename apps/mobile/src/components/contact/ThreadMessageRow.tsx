@@ -33,7 +33,7 @@ export function ThreadMessageRow({
   canReact: boolean;
   onToggleReaction: (messageId: string, emoji: string) => void;
 }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const mine = message.from === meUid;
   const isNudge = message.kind === 'nudge';
 
@@ -48,13 +48,13 @@ export function ThreadMessageRow({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
         <PersonMark name={message.fromName} id={message.from} size={28} radius={9} fontSize={10.5} />
-        <Text style={{ fontFamily: font.extra, fontSize: 14, letterSpacing: -0.28, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(14), letterSpacing: -0.28, color: c.cardInk }}>
           {mine ? 'You' : firstName(message.fromName)}
         </Text>
         <Text
           style={{
             fontFamily: font.bold,
-            fontSize: 10,
+            fontSize: fs(10),
             letterSpacing: 1,
             textTransform: 'uppercase',
             color: c.cardInk3,
@@ -62,18 +62,18 @@ export function ThreadMessageRow({
         >
           {THREAD_KINDS[message.kind].v2Label}
         </Text>
-        <Text style={{ marginLeft: 'auto', fontFamily: font.semi, fontSize: 11.5, color: c.cardInk3 }}>
+        <Text style={{ marginLeft: 'auto', fontFamily: font.semi, fontSize: fs(11.5), color: c.cardInk3 }}>
           {relTime(message.at)}
         </Text>
       </View>
 
       {!!about && (
-        <Text style={{ fontFamily: font.semi, fontSize: 12, lineHeight: 16, color: c.cardInk3, marginTop: 9 }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.cardInk3, marginTop: 9 }}>
           on “{about}”
         </Text>
       )}
 
-      <Text style={{ fontFamily: font.medium, fontSize: 15, lineHeight: 22.5, color: c.said, marginTop: 11 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(15), lineHeight: fs(22.5), color: c.said, marginTop: 11 }}>
         {message.body}
       </Text>
 
@@ -101,9 +101,9 @@ export function ThreadMessageRow({
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontSize: 15 }}>{emoji}</Text>
+              <Text style={{ fontSize: fs(15) }}>{emoji}</Text>
               {count > 1 && (
-                <Text style={{ fontFamily: font.bold, fontSize: 11, color: c.cardInk2 }}>{count}</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.cardInk2 }}>{count}</Text>
               )}
             </Pressable>
           );

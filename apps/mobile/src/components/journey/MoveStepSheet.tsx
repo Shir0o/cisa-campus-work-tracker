@@ -30,7 +30,7 @@ export function MoveStepSheet(props: MoveStepSheetProps) {
 }
 
 function MoveStepSheetBody({ visible, contact, stages, room, onMove, onClose }: MoveStepSheetProps) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   // Keep the last-known contact rendered while the sheet animates closed, so
   // content doesn't blank out mid-slide when the caller clears `contact`.
   const [shown, setShown] = useState(contact);
@@ -52,10 +52,10 @@ function MoveStepSheetBody({ visible, contact, stages, room, onMove, onClose }: 
     <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.8} backgroundColor={c.card}>
       <Room room={room}>
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
-          <Text style={{ fontFamily: font.extra, fontSize: 20, letterSpacing: -0.5, color: c.cardInk }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
             Where is {firstName(shown.name)} now?
           </Text>
-          <Text style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 18, color: c.cardInk3, marginTop: 7 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
             Move them when something real has changed — not to tidy the board.
           </Text>
 
@@ -91,9 +91,9 @@ function MoveStepSheetBody({ visible, contact, stages, room, onMove, onClose }: 
                       backgroundColor: c.tones[stageToneKey(stages, stage.label)].dot,
                     }}
                   />
-                  <Text style={{ flex: 1, fontFamily: font.bold, fontSize: 15, color: c.cardInk }}>{stage.label}</Text>
+                  <Text style={{ flex: 1, fontFamily: font.bold, fontSize: fs(15), color: c.cardInk }}>{stage.label}</Text>
                   {here && (
-                    <Text style={{ fontFamily: font.bold, fontSize: 12, color: c.cardInk3 }}>now</Text>
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.cardInk3 }}>now</Text>
                   )}
                 </Pressable>
               );

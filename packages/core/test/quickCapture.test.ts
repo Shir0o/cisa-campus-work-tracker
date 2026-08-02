@@ -1,15 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { format } from 'date-fns';
 import {
+  FIRST_MET_PRESETS,
   contactAddedLine,
+  firstMetDate,
+  followUpDefaultText,
+  logSavedBeat,
   logSavedLine,
   logSheetFootLine,
   newContactFromLog,
+  prayerAddedLine,
   quickCaptureRecents,
   quickCaptureSearchMatches,
   reminderDueDate,
   reminderNotificationTrigger,
   reminderNotificationContent,
+  reminderSetLine,
 } from '../src/quickCapture';
 import type { Touch } from '../src/myday';
 import type { Contact } from '../src/types';
@@ -217,5 +223,102 @@ describe('newContactFromLog', () => {
     expect(input.location).toBe('');
     expect(input.notes).toBe('');
     expect(input.tags).toEqual([]);
+    expect(input.createdAt).toBeUndefined();
+  });
+
+  it('carries "Fill in the rest" through, trimmed, when the disclosure was opened', () => {
+    const input = newContactFromLog({
+      name: 'Alex Johnson',
+      where: 'Org fair',
+      note: 'Plays bass.',
+      stageLabel: 'First conversation',
+      tags: ['fall-2026'],
+      phone: ' (555) 000-0000 ',
+      email: ' alex@campus.edu ',
+      year: 'Sophomore',
+      major: ' Music ',
+      // The design's "Part of" — this app's Contact.role IS its "contact group".
+      group: ' Worship team ',
+      background: 'Exploring',
+      metISO: '2026-07-01',
+    });
+    expect(input.phone).toBe('(555) 000-0000');
+    expect(input.email).toBe('alex@campus.edu');
+    expect(input.year).toBe('Sophomore');
+    expect(input.major).toBe('Music');
+    expect(input.role).toBe('Worship team');
+    expect(input.spiritualBackground).toBe('Exploring');
+    expect(input.createdAt).toBe('2026-07-01');
+  });
+
+  it('still lands "where you met" on location even with the disclosure open', () => {
+    // The design offers a separate "Lives" field; this app has one dual-purpose
+    // `location` ("FIRST MET / RESIDENCE"), so "where you met" keeps it and the
+    // design's "Lives" is dropped rather than fighting over the same field.
+    const input = newContactFromLog({
+      name: 'Alex',
+      where: 'The Quad',
+      note: '',
+      stageLabel: 'Unassigned',
+      tags: [],
+      major: 'Music',
+    });
+    expect(input.location).toBe('The Quad');
+  });
+});
+
+describe('firstMetDate', () => {
+  it('resolves each preset to a bare yyyy-MM-dd in the past', () => {
+    expect(firstMetDate('today', NOW)).toBe(format(new Date(NOW), 'yyyy-MM-dd'));
+    expect(firstMetDate('week', NOW)).toBe(format(new Date(NOW - 7 * DAY_MS), 'yyyy-MM-dd'));
+    expect(firstMetDate('earlier', NOW)).toBe(format(new Date(NOW - 30 * DAY_MS), 'yyyy-MM-dd'));
+  });
+
+  it('offers the three presets in order, nearest first', () => {
+    expect(FIRST_MET_PRESETS.map((p) => p.label)).toEqual(['Today', 'This week', 'Earlier']);
+  });
+});
+
+describe('logSavedBeat', () => {
+  it('names what was written down, for a conversation', () => {
+    expect(logSavedBeat({ kind: 'convo', name: 'Rio Alvarez', what: 'Gospel conversation' })).toEqual({
+      head: "It's written down.",
+      sub: 'Gospel conversation with Rio · just now',
+      toast: 'Logged — Rio.',
+    });
+  });
+
+  it('names where you met them, for someone new', () => {
+    expect(logSavedBeat({ kind: 'contact', name: 'Alex Johnson', where: 'the Quad' })).toEqual({
+      head: 'Alex is in.',
+      sub: 'Met at the Quad · just now',
+      toast: 'Alex is in. You can add the rest tonight.',
+    });
+  });
+
+  it('falls back to a plain line when where-you-met was skipped', () => {
+    expect(logSavedBeat({ kind: 'contact', name: 'Alex', where: '  ' }).sub).toBe('Added just now');
+  });
+});
+
+describe('the saved step’s own lines', () => {
+  it('defaults the follow-up to the person it is about', () => {
+    expect(followUpDefaultText('Rio Alvarez')).toBe('Follow up with Rio');
+    expect(followUpDefaultText('')).toBe('Follow up with Someone');
+  });
+
+  it('says when the reminder will land, in the preset’s own words', () => {
+    expect(reminderSetLine('tom')).toBe("You'll be reminded — tomorrow");
+    expect(reminderSetLine('few')).toBe("You'll be reminded — in a few days");
+    expect(reminderSetLine('week')).toBe("You'll be reminded — next week");
+  });
+
+  it('says where the prayer went', () => {
+    // No "bring it to team prayer" toggle: addPrayer already writes
+    // prayerPage: true, so every contact prayer is already on the team's page.
+    expect(prayerAddedLine('Rio Alvarez')).toEqual({
+      head: 'Added to what we’re praying',
+      sub: "It sits with Rio's prayers, and on the team's prayer page.",
+    });
   });
 });
