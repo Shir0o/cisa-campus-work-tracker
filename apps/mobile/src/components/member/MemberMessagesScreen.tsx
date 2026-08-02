@@ -23,7 +23,7 @@ export function MemberMessagesScreen({ role }: { role: MemberRole }) {
 }
 
 function MemberMessages({ role }: { role: MemberRole }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { uid } = useAuth();
   const router = useRouter();
   const data = useMessagesData();
@@ -49,7 +49,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
 
       <View style={{ gap: 10 }}>
         {data.rooms.length === 0 && (
-          <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.roomInk2 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}>
             Nothing yet.
           </Text>
         )}
@@ -77,13 +77,13 @@ function MemberMessages({ role }: { role: MemberRole }) {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
                   numberOfLines={1}
-                  style={{ fontFamily: font.extra, fontSize: 15, color: c.cardInk }}
+                  style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk }}
                 >
                   {name}
                 </Text>
                 <Text
                   numberOfLines={1}
-                  style={{ fontFamily: font.medium, fontSize: 13, color: c.cardInk2, marginTop: 2 }}
+                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk2, marginTop: 2 }}
                 >
                   {last
                     ? `${last.senderId === uid ? 'You' : firstName(last.senderName)}: ${last.text}`
@@ -91,7 +91,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 5 }}>
-                <Text style={{ fontFamily: font.medium, fontSize: 11.5, color: c.cardInk3 }}>
+                <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.cardInk3 }}>
                   {last ? memberAgo(last.timestamp as string | null) : ''}
                 </Text>
                 {unread && (

@@ -20,7 +20,7 @@ export function InviteSheet({
   onClose: () => void;
   onShared: () => void;
 }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
       {/* The provider again inside: BottomSheetModal re-parents its children to
@@ -41,21 +41,21 @@ function InviteBody({
   onClose: () => void;
   onShared: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const message = inviteMessage(event);
   return (
     <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
-      <Text style={{ fontFamily: font.extra, fontSize: 21, letterSpacing: -0.6, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.cardInk }}>
         Bring someone with you
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}>
         The easiest invitation is “come with me”.
       </Text>
       <Text
         style={{
           fontFamily: font.medium,
-          fontSize: 15,
-          lineHeight: 22,
+          fontSize: fs(15),
+          lineHeight: fs(22),
           color: c.noteInk,
           backgroundColor: c.note,
           borderRadius: radius.note,
@@ -90,11 +90,11 @@ function InviteBody({
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 16.5, color: c.onWarm }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.onWarm }}>
           Send the invitation
         </Text>
       </Pressable>
-      <Text style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.cardInk3 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.cardInk3 }}>
         Whoever you bring, someone on the team will look out for them.
       </Text>
     </View>

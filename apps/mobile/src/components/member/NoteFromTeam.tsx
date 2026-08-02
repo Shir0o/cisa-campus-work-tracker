@@ -15,7 +15,7 @@ export function NoteFromTeam({
   note: MemberNote;
   onWriteBack: () => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -28,10 +28,10 @@ export function NoteFromTeam({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 11 }}>
         <PersonMark name={note.fromName} id={note.fromUid} size={36} radius={12} fontSize={13} />
         <View style={{ flex: 1 }}>
-          <Text style={{ fontFamily: font.extra, fontSize: 15, color: c.cardInk }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk }}>
             A note from {firstName(note.fromName)}
           </Text>
-          <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }}>
             {memberAgo(note.at)}
           </Text>
         </View>
@@ -39,8 +39,8 @@ export function NoteFromTeam({
       <Text
         style={{
           fontFamily: font.medium,
-          fontSize: 15,
-          lineHeight: 22,
+          fontSize: fs(15),
+          lineHeight: fs(22),
           color: c.said,
           marginTop: 12,
         }}
@@ -56,7 +56,7 @@ export function NoteFromTeam({
           opacity: pressed ? 0.55 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.link }}>Write back →</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.link }}>Write back →</Text>
       </Pressable>
     </View>
   );

@@ -23,7 +23,7 @@ export function OpenYourHome({
   onSave: (input: { availability: string[]; seats: string; note: string }) => void;
   onWithdraw: () => void;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   // Editing opens automatically when there's no offer yet — the empty state IS
   // the form, so a first-time visitor never has to find a button.
   const [editing, setEditing] = React.useState(!offer);
@@ -56,7 +56,7 @@ export function OpenYourHome({
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontFamily: font.medium,
-    fontSize: 15,
+    fontSize: fs(15),
     color: c.cardInk,
   } as const;
 
@@ -74,11 +74,11 @@ export function OpenYourHome({
       >
         {offer && !editing ? (
           <>
-            <Text style={{ fontFamily: font.extra, fontSize: 16, color: c.cardInk }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.cardInk }}>
               Your offer is with the team
             </Text>
             <Text
-              style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2 }}
+              style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}
             >
               You've opened your home for {hospitalitySummary(offer)}.
             </Text>
@@ -86,8 +86,8 @@ export function OpenYourHome({
               <Text
                 style={{
                   fontFamily: font.medium,
-                  fontSize: 14,
-                  lineHeight: 20,
+                  fontSize: fs(14),
+                  lineHeight: fs(20),
                   color: c.cardInk3,
                   backgroundColor: c.note,
                   borderRadius: radius.note,
@@ -107,7 +107,7 @@ export function OpenYourHome({
                   opacity: pressed ? 0.55 : 1,
                 })}
               >
-                <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.link }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.link }}>
                   Update it →
                 </Text>
               </Pressable>
@@ -120,7 +120,7 @@ export function OpenYourHome({
                   opacity: pressed ? 0.55 : 1,
                 })}
               >
-                <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.cardInk3 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>
                   Not right now
                 </Text>
               </Pressable>
@@ -129,7 +129,7 @@ export function OpenYourHome({
         ) : (
           <>
             <Text
-              style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.cardInk2 }}
+              style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}
             >
               A shared meal can mean the world to a student far from home. Tell us when you've got
               room and we'll gently connect you with someone.
@@ -155,7 +155,7 @@ export function OpenYourHome({
                     <Text
                       style={{
                         fontFamily: font.bold,
-                        fontSize: 13,
+                        fontSize: fs(13),
                         color: on ? c.onPrimary : c.cardInk2,
                       }}
                     >
@@ -196,7 +196,7 @@ export function OpenYourHome({
                 opacity: availability.length === 0 ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 16.5, color: c.onWarm }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.onWarm }}>
                 {offer ? 'Save the offer' : 'Offer to host'}
               </Text>
             </Pressable>
@@ -205,7 +205,7 @@ export function OpenYourHome({
                 onPress={() => setEditing(false)}
                 style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.cardInk3 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>
                   Cancel
                 </Text>
               </Pressable>

@@ -17,7 +17,7 @@ const WIDTH = Math.min(300, Dimensions.get('window').width * 0.82);
 
 /** The ☰ itself. Drawn bars, not a glyph — v2's rule about text marks. */
 export function DrawerButton({ onPress }: { onPress: () => void }) {
-  const { c } = useV2Theme();
+  const { c, fs } = useV2Theme();
   return (
     <Pressable
       accessibilityLabel="Menu"
@@ -43,7 +43,7 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
 }
 
 export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { c, font, shadow } = useV2Theme();
+  const { c, font, shadow, fs } = useV2Theme();
   const { user, uid, role } = useAuth();
   const router = useRouter();
   const slide = React.useRef(new Animated.Value(-WIDTH)).current;
@@ -81,12 +81,12 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
             <PersonMark name={user?.displayName || 'You'} id={uid} size={42} radius={14} fontSize={13} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={{ fontFamily: font.extra, fontSize: 15.5, letterSpacing: -0.4, color: c.cardInk }}
+                style={{ fontFamily: font.extra, fontSize: fs(15.5), letterSpacing: -0.4, color: c.cardInk }}
                 numberOfLines={1}
               >
                 {user?.displayName ?? 'You'}
               </Text>
-              <Text style={{ fontFamily: font.semi, fontSize: 12, color: c.cardInk3, marginTop: 2 }}>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.cardInk3, marginTop: 2 }}>
                 {roleLabel(role)}
               </Text>
             </View>
@@ -106,7 +106,7 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
                 })}
               >
                 <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.cardInk3 }} />
-                <Text style={{ fontFamily: font.bold, fontSize: 16, color: c.cardInk }}>{item.label}</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.cardInk }}>{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -114,8 +114,8 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
           <Text
             style={{
               fontFamily: font.medium,
-              fontSize: 12.5,
-              lineHeight: 18,
+              fontSize: fs(12.5),
+              lineHeight: fs(18),
               color: c.cardInk3,
               marginTop: 'auto',
               paddingBottom: 18,

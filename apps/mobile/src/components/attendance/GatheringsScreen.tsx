@@ -44,7 +44,7 @@ function RosterName({
   canMark: boolean;
   onCycle: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const tone = status === 'late' ? c.tones.due : status === 'present' ? c.tones.note : undefined;
   return (
     <Pressable
@@ -62,7 +62,7 @@ function RosterName({
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.semi, fontSize: 13, color: tone ? tone.text : c.cardInk2 }}>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: tone ? tone.text : c.cardInk2 }}>
         {contact.name}
         {status === 'late' ? ' · late' : ''}
       </Text>
@@ -87,7 +87,7 @@ function SessionRow({
   onToggle: () => void;
   onCycle: (contact: Contact) => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const came = contacts.filter((x) => isHere(x, session.id));
   const away = contacts.filter((x) => x.attendance?.[session.id] === 'absent');
   const d = new Date(session.date);
@@ -107,32 +107,32 @@ function SessionRow({
         })}
       >
         <View style={{ width: 44, alignItems: 'center' }}>
-          <Text style={{ fontFamily: font.extra, fontSize: 13, color: c.cardInk }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: c.cardInk }}>
             {isValid(d) ? format(d, 'EEE') : '—'}
           </Text>
-          <Text style={{ fontFamily: font.bold, fontSize: 11.5, color: c.cardInk3, marginTop: 2 }}>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.cardInk3, marginTop: 2 }}>
             {isValid(d) ? format(d, 'MMM d') : ''}
           </Text>
         </View>
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: 15, letterSpacing: -0.3, color: c.cardInk }}>
+          <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: fs(15), letterSpacing: -0.3, color: c.cardInk }}>
             {session.name}
           </Text>
           {!!session.type && (
-            <Text numberOfLines={1} style={{ fontFamily: font.semi, fontSize: 12.5, color: c.cardInk3, marginTop: 2 }}>
+            <Text numberOfLines={1} style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }}>
               {[session.type, session.location].filter(Boolean).join(' · ')}
             </Text>
           )}
         </View>
         <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontFamily: font.extra, fontSize: 16, color: c.cardInk }}>{came.length}</Text>
-          <Text style={{ fontFamily: font.semi, fontSize: 11, color: c.cardInk3 }}>came</Text>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.cardInk }}>{came.length}</Text>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.cardInk3 }}>came</Text>
         </View>
       </Pressable>
 
       {open && (
         <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}>
-          <Text style={{ fontFamily: font.medium, fontSize: 12.5, lineHeight: 18, color: c.cardInk3 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.cardInk3 }}>
             {canMark
               ? 'Tap a name to change it — came, late, missed.'
               : 'Marking the roster is a full-timer or trainee job.'}
@@ -141,7 +141,7 @@ function SessionRow({
           <Kicker>{`Came · ${came.length}`}</Kicker>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
             {came.length === 0 && (
-              <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.cardInk3 }}>Nobody marked yet.</Text>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk3 }}>Nobody marked yet.</Text>
             )}
             {came.map((x) => (
               <RosterName
@@ -158,7 +158,7 @@ function SessionRow({
           <Kicker>{`We missed · ${away.length}`}</Kicker>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7 }}>
             {away.length === 0 && (
-              <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.cardInk3 }}>Nobody marked absent.</Text>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk3 }}>Nobody marked absent.</Text>
             )}
             {away.map((x) => (
               <RosterName
@@ -172,7 +172,7 @@ function SessionRow({
             ))}
           </View>
 
-          <Text style={{ fontFamily: font.medium, fontSize: 12, lineHeight: 17, color: c.cardInk3, marginTop: 2 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12), lineHeight: fs(17), color: c.cardInk3, marginTop: 2 }}>
             Adding or removing a gathering happens on the desktop site.
           </Text>
         </View>
@@ -182,7 +182,7 @@ function SessionRow({
 }
 
 function Gatherings() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { uid, user, role } = useAuth();
   const data = useAttendanceData(uid, user?.displayName ?? null, role);
@@ -261,7 +261,7 @@ function Gatherings() {
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.roomInk2 }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>
                     {showEarlier ? 'Show less' : `Show earlier · ${data.sessions.length - FIRST_PAGE} more`}
                   </Text>
                 </Pressable>

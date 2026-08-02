@@ -18,7 +18,7 @@ export function ReplySheet({
 }) {
   // Remounted per message by the caller's `key`, so the draft starts empty
   // without an effect.
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const [body, setBody] = React.useState('');
 
   const who = message ? firstName(message.fromName) : '';
@@ -31,11 +31,11 @@ export function ReplySheet({
   return (
     <Sheet visible={!!message} onClose={onClose} maxHeightRatio={0.7} backgroundColor={c.card}>
       <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
-        <Text style={{ fontFamily: font.extra, fontSize: 20, letterSpacing: -0.5, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
           Write back to {who}
         </Text>
         {!!message && (
-          <Text style={{ fontFamily: font.semi, fontSize: 13, lineHeight: 18, color: c.cardInk3, marginTop: 7 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
             “{message.body}”
           </Text>
         )}
@@ -56,7 +56,7 @@ export function ReplySheet({
             paddingVertical: 14,
             paddingHorizontal: 15,
             fontFamily: font.semi,
-            fontSize: 15,
+            fontSize: fs(15),
             color: c.cardInk,
             textAlignVertical: 'top',
           }}

@@ -42,7 +42,7 @@ export function FtNoteSheet(props: FtNoteSheetProps) {
 
 function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
   // Remounted per target by the caller's `key`, so the draft starts empty.
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const [body, setBody] = React.useState('');
 
   const who = target ? firstName(target.who) : '';
@@ -66,7 +66,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
           <Text
             style={{
               fontFamily: font.extra,
-              fontSize: 20,
+              fontSize: fs(20),
               letterSpacing: -0.5,
               color: c.cardInk,
             }}
@@ -77,7 +77,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             <Text
               style={{
                 fontFamily: font.semi,
-                fontSize: 13,
+                fontSize: fs(13),
                 color: c.cardInk3,
                 marginTop: 7,
               }}
@@ -105,8 +105,8 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
                   <Text
                     style={{
                       fontFamily: font.semi,
-                      fontSize: 14,
-                      lineHeight: 19,
+                      fontSize: fs(14),
+                      lineHeight: fs(19),
                       color: c.cardInk2,
                     }}
                   >
@@ -135,7 +135,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
               paddingVertical: 14,
               paddingHorizontal: 15,
               fontFamily: font.semi,
-              fontSize: 15,
+              fontSize: fs(15),
               color: c.cardInk,
               textAlignVertical: 'top',
             }}
@@ -150,8 +150,8 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 12,
-                lineHeight: 17,
+                fontSize: fs(12),
+                lineHeight: fs(17),
                 color: c.cardInk3,
                 marginTop: 14,
               }}

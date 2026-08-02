@@ -32,7 +32,7 @@ export function MemberThreadScreen({ roomId }: { roomId: string }) {
 }
 
 function MemberThread({ roomId }: { roomId: string }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { uid, role } = useAuth();
   const router = useRouter();
   const data = useChatThreadData(roomId);
@@ -66,17 +66,17 @@ function MemberThread({ roomId }: { roomId: string }) {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
-            style={{ fontFamily: font.extra, fontSize: 17, letterSpacing: -0.4, color: c.roomInk }}
+            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.roomInk }}
           >
             {name || 'Loading…'}
           </Text>
           {isGroupish && (
-            <Text style={{ fontFamily: font.medium, fontSize: 12, color: c.roomInk3 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.roomInk3 }}>
               {data.room!.type === 'announcement'
                 ? 'Announcement'
                 : `${data.room!.memberIds.length} people`}
@@ -95,15 +95,15 @@ function MemberThread({ roomId }: { roomId: string }) {
           showsVerticalScrollIndicator={false}
         >
           {data.error ? (
-            <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.tones.follow.text }}>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>
               {data.error}
             </Text>
           ) : data.dayGroups.length === 0 && !data.loading ? (
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 14.5,
-                lineHeight: 21,
+                fontSize: fs(14.5),
+                lineHeight: fs(21),
                 color: c.roomInk2,
                 textAlign: 'center',
                 paddingVertical: 24,
@@ -117,7 +117,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 <Text
                   style={{
                     fontFamily: font.bold,
-                    fontSize: 10.5,
+                    fontSize: fs(10.5),
                     letterSpacing: 1.26,
                     textTransform: 'uppercase',
                     color: c.roomInk3,
@@ -145,7 +145,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                         <Text
                           style={{
                             fontFamily: font.bold,
-                            fontSize: 11.5,
+                            fontSize: fs(11.5),
                             color: c.cardInk3,
                             marginBottom: 3,
                           }}
@@ -156,8 +156,8 @@ function MemberThread({ roomId }: { roomId: string }) {
                       <Text
                         style={{
                           fontFamily: font.medium,
-                          fontSize: 15,
-                          lineHeight: 21,
+                          fontSize: fs(15),
+                          lineHeight: fs(21),
                           color: mine ? c.onPrimary : c.said,
                         }}
                       >
@@ -196,8 +196,8 @@ function MemberThread({ roomId }: { roomId: string }) {
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontFamily: font.medium,
-                fontSize: 15,
-                lineHeight: 21,
+                fontSize: fs(15),
+                lineHeight: fs(21),
                 color: c.cardInk,
               }}
             />
@@ -214,7 +214,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 15, color: c.onPrimary }}>Send</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.onPrimary }}>Send</Text>
             </Pressable>
           </View>
         ) : (
@@ -222,8 +222,8 @@ function MemberThread({ roomId }: { roomId: string }) {
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 13.5,
-                lineHeight: 20,
+                fontSize: fs(13.5),
+                lineHeight: fs(20),
                 color: c.roomInk3,
                 textAlign: 'center',
               }}

@@ -39,7 +39,7 @@ function CarryButton({
   label: string;
   onPress: () => void;
 }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={() => !carried && onPress()}
@@ -58,7 +58,7 @@ function CarryButton({
       })}
     >
       <Text
-        style={{ fontFamily: font.bold, fontSize: 13.5, color: carried ? c.cardInk3 : c.deep }}
+        style={{ fontFamily: font.bold, fontSize: fs(13.5), color: carried ? c.cardInk3 : c.deep }}
       >
         {carried ? 'Prayed today ✓' : label}
       </Text>
@@ -78,7 +78,7 @@ function PrayerCard({
   quiet?: boolean;
   children?: React.ReactNode;
 }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   return (
     <View
       style={{
@@ -90,12 +90,12 @@ function PrayerCard({
       }}
     >
       <Text
-        style={{ fontFamily: font.bold, fontSize: 15.5, lineHeight: 22, color: c.cardInk }}
+        style={{ fontFamily: font.bold, fontSize: fs(15.5), lineHeight: fs(22), color: c.cardInk }}
       >
         {title}
       </Text>
       {!!meta && (
-        <Text style={{ fontFamily: font.medium, fontSize: 12.5, color: c.cardInk3, marginTop: 4 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 4 }}>
           {meta}
         </Text>
       )}
@@ -105,7 +105,7 @@ function PrayerCard({
 }
 
 function InlineLink({ label, onPress }: { label: string; onPress: () => void }) {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -116,13 +116,13 @@ function InlineLink({ label, onPress }: { label: string; onPress: () => void }) 
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: 13, color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
     </Pressable>
   );
 }
 
 function MemberPrayer({ role }: { role: MemberRole }) {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const data = useMemberPrayerData(uid, user?.displayName ?? null, role);
   const [sheet, setSheet] = React.useState<'ask' | 'heart' | null>(null);
@@ -140,7 +140,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           <View style={{ gap: 10 }}>
             {data.holding.length === 0 && (
               <Text
-                style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.roomInk2 }}
+                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}
               >
                 Nothing open right now.
               </Text>
@@ -184,14 +184,14 @@ function MemberPrayer({ role }: { role: MemberRole }) {
             ...shadow.soft,
           })}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: 16.5, color: c.tones.pray.text }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(16.5), color: c.tones.pray.text }}>
             Ask the team to pray
           </Text>
           <Text
             style={{
               fontFamily: font.medium,
-              fontSize: 13,
-              lineHeight: 19,
+              fontSize: fs(13),
+              lineHeight: fs(19),
               color: c.tones.pray.text,
               opacity: 0.8,
               marginTop: 3,
@@ -229,8 +229,8 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           <Text
             style={{
               fontFamily: font.medium,
-              fontSize: 13,
-              lineHeight: 19,
+              fontSize: fs(13),
+              lineHeight: fs(19),
               color: c.roomInk3,
               marginTop: -4,
               marginBottom: 10,
@@ -241,7 +241,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           <View style={{ gap: 10 }}>
             {data.onYourHeart.open.length === 0 && (
               <Text
-                style={{ fontFamily: font.medium, fontSize: 14.5, lineHeight: 21, color: c.roomInk2 }}
+                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}
               >
                 Nobody yet — add the first person below.
               </Text>
@@ -281,7 +281,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: 14.5, color: c.roomInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.roomInk2 }}>
               Add someone
             </Text>
           </Pressable>

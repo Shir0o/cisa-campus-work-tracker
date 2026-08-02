@@ -36,7 +36,7 @@ export function ChatThreadScreen({ roomId }: { roomId: string }) {
 }
 
 function ChatThread({ roomId }: { roomId: string }) {
-  const { c, font, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const router = useRouter();
   const { uid, role } = useAuth();
   const data = useChatThreadData(roomId);
@@ -63,17 +63,17 @@ function ChatThread({ roomId }: { roomId: string }) {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: 14, color: c.roomInk2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
-            style={{ fontFamily: font.extra, fontSize: 17, letterSpacing: -0.4, color: c.roomInk }}
+            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.roomInk }}
           >
             {name || 'Loading…'}
           </Text>
           {!!data.room && !!chatKindNote(data.room) && (
-            <Text style={{ fontFamily: font.medium, fontSize: 12, color: c.roomInk3 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.roomInk3 }}>
               {chatKindNote(data.room)}
             </Text>
           )}
@@ -103,22 +103,22 @@ function ChatThread({ roomId }: { roomId: string }) {
                 opacity: pressed ? 0.75 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 13.5, color: c.link }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.link }}>
                 {`Open ${firstName(name)}'s page →`}
               </Text>
             </Pressable>
           )}
 
           {data.error ? (
-            <Text style={{ fontFamily: font.semi, fontSize: 13, color: c.tones.follow.text }}>{data.error}</Text>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>{data.error}</Text>
           ) : data.loading ? (
             <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
           ) : data.dayGroups.length === 0 ? (
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 14.5,
-                lineHeight: 21,
+                fontSize: fs(14.5),
+                lineHeight: fs(21),
                 color: c.roomInk2,
                 textAlign: 'center',
                 paddingVertical: 24,
@@ -132,7 +132,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                 <Text
                   style={{
                     fontFamily: font.bold,
-                    fontSize: 10.5,
+                    fontSize: fs(10.5),
                     letterSpacing: 1.26,
                     textTransform: 'uppercase',
                     color: c.roomInk3,
@@ -158,7 +158,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                     >
                       {isGroupish && !mine && (
                         <Text
-                          style={{ fontFamily: font.bold, fontSize: 11.5, color: c.cardInk3, marginBottom: 3 }}
+                          style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.cardInk3, marginBottom: 3 }}
                         >
                           {memberSenderName(m, uid)}
                         </Text>
@@ -166,8 +166,8 @@ function ChatThread({ roomId }: { roomId: string }) {
                       <Text
                         style={{
                           fontFamily: font.medium,
-                          fontSize: 15,
-                          lineHeight: 21,
+                          fontSize: fs(15),
+                          lineHeight: fs(21),
                           color: mine ? c.onPrimary : c.said,
                         }}
                       >
@@ -188,7 +188,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                           }}
                         >
                           <Text
-                            style={{ fontFamily: font.semi, fontSize: 11.5, color: mine ? c.onPrimary : c.cardInk2 }}
+                            style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.onPrimary : c.cardInk2 }}
                           >
                             {a.name}
                           </Text>
@@ -229,8 +229,8 @@ function ChatThread({ roomId }: { roomId: string }) {
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontFamily: font.medium,
-                fontSize: 15,
-                lineHeight: 21,
+                fontSize: fs(15),
+                lineHeight: fs(21),
                 color: c.cardInk,
               }}
             />
@@ -247,7 +247,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                 opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 15, color: c.onPrimary }}>Send</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.onPrimary }}>Send</Text>
             </Pressable>
           </View>
         ) : (
@@ -255,8 +255,8 @@ function ChatThread({ roomId }: { roomId: string }) {
             <Text
               style={{
                 fontFamily: font.medium,
-                fontSize: 13.5,
-                lineHeight: 20,
+                fontSize: fs(13.5),
+                lineHeight: fs(20),
                 color: c.roomInk3,
                 textAlign: 'center',
               }}

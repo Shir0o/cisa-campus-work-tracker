@@ -23,7 +23,7 @@ export function FtMoreScreen() {
 }
 
 function FtMore() {
-  const { c, font, radius, shadow } = useV2Theme();
+  const { c, font, radius, shadow, fs } = useV2Theme();
   const { user, role } = useAuth();
   const router = useRouter();
 
@@ -34,7 +34,7 @@ function FtMore() {
           <Text
             style={{
               fontFamily: font.bold,
-              fontSize: 10.5,
+              fontSize: fs(10.5),
               letterSpacing: 1.26,
               textTransform: 'uppercase',
               color: c.roomInk3,
@@ -45,8 +45,8 @@ function FtMore() {
           <Text
             style={{
               fontFamily: font.extra,
-              fontSize: 28,
-              lineHeight: 32,
+              fontSize: fs(28),
+              lineHeight: fs(32),
               letterSpacing: -0.9,
               color: c.roomInk,
               marginTop: 6,
@@ -57,8 +57,8 @@ function FtMore() {
           <Text
             style={{
               fontFamily: font.medium,
-              fontSize: 14.5,
-              lineHeight: 21,
+              fontSize: fs(14.5),
+              lineHeight: fs(21),
               color: c.roomInk2,
               marginTop: 8,
             }}
@@ -82,7 +82,7 @@ function FtMore() {
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: 15.5, color: c.cardInk, flex: 1 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk, flex: 1 }}>
                 {item.label}
               </Text>
               {/* Drawn, not a glyph — v2's rule about text marks in tinted blocks. */}
@@ -103,8 +103,8 @@ function FtMore() {
         <Text
           style={{
             fontFamily: font.medium,
-            fontSize: 13,
-            lineHeight: 19,
+            fontSize: fs(13),
+            lineHeight: fs(19),
             color: c.roomFaint,
             marginTop: 22,
           }}
