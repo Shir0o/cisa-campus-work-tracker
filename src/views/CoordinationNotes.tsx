@@ -673,6 +673,7 @@ export default function CoordinationNotes() {
     setCanNativeFs(!!(document.fullscreenEnabled && document.documentElement.requestFullscreen));
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        // Let the @mention menu take Esc first; the browser owns Esc in native full screen
         if (document.querySelector('.bdoc-mmenu') || document.fullscreenElement) return;
         setIsFullscreen(false);
       }
@@ -681,6 +682,12 @@ export default function CoordinationNotes() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
+  }, [isFullscreen]);
+
+  // When in-window FS is turned off, also exit native FS if it's still active.
+  useEffect(() => {
+    if (isFullscreen || !document.fullscreenElement) return;
+    document.exitFullscreen().catch(() => {});
   }, [isFullscreen]);
 
   // Live Markdown of the page currently being edited, so its Pages-list row
