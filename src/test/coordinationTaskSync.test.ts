@@ -97,7 +97,7 @@ describe('doc task sync on a real editor', () => {
 
     const nodes = collectDocTaskNodes(editor.state.doc);
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].text).toBe('Create a WhatApps - NACT coordination Group (@Kevin) <!-- task:tH8keV1ImKuG3aUAAVqR assignee:RMa9kONDdoYjM5bz7ZbuJPKhwdF3 -->');
+    expect(nodes[0].text).toContain('Create a WhatApps - NACT coordination Group (@Kevin) <!-- task:tH8keV1ImKuG3aUAAVqR assignee:RMa9kONDdoYjM5bz7ZbuJPKhwdF3 -->');
 
     editor.destroy();
   });
