@@ -8,19 +8,27 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut, type User } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { isAppOwner, getEffectiveRole, type AppRole } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
 });
 
-export type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
+export type { AppRole };
+
+const STORAGE_KEY_MOBILE_OWNER_VIEW = 'cisa.owner_view_role';
 
 interface AuthContextValue {
   user: User | null;
   uid: string | null;
   role: AppRole | null;
+  actualRole: AppRole | null;
+  isOwner: boolean;
+  ownerViewRole: AppRole | null;
+  setOwnerViewRole: (role: AppRole | null) => void;
   isApproved: boolean;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -32,9 +40,39 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<AppRole | null>(null);
+  const [actualRole, setActualRole] = useState<AppRole | null>(null);
+  const [ownerViewRole, setOwnerViewRoleState] = useState<AppRole | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const isOwner = isAppOwner(user?.email);
+
+  useEffect(() => {
+    AsyncStorage.getItem(STORAGE_KEY_MOBILE_OWNER_VIEW)
+      .then((saved) => {
+        if (saved === 'admin' || saved === 'manager' || saved === 'operator' || saved === 'viewer') {
+          setOwnerViewRoleState(saved as AppRole);
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not read saved owner view role preference:', err);
+      });
+  }, []);
+
+  const setOwnerViewRole = (nextRole: AppRole | null) => {
+    setOwnerViewRoleState(nextRole);
+    if (nextRole) {
+      AsyncStorage.setItem(STORAGE_KEY_MOBILE_OWNER_VIEW, nextRole).catch((err) => {
+        console.warn('Could not save owner view role preference:', err);
+      });
+    } else {
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch((err) => {
+        console.warn('Could not remove owner view role preference:', err);
+      });
+    }
+  };
+
+  const effectiveRole = getEffectiveRole(user?.email, actualRole, ownerViewRole);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | null = null;
@@ -45,7 +83,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubUserDoc = null;
 
       if (!authUser) {
-        setRole(null);
+        setActualRole(null);
         setIsApproved(false);
         setLoading(false);
         return;
@@ -55,7 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         doc(db, 'users', authUser.uid),
         (snap) => {
           const data = snap.data() as { role?: AppRole; approved?: boolean } | undefined;
-          setRole(data?.role ?? null);
+          setActualRole(data?.role ?? null);
           setIsApproved(!!data?.approved);
           setLoading(false);
         },
@@ -72,7 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const value: AuthContextValue = {
     user,
     uid: user?.uid ?? null,
-    role,
+    role: effectiveRole,
+    actualRole,
+    isOwner,
+    ownerViewRole,
+    setOwnerViewRole,
     isApproved,
     loading,
     signInWithEmail: async (email, password) => {
@@ -95,3 +137,4 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
   return ctx;
 }
+

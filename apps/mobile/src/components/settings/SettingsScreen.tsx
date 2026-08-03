@@ -157,7 +157,7 @@ function Settings() {
   const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
-  const { user, uid, role } = useAuth();
+  const { user, uid, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
@@ -349,6 +349,29 @@ function Settings() {
             onPick={setTint}
           />
         </Section>
+
+        {isOwner && (
+          <Section title="See their view (App Owner)">
+            <Choice
+              label="Preview role view"
+              sub="Step into another role's phone experience to test what they see. Owner preview mode."
+              options={[
+                { value: 'admin', label: 'Full-timer' },
+                { value: 'manager', label: 'Trainee' },
+                { value: 'operator', label: 'Student' },
+                { value: 'viewer', label: 'Community' },
+              ]}
+              value={ownerViewRole || 'admin'}
+              onPick={(r) => setOwnerViewRole(ownerViewRole === r ? null : r)}
+            />
+            {ownerViewRole && (
+              <SecondaryButton
+                title="Reset to App Owner view"
+                onPress={() => setOwnerViewRole(null)}
+              />
+            )}
+          </Section>
+        )}
 
         {hasQueue && (
           <Section title="Today's queue">

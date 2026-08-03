@@ -6,6 +6,9 @@ import {
   defaultRouteForRole,
   pickLandingForRole,
   NAV_ITEMS,
+  isAppOwner,
+  getEffectiveRole,
+  OWNER_EMAIL,
 } from '../src/permissions';
 
 describe('permissions', () => {
@@ -60,4 +63,24 @@ describe('permissions', () => {
       expect(hasMinRole(item.minRole, item.minRole)).toBe(true);
     }
   });
+
+  it('identifies app owner correctly', () => {
+    expect(isAppOwner(OWNER_EMAIL)).toBe(true);
+    expect(isAppOwner('YILONGWANG05@GMAIL.COM')).toBe(true);
+    expect(isAppOwner('other@gmail.com')).toBe(false);
+    expect(isAppOwner(null)).toBe(false);
+    expect(isAppOwner(undefined)).toBe(false);
+  });
+
+  it('resolves effective role only for app owner', () => {
+    // App owner with ownerViewRole override
+    expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'operator')).toBe('operator');
+    expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'viewer')).toBe('viewer');
+    // App owner without override returns actual role
+    expect(getEffectiveRole(OWNER_EMAIL, 'admin', null)).toBe('admin');
+    // Non-owner with ownerViewRole still returns actual role
+    expect(getEffectiveRole('other@example.com', 'admin', 'operator')).toBe('admin');
+    expect(getEffectiveRole('other@example.com', 'viewer', 'admin')).toBe('viewer');
+  });
 });
+

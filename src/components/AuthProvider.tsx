@@ -11,13 +11,19 @@ import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/fires
 import { auth, db } from '../lib/firebase';
 import { sleep } from '../lib/utils';
 
+import { isAppOwner, getEffectiveRole, AppRole } from '../lib/permissions';
+
 interface AuthContextType {
   user: User | null;
   isAdmin: boolean;
   isManager: boolean;
   role: string | null;
+  actualRole: string | null;
   isApproved: boolean;
   loading: boolean;
+  isOwner: boolean;
+  ownerViewRole: AppRole | null;
+  setOwnerViewRole: (role: AppRole | null) => void;
   authorizeSheets: () => Promise<string | null>;
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -26,14 +32,40 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const STORAGE_KEY_OWNER_VIEW = 'cisa_owner_view_role';
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [isManager, setIsManager] = useState(false);
-  const [role, setRole] = useState<string | null>(null);
+  const [actualRole, setActualRole] = useState<string | null>(null);
+  const [ownerViewRole, setOwnerViewRoleState] = useState<AppRole | null>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY_OWNER_VIEW);
+      if (saved === 'admin' || saved === 'manager' || saved === 'operator' || saved === 'viewer') {
+        return saved as AppRole;
+      }
+    }
+    return null;
+  });
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
+
+  const isOwner = isAppOwner(user?.email);
+
+  const setOwnerViewRole = (nextRole: AppRole | null) => {
+    setOwnerViewRoleState(nextRole);
+    if (typeof window !== 'undefined') {
+      if (nextRole) {
+        localStorage.setItem(STORAGE_KEY_OWNER_VIEW, nextRole);
+      } else {
+        localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+      }
+    }
+  };
+
+  const effectiveRole = getEffectiveRole(user?.email, actualRole as AppRole, ownerViewRole);
+  const isAdmin = effectiveRole === 'admin';
+  const isManager = effectiveRole === 'admin' || effectiveRole === 'manager';
 
   useEffect(() => {
     let userDocUnsubscribe: (() => void) | null = null;
@@ -103,9 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
 
           setIsApproved(initialApproved);
-          setIsAdmin(initialRole === 'admin');
-          setIsManager(initialRole === 'admin' || initialRole === 'manager');
-          setRole(initialRole);
+          setActualRole(initialRole);
         } else {
           // Document exists, set initial state before listener starts
           const data = userDoc.data();
@@ -124,10 +154,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           const currentRole = data.role as string;
           setIsApproved(data.approved || isAdminClaim);
-          const effectiveRole = isAdminClaim ? 'admin' : currentRole;
-          setRole(effectiveRole);
-          setIsAdmin(effectiveRole === 'admin' || isAdminClaim);
-          setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isAdminClaim);
+          const effective = isAdminClaim ? 'admin' : currentRole;
+          setActualRole(effective);
         }
 
         // Listen for real-time changes to the user's record
@@ -136,17 +164,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const data = doc.data();
             setIsApproved(data.approved || isAdminClaim);
             const currentRole = data.role as string;
-            const effectiveRole = isAdminClaim ? 'admin' : currentRole;
-            setRole(effectiveRole);
-            setIsAdmin(effectiveRole === 'admin' || isAdminClaim);
-            setIsManager(effectiveRole === 'admin' || effectiveRole === 'manager' || isAdminClaim);
+            const effective = isAdminClaim ? 'admin' : currentRole;
+            setActualRole(effective);
           }
         });
 
       } else {
-        setIsAdmin(false);
-        setIsManager(false);
-        setRole(null);
+        setActualRole(null);
         setIsApproved(false);
       }
       
@@ -190,7 +214,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAdmin, isManager, role, isApproved, loading, authorizeSheets, signIn, signInWithEmail, logOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAdmin,
+        isManager,
+        role: effectiveRole,
+        actualRole,
+        isApproved,
+        loading,
+        isOwner,
+        ownerViewRole,
+        setOwnerViewRole,
+        authorizeSheets,
+        signIn,
+        signInWithEmail,
+        logOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -201,3 +242,4 @@ export function useAuth() {
   if (!context) throw new Error('useAuth must be used within AuthProvider');
   return context;
 }
+

@@ -37,7 +37,7 @@ export function MemberYouScreen({ role, showBack }: { role: MemberRole; showBack
 function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean }) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
-  const { uid, user, role: appRole } = useAuth();
+  const { uid, user, role: appRole, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
   const router = useRouter();
   const [fullTimers, setFullTimers] = React.useState<FullTimerSummary[]>([]);
   const [inviteOpen, setInviteOpen] = React.useState(false);
@@ -174,6 +174,63 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             })}
           </View>
         </View>
+
+        {isOwner && (
+          <View>
+            <Sech label="See their view (App Owner)" />
+            <View style={{ gap: 8 }}>
+              {[
+                { key: 'admin', label: 'Full-timer' },
+                { key: 'manager', label: 'Trainee' },
+                { key: 'operator', label: 'Student' },
+                { key: 'viewer', label: 'Community' },
+              ].map((r) => {
+                const on = ownerViewRole === r.key;
+                return (
+                  <Pressable
+                    key={r.key}
+                    onPress={() => setOwnerViewRole(on ? null : r.key)}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 16,
+                      borderRadius: radius.tile,
+                      borderWidth: 1.5,
+                      borderColor: on ? c.cardInk : c.roomChip,
+                      backgroundColor: on ? c.card : 'transparent',
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.cardInk : c.roomInk2 }}>
+                      {r.label}
+                    </Text>
+                    {on && <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk }}>✓ Active</Text>}
+                  </Pressable>
+                );
+              })}
+              {ownerViewRole && (
+                <Pressable
+                  onPress={() => setOwnerViewRole(null)}
+                  style={({ pressed }) => ({
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: radius.tile,
+                    backgroundColor: c.cardInk,
+                    opacity: pressed ? 0.7 : 1,
+                    marginTop: 4,
+                  })}
+                >
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card }}>
+                    Reset to App Owner view
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
 
         {role === 'student' && (
           <View>

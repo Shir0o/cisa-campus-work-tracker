@@ -240,6 +240,54 @@ function AppearanceSection({
   );
 }
 
+function OwnerViewSection() {
+  const { isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+  if (!isOwner) return null;
+
+  return (
+    <section className="mt-10 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+      <SectionHeader
+        title="See it as they do (App Owner)"
+        sub="Step into any role's view for a moment to see the exact screens, navigation, and layout they experience. This preview is for your eyes only."
+      />
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mt-4">
+        {ROLE_CARDS.map((card) => {
+          const isActive = ownerViewRole === card.key;
+          return (
+            <button
+              key={card.key}
+              onClick={() => setOwnerViewRole(isActive ? null : card.key)}
+              aria-pressed={isActive}
+              className={cn(
+                'flex flex-col items-start gap-1.5 p-3.5 rounded-2xl border text-left transition-colors',
+                isActive
+                  ? 'border-amber-500 bg-amber-500/15 text-amber-900 dark:text-amber-100 font-medium'
+                  : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
+              )}
+            >
+              <span className="font-serif text-sm text-on-surface">{card.label}</span>
+              <span className="text-[11px] text-on-surface-variant leading-tight">
+                {isActive ? 'Active preview' : `View as ${card.label}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {ownerViewRole && (
+        <div className="mt-4 flex items-center gap-3 text-xs">
+          <span className="text-on-surface-variant">Currently viewing as: <strong>{ROLE_LABEL[ownerViewRole]}</strong></span>
+          <button
+            onClick={() => setOwnerViewRole(null)}
+            className="px-3 py-1 bg-amber-500/20 text-amber-800 dark:text-amber-200 hover:bg-amber-500/30 font-medium rounded-full transition-colors"
+          >
+            Reset to App Owner view
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 // ── Integrations: "Quick add by text" (dev) ────────────────────────────
 
 function CodeBlock({ code, label }: { code: string; label?: string }) {
@@ -1322,6 +1370,7 @@ export default function Settings() {
         </section>
 
         <AppearanceSection theme={theme} setTheme={setTheme} />
+        <OwnerViewSection />
 
         {sharedTail}
 
@@ -1345,6 +1394,7 @@ export default function Settings() {
       </header>
 
       <AppearanceSection theme={theme} setTheme={setTheme} />
+      <OwnerViewSection />
 
       <section className="mt-10">
         <SectionHeader

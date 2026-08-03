@@ -8,6 +8,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import { cn } from "./lib/utils";
+import OwnerViewBanner from "./components/layout/OwnerViewBanner";
 import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
 import MobileNav from "./components/layout/MobileNav";
@@ -313,6 +314,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           )}
         >
+          <OwnerViewBanner />
           <TopBar />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
             {children}
