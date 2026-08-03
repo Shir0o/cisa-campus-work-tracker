@@ -12,6 +12,8 @@ import { auth, db } from '../lib/firebase';
 import { sleep } from '../lib/utils';
 
 import { isAppOwner, getEffectiveRole, AppRole } from '../lib/permissions';
+import { ImpersonateTarget } from '../types';
+import { Impersonation } from '../lib/impersonate';
 
 interface AuthContextType {
   user: User | null;
@@ -24,6 +26,8 @@ interface AuthContextType {
   isOwner: boolean;
   ownerViewRole: AppRole | null;
   setOwnerViewRole: (role: AppRole | null) => void;
+  impersonateTarget: ImpersonateTarget | null;
+  setImpersonateTarget: (target: ImpersonateTarget | null) => void;
   authorizeSheets: () => Promise<string | null>;
   signIn: () => Promise<void>;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -37,8 +41,16 @@ const STORAGE_KEY_OWNER_VIEW = 'cisa_owner_view_role';
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [actualRole, setActualRole] = useState<string | null>(null);
+  const [impersonateTarget, setImpersonateTargetState] = useState<ImpersonateTarget | null>(() => {
+    if (typeof window !== 'undefined') {
+      return Impersonation.current();
+    }
+    return null;
+  });
   const [ownerViewRole, setOwnerViewRoleState] = useState<AppRole | null>(() => {
     if (typeof window !== 'undefined') {
+      const imp = Impersonation.current();
+      if (imp) return imp.role;
       const saved = localStorage.getItem(STORAGE_KEY_OWNER_VIEW);
       if (saved === 'admin' || saved === 'manager' || saved === 'operator' || saved === 'viewer') {
         return saved as AppRole;
@@ -60,6 +72,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
       }
+    }
+  };
+
+  const setImpersonateTarget = (target: ImpersonateTarget | null) => {
+    setImpersonateTargetState(target);
+    if (target) {
+      Impersonation.set(target.key);
+      setOwnerViewRole(target.role);
+    } else {
+      Impersonation.set(null);
+      setOwnerViewRole(null);
     }
   };
 
@@ -226,6 +249,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isOwner,
         ownerViewRole,
         setOwnerViewRole,
+        impersonateTarget,
+        setImpersonateTarget,
         authorizeSheets,
         signIn,
         signInWithEmail,
