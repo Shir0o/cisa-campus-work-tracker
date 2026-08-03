@@ -820,7 +820,7 @@ describe('Settings', () => {
     it('does not render OwnerViewSection when user is not app owner', () => {
       setupNonManagerAuth({ isOwner: false });
       render(<Settings />);
-      expect(screen.queryByText(/See it as they do \(App Owner\)/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/See it as they do/i)).not.toBeInTheDocument();
     });
 
     it('renders OwnerViewSection and handles role selection when user is app owner', () => {
@@ -833,7 +833,7 @@ describe('Settings', () => {
 
       render(<Settings />);
 
-      expect(screen.getByText(/See it as they do \(App Owner\)/i)).toBeInTheDocument();
+      expect(screen.getByText(/See it as they do/i)).toBeInTheDocument();
 
       // Click "Trainee" view card
       const traineeButton = screen.getByRole('button', { name: /View as Trainee/i });

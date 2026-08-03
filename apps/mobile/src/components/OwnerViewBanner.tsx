@@ -16,7 +16,7 @@ export function OwnerViewBanner() {
 
   if (!isOwner) return null;
 
-  const currentRoleLabel = ownerViewRole ? roleLabel(ownerViewRole) : 'App Owner';
+  const currentRoleLabel = ownerViewRole ? roleLabel(ownerViewRole) : 'Full-timer';
 
   return (
     <>
@@ -24,7 +24,7 @@ export function OwnerViewBanner() {
         <View style={styles.textContainer}>
           <Text style={styles.eyeIcon}>👁️</Text>
           <Text style={styles.bannerText} numberOfLines={1}>
-            {ownerViewRole ? `Seeing CISA as: ${currentRoleLabel}` : 'App Owner View'}
+            {ownerViewRole ? `Seeing CISA as: ${currentRoleLabel}` : 'Full-timer View Mode'}
           </Text>
         </View>
 
@@ -65,7 +65,7 @@ export function OwnerViewBanner() {
           <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalTitle}>See it as they do</Text>
             <Text style={styles.modalSub}>
-              Preview mobile experience for each role. (Owner preview mode)
+              Preview mobile experience for each role. (Full-timer preview mode)
             </Text>
 
             <ScrollView style={styles.roleList}>

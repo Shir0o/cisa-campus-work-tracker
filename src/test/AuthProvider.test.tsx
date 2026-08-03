@@ -422,5 +422,59 @@ describe('AuthProvider', () => {
       expect(screen.getByText('ownerViewRole: none')).toBeInTheDocument();
     });
   });
+
+  it('allows ownerViewRole switching for non-owner admin users', async () => {
+    const adminUser = {
+      uid: 'admin-uid-2',
+      email: 'kevinwmunga@gmail.com',
+      displayName: 'Kevin Munga',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: { admin: true } })
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(adminUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        role: 'admin',
+        approved: true,
+      })
+    });
+
+    const AdminTestComponent = () => {
+      const { isOwner, role, actualRole, ownerViewRole, setOwnerViewRole } = useAuth();
+      return (
+        <div>
+          <div>isOwner: {isOwner.toString()}</div>
+          <div>role: {role}</div>
+          <div>actualRole: {actualRole}</div>
+          <div>ownerViewRole: {ownerViewRole || 'none'}</div>
+          <button onClick={() => setOwnerViewRole('manager')}>Set Trainee</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <AdminTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('isOwner: true')).toBeInTheDocument();
+      expect(screen.getByText('role: admin')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Set Trainee' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('role: manager')).toBeInTheDocument();
+      expect(screen.getByText('actualRole: admin')).toBeInTheDocument();
+      expect(screen.getByText('ownerViewRole: manager')).toBeInTheDocument();
+    });
+  });
 });
 

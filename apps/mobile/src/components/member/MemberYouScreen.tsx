@@ -177,7 +177,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
 
         {isOwner && (
           <View>
-            <Sech label="See their view (App Owner)" />
+            <Sech label="See their view" />
             <View style={{ gap: 8 }}>
               {[
                 { key: 'admin', label: 'Full-timer' },
@@ -201,6 +201,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                       borderColor: on ? c.cardInk : c.roomChip,
                       backgroundColor: on ? c.card : 'transparent',
                       opacity: pressed ? 0.7 : 1,
+                      marginTop: 4,
                     })}
                   >
                     <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.cardInk : c.roomInk2 }}>
@@ -224,7 +225,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                   })}
                 >
                   <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card }}>
-                    Reset to App Owner view
+                    Reset to Full-timer view
                   </Text>
                 </Pressable>
               )}

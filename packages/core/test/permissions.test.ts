@@ -7,6 +7,7 @@ import {
   pickLandingForRole,
   NAV_ITEMS,
   isAppOwner,
+  canSimulateRole,
   getEffectiveRole,
   OWNER_EMAIL,
 } from '../src/permissions';
@@ -72,15 +73,27 @@ describe('permissions', () => {
     expect(isAppOwner(undefined)).toBe(false);
   });
 
-  it('resolves effective role only for app owner', () => {
+  it('checks role simulation permissions via canSimulateRole', () => {
+    expect(canSimulateRole('admin', 'other@example.com')).toBe(true);
+    expect(canSimulateRole('viewer', OWNER_EMAIL)).toBe(true);
+    expect(canSimulateRole('manager', 'other@example.com')).toBe(false);
+    expect(canSimulateRole('viewer', 'other@example.com')).toBe(false);
+    expect(canSimulateRole(null, null)).toBe(false);
+  });
+
+  it('resolves effective role for app owner and all admin accounts', () => {
     // App owner with ownerViewRole override
     expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'operator')).toBe('operator');
     expect(getEffectiveRole(OWNER_EMAIL, 'admin', 'viewer')).toBe('viewer');
     // App owner without override returns actual role
     expect(getEffectiveRole(OWNER_EMAIL, 'admin', null)).toBe('admin');
-    // Non-owner with ownerViewRole still returns actual role
-    expect(getEffectiveRole('other@example.com', 'admin', 'operator')).toBe('admin');
+    // Non-owner admin with ownerViewRole returns override
+    expect(getEffectiveRole('other-admin@example.com', 'admin', 'operator')).toBe('operator');
+    expect(getEffectiveRole('other-admin@example.com', 'admin', 'manager')).toBe('manager');
+    // Non-owner non-admin with ownerViewRole returns actual role
     expect(getEffectiveRole('other@example.com', 'viewer', 'admin')).toBe('viewer');
+    expect(getEffectiveRole('other@example.com', 'manager', 'admin')).toBe('manager');
   });
 });
+
 

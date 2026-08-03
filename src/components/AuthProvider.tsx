@@ -11,7 +11,7 @@ import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/fires
 import { auth, db } from '../lib/firebase';
 import { sleep } from '../lib/utils';
 
-import { isAppOwner, getEffectiveRole, AppRole } from '../lib/permissions';
+import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole } from '../lib/permissions';
 import { ImpersonateTarget } from '../types';
 import { Impersonation } from '../lib/impersonate';
 
@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
-  const isOwner = isAppOwner(user?.email);
+  const isOwner = canSimulateRole(actualRole as AppRole, user?.email);
 
   const setOwnerViewRole = (nextRole: AppRole | null) => {
     setOwnerViewRoleState(nextRole);
