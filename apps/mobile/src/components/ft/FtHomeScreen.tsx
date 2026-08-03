@@ -66,7 +66,7 @@ function QuickTile({
       style={({ pressed }) => ({
         flex: 1,
         minHeight: 92,
-        justifyContent: 'flex-end',
+        justifyContent: 'center',
         backgroundColor: dark ? c.inverse : c.card,
         borderRadius: radius.tile,
         paddingVertical: 15,

@@ -6,6 +6,10 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Fixed
+- **Filtered `cisa-*` test accounts from all remaining UI displays** — Added pure `ftAssignees` helper in `@cisa/core` (unit tested in `packages/core/test/ftHome.test.ts`) and integrated it into Mobile v2 Full-Timer home screen (`useFtHomeData.ts`), ensuring "Hand something over" assignee chips exclude `cisa-*` test fixture accounts. Also updated `EmbedCoordinationDoc.tsx` to filter `cisa-*` test accounts from the embedded editor team list.
+- **Fixed alignment of Mobile v2 quick action tiles** — Updated `QuickTile` in `FtHomeScreen.tsx` to use vertical center alignment (`justifyContent: 'center'`) so "Log a moment" and "Hand something over" button titles and subtitles are cleanly vertically aligned in the center of the tiles.
+
 ### Added
 - **Mobile v2 — the log sheet's second beat, and the fuller person.** The design
   revised `M2LogSheet` twice after the sheet was first ported; both revisions
