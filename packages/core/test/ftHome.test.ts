@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   FT_SUMMARY_EMPTY,
+  ftAssignees,
   ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
@@ -18,6 +19,7 @@ import {
 import type { InboxItem } from '../src/inbox';
 import type { Leader } from '../src/myday';
 import type {
+  AppUser,
   Contact,
   Event,
   HospitalityOffer,
@@ -579,5 +581,32 @@ describe('ftWeekAhead', () => {
   it('includes a recurring gathering, unlike the trainee queue', () => {
     const chips = ftWeekAhead([event({ id: 'week3', parentEventId: 'e0', isRecurring: true })], NOW);
     expect(chips.map((c) => c.id)).toEqual(['week3']);
+  });
+});
+
+describe('ftAssignees', () => {
+  const user = (overrides: Partial<AppUser> = {}): AppUser => ({
+    uid: 'u1',
+    email: 'user@example.com',
+    displayName: 'User One',
+    role: 'manager',
+    approved: true,
+    ...overrides,
+  });
+
+  it('filters out cisa-* test accounts, unapproved users, viewers, and the current user', () => {
+    const team: AppUser[] = [
+      user({ uid: 'me', displayName: 'Current User' }),
+      user({ uid: 'test1', email: 'cisa-ft@hub.com', displayName: 'cisa-ft' }),
+      user({ uid: 'test2', email: 'regular@example.com', displayName: 'cisa-Trainee' }),
+      user({ uid: 'unapproved', email: 'p@example.com', displayName: 'Pending', approved: false }),
+      user({ uid: 'viewer', email: 'v@example.com', displayName: 'Viewer', role: 'viewer' }),
+      user({ uid: 'valid1', email: 'b@example.com', displayName: 'Bob Smith' }),
+      user({ uid: 'valid2', email: 'a@example.com', displayName: 'Alice Wong' }),
+    ];
+
+    const result = ftAssignees(team, 'me');
+    expect(result.map((u) => u.uid)).toEqual(['valid2', 'valid1']);
+    expect(result.map((u) => u.displayName)).toEqual(['Alice Wong', 'Bob Smith']);
   });
 });

@@ -20,7 +20,8 @@ import type { InboxItem } from "./inbox";
 import { DAY_MS, parseMs, toLocalDate, type Leader } from "./myday";
 import { dueInDays } from "./queue";
 import { firstName } from "./history";
-import type { Contact, Event, HospitalityOffer, PrayerRecord, PrayerRequest, Task } from "./types";
+import { isTestAccount } from "./settings";
+import type { AppUser, Contact, Event, HospitalityOffer, PrayerRecord, PrayerRequest, Task } from "./types";
 
 /** A person is "gone quiet" once this many days have passed since a touch. */
 export const FT_QUIET_DAYS = 10;
@@ -339,4 +340,17 @@ export function ftWeekAhead(events: Event[], now: number = Date.now()): FtWeekCh
       title: ev.name,
       sub: [ev.type, ev.location].filter(Boolean).join(" · "),
     }));
+}
+
+/** The team roster a to-do can be handed to: approved non-viewer staff, excluding test accounts and the current user. */
+export function ftAssignees(team: AppUser[], currentUid: string | null | undefined): AppUser[] {
+  return team
+    .filter(
+      (u) =>
+        !isTestAccount(u) &&
+        u.approved !== false &&
+        u.role !== "viewer" &&
+        u.uid !== currentUid,
+    )
+    .sort((a, b) => (a.displayName || "").localeCompare(b.displayName || ""));
 }

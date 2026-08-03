@@ -72,7 +72,11 @@ export default function EmbedCoordinationDoc() {
                 approved: data.approved,
               };
             })
-            .filter((u) => u.approved !== false)
+            .filter((u) => {
+              if (u.approved === false) return false;
+              const name = (u.member.name || '').toLowerCase();
+              return !name.startsWith('cisa-');
+            })
             .map((u) => u.member)
             .sort((a, b) => a.name.localeCompare(b.name)),
         );

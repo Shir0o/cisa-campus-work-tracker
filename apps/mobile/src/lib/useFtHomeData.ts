@@ -18,6 +18,7 @@ import {
 } from 'firebase/firestore';
 import {
   deriveLeaders,
+  ftAssignees,
   ftCarryRows,
   ftCarrying,
   ftGoneQuiet,
@@ -263,13 +264,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   );
 
   // The team roster a to-do can be handed to: approved staff, me first.
-  const assignees = useMemo(
-    () =>
-      team
-        .filter((u) => u.approved !== false && u.role !== 'viewer' && u.uid !== uid)
-        .sort((a, b) => (a.displayName || '').localeCompare(b.displayName || '')),
-    [team, uid],
-  );
+  const assignees = useMemo(() => ftAssignees(team, uid), [team, uid]);
 
   return {
     loading,
