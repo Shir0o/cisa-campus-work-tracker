@@ -266,3 +266,14 @@ export interface ChatMessage {
   attachments?: ChatAttachment[];
 }
 
+export interface ImpersonateTarget {
+  key: string;
+  name: string;
+  initials: string;
+  sub: string;
+  note: string;
+  role: AppRole;
+  persona?: any;
+}
+
+

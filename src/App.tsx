@@ -9,6 +9,7 @@ import {
 } from "react-router-dom";
 import { cn } from "./lib/utils";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
+import ImpersonateModal from "./components/layout/ImpersonateModal";
 import Sidebar from "./components/layout/Sidebar";
 import TopBar from "./components/layout/TopBar";
 import MobileNav from "./components/layout/MobileNav";
@@ -261,6 +262,7 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 }
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { setImpersonateTarget, impersonateTarget } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
   const [newContactStage, setNewContactStage] = React.useState<
@@ -269,6 +271,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
+  const [isImpersonateModalOpen, setIsImpersonateModalOpen] = React.useState(false);
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
@@ -314,7 +317,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           )}
         >
-          <OwnerViewBanner />
+          <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
           <TopBar />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
             {children}
@@ -341,6 +344,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           isOpen={selectedContact !== null}
           onClose={() => setSelectedContact(null)}
           contact={selectedContact}
+        />
+
+        <ImpersonateModal
+          isOpen={isImpersonateModalOpen}
+          currentKey={impersonateTarget?.key}
+          onPick={(target) => setImpersonateTarget(target)}
+          onClose={() => setIsImpersonateModalOpen(false)}
         />
 
         <FeedbackFAB />

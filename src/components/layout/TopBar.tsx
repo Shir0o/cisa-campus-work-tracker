@@ -53,7 +53,7 @@ export default function TopBar() {
   }, []);
 
   return (
-    <header className="bg-surface h-16 border-b border-outline-variant px-4 lg:px-6 flex items-center gap-3 sm:gap-4 sticky top-0 z-30">
+    <header className="bg-surface border-b border-outline-variant px-4 lg:px-6 flex items-center gap-3 sm:gap-4 sticky top-0 z-30 pt-[env(safe-area-inset-top,0px)] min-h-[calc(4rem+env(safe-area-inset-top,0px))]">
       {/* Mobile menu trigger */}
       <button
         onClick={() => setIsMobileMenuOpen(true)}

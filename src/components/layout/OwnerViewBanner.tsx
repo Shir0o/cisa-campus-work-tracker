@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Eye, RotateCcw, ChevronDown, Check } from 'lucide-react';
+import { Eye, RotateCcw, ChevronDown, Check, Users } from 'lucide-react';
 import { useAuth } from '../AuthProvider';
 import { AppRole, roleLabel } from '../../lib/permissions';
 import { cn } from '../../lib/utils';
+import ImpersonateBar from './ImpersonateBar';
 
 const ROLES: { key: AppRole; label: string; note: string }[] = [
   { key: 'admin', label: 'Full-timer', note: 'Full workspace (Admin)' },
@@ -11,17 +12,28 @@ const ROLES: { key: AppRole; label: string; note: string }[] = [
   { key: 'viewer', label: 'Community', note: "Community member's view" },
 ];
 
-export default function OwnerViewBanner() {
-  const { isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+export default function OwnerViewBanner({ onOpenModal }: { onOpenModal?: () => void }) {
+  const { isOwner, ownerViewRole, setOwnerViewRole, impersonateTarget, setImpersonateTarget } =
+    useAuth();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Strictly visible ONLY to app owner
+  // Strictly visible ONLY to app owner / admin
   if (!isOwner) return null;
+
+  if (impersonateTarget) {
+    return (
+      <ImpersonateBar
+        target={impersonateTarget}
+        onSwitch={() => onOpenModal?.()}
+        onExit={() => setImpersonateTarget(null)}
+      />
+    );
+  }
 
   const currentRoleLabel = ownerViewRole ? roleLabel(ownerViewRole) : 'App Owner';
 
   return (
-    <div className="bg-amber-500/10 border-b border-amber-500/30 text-on-surface px-4 py-2 flex flex-wrap items-center justify-between gap-3 text-xs z-50">
+    <div className="bg-amber-500/10 border-b border-amber-500/30 text-on-surface px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] flex flex-wrap items-center justify-between gap-3 text-xs z-50 transition-all">
       <div className="flex items-center gap-2 font-medium">
         <span className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
           <Eye className="w-3.5 h-3.5" />
@@ -30,24 +42,39 @@ export default function OwnerViewBanner() {
           {ownerViewRole ? (
             <>
               You are seeing CISA as <strong>{currentRoleLabel}</strong>.
-              <span className="hidden sm:inline text-on-surface-variant ml-1">(See their view preview mode)</span>
+              <span className="hidden sm:inline text-on-surface-variant ml-1">
+                (See their view preview mode)
+              </span>
             </>
           ) : (
-            <>
-              App Owner Mode — preview what other roles see.
-            </>
+            <>App Owner Mode — preview what other roles or people see.</>
           )}
         </span>
       </div>
 
       <div className="flex items-center gap-2 relative">
+        {onOpenModal && (
+          <button
+            onClick={onOpenModal}
+            className="px-3 py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-full font-medium flex items-center gap-1.5 transition-colors"
+          >
+            <Users className="w-3 h-3" />
+            <span>See as person…</span>
+          </button>
+        )}
+
         <div className="relative">
           <button
             onClick={() => setDropdownOpen((o) => !o)}
             className="px-3 py-1 bg-surface border border-outline-variant/60 hover:bg-surface-container-high text-on-surface rounded-full flex items-center gap-1.5 font-medium transition-colors"
           >
             <span>{ownerViewRole ? `View: ${currentRoleLabel}` : 'See their view…'}</span>
-            <ChevronDown className={cn('w-3.5 h-3.5 text-on-surface-variant transition-transform', dropdownOpen && 'rotate-180')} />
+            <ChevronDown
+              className={cn(
+                'w-3.5 h-3.5 text-on-surface-variant transition-transform',
+                dropdownOpen && 'rotate-180',
+              )}
+            />
           </button>
 
           {dropdownOpen && (
@@ -95,3 +122,4 @@ export default function OwnerViewBanner() {
     </div>
   );
 }
+

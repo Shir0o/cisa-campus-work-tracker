@@ -46,6 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
 import FeedbackList from './FeedbackList';
+import ImpersonatePicker from '../components/layout/ImpersonatePicker';
 
 type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -241,22 +242,48 @@ function AppearanceSection({
 }
 
 function OwnerViewSection() {
-  const { isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+  const { isOwner, ownerViewRole, setOwnerViewRole, impersonateTarget, setImpersonateTarget } =
+    useAuth();
   if (!isOwner) return null;
 
   return (
-    <section className="mt-10 p-5 rounded-2xl border border-amber-500/30 bg-amber-500/5">
+    <section className="mt-10 p-6 rounded-3xl border border-amber-500/30 bg-amber-500/5 space-y-6 text-left">
       <SectionHeader
         title="See it as they do (App Owner)"
-        sub="Step into any role's view for a moment to see the exact screens, navigation, and layout they experience. This preview is for your eyes only."
+        sub="Step into any role or specific team member's view for a moment to see the exact screens, navigation, and layout they experience. This preview is for your eyes only."
       />
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl mt-4">
+
+      {/* Active Impersonation Banner Card */}
+      {impersonateTarget && (
+        <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/15 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <div className="font-semibold text-sm text-on-surface">
+              Currently seeing CISA as {impersonateTarget.name}
+            </div>
+            <div className="text-xs text-on-surface-variant">
+              {impersonateTarget.sub} · {impersonateTarget.note}
+            </div>
+          </div>
+          <button
+            onClick={() => setImpersonateTarget(null)}
+            className="px-3.5 py-1.5 bg-amber-500 text-white font-medium text-xs rounded-full hover:bg-amber-600 transition-colors shadow-sm"
+          >
+            Back to my view
+          </button>
+        </div>
+      )}
+
+      {/* Role view shortcuts */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-w-2xl">
         {ROLE_CARDS.map((card) => {
-          const isActive = ownerViewRole === card.key;
+          const isActive = ownerViewRole === card.key && !impersonateTarget;
           return (
             <button
               key={card.key}
-              onClick={() => setOwnerViewRole(isActive ? null : card.key)}
+              onClick={() => {
+                if (impersonateTarget) setImpersonateTarget(null);
+                setOwnerViewRole(isActive ? null : card.key);
+              }}
               aria-pressed={isActive}
               className={cn(
                 'flex flex-col items-start gap-1.5 p-3.5 rounded-2xl border text-left transition-colors',
@@ -273,9 +300,12 @@ function OwnerViewSection() {
           );
         })}
       </div>
-      {ownerViewRole && (
+
+      {ownerViewRole && !impersonateTarget && (
         <div className="mt-4 flex items-center gap-3 text-xs">
-          <span className="text-on-surface-variant">Currently viewing as: <strong>{ROLE_LABEL[ownerViewRole]}</strong></span>
+          <span className="text-on-surface-variant">
+            Currently viewing as: <strong>{ROLE_LABEL[ownerViewRole]}</strong>
+          </span>
           <button
             onClick={() => setOwnerViewRole(null)}
             className="px-3 py-1 bg-amber-500/20 text-amber-800 dark:text-amber-200 hover:bg-amber-500/30 font-medium rounded-full transition-colors"
@@ -284,6 +314,15 @@ function OwnerViewSection() {
           </button>
         </div>
       )}
+
+      {/* Target Picker */}
+      <div className="pt-2 border-t border-amber-500/20">
+        <h4 className="text-sm font-semibold text-on-surface mb-3">Borrow a specific person's eyes</h4>
+        <ImpersonatePicker
+          currentKey={impersonateTarget?.key}
+          onPick={(t) => setImpersonateTarget(t)}
+        />
+      </div>
     </section>
   );
 }

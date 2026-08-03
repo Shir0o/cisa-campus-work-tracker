@@ -6,6 +6,9 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Added
+- **"See Their View" Target Impersonation & System Notification Bar Safe Area Padding** — Integrated target impersonation (`ImpersonatePicker`, `ImpersonateBar`, `ImpersonateModal`, `ImpersonateSettings`) allowing App Owner / Admin to step into the view of specific team members (staff/trainees), member personas, or roster contacts across web and mobile. Applied top safe-area padding (`env(safe-area-inset-top, 0px)`) across `OwnerViewBanner`, `ImpersonateBar`, `TopBar`, `Sidebar`, mobile drawers, and modal overlays to prevent UI overlap with device system status/notification bars and ensure all top action buttons remain clickable.
+
 ### Fixed
 - **Filtered `cisa-*` test accounts from all remaining UI displays** — Added pure `ftAssignees` helper in `@cisa/core` (unit tested in `packages/core/test/ftHome.test.ts`) and integrated it into Mobile v2 Full-Timer home screen (`useFtHomeData.ts`), ensuring "Hand something over" assignee chips exclude `cisa-*` test fixture accounts. Also updated `EmbedCoordinationDoc.tsx` to filter `cisa-*` test accounts from the embedded editor team list.
 - **Fixed alignment of Mobile v2 quick action tiles** — Updated `QuickTile` in `FtHomeScreen.tsx` to use vertical center alignment (`justifyContent: 'center'`) so "Log a moment" and "Hand something over" button titles and subtitles are cleanly vertically aligned in the center of the tiles.

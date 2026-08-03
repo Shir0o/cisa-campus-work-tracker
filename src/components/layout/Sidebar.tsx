@@ -120,7 +120,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className={cn(
-          "bg-surface h-screen fixed md:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-4 pb-4 px-3 overflow-hidden shrink-0",
+          "bg-surface h-screen fixed md:sticky top-0 left-0 flex-col border-r border-outline-variant z-[70] pt-[calc(1rem+env(safe-area-inset-top,0px))] pb-4 px-3 overflow-hidden shrink-0",
           "md:transition-none transition-transform duration-300 ease-in-out",
           isMobileMenuOpen ? "translate-x-0 shadow-2xl flex" : "-translate-x-full md:translate-x-0 flex shadow-none"
         )}
