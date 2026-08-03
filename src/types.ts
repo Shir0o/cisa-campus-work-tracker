@@ -1,3 +1,5 @@
+import { AppRole } from './lib/permissions';
+
 export interface Contact {
   id: string;
   name: string;
