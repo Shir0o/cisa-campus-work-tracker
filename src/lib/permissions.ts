@@ -79,3 +79,31 @@ export function defaultRouteForRole(role: AppRole | string | null): string {
   if (hasMinRole(role, 'viewer')) return '/';
   return '/attendance';
 }
+
+/**
+ * App Owner email address — strictly allowed to access "See their view"
+ * impersonation/preview controls.
+ */
+export const OWNER_EMAIL = 'yilongwang05@gmail.com';
+
+/** Checks whether a user email matches the designated app owner account. */
+export function isAppOwner(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return email.trim().toLowerCase() === OWNER_EMAIL.toLowerCase();
+}
+
+/**
+ * Resolves the effective role for a user. If the user is the app owner and has
+ * an active ownerViewRole override set, returns ownerViewRole; otherwise returns actualRole.
+ */
+export function getEffectiveRole(
+  email: string | null | undefined,
+  actualRole: AppRole | null,
+  ownerViewRole: AppRole | null
+): AppRole | null {
+  if (isAppOwner(email) && ownerViewRole) {
+    return ownerViewRole;
+  }
+  return actualRole;
+}
+

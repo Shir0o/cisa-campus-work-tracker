@@ -11,6 +11,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - **Fixed alignment of Mobile v2 quick action tiles** — Updated `QuickTile` in `FtHomeScreen.tsx` to use vertical center alignment (`justifyContent: 'center'`) so "Log a moment" and "Hand something over" button titles and subtitles are cleanly vertically aligned in the center of the tiles.
 
 ### Added
+- **"See their view" for App Owner (Web & Mobile)** — Added owner view simulation mode strictly for the app owner (`yilongwang05@gmail.com`). Includes pure `isAppOwner` and `getEffectiveRole` helpers in `@cisa/core` (with 2 new unit tests, 482 total tests passing), web `OwnerViewBanner` top bar & `/settings` section, and mobile `OwnerViewBanner` + mobile `/settings` role view preview controls to switch active UI role views (`Full-timer`, `Trainee`, `Student`, `Community`) across desktop and mobile.
 - **Mobile v2 — the log sheet's second beat, and the fuller person.** The design
   revised `M2LogSheet` twice after the sheet was first ported; both revisions
   land here.
