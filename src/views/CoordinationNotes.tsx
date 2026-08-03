@@ -485,12 +485,18 @@ function ReadOnlyDoc({
   onTogglePages,
   isFullscreen,
   onToggleFullscreen,
+  nativeFs,
+  onToggleNativeFs,
+  canNativeFs,
 }: {
   doc: BoardDoc;
   pagesCollapsed: boolean;
   onTogglePages: () => void;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  nativeFs?: boolean;
+  onToggleNativeFs?: () => void;
+  canNativeFs?: boolean;
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
   return (
@@ -525,18 +531,35 @@ function ReadOnlyDoc({
           )}
           <AudienceBadge audience={audienceOf(d)} />
         </div>
-        {onToggleFullscreen && (
-          <button
-            type="button"
-            onClick={onToggleFullscreen}
-            title={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
-            aria-label={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
-          >
-            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-            <span className="hidden sm:inline">{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {isFullscreen && onToggleNativeFs && canNativeFs && (
+            <button
+              type="button"
+              onClick={onToggleNativeFs}
+              title={nativeFs ? 'Leave the whole screen' : 'Fill the whole screen — hides the browser too'}
+              aria-label={nativeFs ? 'Leave whole screen' : 'Whole screen'}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium transition-colors',
+                nativeFs ? 'bg-stage-accent/10 border-stage-accent/40 text-stage-accent' : 'text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent'
+              )}
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{nativeFs ? 'Leave whole screen' : 'Whole screen'}</span>
+            </button>
+          )}
+          {onToggleFullscreen && (
+            <button
+              type="button"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'Back to the Board  (Esc)' : 'Open this page full screen'}
+              aria-label={isFullscreen ? 'Close full screen' : 'Open full screen'}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
+            >
+              {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+              <span className="hidden sm:inline">{isFullscreen ? 'Back to Board' : 'Full screen'}</span>
+            </button>
+          )}
+        </div>
       </div>
 
       <h1 className="font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
@@ -554,7 +577,7 @@ function ReadOnlyDoc({
 
 // ── Notes & learnings: prefill helpers (Session 4) ────────────────────────────
 // Exported alongside NoteForm/addNote's shape so EmbedCoordinationDoc.tsx's
-// admin-only "Save to archive" flow can reuse them (see MIGRATION.md
+// admin-only "Keep as a note" flow can reuse them (see MIGRATION.md
 // "Coordination Notes / The Board").
 export type NoteFormInitial = { id?: string; type?: NoteType; series?: string; title?: string; body?: string; displayMode?: 'text' | 'list' };
 
@@ -616,38 +639,46 @@ export default function CoordinationNotes() {
 
   // Fullscreen mode state & handlers for distraction-free editing/viewing
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nativeFs, setNativeFs] = useState(false);
+  const [canNativeFs, setCanNativeFs] = useState(false);
+
   const toggleFullscreen = () => {
     const next = !isFullscreen;
     setIsFullscreen(next);
-    if (next) {
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      }
-    } else {
-      if (document.fullscreenElement && document.exitFullscreen) {
-        document.exitFullscreen().catch(() => {});
-      }
+    if (!next && document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    }
+  };
+
+  const toggleNativeFs = () => {
+    if (document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen().catch(() => {});
+    } else if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {});
     }
   };
 
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement && isFullscreen) {
-        setIsFullscreen(false);
-      }
+    const sync = () => {
+      const on = !!document.fullscreenElement;
+      setNativeFs(on);
+      if (on) setIsFullscreen(true);
     };
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    setCanNativeFs(!!(document.fullscreenEnabled && document.documentElement.requestFullscreen));
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen) {
+      if (e.key === 'Escape') {
+        if (document.querySelector('.bdoc-mmenu') || document.fullscreenElement) return;
         setIsFullscreen(false);
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen().catch(() => {});
-        }
       }
     };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
@@ -663,7 +694,7 @@ export default function CoordinationNotes() {
   const [series, setSeries] = useState('All');
   const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
   const [noteTab, setNoteTab] = useState<'active' | 'archived' | 'trash'>('active');
-  // The note form holds optional prefill so "Save to archive" can seed it from a page.
+  // The note form holds optional prefill so "Keep as a note" can seed it from a page.
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
   // team to-dos ("What we're holding")
@@ -1014,7 +1045,7 @@ export default function CoordinationNotes() {
     }
   };
 
-  // Session 4 — "Save to archive": promote the open page into Notes & learnings,
+  // Session 4 — "Keep as a note": promote the open page into Notes & learnings,
   // prefilling the form with its title, an excerpt, and a guessed series.
   const promoteDoc = (d: BoardDoc) => {
     const md = d.id === activeId ? liveActiveMd ?? d.md : d.md;
@@ -1580,6 +1611,9 @@ export default function CoordinationNotes() {
                   todos={todos}
                   isFullscreen={isFullscreen}
                   onToggleFullscreen={toggleFullscreen}
+                  nativeFs={nativeFs}
+                  onToggleNativeFs={toggleNativeFs}
+                  canNativeFs={canNativeFs}
                 />
               ) : (
                 <ReadOnlyDoc
@@ -1589,6 +1623,9 @@ export default function CoordinationNotes() {
                   onTogglePages={togglePages}
                   isFullscreen={isFullscreen}
                   onToggleFullscreen={toggleFullscreen}
+                  nativeFs={nativeFs}
+                  onToggleNativeFs={toggleNativeFs}
+                  canNativeFs={canNativeFs}
                 />
               )
             ) : (
@@ -2096,6 +2133,9 @@ export function DocEditor({
   todos = [],
   isFullscreen,
   onToggleFullscreen,
+  nativeFs,
+  onToggleNativeFs,
+  canNativeFs,
 }: {
   doc: BoardDoc;
   meUid: string;
@@ -2116,6 +2156,9 @@ export function DocEditor({
   todos?: Task[];
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  nativeFs?: boolean;
+  onToggleNativeFs?: () => void;
+  canNativeFs?: boolean;
 }) {
   const { user } = useAuth();
 
@@ -2705,21 +2748,36 @@ export function DocEditor({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => onPromote(d)}
-            title="Keep this page as a record or learning in the archive"
+            title="Keep this page in Notes & learnings — as a record to find again, or a learning to hold onto"
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
           >
-            <Tag className="w-3.5 h-3.5" /> Save to archive
+            <Tag className="w-3.5 h-3.5" /> Keep as a note
           </button>
+          {isFullscreen && onToggleNativeFs && canNativeFs && (
+            <button
+              type="button"
+              onClick={onToggleNativeFs}
+              title={nativeFs ? 'Leave the whole screen' : 'Fill the whole screen — hides the browser too'}
+              aria-label={nativeFs ? 'Leave whole screen' : 'Whole screen'}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium transition-colors',
+                nativeFs ? 'bg-stage-accent/10 border-stage-accent/40 text-stage-accent' : 'text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent'
+              )}
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">{nativeFs ? 'Leave whole screen' : 'Whole screen'}</span>
+            </button>
+          )}
           {onToggleFullscreen && (
             <button
               type="button"
               onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
-              aria-label={isFullscreen ? 'Exit full screen' : 'Full screen mode'}
+              title={isFullscreen ? 'Back to the Board  (Esc)' : 'Open this page full screen'}
+              aria-label={isFullscreen ? 'Close full screen' : 'Open full screen'}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{isFullscreen ? 'Exit full screen' : 'Full screen'}</span>
+              <span className="hidden sm:inline">{isFullscreen ? 'Back to Board' : 'Full screen'}</span>
             </button>
           )}
           {peers.length > 0 && (
@@ -3183,7 +3241,7 @@ function NoteCard({
 }
 
 // ── Add-note form ─────────────────────────────────────────────────────────────
-// Exported for EmbedCoordinationDoc.tsx's admin-only "Save to archive" flow.
+// Exported for EmbedCoordinationDoc.tsx's admin-only "Keep as a note" flow.
 export function NoteForm({
   seriesOptions,
   initial,

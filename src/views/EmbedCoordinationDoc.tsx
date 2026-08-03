@@ -138,7 +138,7 @@ export default function EmbedCoordinationDoc() {
     }
   };
 
-  // "Save to archive" — prefills the note form; the actual board_notes write
+  // "Keep as a note" — prefills the note form; the actual board_notes write
   // happens when the user confirms via addNote below. Mirrors
   // CoordinationNotes.tsx's promoteDoc, minus the live-editing-preview branch
   // (this embed always shows exactly one, already-active doc).

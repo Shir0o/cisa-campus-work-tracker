@@ -681,14 +681,14 @@ describe('CoordinationNotes', () => {
     });
   });
 
-  // ── 8b. Save to archive — promote a page (Session 4) ───────────────────────
+  // ── 8b. Keep as a note — promote a page (Session 4) ───────────────────────
   describe('promote page to archive', () => {
-    it('prefills the note form from the open page when "Save to archive" is clicked', async () => {
+    it('prefills the note form from the open page when "Keep as a note" is clicked', async () => {
       mockActiveEditor = mockEditor;
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
       render(<CoordinationNotes />);
 
-      const promoteBtn = await screen.findByRole('button', { name: /save to archive/i });
+      const promoteBtn = await screen.findByRole('button', { name: /keep as a note/i });
       fireEvent.click(promoteBtn);
 
       const titleInput = (await screen.findByPlaceholderText(/a short title/i)) as HTMLInputElement;
@@ -2004,7 +2004,7 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs });
       render(<CoordinationNotes />);
 
-      const fullScreenBtn = await screen.findByRole('button', { name: /full screen mode/i });
+      const fullScreenBtn = await screen.findByRole('button', { name: /full screen/i });
       expect(fullScreenBtn).toBeInTheDocument();
 
       const workspace = screen.getByTestId('coordination-notes-workspace');
@@ -2013,7 +2013,7 @@ describe('CoordinationNotes', () => {
       // Click to enter full screen
       fireEvent.click(fullScreenBtn);
 
-      const exitFullScreenBtn = await screen.findByRole('button', { name: /exit full screen/i });
+      const exitFullScreenBtn = await screen.findByRole('button', { name: /close full screen|back to board|exit full screen/i });
       expect(exitFullScreenBtn).toBeInTheDocument();
       expect(workspace).toHaveClass('fixed');
       expect(workspace).toHaveClass('z-50');
@@ -2021,7 +2021,7 @@ describe('CoordinationNotes', () => {
       // Click to exit full screen
       fireEvent.click(exitFullScreenBtn);
 
-      expect(screen.getByRole('button', { name: /full screen mode/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /full screen/i })).toBeInTheDocument();
       expect(workspace).not.toHaveClass('fixed');
     });
 
@@ -2047,7 +2047,7 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs });
       render(<CoordinationNotes />);
 
-      const fullScreenBtn = await screen.findByRole('button', { name: /full screen mode/i });
+      const fullScreenBtn = await screen.findByRole('button', { name: /full screen/i });
       fireEvent.click(fullScreenBtn);
 
       const workspace = screen.getByTestId('coordination-notes-workspace');
@@ -2057,7 +2057,7 @@ describe('CoordinationNotes', () => {
       fireEvent.keyDown(window, { key: 'Escape' });
 
       expect(workspace).not.toHaveClass('fixed');
-      expect(screen.getByRole('button', { name: /full screen mode/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /full screen/i })).toBeInTheDocument();
     });
 
     it('handles fullscreenchange event and ReadOnlyDoc full screen toggle', async () => {
@@ -2083,7 +2083,7 @@ describe('CoordinationNotes', () => {
       setupSnapshots({ docs: mockDocs });
       render(<CoordinationNotes />);
 
-      const fullScreenBtn = await screen.findByRole('button', { name: /full screen mode/i });
+      const fullScreenBtn = await screen.findByRole('button', { name: /full screen/i });
       expect(fullScreenBtn).toBeInTheDocument();
 
       fireEvent.click(fullScreenBtn);
@@ -2092,7 +2092,7 @@ describe('CoordinationNotes', () => {
 
       // Trigger fullscreenchange when no element is in fullscreen
       fireEvent(document, new Event('fullscreenchange'));
-      expect(workspace).not.toHaveClass('fixed');
+      expect(workspace).toHaveClass('fixed');
     });
   });
 

@@ -6,6 +6,10 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Changed
+- **Updated Board Page (`/coordination`) Promotion Label & Full Screen Mode Controls** — Updated the page promotion action button label from `"Save to archive"` to `"Keep as a note"` across the Board editor header (`CoordinationNotes.tsx`, `EmbedCoordinationDoc.tsx`), tooltips, and unit tests (`CoordinationNotes.test.tsx`). Enhanced full screen mode to include native browser full screen toggle ("Whole screen") when in full screen mode, aligned button tooltips/aria-labels with the design spec (`views/board.jsx`), and updated `Esc` key handling.
+
+
 ### Added
 - **"See Their View" Target Impersonation & System Notification Bar Safe Area Padding** — Integrated target impersonation (`ImpersonatePicker`, `ImpersonateBar`, `ImpersonateModal`, `ImpersonateSettings`) allowing App Owner / Admin to step into the view of specific team members (staff/trainees), member personas, or roster contacts across web and mobile. Applied top safe-area padding (`env(safe-area-inset-top, 0px)`) across `OwnerViewBanner`, `ImpersonateBar`, `TopBar`, `Sidebar`, mobile drawers, and modal overlays to prevent UI overlap with device system status/notification bars and ensure all top action buttons remain clickable.
 
