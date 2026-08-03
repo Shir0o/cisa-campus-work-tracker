@@ -2279,7 +2279,7 @@ export function DocEditor({
 
       if (editor && createdItems.length > 0) {
         const replacement = createdItems.join('\n');
-        editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, replacement)).run();
+        editor.chain().focus().deleteSelection().insertContent(replacement).run();
       }
     } catch (e) {
       console.error(e);
@@ -2973,7 +2973,7 @@ export function DocEditor({
               })
             );
             const replacement = mdLines.join('\n');
-            editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, replacement)).run();
+            editor.chain().focus().deleteSelection().insertContent(replacement).run();
           }}
         />
       )}
@@ -2992,7 +2992,7 @@ export function DocEditor({
           onCreated={(createdNote) => {
             if (!editor) return;
             const mdLine = formatDocNoteMarkdown(createdNote);
-            editor.chain().focus().deleteSelection().insertContent(editorMdToHtml(editor, mdLine)).run();
+            editor.chain().focus().deleteSelection().insertContent(mdLine).run();
           }}
         />
       )}
