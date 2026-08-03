@@ -357,4 +357,70 @@ describe('AuthProvider', () => {
     fireEvent.click(logOutBtn);
     expect(signOut).toHaveBeenCalled();
   });
+
+  it('correctly sets isOwner and allows ownerViewRole switching for app owner', async () => {
+    const ownerUser = {
+      uid: 'owner-uid',
+      email: 'yilongwang05@gmail.com',
+      displayName: 'App Owner',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: { admin: true } })
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(ownerUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        role: 'admin',
+        approved: true,
+      })
+    });
+
+    const OwnerTestComponent = () => {
+      const { isOwner, role, actualRole, ownerViewRole, setOwnerViewRole } = useAuth();
+      return (
+        <div>
+          <div>isOwner: {isOwner.toString()}</div>
+          <div>role: {role}</div>
+          <div>actualRole: {actualRole}</div>
+          <div>ownerViewRole: {ownerViewRole || 'none'}</div>
+          <button onClick={() => setOwnerViewRole('operator')}>Set Student</button>
+          <button onClick={() => setOwnerViewRole(null)}>Reset</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <OwnerTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('isOwner: true')).toBeInTheDocument();
+      expect(screen.getByText('role: admin')).toBeInTheDocument();
+      expect(screen.getByText('actualRole: admin')).toBeInTheDocument();
+    });
+
+    // Switch view to operator (Student)
+    fireEvent.click(screen.getByRole('button', { name: 'Set Student' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('role: operator')).toBeInTheDocument();
+      expect(screen.getByText('actualRole: admin')).toBeInTheDocument();
+      expect(screen.getByText('ownerViewRole: operator')).toBeInTheDocument();
+    });
+
+    // Reset view
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('role: admin')).toBeInTheDocument();
+      expect(screen.getByText('ownerViewRole: none')).toBeInTheDocument();
+    });
+  });
 });
+

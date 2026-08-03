@@ -189,7 +189,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                 return (
                   <Pressable
                     key={r.key}
-                    onPress={() => setOwnerViewRole(on ? null : (r.key as any))}
+                    onPress={() => setOwnerViewRole(on ? null : r.key)}
                     style={({ pressed }) => ({
                       minHeight: 44,
                       flexDirection: 'row',

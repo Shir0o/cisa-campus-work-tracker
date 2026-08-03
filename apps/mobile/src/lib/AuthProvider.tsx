@@ -54,15 +54,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setOwnerViewRoleState(saved as AppRole);
         }
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn('Could not read saved owner view role preference:', err);
+      });
   }, []);
 
   const setOwnerViewRole = (nextRole: AppRole | null) => {
     setOwnerViewRoleState(nextRole);
     if (nextRole) {
-      AsyncStorage.setItem(STORAGE_KEY_MOBILE_OWNER_VIEW, nextRole).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY_MOBILE_OWNER_VIEW, nextRole).catch((err) => {
+        console.warn('Could not save owner view role preference:', err);
+      });
     } else {
-      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch(() => {});
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch((err) => {
+        console.warn('Could not remove owner view role preference:', err);
+      });
     }
   };
 
