@@ -7,6 +7,7 @@ import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { TaskList } from '@tiptap/extension-task-list';
 import { TaskItem } from '@tiptap/extension-task-item';
+import { Markdown } from 'tiptap-markdown';
 import { collectDocTaskNodes, planDocTaskEdits } from '../lib/board';
 
 describe('doc task sync on a real editor', () => {
@@ -73,4 +74,32 @@ describe('doc task sync on a real editor', () => {
 
     editor.destroy();
   });
+
+  it('inserts task markdown cleanly into editor without raw html tags', () => {
+    const editor = new Editor({
+      element: document.createElement('div'),
+      extensions: [
+        StarterKit.configure({ undoRedo: false }),
+        TaskList,
+        TaskItem.configure({ nested: true }),
+        Markdown.configure({ html: false, tightLists: true, linkify: true, transformPastedText: true }),
+      ],
+      content: '<p>Initial text</p>',
+    });
+
+    const mdTaskLine = '- [ ] Create a WhatApps - NACT coordination Group (@Kevin) <!-- task:tH8keV1ImKuG3aUAAVqR assignee:RMa9kONDdoYjM5bz7ZbuJPKhwdF3 -->';
+    // Passing markdown directly to insertContent
+    editor.chain().focus().insertContent(mdTaskLine).run();
+
+    const html = editor.getHTML();
+    expect(html).not.toContain('&lt;ul class="contains-task-list"');
+    expect(html).not.toContain('<ul class="contains-task-list"');
+
+    const nodes = collectDocTaskNodes(editor.state.doc);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0].text).toContain('Create a WhatApps - NACT coordination Group (@Kevin) <!-- task:tH8keV1ImKuG3aUAAVqR assignee:RMa9kONDdoYjM5bz7ZbuJPKhwdF3 -->');
+
+    editor.destroy();
+  });
 });
+
