@@ -6,6 +6,8 @@ import {
   impStaffTarget,
   impPersonaTarget,
   impContactTarget,
+  impFirst,
+  impInits,
   DEFAULT_STAFF,
 } from '../lib/impersonate';
 import ImpersonatePicker from '../components/layout/ImpersonatePicker';
@@ -17,6 +19,13 @@ describe('Impersonation Data & Helpers', () => {
     localStorage.clear();
   });
 
+  it('handles name helper fallback edge cases', () => {
+    expect(impFirst('')).toBe('');
+    expect(impInits('')).toBe('');
+    expect(impInits('  ')).toBe('');
+    expect(impPersonaTarget('invalid')).toBeNull();
+  });
+
   it('resolves staff targets correctly', () => {
     const target = Impersonation.resolve('staff:u1');
     expect(target).not.toBeNull();
@@ -26,6 +35,8 @@ describe('Impersonation Data & Helpers', () => {
     const traineeTarget = Impersonation.resolve('staff:u4');
     expect(traineeTarget?.name).toBe('Caleb Owusu');
     expect(traineeTarget?.role).toBe('manager');
+
+    expect(Impersonation.resolve('staff:nonexistent')).toBeNull();
   });
 
   it('resolves persona targets correctly', () => {
@@ -36,6 +47,8 @@ describe('Impersonation Data & Helpers', () => {
     const community = Impersonation.resolve('persona:community');
     expect(community?.name).toBe('David Chen');
     expect(community?.role).toBe('viewer');
+
+    expect(Impersonation.resolve('persona:nonexistent')).toBeNull();
   });
 
   it('resolves contact targets correctly when passed contacts roster', () => {
@@ -44,6 +57,14 @@ describe('Impersonation Data & Helpers', () => {
     expect(target?.name).toBe('Sam Taylor');
     expect(target?.sub).toBe('Senior · Math');
     expect(target?.role).toBe('operator');
+
+    expect(Impersonation.resolve('contact:nonexistent', mockContacts)).toBeNull();
+  });
+
+  it('handles null, empty, or invalid key resolution', () => {
+    expect(Impersonation.resolve(null)).toBeNull();
+    expect(Impersonation.resolve('')).toBeNull();
+    expect(Impersonation.resolve('invalidkey')).toBeNull();
   });
 
   it('persists impersonation target key in localStorage', () => {
@@ -60,7 +81,7 @@ describe('Impersonation Data & Helpers', () => {
 describe('ImpersonatePicker Component', () => {
   it('renders team, personas, and roster items and filters by search query', () => {
     const onPick = vi.fn();
-    render(<ImpersonatePicker currentKey={null} onPick={onPick} />);
+    render(<ImpersonatePicker currentKey={null} onPick={onPick} autoFocus />);
 
     expect(screen.getByText('The team')).toBeInTheDocument();
     expect(screen.getByText('Students & friends')).toBeInTheDocument();
@@ -73,10 +94,32 @@ describe('ImpersonatePicker Component', () => {
     expect(screen.getByText('Jordan Park')).toBeInTheDocument();
     expect(screen.queryByText('Mei Tanaka')).not.toBeInTheDocument();
 
+    // Clear search
+    const clearBtn = screen.getByLabelText('Clear search');
+    fireEvent.click(clearBtn);
+    expect(searchInput).toHaveValue('');
+
     const pickButton = screen.getByRole('button', { name: /Jordan Park/i });
     fireEvent.click(pickButton);
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onPick.mock.calls[0][0].key).toBe('staff:u2');
+  });
+
+  it('handles custom contacts and expands roster list', () => {
+    const customContacts = Array.from({ length: 10 }, (_, i) => ({
+      id: `custom-${i}`,
+      name: `Person ${i}`,
+      year: 'Junior',
+      major: 'Bio',
+    }));
+
+    render(<ImpersonatePicker currentKey={null} onPick={vi.fn()} contacts={customContacts} />);
+
+    expect(screen.getByText('Person 0')).toBeInTheDocument();
+    const moreBtn = screen.getByText(/Show the rest of the roster/i);
+    fireEvent.click(moreBtn);
+
+    expect(screen.getByText('Person 9')).toBeInTheDocument();
   });
 });
 
@@ -102,7 +145,7 @@ describe('ImpersonateBar Component', () => {
 });
 
 describe('ImpersonateModal Component', () => {
-  it('renders modal when open and closes on ESC key or close button', () => {
+  it('renders modal when open, handles picking target, scrim click, and ESC key', () => {
     const onClose = vi.fn();
     const onPick = vi.fn();
 
@@ -116,8 +159,24 @@ describe('ImpersonateModal Component', () => {
     );
     expect(screen.getByText('See it as they do')).toBeInTheDocument();
 
-    const closeBtn = screen.getByRole('button', { name: /Close modal/i });
-    fireEvent.click(closeBtn);
+    // Pick target inside modal
+    const staffBtn = screen.getByRole('button', { name: /Mei Tanaka/i });
+    fireEvent.click(staffBtn);
+    expect(onPick).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
+
+    // ESC key test
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+
+    // Scrim click test
+    const dialogTitle = screen.getByText('See it as they do');
+    const scrim = dialogTitle.closest('.fixed')!;
+    fireEvent.click(scrim);
+    expect(onClose).toHaveBeenCalled();
+
+    // Inner modal click should stop propagation
+    const modalInner = dialogTitle.closest('.bg-surface-container')!;
+    fireEvent.click(modalInner);
   });
 });
