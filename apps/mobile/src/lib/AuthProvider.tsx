@@ -10,7 +10,7 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut, 
 import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { isAppOwner, getEffectiveRole, type AppRole } from '@cisa/core';
+import { isAppOwner, canSimulateRole, getEffectiveRole, type AppRole } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
 
 GoogleSignin.configure({
@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const isOwner = isAppOwner(user?.email);
+  const isOwner = canSimulateRole(actualRole, user?.email);
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY_MOBILE_OWNER_VIEW)

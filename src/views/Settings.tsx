@@ -249,8 +249,8 @@ function OwnerViewSection() {
   return (
     <section className="mt-10 p-6 rounded-3xl border border-amber-500/30 bg-amber-500/5 space-y-6 text-left">
       <SectionHeader
-        title="See it as they do (App Owner)"
-        sub="Step into any role or specific team member's view for a moment to see the exact screens, navigation, and layout they experience. This preview is for your eyes only."
+        title="See it as they do"
+        sub="Step into any role or specific team member's view for a moment to see the exact screens, navigation, and layout they experience."
       />
 
       {/* Active Impersonation Banner Card */}
@@ -310,7 +310,7 @@ function OwnerViewSection() {
             onClick={() => setOwnerViewRole(null)}
             className="px-3 py-1 bg-amber-500/20 text-amber-800 dark:text-amber-200 hover:bg-amber-500/30 font-medium rounded-full transition-colors"
           >
-            Reset to App Owner view
+            Reset to Full-timer view
           </button>
         </div>
       )}

@@ -351,10 +351,10 @@ function Settings() {
         </Section>
 
         {isOwner && (
-          <Section title="See their view (App Owner)">
+          <Section title="See their view">
             <Choice
               label="Preview role view"
-              sub="Step into another role's phone experience to test what they see. Owner preview mode."
+              sub="Step into another role's phone experience to test what they see. Full-timer preview mode."
               options={[
                 { value: 'admin', label: 'Full-timer' },
                 { value: 'manager', label: 'Trainee' },
@@ -366,7 +366,7 @@ function Settings() {
             />
             {ownerViewRole && (
               <SecondaryButton
-                title="Reset to App Owner view"
+                title="Reset to Full-timer view"
                 onPress={() => setOwnerViewRole(null)}
               />
             )}

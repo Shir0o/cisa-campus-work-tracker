@@ -30,7 +30,7 @@ export default function OwnerViewBanner({ onOpenModal }: { onOpenModal?: () => v
     );
   }
 
-  const currentRoleLabel = ownerViewRole ? roleLabel(ownerViewRole) : 'App Owner';
+  const currentRoleLabel = ownerViewRole ? roleLabel(ownerViewRole) : 'Full-timer';
 
   return (
     <div className="bg-amber-500/10 border-b border-amber-500/30 text-on-surface px-4 py-2 pt-[calc(0.5rem+env(safe-area-inset-top,0px))] flex flex-wrap items-center justify-between gap-3 text-xs z-50 transition-all">
@@ -47,7 +47,7 @@ export default function OwnerViewBanner({ onOpenModal }: { onOpenModal?: () => v
               </span>
             </>
           ) : (
-            <>App Owner Mode — preview what other roles or people see.</>
+            <>Full-timer View Mode — preview what other roles or people see.</>
           )}
         </span>
       </div>
@@ -112,10 +112,10 @@ export default function OwnerViewBanner({ onOpenModal }: { onOpenModal?: () => v
           <button
             onClick={() => setOwnerViewRole(null)}
             className="px-3 py-1 bg-amber-500/20 text-amber-700 dark:text-amber-300 hover:bg-amber-500/30 rounded-full font-medium flex items-center gap-1.5 transition-colors"
-            title="Reset to App Owner view"
+            title="Reset to Full-timer view"
           >
             <RotateCcw className="w-3 h-3" />
-            <span>Reset to Owner</span>
+            <span>Reset to Full-timer</span>
           </button>
         )}
       </div>

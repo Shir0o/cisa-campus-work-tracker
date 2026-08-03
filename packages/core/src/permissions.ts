@@ -101,17 +101,29 @@ export function isAppOwner(email: string | null | undefined): boolean {
 }
 
 /**
- * Resolves the effective role for a user. If the user is the app owner and has
- * an active ownerViewRole override set, returns ownerViewRole; otherwise returns actualRole.
+ * Checks whether a user has permission to use "See as they see" (role simulation mode).
+ * Allowed for all Full-timers (admins) and the designated app owner account.
+ */
+export function canSimulateRole(
+  actualRole: AppRole | string | null,
+  email?: string | null | undefined
+): boolean {
+  return actualRole === 'admin' || isAppOwner(email);
+}
+
+/**
+ * Resolves the effective role for a user. If the user is authorized to simulate
+ * roles and has an active ownerViewRole override set, returns ownerViewRole; otherwise returns actualRole.
  */
 export function getEffectiveRole(
   email: string | null | undefined,
   actualRole: AppRole | null,
   ownerViewRole: AppRole | null
 ): AppRole | null {
-  if (isAppOwner(email) && ownerViewRole) {
+  if (canSimulateRole(actualRole, email) && ownerViewRole) {
     return ownerViewRole;
   }
   return actualRole;
 }
+
 
