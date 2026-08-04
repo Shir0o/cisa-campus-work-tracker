@@ -26,13 +26,18 @@ vi.mock('firebase/firestore', () => ({
   onSnapshot: vi.fn(() => () => {}),
 }));
 
+let mockOwnerViewRole: any = null;
+let mockImpersonateTarget: any = null;
+const mockSetOwnerViewRole = vi.fn();
+const mockSetImpersonateTarget = vi.fn();
+
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     isOwner: true,
-    ownerViewRole: null,
-    setOwnerViewRole: vi.fn(),
-    impersonateTarget: null,
-    setImpersonateTarget: vi.fn(),
+    ownerViewRole: mockOwnerViewRole,
+    setOwnerViewRole: mockSetOwnerViewRole,
+    impersonateTarget: mockImpersonateTarget,
+    setImpersonateTarget: mockSetImpersonateTarget,
   }),
 }));
 
@@ -230,9 +235,44 @@ describe('ImpersonateModal Component', () => {
     fireEvent.click(scrim);
     expect(onClose).toHaveBeenCalled();
 
-    // Inner modal click should stop propagation
-    const modalInner = dialogTitle.closest('.bg-surface-container')!;
-    fireEvent.click(modalInner);
+  it('handles role preview pills and Back to my view reset button', () => {
+    const onClose = vi.fn();
+    const onPick = vi.fn();
+
+    render(
+      <ImpersonateModal isOpen={true} currentKey={null} onPick={onPick} onClose={onClose} />,
+    );
+
+    // Click Student role preview button
+    const studentRoleBtn = screen.getByRole('button', { name: 'Student' });
+    fireEvent.click(studentRoleBtn);
+    expect(mockSetOwnerViewRole).toHaveBeenCalledWith('operator');
+
+    // Click Trainee role preview button
+    const traineeRoleBtn = screen.getByRole('button', { name: 'Trainee' });
+    fireEvent.click(traineeRoleBtn);
+    expect(mockSetOwnerViewRole).toHaveBeenCalledWith('manager');
+  });
+
+  it('renders Back to my view button when active view is set', () => {
+    const onClose = vi.fn();
+    const onPick = vi.fn();
+
+    // Re-mock useAuth with active ownerViewRole
+    mockOwnerViewRole = 'operator';
+    mockImpersonateTarget = { key: 'staff:cisa-admin', name: 'cisa-admin', sub: 'Full-timer', note: 'Full workspace', role: 'admin' };
+
+    render(
+      <ImpersonateModal isOpen={true} currentKey="staff:cisa-admin" onPick={onPick} onClose={onClose} />,
+    );
+
+    const resetBtn = screen.getByRole('button', { name: /Back to my view/i });
+    expect(resetBtn).toBeInTheDocument();
+
+    fireEvent.click(resetBtn);
+    expect(mockSetImpersonateTarget).toHaveBeenCalledWith(null);
+    expect(mockSetOwnerViewRole).toHaveBeenCalledWith(null);
   });
 });
+
 
