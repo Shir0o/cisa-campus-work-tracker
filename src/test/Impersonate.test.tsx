@@ -8,11 +8,35 @@ import {
   impContactTarget,
   impFirst,
   impInits,
-  DEFAULT_STAFF,
+  DEFAULT_TEST_ACCOUNTS,
 } from '../lib/impersonate';
 import ImpersonatePicker from '../components/layout/ImpersonatePicker';
 import ImpersonateBar from '../components/layout/ImpersonateBar';
 import ImpersonateModal from '../components/layout/ImpersonateModal';
+
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  auth: {},
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  query: vi.fn(),
+  orderBy: vi.fn(),
+  onSnapshot: vi.fn(() => () => {}),
+}));
+
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: () => ({
+    isOwner: true,
+    ownerViewRole: null,
+    setOwnerViewRole: vi.fn(),
+    impersonateTarget: null,
+    setImpersonateTarget: vi.fn(),
+  }),
+}));
+
+
 
 describe('Impersonation Data & Helpers', () => {
   beforeEach(() => {
@@ -27,25 +51,33 @@ describe('Impersonation Data & Helpers', () => {
   });
 
   it('resolves staff targets correctly', () => {
-    const target = Impersonation.resolve('staff:u1');
+    const target = Impersonation.resolve('staff:cisa-admin');
     expect(target).not.toBeNull();
-    expect(target?.name).toBe('Mei Tanaka');
+    expect(target?.name).toContain('cisa-admin');
     expect(target?.role).toBe('admin');
 
-    const traineeTarget = Impersonation.resolve('staff:u4');
-    expect(traineeTarget?.name).toBe('Caleb Owusu');
+    const traineeTarget = Impersonation.resolve('staff:cisa-trainee');
+    expect(traineeTarget?.name).toContain('cisa-trainee');
     expect(traineeTarget?.role).toBe('manager');
 
     expect(Impersonation.resolve('staff:nonexistent')).toBeNull();
   });
 
+  it('resolves custom user targets correctly when passed users array', () => {
+    const mockUsers = [{ uid: 'u99', displayName: 'Jane Doe', email: 'jane@example.com', role: 'admin' }];
+    const target = Impersonation.resolve('staff:u99', [], mockUsers);
+    expect(target).not.toBeNull();
+    expect(target?.name).toBe('Jane Doe');
+    expect(target?.role).toBe('admin');
+  });
+
   it('resolves persona targets correctly', () => {
     const student = Impersonation.resolve('persona:student');
-    expect(student?.name).toBe('Alex Rivera');
+    expect(student?.name).toContain('Student');
     expect(student?.role).toBe('operator');
 
     const community = Impersonation.resolve('persona:community');
-    expect(community?.name).toBe('David Chen');
+    expect(community?.name).toContain('Community');
     expect(community?.role).toBe('viewer');
 
     expect(Impersonation.resolve('persona:nonexistent')).toBeNull();
@@ -69,9 +101,9 @@ describe('Impersonation Data & Helpers', () => {
 
   it('persists impersonation target key in localStorage', () => {
     expect(Impersonation.key()).toBeNull();
-    Impersonation.set('staff:u2');
-    expect(Impersonation.key()).toBe('staff:u2');
-    expect(Impersonation.current()?.name).toBe('Jordan Park');
+    Impersonation.set('staff:cisa-admin');
+    expect(Impersonation.key()).toBe('staff:cisa-admin');
+    expect(Impersonation.current()?.name).toContain('cisa-admin');
 
     Impersonation.set(null);
     expect(Impersonation.key()).toBeNull();
@@ -79,30 +111,31 @@ describe('Impersonation Data & Helpers', () => {
 });
 
 describe('ImpersonatePicker Component', () => {
-  it('renders team, personas, and roster items and filters by search query', () => {
+  it('renders team, personas, and cisa-* test accounts and filters by search query', () => {
     const onPick = vi.fn();
-    render(<ImpersonatePicker currentKey={null} onPick={onPick} autoFocus />);
+    const mockUsers = [{ uid: 'u1', displayName: 'Alex Chen', email: 'alex@example.com', role: 'admin' }];
+    render(<ImpersonatePicker currentKey={null} onPick={onPick} users={mockUsers} autoFocus />);
 
-    expect(screen.getByText('The team')).toBeInTheDocument();
+    expect(screen.getByText(/The team & test accounts/i)).toBeInTheDocument();
     expect(screen.getByText('Students & friends')).toBeInTheDocument();
-    expect(screen.getByText('Mei Tanaka')).toBeInTheDocument();
-    expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
+    expect(screen.getByText('Alex Chen')).toBeInTheDocument();
+    expect(screen.getAllByText(/cisa-admin/i).length).toBeGreaterThan(0);
 
     const searchInput = screen.getByPlaceholderText(/Find a person/i);
-    fireEvent.change(searchInput, { target: { value: 'Jordan' } });
+    fireEvent.change(searchInput, { target: { value: 'Alex' } });
 
-    expect(screen.getByText('Jordan Park')).toBeInTheDocument();
-    expect(screen.queryByText('Mei Tanaka')).not.toBeInTheDocument();
+    expect(screen.getByText('Alex Chen')).toBeInTheDocument();
+    expect(screen.queryByText('cisa-trainee')).not.toBeInTheDocument();
 
     // Clear search
     const clearBtn = screen.getByLabelText('Clear search');
     fireEvent.click(clearBtn);
     expect(searchInput).toHaveValue('');
 
-    const pickButton = screen.getByRole('button', { name: /Jordan Park/i });
+    const pickButton = screen.getByRole('button', { name: /Alex Chen/i });
     fireEvent.click(pickButton);
     expect(onPick).toHaveBeenCalledTimes(1);
-    expect(onPick.mock.calls[0][0].key).toBe('staff:u2');
+    expect(onPick.mock.calls[0][0].key).toBe('staff:u1');
   });
 
   it('handles custom contacts and expands roster list', () => {
@@ -125,14 +158,14 @@ describe('ImpersonatePicker Component', () => {
 
 describe('ImpersonateBar Component', () => {
   it('renders active target banner and fires switch/exit callbacks', () => {
-    const target = impStaffTarget(DEFAULT_STAFF[0]);
+    const target = impStaffTarget(DEFAULT_TEST_ACCOUNTS[0]);
     const onSwitch = vi.fn();
     const onExit = vi.fn();
 
     render(<ImpersonateBar target={target} onSwitch={onSwitch} onExit={onExit} />);
 
     expect(screen.getByText(/You're seeing CISA as/i)).toBeInTheDocument();
-    expect(screen.getByText('Mei Tanaka')).toBeInTheDocument();
+    expect(screen.getAllByText(/cisa-admin/i).length).toBeGreaterThan(0);
 
     const switchBtn = screen.getByRole('button', { name: /Someone else/i });
     fireEvent.click(switchBtn);
@@ -152,15 +185,15 @@ describe('ImpersonateModal Component', () => {
     const { rerender } = render(
       <ImpersonateModal isOpen={false} currentKey={null} onPick={onPick} onClose={onClose} />,
     );
-    expect(screen.queryByText('See it as they do')).not.toBeInTheDocument();
+    expect(screen.queryByText('See as their view')).not.toBeInTheDocument();
 
     rerender(
       <ImpersonateModal isOpen={true} currentKey={null} onPick={onPick} onClose={onClose} />,
     );
-    expect(screen.getByText('See it as they do')).toBeInTheDocument();
+    expect(screen.getByText('See as their view')).toBeInTheDocument();
 
     // Pick target inside modal
-    const staffBtn = screen.getByRole('button', { name: /Mei Tanaka/i });
+    const staffBtn = screen.getByRole('button', { name: /cisa-admin/i });
     fireEvent.click(staffBtn);
     expect(onPick).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
@@ -170,7 +203,7 @@ describe('ImpersonateModal Component', () => {
     expect(onClose).toHaveBeenCalled();
 
     // Scrim click test
-    const dialogTitle = screen.getByText('See it as they do');
+    const dialogTitle = screen.getByText('See as their view');
     const scrim = dialogTitle.closest('.fixed')!;
     fireEvent.click(scrim);
     expect(onClose).toHaveBeenCalled();
@@ -180,3 +213,4 @@ describe('ImpersonateModal Component', () => {
     fireEvent.click(modalInner);
   });
 });
+

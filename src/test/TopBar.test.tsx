@@ -165,4 +165,26 @@ describe('TopBar Component', () => {
     // Dropdown should close
     expect(screen.queryByText('Log out')).not.toBeInTheDocument();
   });
+
+  it('renders Eye icon button next to notification bell for isOwner and fires onOpenImpersonateModal', () => {
+    const onOpenImpersonateModal = vi.fn();
+    (useAuth as any).mockReturnValue({
+      user: { displayName: 'Tony Wang', photoURL: null },
+      isOwner: true,
+      logOut: mockLogOut,
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <TopBar onOpenImpersonateModal={onOpenImpersonateModal} />
+      </MemoryRouter>,
+    );
+
+    const eyeBtn = screen.getByLabelText('See as their view');
+    expect(eyeBtn).toBeInTheDocument();
+
+    fireEvent.click(eyeBtn);
+    expect(onOpenImpersonateModal).toHaveBeenCalledTimes(1);
+  });
 });
+

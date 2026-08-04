@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Settings, LogOut, Menu, Search } from 'lucide-react';
+import { Settings, LogOut, Menu, Search, Eye } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
-import { getUserAvatar } from '../../lib/utils';
+import { getUserAvatar, cn } from '../../lib/utils';
 import { useLayout } from '../../App';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
@@ -34,8 +34,12 @@ function pageTitleFor(pathname: string): string {
   return match ? PAGE_TITLES[match] : 'Workspace';
 }
 
-export default function TopBar() {
-  const { user, logOut } = useAuth();
+interface TopBarProps {
+  onOpenImpersonateModal?: () => void;
+}
+
+export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
+  const { user, logOut, isOwner, impersonateTarget, ownerViewRole } = useAuth();
   const { setIsMobileMenuOpen, setSearchOpen } = useLayout();
   const { pathname } = useLocation();
   const pageTitle = pageTitleFor(pathname);
@@ -77,20 +81,14 @@ export default function TopBar() {
 
       <div className="flex-1" />
 
-      {/* Right cluster: Global Search (#11) · Notifications (#12) · profile.
-          Search + bell are owned by their own issues; the topbar just leaves
-          room and renders the hooks. */}
+      {/* Right cluster: Global Search (#11) · Notifications (#12) · See view Eye icon · profile. */}
       <div className="flex items-center gap-1 sm:gap-2 lg:gap-3 shrink-0">
-        {/* Global Search (#19) — desktop pill lives here; on mobile the search is
-            opened from the bottom-nav and renders a full-screen overlay, so the
-            pill is hidden below lg. */}
+        {/* Global Search (#19) — desktop pill lives here */}
         <div className="hidden lg:block w-full max-w-sm xl:max-w-md">
           <GlobalSearch />
         </div>
 
-        {/* Tablet (md–lg) lost the bottom-nav search button, and the desktop pill
-            only appears at lg+, so give the rail layout its own search trigger.
-            It opens the same full-screen overlay GlobalSearch portals to body. */}
+        {/* Tablet search trigger */}
         <button
           type="button"
           onClick={() => setSearchOpen(true)}
@@ -101,6 +99,32 @@ export default function TopBar() {
         </button>
 
         <NotificationCenter />
+
+        {/* See as their view Eye button next to Notification Bell */}
+        {isOwner && (
+          <button
+            type="button"
+            onClick={onOpenImpersonateModal}
+            className={cn(
+              'relative p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors focus:outline-none',
+              (impersonateTarget || ownerViewRole) &&
+                'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/40',
+            )}
+            title={
+              impersonateTarget
+                ? `Seeing CISA as ${impersonateTarget.name} (${impersonateTarget.sub})`
+                : ownerViewRole
+                ? `Role view mode active`
+                : 'See as their view…'
+            }
+            aria-label="See as their view"
+          >
+            <Eye className="w-5 h-5" />
+            {(impersonateTarget || ownerViewRole) && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            )}
+          </button>
+        )}
         
         <div className="relative" ref={dropdownRef}>
           <button 
@@ -155,3 +179,4 @@ export default function TopBar() {
     </header>
   );
 }
+

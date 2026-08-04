@@ -317,8 +317,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           )}
         >
-          <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-          <TopBar />
+          <TopBar onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
             {children}
           </main>
