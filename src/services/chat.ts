@@ -12,7 +12,7 @@ import {
   arrayRemove,
   serverTimestamp
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, sendNotification } from '../lib/firebase';
 import { ChatAttachment } from '../types';
 
 /**
@@ -91,11 +91,24 @@ export async function createGroupChat(
   await addDoc(collection(db, 'chatRooms', roomRef.id, 'messages'), {
     roomId: roomRef.id,
     text: `${currentUser.displayName} created group "${groupName}"`,
-    senderId: 'system',
+    senderId: currentUser.uid,
     senderName: 'System',
     timestamp: serverTimestamp(),
     type: 'system',
   });
+
+  // Notify members added to group
+  for (const memberId of memberUids) {
+    if (memberId === currentUser.uid) continue;
+    void sendNotification({
+      userId: memberId,
+      title: 'Added to group',
+      message: `${currentUser.displayName} added you to group "${groupName}"`,
+      type: 'info',
+      targetId: roomRef.id,
+      link: `/messages/${roomRef.id}`,
+    });
+  }
 
   return roomRef.id;
 }
@@ -142,7 +155,8 @@ export async function sendMessage(
   roomId: string,
   text: string,
   sender: { uid: string; displayName: string; photoURL?: string },
-  attachments?: ChatAttachment[]
+  attachments?: ChatAttachment[],
+  memberIds?: string[]
 ): Promise<void> {
   const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
   
@@ -176,6 +190,34 @@ export async function sendMessage(
       timestamp: serverTimestamp(),
     },
   });
+
+  // Notify recipient(s) in room
+  let recipients = memberIds;
+  if (!recipients || recipients.length === 0) {
+    try {
+      const roomDoc = await getDoc(doc(db, 'chatRooms', roomId));
+      if (roomDoc.exists()) {
+        const data = roomDoc.data();
+        recipients = Array.isArray(data?.memberIds) ? data.memberIds : [];
+      }
+    } catch (e) {
+      console.error('Error fetching room members for notification:', e);
+    }
+  }
+
+  if (recipients && Array.isArray(recipients)) {
+    for (const memberId of recipients) {
+      if (memberId === sender.uid) continue;
+      void sendNotification({
+        userId: memberId,
+        title: 'New message',
+        message: `${sender.displayName}: ${previewText}`,
+        type: 'info',
+        targetId: roomId,
+        link: `/messages/${roomId}`,
+      });
+    }
+  }
 }
 
 /**
@@ -202,6 +244,18 @@ export async function inviteToGroup(
     timestamp: serverTimestamp(),
     type: 'system',
   });
+
+  // Notify invited members
+  for (const memberId of newUserUids) {
+    void sendNotification({
+      userId: memberId,
+      title: 'Added to group',
+      message: `${inviterName} added you to the group`,
+      type: 'info',
+      targetId: roomId,
+      link: `/messages/${roomId}`,
+    });
+  }
 }
 
 /**

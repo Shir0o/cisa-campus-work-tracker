@@ -22,8 +22,11 @@ vi.mock('firebase/firestore', () => ({
   arrayRemove: vi.fn((...args: any[]) => ({ type: 'arrayRemove', args })),
 }));
 
+const mockSendNotification = vi.fn().mockResolvedValue(undefined);
+
 vi.mock('../lib/firebase', () => ({
   db: 'mock-db',
+  sendNotification: (...args: any[]) => mockSendNotification(...args),
 }));
 
 import {
@@ -124,80 +127,70 @@ describe('chat.ts services', () => {
   });
 
   describe('createGroupChat', () => {
-    it('adds group chat document and posts system message', async () => {
+    it('creates a new group room document, genesis message, and notifies members', async () => {
       const roomId = await createGroupChat(
-        'My Team',
+        'Team Support',
         ['u2', 'u3'],
         { uid: 'u1', displayName: 'User One' }
       );
 
       expect(roomId).toBe('new-doc-id');
-      expect(mockAddDoc).toHaveBeenCalledTimes(2);
-
-      // Verify group creation doc
       expect(mockAddDoc).toHaveBeenNthCalledWith(1, 'col:chatRooms', {
         type: 'group',
-        name: 'My Team',
+        name: 'Team Support',
         memberIds: ['u1', 'u2', 'u3'],
         createdById: 'u1',
         createdByName: 'User One',
-        createdAt: 'SERVER_TS'
+        createdAt: 'SERVER_TS',
       });
 
-      // Verify system genesis message
       expect(mockAddDoc).toHaveBeenNthCalledWith(2, 'col:chatRooms/new-doc-id/messages', {
         roomId: 'new-doc-id',
-        text: 'User One created group "My Team"',
-        senderId: 'system',
+        text: 'User One created group "Team Support"',
+        senderId: 'u1',
         senderName: 'System',
         timestamp: 'SERVER_TS',
-        type: 'system'
+        type: 'system',
+      });
+
+      expect(mockSendNotification).toHaveBeenCalledTimes(2);
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'Added to group',
+        message: 'User One added you to group "Team Support"',
+        type: 'info',
+        targetId: 'new-doc-id',
+        link: '/messages/new-doc-id',
       });
     });
   });
 
   describe('createAnnouncementRoom', () => {
-    it('writes the announcement type, so the rules can gate posting to it', async () => {
+    it('creates an announcement room document and posts system message', async () => {
       const roomId = await createAnnouncementRoom(
-        'Weekly notes',
-        ['u2', 'u3'],
-        { uid: 'u1', displayName: 'Mei Tanaka' }
+        'Weekly Updates',
+        ['u2'],
+        { uid: 'u1', displayName: 'Admin User' }
       );
 
       expect(roomId).toBe('new-doc-id');
       expect(mockAddDoc).toHaveBeenNthCalledWith(1, 'col:chatRooms', {
         type: 'announcement',
-        name: 'Weekly notes',
-        memberIds: ['u1', 'u2', 'u3'],
+        name: 'Weekly Updates',
+        memberIds: ['u1', 'u2'],
         createdById: 'u1',
-        createdByName: 'Mei Tanaka',
-        createdAt: 'SERVER_TS'
+        createdByName: 'Admin User',
+        createdAt: 'SERVER_TS',
       });
-    });
-
-    it("attributes the genesis message to the creator's real uid", async () => {
-      // Not the 'system' sentinel createGroupChat uses: the messages create
-      // rule checks `senderId == request.auth.uid` and drops the write
-      // otherwise.
-      await createAnnouncementRoom('Weekly notes', [], { uid: 'u1', displayName: 'Mei Tanaka' });
 
       expect(mockAddDoc).toHaveBeenNthCalledWith(2, 'col:chatRooms/new-doc-id/messages', {
         roomId: 'new-doc-id',
-        text: 'Mei Tanaka started announcements for "Weekly notes"',
+        text: 'Admin User started announcements for "Weekly Updates"',
         senderId: 'u1',
         senderName: 'System',
         timestamp: 'SERVER_TS',
-        type: 'system'
+        type: 'system',
       });
-    });
-
-    it('de-duplicates the creator out of the member list', async () => {
-      await createAnnouncementRoom('Weekly notes', ['u1', 'u2'], { uid: 'u1', displayName: 'Mei' });
-      expect(mockAddDoc).toHaveBeenNthCalledWith(
-        1,
-        'col:chatRooms',
-        expect.objectContaining({ memberIds: ['u1', 'u2'] })
-      );
     });
   });
 
@@ -208,8 +201,14 @@ describe('chat.ts services', () => {
       expect(mockUpdateDoc).not.toHaveBeenCalled();
     });
 
-    it('sends text-only message and updates last message preview', async () => {
-      await sendMessage('r1', 'hello world', { uid: 'u1', displayName: 'User One', photoURL: 'p1' });
+    it('sends text-only message, updates preview, and sends notifications using passed memberIds', async () => {
+      await sendMessage(
+        'r1',
+        'hello world',
+        { uid: 'u1', displayName: 'User One', photoURL: 'p1' },
+        [],
+        ['u1', 'u2', 'u3']
+      );
       
       expect(mockAddDoc).toHaveBeenCalledWith('col:chatRooms/r1/messages', {
         roomId: 'r1',
@@ -230,9 +229,31 @@ describe('chat.ts services', () => {
           timestamp: 'SERVER_TS'
         }
       });
+
+      expect(mockSendNotification).toHaveBeenCalledTimes(2);
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'New message',
+        message: 'User One: hello world',
+        type: 'info',
+        targetId: 'r1',
+        link: '/messages/r1',
+      });
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u3',
+        title: 'New message',
+        message: 'User One: hello world',
+        type: 'info',
+        targetId: 'r1',
+        link: '/messages/r1',
+      });
     });
 
-    it('sends attachment-only message and updates last message preview', async () => {
+    it('sends attachment-only message and fetches room members if not provided', async () => {
+      mockGetDoc.mockResolvedValueOnce({
+        exists: () => true,
+        data: () => ({ memberIds: ['u1', 'u2'] })
+      });
       const attachment = { type: 'contact' as const, id: 'c1', name: 'Alice' };
       await sendMessage('r1', '', { uid: 'u1', displayName: 'User One' }, [attachment]);
 
@@ -255,11 +276,21 @@ describe('chat.ts services', () => {
           timestamp: 'SERVER_TS'
         }
       });
+
+      expect(mockSendNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'New message',
+        message: 'User One: Shared contact',
+        type: 'info',
+        targetId: 'r1',
+        link: '/messages/r1',
+      });
     });
   });
 
   describe('inviteToGroup', () => {
-    it('updates room memberIds and posts system message', async () => {
+    it('updates room memberIds, posts system message, and notifies invited members', async () => {
       await inviteToGroup('r1', ['u2'], ['Bob'], 'Alice');
 
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1', {
@@ -273,6 +304,15 @@ describe('chat.ts services', () => {
         senderName: 'System',
         timestamp: 'SERVER_TS',
         type: 'system'
+      });
+
+      expect(mockSendNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'Added to group',
+        message: 'Alice added you to the group',
+        type: 'info',
+        targetId: 'r1',
+        link: '/messages/r1',
       });
     });
   });

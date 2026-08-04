@@ -219,7 +219,8 @@ describe('Messages View Component', () => {
         'room1',
         'Welcome to the team!',
         { uid: 'u1', displayName: 'Current User', photoURL: 'photo-url' },
-        []
+        [],
+        ['u1', 'u2']
       );
     });
   });
@@ -778,7 +779,8 @@ describe('Messages View Component', () => {
         'room1',
         'Press Enter message',
         expect.any(Object),
-        []
+        [],
+        ['u1', 'u2']
       );
     });
   });
