@@ -51,6 +51,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     responseHeaders.set("X-Proxied-By", "Cloudflare-Pages-Function-Proxy");
     responseHeaders.set("Access-Control-Allow-Origin", "*");
 
+    // Strip transport and content transformation headers to prevent Safari EOF error
+    // when streaming decompressed response bodies back to the browser.
+    responseHeaders.delete("content-length");
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("transfer-encoding");
+    responseHeaders.delete("connection");
+
     return new Response(backendResponse.body, {
       status: backendResponse.status,
       statusText: backendResponse.statusText,
