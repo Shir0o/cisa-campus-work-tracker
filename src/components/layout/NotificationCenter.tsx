@@ -192,10 +192,10 @@ export default function NotificationCenter() {
       if (notif.link) {
         navigate(notif.link);
       } else if (notif.targetId) {
-        if (notif.title?.toLowerCase().includes('message')) {
-          navigate(`/messages/${notif.targetId}`);
-        } else if (notif.type === 'assignment') {
+        if (notif.type === 'assignment') {
           navigate('/coordination');
+        } else {
+          navigate(`/messages/${notif.targetId}`);
         }
       }
     };

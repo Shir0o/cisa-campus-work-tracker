@@ -197,7 +197,8 @@ export async function sendMessage(
     try {
       const roomDoc = await getDoc(doc(db, 'chatRooms', roomId));
       if (roomDoc.exists()) {
-        recipients = roomDoc.data()?.memberIds || [];
+        const data = roomDoc.data();
+        recipients = Array.isArray(data?.memberIds) ? data.memberIds : [];
       }
     } catch (e) {
       console.error('Error fetching room members for notification:', e);
