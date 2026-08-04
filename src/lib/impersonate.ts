@@ -55,22 +55,21 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
   const roleStr = s.role || 'admin';
   const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
-  
-  const roleKey: AppRole =
-    roleStr === 'admin' || roleStr === 'manager' || roleStr === 'operator' || roleStr === 'viewer'
-      ? (roleStr as AppRole)
-      : isTrainee
-      ? 'manager'
-      : 'admin';
 
-  const roleLabel =
-    roleKey === 'admin'
-      ? 'Full-timer'
-      : roleKey === 'manager'
-      ? 'Trainee'
-      : roleKey === 'operator'
-      ? 'Student'
-      : 'Community';
+  const validRoles: AppRole[] = ['admin', 'manager', 'operator', 'viewer'];
+  const roleKey: AppRole = validRoles.includes(roleStr as AppRole)
+    ? (roleStr as AppRole)
+    : isTrainee
+    ? 'manager'
+    : 'admin';
+
+  const roleLabelMap: Record<AppRole, string> = {
+    admin: 'Full-timer',
+    manager: 'Trainee',
+    operator: 'Student',
+    viewer: 'Community',
+  };
+  const roleLabel = roleLabelMap[roleKey] || 'Full-timer';
 
   const initials = s.initials || impInits(rawName);
   const sub = s.email ? `${roleLabel} · ${s.email}` : s.sub || roleLabel;

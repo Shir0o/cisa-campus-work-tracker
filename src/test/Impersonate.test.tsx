@@ -71,6 +71,28 @@ describe('Impersonation Data & Helpers', () => {
     expect(target?.role).toBe('admin');
   });
 
+  it('handles impStaffTarget edge cases for email fallback and role mappings', () => {
+    const emailOnly = impStaffTarget({ id: 'u100', email: 'user100@example.com', role: 'Trainee' });
+    expect(emailOnly.name).toBe('user100');
+    expect(emailOnly.role).toBe('manager');
+
+    const viewerTarget = impStaffTarget({ id: 'u101', name: 'Bob Smith', role: 'viewer' });
+    expect(viewerTarget.role).toBe('viewer');
+    expect(viewerTarget.sub).toBe('Community');
+
+    const unknownRoleTarget = impStaffTarget({ id: 'u102', name: 'Unknown Role', role: 'custom' });
+    expect(unknownRoleTarget.role).toBe('admin');
+
+    const fallbackNoName = impStaffTarget({ id: 'u103' });
+    expect(fallbackNoName.name).toBe('Team Member');
+  });
+
+  it('handles impContactTarget without year or major', () => {
+    const contactNoDetails = impContactTarget({ id: 'c999', name: 'No Details Contact' });
+    expect(contactNoDetails.sub).toBe('Student');
+    expect(contactNoDetails.role).toBe('operator');
+  });
+
   it('resolves persona targets correctly', () => {
     const student = Impersonation.resolve('persona:student');
     expect(student?.name).toContain('Student');

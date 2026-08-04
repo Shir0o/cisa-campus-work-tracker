@@ -88,10 +88,14 @@ export default function ImpersonatePicker({
           const list = snap.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
           setFetchedUsers(list);
         },
-        () => {}
+        (err) => {
+          console.error('Error fetching users for impersonation:', err);
+        }
       );
       return () => unsub();
-    } catch {}
+    } catch (err) {
+      console.error('Failed to subscribe to users for impersonation:', err);
+    }
   }, [initialUsers]);
 
   useEffect(() => {
@@ -104,10 +108,14 @@ export default function ImpersonatePicker({
           const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
           setFetchedContacts(list);
         },
-        () => {}
+        (err) => {
+          console.error('Error fetching contacts for impersonation:', err);
+        }
       );
       return () => unsub();
-    } catch {}
+    } catch (err) {
+      console.error('Failed to subscribe to contacts for impersonation:', err);
+    }
   }, [initialContacts]);
 
   const rawUsers = (initialUsers && initialUsers.length > 0 ? initialUsers : fetchedUsers);
