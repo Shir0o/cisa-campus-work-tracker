@@ -6,7 +6,8 @@ import {
   Tag,
   Trash2,
   Check,
-  Plus
+  Plus,
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -491,12 +492,20 @@ export default function Directory() {
             .
           </p>
         </div>
-        <button
-          onClick={() => openNewContact()}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
-        >
-          <Plus className="w-4 h-4" /> Add someone
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => openSmartImport()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+          >
+            <Sparkles className="w-4 h-4 text-primary" /> Smart Import
+          </button>
+          <button
+            onClick={() => openNewContact()}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+          >
+            <Plus className="w-4 h-4" /> Add someone
+          </button>
+        </div>
       </header>
 
       {/* ── Search + filters ── */}

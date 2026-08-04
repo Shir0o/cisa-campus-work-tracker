@@ -11,6 +11,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 
 ### Added
+- **Smart Text Import with Gemini AI Parsing & Dry Run Preview** — Added a Smart Import feature for unstructured text (roster notes, emails, chat threads). Includes backend endpoint `/api/smart-import/parse` leveraging Gemini AI (`gemini-3.5-flash`) with structured JSON schema output, contact deduplication/matching against existing Firestore contacts, an interactive Dry Run Preview modal (`SmartImportModal.tsx`) with item selection and inline field editing, and confirmation import committing parsed contacts, 1-on-1 interactions (`contacts/{id}/interactions`), and discussion documents (`board_docs`). Added a "Smart Import" trigger button to the People directory (`Directory.tsx`) and exposed `openSmartImport` in `useLayout()`. Unit tested in `SmartImportModal.test.tsx`.
 - **"See Their View" Target Impersonation & System Notification Bar Safe Area Padding** — Integrated target impersonation (`ImpersonatePicker`, `ImpersonateBar`, `ImpersonateModal`, `ImpersonateSettings`) allowing App Owner / Admin to step into the view of specific team members (staff/trainees), member personas, or roster contacts across web and mobile. Applied top safe-area padding (`env(safe-area-inset-top, 0px)`) across `OwnerViewBanner`, `ImpersonateBar`, `TopBar`, `Sidebar`, mobile drawers, and modal overlays to prevent UI overlap with device system status/notification bars and ensure all top action buttons remain clickable.
 
 ### Fixed

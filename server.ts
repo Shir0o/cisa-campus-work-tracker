@@ -1339,6 +1339,139 @@ The current local date is: ${currentDate}.`,
     }
   });
 
+  // AI Smart Import endpoint: parses raw text into contacts, interactions, and discussions
+  app.post("/api/smart-import/parse", async (req, res) => {
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authenticateFirebaseUser(req);
+        } catch (authErr: any) {
+          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+        }
+      }
+
+      const { text } = req.body;
+      if (!text || typeof text !== "string") {
+        return res.status(400).json({ error: "Missing required 'text' parameter." });
+      }
+
+      console.log(`[AI Smart Import] Parsing text content (${text.length} chars)`);
+
+      const db = getAdminDb();
+      const contactsSnapshot = await db.collection("contacts").limit(200).get();
+      const contactsList = contactsSnapshot.docs.map((d) => ({
+        id: d.id,
+        name: d.data().name || "Unknown",
+        email: d.data().email || "",
+        phone: d.data().phone || "",
+      }));
+
+      const currentDate = new Date().toISOString().split("T")[0];
+
+      const prompt = `Please parse the following unstructured text into structured contacts, interactions (1-on-1 conversations/touches/logs), and discussions (group coordination/meeting notes/board topics).
+
+Input Text:
+${text}
+
+Existing Contacts Database:
+${JSON.stringify(contactsList)}`;
+
+      const response = await getAiClient().models.generateContent({
+        model: "gemini-3.5-flash",
+        contents: prompt,
+        config: {
+          systemInstruction: `You are an expert assistant for a campus ministry work tracker. Parse the provided unstructured text into three categories:
+1. contacts: Individuals mentioned in the text. For each contact, infer their name, email, phone, stage ('lead', 'contact', 'follow-up', 'connected', or 'active'), role ('Student', 'Trainee', 'Community'), spiritual background, notes/summary, and relevant tags. If a contact matches an existing contact from the provided Existing Contacts Database (by exact or close name/email/phone), set matchedContactId to their existing ID and matchedContactName to their existing name; otherwise set matchedContactId and matchedContactName to null. Assign a temporary ID 'c1', 'c2', etc.
+2. interactions: 1-on-1 touchpoints, phone calls, meetings, text exchanges, or notes logged about a contact. Set contactRef to the matching contact's temporary ID (e.g. 'c1') or matchedContactId, contactName, dateTime (ISO format YYYY-MM-DDTHH:mm or YYYY-MM-DD), type ('coffee', 'call', 'text', 'meeting', 'note'), and full interaction content summary. Assign a temporary ID 'i1', 'i2', etc. Current date is ${currentDate}.
+3. discussions: Group notes, strategy documents, team board notes, or topic discussions. Set title, audience ('team', 'trainees', or 'everyone'), content (in Markdown), tags, and mentioned contact names. Assign a temporary ID 'd1', 'd2', etc.`,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              contacts: {
+                type: Type.ARRAY,
+                description: "Parsed contacts extracted from text",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    tempId: { type: Type.STRING },
+                    name: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    stage: { type: Type.STRING, description: "lead, contact, follow-up, connected, or active" },
+                    role: { type: Type.STRING },
+                    notes: { type: Type.STRING },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    spiritualBackground: { type: Type.STRING },
+                    matchedContactId: { type: Type.STRING, nullable: true },
+                    matchedContactName: { type: Type.STRING, nullable: true },
+                  },
+                  required: ["tempId", "name"],
+                },
+              },
+              interactions: {
+                type: Type.ARRAY,
+                description: "Parsed 1-on-1 interaction logs extracted from text",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    tempId: { type: Type.STRING },
+                    contactRef: { type: Type.STRING },
+                    contactName: { type: Type.STRING },
+                    dateTime: { type: Type.STRING },
+                    type: { type: Type.STRING },
+                    content: { type: Type.STRING },
+                  },
+                  required: ["tempId", "content"],
+                },
+              },
+              discussions: {
+                type: Type.ARRAY,
+                description: "Parsed discussion board notes extracted from text",
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    tempId: { type: Type.STRING },
+                    title: { type: Type.STRING },
+                    audience: { type: Type.STRING, description: "team, trainees, or everyone" },
+                    content: { type: Type.STRING, description: "Markdown body" },
+                    tags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    mentionedContactNames: { type: Type.ARRAY, items: { type: Type.STRING } },
+                  },
+                  required: ["tempId", "title", "content"],
+                },
+              },
+            },
+            required: ["contacts", "interactions", "discussions"],
+          },
+        },
+      });
+
+      if (!response.text) {
+        throw new Error("No response returned from Gemini API.");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(response.text.trim());
+      } catch (parseErr: any) {
+        throw new Error(`Failed to parse AI response: ${parseErr.message || String(parseErr)}`);
+      }
+
+      console.log(
+        `[AI Smart Import] Parse complete: ${parsed.contacts?.length || 0} contacts, ${
+          parsed.interactions?.length || 0
+        } interactions, ${parsed.discussions?.length || 0} discussions.`
+      );
+
+      res.status(200).json({ success: true, data: parsed });
+    } catch (error: any) {
+      console.error("AI Smart Import Error: ", error);
+      res.status(500).json({ error: error.message || "Failed to parse text" });
+    }
+  });
+
+
   // Self-service token exchange: mints a short-lived custom token for the
   // caller's own uid, so the mobile app can bridge its Firebase session into
   // a react-native-webview page (which has its own, separate auth storage).
