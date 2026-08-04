@@ -12,12 +12,10 @@
       "distribution": "internal"
     },
     "testflight": {
-      "distribution": "store",
-      "autoIncrement": true
+      "distribution": "store"
     },
     "production": {
-      "distribution": "store",
-      "autoIncrement": true
+      "distribution": "store"
     }
   },
   "submit": {
