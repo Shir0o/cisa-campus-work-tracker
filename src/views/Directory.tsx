@@ -133,7 +133,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 }
 
 export default function Directory() {
-  const { openNewContact, setSelectedContact } = useLayout();
+  const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
   const { user } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);

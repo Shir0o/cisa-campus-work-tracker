@@ -203,9 +203,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           cCount++;
 
           if (user) {
-            logActivity(db, {
-              userId: user.uid,
-              userName: user.displayName || user.email || 'User',
+            logActivity({
               action: 'created contact via Smart Import',
               targetId: newContactRef.id,
               targetName: newContactData.name,
@@ -253,9 +251,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           iCount++;
 
           if (user) {
-            logActivity(db, {
-              userId: user.uid,
-              userName: user.displayName || user.email || 'User',
+            logActivity({
               action: 'logged interaction via Smart Import',
               targetId: docRef.id,
               targetName: interaction.contactName || 'Interaction',
@@ -291,9 +287,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         dCount++;
 
         if (user) {
-          logActivity(db, {
-            userId: user.uid,
-            userName: user.displayName || user.email || 'User',
+          logActivity({
             action: 'created discussion doc via Smart Import',
             targetId: boardDocRef.id,
             targetName: discussion.title,

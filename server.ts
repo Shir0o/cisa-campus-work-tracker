@@ -1358,7 +1358,7 @@ The current local date is: ${currentDate}.`,
       console.log(`[AI Smart Import] Parsing text content (${text.length} chars)`);
 
       const db = getAdminDb();
-      const contactsSnapshot = await db.collection("contacts").limit(200).get();
+      const contactsSnapshot = await db.collection("contacts").get();
       const contactsList = contactsSnapshot.docs.map((d) => ({
         id: d.id,
         name: d.data().name || "Unknown",
