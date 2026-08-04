@@ -78,6 +78,25 @@ After completing a feature or bug fix:
 - **Ratcheting**: Thresholds must never be lowered; they should only go up as coverage improves.
 - **New Code**: All new features and bug fixes must ship with matching unit tests.
 
+## 7. Pre-PR Gate
+
+**CI must pass locally before pushing a PR. No exceptions.**
+
+Before creating or updating a pull request, run every step the CI pipeline runs — in order — and fix any failures before pushing:
+
+```bash
+git fetch origin main && git rebase origin/main   # stay current, resolve conflicts
+npm run typecheck                                  # tsc --noEmit
+npm run lint                                       # eslint .
+npm run test:coverage                              # vitest run --coverage
+npm run build                                      # vite build + esbuild server
+```
+
+- **Rebase first**: Always rebase onto an up-to-date `origin/main` before pushing. Resolve any merge conflicts locally.
+- **Fix, don't skip**: If any step fails, fix the issue and re-run. Do not push with known failures.
+- **Coverage thresholds**: `test:coverage` enforces thresholds in `vitest.config.ts`. If new code drops coverage below the threshold, add tests.
+- **Match the function signatures**: When calling existing utility functions (e.g., `logActivity`, `sendNotification`), always check the actual function signature in the source — do not guess the parameter list.
+
 ---
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
