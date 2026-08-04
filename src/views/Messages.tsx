@@ -265,7 +265,8 @@ export default function Messages() {
           displayName: currentUser.displayName || 'Member',
           photoURL: currentUser.photoURL || ''
         },
-        attachments
+        attachments,
+        activeRoom?.memberIds
       );
       setInputText('');
       setAttachments([]);

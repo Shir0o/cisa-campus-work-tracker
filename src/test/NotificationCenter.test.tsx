@@ -217,15 +217,16 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/history');
   });
 
-  it('marks notification read on item click', async () => {
+  it('marks notification read and navigates to link on item click', async () => {
     const mockNotifs = [
       {
         id: 'n1',
         userId: 'mock-user-id',
-        title: 'New Prayer Request',
-        body: 'Please pray for Bob',
-        type: 'success',
+        title: 'New message',
+        message: 'User One: hello',
+        type: 'info',
         read: false,
+        link: '/messages/room_123',
         createdAt: { toDate: () => new Date() },
       },
     ];
@@ -241,11 +242,12 @@ describe('NotificationCenter Component', () => {
     // Open panel
     fireEvent.click(screen.getByLabelText(/notifications/i));
 
-    const item = screen.getByText('New Prayer Request');
+    const item = screen.getByText('New message');
     fireEvent.click(item);
 
-    // Should call updateDoc
+    // Should call updateDoc and navigate to link
     expect(firestore.updateDoc).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/messages/room_123');
   });
 
   // ── Empty panel state ──────────────────────────────────────────────
