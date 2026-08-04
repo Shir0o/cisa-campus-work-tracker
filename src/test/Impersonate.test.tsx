@@ -234,6 +234,7 @@ describe('ImpersonateModal Component', () => {
     const scrim = dialogTitle.closest('.fixed')!;
     fireEvent.click(scrim);
     expect(onClose).toHaveBeenCalled();
+  });
 
   it('handles role preview pills and Back to my view reset button', () => {
     const onClose = vi.fn();
