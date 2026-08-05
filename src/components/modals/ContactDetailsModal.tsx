@@ -716,6 +716,19 @@ export default function ContactDetailsModal({
         createdAt: serverTimestamp(),
       });
 
+      const userName = user.displayName || user.email?.split("@")[0] || "Anonymous";
+      await updateDoc(doc(db, "contacts", contact.id), {
+        lastSeen: newInteraction.dateTime,
+        lastContactedBy: userName,
+        lastContactedById: user.uid,
+        lastContactedDate: newInteraction.dateTime,
+        updatedAt: serverTimestamp(),
+      });
+      contact.lastSeen = newInteraction.dateTime;
+      contact.lastContactedBy = userName;
+      contact.lastContactedById = user.uid;
+      contact.lastContactedDate = newInteraction.dateTime;
+
       logActivity({
         action: "logged an interaction for",
         targetId: contact.id,
@@ -1034,7 +1047,7 @@ export default function ContactDetailsModal({
                           ))}
                         </div>
                         <p className="text-xs text-on-surface-variant cdm-meta mt-3">
-                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                     </div>
@@ -1087,7 +1100,7 @@ export default function ContactDetailsModal({
                       </h2>
                       {!isEditing && (
                         <p className="text-sm text-on-surface-variant mt-0.5 truncate">
-                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       )}
                     </div>
@@ -1664,12 +1677,16 @@ export default function ContactDetailsModal({
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs text-on-surface-variant/70">
                             Last seen {contact.lastSeen || "—"}
+                            {contact.lastContactedBy ? ` · Contacted by ${contact.lastContactedBy}` : ""}
                           </span>
                           <span className="text-xs text-on-surface-variant/50">
                             Added{" "}
-                            {new Date(
-                              contact.createdAt || "",
-                            ).toLocaleDateString()}
+                            {contact.createdAt
+                              ? new Date(contact.createdAt).toLocaleDateString()
+                              : "—"}
+                            {(contact.createdByName || contact.addedBy)
+                              ? ` by ${contact.createdByName || contact.addedBy}`
+                              : ""}
                           </span>
                         </div>
                       </div>

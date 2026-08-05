@@ -126,10 +126,13 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
           contactName: contact?.name || 'Unknown'
         });
 
-        // Update contact's last seen/activity
+        // Update contact's last seen/activity and last contacted info
         const contactRef = doc(db, 'contacts', contactId);
         batch.update(contactRef, {
           lastSeen: date,
+          lastContactedBy: user?.displayName || 'Tony Wang',
+          lastContactedById: user?.uid || null,
+          lastContactedDate: date,
           updatedAt: serverTimestamp()
         });
 

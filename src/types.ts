@@ -36,6 +36,9 @@ export interface Contact {
   coCreators?: string[];
   season?: string;
   prayerRequest?: string;
+  lastContactedBy?: string;
+  lastContactedById?: string;
+  lastContactedDate?: string;
 }
 
 export interface Stage {
