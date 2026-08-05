@@ -58,14 +58,24 @@ describe('Impersonation Data & Helpers', () => {
   it('resolves staff targets correctly', () => {
     const target = Impersonation.resolve('staff:cisa-admin');
     expect(target).not.toBeNull();
-    expect(target?.name).toContain('cisa-admin');
+    expect(target?.name).toBe('cisa-admin');
+    expect(target?.name).not.toContain('(Test');
     expect(target?.role).toBe('admin');
 
     const traineeTarget = Impersonation.resolve('staff:cisa-trainee');
-    expect(traineeTarget?.name).toContain('cisa-trainee');
+    expect(traineeTarget?.name).toBe('cisa-trainee');
+    expect(traineeTarget?.name).not.toContain('(Test');
     expect(traineeTarget?.role).toBe('manager');
 
     expect(Impersonation.resolve('staff:nonexistent')).toBeNull();
+  });
+
+  it('strips (Test *) suffixes from cisa-* names in impStaffTarget and impContactTarget', () => {
+    const staffTarget = impStaffTarget({ id: 'cisa-admin', name: 'cisa-admin (Test Full-timer)' });
+    expect(staffTarget.name).toBe('cisa-admin');
+
+    const contactTarget = impContactTarget({ id: 'cisa-student', name: 'cisa-student (Test Student)' });
+    expect(contactTarget.name).toBe('cisa-student');
   });
 
   it('resolves custom user targets correctly when passed users array', () => {
