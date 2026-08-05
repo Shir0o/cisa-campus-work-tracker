@@ -1,35 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Search, X, Check } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
 import { ImpersonateTarget } from '../../types';
 import {
-  DEFAULT_STAFF,
+  DEFAULT_TEST_ACCOUNTS,
   impStaffTarget,
   impPersonaTarget,
   impContactTarget,
 } from '../../lib/impersonate';
-import { cn, getUserAvatar } from '../../lib/utils';
+import { cn } from '../../lib/utils';
 
 interface ImpersonatePickerProps {
   currentKey: string | null | undefined;
   onPick: (target: ImpersonateTarget) => void;
   contacts?: any[];
+  users?: any[];
   autoFocus?: boolean;
 }
-
-const DEFAULT_ROSTER_CONTACTS = [
-  { id: 'C-0142', name: 'Emerson Ahn', year: 'Sophomore', major: 'Computer Science', owner: 'u2' },
-  { id: 'C-0167', name: 'Lila Okwuosa', year: 'Freshman', major: 'Biology', owner: 'u3' },
-  { id: 'C-0171', name: 'Rio Marchetti', year: 'Junior', major: 'Economics', owner: 'u3' },
-  { id: 'C-0188', name: 'Sade Mensah', year: 'Senior', major: 'Psychology', owner: 'u1' },
-  { id: 'C-0195', name: 'Jonas Friedrich', year: 'Junior', major: 'Mech. Engineering', owner: 'u4' },
-  { id: 'C-0203', name: 'Anika Bose', year: 'Sophomore', major: 'Nursing', owner: 'u4' },
-  { id: 'C-0208', name: 'Theo Vargas', year: 'Freshman', major: 'Architecture', owner: 'u2' },
-  { id: 'C-0212', name: 'Mira Tahir', year: 'Junior', major: 'English Lit', owner: 'u5' },
-  { id: 'C-0221', name: 'Wendell Cho', year: 'Senior', major: 'Business', owner: 'u1' },
-  { id: 'C-0227', name: 'Beatriz Ferraz', year: 'Sophomore', major: 'Music', owner: 'u4' },
-  { id: 'C-0234', name: 'Kofi Boateng', year: 'Freshman', major: 'Math', owner: 'u3' },
-  { id: 'C-0244', name: 'Hugo Delacroix', year: 'Sophomore', major: 'Civil Eng.', owner: 'u2' },
-];
 
 export function ImpRow({
   target,
@@ -74,11 +62,14 @@ export function ImpRow({
 export default function ImpersonatePicker({
   currentKey,
   onPick,
-  contacts = [],
+  contacts: initialContacts,
+  users: initialUsers,
   autoFocus = false,
 }: ImpersonatePickerProps) {
   const [q, setQ] = useState('');
   const [openAllRoster, setOpenAllRoster] = useState(false);
+  const [fetchedUsers, setFetchedUsers] = useState<any[]>([]);
+  const [fetchedContacts, setFetchedContacts] = useState<any[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -87,14 +78,64 @@ export default function ImpersonatePicker({
     }
   }, [autoFocus]);
 
-  const rosterSource = contacts && contacts.length > 0 ? contacts : DEFAULT_ROSTER_CONTACTS;
+  useEffect(() => {
+    if (initialUsers && initialUsers.length > 0) return;
+    try {
+      const qUsers = query(collection(db, 'users'));
+      const unsub = onSnapshot(
+        qUsers,
+        (snap) => {
+          const list = snap.docs.map((doc) => ({ uid: doc.id, ...doc.data() }));
+          setFetchedUsers(list);
+        },
+        (err) => {
+          console.error('Error fetching users for impersonation:', err);
+        }
+      );
+      return () => unsub();
+    } catch (err) {
+      console.error('Failed to subscribe to users for impersonation:', err);
+    }
+  }, [initialUsers]);
+
+  useEffect(() => {
+    if (initialContacts && initialContacts.length > 0) return;
+    try {
+      const qContacts = query(collection(db, 'contacts'), orderBy('name', 'asc'));
+      const unsub = onSnapshot(
+        qContacts,
+        (snap) => {
+          const list = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+          setFetchedContacts(list);
+        },
+        (err) => {
+          console.error('Error fetching contacts for impersonation:', err);
+        }
+      );
+      return () => unsub();
+    } catch (err) {
+      console.error('Failed to subscribe to contacts for impersonation:', err);
+    }
+  }, [initialContacts]);
+
+  const rawUsers = (initialUsers && initialUsers.length > 0 ? initialUsers : fetchedUsers);
+  
+  // Combine real Firestore users with default cisa-* test accounts if not already present
+  const teamList = [...rawUsers];
+  DEFAULT_TEST_ACCOUNTS.forEach((testAcc) => {
+    if (!teamList.some((u) => (u.uid || u.id) === testAcc.id || u.email === testAcc.email)) {
+      teamList.push(testAcc);
+    }
+  });
+
+  const rosterSource = (initialContacts && initialContacts.length > 0 ? initialContacts : fetchedContacts);
 
   const rawGroups = [
     {
       id: 'team',
-      label: 'The team',
-      note: 'Staff and people in training — the workspace as they read it.',
-      items: DEFAULT_STAFF.map(impStaffTarget),
+      label: 'The team & test accounts',
+      note: 'Staff, trainees, and cisa-* test accounts — the workspace as they see it.',
+      items: teamList.map(impStaffTarget),
     },
     {
       id: 'members',
@@ -182,3 +223,4 @@ export default function ImpersonatePicker({
     </div>
   );
 }
+

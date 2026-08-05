@@ -6,30 +6,32 @@ export const IMP_KEY = 'cisa.impersonate.v1';
 export interface StaffItem {
   id: string;
   name: string;
-  initials: string;
+  initials?: string;
   role: string;
+  email?: string;
   isTrainee?: boolean;
 }
 
-export const DEFAULT_STAFF: StaffItem[] = [
-  { id: 'u1', name: 'Mei Tanaka', initials: 'MT', role: 'Campus Director', isTrainee: false },
-  { id: 'u2', name: 'Jordan Park', initials: 'JP', role: 'Discipleship Lead', isTrainee: false },
-  { id: 'u3', name: 'Ana Beltrán', initials: 'AB', role: 'Outreach', isTrainee: false },
-  { id: 'u4', name: 'Caleb Owusu', initials: 'CO', role: 'Small Group Lead', isTrainee: true },
-  { id: 'u5', name: 'Priya Raman', initials: 'PR', role: 'Prayer Coordinator', isTrainee: true },
+export const DEFAULT_TEST_ACCOUNTS: StaffItem[] = [
+  { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
+  { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
+  { id: 'cisa-student', name: 'cisa-student', email: 'cisa-student@cisa.campus', role: 'Student', isTrainee: false },
+  { id: 'cisa-community', name: 'cisa-community', email: 'cisa-community@cisa.campus', role: 'Community', isTrainee: false },
 ];
+
+export const DEFAULT_STAFF: StaffItem[] = DEFAULT_TEST_ACCOUNTS;
 
 export const PERSONAS: Record<string, { name: string; initials: string; subtitle: string; role: AppRole }> = {
   student: {
-    name: 'Alex Rivera',
-    initials: 'AR',
-    subtitle: 'Sophomore · Computer Science',
+    name: 'Student View Persona',
+    initials: 'ST',
+    subtitle: 'Student window',
     role: 'operator',
   },
   community: {
-    name: 'David Chen',
-    initials: 'DC',
-    subtitle: 'Alumnus · Friend of CISA',
+    name: 'Community View Persona',
+    initials: 'CM',
+    subtitle: 'Friend of CISA',
     role: 'viewer',
   },
 };
@@ -48,24 +50,55 @@ export function impInits(name: string): string {
     .toUpperCase();
 }
 
-export function impStaffTarget(s: StaffItem): ImpersonateTarget {
-  const isTrainee = !!s.isTrainee;
+export function cleanCisaName(name: string): string {
+  let cleanName = name || '';
+  if (cleanName.toLowerCase().startsWith('cisa-')) {
+    cleanName = cleanName.replace(/\s*\([^)]*\)$/, '').trim();
+  }
+  return cleanName;
+}
+
+export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
+  const id = s.uid || s.id || '';
+  const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
+  const cleanName = cleanCisaName(rawName);
+  const roleStr = s.role || 'admin';
+  const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
+
+  const validRoles: AppRole[] = ['admin', 'manager', 'operator', 'viewer'];
+  const roleKey: AppRole = validRoles.includes(roleStr as AppRole)
+    ? (roleStr as AppRole)
+    : isTrainee
+    ? 'manager'
+    : 'admin';
+
+  const roleLabelMap: Record<AppRole, string> = {
+    admin: 'Full-timer',
+    manager: 'Trainee',
+    operator: 'Student',
+    viewer: 'Community',
+  };
+  const roleLabel = roleLabelMap[roleKey] || 'Full-timer';
+
+  const initials = s.initials || impInits(cleanName);
+  const sub = s.email ? `${roleLabel} · ${s.email}` : s.sub || roleLabel;
+
   return {
-    key: `staff:${s.id}`,
-    name: s.name,
-    initials: s.initials,
-    sub: s.role,
+    key: `staff:${id}`,
+    name: cleanName,
+    initials,
+    sub,
     note: isTrainee ? "The trainee's workspace" : 'The full workspace',
-    role: isTrainee ? 'manager' : 'admin',
+    role: roleKey,
     persona: {
       id: isTrainee ? 'trainee' : 'ft',
-      name: s.name,
-      first: impFirst(s.name),
-      initials: s.initials,
-      role: s.role,
+      name: cleanName,
+      first: impFirst(cleanName),
+      initials,
+      role: roleLabel,
       roleShort: isTrainee ? 'In training' : 'Full-time',
-      subtitle: s.role,
-      staffId: s.id,
+      subtitle: s.email || roleLabel,
+      staffId: id,
     },
   };
 }
@@ -85,19 +118,20 @@ export function impPersonaTarget(k: string): ImpersonateTarget | null {
 }
 
 export function impContactTarget(c: { id: string; name: string; year?: string; major?: string; owner?: string }): ImpersonateTarget {
+  const cleanName = cleanCisaName(c.name);
   const sub = [c.year, c.major].filter(Boolean).join(' · ');
-  const initials = impInits(c.name);
+  const initials = impInits(cleanName);
   return {
     key: `contact:${c.id}`,
-    name: c.name,
+    name: cleanName,
     initials,
     sub: sub || 'Student',
     note: "A student's own window",
     role: 'operator',
     persona: {
       id: 'student',
-      name: c.name,
-      first: impFirst(c.name),
+      name: cleanName,
+      first: impFirst(cleanName),
       initials,
       role: 'Student',
       roleShort: 'Student',
@@ -127,7 +161,7 @@ export const Impersonation = {
       // ignore storage errors
     }
   },
-  resolve(k: string | null, contacts: any[] = []): ImpersonateTarget | null {
+  resolve(k: string | null, contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {
     if (!k) return null;
     const i = k.indexOf(':');
     if (i === -1) return null;
@@ -135,7 +169,9 @@ export const Impersonation = {
     const id = k.slice(i + 1);
 
     if (kind === 'staff') {
-      const s = DEFAULT_STAFF.find((x) => x.id === id);
+      const u = users.find((x) => (x.uid || x.id) === id);
+      if (u) return impStaffTarget(u);
+      const s = DEFAULT_TEST_ACCOUNTS.find((x) => x.id === id);
       return s ? impStaffTarget(s) : null;
     }
     if (kind === 'persona') return impPersonaTarget(id);
@@ -145,7 +181,8 @@ export const Impersonation = {
     }
     return null;
   },
-  current(contacts: any[] = []): ImpersonateTarget | null {
-    return this.resolve(this.key(), contacts);
+  current(contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {
+    return this.resolve(this.key(), contacts, users);
   },
 };
+

@@ -9,66 +9,56 @@ vi.mock('../components/AuthProvider', () => ({
 }));
 
 describe('OwnerViewBanner', () => {
-  const mockSetOwnerViewRole = vi.fn();
+  const mockSetImpersonateTarget = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders nothing when user is not app owner', () => {
+  it('renders nothing when user is not app owner or not impersonating target', () => {
     (useAuth as any).mockReturnValue({
       isOwner: false,
-      ownerViewRole: null,
-      setOwnerViewRole: mockSetOwnerViewRole,
+      impersonateTarget: null,
+      setImpersonateTarget: mockSetImpersonateTarget,
     });
 
     const { container } = render(<OwnerViewBanner />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('renders banner when user is allowed to simulate roles in normal mode', () => {
+  it('renders nothing when user is owner but no impersonation target is selected', () => {
     (useAuth as any).mockReturnValue({
       isOwner: true,
-      ownerViewRole: null,
-      setOwnerViewRole: mockSetOwnerViewRole,
+      impersonateTarget: null,
+      setImpersonateTarget: mockSetImpersonateTarget,
     });
 
-    render(<OwnerViewBanner />);
-    expect(screen.getByText(/Full-timer View Mode/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /See their view…/i })).toBeInTheDocument();
+    const { container } = render(<OwnerViewBanner />);
+    expect(container.firstChild).toBeNull();
   });
 
-  it('renders active preview banner and allows switching role view', () => {
+  it('renders active ImpersonateBar when impersonateTarget is set', () => {
+    const mockTarget = {
+      key: 'staff:cisa-admin',
+      name: 'cisa-admin',
+      sub: 'Full-timer',
+      note: 'Full workspace',
+      role: 'admin',
+    };
+
     (useAuth as any).mockReturnValue({
       isOwner: true,
-      ownerViewRole: 'operator',
-      setOwnerViewRole: mockSetOwnerViewRole,
+      impersonateTarget: mockTarget,
+      setImpersonateTarget: mockSetImpersonateTarget,
     });
 
     render(<OwnerViewBanner />);
-    expect(screen.getByText(/You are seeing CISA as/i)).toBeInTheDocument();
-    expect(screen.getByText('Student')).toBeInTheDocument();
+    expect(screen.getByText(/You're seeing CISA as/i)).toBeInTheDocument();
+    expect(screen.getByText('cisa-admin')).toBeInTheDocument();
 
-    // Open dropdown
-    const toggleBtn = screen.getByRole('button', { name: /View: Student/i });
-    fireEvent.click(toggleBtn);
-
-    // Click Student to toggle or Trainee to switch
-    const traineeBtn = screen.getByRole('button', { name: /Trainee/i });
-    fireEvent.click(traineeBtn);
-    expect(mockSetOwnerViewRole).toHaveBeenCalledWith('manager');
-  });
-
-  it('resets owner view role when Reset button is clicked', () => {
-    (useAuth as any).mockReturnValue({
-      isOwner: true,
-      ownerViewRole: 'viewer',
-      setOwnerViewRole: mockSetOwnerViewRole,
-    });
-
-    render(<OwnerViewBanner />);
-    const resetBtn = screen.getByRole('button', { name: /Reset to Full-timer/i });
-    fireEvent.click(resetBtn);
-    expect(mockSetOwnerViewRole).toHaveBeenCalledWith(null);
+    const exitBtn = screen.getByRole('button', { name: /Back to my view/i });
+    fireEvent.click(exitBtn);
+    expect(mockSetImpersonateTarget).toHaveBeenCalledWith(null);
   });
 });
+

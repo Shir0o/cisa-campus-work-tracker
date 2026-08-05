@@ -2,6 +2,15 @@ interface Env {
   BACKEND_API_URL?: string;
 }
 
+type PagesFunction<Env = any> = (context: {
+  request: Request;
+  env: Env;
+  params?: Record<string, string | string[]>;
+  waitUntil?: (promise: Promise<any>) => void;
+  next?: (input?: RequestInfo, init?: RequestInit) => Promise<Response>;
+  data?: Record<string, any>;
+}) => Promise<Response> | Response;
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -50,6 +59,13 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const responseHeaders = new Headers(backendResponse.headers);
     responseHeaders.set("X-Proxied-By", "Cloudflare-Pages-Function-Proxy");
     responseHeaders.set("Access-Control-Allow-Origin", "*");
+
+    // Strip transport and content transformation headers to prevent Safari EOF error
+    // when streaming decompressed response bodies back to the browser.
+    responseHeaders.delete("content-length");
+    responseHeaders.delete("content-encoding");
+    responseHeaders.delete("transfer-encoding");
+    responseHeaders.delete("connection");
 
     return new Response(backendResponse.body, {
       status: backendResponse.status,

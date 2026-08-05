@@ -30,6 +30,7 @@ import { Skeleton } from "./components/ui/Skeleton";
 import { Contact } from "./types";
 import ContactDetailsModal from "./components/modals/ContactDetailsModal";
 import LogInteractionModal from "./components/modals/LogInteractionModal";
+import SmartImportModal from "./components/modals/SmartImportModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
@@ -49,6 +50,7 @@ interface LayoutContextType {
   setIsMobileMenuOpen: (value: boolean) => void;
   openNewContact: (initialStage?: string) => void;
   openLogInteraction: () => void;
+  openSmartImport: () => void;
   setSelectedContact: (contact: Contact | null) => void;
   searchOpen: boolean;
   setSearchOpen: (value: boolean) => void;
@@ -269,6 +271,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     string | undefined
   >(undefined);
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
+  const [isSmartImportOpen, setIsSmartImportOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [isImpersonateModalOpen, setIsImpersonateModalOpen] = React.useState(false);
@@ -300,6 +303,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           setIsNewContactModalOpen(true);
         },
         openLogInteraction: () => setIsLogInteractionOpen(true),
+        openSmartImport: () => setIsSmartImportOpen(true),
         setSelectedContact: (contact: Contact | null) =>
           setSelectedContact(contact),
         searchOpen,
@@ -317,8 +321,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
           )}
         >
-          <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-          <TopBar />
+          <TopBar onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
             {children}
           </main>
@@ -338,6 +341,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <LogInteractionModal
           isOpen={isLogInteractionOpen}
           onClose={() => setIsLogInteractionOpen(false)}
+        />
+
+        <SmartImportModal
+          isOpen={isSmartImportOpen}
+          onClose={() => setIsSmartImportOpen(false)}
         />
 
         <ContactDetailsModal

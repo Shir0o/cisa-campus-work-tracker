@@ -31,7 +31,10 @@ export interface Contact {
   major?: string;
   instagram?: string;
   howHeard?: string;
-  interests?: string[];
+  addedBy?: string;
+  owner?: string;
+  coCreators?: string[];
+  season?: string;
   prayerRequest?: string;
 }
 
@@ -277,5 +280,48 @@ export interface ImpersonateTarget {
   role: AppRole;
   persona?: any;
 }
+
+export interface ParsedContactItem {
+  tempId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  stage?: string;
+  role?: string;
+  notes?: string;
+  tags?: string[];
+  spiritualBackground?: string;
+  matchedContactId?: string | null;
+  matchedContactName?: string | null;
+  selected?: boolean;
+}
+
+export interface ParsedInteractionItem {
+  tempId: string;
+  contactRef?: string;
+  contactId?: string | null;
+  contactName?: string;
+  dateTime?: string;
+  type?: string;
+  content: string;
+  selected?: boolean;
+}
+
+export interface ParsedDiscussionItem {
+  tempId: string;
+  title: string;
+  audience?: 'team' | 'trainees' | 'everyone';
+  content: string;
+  tags?: string[];
+  mentionedContactNames?: string[];
+  selected?: boolean;
+}
+
+export interface SmartImportParsedData {
+  contacts: ParsedContactItem[];
+  interactions: ParsedInteractionItem[];
+  discussions: ParsedDiscussionItem[];
+}
+
 
 

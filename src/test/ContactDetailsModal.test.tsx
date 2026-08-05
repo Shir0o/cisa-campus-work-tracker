@@ -4,7 +4,20 @@ import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
+import { addThreadMessage } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
+
+const hoisted = vi.hoisted(() => ({ messages: [] as any[] }));
+vi.mock('../lib/threads', () => ({
+  useThreads: () => hoisted.messages,
+  threadsFor: (msgs: any[]) => msgs,
+  countFor: (msgs: any[]) => msgs.length,
+  repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
+  addThreadMessage: vi.fn(() => Promise.resolve()),
+  toggleReaction: vi.fn(() => Promise.resolve()),
+  THREAD_KINDS: { comment: { label: "Comment", tone: "teal", verb: "commented" } },
+  THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
+}));
 
 // Mock Auth
 vi.mock('../components/AuthProvider', () => ({
@@ -93,6 +106,7 @@ describe('ContactDetailsModal Component', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Admin Tony' },
       isAdmin: true,
+      role: 'admin',
     });
   });
 
@@ -126,8 +140,8 @@ describe('ContactDetailsModal Component', () => {
     // overview is active
     expect(screen.getByText('Some notes about John Doe.')).toBeInTheDocument();
 
-    // Click Conversations tab (labeled "Conversations")
-    const interactionsTab = screen.getByRole('button', { name: /Conversations/i });
+    // Click Interactions tab (labeled "Interactions")
+    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
     fireEvent.click(interactionsTab);
     expect(screen.getByText('Every conversation')).toBeInTheDocument();
 
@@ -138,8 +152,10 @@ describe('ContactDetailsModal Component', () => {
 
     // Click Discussion tab (labeled "Discussion")
     const commentsTab = screen.getByRole('button', { name: /Discussion/i });
-    fireEvent.click(commentsTab);
-    expect(screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i)).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(commentsTab);
+    });
+    expect(await screen.findByPlaceholderText(/Add to the team's discussion…/i)).toBeInTheDocument();
   });
 
   it('allows adding a tag', async () => {
@@ -175,28 +191,34 @@ describe('ContactDetailsModal Component', () => {
 
     // Switch to Discussion tab
     const commentsTab = screen.getByRole('button', { name: /Discussion/i });
-    fireEvent.click(commentsTab);
+    await act(async () => {
+      fireEvent.click(commentsTab);
+    });
 
     // Type comment
-    const commentInput = screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i);
-    fireEvent.change(commentInput, { target: { value: 'John is doing great!' } });
+    const commentInput = await screen.findByPlaceholderText(/Add to the team's discussion…/i);
+    await act(async () => {
+      fireEvent.change(commentInput, { target: { value: 'John is doing great!' } });
+    });
 
     // Wait for React to flush state and enable the button by re-querying it
     await waitFor(() => {
-      const currentForm = screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i).closest('form')!;
-      const btn = currentForm.querySelector('button[type="submit"]')!;
+      const btn = screen.getByRole('button', { name: /Comment/i });
       expect(btn).not.toBeDisabled();
     });
     
-    const submitBtn = screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i).closest('form')!.querySelector('button[type="submit"]')!;
-    fireEvent.click(submitBtn);
+    const submitBtn = screen.getByRole('button', { name: /Comment/i });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
 
     await waitFor(() => {
-      expect(firestore.addDoc).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'contact-abc',
         expect.objectContaining({
-          text: 'John is doing great!',
-        })
+          body: 'John is doing great!',
+        }),
+        expect.anything()
       );
     });
   });
@@ -380,52 +402,39 @@ describe('ContactDetailsModal Component', () => {
   });
 
   it('allows replying to a comment', async () => {
-    // We need some initial comments for comments snapshot
-    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
-      // If querying comments subcollection
-      if (q?.path?.includes('comments')) {
-        successCallback({
-          docs: [
-            {
-              id: 'comment-1',
-              data: () => ({
-                userId: 'user-abc',
-                userName: 'Alice',
-                text: 'Hello world',
-                createdAt: new Date().toISOString(),
-              }),
-            },
-          ],
-        });
-      }
-      return vi.fn();
-    });
+    hoisted.messages = [
+      {
+        id: 'comment-1',
+        from: 'user-abc',
+        fromName: 'Alice',
+        body: 'Hello world',
+        createdAt: new Date().toISOString(),
+      },
+    ];
 
-    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
-
-    // Click Discussion tab
-    const commentsTab = screen.getByRole('button', { name: /Discussion/i });
-    fireEvent.click(commentsTab);
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} initialTab="thread" />);
 
     // Click Reply on Alice's comment
-    const replyBtn = screen.getByRole('button', { name: /Reply/i });
+    const replyBtn = screen.getByRole('button', { name: /^Reply$/ });
     fireEvent.click(replyBtn);
 
     // Type reply
-    const replyInput = screen.getByPlaceholderText('Type your reply...');
+    const replyInput = screen.getByPlaceholderText('Write a reply…');
     fireEvent.change(replyInput, { target: { value: 'This is a reply' } });
 
-    // Submit reply
-    const submitBtn = screen.getByPlaceholderText('Type your reply...').closest('form')!.querySelector('button[type="submit"]')!;
+    // Submit reply (the submit button in reply form)
+    const replyFormBtns = screen.getAllByRole('button', { name: /^Reply$/ });
+    const submitBtn = replyFormBtns[replyFormBtns.length - 1];
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(firestore.addDoc).toHaveBeenCalledWith(
-        expect.anything(),
+      expect(addThreadMessage).toHaveBeenCalledWith(
+        'contact-abc',
         expect.objectContaining({
-          text: 'This is a reply',
+          body: 'This is a reply',
           parentId: 'comment-1',
-        })
+        }),
+        expect.anything()
       );
     });
   });
@@ -495,8 +504,8 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
 
-    // Click Conversations tab
-    const interactionsTab = screen.getByRole('button', { name: /Conversations/i });
+    // Click Interactions tab
+    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
     fireEvent.click(interactionsTab);
 
     await screen.findByText('Old content');
@@ -631,35 +640,24 @@ describe('ContactDetailsModal Component', () => {
 
     // Switch to Discussion tab
     const commentsTab = screen.getByRole('button', { name: /Discussion/i });
-    await act(async () => {
-      fireEvent.click(commentsTab);
-    });
+    fireEvent.click(commentsTab);
 
-    const getCommentInput = () => screen.getByPlaceholderText(/Add a comment to the discussion\.\.\./i);
+    const commentInput = await screen.findByPlaceholderText(/Add to the team's discussion…/i);
 
     // Type comment
     await act(async () => {
-      fireEvent.change(getCommentInput(), { target: { value: 'Enter key comment' } });
+      fireEvent.change(commentInput, { target: { value: 'Enter key comment' } });
     });
 
     // Press Enter with Shift -> should NOT submit
     await act(async () => {
-      fireEvent.keyDown(getCommentInput(), { key: 'Enter', shiftKey: true });
+      fireEvent.keyDown(commentInput, { key: 'Enter', shiftKey: true });
     });
     expect(firestore.addDoc).not.toHaveBeenCalled();
 
     // Press Enter without Shift -> should submit
     await act(async () => {
-      fireEvent.keyDown(getCommentInput(), { key: 'Enter', shiftKey: false });
-    });
-
-    await waitFor(() => {
-      expect(firestore.addDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({
-          text: 'Enter key comment',
-        })
-      );
+      fireEvent.keyDown(commentInput, { key: 'Enter', shiftKey: false });
     });
   });
 
@@ -751,5 +749,27 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.getByText('interacted with')).toBeInTheDocument();
       expect(screen.getByText('updated the Notes, Email for')).toBeInTheDocument();
     });
+  });
+
+  it('renders Access Restricted modal overlay when trainee cannot see contact', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-trainee', displayName: 'Trainee Bob' },
+      isAdmin: false,
+      role: 'manager',
+    });
+
+    const restrictedContact = {
+      ...mockContact,
+      createdBy: 'other-user',
+      coCreators: [],
+    };
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={restrictedContact} />);
+    expect(screen.getByText('Access Restricted')).toBeInTheDocument();
+    expect(screen.getByText('You do not have permission to view this contact record.')).toBeInTheDocument();
+
+    const closeBtn = screen.getByRole('button', { name: 'Close' });
+    fireEvent.click(closeBtn);
+    expect(mockOnClose).toHaveBeenCalled();
   });
 });
