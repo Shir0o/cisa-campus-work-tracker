@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Modal, StyleSheet, ScrollView } from 'react-native';
 import { useAuth, type AppRole } from '../lib/AuthProvider';
-import { roleLabel } from '@cisa/core';
+import { OWNER_VIEW_ROLES, roleLabel } from '@cisa/core';
 
-const ROLES: { key: AppRole; label: string; note: string }[] = [
-  { key: 'admin', label: 'Full-timer', note: 'Widgets & full-timer home' },
-  { key: 'manager', label: 'Trainee', note: 'Focus queue & drawer' },
-  { key: 'operator', label: 'Student', note: 'Member app (Student)' },
-  { key: 'viewer', label: 'Community', note: 'Member app (Community)' },
-];
+const ROLES = OWNER_VIEW_ROLES;
 
 export function OwnerViewBanner() {
   const { isOwner, ownerViewRole, setOwnerViewRole } = useAuth();

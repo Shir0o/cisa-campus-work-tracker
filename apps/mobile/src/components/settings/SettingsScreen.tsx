@@ -356,13 +356,8 @@ function Settings() {
             <Choice
               label="Preview role view"
               sub="Step into another role's phone experience to test what they see. Full-timer preview mode."
-              options={[
-                { value: 'admin', label: 'Full-timer' },
-                { value: 'manager', label: 'Trainee' },
-                { value: 'operator', label: 'Student' },
-                { value: 'viewer', label: 'Community' },
-              ]}
-              value={ownerViewRole || 'admin'}
+              options={OWNER_VIEW_ROLES.map((r) => ({ value: r.key, label: r.label }))}
+              value={ownerViewRole || role}
               onPick={(r) => setOwnerViewRole(ownerViewRole === r ? null : (r as AppRole))}
             />
             {ownerViewRole && (

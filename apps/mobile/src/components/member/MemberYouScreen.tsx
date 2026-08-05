@@ -179,13 +179,8 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
           <View>
             <Sech label="See their view" />
             <View style={{ gap: 8 }}>
-              {[
-                { key: 'admin', label: 'Full-timer' },
-                { key: 'manager', label: 'Trainee' },
-                { key: 'operator', label: 'Student' },
-                { key: 'viewer', label: 'Community' },
-              ].map((r) => {
-                const on = ownerViewRole === r.key;
+              {OWNER_VIEW_ROLES.map((r) => {
+                const on = (ownerViewRole || appRole) === r.key;
                 return (
                   <Pressable
                     key={r.key}

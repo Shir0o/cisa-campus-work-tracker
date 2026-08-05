@@ -9,7 +9,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel, type AppRole } from '@cisa/core';
+import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, OWNER_VIEW_ROLES, roleLabel, type AppRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
@@ -26,6 +26,8 @@ function FtMore() {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const { user, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
   const router = useRouter();
+
+  const activeRole = ownerViewRole || role;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
@@ -115,13 +117,8 @@ function FtMore() {
               See their view
             </Text>
             <View style={{ backgroundColor: c.card, borderRadius: radius.tile, padding: 14, gap: 8, ...shadow.soft }}>
-              {[
-                { key: 'admin', label: 'Full-timer' },
-                { key: 'manager', label: 'Trainee' },
-                { key: 'operator', label: 'Student' },
-                { key: 'viewer', label: 'Community' },
-              ].map((r) => {
-                const on = (ownerViewRole || 'admin') === r.key;
+              {OWNER_VIEW_ROLES.map((r) => {
+                const on = activeRole === r.key;
                 return (
                   <Pressable
                     key={r.key}

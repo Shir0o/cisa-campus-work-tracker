@@ -8,7 +8,7 @@ import React from 'react';
 import { Animated, Dimensions, Modal, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { TRAINEE_DRAWER, TRAINEE_DRAWER_FOOT, roleLabel, type AppRole } from '@cisa/core';
+import { OWNER_VIEW_ROLES, TRAINEE_DRAWER, TRAINEE_DRAWER_FOOT, roleLabel, type AppRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from './atoms';
@@ -47,6 +47,8 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
   const { user, uid, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
   const router = useRouter();
   const slide = React.useRef(new Animated.Value(-WIDTH)).current;
+
+  const activeRole = ownerViewRole || role;
 
   React.useEffect(() => {
     Animated.timing(slide, {
@@ -125,13 +127,8 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
               >
                 See their view
               </Text>
-              {[
-                { key: 'admin', label: 'Full-timer' },
-                { key: 'manager', label: 'Trainee' },
-                { key: 'operator', label: 'Student' },
-                { key: 'viewer', label: 'Community' },
-              ].map((r) => {
-                const on = (ownerViewRole || 'manager') === r.key;
+              {OWNER_VIEW_ROLES.map((r) => {
+                const on = activeRole === r.key;
                 return (
                   <Pressable
                     key={r.key}
