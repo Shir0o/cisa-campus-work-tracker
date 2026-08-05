@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, where } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
-import CoordinationNotes from '../views/CoordinationNotes';
+import CoordinationNotes, { SuggestedTaskCard } from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
 import { logActivity } from '../lib/firebase';
 
@@ -2214,6 +2214,66 @@ describe('CoordinationNotes', () => {
 
       const dragBtnA = await screen.findByRole('button', { name: /drag to reorder pinned doc a/i });
       expect(dragBtnA).toBeInTheDocument();
+    });
+  });
+
+  describe('SuggestedTaskCard', () => {
+    const mockTask = {
+      title: 'Follow up with student',
+      dueDate: '2026-08-10',
+      priority: 'high',
+      assigneeId: 'u-1',
+      contactId: 'c-1',
+    };
+
+    it('renders task card and calls onSaveTask when submitted', async () => {
+      const onSaveTask = vi.fn().mockResolvedValue(undefined);
+      const onAdd = vi.fn();
+      const onDismiss = vi.fn();
+
+      render(
+        <SuggestedTaskCard
+          task={mockTask}
+          isAdded={false}
+          contacts={[{ id: 'c-1', name: 'John' } as any]}
+          team={[{ uid: 'u-1', name: 'Alice' } as any]}
+          meUid="u-1"
+          onAdd={onAdd}
+          onDismiss={onDismiss}
+          onSaveTask={onSaveTask}
+        />,
+      );
+
+      expect(screen.getByDisplayValue('Follow up with student')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /add task/i }));
+
+      await waitFor(() => {
+        expect(onSaveTask).toHaveBeenCalledWith({
+          title: 'Follow up with student',
+          dueDate: '2026-08-10',
+          priority: 'high',
+          contactId: 'c-1',
+          assigneeId: 'u-1',
+        });
+        expect(onAdd).toHaveBeenCalled();
+      });
+    });
+
+    it('renders isAdded state correctly', () => {
+      render(
+        <SuggestedTaskCard
+          task={mockTask}
+          isAdded={true}
+          contacts={[]}
+          team={[]}
+          meUid="u-1"
+          onAdd={vi.fn()}
+          onDismiss={vi.fn()}
+          onSaveTask={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('Added')).toBeInTheDocument();
     });
   });
 

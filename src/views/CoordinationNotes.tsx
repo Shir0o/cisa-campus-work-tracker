@@ -3498,7 +3498,7 @@ export function NoteForm({
 }
 
 // ── Suggested Task card inside AI Insights sidebar ────────────────────────────
-function SuggestedTaskCard({
+export function SuggestedTaskCard({
   task,
   isAdded,
   contacts,
