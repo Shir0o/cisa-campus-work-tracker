@@ -11,6 +11,7 @@ import {
   dayNum,
   docByDateDesc,
   docSortOrder,
+  parseDocNotes,
   newDocMarkdown,
   audienceOf,
   boardLevelForRole,
@@ -195,6 +196,23 @@ describe('Board Pure Helpers', () => {
   describe('newDocMarkdown', () => {
     it('returns the starter markdown content', () => {
       expect(newDocMarkdown()).toContain('# Untitled page');
+    });
+  });
+
+  describe('parseDocNotes', () => {
+    it('parses note comments with and without type from markdown', () => {
+      const md = `
+# Title
+Some text
+<!-- note:n-1 type:learning -->
+More text
+<!-- note:n-2 -->
+      `;
+      const notes = parseDocNotes(md);
+      expect(notes).toEqual([
+        { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
+        { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
+      ]);
     });
   });
 
