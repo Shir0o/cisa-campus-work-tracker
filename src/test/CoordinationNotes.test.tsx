@@ -569,6 +569,30 @@ describe('CoordinationNotes', () => {
       expect(titles[0]).toBe('Pinned today doc');
     });
 
+    it('unpins a pinned page when clicking its pin toggle', async () => {
+      const pinnedTodayDoc = {
+        id: 'doc-pinned',
+        data: () => ({
+          title: 'Pinned today doc',
+          date: today,
+          weekday: 'Monday',
+          md: '',
+          pinned: true,
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      };
+      setupSnapshots({ docs: [pinnedTodayDoc], notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const unpinButton = await screen.findByTitle('Unpin');
+      fireEvent.click(unpinButton);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pinned: false, pinnedOrder: null }));
+      });
+    });
+
     it('does not show a pin toggle for non-admins', async () => {
       (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(traineeAuth);
       setupSnapshots({ docs: mockDocs, notes: [], team: mockTeam });
