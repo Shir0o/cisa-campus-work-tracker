@@ -130,6 +130,6 @@ describe('CoordinationTrash', () => {
       return vi.fn();
     });
     render(<CoordinationTrash />);
-    expect(screen.queryByTestID('skeleton')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
   });
 });
