@@ -93,6 +93,12 @@ describe('docSortOrder', () => {
     const d2 = { date: '2026-06-18', pinned: true } as BoardDoc;
     expect([d1, d2].sort(docSortOrder).map((d) => d.date)).toEqual(['2026-06-18', '2026-06-16']);
   });
+
+  it('respects pinnedOrder for pinned docs when specified', () => {
+    const d1 = { id: '1', date: '2026-06-18', pinned: true, pinnedOrder: 1 } as BoardDoc;
+    const d2 = { id: '2', date: '2026-06-16', pinned: true, pinnedOrder: 0 } as BoardDoc;
+    expect([d1, d2].sort(docSortOrder).map((d) => d.id)).toEqual(['2', '1']);
+  });
 });
 
 describe('isExpiredTrash', () => {

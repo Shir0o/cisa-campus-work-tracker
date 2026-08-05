@@ -543,7 +543,7 @@ describe('CoordinationNotes', () => {
       fireEvent.click(pinButtons[0]);
 
       await waitFor(() => {
-        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { pinned: true });
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pinned: true }));
       });
     });
 
@@ -2093,6 +2093,103 @@ describe('CoordinationNotes', () => {
       // Trigger fullscreenchange when no element is in fullscreen
       fireEvent(document, new Event('fullscreenchange'));
       expect(workspace).toHaveClass('fixed');
+    });
+  });
+
+  describe('Pinned pages & reordering', () => {
+    it('lands on the top pinned document when opening /coordination', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
+      const mockDocs = [
+        {
+          id: 'doc-today',
+          data: () => ({
+            title: 'Unpinned Today Meeting',
+            date: today,
+            weekday: 'Wednesday',
+            audience: 'team',
+            md: 'Content today',
+            pinned: false,
+            createdBy: 'u-1',
+            updatedAt: today,
+          }),
+        },
+        {
+          id: 'doc-pinned-1',
+          data: () => ({
+            title: 'Top Pinned Page',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            audience: 'team',
+            md: 'Content pinned 1',
+            pinned: true,
+            pinnedOrder: 0,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-01',
+          }),
+        },
+        {
+          id: 'doc-pinned-2',
+          data: () => ({
+            title: 'Second Pinned Page',
+            date: '2026-06-02',
+            weekday: 'Tuesday',
+            audience: 'team',
+            md: 'Content pinned 2',
+            pinned: true,
+            pinnedOrder: 1,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-02',
+          }),
+        },
+      ];
+
+      setupSnapshots({ docs: mockDocs });
+      render(<CoordinationNotes />);
+
+      // Top pinned doc should be active on load
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Top Pinned Page')).toBeInTheDocument();
+      });
+    });
+
+    it('renders drag handles for pinned pages when editing enabled', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
+      const mockDocs = [
+        {
+          id: 'pinned-1',
+          data: () => ({
+            title: 'Pinned Doc A',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            audience: 'team',
+            md: 'Content A',
+            pinned: true,
+            pinnedOrder: 0,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-01',
+          }),
+        },
+        {
+          id: 'pinned-2',
+          data: () => ({
+            title: 'Pinned Doc B',
+            date: '2026-06-02',
+            weekday: 'Tuesday',
+            audience: 'team',
+            md: 'Content B',
+            pinned: true,
+            pinnedOrder: 1,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-02',
+          }),
+        },
+      ];
+
+      setupSnapshots({ docs: mockDocs });
+      render(<CoordinationNotes />);
+
+      const dragBtnA = await screen.findByRole('button', { name: /drag to reorder pinned doc a/i });
+      expect(dragBtnA).toBeInTheDocument();
     });
   });
 

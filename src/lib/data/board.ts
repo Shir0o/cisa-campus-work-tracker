@@ -39,8 +39,20 @@ export async function deleteBoardDoc(boardDoc: Pick<BoardDoc, 'id'>): Promise<vo
 }
 
 /** Pins/unpins a page so it sorts first in the Pages list. */
-export async function pinBoardDoc(boardDoc: Pick<BoardDoc, 'id'>, pinned: boolean): Promise<void> {
-  await updateDoc(doc(db, 'board_docs', boardDoc.id), { pinned });
+export async function pinBoardDoc(boardDoc: Pick<BoardDoc, 'id'>, pinned: boolean, pinnedOrder?: number): Promise<void> {
+  await updateDoc(doc(db, 'board_docs', boardDoc.id), {
+    pinned,
+    pinnedOrder: pinned ? (pinnedOrder ?? null) : null,
+  });
+}
+
+/** Reorders pinned pages by updating their pinnedOrder field in Firestore. */
+export async function reorderPinnedBoardDocs(orderedDocs: Pick<BoardDoc, 'id'>[]): Promise<void> {
+  await Promise.all(
+    orderedDocs.map((d, index) =>
+      updateDoc(doc(db, 'board_docs', d.id), { pinnedOrder: index }),
+    ),
+  );
 }
 
 const TRASH_TTL_MS = 30 * 24 * 60 * 60 * 1000;

@@ -170,6 +170,7 @@ export interface BoardDoc {
   updatedByName?: string;
   deletedAt?: unknown; // soft-delete marker — set means the page is in Trash
   pinned?: boolean; // pinned pages sort first in the Pages list
+  pinnedOrder?: number; // order position among pinned pages when reordered
 }
 
 // A soft-deleted page (see `deletedAt`) is hidden from the main Pages list
@@ -311,9 +312,20 @@ export const boardCountNote = (n: number): string =>
 // Sort docs newest → oldest for the Pages list.
 export const docByDateDesc = (a: BoardDoc, b: BoardDoc) => b.date.localeCompare(a.date);
 
-// Pinned pages float to the top; otherwise newest → oldest.
-export const docSortOrder = (a: BoardDoc, b: BoardDoc) =>
-  (Number(!!b.pinned) - Number(!!a.pinned)) || docByDateDesc(a, b);
+// Pinned pages float to the top sorted by pinnedOrder (if set); otherwise newest → oldest.
+export const docSortOrder = (a: BoardDoc, b: BoardDoc) => {
+  if (a.pinned !== b.pinned) {
+    return Number(!!b.pinned) - Number(!!a.pinned);
+  }
+  if (a.pinned && b.pinned) {
+    const orderA = a.pinnedOrder ?? Infinity;
+    const orderB = b.pinnedOrder ?? Infinity;
+    if (orderA !== orderB) {
+      return orderA - orderB;
+    }
+  }
+  return docByDateDesc(a, b);
+};
 
 // Starter body for a brand-new page.
 export const newDocMarkdown = (): string =>
