@@ -5,7 +5,7 @@ web-build/
 *.log
 .env
 .env.local
-GoogleService-Info.plist
+# GoogleService-Info.plist
 google-services.json
 ios/
 android/
