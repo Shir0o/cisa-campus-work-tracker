@@ -101,7 +101,7 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
-    manager:  ['/', '/directory', '/board', '/messages', '/feedback', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/board', '/messages', '/feedback'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
@@ -228,13 +228,13 @@ describe('Sidebar nav items', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: adds The Journey, Home labeled "Home", hides settings/history/gatherings/prayer', () => {
+  it('manager: adds The Journey, Home labeled "Home", hides settings/history/gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
     renderSidebar();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByText('Shared Calendar')).toBeInTheDocument();
+    expect(screen.queryByText('Shared Calendar')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
     expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('On our hearts')).not.toBeInTheDocument();

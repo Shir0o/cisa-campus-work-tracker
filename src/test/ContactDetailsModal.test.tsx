@@ -772,4 +772,27 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.click(closeBtn);
     expect(mockOnClose).toHaveBeenCalled();
   });
+
+  it('renders "contacted by" and "Created by" metadata when present', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-1', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    const contactWithMeta = {
+      ...mockContact,
+      createdAt: '2026-08-01T12:00:00Z',
+      createdByName: 'Sarah Connor',
+      lastContactedBy: 'Tony Wang',
+      lastContactedDate: '2026-08-05T10:00:00Z',
+    };
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithMeta} />);
+    
+    // Header subhead should include "contacted by Tony Wang"
+    expect(screen.getAllByText(/contacted by Tony Wang/i).length).toBeGreaterThan(0);
+    // Timestamps section should include "by Sarah Connor"
+    expect(screen.getByText(/by Sarah Connor/i)).toBeInTheDocument();
+  });
 });

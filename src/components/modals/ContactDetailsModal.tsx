@@ -69,6 +69,18 @@ interface ContactDetailsModalProps {
   initialInteractionId?: string | null;
 }
 
+function formatCreatedDate(val: unknown): string {
+  if (!val) return '—';
+  if (typeof val === 'object' && val !== null && 'toDate' in val && typeof (val as { toDate: () => Date }).toDate === 'function') {
+    return (val as { toDate: () => Date }).toDate().toLocaleDateString();
+  }
+  if (typeof val === 'object' && val !== null && 'seconds' in val && typeof (val as { seconds: number }).seconds === 'number') {
+    return new Date((val as { seconds: number }).seconds * 1000).toLocaleDateString();
+  }
+  const d = new Date(val as string | number);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+}
+
 function AuditActivityItem({
   activity,
   isLast,
@@ -716,6 +728,15 @@ export default function ContactDetailsModal({
         createdAt: serverTimestamp(),
       });
 
+      const userName = user.displayName || user.email?.split("@")[0] || "Anonymous";
+      await updateDoc(doc(db, "contacts", contact.id), {
+        lastSeen: newInteraction.dateTime,
+        lastContactedBy: userName,
+        lastContactedById: user.uid,
+        lastContactedDate: newInteraction.dateTime,
+        updatedAt: serverTimestamp(),
+      });
+
       logActivity({
         action: "logged an interaction for",
         targetId: contact.id,
@@ -1034,7 +1055,7 @@ export default function ContactDetailsModal({
                           ))}
                         </div>
                         <p className="text-xs text-on-surface-variant cdm-meta mt-3">
-                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                     </div>
@@ -1087,7 +1108,7 @@ export default function ContactDetailsModal({
                       </h2>
                       {!isEditing && (
                         <p className="text-sm text-on-surface-variant mt-0.5 truncate">
-                          {[contact.role, contact.location].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       )}
                     </div>
@@ -1664,12 +1685,13 @@ export default function ContactDetailsModal({
                         <div className="flex flex-col gap-0.5">
                           <span className="text-xs text-on-surface-variant/70">
                             Last seen {contact.lastSeen || "—"}
+                            {contact.lastContactedBy ? ` · Contacted by ${contact.lastContactedBy}` : ""}
                           </span>
                           <span className="text-xs text-on-surface-variant/50">
-                            Added{" "}
-                            {new Date(
-                              contact.createdAt || "",
-                            ).toLocaleDateString()}
+                            Added {formatCreatedDate(contact.createdAt)}
+                            {(contact.createdByName || contact.addedBy)
+                              ? ` by ${contact.createdByName || contact.addedBy}`
+                              : ""}
                           </span>
                         </div>
                       </div>

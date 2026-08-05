@@ -79,7 +79,7 @@ export const NAV_ITEMS: NavItem[] = [
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', 'https://shared-calendar-6u6.pages.dev/'];
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
