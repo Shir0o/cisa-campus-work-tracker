@@ -5,7 +5,6 @@ import { Room } from '../../src/components/v2/Widget';
 import { useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
-import { OwnerViewBanner } from '../../src/components/OwnerViewBanner';
 
 // The shell — one of three, chosen by role, from the design project
 // (`MOBILE-V2.md`; `views/mobile/{m2,member,ft}.jsx`):
@@ -59,7 +58,6 @@ export default function TabsLayout() {
   // one. Screens that set their own Room still win inside.
   return (
     <Room room={shellForRole(role) === 'ft' ? 'ft' : 'queue'}>
-      <OwnerViewBanner />
       <RoleTabs />
     </Room>
   );

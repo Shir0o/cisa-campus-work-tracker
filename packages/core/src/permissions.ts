@@ -23,6 +23,19 @@ export function roleLabel(role: AppRole | string | null): string {
   return ROLE_LABELS[role as AppRole] ?? role.charAt(0).toUpperCase() + role.slice(1);
 }
 
+export interface OwnerViewRoleOption {
+  key: AppRole;
+  label: string;
+  note: string;
+}
+
+export const OWNER_VIEW_ROLES: OwnerViewRoleOption[] = [
+  { key: 'admin', label: 'Full-timer', note: 'Widgets & full-timer home' },
+  { key: 'manager', label: 'Trainee', note: 'Focus queue & drawer' },
+  { key: 'operator', label: 'Student', note: 'Member app (Student)' },
+  { key: 'viewer', label: 'Community', note: 'Member app (Community)' },
+];
+
 const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/': 'viewer',
   '/board': 'manager',

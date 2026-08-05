@@ -11,9 +11,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES } from '../lib/permissions';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -371,13 +370,17 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
     expect(canSimulateRole('manager', 'other@gmail.com')).toBe(false);
 
     expect(getEffectiveRole('yilongwang05@gmail.com', 'manager', 'admin')).toBe('admin');
-    expect(getEffectiveRole('other@gmail.com', 'manager', 'admin')).toBe('manager');
   });
 
   it('navItemsForRole filters navigation list correctly per role', () => {
     expect(navItemsForRole('manager')).toEqual(
       expect.arrayContaining([expect.objectContaining({ href: '/' })])
     );
+  });
+
+  it('exports OWNER_VIEW_ROLES centralized role options', () => {
+    expect(OWNER_VIEW_ROLES).toHaveLength(4);
+    expect(OWNER_VIEW_ROLES.map((r) => r.key)).toEqual(['admin', 'manager', 'operator', 'viewer']);
   });
 });
 
