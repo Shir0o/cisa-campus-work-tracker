@@ -23,6 +23,7 @@ import {
   settingsCareLine,
   settingsFoot,
   shellForRole,
+  type AppRole,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
@@ -362,7 +363,7 @@ function Settings() {
                 { value: 'viewer', label: 'Community' },
               ]}
               value={ownerViewRole || 'admin'}
-              onPick={(r) => setOwnerViewRole(ownerViewRole === r ? null : r)}
+              onPick={(r) => setOwnerViewRole(ownerViewRole === r ? null : (r as AppRole))}
             />
             {ownerViewRole && (
               <SecondaryButton
