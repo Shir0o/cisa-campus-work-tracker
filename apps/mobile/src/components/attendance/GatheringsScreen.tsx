@@ -30,7 +30,7 @@ export function GatheringsScreen() {
   );
 }
 
-/** One name in an open roster. Tapping it cycles present → late → absent. */
+/** One name in an open roster. Tapping it cycles present → absent. */
 function RosterName({
   contact,
   session,
@@ -40,12 +40,12 @@ function RosterName({
 }: {
   contact: Contact;
   session: Event;
-  status: 'present' | 'late' | 'absent';
+  status: 'present' | 'absent';
   canMark: boolean;
   onCycle: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
-  const tone = status === 'late' ? c.tones.due : status === 'present' ? c.tones.note : undefined;
+  const tone = status === 'present' ? c.tones.note : undefined;
   return (
     <Pressable
       onPress={onCycle}
@@ -64,7 +64,6 @@ function RosterName({
     >
       <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: tone ? tone.text : c.cardInk2 }}>
         {contact.name}
-        {status === 'late' ? ' · late' : ''}
       </Text>
     </Pressable>
   );
@@ -134,7 +133,7 @@ function SessionRow({
         <View style={{ paddingHorizontal: 16, paddingBottom: 16, gap: 10 }}>
           <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.cardInk3 }}>
             {canMark
-              ? 'Tap a name to change it — came, late, missed.'
+              ? 'Tap a name to change it — came, missed.'
               : 'Marking the roster is a full-timer or trainee job.'}
           </Text>
 
@@ -148,7 +147,7 @@ function SessionRow({
                 key={x.id}
                 contact={x}
                 session={session}
-                status={x.attendance?.[session.id] === 'late' ? 'late' : 'present'}
+                status="present"
                 canMark={canMark}
                 onCycle={() => onCycle(x)}
               />

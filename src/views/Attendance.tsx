@@ -15,7 +15,7 @@ import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
-import { useGatheringTypes, blurbOf, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
+import { useGatheringTypes, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
@@ -192,21 +192,18 @@ export default function Attendance() {
     }
   };
 
-  // here = present or late
+  // here = present
   const here = (c: Contact, eventId: string) => {
     const s = c.attendance?.[eventId];
-    return s === true || s === 'late';
+    return s === true;
   };
 
-  // Tapping a name cycles present → late → absent → present.
+  // Tapping a name cycles present → absent → present.
   // Anyone "missed" (absent or unmarked) jumps to present on first tap.
   const cycleAttendance = async (contact: Contact, eventId: string) => {
     try {
       const current = contact.attendance?.[eventId];
-      let next: boolean | 'late' | 'absent';
-      if (current === true) next = 'late';
-      else if (current === 'late') next = 'absent';
-      else next = true; // 'absent' or undefined → present
+      const next: boolean | 'absent' = current === true ? 'absent' : true;
 
       const newAttendance = { ...(contact.attendance || {}) };
       newAttendance[eventId] = next;
@@ -485,10 +482,8 @@ export default function Attendance() {
           {sessions.length > 0 ? (
             <div className="space-y-3">
               {sessions.map((s) => {
-                const present = contacts.filter((c) => c.attendance?.[s.id] === true);
-                const late = contacts.filter((c) => c.attendance?.[s.id] === 'late');
+                const present = contacts.filter((c) => here(c, s.id));
                 const absent = contacts.filter((c) => !here(c, s.id));
-                const cameAll = [...present, ...late];
                 const isOpen = openId === s.id;
                 const d = evtDate(s.date);
                 return (
@@ -514,19 +509,18 @@ export default function Attendance() {
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-on-surface truncate">{s.name}</div>
                         <div className="text-sm text-on-surface-variant truncate">
-                          {blurbOf(gatheringTypes, s.type) || s.type || 'A time together'}
+                          {s.type || 'A time together'}
                         </div>
                       </div>
                       <div className="hidden sm:flex items-center -space-x-2 mr-1">
-                        {cameAll.slice(0, 6).map((c) => (
+                        {present.slice(0, 6).map((c) => (
                           <div key={c.id} className="ring-2 ring-surface rounded-full">
                             <Avatar contact={c} size="sm" />
                           </div>
                         ))}
                       </div>
                       <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-                        <b className="text-on-surface font-semibold">{cameAll.length}</b> came
-                        {late.length > 0 ? ` · ${late.length} late` : ''}
+                        <b className="text-on-surface font-semibold">{present.length}</b> came
                       </div>
                       <ChevronDown
                         className={cn(
@@ -571,9 +565,6 @@ export default function Attendance() {
                             <i className="w-2 h-2 rounded-full bg-primary inline-block" /> here
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <i className="w-2 h-2 rounded-full bg-tertiary inline-block" /> came late
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
                             <i className="w-2 h-2 rounded-full bg-outline inline-block" /> missed
                           </span>
                           <span className="italic">Tap a name to update who was there.</span>
@@ -581,35 +572,22 @@ export default function Attendance() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                           <div>
                             <div className="text-xs font-semibold text-on-surface uppercase tracking-wide mb-2">
-                              Attended <span className="text-on-surface-variant">{cameAll.length}</span>
+                              Attended <span className="text-on-surface-variant">{present.length}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
-                              {cameAll.length === 0 && (
+                              {present.length === 0 && (
                                 <span className="text-sm text-on-surface-variant italic">No one marked yet.</span>
                               )}
-                              {cameAll.map((c) => {
-                                const isLate = c.attendance?.[s.id] === 'late';
-                                return (
-                                  <button
-                                    key={c.id}
-                                    onClick={() => cycleAttendance(c, s.id)}
-                                    className={cn(
-                                      'inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors',
-                                      isLate
-                                        ? 'bg-tertiary-container/60 border-tertiary/40 text-on-tertiary-container'
-                                        : 'bg-primary-container/50 border-primary/30 text-on-surface',
-                                    )}
-                                  >
-                                    <Avatar contact={c} size="sm" />
-                                    <span className="text-sm">{c.name}</span>
-                                    {isLate && (
-                                      <span className="text-[10px] font-semibold uppercase tracking-wide opacity-80">
-                                        late
-                                      </span>
-                                    )}
-                                  </button>
-                                );
-                              })}
+                              {present.map((c) => (
+                                <button
+                                  key={c.id}
+                                  onClick={() => cycleAttendance(c, s.id)}
+                                  className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border transition-colors bg-primary-container/50 border-primary/30 text-on-surface"
+                                >
+                                  <Avatar contact={c} size="sm" />
+                                  <span className="text-sm">{c.name}</span>
+                                </button>
+                              ))}
                             </div>
                           </div>
                           <div>

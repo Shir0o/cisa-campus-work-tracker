@@ -35,19 +35,18 @@ const contact = (overrides: Partial<Contact> = {}): Contact => ({
 });
 
 describe('here', () => {
-  it('is true for present or late, false for absent or unmarked', () => {
+  it('is true for present, false for absent, late, or unmarked', () => {
     const c = contact({ attendance: { present: true, late: 'late', absent: 'absent' } });
     expect(here(c, 'present')).toBe(true);
-    expect(here(c, 'late')).toBe(true);
+    expect(here(c, 'late')).toBe(false);
     expect(here(c, 'absent')).toBe(false);
     expect(here(c, 'unmarked')).toBe(false);
   });
 });
 
 describe('cycleAttendanceStatus', () => {
-  it('cycles present -> late -> absent -> present', () => {
-    expect(cycleAttendanceStatus(true)).toBe('late');
-    expect(cycleAttendanceStatus('late')).toBe('absent');
+  it('cycles present -> absent -> present', () => {
+    expect(cycleAttendanceStatus(true)).toBe('absent');
     expect(cycleAttendanceStatus('absent')).toBe(true);
   });
 
@@ -104,11 +103,11 @@ describe('avgAttendance', () => {
     expect(avgAttendance([contact()], [])).toBe(0);
   });
 
-  it('averages present+late slots per event', () => {
+  it('averages present slots per event', () => {
     const events = [event({ id: 'e1' }), event({ id: 'e2' })];
     const contacts = [
       contact({ id: 'a', attendance: { e1: true, e2: true } }),
-      contact({ id: 'b', attendance: { e1: 'late' } }),
+      contact({ id: 'b', attendance: { e1: true } }),
       contact({ id: 'c', attendance: { e1: 'absent' } }),
     ];
     // slots: a=2, b=1, c=0 -> 3 total / 2 events = 1.5 -> rounds to 2

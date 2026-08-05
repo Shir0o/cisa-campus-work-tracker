@@ -18,24 +18,20 @@ interface Row {
   key: string;
   id?: string; // present = existing type
   origName?: string;
-  origBlurb?: string;
   name: string;
-  blurb: string;
 }
 
 export default function ManageGatheringTypesModal({ isOpen, onClose, types }: ManageGatheringTypesModalProps) {
   const [rows, setRows] = useState<Row[]>([]);
   const [newName, setNewName] = useState('');
-  const [newBlurb, setNewBlurb] = useState('');
   const [saving, setSaving] = useState(false);
   const nextKey = useRef(0); // unique keys for freshly-added rows (per instance)
 
   // Snapshot the live types into an editable draft each time the modal opens.
   useEffect(() => {
     if (isOpen) {
-      setRows(types.map((t) => ({ key: `k${t.id}`, id: t.id, origName: t.name, origBlurb: t.blurb ?? '', name: t.name, blurb: t.blurb ?? '' })));
+      setRows(types.map((t) => ({ key: `k${t.id}`, id: t.id, origName: t.name, name: t.name })));
       setNewName('');
-      setNewBlurb('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -56,9 +52,8 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
   const addRow = () => {
     const name = newName.trim();
     if (!name || nameExists(name)) return;
-    setRows((rs) => [...rs, { key: `n${nextKey.current++}`, name, blurb: newBlurb.trim() }]);
+    setRows((rs) => [...rs, { key: `n${nextKey.current++}`, name }]);
     setNewName('');
-    setNewBlurb('');
   };
 
   const handleSave = async () => {
@@ -71,14 +66,13 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
       // Removals: existing types no longer in the draft.
       types.forEach((t) => { if (!keptIds.has(t.id)) ops.push(removeGatheringType(t.id)); });
 
-      // Renames / blurb edits + additions.
+      // Renames + additions.
       keep.forEach((r, i) => {
         const name = r.name.trim();
-        const blurb = r.blurb.trim();
         if (!r.id) {
-          ops.push(addGatheringType({ name, blurb, order: types.length + i }));
-        } else if (name !== r.origName || blurb !== (r.origBlurb ?? '')) {
-          ops.push(updateGatheringType(r.id, { name, blurb }, r.origName));
+          ops.push(addGatheringType({ name, order: types.length + i }));
+        } else if (name !== r.origName) {
+          ops.push(updateGatheringType(r.id, { name }, r.origName));
         }
       });
 
@@ -135,12 +129,6 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                     value={r.name}
                     onChange={(e) => setRow(r.key, { name: e.target.value })}
                     placeholder="Name"
-                    className="w-32 shrink-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  />
-                  <input
-                    value={r.blurb}
-                    onChange={(e) => setRow(r.key, { blurb: e.target.value })}
-                    placeholder="A short description"
                     className="flex-1 min-w-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
                   />
                   <button
@@ -160,14 +148,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') addRow(); }}
-                  placeholder="New kind, e.g. Prayer Walk"
-                  className="w-32 shrink-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                />
-                <input
-                  value={newBlurb}
-                  onChange={(e) => setNewBlurb(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') addRow(); }}
-                  placeholder="A short description"
+                  placeholder="New kind, e.g. Workshop"
                   className="flex-1 min-w-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
                 />
                 <button
