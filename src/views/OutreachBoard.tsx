@@ -36,6 +36,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
+import { journeyContacts } from '../lib/permissions';
 import {
   collection,
   collectionGroup,
@@ -171,7 +172,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 export default function OutreachBoard() {
   const { setSelectedContact, openNewContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, role } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
@@ -423,7 +424,9 @@ export default function OutreachBoard() {
   const [filterRole, setFilterRole] = useState<string>('All');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-  const filteredContacts = boardContacts.filter(c => {
+  const visibleJourneyContacts = journeyContacts(role, user?.uid, boardContacts, 'Fall 2026');
+
+  const filteredContacts = visibleJourneyContacts.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.role.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email.toLowerCase().includes(searchQuery.toLowerCase());

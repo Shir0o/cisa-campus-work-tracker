@@ -5,12 +5,14 @@ import {
   THREAD_KINDS,
   THREAD_REACTIONS,
   threadsFor,
+  repliesOf,
   countFor,
   addThreadMessage,
   toggleReaction,
   subscribeThreads,
   subscribeAllThreads,
   useThreads,
+  useAllThreads,
   type ThreadMessage,
 } from "../lib/threads";
 import { sendNotification } from "../lib/firebase";
@@ -257,22 +259,38 @@ describe("subscribeThreads", () => {
     expect(messages[1]).toMatchObject({ id: "m2", kind: "comment", from: "", reactions: [] });
   });
 });
+describe("repliesOf helper", () => {
+  it("filters replies belonging to a parentId", () => {
+    const msgs = [
+      msg({ id: "m1", parentId: null }),
+      msg({ id: "r1", parentId: "m1" }),
+      msg({ id: "r2", parentId: "m1" }),
+      msg({ id: "m2", parentId: null }),
+    ];
+    expect(repliesOf(msgs, "m1").map((m) => m.id)).toEqual(["r1", "r2"]);
+    expect(repliesOf(msgs, "m2")).toEqual([]);
+  });
+});
 
-describe("useThreads", () => {
+describe("useAllThreads hook", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("returns live messages for a contact and [] when no contactId", async () => {
+  it("subscribes to all threads using useAllThreads", async () => {
     vi.mocked(onSnapshot).mockImplementation((_q: unknown, next: unknown) => {
       (next as (s: unknown) => void)({
-        docs: [{ id: "m1", data: () => msg({ id: "m1" }) }],
+        docs: [
+          {
+            id: "m1",
+            ref: { parent: { parent: { id: "c1" } } },
+            data: () => msg({ id: "m1" }),
+          },
+        ],
       });
       return () => {};
     });
 
-    const { result } = renderHook(() => useThreads("C-1"));
+    const { result } = renderHook(() => useAllThreads());
     await waitFor(() => expect(result.current).toHaveLength(1));
-
-    const { result: empty } = renderHook(() => useThreads(undefined));
-    expect(empty.current).toEqual([]);
+    expect(result.current[0].contactId).toBe("c1");
   });
 });

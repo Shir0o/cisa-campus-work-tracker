@@ -1,70 +1,204 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  Bell,
-  Heart,
-  MessageSquare,
-  Pencil,
-  Send,
-  type LucideIcon,
-} from "lucide-react";
+import React, { useRef, useState } from "react";
+import { MessageSquare, Send } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
 import { useAuth } from "./AuthProvider";
-import { isTrainee } from "../lib/walking";
 import {
-  THREAD_KINDS,
   THREAD_REACTIONS,
-  type ThreadKind,
-  type ThreadTone,
   addThreadMessage,
+  repliesOf,
   threadsFor,
   toggleReaction,
   useThreads,
+  type ThreadMessage,
 } from "../lib/threads";
 
-// "Walking together" — a light vertical conversation between a trainee and the
-// full-timer walking with them, on a contact (interactionId null) or on one
-// logged interaction. Reuses the History/notification tonal-node look. No word
-// "mentor" anywhere.
-
-const KIND_ICON: Record<ThreadKind, LucideIcon> = {
-  note: Pencil,
-  comment: MessageSquare,
-  question: MessageSquare,
-  encouragement: Heart,
-  nudge: Bell,
-};
-
-const TONE_NODE: Record<ThreadTone, string> = {
-  accent: "text-stage-accent bg-stage-accent-soft",
-  teal: "text-stage-teal bg-stage-teal-soft",
-  amber: "text-stage-amber bg-stage-amber-soft",
-  violet: "text-stage-violet bg-stage-violet-soft",
-  warn: "text-warning bg-warning/10",
-};
-
-const TONE_TEXT: Record<ThreadTone, string> = {
-  accent: "text-stage-accent",
-  teal: "text-stage-teal",
-  amber: "text-stage-amber",
-  violet: "text-stage-violet",
-  warn: "text-warning",
-};
-
-// Compose kinds shift with who's looking: a trainee leans note/question; the
-// full-timer leans comment/encourage/nudge. Both can post anything.
-const TRAINEE_KINDS: ThreadKind[] = ["note", "question", "comment", "encouragement"];
-const FULLTIMER_KINDS: ThreadKind[] = ["comment", "encouragement", "question", "nudge"];
-
 const firstName = (name?: string) => (name || "Someone").trim().split(/\s+/)[0];
+const getInitials = (name?: string) => {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
 
 interface ThreadProps {
   contactId: string;
   interactionId?: string | null;
   meStaffId: string;
-  // The other party in the walk — pinged on the bell when a message is posted.
   recipientUid?: string | null;
   contactName?: string;
   compact?: boolean;
+  scope?: "team" | null;
+}
+
+interface ThrRowProps {
+  m: ThreadMessage;
+  meStaffId: string;
+  contactId: string;
+  children?: React.ReactNode;
+}
+
+function ThrRow({ m, meStaffId, contactId, children }: ThrRowProps) {
+  const mine = m.from === meStaffId;
+
+  const reactions = m.reactions || [];
+  const tally: Record<string, number> = {};
+  for (const r of reactions) tally[r.emoji] = (tally[r.emoji] || 0) + 1;
+  const reactedByMe = (emoji: string) =>
+    reactions.some((r) => r.emoji === emoji && r.by === meStaffId);
+  const unused = THREAD_REACTIONS.filter((e) => !tally[e]);
+
+  return (
+    <div className={cn("flex gap-3", mine && "flex-row-reverse")}>
+      <div
+        className="w-8 h-8 rounded-full bg-stage-accent/20 text-stage-accent font-semibold text-xs grid place-items-center flex-none"
+        aria-hidden
+      >
+        {getInitials(m.fromName)}
+      </div>
+
+      <div className={cn("min-w-0 flex-1", mine && "text-right")}>
+        <div className="flex items-baseline gap-2 flex-wrap text-xs text-on-surface-variant mb-1">
+          <span className="font-semibold text-on-surface">
+            {mine ? "You" : firstName(m.fromName)}
+          </span>
+          <span>{relTime(m.at)}</span>
+        </div>
+
+        <div
+          className={cn(
+            "p-3 rounded-2xl text-sm leading-relaxed text-on-surface whitespace-pre-wrap border text-left inline-block max-w-full",
+            mine
+              ? "bg-stage-accent-soft border-stage-accent/20 rounded-tr-none"
+              : "bg-surface-container-high border-outline-variant/30 rounded-tl-none",
+          )}
+        >
+          {m.body}
+        </div>
+
+        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+          {Object.keys(tally).map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => toggleReaction(contactId, m.id, meStaffId, emoji)}
+              title="React"
+              className={cn(
+                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors",
+                reactedByMe(emoji)
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-outline-variant/50 text-on-surface-variant hover:border-outline-variant",
+              )}
+            >
+              <span>{emoji}</span>
+              <span className="font-semibold tabular-nums">{tally[emoji]}</span>
+            </button>
+          ))}
+          {unused.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 opacity-60 hover:opacity-100 transition-opacity">
+              {unused.map((emoji) => (
+                <button
+                  key={emoji}
+                  onClick={() => toggleReaction(contactId, m.id, meStaffId, emoji)}
+                  title="Add reaction"
+                  className="w-6 h-6 grid place-items-center rounded-full text-xs text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                >
+                  {emoji}
+                </button>
+              ))}
+            </span>
+          )}
+        </div>
+
+        {children}
+      </div>
+    </div>
+  );
+}
+
+interface ThreadMsgProps {
+  m: ThreadMessage;
+  meStaffId: string;
+  contactId: string;
+  recipientUid?: string | null;
+  contactName?: string;
+}
+
+function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: ThreadMsgProps) {
+  const { user } = useAuth();
+  const allMessages = useThreads(contactId);
+  const replies = repliesOf(allMessages, m.id);
+  const [replying, setReplying] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const sendReply = () => {
+    const body = draft.trim();
+    if (!body) return;
+    void addThreadMessage(
+      contactId,
+      {
+        interactionId: m.interactionId,
+        parentId: m.id,
+        scope: m.scope,
+        from: meStaffId,
+        fromName: user?.displayName || "Someone",
+        kind: "comment",
+        body,
+      },
+      { to: recipientUid, contactName },
+    );
+    setDraft("");
+    setReplying(false);
+  };
+
+  return (
+    <div className="space-y-2">
+      <ThrRow m={m} meStaffId={meStaffId} contactId={contactId}>
+        <button
+          onClick={() => setReplying(!replying)}
+          className="mt-1 inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+        >
+          <MessageSquare className="w-3 h-3" />
+          {replying ? "Cancel reply" : replies.length > 0 ? `${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : "Reply"}
+        </button>
+      </ThrRow>
+
+      {(replies.length > 0 || replying) && (
+        <div className="pl-6 border-l-2 border-outline-variant/30 space-y-3 mt-2">
+          {replies.map((r) => (
+            <ThrRow key={r.id} m={r} meStaffId={meStaffId} contactId={contactId} />
+          ))}
+
+          {replying && (
+            <div className="pt-2">
+              <textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Write a reply…"
+                rows={2}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault();
+                    sendReply();
+                  }
+                }}
+                className="w-full p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
+              />
+              <div className="mt-1.5 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-on-surface-variant/60">⌘↵ to reply</span>
+                <button
+                  onClick={sendReply}
+                  disabled={!draft.trim()}
+                  className="inline-flex items-center gap-1 px-2.5 h-7 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 transition disabled:opacity-50"
+                >
+                  <Send className="w-3 h-3" /> Reply
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export default function Thread({
@@ -74,21 +208,14 @@ export default function Thread({
   recipientUid = null,
   contactName,
   compact = false,
+  scope = null,
 }: ThreadProps) {
   const { user } = useAuth();
   const allMessages = useThreads(contactId);
-  const messages = threadsFor(allMessages, interactionId);
+  const messages = threadsFor(allMessages, interactionId, scope);
 
-  const composeKinds = isTrainee(meStaffId) ? TRAINEE_KINDS : FULLTIMER_KINDS;
-  const [kind, setKind] = useState<ThreadKind>(composeKinds[0]);
   const [draft, setDraft] = useState("");
   const taRef = useRef<HTMLTextAreaElement>(null);
-
-  // Keep the selected kind valid if the viewer's available kinds change.
-  useEffect(() => {
-    if (!composeKinds.includes(kind)) setKind(composeKinds[0]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [meStaffId]);
 
   const post = () => {
     const body = draft.trim();
@@ -100,9 +227,10 @@ export default function Thread({
       contactId,
       {
         interactionId,
+        scope,
         from: meStaffId,
         fromName: user?.displayName || "Someone",
-        kind,
+        kind: "comment",
         body,
       },
       { to: recipientUid, contactName },
@@ -111,140 +239,39 @@ export default function Thread({
   };
 
   const placeholder =
-    kind === "question"
-      ? `Ask ${isTrainee(meStaffId) ? "your full-timer" : "them"} a question…`
-      : kind === "encouragement"
-        ? "Say something encouraging…"
-        : kind === "nudge"
-          ? "Nudge a follow-up…"
-          : kind === "note"
-            ? "Leave a note…"
-            : "Add a comment…";
+    scope === "team"
+      ? "Add to the team's discussion…"
+      : compact
+        ? "Add a comment…"
+        : "Add a comment…";
 
   return (
     <div className="flex flex-col">
       {messages.length === 0 ? (
         <div className="text-sm italic text-on-surface-variant/70 pb-3">
           {compact
-            ? "No notes on this conversation yet."
-            : "Nothing here yet — start the conversation below."}
+            ? "No comments on this interaction yet."
+            : scope === "team"
+              ? "Nothing here yet — start the team's discussion below."
+              : "Nothing here yet — leave the first comment below."}
         </div>
       ) : (
-        <div className={cn("flex flex-col", compact ? "gap-3" : "gap-4")}>
-          {messages.map((m) => {
-            const meta = THREAD_KINDS[m.kind] ?? THREAD_KINDS.comment;
-            const Icon = KIND_ICON[m.kind] ?? MessageSquare;
-            const mine = m.from === meStaffId;
-
-            const tally: Record<string, number> = {};
-            for (const r of m.reactions) tally[r.emoji] = (tally[r.emoji] || 0) + 1;
-            const reactedByMe = (emoji: string) =>
-              m.reactions.some((r) => r.emoji === emoji && r.by === meStaffId);
-            const unused = THREAD_REACTIONS.filter((e) => !tally[e]);
-
-            return (
-              <div key={m.id} className={cn("flex", compact ? "gap-2.5" : "gap-3")}>
-                <span
-                  className={cn(
-                    "flex-none grid place-items-center rounded-[9px] mt-0.5",
-                    compact ? "w-[26px] h-[26px]" : "w-[30px] h-[30px]",
-                    TONE_NODE[meta.tone],
-                  )}
-                  aria-hidden
-                >
-                  <Icon className={compact ? "w-3.5 h-3.5" : "w-[15px] h-[15px]"} />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2 flex-wrap">
-                    <span className="text-sm font-semibold text-on-surface">
-                      {mine ? "You" : firstName(m.fromName)}
-                    </span>
-                    <span
-                      className={cn(
-                        "text-[10.5px] font-bold uppercase tracking-wider",
-                        TONE_TEXT[meta.tone],
-                      )}
-                    >
-                      {meta.label}
-                    </span>
-                    <span className="text-[11.5px] text-on-surface-variant">
-                      {relTime(m.at)}
-                    </span>
-                  </div>
-
-                  <div
-                    className={cn(
-                      "mt-1 p-3 rounded-2xl rounded-tl-none text-sm leading-relaxed text-on-surface whitespace-pre-wrap border",
-                      mine
-                        ? "bg-stage-accent-soft border-stage-accent/20"
-                        : "bg-surface-container-high border-outline-variant/30",
-                      m.kind === "nudge" && "border-l-2 border-l-warning",
-                    )}
-                  >
-                    {m.body}
-                  </div>
-
-                  <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                    {Object.keys(tally).map((emoji) => (
-                      <button
-                        key={emoji}
-                        onClick={() => toggleReaction(contactId, m.id, meStaffId, emoji)}
-                        title="React"
-                        className={cn(
-                          "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors",
-                          reactedByMe(emoji)
-                            ? "border-primary/40 bg-primary/10 text-primary"
-                            : "border-outline-variant/50 text-on-surface-variant hover:border-outline-variant",
-                        )}
-                      >
-                        <span>{emoji}</span>
-                        <span className="font-semibold tabular-nums">{tally[emoji]}</span>
-                      </button>
-                    ))}
-                    {unused.length > 0 && (
-                      <span className="inline-flex items-center gap-0.5">
-                        {unused.map((emoji) => (
-                          <button
-                            key={emoji}
-                            onClick={() =>
-                              toggleReaction(contactId, m.id, meStaffId, emoji)
-                            }
-                            title="Add reaction"
-                            className="w-6 h-6 grid place-items-center rounded-full text-sm text-on-surface-variant/40 hover:bg-surface-container-high hover:text-on-surface transition-colors"
-                          >
-                            {emoji}
-                          </button>
-                        ))}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className={cn("flex flex-col space-y-4", compact && "space-y-3")}>
+          {messages.map((m) => (
+            <ThreadMsg
+              key={m.id}
+              m={m}
+              meStaffId={meStaffId}
+              contactId={contactId}
+              recipientUid={recipientUid}
+              contactName={contactName}
+            />
+          ))}
         </div>
       )}
 
       {/* Compose */}
       <div className={cn(messages.length > 0 && "mt-4")}>
-        <div className="flex flex-wrap gap-1.5">
-          {composeKinds.map((kk) => (
-            <button
-              key={kk}
-              onClick={() => setKind(kk)}
-              className={cn(
-                "px-2.5 py-1 rounded-full border text-xs font-medium transition-colors",
-                kind === kk
-                  ? "border-primary/30 bg-primary/10 text-primary"
-                  : "border-outline-variant text-on-surface-variant hover:text-on-surface",
-              )}
-            >
-              {THREAD_KINDS[kk].label}
-            </button>
-          ))}
-        </div>
-
         <textarea
           ref={taRef}
           value={draft}
@@ -257,7 +284,7 @@ export default function Thread({
               post();
             }
           }}
-          className="w-full mt-2 p-3 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
+          className="w-full p-3 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
         />
 
         <div className="mt-2 flex items-center justify-between gap-2">
@@ -267,10 +294,11 @@ export default function Thread({
             disabled={!draft.trim()}
             className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-50"
           >
-            <Send className="w-3.5 h-3.5" /> Post
+            <Send className="w-3.5 h-3.5" /> Comment
           </button>
         </div>
       </div>
     </div>
   );
 }
+

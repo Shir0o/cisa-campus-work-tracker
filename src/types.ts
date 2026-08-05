@@ -31,7 +31,10 @@ export interface Contact {
   major?: string;
   instagram?: string;
   howHeard?: string;
-  interests?: string[];
+  addedBy?: string;
+  owner?: string;
+  coCreators?: string[];
+  season?: string;
   prayerRequest?: string;
 }
 
