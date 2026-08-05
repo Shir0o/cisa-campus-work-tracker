@@ -192,10 +192,10 @@ export default function Attendance() {
     }
   };
 
-  // here = present or late
+  // here = present
   const here = (c: Contact, eventId: string) => {
     const s = c.attendance?.[eventId];
-    return s === true || s === 'late';
+    return s === true;
   };
 
   // Tapping a name cycles present → absent → present.
