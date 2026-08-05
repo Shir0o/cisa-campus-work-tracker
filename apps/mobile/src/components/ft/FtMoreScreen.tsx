@@ -9,7 +9,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel } from '@cisa/core';
+import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel, type AppRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
@@ -24,7 +24,7 @@ export function FtMoreScreen() {
 
 function FtMore() {
   const { c, font, radius, shadow, fs } = useV2Theme();
-  const { user, role } = useAuth();
+  const { user, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
   const router = useRouter();
 
   return (
@@ -99,6 +99,74 @@ function FtMore() {
             </Pressable>
           ))}
         </View>
+
+        {isOwner && (
+          <View style={{ marginTop: 22 }}>
+            <Text
+              style={{
+                fontFamily: font.bold,
+                fontSize: fs(10.5),
+                letterSpacing: 1.26,
+                textTransform: 'uppercase',
+                color: c.roomInk3,
+                marginBottom: 8,
+              }}
+            >
+              See their view
+            </Text>
+            <View style={{ backgroundColor: c.card, borderRadius: radius.tile, padding: 14, gap: 8, ...shadow.soft }}>
+              {[
+                { key: 'admin', label: 'Full-timer' },
+                { key: 'manager', label: 'Trainee' },
+                { key: 'operator', label: 'Student' },
+                { key: 'viewer', label: 'Community' },
+              ].map((r) => {
+                const on = (ownerViewRole || 'admin') === r.key;
+                return (
+                  <Pressable
+                    key={r.key}
+                    onPress={() => setOwnerViewRole(r.key === 'admin' && !ownerViewRole ? null : (r.key as AppRole))}
+                    style={({ pressed }) => ({
+                      minHeight: 44,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingHorizontal: 14,
+                      borderRadius: radius.button,
+                      borderWidth: 1.5,
+                      borderColor: on ? c.cardInk : c.line,
+                      backgroundColor: on ? c.roomChip : 'transparent',
+                      opacity: pressed ? 0.7 : 1,
+                    })}
+                  >
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.cardInk }}>
+                      {r.label}
+                    </Text>
+                    {on && <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk }}>✓ Active</Text>}
+                  </Pressable>
+                );
+              })}
+              {ownerViewRole && (
+                <Pressable
+                  onPress={() => setOwnerViewRole(null)}
+                  style={({ pressed }) => ({
+                    minHeight: 44,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: radius.button,
+                    backgroundColor: c.cardInk,
+                    opacity: pressed ? 0.7 : 1,
+                    marginTop: 4,
+                  })}
+                >
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card }}>
+                    Reset to Full-timer view
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+        )}
 
         <Text
           style={{
