@@ -50,13 +50,18 @@ export function impInits(name: string): string {
     .toUpperCase();
 }
 
-export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
-  const id = s.uid || s.id || '';
-  const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
-  let cleanName = rawName;
+export function cleanCisaName(name: string): string {
+  let cleanName = name || '';
   if (cleanName.toLowerCase().startsWith('cisa-')) {
     cleanName = cleanName.replace(/\s*\([^)]*\)$/, '').trim();
   }
+  return cleanName;
+}
+
+export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
+  const id = s.uid || s.id || '';
+  const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
+  const cleanName = cleanCisaName(rawName);
   const roleStr = s.role || 'admin';
   const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
 
@@ -113,10 +118,7 @@ export function impPersonaTarget(k: string): ImpersonateTarget | null {
 }
 
 export function impContactTarget(c: { id: string; name: string; year?: string; major?: string; owner?: string }): ImpersonateTarget {
-  let cleanName = c.name || '';
-  if (cleanName.toLowerCase().startsWith('cisa-')) {
-    cleanName = cleanName.replace(/\s*\([^)]*\)$/, '').trim();
-  }
+  const cleanName = cleanCisaName(c.name);
   const sub = [c.year, c.major].filter(Boolean).join(' · ');
   const initials = impInits(cleanName);
   return {

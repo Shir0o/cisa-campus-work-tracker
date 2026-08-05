@@ -8,6 +8,7 @@ import {
   impContactTarget,
   impFirst,
   impInits,
+  cleanCisaName,
   DEFAULT_TEST_ACCOUNTS,
 } from '../lib/impersonate';
 import ImpersonatePicker from '../components/layout/ImpersonatePicker';
@@ -53,6 +54,9 @@ describe('Impersonation Data & Helpers', () => {
     expect(impInits('')).toBe('');
     expect(impInits('  ')).toBe('');
     expect(impPersonaTarget('invalid')).toBeNull();
+    expect(cleanCisaName('cisa-admin (Test Full-timer)')).toBe('cisa-admin');
+    expect(cleanCisaName('cisa-trainee')).toBe('cisa-trainee');
+    expect(cleanCisaName('John Doe')).toBe('John Doe');
   });
 
   it('resolves staff targets correctly', () => {
