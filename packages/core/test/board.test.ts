@@ -11,6 +11,8 @@ import {
   isTrashedBoardDoc,
   docSortOrder,
   parseDocNotes,
+  parseDocTasks,
+  collectDocTaskNodes,
   mdPreview,
   mdOpenTasks,
   boardRowLine,
@@ -116,6 +118,22 @@ More text
       { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
       { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
     ]);
+  });
+});
+
+describe('parseDocTasks & collectDocTaskNodes edge cases', () => {
+  it('skips task lines without a valid task ID format', () => {
+    const md = '- [ ] Just plain text without id tag';
+    expect(parseDocTasks(md)).toEqual([]);
+  });
+
+  it('returns empty array when taskItem has no textblock child', () => {
+    const mockDoc = {
+      descendants: (cb: (node: any, pos: number) => void) => {
+        cb({ type: { name: 'taskItem' }, firstChild: null }, 0);
+      },
+    } as any;
+    expect(collectDocTaskNodes(mockDoc)).toEqual([]);
   });
 });
 
