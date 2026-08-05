@@ -121,7 +121,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
           content: notes,
           createdAt: serverTimestamp(),
           createdById: user?.uid,
-          createdByName: user?.displayName || 'Tony Wang',
+          createdByName: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
           contactId,
           contactName: contact?.name || 'Unknown'
         });
@@ -130,7 +130,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
         const contactRef = doc(db, 'contacts', contactId);
         batch.update(contactRef, {
           lastSeen: date,
-          lastContactedBy: user?.displayName || 'Tony Wang',
+          lastContactedBy: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
           lastContactedById: user?.uid || null,
           lastContactedDate: date,
           updatedAt: serverTimestamp()

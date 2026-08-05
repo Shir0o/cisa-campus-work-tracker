@@ -69,6 +69,18 @@ interface ContactDetailsModalProps {
   initialInteractionId?: string | null;
 }
 
+function formatCreatedDate(val: unknown): string {
+  if (!val) return '—';
+  if (typeof val === 'object' && val !== null && 'toDate' in val && typeof (val as { toDate: () => Date }).toDate === 'function') {
+    return (val as { toDate: () => Date }).toDate().toLocaleDateString();
+  }
+  if (typeof val === 'object' && val !== null && 'seconds' in val && typeof (val as { seconds: number }).seconds === 'number') {
+    return new Date((val as { seconds: number }).seconds * 1000).toLocaleDateString();
+  }
+  const d = new Date(val as string | number);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+}
+
 function AuditActivityItem({
   activity,
   isLast,
@@ -724,10 +736,6 @@ export default function ContactDetailsModal({
         lastContactedDate: newInteraction.dateTime,
         updatedAt: serverTimestamp(),
       });
-      contact.lastSeen = newInteraction.dateTime;
-      contact.lastContactedBy = userName;
-      contact.lastContactedById = user.uid;
-      contact.lastContactedDate = newInteraction.dateTime;
 
       logActivity({
         action: "logged an interaction for",
@@ -1680,10 +1688,7 @@ export default function ContactDetailsModal({
                             {contact.lastContactedBy ? ` · Contacted by ${contact.lastContactedBy}` : ""}
                           </span>
                           <span className="text-xs text-on-surface-variant/50">
-                            Added{" "}
-                            {contact.createdAt
-                              ? new Date(contact.createdAt).toLocaleDateString()
-                              : "—"}
+                            Added {formatCreatedDate(contact.createdAt)}
                             {(contact.createdByName || contact.addedBy)
                               ? ` by ${contact.createdByName || contact.addedBy}`
                               : ""}
