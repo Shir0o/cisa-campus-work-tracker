@@ -66,8 +66,8 @@ export default function Messages() {
   // User details cache (to show correct names for direct chats)
   const [usersCache, setUsersCache] = useState<Record<string, { displayName: string; photoURL?: string }>>({});
 
-  // Auto-scroll ref
-  const messageEndRef = useRef<HTMLDivElement>(null);
+  // Auto-scroll ref for messages stream container
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   // Mention system state
   const [mentionSearch, setMentionSearch] = useState<string | null>(null);
@@ -154,10 +154,10 @@ export default function Messages() {
       // Mark as read in LocalStorage
       localStorage.setItem(`chat_read_${activeRoomId}`, Date.now().toString());
 
-      // Scroll to bottom
+      // Scroll messages stream container to bottom without jumping page
       setTimeout(() => {
-        if (typeof messageEndRef.current?.scrollIntoView === 'function') {
-          messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
         }
       }, 100);
     }, (error) => {
@@ -571,7 +571,7 @@ export default function Messages() {
             </div>
 
             {/* Messages Stream */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-surface-container-lowest">
+            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-surface-container-lowest">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
                   <MessageSquare className="w-10 h-10 text-outline" />
@@ -705,7 +705,6 @@ export default function Messages() {
                   </div>
                 ))
               )}
-              <div ref={messageEndRef} />
             </div>
 
             {/* Composer tray (for mentions & attachments list) */}
