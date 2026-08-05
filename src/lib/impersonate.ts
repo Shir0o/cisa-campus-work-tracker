@@ -13,10 +13,10 @@ export interface StaffItem {
 }
 
 export const DEFAULT_TEST_ACCOUNTS: StaffItem[] = [
-  { id: 'cisa-admin', name: 'cisa-admin (Test Full-timer)', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
-  { id: 'cisa-trainee', name: 'cisa-trainee (Test Trainee)', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
-  { id: 'cisa-student', name: 'cisa-student (Test Student)', email: 'cisa-student@cisa.campus', role: 'Student', isTrainee: false },
-  { id: 'cisa-community', name: 'cisa-community (Test Community)', email: 'cisa-community@cisa.campus', role: 'Community', isTrainee: false },
+  { id: 'cisa-admin', name: 'cisa-admin', email: 'cisa-admin@cisa.campus', role: 'Full-timer', isTrainee: false },
+  { id: 'cisa-trainee', name: 'cisa-trainee', email: 'cisa-trainee@cisa.campus', role: 'Trainee', isTrainee: true },
+  { id: 'cisa-student', name: 'cisa-student', email: 'cisa-student@cisa.campus', role: 'Student', isTrainee: false },
+  { id: 'cisa-community', name: 'cisa-community', email: 'cisa-community@cisa.campus', role: 'Community', isTrainee: false },
 ];
 
 export const DEFAULT_STAFF: StaffItem[] = DEFAULT_TEST_ACCOUNTS;
@@ -50,9 +50,18 @@ export function impInits(name: string): string {
     .toUpperCase();
 }
 
+export function cleanCisaName(name: string): string {
+  let cleanName = name || '';
+  if (cleanName.toLowerCase().startsWith('cisa-')) {
+    cleanName = cleanName.replace(/\s*\([^)]*\)$/, '').trim();
+  }
+  return cleanName;
+}
+
 export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   const id = s.uid || s.id || '';
   const rawName = s.displayName || s.name || (s.email ? s.email.split('@')[0] : 'Team Member');
+  const cleanName = cleanCisaName(rawName);
   const roleStr = s.role || 'admin';
   const isTrainee = !!s.isTrainee || roleStr === 'manager' || roleStr === 'Trainee';
 
@@ -71,20 +80,20 @@ export function impStaffTarget(s: StaffItem | any): ImpersonateTarget {
   };
   const roleLabel = roleLabelMap[roleKey] || 'Full-timer';
 
-  const initials = s.initials || impInits(rawName);
+  const initials = s.initials || impInits(cleanName);
   const sub = s.email ? `${roleLabel} · ${s.email}` : s.sub || roleLabel;
 
   return {
     key: `staff:${id}`,
-    name: rawName,
+    name: cleanName,
     initials,
     sub,
     note: isTrainee ? "The trainee's workspace" : 'The full workspace',
     role: roleKey,
     persona: {
       id: isTrainee ? 'trainee' : 'ft',
-      name: rawName,
-      first: impFirst(rawName),
+      name: cleanName,
+      first: impFirst(cleanName),
       initials,
       role: roleLabel,
       roleShort: isTrainee ? 'In training' : 'Full-time',
@@ -109,19 +118,20 @@ export function impPersonaTarget(k: string): ImpersonateTarget | null {
 }
 
 export function impContactTarget(c: { id: string; name: string; year?: string; major?: string; owner?: string }): ImpersonateTarget {
+  const cleanName = cleanCisaName(c.name);
   const sub = [c.year, c.major].filter(Boolean).join(' · ');
-  const initials = impInits(c.name);
+  const initials = impInits(cleanName);
   return {
     key: `contact:${c.id}`,
-    name: c.name,
+    name: cleanName,
     initials,
     sub: sub || 'Student',
     note: "A student's own window",
     role: 'operator',
     persona: {
       id: 'student',
-      name: c.name,
-      first: impFirst(c.name),
+      name: cleanName,
+      first: impFirst(cleanName),
       initials,
       role: 'Student',
       roleShort: 'Student',

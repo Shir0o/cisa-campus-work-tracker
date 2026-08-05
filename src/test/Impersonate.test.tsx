@@ -8,6 +8,7 @@ import {
   impContactTarget,
   impFirst,
   impInits,
+  cleanCisaName,
   DEFAULT_TEST_ACCOUNTS,
 } from '../lib/impersonate';
 import ImpersonatePicker from '../components/layout/ImpersonatePicker';
@@ -53,19 +54,32 @@ describe('Impersonation Data & Helpers', () => {
     expect(impInits('')).toBe('');
     expect(impInits('  ')).toBe('');
     expect(impPersonaTarget('invalid')).toBeNull();
+    expect(cleanCisaName('cisa-admin (Test Full-timer)')).toBe('cisa-admin');
+    expect(cleanCisaName('cisa-trainee')).toBe('cisa-trainee');
+    expect(cleanCisaName('John Doe')).toBe('John Doe');
   });
 
   it('resolves staff targets correctly', () => {
     const target = Impersonation.resolve('staff:cisa-admin');
     expect(target).not.toBeNull();
-    expect(target?.name).toContain('cisa-admin');
+    expect(target?.name).toBe('cisa-admin');
+    expect(target?.name).not.toContain('(Test');
     expect(target?.role).toBe('admin');
 
     const traineeTarget = Impersonation.resolve('staff:cisa-trainee');
-    expect(traineeTarget?.name).toContain('cisa-trainee');
+    expect(traineeTarget?.name).toBe('cisa-trainee');
+    expect(traineeTarget?.name).not.toContain('(Test');
     expect(traineeTarget?.role).toBe('manager');
 
     expect(Impersonation.resolve('staff:nonexistent')).toBeNull();
+  });
+
+  it('strips (Test *) suffixes from cisa-* names in impStaffTarget and impContactTarget', () => {
+    const staffTarget = impStaffTarget({ id: 'cisa-admin', name: 'cisa-admin (Test Full-timer)' });
+    expect(staffTarget.name).toBe('cisa-admin');
+
+    const contactTarget = impContactTarget({ id: 'cisa-student', name: 'cisa-student (Test Student)' });
+    expect(contactTarget.name).toBe('cisa-student');
   });
 
   it('resolves custom user targets correctly when passed users array', () => {
