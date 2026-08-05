@@ -10,6 +10,7 @@ import {
   boardLevelForRole,
   isTrashedBoardDoc,
   docSortOrder,
+  parseDocNotes,
   mdPreview,
   mdOpenTasks,
   boardRowLine,
@@ -98,6 +99,23 @@ describe('docSortOrder', () => {
     const d1 = { id: '1', date: '2026-06-18', pinned: true, pinnedOrder: 1 } as BoardDoc;
     const d2 = { id: '2', date: '2026-06-16', pinned: true, pinnedOrder: 0 } as BoardDoc;
     expect([d1, d2].sort(docSortOrder).map((d) => d.id)).toEqual(['2', '1']);
+  });
+});
+
+describe('parseDocNotes', () => {
+  it('parses note comments with and without type from markdown', () => {
+    const md = `
+# Title
+Some text
+<!-- note:n-1 type:learning -->
+More text
+<!-- note:n-2 -->
+    `;
+    const notes = parseDocNotes(md);
+    expect(notes).toEqual([
+      { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
+      { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
+    ]);
   });
 });
 
