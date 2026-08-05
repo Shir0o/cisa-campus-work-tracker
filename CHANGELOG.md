@@ -6,6 +6,9 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 
+### Added
+- **iOS EAS Distribution Configuration** — Configured `apps/mobile/GoogleService-Info.plist` and `google-services.json` from Firebase (`sac-campus-hub` / `com.cisa.campus`), and added `testflight` and `production` store distribution profiles to `apps/mobile/eas.json`.
+
 ### Changed
 - **"See as Their View" Header Eye Icon Button & Real Firestore Data Integration** — Replaced the top yellow banner (`OwnerViewBanner`) with an Eye icon button placed next to the notification bell in `TopBar.tsx`. Updated `ImpersonatePicker` and `impersonate.ts` to load real team members (`users` collection) and real roster contacts (`contacts` collection) from Firestore instead of hardcoded design mock names. Explicitly enabled selecting `cisa-*` test fixture accounts in the impersonation target picker as test accounts for view simulation.
 - **Updated Board Page (`/coordination`) Promotion Label & Full Screen Mode Controls** — Updated the page promotion action button label from `"Save to archive"` to `"Keep as a note"` across the Board editor header (`CoordinationNotes.tsx`, `EmbedCoordinationDoc.tsx`), tooltips, and unit tests (`CoordinationNotes.test.tsx`). Enhanced full screen mode to include native browser full screen toggle ("Whole screen") when in full screen mode, aligned button tooltips/aria-labels with the design spec (`views/board.jsx`), and updated `Esc` key handling.
