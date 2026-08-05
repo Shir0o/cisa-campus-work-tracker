@@ -947,5 +947,23 @@ describe('Messages View Component', () => {
         expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument();
       });
     });
+
+    it('scrolls the messages container to bottom without calling window.scrollTo or scrollIntoView on page load', async () => {
+      const scrollIntoViewSpy = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoViewSpy;
+
+      const { container } = renderWithAnnouncement();
+
+      const roomBtn = screen.getByText('Weekly notes').closest('button');
+      fireEvent.click(roomBtn!);
+
+      await waitFor(() => {
+        const messagesStream = container.querySelector('.overflow-y-auto.p-6');
+        expect(messagesStream).toBeTruthy();
+      });
+
+      // Verify scrollIntoView was NOT called (preventing outer page jump)
+      expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    });
   });
 });
