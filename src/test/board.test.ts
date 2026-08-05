@@ -11,6 +11,9 @@ import {
   dayNum,
   docByDateDesc,
   docSortOrder,
+  parseDocNotes,
+  parseDocTasks,
+  collectDocTaskNodes,
   newDocMarkdown,
   audienceOf,
   boardLevelForRole,
@@ -182,11 +185,52 @@ describe('Board Pure Helpers', () => {
       const sorted = [d1, d2].sort(docSortOrder);
       expect(sorted.map((d) => d.date)).toEqual(['2026-06-18', '2026-06-16']);
     });
+
+    it('respects pinnedOrder for pinned docs when specified', () => {
+      const d1 = { id: '1', date: '2026-06-18', pinned: true, pinnedOrder: 1 } as BoardDoc;
+      const d2 = { id: '2', date: '2026-06-16', pinned: true, pinnedOrder: 0 } as BoardDoc;
+
+      const sorted = [d1, d2].sort(docSortOrder);
+      expect(sorted.map((d) => d.id)).toEqual(['2', '1']);
+    });
   });
 
   describe('newDocMarkdown', () => {
     it('returns the starter markdown content', () => {
       expect(newDocMarkdown()).toContain('# Untitled page');
+    });
+  });
+
+  describe('parseDocNotes', () => {
+    it('parses note comments with and without type from markdown', () => {
+      const md = `
+# Title
+Some text
+<!-- note:n-1 type:learning -->
+More text
+<!-- note:n-2 -->
+      `;
+      const notes = parseDocNotes(md);
+      expect(notes).toEqual([
+        { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
+        { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
+      ]);
+    });
+  });
+
+  describe('parseDocTasks & collectDocTaskNodes edge cases', () => {
+    it('skips task lines without a valid task ID format', () => {
+      const md = '- [ ] Just plain text without id tag';
+      expect(parseDocTasks(md)).toEqual([]);
+    });
+
+    it('returns empty array when taskItem has no textblock child', () => {
+      const mockDoc = {
+        descendants: (cb: (node: any, pos: number) => void) => {
+          cb({ type: { name: 'taskItem' }, firstChild: null }, 0);
+        },
+      } as any;
+      expect(collectDocTaskNodes(mockDoc)).toEqual([]);
     });
   });
 

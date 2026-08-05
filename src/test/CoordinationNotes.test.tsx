@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, where } from 'firebase/firestore';
 import { remove as dbRemove } from 'firebase/database';
-import CoordinationNotes from '../views/CoordinationNotes';
+import CoordinationNotes, { SuggestedTaskCard } from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
 import { logActivity } from '../lib/firebase';
 
@@ -543,7 +543,7 @@ describe('CoordinationNotes', () => {
       fireEvent.click(pinButtons[0]);
 
       await waitFor(() => {
-        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), { pinned: true });
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pinned: true }));
       });
     });
 
@@ -567,6 +567,30 @@ describe('CoordinationNotes', () => {
       expect(screen.getByText('Pinned')).toBeInTheDocument();
       const titles = screen.getAllByText(/Pinned today doc|— Monday/).map((el) => el.textContent);
       expect(titles[0]).toBe('Pinned today doc');
+    });
+
+    it('unpins a pinned page when clicking its pin toggle', async () => {
+      const pinnedTodayDoc = {
+        id: 'doc-pinned',
+        data: () => ({
+          title: 'Pinned today doc',
+          date: today,
+          weekday: 'Monday',
+          md: '',
+          pinned: true,
+          createdBy: 'u-admin',
+          updatedAt: 'mock-ts',
+        }),
+      };
+      setupSnapshots({ docs: [pinnedTodayDoc], notes: [], team: mockTeam });
+      render(<CoordinationNotes />);
+
+      const unpinButton = await screen.findByTitle('Unpin');
+      fireEvent.click(unpinButton);
+
+      await waitFor(() => {
+        expect(updateDoc).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ pinned: false, pinnedOrder: null }));
+      });
     });
 
     it('does not show a pin toggle for non-admins', async () => {
@@ -2093,6 +2117,163 @@ describe('CoordinationNotes', () => {
       // Trigger fullscreenchange when no element is in fullscreen
       fireEvent(document, new Event('fullscreenchange'));
       expect(workspace).toHaveClass('fixed');
+    });
+  });
+
+  describe('Pinned pages & reordering', () => {
+    it('lands on the top pinned document when opening /coordination', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
+      const mockDocs = [
+        {
+          id: 'doc-today',
+          data: () => ({
+            title: 'Unpinned Today Meeting',
+            date: today,
+            weekday: 'Wednesday',
+            audience: 'team',
+            md: 'Content today',
+            pinned: false,
+            createdBy: 'u-1',
+            updatedAt: today,
+          }),
+        },
+        {
+          id: 'doc-pinned-1',
+          data: () => ({
+            title: 'Top Pinned Page',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            audience: 'team',
+            md: 'Content pinned 1',
+            pinned: true,
+            pinnedOrder: 0,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-01',
+          }),
+        },
+        {
+          id: 'doc-pinned-2',
+          data: () => ({
+            title: 'Second Pinned Page',
+            date: '2026-06-02',
+            weekday: 'Tuesday',
+            audience: 'team',
+            md: 'Content pinned 2',
+            pinned: true,
+            pinnedOrder: 1,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-02',
+          }),
+        },
+      ];
+
+      setupSnapshots({ docs: mockDocs });
+      render(<CoordinationNotes />);
+
+      // Top pinned doc should be active on load
+      await waitFor(() => {
+        expect(screen.getByDisplayValue('Top Pinned Page')).toBeInTheDocument();
+      });
+    });
+
+    it('renders drag handles for pinned pages when editing enabled', async () => {
+      (useAuth as ReturnType<typeof vi.fn>).mockReturnValue(adminAuth);
+      const mockDocs = [
+        {
+          id: 'pinned-1',
+          data: () => ({
+            title: 'Pinned Doc A',
+            date: '2026-06-01',
+            weekday: 'Monday',
+            audience: 'team',
+            md: 'Content A',
+            pinned: true,
+            pinnedOrder: 0,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-01',
+          }),
+        },
+        {
+          id: 'pinned-2',
+          data: () => ({
+            title: 'Pinned Doc B',
+            date: '2026-06-02',
+            weekday: 'Tuesday',
+            audience: 'team',
+            md: 'Content B',
+            pinned: true,
+            pinnedOrder: 1,
+            createdBy: 'u-1',
+            updatedAt: '2026-06-02',
+          }),
+        },
+      ];
+
+      setupSnapshots({ docs: mockDocs });
+      render(<CoordinationNotes />);
+
+      const dragBtnA = await screen.findByRole('button', { name: /drag to reorder pinned doc a/i });
+      expect(dragBtnA).toBeInTheDocument();
+    });
+  });
+
+  describe('SuggestedTaskCard', () => {
+    const mockTask = {
+      title: 'Follow up with student',
+      dueDate: '2026-08-10',
+      priority: 'high',
+      assigneeId: 'u-1',
+      contactId: 'c-1',
+    };
+
+    it('renders task card and calls onSaveTask when submitted', async () => {
+      const onSaveTask = vi.fn().mockResolvedValue(undefined);
+      const onAdd = vi.fn();
+      const onDismiss = vi.fn();
+
+      render(
+        <SuggestedTaskCard
+          task={mockTask}
+          isAdded={false}
+          contacts={[{ id: 'c-1', name: 'John' } as any]}
+          team={[{ uid: 'u-1', name: 'Alice' } as any]}
+          meUid="u-1"
+          onAdd={onAdd}
+          onDismiss={onDismiss}
+          onSaveTask={onSaveTask}
+        />,
+      );
+
+      expect(screen.getByDisplayValue('Follow up with student')).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /add task/i }));
+
+      await waitFor(() => {
+        expect(onSaveTask).toHaveBeenCalledWith({
+          title: 'Follow up with student',
+          dueDate: '2026-08-10',
+          priority: 'high',
+          contactId: 'c-1',
+          assigneeId: 'u-1',
+        });
+        expect(onAdd).toHaveBeenCalled();
+      });
+    });
+
+    it('renders isAdded state correctly', () => {
+      render(
+        <SuggestedTaskCard
+          task={mockTask}
+          isAdded={true}
+          contacts={[]}
+          team={[]}
+          meUid="u-1"
+          onAdd={vi.fn()}
+          onDismiss={vi.fn()}
+          onSaveTask={vi.fn()}
+        />,
+      );
+
+      expect(screen.getByText('Added')).toBeInTheDocument();
     });
   });
 

@@ -123,4 +123,13 @@ describe('CoordinationTrash', () => {
 
     expect(deleteBoardDoc).not.toHaveBeenCalled();
   });
+
+  it('handles firestore error in onSnapshot', () => {
+    (onSnapshot as ReturnType<typeof vi.fn>).mockImplementationOnce((_q, _next, errCb) => {
+      errCb(new Error('Permission denied'));
+      return vi.fn();
+    });
+    render(<CoordinationTrash />);
+    expect(screen.queryByTestId('skeleton')).not.toBeInTheDocument();
+  });
 });

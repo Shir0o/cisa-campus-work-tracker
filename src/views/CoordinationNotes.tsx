@@ -21,7 +21,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, rtdb, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
-import { softDeleteBoardDoc, restoreBoardDoc, pinBoardDoc } from '../lib/data/board';
+import { softDeleteBoardDoc, restoreBoardDoc, pinBoardDoc, reorderPinnedBoardDocs } from '../lib/data/board';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { Link, useLocation } from 'react-router-dom';
@@ -30,6 +30,21 @@ import { cn, getUserInitials } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import CoordinationNotesMobile from './CoordinationNotesMobile';
 import { Skeleton } from '../components/ui/Skeleton';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   Plus,
   Search,
@@ -64,6 +79,7 @@ import {
   RotateCw,
   Link2,
   Pin,
+  GripVertical,
   Archive,
   Edit3,
   Maximize2,
@@ -857,17 +873,20 @@ export default function CoordinationNotes() {
     };
   }, [canView, canEdit, canSeeNotes, role]);
 
-  // keep a sensible page focused: today → soonest upcoming → most recent
+  // keep a sensible page focused: top pinned → today → soonest upcoming → most recent
   useEffect(() => {
     if (docs.length === 0) {
       if (activeId !== null) setActiveId(null);
       return;
     }
     if (activeId && docs.some((d) => d.id === activeId)) return;
-    const desc = [...docs].sort(docByDateDesc);
-    const today = desc.find((d) => sessionStatus(d.date) === 'today');
-    const upcoming = [...desc].reverse().find((d) => sessionStatus(d.date) === 'upcoming');
-    setActiveId((today || upcoming || desc[0]).id);
+    const sorted = [...docs].sort(docSortOrder);
+    const topPinned = sorted.find((d) => d.pinned);
+    const today = sorted.find((d) => sessionStatus(d.date) === 'today');
+    const upcoming = [...sorted].reverse().find((d) => sessionStatus(d.date) === 'upcoming');
+    const target = topPinned || today || upcoming || sorted[0];
+    setActiveId(target.id);
+    document.getElementById('coordination-notes-panel')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }, [docs, activeId]);
 
   // Deep-link from a to-do's source link on My Day: focus the page it came from.
@@ -922,6 +941,35 @@ export default function CoordinationNotes() {
   }, [docs]);
 
   const active = docs.find((d) => d.id === activeId) || null;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 4 },
+    }),
+  );
+
+  const handlePinnedDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const pinnedDocs = grouped['Pinned'] || [];
+    const oldIndex = pinnedDocs.findIndex((d) => d.id === active.id);
+    const newIndex = pinnedDocs.findIndex((d) => d.id === over.id);
+    if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(pinnedDocs, oldIndex, newIndex);
+
+    const orderMap = new Map(reordered.map((doc, idx) => [doc.id, idx]));
+    setDocs((prevDocs) =>
+      prevDocs.map((doc) => (orderMap.has(doc.id) ? { ...doc, pinnedOrder: orderMap.get(doc.id) } : doc)),
+    );
+
+    try {
+      await reorderPinnedBoardDocs(reordered);
+    } catch (e) {
+      handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
+    }
+  };
 
   // ── mutations ──────────────────────────────────────────────────────────────
   const createDoc = async () => {
@@ -1570,24 +1618,59 @@ export default function CoordinationNotes() {
                 {DOC_GROUPS.map((g) => {
                   const items = grouped[g] || [];
                   if (!items.length) return null;
+                  const isPinnedGroup = g === 'Pinned';
                   return (
                     <div key={g} className="lg:mt-1.5 shrink-0 lg:shrink">
                       <div className="hidden lg:block text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 px-2 pt-3 pb-1.5">
                         {g}
                       </div>
-                      <div className="flex lg:block gap-2 lg:gap-0">
-                        {items.map((d) => (
-                          <DocRow
-                            key={d.id}
-                            d={d}
-                            active={d.id === activeId}
-                            canEdit={canEdit}
-                            liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
-                            onClick={() => setActiveId(d.id)}
-                            onTogglePin={isAdmin ? () => pinBoardDoc(d, !d.pinned) : undefined}
-                          />
-                        ))}
-                      </div>
+                      {isPinnedGroup ? (
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePinnedDragEnd}>
+                          <SortableContext items={items.map((d) => d.id)} strategy={verticalListSortingStrategy}>
+                            <div className="flex lg:block gap-2 lg:gap-0">
+                              {items.map((d) => (
+                                <SortableDocRow
+                                  key={d.id}
+                                  d={d}
+                                  active={d.id === activeId}
+                                  canEdit={canEdit}
+                                  liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
+                                  onClick={() => setActiveId(d.id)}
+                                  onTogglePin={
+                                    canEdit
+                                      ? () => {
+                                          const nextOrder = (grouped['Pinned'] || []).length;
+                                          pinBoardDoc(d, !d.pinned, d.pinned ? undefined : nextOrder);
+                                        }
+                                      : undefined
+                                  }
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </DndContext>
+                      ) : (
+                        <div className="flex lg:block gap-2 lg:gap-0">
+                          {items.map((d) => (
+                            <DocRow
+                              key={d.id}
+                              d={d}
+                              active={d.id === activeId}
+                              canEdit={canEdit}
+                              liveMd={d.id === activeId ? liveActiveMd ?? undefined : undefined}
+                              onClick={() => setActiveId(d.id)}
+                              onTogglePin={
+                                canEdit
+                                  ? () => {
+                                      const nextOrder = (grouped['Pinned'] || []).length;
+                                      pinBoardDoc(d, !d.pinned, d.pinned ? undefined : nextOrder);
+                                    }
+                                  : undefined
+                              }
+                            />
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1797,7 +1880,7 @@ export default function CoordinationNotes() {
 }
 
 // ── Pages list row ────────────────────────────────────────────────────────────
-function DocRow({
+function SortableDocRow({
   d,
   active,
   canEdit,
@@ -1811,6 +1894,48 @@ function DocRow({
   liveMd?: string;
   onClick: () => void;
   onTogglePin?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: d.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.6 : 1,
+    zIndex: isDragging ? 20 : 1,
+    position: 'relative',
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <DocRow
+        d={d}
+        active={active}
+        canEdit={canEdit}
+        liveMd={liveMd}
+        onClick={onClick}
+        onTogglePin={onTogglePin}
+        dragHandleProps={canEdit ? { ...attributes, ...listeners } : undefined}
+      />
+    </div>
+  );
+}
+
+function DocRow({
+  d,
+  active,
+  canEdit,
+  liveMd,
+  onClick,
+  onTogglePin,
+  dragHandleProps,
+}: {
+  d: BoardDoc;
+  active: boolean;
+  canEdit: boolean;
+  liveMd?: string;
+  onClick: () => void;
+  onTogglePin?: () => void;
+  dragHandleProps?: Record<string, any>;
 }) {
   const md = liveMd ?? d.md;
   const open = mdOpenTasks(md);
@@ -1833,7 +1958,7 @@ function DocRow({
           </span>
         </span>
         <span className="min-w-0 flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-5">{d.title}</span>
+          <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-12">{d.title}</span>
           <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{d.summary || mdSummary(md)}</span>
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
@@ -1850,22 +1975,35 @@ function DocRow({
           </span>
         </span>
       </button>
-      {onTogglePin && (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onTogglePin();
-          }}
-          title={d.pinned ? 'Unpin' : 'Pin to top'}
-          aria-label={d.pinned ? 'Unpin' : 'Pin to top'}
-          className={cn(
-            'absolute top-0.5 right-0.5 p-2 rounded-md transition-colors',
-            d.pinned ? 'text-stage-accent' : 'text-on-surface-variant/50 opacity-0 group-hover:opacity-100 hover:text-stage-accent',
-          )}
-        >
-          <Pin className="w-3.5 h-3.5" fill={d.pinned ? 'currentColor' : 'none'} />
-        </button>
-      )}
+      <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5">
+        {dragHandleProps && (
+          <button
+            {...dragHandleProps}
+            type="button"
+            title="Drag to reorder pinned page"
+            aria-label={`Drag to reorder ${d.title}`}
+            className="p-2 rounded-md text-on-surface-variant/40 opacity-0 group-hover:opacity-100 hover:text-stage-accent cursor-grab active:cursor-grabbing transition-colors"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {onTogglePin && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onTogglePin();
+            }}
+            title={d.pinned ? 'Unpin' : 'Pin to top'}
+            aria-label={d.pinned ? 'Unpin' : 'Pin to top'}
+            className={cn(
+              'p-2 rounded-md transition-colors',
+              d.pinned ? 'text-stage-accent' : 'text-on-surface-variant/50 opacity-0 group-hover:opacity-100 hover:text-stage-accent',
+            )}
+          >
+            <Pin className="w-3.5 h-3.5" fill={d.pinned ? 'currentColor' : 'none'} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -3360,7 +3498,7 @@ export function NoteForm({
 }
 
 // ── Suggested Task card inside AI Insights sidebar ────────────────────────────
-function SuggestedTaskCard({
+export function SuggestedTaskCard({
   task,
   isAdded,
   contacts,

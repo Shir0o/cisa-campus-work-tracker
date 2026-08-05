@@ -29,6 +29,7 @@ import {
   restoreBoardDoc,
   deleteBoardDoc,
   pinBoardDoc,
+  reorderPinnedBoardDocs,
   purgeExpiredTrash,
 } from '../lib/data/board';
 
@@ -88,8 +89,19 @@ describe('pinBoardDoc', () => {
     await pinBoardDoc({ id: 'doc-4' }, true);
     expect(updateDoc).toHaveBeenCalledWith(
       { path: 'board_docs/doc-4' },
-      { pinned: true },
+      { pinned: true, pinnedOrder: null },
     );
+  });
+});
+
+describe('reorderPinnedBoardDocs', () => {
+  it('calls updateDoc with pinnedOrder for each doc', async () => {
+    (updateDoc as ReturnType<typeof vi.fn>).mockClear();
+    await reorderPinnedBoardDocs([{ id: 'a' }, { id: 'b' }, { id: 'c' }]);
+    expect(updateDoc).toHaveBeenCalledTimes(3);
+    expect(updateDoc).toHaveBeenCalledWith({ path: 'board_docs/a' }, { pinnedOrder: 0 });
+    expect(updateDoc).toHaveBeenCalledWith({ path: 'board_docs/b' }, { pinnedOrder: 1 });
+    expect(updateDoc).toHaveBeenCalledWith({ path: 'board_docs/c' }, { pinnedOrder: 2 });
   });
 });
 
