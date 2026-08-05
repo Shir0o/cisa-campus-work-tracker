@@ -12,12 +12,11 @@ export function here(contact: Contact, eventId: string): boolean {
   return s === true || s === "late";
 }
 
-/** Tapping a name cycles present → late → absent → present. Anyone missed
+/** Tapping a name cycles present → absent → present. Anyone missed
  * (absent or unmarked) jumps to present on the first tap. */
 export function cycleAttendanceStatus(current: AttendanceStatus | undefined): AttendanceStatus {
-  if (current === true) return "late";
-  if (current === "late") return "absent";
-  return true; // 'absent' or undefined → present
+  if (current === true) return "absent";
+  return true; // 'absent', 'late', or undefined → present
 }
 
 /** Gatherings newest first, ties broken by `order`. */

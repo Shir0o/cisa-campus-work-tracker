@@ -45,9 +45,8 @@ describe('here', () => {
 });
 
 describe('cycleAttendanceStatus', () => {
-  it('cycles present -> late -> absent -> present', () => {
-    expect(cycleAttendanceStatus(true)).toBe('late');
-    expect(cycleAttendanceStatus('late')).toBe('absent');
+  it('cycles present -> absent -> present', () => {
+    expect(cycleAttendanceStatus(true)).toBe('absent');
     expect(cycleAttendanceStatus('absent')).toBe(true);
   });
 

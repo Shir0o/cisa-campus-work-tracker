@@ -38,12 +38,12 @@ describe('ManageGatheringTypesModal', () => {
     const onClose = vi.fn();
     render(<ManageGatheringTypesModal isOpen onClose={onClose} types={TYPES} />);
 
-    fireEvent.change(screen.getByPlaceholderText(/New kind/i), { target: { value: 'Prayer Walk' } });
+    fireEvent.change(screen.getByPlaceholderText(/New kind/i), { target: { value: 'Workshop' } });
     fireEvent.click(screen.getByRole('button', { name: /Add/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(addGatheringType).toHaveBeenCalled());
-    expect(addGatheringType).toHaveBeenCalledWith(expect.objectContaining({ name: 'Prayer Walk' }));
+    expect(addGatheringType).toHaveBeenCalledWith(expect.objectContaining({ name: 'Workshop' }));
     expect(onClose).toHaveBeenCalled();
   });
 
@@ -56,7 +56,7 @@ describe('ManageGatheringTypesModal', () => {
     await waitFor(() => expect(updateGatheringType).toHaveBeenCalled());
     expect(updateGatheringType).toHaveBeenCalledWith(
       't1',
-      { name: 'Friday Gathering', blurb: 'Friday night' },
+      { name: 'Friday Gathering' },
       'Weekly',
     );
   });

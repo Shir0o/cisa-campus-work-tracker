@@ -192,7 +192,7 @@ describe('Attendance', () => {
     });
 
     // Select the 'Small Group' filter (pills now show the managed type names)
-    const smallGroupsFilter = screen.getByText('Small Group');
+    const smallGroupsFilter = screen.getByRole('button', { name: 'Small Group' });
     fireEvent.click(smallGroupsFilter);
 
     expect(screen.queryByText('Friday Gathering 1')).not.toBeInTheDocument();

@@ -289,10 +289,8 @@ function RosterSheet({
   setConfirmDeleteId,
   onClose,
 }: RosterSheetProps) {
-  const present = contacts.filter((c) => c.attendance?.[session.id] === true);
-  const late = contacts.filter((c) => c.attendance?.[session.id] === 'late');
+  const present = contacts.filter((c) => here(c, session.id));
   const absent = contacts.filter((c) => c.attendance?.[session.id] === 'absent');
-  const cameAll = [...present, ...late];
 
   const meta = `${session.type} ${session.location ? '· ' + session.location : ''}`;
 
@@ -323,7 +321,6 @@ function RosterSheet({
         {/* Legend */}
         <div className="px-5 py-2 flex gap-4 text-xs font-semibold text-on-surface-variant border-b border-outline-variant/30 gthm-legend">
           <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-primary dot present"></i> here</span>
-          <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-stage-teal dot late"></i> late</span>
           <span className="flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-error dot absent"></i> missed</span>
           <span className="text-[11px] italic font-normal text-on-surface-variant/80 ml-auto gthm-legend-hint">Tap a name to cycle.</span>
         </div>
@@ -333,29 +330,22 @@ function RosterSheet({
           {/* Here */}
           <div className="gthm-rcol">
             <div className="text-xs font-bold uppercase tracking-wider text-on-surface-variant/80 mb-2 gthm-rcol-h">
-              Here <span className="text-xs px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-medium">{cameAll.length}</span>
+              Here <span className="text-xs px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container font-medium">{present.length}</span>
             </div>
-            {cameAll.length === 0 ? (
+            {present.length === 0 ? (
               <div className="py-4 text-xs italic text-on-surface-variant/80 text-center gth-empty">No one marked yet.</div>
             ) : (
               <div className="grid grid-cols-2 gap-2">
-                {cameAll.map((c) => {
-                  const isLate = c.attendance?.[session.id] === 'late';
-                  return (
-                    <button
-                      key={c.id}
-                      onClick={() => cycleAttendance(c, session.id)}
-                      className={cn(
-                        "flex items-center gap-2.5 p-2 rounded-xl border text-left bg-surface border-outline-variant hover:bg-surface-variant transition-colors gthm-person here",
-                        isLate && "border-stage-teal/40 bg-stage-teal-soft/20 is-late"
-                      )}
-                    >
-                      <Avatar contact={c} size="sm" />
-                      <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
-                      {isLate && <span className="text-[9px] font-semibold bg-stage-teal-soft text-stage-teal border border-stage-teal/20 px-1.5 py-0.5 rounded-full gth-late-tag">LATE</span>}
-                    </button>
-                  );
-                })}
+                {present.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => cycleAttendance(c, session.id)}
+                    className="flex items-center gap-2.5 p-2 rounded-xl border text-left bg-surface border-outline-variant hover:bg-surface-variant transition-colors gthm-person here"
+                  >
+                    <Avatar contact={c} size="sm" />
+                    <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
+                  </button>
+                ))}
               </div>
             )}
           </div>
