@@ -22,10 +22,11 @@ vi.mock("../lib/threads", () => {
   return {
     THREAD_KINDS,
     THREAD_REACTIONS: ["🙏", "❤️", "🌱", "✅"],
-    threadsFor: (msgs: any[], iid: any = null) =>
-      msgs.filter((m) => norm(m.interactionId) === norm(iid)),
-    countFor: (msgs: any[], iid: any = null) =>
-      msgs.filter((m) => norm(m.interactionId) === norm(iid)).length,
+    threadsFor: (msgs: any[], iid: any = null, scope: any = null) =>
+      msgs.filter((m) => norm(m.interactionId) === norm(iid) && norm(m.scope) === norm(scope) && !m.parentId),
+    countFor: (msgs: any[], iid: any = null, scope: any = null) =>
+      msgs.filter((m) => norm(m.interactionId) === norm(iid) && norm(m.scope) === norm(scope) && !m.parentId).length,
+    repliesOf: (msgs: any[], pid: string) => msgs.filter((m) => m.parentId === pid),
     useThreads: () => hoisted.messages,
     addThreadMessage: vi.fn(() => Promise.resolve()),
     toggleReaction: vi.fn(() => Promise.resolve()),
@@ -67,28 +68,13 @@ describe("Thread", () => {
     expect(screen.getByText("Zion")).toBeInTheDocument();
   });
 
-  it("shows full-timer compose kinds (incl. Follow-up/nudge)", () => {
-    render(<Thread contactId="C-1" meStaffId="u1" />);
-    expect(screen.getByRole("button", { name: "Follow-up" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Comment" })).toBeInTheDocument();
-    // a full-timer is not offered "Note"
-    expect(screen.queryByRole("button", { name: "Note" })).not.toBeInTheDocument();
-  });
-
-  it("shows trainee compose kinds (Note, no nudge)", () => {
-    vi.mocked(isTrainee).mockReturnValue(true);
-    render(<Thread contactId="C-1" meStaffId="u3" />);
-    expect(screen.getByRole("button", { name: "Note" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Follow-up" })).not.toBeInTheDocument();
-  });
-
-  it("posts a message with the current kind, author, and trimmed body", async () => {
+  it("posts a message with author and trimmed body", async () => {
     render(<Thread contactId="C-1" interactionId={null} meStaffId="u1" />);
     await userEvent.type(
       screen.getByPlaceholderText("Add a comment…"),
       "Great first contact",
     );
-    await userEvent.click(screen.getByRole("button", { name: /Post/ }));
+    await userEvent.click(screen.getByRole("button", { name: /Comment/ }));
     expect(addThreadMessage).toHaveBeenCalledWith(
       "C-1",
       {
@@ -97,6 +83,7 @@ describe("Thread", () => {
         fromName: "Tony Wang",
         kind: "comment",
         body: "Great first contact",
+        scope: null,
       },
       { to: null, contactName: undefined },
     );
@@ -113,13 +100,13 @@ describe("Thread", () => {
   it("renders an empty state when there are no messages", () => {
     render(<Thread contactId="C-1" meStaffId="u1" />);
     expect(
-      screen.getByText("Nothing here yet — start the conversation below."),
+      screen.getByText("Nothing here yet — leave the first comment below."),
     ).toBeInTheDocument();
   });
 
   it("renders the compact empty state for the inline per-interaction variant", () => {
     render(<Thread contactId="C-1" interactionId="I-1" meStaffId="u1" compact />);
-    expect(screen.getByText("No notes on this conversation yet.")).toBeInTheDocument();
+    expect(screen.getByText("No comments on this interaction yet.")).toBeInTheDocument();
   });
 
   it("shows reaction tallies and toggles the viewer's existing reaction", async () => {
@@ -146,9 +133,19 @@ describe("Thread", () => {
     );
   });
 
-  it("updates the placeholder when switching to the Question kind", async () => {
+  it("allows replying to a comment like a Slack thread", async () => {
+    hoisted.messages = [
+      message({ id: "m1", body: "Parent comment", from: "u2" }),
+    ];
     render(<Thread contactId="C-1" meStaffId="u1" />);
-    await userEvent.click(screen.getByRole("button", { name: "Question" }));
-    expect(screen.getByPlaceholderText("Ask them a question…")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Reply" }));
+    const replyInput = screen.getByPlaceholderText("Write a reply…");
+    await userEvent.type(replyInput, "Slack style reply");
+    await userEvent.click(screen.getByRole("button", { name: "Reply" }));
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      "C-1",
+      expect.objectContaining({ body: "Slack style reply", parentId: "m1" }),
+      expect.anything()
+    );
   });
 });

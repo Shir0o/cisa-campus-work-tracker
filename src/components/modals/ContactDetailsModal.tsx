@@ -21,6 +21,7 @@ import {
   Sparkles,
   Heart,
   Footprints,
+  Users,
 } from "lucide-react";
 import {
   db,
@@ -43,11 +44,14 @@ import {
   addDoc,
   serverTimestamp,
   Timestamp,
+  arrayUnion,
+  arrayRemove,
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
+import { canSeeContact, canSeeHistory } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
@@ -171,7 +175,7 @@ export default function ContactDetailsModal({
   initialTab,
   initialInteractionId,
 }: ContactDetailsModalProps) {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, role } = useAuth();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -184,9 +188,32 @@ export default function ContactDetailsModal({
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
+  const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string; initials: string }[]>([]);
+  const [sharing, setSharing] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "comments" | "history"
   >("overview");
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onSnapshot(collection(db, "users"), (snap) => {
+      setTeamMembers(
+        snap.docs.map((d) => {
+          const data = d.data();
+          const name = data.name || data.displayName || data.email || "Staff";
+          const parts = name.trim().split(/\s+/);
+          const initials = parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
+          return {
+            id: d.id,
+            name,
+            role: data.role === "admin" ? "Full-timer" : data.role === "manager" ? "Trainee" : "Staff",
+            initials,
+          };
+        })
+      );
+    });
+    return () => unsub();
+  }, [isOpen]);
   // Walking-together threads on this contact (live), + which interaction's
   // inline thread is expanded.
   const threadMessages = useThreads(contact?.id);
@@ -445,16 +472,77 @@ export default function ContactDetailsModal({
 
   if (!contact) return null;
 
-  // "Alongside" tab: when the viewer is the full-timer for a contact a trainee
-  // of theirs added, name the person they're alongside.
-  const viewerWalksWithAdder =
-    !!contact.createdBy && traineesOf(user?.uid).includes(contact.createdBy);
-  const walkLabel =
-    viewerWalksWithAdder && contact.createdByName
-      ? `Alongside ${contact.createdByName.split(" ")[0]}`
-      : "Alongside";
-  // The other party in the walk — pinged on the bell when a thread msg is posted.
-  const threadRecipient = walkingRecipient(user?.uid, contact.createdBy);
+  const hasAccess = canSeeContact(role, user?.uid, contact);
+  if (isOpen && !hasAccess) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+        <div className="w-full max-w-md bg-surface-container rounded-[28px] p-6 border border-outline-variant shadow-2xl text-on-surface">
+          <h2 className="font-serif text-xl font-semibold mb-2">Access Restricted</h2>
+          <p className="text-sm text-on-surface-variant mb-6">
+            You do not have permission to view this contact record.
+          </p>
+          <div className="flex justify-end">
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 transition-opacity"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const walkLabel = "Follow-up";
+  const threadRecipient = walkingRecipient(user?.uid, contact.createdBy || contact.addedBy);
+
+  const coCreators = contact.coCreators || [];
+  const sharedWith = teamMembers.filter((m) => coCreators.includes(m.id));
+  const ownerId = contact.owner || contact.createdBy || contact.addedBy;
+  const canShare = role === "admin" || ownerId === user?.uid;
+  const shareOptions = teamMembers.filter(
+    (m) => m.id !== ownerId && !coCreators.includes(m.id)
+  );
+
+  const addShare = async (staffId: string) => {
+    if (!contact) return;
+    const s = teamMembers.find((m) => m.id === staffId);
+    await updateDoc(doc(db, "contacts", contact.id), {
+      coCreators: arrayUnion(staffId),
+    });
+    contact.coCreators = [...(contact.coCreators || []), staffId];
+    if (s) {
+      await logActivity({
+        action: "shared a person",
+        targetId: contact.id,
+        targetName: `${s.name} can now see ${contact.name.split(" ")[0]}.`,
+        targetType: "contact",
+        type: "edit",
+        description: `Granted view access to ${s.name}`,
+      });
+    }
+    setSharing(false);
+  };
+
+  const removeShare = async (staffId: string) => {
+    if (!contact) return;
+    const s = teamMembers.find((m) => m.id === staffId);
+    await updateDoc(doc(db, "contacts", contact.id), {
+      coCreators: arrayRemove(staffId),
+    });
+    contact.coCreators = (contact.coCreators || []).filter((x) => x !== staffId);
+    if (s) {
+      await logActivity({
+        action: "unshared a person",
+        targetId: contact.id,
+        targetName: `${s.name} no longer sees ${contact.name.split(" ")[0]}.`,
+        targetType: "contact",
+        type: "edit",
+        description: `Removed view access for ${s.name}`,
+      });
+    }
+  };
 
   const handlePhoneBlur = () => {
     if (!formData.phone) {
@@ -1068,8 +1156,17 @@ export default function ContactDetailsModal({
             )}
 
             {/* Content Tab Switcher */}
-            {!isEditing && (
-              isMobile ? (
+            {!isEditing && (() => {
+              const visibleTabList = [
+                { id: "overview", label: "Overview" },
+                { id: "interactions", label: "Interactions", count: interactions.length },
+                { id: "thread", label: "Follow-up", count: countFor(threadMessages, null) },
+                { id: "prayer", label: "Prayer", count: prayers.length },
+                ...((role === "admin" || isAdmin) ? [{ id: "comments", label: "Discussion", count: countFor(threadMessages, null, "team") }] : []),
+                ...(canSeeHistory(role) ? [{ id: "history", label: "History" }] : []),
+              ];
+
+              return isMobile ? (
                 /* Mobile Dropdown Switcher */
                 <div className="cdm-switch sticky top-0 z-10 bg-surface border-t border-b border-outline-variant/35 px-5 py-2.5">
                   <div className="relative">
@@ -1078,12 +1175,11 @@ export default function ContactDetailsModal({
                       onChange={(e) => setActiveTab(e.target.value as any)}
                       className="w-full h-11 pl-4 pr-10 bg-surface-container-low border border-outline rounded-xl text-sm font-semibold appearance-none cursor-pointer text-on-surface cdm-select"
                     >
-                      <option value="overview">Overview</option>
-                      <option value="interactions">Conversations ({interactions.length})</option>
-                      <option value="thread">{walkLabel} ({countFor(threadMessages, null)})</option>
-                      <option value="prayer">Prayer ({prayers.length})</option>
-                      <option value="comments">Discussion ({comments.length})</option>
-                      <option value="history">History</option>
+                      {visibleTabList.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label} {"count" in t && t.count != null ? `(${t.count})` : ""}
+                        </option>
+                      ))}
                     </select>
                     <span className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-xs text-on-surface-variant/75 cdm-select-caret">
                       ▾
@@ -1093,39 +1189,32 @@ export default function ContactDetailsModal({
               ) : (
                 /* Desktop Tab Bar */
                 <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0 overflow-x-auto no-scrollbar">
-                {([
-                  { id: "overview", label: "Overview" },
-                  { id: "interactions", label: "Conversations", count: interactions.length },
-                  { id: "thread", label: walkLabel, count: countFor(threadMessages, null) },
-                  { id: "prayer", label: "Prayer", count: prayers.length },
-                  { id: "comments", label: "Discussion", count: comments.length },
-                  { id: "history", label: "History" },
-                ] as const).map((t) => (
-                  <button
-                    key={t.id}
-                    onClick={() => setActiveTab(t.id)}
-                    className={cn(
-                      "px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap",
-                      activeTab === t.id
-                        ? "text-primary"
-                        : "text-on-surface-variant/70 hover:text-on-surface",
-                    )}
-                  >
-                    {t.label}
-                    {"count" in t && t.count != null && (
-                      <span className="ml-1.5 text-on-surface-variant/50">{t.count}</span>
-                    )}
-                    {activeTab === t.id && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
-            )
-          )}
+                  {visibleTabList.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setActiveTab(t.id as any)}
+                      className={cn(
+                        "px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap",
+                        activeTab === t.id
+                          ? "text-primary"
+                          : "text-on-surface-variant/70 hover:text-on-surface",
+                      )}
+                    >
+                      {t.label}
+                      {"count" in t && t.count != null && (
+                        <span className="ml-1.5 text-on-surface-variant/50">{t.count}</span>
+                      )}
+                      {activeTab === t.id && (
+                        <motion.div
+                          layoutId="activeTab"
+                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
@@ -1493,6 +1582,80 @@ export default function ContactDetailsModal({
                         <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
                           {contact.notes ||
                             "No notes recorded for this contact yet."}
+                        </div>
+                      </div>
+
+                      {/* Who else can see them (coCreators) */}
+                      <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
+                        <div className="flex items-center justify-between gap-2 mb-3">
+                          <h3 className="font-serif text-lg text-on-surface flex items-center gap-2">
+                            <Users className="w-4 h-4 text-primary" /> Who else can see them
+                          </h3>
+                          {canShare && !sharing && (
+                            <button
+                              onClick={() => setSharing(true)}
+                              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Share
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {sharedWith.length === 0 ? (
+                            <p className="text-xs text-on-surface-variant/70 italic">
+                              Just {contact.createdByName ? contact.createdByName.split(" ")[0] : "you"} for now.
+                            </p>
+                          ) : (
+                            sharedWith.map((s) => (
+                              <div
+                                key={s.id}
+                                className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/30"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-7 h-7 rounded-full bg-primary/15 text-primary text-xs font-bold grid place-items-center">
+                                    {s.initials}
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-semibold text-on-surface">{s.name}</p>
+                                    <p className="text-[11px] text-on-surface-variant">{s.role}</p>
+                                  </div>
+                                </div>
+                                {canShare && (
+                                  <button
+                                    onClick={() => removeShare(s.id)}
+                                    className="w-6 h-6 rounded-full hover:bg-error/10 text-on-surface-variant hover:text-error grid place-items-center text-sm transition-colors"
+                                    title="Remove access"
+                                  >
+                                    ×
+                                  </button>
+                                )}
+                              </div>
+                            ))
+                          )}
+                          {sharing && (
+                            <div className="mt-3 flex items-center gap-2">
+                              <select
+                                onChange={(e) => {
+                                  if (e.target.value) addShare(e.target.value);
+                                }}
+                                defaultValue=""
+                                className="flex-1 h-9 px-3 rounded-xl bg-surface border border-outline text-xs text-on-surface"
+                              >
+                                <option value="" disabled>Select team member to share with…</option>
+                                {shareOptions.map((s) => (
+                                  <option key={s.id} value={s.id}>
+                                    {s.name} ({s.role})
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                onClick={() => setSharing(false)}
+                                className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -2027,7 +2190,7 @@ export default function ContactDetailsModal({
                     </motion.div>
                   )}
 
-                  {activeTab === "comments" && (
+                  {activeTab === "comments" && (role === "admin" || isAdmin) && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -2036,162 +2199,18 @@ export default function ContactDetailsModal({
                       <h3 className="font-serif text-lg text-on-surface px-2">
                         Team discussion
                       </h3>
-
-                      <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {commentsLoading ? (
-                          <div className="space-y-3">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="flex gap-3">
-                                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
-                                <div className="flex-1 space-y-2">
-                                  <Skeleton className="h-3 w-24 rounded-full" />
-                                  <Skeleton className="h-12 w-full rounded-xl" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : comments.length === 0 ? (
-                          <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
-                            <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
-                              No comments yet. Start the conversation.
-                            </p>
-                          </div>
-                        ) : (
-                          comments.filter((c) => !c.parentId).map((comment) => (
-                            <div key={comment.id} className="space-y-3">
-                              <div className="flex gap-3 group">
-                                <div className="shrink-0 mt-0.5">
-                                  {comment.userPhoto ? (
-                                    <img
-                                      src={comment.userPhoto}
-                                      alt={comment.userName}
-                                      className="w-8 h-8 rounded-full border border-outline-variant"
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  ) : (
-                                    <div className="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                      <UserCircle className="w-5 h-5" />
-                                    </div>
-                                  )}
-                                </div>
-                                <div className="flex-1">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-black text-on-surface uppercase tracking-tight">
-                                      {comment.userName}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-on-surface-variant/40">
-                                      {comment.createdAt
-                                        ? `${new Date(comment.createdAt).toLocaleDateString()} at ${new Date(comment.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                                        : "Sending..."}
-                                    </span>
-                                  </div>
-                                  <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                    {comment.text}
-                                  </div>
-                                  <div className="mt-1 flex items-center gap-4">
-                                    <button
-                                      type="button"
-                                      onClick={() => setReplyingTo(comment.id)}
-                                      className="text-[10px] font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1"
-                                    >
-                                      <MessageSquare className="w-3 h-3" /> Reply
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                              
-                              {/* Replies */}
-                              {comments.filter(c => c.parentId === comment.id).length > 0 && (
-                                <div className="ml-11 space-y-3 pl-4 border-l-2 border-outline-variant/30">
-                                  {comments.filter(c => c.parentId === comment.id).map(reply => (
-                                    <div key={reply.id} className="flex gap-3 group">
-                                      <div className="shrink-0 mt-0.5">
-                                        {reply.userPhoto ? (
-                                          <img
-                                            src={reply.userPhoto}
-                                            alt={reply.userName}
-                                            className="w-6 h-6 rounded-full border border-outline-variant"
-                                            referrerPolicy="no-referrer"
-                                          />
-                                        ) : (
-                                          <div className="w-6 h-6 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center">
-                                            <UserCircle className="w-4 h-4" />
-                                          </div>
-                                        )}
-                                      </div>
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <span className="text-[11px] font-black text-on-surface uppercase tracking-tight">
-                                            {reply.userName}
-                                          </span>
-                                          <span className="text-[9px] font-bold text-on-surface-variant/40">
-                                            {reply.createdAt
-                                              ? `${new Date(reply.createdAt).toLocaleDateString()} at ${new Date(reply.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                                              : "Sending..."}
-                                          </span>
-                                        </div>
-                                        <div className="p-2.5 rounded-2xl rounded-tl-none bg-surface-container text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors">
-                                          {reply.text}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* New Comment Input */}
-                      <form
-                        onSubmit={handleAddComment}
-                        className="relative mt-2"
-                      >
-                        {replyingTo && (
-                          <div className="flex items-center justify-between bg-surface-container px-4 py-2 rounded-t-[20px] mb-[-10px] pb-[14px]">
-                            <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1.5">
-                              <MessageSquare className="w-3 h-3" />
-                              Replying to {comments.find(c => c.id === replyingTo)?.userName}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setReplyingTo(null)}
-                              className="text-[10px] font-bold text-error hover:opacity-80"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        )}
-                        <div className="relative group">
-                          <textarea
-                            placeholder={replyingTo ? "Type your reply..." : "Add a comment to the discussion..."}
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                handleAddComment(e);
-                              }
-                            }}
-                            className="w-full min-h-[100px] p-4 pr-12 rounded-[24px] bg-surface-container-high border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
-                          />
-                          <button
-                            type="submit"
-                            disabled={submittingComment || !newComment.trim()}
-                            className="absolute right-3 bottom-3 p-2 bg-primary text-on-primary rounded-full shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
-                          >
-                            {submittingComment ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Send className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </form>
+                      <Thread
+                        contactId={contact.id}
+                        interactionId={null}
+                        meStaffId={user?.uid ?? ""}
+                        recipientUid={threadRecipient}
+                        contactName={contact.name}
+                        scope="team"
+                      />
                     </motion.div>
                   )}
+
+
 
                   {activeTab === "history" && (
                     <motion.div

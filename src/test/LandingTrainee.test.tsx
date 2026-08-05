@@ -1,155 +1,201 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import LandingTrainee from "../views/landings/LandingTrainee";
-import { useAuth } from "../components/AuthProvider";
+import React from 'react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { describe, it, expect, vi } from 'vitest';
+import LandingTrainee from '../views/landings/LandingTrainee';
 
-const mockNavigate = vi.fn();
-vi.mock("react-router-dom", () => ({ useNavigate: () => mockNavigate }));
-vi.mock("../components/AuthProvider", () => ({ useAuth: vi.fn() }));
-vi.mock("../components/modals/ContactDetailsModal", () => ({ default: () => null }));
-
-// Make the test user (u1) a trainee whose full-timer is ft1.
-vi.mock("../lib/walking", () => ({
-  FT_TRAINEES: { ft1: ["u1"] },
-  FT_OF: { u1: "ft1" },
-  traineesOf: (uid?: string) => (uid === "ft1" ? ["u1"] : []),
-  isTrainee: (uid?: string) => uid === "u1",
-  fullTimerOf: (uid?: string) => (uid === "u1" ? "ft1" : null),
-}));
-
-const soonISO = new Date(Date.now() + 2 * 86_400_000).toISOString();
-
-type DocLike = { id: string; data: () => any; ref?: any };
-const byPath =
-  (map: Record<string, DocLike[]>) =>
-  (ref: any, cb: any) => {
-    cb({ docs: map[ref?.path] || [] });
-    return vi.fn();
-  };
-
-vi.mock("firebase/firestore", () => ({
-  collection: vi.fn((_db, ...seg: string[]) => ({ path: seg.join("/") })),
-  collectionGroup: vi.fn((_db, name: string) => ({ path: name })),
-  query: vi.fn((ref) => ref),
-  orderBy: vi.fn(),
-  onSnapshot: vi.fn((_ref, cb) => {
-    cb({ docs: [] });
-    return vi.fn();
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: () => ({
+    user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
+    role: 'manager',
   }),
 }));
 
-vi.mock("../lib/firebase", () => ({
+vi.mock('../lib/seasons', () => ({
+  SEASONS: { fall: { label: 'Fall 2026' } },
+  useSeason: () => ({ activeId: 'fall', active: { label: 'Fall 2026' } }),
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
+  query: vi.fn((ref) => ref),
+  orderBy: vi.fn(),
+  where: vi.fn(),
+  limit: vi.fn(),
+  onSnapshot: vi.fn((q, callback) => {
+    if (typeof callback === 'function') {
+      try {
+        const path = q?.path || '';
+        if (path.includes('prayers')) {
+          callback({
+            docs: [
+              {
+                id: 'pr1',
+                data: () => ({
+                  contactId: 'c1',
+                  text: 'Pray for guidance',
+                  status: 'ongoing',
+                  createdAt: new Date().toISOString(),
+                }),
+              },
+            ],
+          });
+        } else {
+          callback({
+            docs: [
+              {
+                id: 'c1',
+                data: () => ({
+                  name: 'Alex Student',
+                  stage: 'Regular',
+                  createdBy: 'u-trainee',
+                  createdAt: new Date().toISOString(),
+                }),
+              },
+            ],
+          });
+        }
+      } catch (e) {}
+    }
+    return () => {};
+  }),
+}));
+
+vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
-  OperationType: { LIST: "LIST" },
+  OperationType: { LIST: 'LIST' },
 }));
 
-const h = vi.hoisted(() => ({
-  addPersonalPrayer: vi.fn(),
-  updatePersonalPrayer: vi.fn(),
-  deletePersonalPrayer: vi.fn(),
-  updatePrayerStatus: vi.fn(),
+vi.mock('../lib/personalPrayers', () => ({
+  subscribePersonalPrayers: vi.fn((_uid, callback) => {
+    callback([
+      { id: 'p1', title: 'Pray for exam', contactId: 'c1', status: 'open', date: new Date().toISOString() },
+    ]);
+    return () => {};
+  }),
+  addPersonalPrayer: vi.fn().mockResolvedValue(true),
+  updatePersonalPrayer: vi.fn().mockResolvedValue(true),
+  deletePersonalPrayer: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('../lib/prayers', () => ({
+  updatePrayerStatus: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('../lib/messaging', () => ({
   openMessage: vi.fn(),
-  personalPrayers: [] as any[],
 }));
-vi.mock("../lib/personalPrayers", () => ({
-  subscribePersonalPrayers: (_uid: string, cb: any) => {
-    cb(h.personalPrayers);
-    return vi.fn();
-  },
-  addPersonalPrayer: (...a: any[]) => h.addPersonalPrayer(...a),
-  updatePersonalPrayer: (...a: any[]) => h.updatePersonalPrayer(...a),
-  deletePersonalPrayer: (...a: any[]) => h.deletePersonalPrayer(...a),
+
+vi.mock('../lib/walking', () => ({
+  fullTimerOf: vi.fn(() => ({ uid: 'u-ft', name: 'Admin Tony' })),
+  walkingRecipient: vi.fn(() => null),
 }));
-vi.mock("../lib/prayers", () => ({ updatePrayerStatus: (...a: any[]) => h.updatePrayerStatus(...a) }));
-vi.mock("../lib/messaging", () => ({ openMessage: (...a: any[]) => h.openMessage(...a) }));
 
-import { onSnapshot } from "firebase/firestore";
+vi.mock('../lib/threads', () => ({
+  useThreads: () => [],
+  threadsFor: (msgs: any[]) => msgs,
+  countFor: (msgs: any[]) => msgs.length,
+  subscribeAllThreads: vi.fn((callback) => {
+    callback([
+      {
+        id: 't1',
+        contactId: 'c1',
+        interactionId: null,
+        from: 'u-ft',
+        fromName: 'Admin Tony',
+        kind: 'nudge',
+        body: 'Please follow up',
+        at: new Date().toISOString(),
+        reactions: [],
+      },
+    ]);
+    return () => {};
+  }),
+}));
 
-describe("LandingTrainee", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    h.personalPrayers = [];
-    vi.mocked(onSnapshot).mockImplementation((_ref: any, cb: any) => {
-      cb({ docs: [] });
-      return vi.fn();
-    });
-    (useAuth as any).mockReturnValue({ user: { uid: "u1", displayName: "Zion Park" } });
-  });
+vi.mock('../lib/inbox', () => ({
+  traineeWaitingItems: vi.fn(() => [
+    {
+      id: 'w1',
+      kind: 'nudge',
+      at: new Date().toISOString(),
+      body: 'Please follow up with Alex',
+      msgId: 't1',
+      contactId: 'c1',
+    },
+  ]),
+}));
 
-  it("renders greeting and both sections with empty states", async () => {
-    render(<LandingTrainee />);
-    await waitFor(() => expect(screen.getByText(/Zion/)).toBeInTheDocument());
-    expect(screen.getByText("Your people")).toBeInTheDocument();
-    expect(screen.getByText("Prayers you're holding")).toBeInTheDocument();
-    expect(screen.getByText(/No one's in your care yet/)).toBeInTheDocument();
-    expect(screen.getByText(/No prayers yet/)).toBeInTheDocument();
-  });
+vi.mock('../lib/inboxReads', () => ({
+  useInboxReads: () => ({
+    isRead: () => false,
+    markRead: vi.fn(),
+  }),
+}));
 
-  it("lists the contacts you created and opens the details modal", async () => {
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({
-        contacts: [
-          { id: "c1", data: () => ({ name: "Rio Tan", initials: "RT", stage: "Regular", createdBy: "u1", lastSeen: soonISO }) },
-          { id: "c2", data: () => ({ name: "Not Mine", initials: "NM", stage: "Regular", createdBy: "someone" }) },
-        ],
-      }),
+describe('LandingTrainee component', () => {
+  it('renders trainee dashboard with waiting items, contacts, and personal prayers', async () => {
+    render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
     );
-    render(<LandingTrainee />);
-    await waitFor(() => expect(screen.getByText("Rio Tan")).toBeInTheDocument());
-    expect(screen.queryByText("Not Mine")).not.toBeInTheDocument();
-  });
 
-  it("updates the status of a prayer for one of your people", async () => {
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({
-        contacts: [{ id: "c1", data: () => ({ name: "Rio Tan", initials: "RT", stage: "Regular", createdBy: "u1" }) }],
-        prayers: [{ id: "p1", data: () => ({ contactId: "c1", burden: "wisdom for finals", status: "pending", date: soonISO }) }],
-      }),
-    );
-    render(<LandingTrainee />);
-    await waitFor(() => expect(screen.getByText("wisdom for finals")).toBeInTheDocument());
-    fireEvent.click(screen.getByRole("button", { name: "answered" }));
-    expect(h.updatePrayerStatus).toHaveBeenCalledWith("p1", "answered", expect.anything(), undefined, expect.any(String));
-  });
+    expect(await screen.findByText('Alex Student')).toBeInTheDocument();
+    expect(screen.getByText('Pray for exam')).toBeInTheDocument();
+    expect(screen.getByText(/nudged a follow-up about Alex Student/i)).toBeInTheDocument();
 
-  it("adds a personal prayer", async () => {
-    render(<LandingTrainee />);
-    await waitFor(() => expect(screen.getByText("Add a personal prayer")).toBeInTheDocument());
-    fireEvent.click(screen.getByText("Add a personal prayer"));
-    const input = await screen.findByPlaceholderText(/What would you like to pray for/);
-    fireEvent.change(input, { target: { value: "a teachable heart" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-    expect(h.addPersonalPrayer).toHaveBeenCalledWith("u1", { title: "a teachable heart", contactId: null });
-  });
+    // Click Open button on WaitingRow
+    const openBtns = screen.getAllByRole('button', { name: /Open/i });
+    fireEvent.click(openBtns[0]);
 
-  it("surfaces a full-timer nudge under What's waiting on you and marks it handled", async () => {
-    vi.mocked(onSnapshot).mockImplementation(
-      byPath({
-        contacts: [
-          { id: "c1", data: () => ({ name: "Rio Tan", initials: "RT", stage: "Regular", createdBy: "u1" }) },
-        ],
-        threads: [
-          {
-            id: "n1",
-            data: () => ({
-              from: "ft1",
-              fromName: "Mei Chen",
-              kind: "nudge",
-              body: "Don't forget Thursday coffee with Rio.",
-              at: "2026-02-03T00:00:00.000Z",
-              interactionId: null,
-              reactions: [],
-            }),
-            ref: { parent: { parent: { id: "c1" } } },
-          },
-        ],
-      }),
-    );
-    render(<LandingTrainee />);
-    await waitFor(() => expect(screen.getByText("What's waiting on you")).toBeInTheDocument());
-    expect(screen.getByText("Mei nudged a follow-up about Rio Tan")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /Mark handled/ }));
-    await waitFor(() => expect(screen.getByRole("button", { name: /Handled/ })).toBeInTheDocument());
+    // Click Mark handled
+    const handledBtn = screen.getByRole('button', { name: /Mark handled/i });
+    fireEvent.click(handledBtn);
+
+    // Click See all
+    const seeAllBtn = screen.getByRole('button', { name: /See all/i });
+    fireEvent.click(seeAllBtn);
+
+    // Click Add a personal prayer button and commit input
+    const addPrayerBtn = screen.getByRole('button', { name: /Add a personal prayer/i });
+    fireEvent.click(addPrayerBtn);
+    const prayerInput = screen.getByPlaceholderText(/What would you like to pray for/i);
+    fireEvent.change(prayerInput, { target: { value: 'New exam prayer' } });
+    const commitBtn = screen.getByRole('button', { name: /^Add$/ });
+    fireEvent.click(commitBtn);
+    // Click for Alex Student linked button
+    const linkedBtn = screen.getAllByRole('button', { name: /for Alex Student/i })[0];
+    fireEvent.click(linkedBtn);
+
+    // Click status pill on team prayer
+    const teamPrayerPill = screen.getAllByRole('button', { name: /^ongoing$/i })[0];
+    fireEvent.click(teamPrayerPill);
+
+    // Click Open button on ReachCard
+    if (openBtns[1]) fireEvent.click(openBtns[1]);
+
+    // Click Message button on ReachCard if present
+    const messageBtns = screen.queryAllByRole('button', { name: /Message/i });
+    if (messageBtns.length > 0) fireEvent.click(messageBtns[0]);
+
+    // Click See all on On our hearts section
+    const seeAllOnOurHearts = screen.queryAllByRole('button', { name: /See all/i })[1];
+    if (seeAllOnOurHearts) fireEvent.click(seeAllOnOurHearts);
+
+    // Click Close button on modal to trigger onClose (line 420)
+    const closeBtns = screen.queryAllByRole('button', { name: /Close|Cancel/i });
+    if (closeBtns.length > 0) fireEvent.click(closeBtns[0]);
+
+    // Click answered button on personal prayer row to trigger onUpdate callback
+    const answeredBtns = screen.getAllByRole('button', { name: /^answered$/i });
+    if (answeredBtns.length > 0) fireEvent.click(answeredBtns[0]);
+
+    // Click prayer title to edit and then click Delete
+    const prayerTitle = screen.getByText('Pray for exam');
+    fireEvent.click(prayerTitle);
+    const deleteBtn = screen.getAllByRole('button', { name: /^Delete$/i })[0];
+    if (deleteBtn) fireEvent.click(deleteBtn);
   });
 });

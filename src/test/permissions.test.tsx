@@ -13,7 +13,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole } from '../lib/permissions';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -102,7 +102,7 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
-    manager:  ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/board', '/messages', '/feedback', 'https://shared-calendar-6u6.pages.dev/'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
@@ -229,16 +229,17 @@ describe('Sidebar nav items', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: adds The Journey and Looking back, home labeled "Home"', () => {
+  it('manager: adds The Journey, Home labeled "Home", hides settings/history/gatherings/prayer', () => {
     currentUser = TEST_USERS.manager;
     renderSidebar();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.getByText('Looking back')).toBeInTheDocument();
-    expect(screen.getByText('Gatherings')).toBeInTheDocument();
-    expect(screen.getByText('On our hearts')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Shared Calendar')).toBeInTheDocument();
+    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
+    expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
+    expect(screen.queryByText('On our hearts')).not.toBeInTheDocument();
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
   });
@@ -294,3 +295,89 @@ describe('MobileNav', () => {
     expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 });
+
+// ─── 6. Trainee permission helpers ─────────────────────────────────────────
+
+describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings)', () => {
+
+  it('canSeeContact allows full-timer and operator for any contact', () => {
+    const contact = { id: 'c1', createdBy: 'other-user', coCreators: [] };
+    expect(canSeeContact('admin', 'u1', contact)).toBe(true);
+    expect(canSeeContact('operator', 'u1', contact)).toBe(true);
+    expect(canSeeContact('viewer', 'u1', contact)).toBe(true);
+  });
+
+  it('canSeeContact enforces trainee restrictions (createdBy or coCreators)', () => {
+    const contactOther = { id: 'c1', createdBy: 'u2', coCreators: ['u3'] };
+    const contactOwn = { id: 'c2', createdBy: 'u1', coCreators: [] };
+    const contactCo = { id: 'c3', createdBy: 'u2', coCreators: ['u1'] };
+
+    expect(canSeeContact('manager', 'u1', contactOther)).toBe(false);
+    expect(canSeeContact('manager', 'u1', contactOwn)).toBe(true);
+    expect(canSeeContact('manager', 'u1', contactCo)).toBe(true);
+    expect(canSeeContact('manager', undefined, contactOwn)).toBe(false);
+    expect(canSeeContact('manager', 'u1', null)).toBe(false);
+  });
+
+  it('visibleContacts filters contacts for trainees', () => {
+    const contacts = [
+      { id: 'c1', createdBy: 'u2', coCreators: ['u3'] },
+      { id: 'c2', createdBy: 'u1', coCreators: [] },
+      { id: 'c3', createdBy: 'u2', coCreators: ['u1'] },
+    ];
+
+    expect(visibleContacts('admin', 'u1', contacts)).toHaveLength(3);
+    expect(visibleContacts('manager', 'u1', contacts)).toEqual([contacts[1], contacts[2]]);
+  });
+
+  it('journeyContacts filters current semester contacts for trainees', () => {
+    const contacts = [
+      { id: 'c1', createdBy: 'u1', season: 'Fall 2026' },
+      { id: 'c2', createdBy: 'u1', season: 'Spring 2026' },
+      { id: 'c3', createdBy: 'u2', season: 'Fall 2026' },
+    ];
+
+    expect(journeyContacts('admin', 'u1', contacts, 'Fall 2026')).toHaveLength(3);
+    expect(journeyContacts('manager', 'u1', contacts, 'Fall 2026')).toEqual([contacts[0]]);
+  });
+
+  it('canSeeHistory and canSeeSettings hide tabs/pages for trainees', () => {
+    expect(canSeeHistory('admin')).toBe(true);
+    expect(canSeeHistory('manager')).toBe(false);
+
+    expect(canSeeSettings('admin')).toBe(true);
+    expect(canSeeSettings('manager')).toBe(false);
+  });
+
+  it('tests remaining permission helper functions', () => {
+    expect(roleLabel(null)).toBe('Guest');
+    expect(roleLabel('custom_role')).toBe('Custom_role');
+
+    expect(canAccessRoute(null, '/')).toBe(false);
+
+    expect(canSeePrefs('admin')).toBe(true);
+    expect(canSeePrefs('manager')).toBe(true);
+    expect(canSeePrefs('operator')).toBe(false);
+
+    expect(canSeeBoardNotes('admin')).toBe(true);
+    expect(canSeeBoardNotes('manager')).toBe(false);
+
+    expect(isAppOwner('yilongwang05@gmail.com')).toBe(true);
+    expect(isAppOwner('other@gmail.com')).toBe(false);
+    expect(isAppOwner(null)).toBe(false);
+
+    expect(canSimulateRole('admin', null)).toBe(true);
+    expect(canSimulateRole('manager', 'yilongwang05@gmail.com')).toBe(true);
+    expect(canSimulateRole('manager', 'other@gmail.com')).toBe(false);
+
+    expect(getEffectiveRole('yilongwang05@gmail.com', 'manager', 'admin')).toBe('admin');
+    expect(getEffectiveRole('other@gmail.com', 'manager', 'admin')).toBe('manager');
+  });
+
+  it('navItemsForRole filters navigation list correctly per role', () => {
+    expect(navItemsForRole('manager')).toEqual(
+      expect.arrayContaining([expect.objectContaining({ href: '/' })])
+    );
+  });
+});
+

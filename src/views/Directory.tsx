@@ -24,6 +24,7 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { cn, getUserInitials } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
+import { visibleContacts } from '../lib/permissions';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -134,7 +135,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function Directory() {
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -261,7 +262,7 @@ export default function Directory() {
   };
 
   const filteredContacts = useMemo(() => {
-    let result = [...contacts];
+    let result = visibleContacts(role, user?.uid, contacts);
 
     // Search
     if (searchQuery) {

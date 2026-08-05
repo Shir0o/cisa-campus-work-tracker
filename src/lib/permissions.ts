@@ -65,9 +65,61 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
+  if (role === 'manager') {
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', 'https://shared-calendar-6u6.pages.dev/'];
+    return allowedTraineeRoutes.includes(path);
+  }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;
   const min = ROUTE_MIN_ROLE[path] ?? 'admin';
   return level >= ROLE_LEVEL[min];
+}
+
+export function navItemsForRole(role: AppRole | string | null): NavItem[] {
+  return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
+}
+
+export const NAV_EXTERNAL = [
+  { id: 'calendar', label: 'Shared calendar', href: 'https://shared-calendar-6u6.pages.dev/', external: true },
+];
+
+export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
+export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
+export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
+export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
+export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
+
+export function canSeeContact(
+  role: AppRole | string | null,
+  staffId: string | null | undefined,
+  contact: { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] } | null | undefined
+): boolean {
+  if (!contact) return false;
+  if (seesAllPeople(role)) return true;
+  if (!staffId) return false;
+  const added = contact.addedBy || contact.createdBy;
+  return added === staffId || contact.owner === staffId || (contact.coCreators || []).includes(staffId);
+}
+
+export function visibleContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[] }>(
+  role: AppRole | string | null,
+  staffId: string | null | undefined,
+  list: T[]
+): T[] {
+  if (seesAllPeople(role)) return list.slice();
+  return list.filter((c) => canSeeContact(role, staffId, c));
+}
+
+export function journeyContacts<T extends { addedBy?: string; createdBy?: string; owner?: string; coCreators?: string[]; season?: string }>(
+  role: AppRole | string | null,
+  staffId: string | null | undefined,
+  list: T[],
+  currentSeasonTag?: string
+): T[] {
+  const visible = visibleContacts(role, staffId, list);
+  if (role === 'manager' && currentSeasonTag) {
+    return visible.filter((c) => !c.season || c.season === currentSeasonTag);
+  }
+  return visible;
 }
 
 export function hasMinRole(role: AppRole | string | null, min: AppRole): boolean {
@@ -117,5 +169,6 @@ export function getEffectiveRole(
   }
   return actualRole;
 }
+
 
 

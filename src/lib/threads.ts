@@ -30,6 +30,8 @@ export interface ThreadReaction {
 export interface ThreadMessage {
   id: string;
   interactionId: string | null;
+  parentId?: string | null;
+  scope?: "team" | null;
   from: string; // staff uid
   fromName: string;
   kind: ThreadKind;
@@ -76,6 +78,8 @@ export function subscribeThreads(
           return {
             id: d.id,
             interactionId: data.interactionId ?? null,
+            parentId: data.parentId ?? null,
+            scope: (data.scope as "team") ?? null,
             from: data.from ?? "",
             fromName: data.fromName ?? "",
             kind: (data.kind as ThreadKind) ?? "comment",
@@ -112,6 +116,8 @@ export function subscribeAllThreads(
             id: d.id,
             contactId: d.ref.parent.parent?.id ?? "",
             interactionId: data.interactionId ?? null,
+            parentId: data.parentId ?? null,
+            scope: (data.scope as "team") ?? null,
             from: data.from ?? "",
             fromName: data.fromName ?? "",
             kind: (data.kind as ThreadKind) ?? "comment",
@@ -126,20 +132,39 @@ export function subscribeAllThreads(
   );
 }
 
-/** Messages at a given level — null = the contact-level thread. */
+/** Top-level messages at a given level — null = the contact-level thread. */
 export function threadsFor(
   messages: ThreadMessage[],
   interactionId: string | null = null,
+  scope: "team" | null = null,
 ): ThreadMessage[] {
-  return messages.filter((m) => norm(m.interactionId) === norm(interactionId));
+  return messages.filter(
+    (m) =>
+      !m.parentId &&
+      norm(m.interactionId) === norm(interactionId) &&
+      norm(m.scope) === norm(scope),
+  );
+}
+
+/** Replies under a given parent message. */
+export function repliesOf(
+  messages: ThreadMessage[],
+  parentId: string,
+): ThreadMessage[] {
+  return messages.filter((m) => m.parentId === parentId);
 }
 
 /** Count of messages at a given level (null = contact-level). */
 export function countFor(
   messages: ThreadMessage[],
   interactionId: string | null = null,
+  scope: "team" | null = null,
 ): number {
-  return threadsFor(messages, interactionId).length;
+  return messages.filter(
+    (m) =>
+      norm(m.interactionId) === norm(interactionId) &&
+      norm(m.scope) === norm(scope),
+  ).length;
 }
 
 // Plain-spoken bell title for a posted message, from the poster's view.
@@ -157,6 +182,8 @@ export async function addThreadMessage(
   contactId: string,
   input: {
     interactionId?: string | null;
+    parentId?: string | null;
+    scope?: "team" | null;
     from: string;
     fromName: string;
     kind: ThreadKind;
@@ -168,6 +195,8 @@ export async function addThreadMessage(
   try {
     await addDoc(col(contactId), {
       interactionId: input.interactionId ?? null,
+      parentId: input.parentId ?? null,
+      scope: input.scope ?? null,
       from: input.from,
       fromName: input.fromName,
       kind: input.kind,
@@ -189,6 +218,7 @@ export async function addThreadMessage(
     handleFirestoreError(e, OperationType.CREATE, `contacts/${contactId}/threads`);
   }
 }
+
 
 /** Toggle the current user's reaction (by + emoji) on a message. */
 export async function toggleReaction(
