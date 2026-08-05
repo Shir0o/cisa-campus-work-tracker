@@ -88,7 +88,7 @@ describe('pinBoardDoc', () => {
     await pinBoardDoc({ id: 'doc-4' }, true);
     expect(updateDoc).toHaveBeenCalledWith(
       { path: 'board_docs/doc-4' },
-      { pinned: true },
+      { pinned: true, pinnedOrder: null },
     );
   });
 });
