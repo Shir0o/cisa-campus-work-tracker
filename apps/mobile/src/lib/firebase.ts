@@ -5,8 +5,15 @@
 //  • the SAME named Firestore database id + opt-in RTDB URL as the web app
 //
 // Mirrors src/lib/firebase.ts from the web app (firebase-applet-config.json).
+import { Platform } from 'react-native';
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  signInWithEmailAndPassword,
+  type Auth,
+} from 'firebase/auth';
+import ReactNativeAsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getFirestore,
   doc,
@@ -60,12 +67,24 @@ if (__DEV__ && !firebaseConfig.apiKey) {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
-// Firebase JS SDK v12 removed getReactNativePersistence: on React Native, auth
-// now auto-wires AsyncStorage persistence via the package's "react-native"
-// export condition + the installed @react-native-async-storage/async-storage; on
-// web it uses IndexedDB/local persistence. getAuth is idempotent, so it's safe
-// under Fast Refresh (no double-initialize throw).
-export const auth: Auth = getAuth(app);
+// Configure Firebase Auth persistence:
+// On native (iOS / Android), initialize with getReactNativePersistence + AsyncStorage.
+// On web (or if already initialized during Fast Refresh), fall back to standard getAuth.
+function getFirebaseAuth(): Auth {
+  if (Platform.OS === 'web') {
+    return getAuth(app);
+  }
+  try {
+    const { getReactNativePersistence } = require('firebase/auth');
+    return initializeAuth(app, {
+      persistence: getReactNativePersistence(ReactNativeAsyncStorage),
+    });
+  } catch (_e) {
+    return getAuth(app);
+  }
+}
+
+export const auth: Auth = getFirebaseAuth();
 
 export const db: Firestore = getFirestore(app, firestoreDatabaseId);
 

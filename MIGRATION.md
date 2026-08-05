@@ -84,8 +84,7 @@ npx expo start --web      # fastest to eyeball; launch.json config "mobile-web" 
 - Primitives (`src/components/ui/`): Screen, AppText, Button, Card, Chip, Avatar,
   SectionHead, StatusPill.
 - Nav shell: bottom tabs driven by shared `NAV_ITEMS`.
-- Firebase RN init (`src/lib/firebase.ts`): `getAuth` auto-persistence (v12
-  removed `getReactNativePersistence`), named Firestore db id, opt-in RTDB.
+- Firebase RN init (`src/lib/firebase.ts`): `initializeAuth` + `getReactNativePersistence` (AsyncStorage) on native, `getAuth` fallback on web, named Firestore db id, opt-in RTDB.
 - **Verified:** clean web build (1405 modules, 0 console errors), both themes,
   working tab navigation, shared core consumed live (season label, NAV_ITEMS,
   roleLabel).
@@ -1735,9 +1734,8 @@ screen ports unless the user specifically wants a spike tackled next.
 
 ## Known gotchas
 
-- Firebase JS SDK **v12 removed `getReactNativePersistence`** — RN persistence is
-  automatic via `getAuth` + the package's `react-native` export condition +
-  installed `@react-native-async-storage/async-storage`.
+- Firebase JS SDK **RN persistence** requires explicit `initializeAuth` +
+  `getReactNativePersistence(ReactNativeAsyncStorage)` on native platforms (`apps/mobile/src/lib/firebase.ts`).
 - Firestore uses a **named database** (`ai-studio-43298cca-…`) — pass it to
   `getFirestore(app, dbId)` (already wired).
 - RTDB is **opt-in** (`EXPO_PUBLIC_FIREBASE_DATABASE_URL`); The Board degrades to
