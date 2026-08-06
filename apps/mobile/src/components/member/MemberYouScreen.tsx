@@ -7,7 +7,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { firstName, roleLabel, type AppRole, type FullTimerSummary, type MemberRole } from '@cisa/core';
+import { firstName, OWNER_VIEW_ROLES, roleLabel, type AppRole, type FullTimerSummary, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';

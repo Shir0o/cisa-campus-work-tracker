@@ -20,6 +20,7 @@ import {
   hourLabel,
   onCampusNowLine,
   onCampusSummary,
+  OWNER_VIEW_ROLES,
   settingsCareLine,
   settingsFoot,
   shellForRole,
