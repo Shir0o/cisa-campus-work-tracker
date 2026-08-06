@@ -13,6 +13,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - **Trainee Permissions Update — Removed Calendar Side Nav Link** — Restricted Trainee (`manager` role) navigation permissions to exclude the Shared Calendar link (`https://shared-calendar-6u6.pages.dev/`) from side navigation and allowed routes (`canAccessRoute`).
 
 ### Fixed
+- **Mobile Owner View Switcher ReferenceError Fix** — Imported `OWNER_VIEW_ROLES` from `@cisa/core` in `MemberYouScreen.tsx` and `SettingsScreen.tsx` to fix runtime `ReferenceError: Property 'OWNER_VIEW_ROLES' doesn't exist` when rendering role view options.
 - **Issue 214 — Fixed Feedback Submission Duplicate Toast Notification** — Removed duplicate background notification dispatch in `FeedbackFAB.tsx` and `SubmitFeedback.tsx`, ensuring a single clean inline success confirmation on feedback submission.
 - **Issue 212 — Stage Orange Color Styling & Mapping** — Added `--color-board-orange` CSS variable to `index.css`, mapped orange color variations (`bg-board-orange`, `orange`, `bg-orange-500`) to the `amber` tone across `OutreachBoard.tsx`, `Directory.tsx`, and `OutreachBoardMobile.tsx`, and added Orange swatch option to the stage editor palette.
 - **Issue 209 — Directory Roster Counter Baseline for Trainees** — Updated `Directory.tsx` counter ratio and header summary to use user-accessible contacts (`userContacts` via `visibleContacts`) as denominator instead of raw total collection size, resolving the confusing `1 person of 19` display for trainees.
