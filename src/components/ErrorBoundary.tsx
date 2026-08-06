@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from "react";
+import { isDynamicImportError } from "../lib/lazyWithRetry";
 
 interface Props {
   children?: ReactNode;
@@ -25,13 +26,35 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error in ErrorBoundary:", error, errorInfo);
+    if (isDynamicImportError(error)) {
+      const pageHasAlreadyBeenReloaded =
+        typeof window !== "undefined" &&
+        window.sessionStorage?.getItem("cisa_dynamic_import_reloaded") === "true";
+
+      if (!pageHasAlreadyBeenReloaded && typeof window !== "undefined") {
+        window.sessionStorage?.setItem("cisa_dynamic_import_reloaded", "true");
+        window.location.reload();
+      }
+    }
   }
+
+  private handleReload = () => {
+    if (typeof window !== "undefined") {
+      if (window.sessionStorage) {
+        window.sessionStorage.removeItem("cisa_dynamic_import_reloaded");
+      }
+      window.location.reload();
+    }
+  };
 
   public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
+
+      const isChunkError = isDynamicImportError(this.state.error);
+
       return (
         <div className="min-h-screen flex items-center justify-center bg-background p-6">
           <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 border border-error/20 shadow-lg text-center space-y-4 shadow-error/5">
@@ -40,15 +63,19 @@ export class ErrorBoundary extends Component<Props, State> {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-on-surface">Something went wrong</h1>
+            <h1 className="text-2xl font-bold text-on-surface">
+              {isChunkError ? "A new version is available" : "Something went wrong"}
+            </h1>
             <p className="text-on-surface-variant text-sm text-center">
-              {this.state.error?.message || "An unexpected error occurred."}
+              {isChunkError
+                ? "The application was updated while you were using it. Please reload to load the latest version."
+                : this.state.error?.message || "An unexpected error occurred."}
             </p>
             <button
-              onClick={() => window.location.reload()}
+              onClick={this.handleReload}
               className="mt-6 w-full py-3 bg-primary text-on-primary rounded-full font-medium active:scale-95 transition-all"
             >
-              Reload Application
+              {isChunkError ? "Update & Reload" : "Reload Application"}
             </button>
           </div>
         </div>
@@ -58,3 +85,4 @@ export class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
+
