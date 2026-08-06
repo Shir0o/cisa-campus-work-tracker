@@ -26,16 +26,6 @@ export class ErrorBoundary extends Component<Props, State> {
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error("Uncaught error in ErrorBoundary:", error, errorInfo);
-    if (isDynamicImportError(error)) {
-      const pageHasAlreadyBeenReloaded =
-        typeof window !== "undefined" &&
-        window.sessionStorage?.getItem("cisa_dynamic_import_reloaded") === "true";
-
-      if (!pageHasAlreadyBeenReloaded && typeof window !== "undefined") {
-        window.sessionStorage?.setItem("cisa_dynamic_import_reloaded", "true");
-        window.location.reload();
-      }
-    }
   }
 
   private handleReload = () => {

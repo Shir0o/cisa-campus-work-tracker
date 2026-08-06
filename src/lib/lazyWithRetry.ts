@@ -41,8 +41,9 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
           window.sessionStorage.setItem('cisa_dynamic_import_reloaded', 'true');
           window.location.reload();
         }
-        // Return an unresolving promise while the browser reloads the page
-        return new Promise<{ default: T }>(() => {});
+        // Trigger the reload and then re-throw the error to ensure it propagates
+        // if the reload is delayed or blocked, preventing a hanging suspense state.
+        throw error;
       }
 
       throw error;
