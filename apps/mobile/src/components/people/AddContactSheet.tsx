@@ -58,8 +58,8 @@ export function AddContactSheet({
   };
 
   const handlePhoneBlur = () => {
-    if (!phone) {
-      setPhoneError(null);
+    if (!phone || !phone.trim()) {
+      setPhoneError('Phone number is required');
       return;
     }
     const formatted = formatPhoneNumber(phone);
@@ -74,7 +74,7 @@ export function AddContactSheet({
     }
   };
 
-  const canSubmit = firstName.trim().length > 0 && notes.trim().length > 0 && !phoneError && !submitting;
+  const canSubmit = firstName.trim().length > 0 && phone.trim().length > 0 && notes.trim().length > 0 && !phoneError && !submitting;
 
   const handleSubmit = async () => {
     if (!canSubmit) return;

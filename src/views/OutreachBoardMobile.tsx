@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronRight, Settings2, X, ArrowRight, Check } from 'lucide-react';
+import { ChevronRight, Settings2, X, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { Avatar } from '../components/landing/primitives';
@@ -56,6 +56,10 @@ const toneFor = (color: string | undefined, index: number): Tone => {
     'bg-primary': 'accent',
     'bg-primary-fixed-dim': 'accent',
     'bg-board-amber': 'amber',
+    'bg-board-orange': 'amber',
+    'bg-orange-500': 'amber',
+    'bg-orange': 'amber',
+    'orange': 'amber',
     'bg-board-teal': 'teal',
     'bg-board-emerald': 'teal',
     'bg-secondary': 'teal',

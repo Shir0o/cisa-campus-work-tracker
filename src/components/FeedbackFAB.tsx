@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pencil, X, Loader2 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
+import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from './AuthProvider';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -145,15 +145,8 @@ export default function FeedbackFAB() {
         description: `User left a note (${kindMeta(kind).label}): "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
         type: 'create',
       });
-
-      await sendNotification({
-        userId: user.uid,
-        title: 'We got your note',
-        message: 'Thank you! Your note has been saved and our admins have been notified.',
-        type: 'success',
-      });
     } catch (error) {
-      console.error('Feedback saved, but follow-up log/notify failed:', error);
+      console.error('Feedback saved, but follow-up log failed:', error);
     }
   };
 

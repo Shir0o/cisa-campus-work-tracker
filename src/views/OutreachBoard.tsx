@@ -92,6 +92,10 @@ const TONE_BY_COLOR: Record<string, Tone> = {
   'bg-primary': 'accent',
   'bg-primary-fixed-dim': 'accent',
   'bg-board-amber': 'amber',
+  'bg-board-orange': 'amber',
+  'bg-orange-500': 'amber',
+  'bg-orange': 'amber',
+  'orange': 'amber',
   'bg-board-teal': 'teal',
   'bg-board-emerald': 'teal',
   'bg-secondary': 'teal',
@@ -195,6 +199,7 @@ export default function OutreachBoard() {
   const colors = [
     { name: 'Slate', class: 'bg-board-indigo' },
     { name: 'Terracotta', class: 'bg-board-amber' },
+    { name: 'Orange', class: 'bg-board-orange' },
     { name: 'Sage', class: 'bg-board-teal' },
     { name: 'Plum', class: 'bg-board-plum' },
     { name: 'Clay', class: 'bg-board-crimson' },
