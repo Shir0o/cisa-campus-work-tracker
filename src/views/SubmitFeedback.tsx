@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, ArrowRight, Loader2 } from 'lucide-react';
-import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../lib/firebase';
+import { handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useNavigate } from 'react-router-dom';
 import { roleLabel } from '../lib/permissions';
@@ -115,13 +115,6 @@ export default function SubmitFeedback() {
         targetType: 'contact',
         description: `User left a note (${kindMeta(kind).label}): "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
         type: 'create',
-      });
-
-      await sendNotification({
-        userId: user.uid,
-        title: 'We got your note',
-        message: 'Thank you! The application admins have been notified.',
-        type: 'success',
       });
 
       setIsSubmitted(true);

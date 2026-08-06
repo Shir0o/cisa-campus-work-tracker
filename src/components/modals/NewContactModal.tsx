@@ -80,8 +80,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
   };
 
   const handlePhoneBlur = () => {
-    if (!formData.phone) {
-      setPhoneError(null);
+    if (!formData.phone || !formData.phone.trim()) {
+      setPhoneError('Phone number is required');
       return;
     }
     const formatted = formatPhoneNumber(formData.phone);
@@ -103,6 +103,10 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.phone || !formData.phone.trim()) {
+      setPhoneError('Phone number is required');
+      return;
+    }
     if (phoneError) return;
     setLoading(true);
 
@@ -319,6 +323,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     <Phone className="w-3.5 h-3.5" /> PHONE
                   </label>
                   <input
+                    required
                     type="tel"
                     value={formData.phone}
                     onChange={e => {

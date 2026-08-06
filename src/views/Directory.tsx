@@ -56,6 +56,10 @@ const TONE_BY_COLOR: Record<string, Tone> = {
   'bg-primary': 'accent',
   'bg-primary-fixed-dim': 'accent',
   'bg-board-amber': 'amber',
+  'bg-board-orange': 'amber',
+  'bg-orange-500': 'amber',
+  'bg-orange': 'amber',
+  'orange': 'amber',
   'bg-board-teal': 'teal',
   'bg-board-emerald': 'teal',
   'bg-secondary': 'teal',
@@ -261,8 +265,10 @@ export default function Directory() {
     return ms != null ? daysSince(ms) : null;
   };
 
+  const userContacts = useMemo(() => visibleContacts(role, user?.uid, contacts), [role, user?.uid, contacts]);
+
   const filteredContacts = useMemo(() => {
-    let result = visibleContacts(role, user?.uid, contacts);
+    let result = userContacts;
 
     // Search
     if (searchQuery) {
@@ -300,7 +306,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [contacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
 
   // Tone per stage label, keyed off the stage's stored colour (or its order).
   const toneByStage = useMemo(() => {
@@ -315,7 +321,7 @@ export default function Directory() {
 
     try {
       const batch = writeBatch(db);
-      const selectedContacts = contacts.filter(c => selectedIds.has(c.id));
+      const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
 
       selectedContacts.forEach(contact => {
         const currentTags = contact.tags || [];
@@ -348,23 +354,23 @@ export default function Directory() {
   };
 
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
-  const filterRoles = useMemo(() => ['All', ...new Set(contacts.map(c => c.role))], [contacts]);
-  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(contacts.map(c => c.spiritualBackground).filter(Boolean))], [contacts]);
-  const allTags = useMemo(() => [...new Set(contacts.flatMap(c => c.tags || []))], [contacts]);
+  const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role))], [userContacts]);
+  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
+  const allTags = useMemo(() => [...new Set(userContacts.flatMap(c => c.tags || []))], [userContacts]);
 
   const newCount = useMemo(
-    () => contacts.filter(c => {
+    () => userContacts.filter(c => {
       const ms = parseMs(c.createdAt);
       return ms != null && daysSince(ms) <= 14;
     }).length,
-    [contacts],
+    [userContacts],
   );
   const overdueCount = useMemo(
-    () => contacts.filter(c => {
+    () => userContacts.filter(c => {
       const d = daysFor(c);
       return d != null && d >= 7;
     }).length,
-    [contacts, lastTouchByContact],
+    [userContacts, lastTouchByContact],
   );
 
   const toggleTagFilter = (tag: string) => {
@@ -475,7 +481,7 @@ export default function Directory() {
           <h1 className="font-serif page-title text-on-surface">People</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
             <b className="text-on-surface font-semibold">
-              {contacts.length} {contacts.length === 1 ? 'person' : 'people'}
+              {userContacts.length} {userContacts.length === 1 ? 'person' : 'people'}
             </b>{' '}
             in your care
             {newCount > 0 && (
@@ -636,7 +642,7 @@ export default function Directory() {
           <span className="text-sm text-on-surface-variant">
             {selectedIds.size > 0
               ? `${selectedIds.size} selected`
-              : `${peopleCount(filteredContacts.length)}${filteredContacts.length === contacts.length ? '' : ` of ${contacts.length}`}`}
+              : `${peopleCount(filteredContacts.length)}${filteredContacts.length === userContacts.length ? '' : ` of ${userContacts.length}`}`}
           </span>
         </label>
 

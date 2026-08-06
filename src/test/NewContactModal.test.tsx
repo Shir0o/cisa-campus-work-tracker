@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc } from 'firebase/firestore';
@@ -90,7 +90,19 @@ describe('NewContactModal', () => {
     });
   });
 
-  it('submits correctly', async () => {
+  it('shows error when phone number is missing', async () => {
+    const onClose = vi.fn();
+    const mockUserAct = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    const phone = await screen.findByPlaceholderText('(555) 000-0000');
+    fireEvent.blur(phone);
+
+    expect(await screen.findByText('Phone number is required')).toBeInTheDocument();
+    expect(addDoc).not.toHaveBeenCalled();
+  });
+
+  it('submits correctly when required fields (first name and phone) are provided', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={onClose} />);
@@ -98,6 +110,9 @@ describe('NewContactModal', () => {
     // Fill in required fields
     const firstName = await screen.findByPlaceholderText('e.g. Alex');
     await mockUserAct.type(firstName, 'John');
+
+    const phone = await screen.findByPlaceholderText('(555) 000-0000');
+    await mockUserAct.type(phone, '5551234567');
 
     const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
     await mockUserAct.type(role, 'Student');
