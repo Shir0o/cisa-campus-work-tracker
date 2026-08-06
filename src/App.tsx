@@ -37,11 +37,13 @@ import FeedbackFAB from "./components/FeedbackFAB";
 import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
+import { lazyWithRetry } from "./lib/lazyWithRetry";
 
-const CoordinationNotes = React.lazy(() => import("./views/CoordinationNotes"));
-const CoordinationTrash = React.lazy(() => import("./views/CoordinationTrash"));
-const Messages = React.lazy(() => import("./views/Messages"));
-const EmbedCoordinationDoc = React.lazy(() => import("./views/EmbedCoordinationDoc"));
+const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
+const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
+const Messages = lazyWithRetry(() => import("./views/Messages"));
+const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
+
 
 interface LayoutContextType {
   isSidebarCollapsed: boolean;
