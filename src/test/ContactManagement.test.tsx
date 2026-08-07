@@ -145,11 +145,15 @@ describe('Contact Management', () => {
   it('Adding a Contact: calls addDoc with correct data', async () => {
     render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
 
-    // Fill form
-    fireEvent.change(screen.getByPlaceholderText(/e.g. Alex/i), { target: { value: 'Bob' } });
+    // Fill primary 2 fields
+    fireEvent.change(screen.getByPlaceholderText(/First name is plenty/i), { target: { value: 'Bob' } });
+    fireEvent.change(screen.getByPlaceholderText(/\(555\) 000-0000/i), { target: { value: '(555) 123-4567' } });
+
+    // Open disclosure for remaining fields
+    fireEvent.click(screen.getByText(/\+ Add the rest/i));
+
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Builder' } });
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
-    fireEvent.change(screen.getByPlaceholderText(/\(555\) 000-0000/i), { target: { value: '(555) 123-4567' } });
     fireEvent.change(screen.getByPlaceholderText(/e.g. Student/i), { target: { value: 'Contractor' } });
     fireEvent.change(screen.getByPlaceholderText(/e.g. Campus Coffee/i), { target: { value: 'Library' } });
 

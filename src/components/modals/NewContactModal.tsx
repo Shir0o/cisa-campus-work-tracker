@@ -251,7 +251,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       required
                       type="text"
                       value={formData.firstName}
-                      onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
+                      onChange={e => setFormData(f => ({ ...f, firstName: e.target.value }))}
+                      onBlur={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                       className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                       placeholder="First name is plenty"
                     />
