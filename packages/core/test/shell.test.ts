@@ -4,8 +4,12 @@ import {
   FT_MORE,
   TRAINEE_DRAWER,
   allClearLine,
+  allTodayCount,
+  heldForTomorrowLine,
   isPushedScreen,
+  lookedAfterLine,
   queueMeta,
+  replyDestinationLine,
   shellForRole,
   tabsForRole,
   upNextLine,
@@ -91,7 +95,7 @@ describe('the drawer and More lists', () => {
       'The Journey',
       'Messages',
       'Sign-up form',
-      'Settings',
+      'Your app',
     ]);
   });
 
@@ -137,6 +141,51 @@ describe('queueMeta', () => {
 
   it('says just "Today" when the day held nothing', () => {
     expect(queueMeta(0, 0)).toEqual({ left: 'Today', right: '' });
+  });
+
+  it('moves with the queue index, not just the handled count', () => {
+    // 3 handled, jumped to the 4th still-waiting card (index 3) of 8 total.
+    expect(queueMeta(5, 3, 3).right).toBe('7 of 8');
+  });
+
+  it('defaults the index to 0 when not given', () => {
+    expect(queueMeta(5, 3)).toEqual({ left: 'Today · 8 to look after', right: '4 of 8' });
+  });
+
+  it('does not run past the end when index overshoots', () => {
+    expect(queueMeta(1, 7, 5).right).toBe('8 of 8');
+  });
+});
+
+describe('allTodayCount', () => {
+  it('pluralizes', () => {
+    expect(allTodayCount(1)).toBe('1 left');
+    expect(allTodayCount(8)).toBe('8 left');
+    expect(allTodayCount(0)).toBe('0 left');
+  });
+});
+
+describe('lookedAfterLine', () => {
+  it('says how many were looked after already today', () => {
+    expect(lookedAfterLine(1)).toBe('1 looked after already today');
+    expect(lookedAfterLine(4)).toBe('4 looked after already today');
+  });
+});
+
+describe('heldForTomorrowLine', () => {
+  it('pluralizes and points at Settings', () => {
+    expect(heldForTomorrowLine(1)).toBe('1 more is waiting for tomorrow. You can widen the day in Settings.');
+    expect(heldForTomorrowLine(3)).toBe('3 more are waiting for tomorrow. You can widen the day in Settings.');
+  });
+});
+
+describe('replyDestinationLine', () => {
+  it("names the person's thread", () => {
+    expect(replyDestinationLine('Ana Beltrán')).toBe("This stays on Ana's thread.");
+  });
+
+  it('falls back when there is no contact', () => {
+    expect(replyDestinationLine(undefined)).toBe('Straight to the thread.');
   });
 });
 

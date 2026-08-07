@@ -1,32 +1,25 @@
-// Mobile v2 — "Everything today". The queue as a compact list, so nothing feels
-// hidden behind the one card on screen.
+// Mobile v2 — "Everything today". The queue as a compact flat list, so nothing
+// feels hidden behind the one card on screen — matches the design's M2AllList.
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
-import type { QueueCard } from '@cisa/core';
+import { allTodayCount, heldForTomorrowLine, lookedAfterLine, type QueueCard } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
-
-const GROUP_LABEL: Record<number, string> = {
-  0: 'Due',
-  1: 'From the full-timer who cares for you',
-  2: 'People to reach',
-  3: 'Prayers to carry',
-};
 
 export function AllTodayList({
   cards,
   currentId,
   held,
+  handledCount,
   onPick,
   onBack,
-  onOpenSettings,
 }: {
   cards: QueueCard[];
   currentId?: string;
   held: number;
+  /** How many were already looked after today, for the line under the rows. */
+  handledCount: number;
   onPick: (index: number) => void;
   onBack: () => void;
-  /** "How today is built" — the queue's own settings. */
-  onOpenSettings: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
 
@@ -50,7 +43,7 @@ export function AllTodayList({
           Everything today
         </Text>
         <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.roomInk3, marginLeft: 'auto' }}>
-          {cards.length}
+          {allTodayCount(cards.length)}
         </Text>
       </View>
 
@@ -59,56 +52,52 @@ export function AllTodayList({
         showsVerticalScrollIndicator={false}
       >
         {cards.map((card, i) => {
-          const showKicker = i === 0 || cards[i - 1].group !== card.group;
           const tone = c.tones[card.tone];
           return (
-            <View key={card.id}>
-              {showKicker && (
+            <Pressable
+              key={card.id}
+              onPress={() => onPick(i)}
+              style={{
+                flexDirection: 'row',
+                gap: 12,
+                alignItems: 'flex-start',
+                backgroundColor: c.card,
+                borderRadius: radius.row,
+                paddingVertical: 15,
+                paddingHorizontal: 17,
+                borderWidth: 2,
+                borderColor: card.id === currentId ? c.reactOnBorder : 'transparent',
+                minHeight: 60,
+              }}
+            >
+              <View style={{ width: 10, height: 10, borderRadius: 3, marginTop: 5, backgroundColor: tone.dot }} />
+              <View style={{ flex: 1 }}>
                 <Text
-                  style={{
-                    fontFamily: font.bold,
-                    fontSize: fs(10.5),
-                    letterSpacing: 1.26,
-                    textTransform: 'uppercase',
-                    color: c.roomInk3,
-                    marginTop: 14,
-                    marginBottom: 2,
-                    marginHorizontal: 4,
-                  }}
+                  style={{ fontFamily: font.extra, fontSize: fs(15), lineHeight: fs(20), letterSpacing: -0.3, color: c.cardInk }}
                 >
-                  {GROUP_LABEL[card.group]}
+                  {card.title}
                 </Text>
-              )}
-              <Pressable
-                onPress={() => onPick(i)}
-                style={{
-                  flexDirection: 'row',
-                  gap: 12,
-                  alignItems: 'flex-start',
-                  backgroundColor: c.card,
-                  borderRadius: radius.row,
-                  paddingVertical: 15,
-                  paddingHorizontal: 17,
-                  borderWidth: 2,
-                  borderColor: card.id === currentId ? c.reactOnBorder : 'transparent',
-                  minHeight: 60,
-                }}
-              >
-                <View style={{ width: 10, height: 10, borderRadius: 3, marginTop: 5, backgroundColor: tone.dot }} />
-                <View style={{ flex: 1 }}>
-                  <Text
-                    style={{ fontFamily: font.extra, fontSize: fs(15), lineHeight: fs(20), letterSpacing: -0.3, color: c.cardInk }}
-                  >
-                    {card.title}
-                  </Text>
-                  <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 4 }}>
-                    {[card.label, card.ago].filter(Boolean).join(' · ')}
-                  </Text>
-                </View>
-              </Pressable>
-            </View>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 4 }}>
+                  {[card.label, card.ago].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            </Pressable>
           );
         })}
+
+        {handledCount > 0 && (
+          <Text
+            style={{
+              fontFamily: font.semi,
+              fontSize: fs(12.5),
+              color: c.roomFaint,
+              marginTop: 14,
+              marginHorizontal: 4,
+            }}
+          >
+            {lookedAfterLine(handledCount)}
+          </Text>
+        )}
 
         {held > 0 && (
           <Text
@@ -124,18 +113,9 @@ export function AllTodayList({
               borderTopColor: c.roomChip,
             }}
           >
-            {held} more {held === 1 ? 'is' : 'are'} waiting for tomorrow — a day only holds so much.
+            {heldForTomorrowLine(held)}
           </Text>
         )}
-
-        {/* How much a day holds, and when someone counts as quiet, are the
-            trainee's own call — this is where they'd wonder. */}
-        <Pressable
-          onPress={onOpenSettings}
-          style={{ minHeight: 44, justifyContent: 'center', marginTop: held > 0 ? 2 : 16, marginHorizontal: 4 }}
-        >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk3 }}>How today is built  →</Text>
-        </Pressable>
       </ScrollView>
     </View>
   );

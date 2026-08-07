@@ -62,9 +62,11 @@ export function EndOfQueue({
         <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>Look back at your week  →</Text>
       </Pressable>
 
-      <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk3 }}>Bring back today's queue</Text>
-      </Pressable>
+      {handledCount > 0 && (
+        <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk3 }}>Bring back today's queue</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
