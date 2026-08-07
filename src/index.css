@@ -120,15 +120,37 @@
     --warning: #b0833a;
     --warning-container: #f0e3cd;
 
-    /* stage tones (light) */
-    --stage-accent: #3a5a82;
-    --stage-accent-soft: rgba(58, 90, 130, 0.09);
-    --stage-amber: #c0823f;
-    --stage-amber-soft: rgba(192, 130, 63, 0.11);
-    --stage-teal: #5d8071;
-    --stage-teal-soft: rgba(93, 128, 113, 0.11);
-    --stage-violet: #7d5a86;
-    --stage-violet-soft: rgba(125, 90, 134, 0.10);
+    /* stage tones (light — 8 matched set: slate, clay, ochre, sage, teal, indigo, plum, rose) */
+    --tone-l: 0.50;
+    --tone-c: 0.072;
+    --tone-a: 0.16;
+
+    --t-slate:  oklch(var(--tone-l) var(--tone-c) 250);
+    --t-clay:   oklch(var(--tone-l) var(--tone-c) 42);
+    --t-ochre:  oklch(var(--tone-l) var(--tone-c) 82);
+    --t-sage:   oklch(var(--tone-l) var(--tone-c) 148);
+    --t-teal:   oklch(var(--tone-l) var(--tone-c) 196);
+    --t-indigo: oklch(var(--tone-l) var(--tone-c) 282);
+    --t-plum:   oklch(var(--tone-l) var(--tone-c) 320);
+    --t-rose:   oklch(var(--tone-l) var(--tone-c) 12);
+
+    --t-slate-soft:  oklch(var(--tone-l) var(--tone-c) 250 / var(--tone-a));
+    --t-clay-soft:   oklch(var(--tone-l) var(--tone-c) 42 / var(--tone-a));
+    --t-ochre-soft:  oklch(var(--tone-l) var(--tone-c) 82 / var(--tone-a));
+    --t-sage-soft:   oklch(var(--tone-l) var(--tone-c) 148 / var(--tone-a));
+    --t-teal-soft:   oklch(var(--tone-l) var(--tone-c) 196 / var(--tone-a));
+    --t-indigo-soft: oklch(var(--tone-l) var(--tone-c) 282 / var(--tone-a));
+    --t-plum-soft:   oklch(var(--tone-l) var(--tone-c) 320 / var(--tone-a));
+    --t-rose-soft:   oklch(var(--tone-l) var(--tone-c) 12 / var(--tone-a));
+
+    --stage-accent: var(--t-slate);
+    --stage-accent-soft: var(--t-slate-soft);
+    --stage-amber: var(--t-clay);
+    --stage-amber-soft: var(--t-clay-soft);
+    --stage-teal: var(--t-sage);
+    --stage-teal-soft: var(--t-sage-soft);
+    --stage-violet: var(--t-plum);
+    --stage-violet-soft: var(--t-plum-soft);
   }
 
   .dark {
@@ -176,14 +198,15 @@
     --warning-container: #443615;
 
     /* stage tones (dark) */
-    --stage-accent: #7aa0cc;
-    --stage-accent-soft: rgba(122, 160, 204, 0.16);
-    --stage-amber: #d39e68;
-    --stage-amber-soft: rgba(211, 158, 104, 0.16);
-    --stage-teal: #8bae9d;
-    --stage-teal-soft: rgba(139, 174, 157, 0.16);
-    --stage-violet: #b58cc4;
-    --stage-violet-soft: rgba(181, 140, 196, 0.16);
+    --tone-l: 0.785;
+    --stage-accent: var(--t-slate);
+    --stage-accent-soft: var(--t-slate-soft);
+    --stage-amber: var(--t-clay);
+    --stage-amber-soft: var(--t-clay-soft);
+    --stage-teal: var(--t-sage);
+    --stage-teal-soft: var(--t-sage-soft);
+    --stage-violet: var(--t-plum);
+    --stage-violet-soft: var(--t-plum-soft);
   }
 
   body {

@@ -7,7 +7,12 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
-- **GitHub Issues Sync to `docs/issues.json`** — Added `scripts/sync-github-issues.ts`, npm command `npm run sync:issues`, GitHub Action workflow `.github/workflows/sync-issues.yml`, and unit tests in `src/test/syncGithubIssues.test.ts` to sync repository issues into `docs/issues.json`.
+- **Stage Tone CSS Token System (Issues #212, #213)** — Integrated the 8 matched stage tone tokens (`slate`, `clay`, `ochre`, `sage`, `teal`, `indigo`, `plum`, `rose`) derived from `--tone-l`, `--tone-c`, `--tone-a` in `src/index.css`. Mapped `--stage-amber` to `--t-clay` (~6:1 contrast ratio) to resolve low-contrast orange styling.
+
+### Changed
+- **2-Field Light Intake & Empty-Field Contact Card Formatting (Issue #210)** — Updated `NewContactModal.tsx` to open with two primary fields (**Name** & **Phone**) and guidance line *"That's enough to follow up. You can fill in the rest whenever you learn it."*, with optional fields hidden behind an **"+ Add the rest"** disclosure. Updated `ContactDetailsModal.tsx` to cleanly omit empty/unfilled contact fields without empty placeholder boxes or broken layout elements.
+- **GitHub Issue Sync Script & Workflow Update** — Updated `scripts/sync-github-issues.ts` and `src/test/syncGithubIssues.test.ts` to query `state=open` only, maintaining a clean `docs/issues.json` containing active open issues without accumulating closed issues.
+- **Issue 214 — Single Confirmation Toast Policy** — Verified single in-panel success confirmation for feedback submit in `FeedbackFAB.tsx` without redundant toast alerts.
 
 ### Fixed
 - **GitHub Issues 216 & 217 — Impersonation Truth, Messages Inbox Scoping, and Scope Preview** — Updated impersonation UI and scoping logic so that when impersonating a team member, student, or community member, the session is indistinguishable from that person's own view. Added `impScope` helper in `src/lib/impersonate.ts` providing plain-words scope preview lines on `ImpRow` cards in `ImpersonatePicker.tsx` (Fixes #216) and rendering scope text in `ImpersonateBar.tsx`. Excluded the admin's own staff account from the target picker. Updated `Messages.tsx` room fetching, message sending, and unread tracking to use `effectiveUserId` (and target display profile) instead of hardcoding the admin's Auth ID (Fixes #217). Updated `NotificationCenter.tsx` subscriptions and `Sidebar.tsx` user footer to display impersonated target details. Included unit tests in `src/test/ImpersonateScope.test.tsx`.

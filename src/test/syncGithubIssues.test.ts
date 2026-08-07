@@ -70,7 +70,7 @@ describe('sync-github-issues script', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://api.github.com/repos/owner/repo/issues?state=all&per_page=100&page=1',
+        'https://api.github.com/repos/owner/repo/issues?state=open&per_page=100&page=1',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token',

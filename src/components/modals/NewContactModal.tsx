@@ -34,6 +34,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     spiritualBackground: ''
   });
   const [stages, setStages] = useState<Stage[]>([]);
+  const [showMore, setShowMore] = useState(false);
   const season = useSeason();
 
   useEffect(() => {
@@ -56,9 +57,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           setStages(stageData);
 
           const fallback = stageData.length > 0 ? stageData[0].label : 'First Contact';
-          // initialStage may be a real stage label or the hard-coded "Unassigned"
-          // option; fall back if it's neither (e.g. a stage that no longer exists),
-          // so the select never holds a value that isn't an option.
           const validStages = new Set<string>(['Unassigned', ...stageData.map(s => s.label)]);
           const stage = initialStage && validStages.has(initialStage) ? initialStage : fallback;
           setFormData(f => ({ ...f, stage }));
@@ -81,7 +79,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
   const handlePhoneBlur = () => {
     if (!formData.phone || !formData.phone.trim()) {
-      setPhoneError('Phone number is required');
+      setPhoneError(null);
       return;
     }
     const formatted = formatPhoneNumber(formData.phone);
@@ -89,7 +87,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     
     if (!validatePhoneNumber(formData.phone)) {
       const digits = formData.phone.replace(/[^\d]/g, '');
-      if (digits.length < 10) {
+      if (digits.length > 0 && digits.length < 10) {
         setPhoneError('Phone number too short (need 10 digits)');
       } else if (digits.length > 10) {
         setPhoneError('Phone number too long (need 10 digits)');
@@ -103,10 +101,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.phone || !formData.phone.trim()) {
-      setPhoneError('Phone number is required');
-      return;
-    }
+    if (!formData.firstName.trim()) return;
     if (phoneError) return;
     setLoading(true);
 
@@ -246,123 +241,145 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
             {/* Form */}
             <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
               <form id="new-contact-form" onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* First Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <User className="w-3.5 h-3.5" /> FIRST NAME
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={formData.firstName}
-                    onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                    placeholder="e.g. Alex"
-                  />
-                </div>
-
-                {/* Last Name */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <User className="w-3.5 h-3.5" /> LAST NAME
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.lastName}
-                    onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                    placeholder="e.g. Johnson"
-                  />
-                </div>
-
-                {/* Status (role) */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.role}
-                    onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                    placeholder="e.g. Student, Faculty"
-                  />
-                </div>
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* First Name */}
                   <div className="space-y-1.5">
                     <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                      <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
+                      <User className="w-3.5 h-3.5" /> THEIR NAME
                     </label>
                     <input
+                      required
                       type="text"
-                      value={formData.location}
-                      onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                      value={formData.firstName}
+                      onChange={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                       className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                      placeholder="e.g. Campus Coffee, Miller Hall"
+                      placeholder="First name is plenty"
                     />
                   </div>
 
-                {/* Email */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Mail className="w-3.5 h-3.5" /> EMAIL
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                    placeholder="alex@campus.edu"
-                  />
+                  {/* Phone */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <Phone className="w-3.5 h-3.5" /> PHONE
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone}
+                      onChange={e => {
+                        setFormData(f => ({ ...f, phone: e.target.value }));
+                        if (phoneError) setPhoneError(null);
+                      }}
+                      onBlur={handlePhoneBlur}
+                      className={cn(
+                        "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm text-on-surface",
+                        phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
+                      )}
+                      placeholder="(555) 000-0000"
+                    />
+                    <AnimatePresence>
+                      {phoneError && (
+                        <motion.p
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
+                        >
+                          {phoneError}
+                        </motion.p>
+                      )}
+                    </AnimatePresence>
+                  </div>
                 </div>
 
-                {/* Phone */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Phone className="w-3.5 h-3.5" /> PHONE
-                  </label>
-                  <input
-                    required
-                    type="tel"
-                    value={formData.phone}
-                    onChange={e => {
-                      setFormData(f => ({ ...f, phone: e.target.value }));
-                      if (phoneError) setPhoneError(null);
-                    }}
-                    onBlur={handlePhoneBlur}
-                    className={cn(
-                      "w-full h-11 px-4 rounded-xl bg-surface-container-high border outline-none transition-all text-sm text-on-surface",
-                      phoneError ? "border-error focus:border-error focus:ring-1 focus:ring-error" : "border-outline focus:border-primary focus:ring-1 focus:ring-primary"
-                    )}
-                    placeholder="(555) 000-0000"
-                  />
-                  <AnimatePresence>
-                    {phoneError && (
-                      <motion.p
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
-                      >
-                        {phoneError}
-                      </motion.p>
-                    )}
-                  </AnimatePresence>
-                </div>
+                <p className="text-xs text-on-surface-variant/80 italic px-1">
+                  That's enough to follow up. You can fill in the rest whenever you learn it.
+                </p>
 
-                {/* Stage selector */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
-                  </label>
-                  <select
-                    value={formData.stage}
-                    onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
-                    className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
+                {/* Disclosure toggle button */}
+                <div className="pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowMore(prev => !prev)}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
                   >
-                    <option value="Unassigned">Unassigned</option>
-                    {stages.map(s => (
+                    {showMore ? '− Show less' : '+ Add the rest (optional details)'}
+                  </button>
+                </div>
+
+                {showMore && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2 border-t border-outline-variant/40"
+                  >
+                    {/* Last Name */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <User className="w-3.5 h-3.5" /> LAST NAME
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.lastName}
+                        onChange={e => setFormData(f => ({ ...f, lastName: capitalize(e.target.value) }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                        placeholder="e.g. Johnson"
+                      />
+                    </div>
+
+                    {/* Status (role) */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.role}
+                        onChange={e => setFormData(f => ({ ...f, role: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                        placeholder="e.g. Student, Faculty"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.location}
+                        onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                        placeholder="e.g. Campus Coffee, Miller Hall"
+                      />
+                    </div>
+
+                    {/* Email */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Mail className="w-3.5 h-3.5" /> EMAIL
+                      </label>
+                      <input
+                        type="email"
+                        value={formData.email}
+                        onChange={e => setFormData(f => ({ ...f, email: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
+                        placeholder="alex@campus.edu"
+                      />
+                    </div>
+
+                    {/* Stage selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                        <Calendar className="w-3.5 h-3.5" /> WHERE THEY'RE AT
+                      </label>
+                      <select
+                        value={formData.stage}
+                        onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
+                      >
+                        <option value="Unassigned">Unassigned</option>
+                        {stages.map(s => (
                       <option key={s.id} value={s.label}>{s.label}</option>
                     ))}
                   </select>
@@ -411,15 +428,15 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     <MessageSquare className="w-3.5 h-3.5" /> NOTES
                   </label>
                   <textarea
-                    required
                     value={formData.notes}
                     onChange={e => setFormData(f => ({ ...f, notes: e.target.value }))}
                     className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
                     placeholder="Add some context about this contact..."
                   />
                 </div>
-              </div>
-            </form>
+              </motion.div>
+            )}
+          </form>
           </div>
 
           {/* Footer */}
