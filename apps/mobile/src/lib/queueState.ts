@@ -5,17 +5,17 @@
 // Two maps, both keyed by card id: `handled` (dealt with — gone for the day) and
 // `later` (pushed to the back, in the order they were deferred). Both reset when
 // the date changes, so the queue starts fresh each morning.
+//
+// This file is storage and pub/sub only — how the two maps CHANGE lives in
+// @cisa/core's queueDay.ts, which replaces the state rather than editing it.
+// That is load-bearing, not stylistic: useTraineeLandingData derives the card
+// order in a `useMemo` keyed on `handled` and `later`, so maps mutated in place
+// would re-render the screen without ever recomputing the order.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
+import { emptyQueueDay, queueDayHandle, queueDayLater, type QueueDayState } from '@cisa/core';
 
 const QUEUE_PREFIX = 'cisa.m2.queue.';
-
-export interface QueueDayState {
-  /** ISO date (YYYY-MM-DD) this state belongs to. */
-  day: string;
-  handled: Record<string, number>;
-  later: Record<string, number>;
-}
 
 type Listener = () => void;
 
@@ -25,7 +25,8 @@ const hydrated = new Set<string>();
 
 const today = () => new Date().toISOString().slice(0, 10);
 const keyFor = (uid: string) => QUEUE_PREFIX + uid;
-const fresh = (): QueueDayState => ({ day: today(), handled: {}, later: {} });
+const fresh = (): QueueDayState => emptyQueueDay(today());
+const SIGNED_OUT: QueueDayState = emptyQueueDay('');
 
 const emit = () =>
   subs.forEach((fn) => {
@@ -75,17 +76,14 @@ export const QueueState = {
 
   /** Dealt with — gone from the queue until tomorrow. */
   handle(uid: string, cardId: string) {
-    const s = get(uid);
-    s.handled[cardId] = Date.now();
-    delete s.later[cardId];
+    cache[uid] = queueDayHandle(get(uid), cardId, Date.now());
     save(uid);
     emit();
   },
 
   /** Not now — back of the queue, behind anything deferred earlier. */
   later(uid: string, cardId: string) {
-    const s = get(uid);
-    s.later[cardId] = Date.now();
+    cache[uid] = queueDayLater(get(uid), cardId, Date.now());
     save(uid);
     emit();
   },
@@ -119,7 +117,9 @@ export function useQueueState(uid: string | null): {
   const [, force] = useState(0);
   useEffect(() => QueueState.subscribe(() => force((n) => n + 1)), []);
 
-  const state = uid ? QueueState.for(uid) : fresh();
+  // One shared empty day while auth resolves — a new object per render would
+  // churn the identity the queue's `useMemo` keys on, for no state change.
+  const state = uid ? QueueState.for(uid) : SIGNED_OUT;
   return {
     handled: state.handled,
     later: state.later,

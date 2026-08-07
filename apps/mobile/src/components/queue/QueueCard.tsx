@@ -30,6 +30,9 @@ import {
 } from './atoms';
 
 export interface QueueCardApi {
+  /** Can this role actually open The Board? A trainee can't, so the due card
+   *  hides the button rather than offering a door that doesn't open. */
+  canBoard: boolean;
   /** Dealt with — gone from the queue for the day. */
   handle: (cardId: string) => void;
   /** Not now — back of the queue. */
@@ -72,10 +75,12 @@ export function QueueCard({
         foot={
           <>
             <PrimaryButton title="Mark it done" onPress={() => api.markDone(t.id)} />
-            <SecondaryButton
-              title={t.sourceDocId ? 'Open the page' : 'Open The Board'}
-              onPress={() => api.openBoardDoc(t.sourceDocId)}
-            />
+            {api.canBoard && (
+              <SecondaryButton
+                title={t.sourceDocId ? 'Open the page' : 'Open The Board'}
+                onPress={() => api.openBoardDoc(t.sourceDocId)}
+              />
+            )}
             <LaterButton label="Push to tomorrow" onPress={() => api.pushToTomorrow(t.id)} />
           </>
         }
@@ -85,7 +90,9 @@ export function QueueCard({
           {t.createdByName
             ? `${firstName(t.createdByName)} put this on the page and put your name on it.`
             : 'This one has your name on it.'}
-          {t.sourceDocTitle ? ` It came from ${t.sourceDocTitle}.` : ''}
+          {/* Naming a page they can't open just raises a question they can't
+              answer — the design gates this line on canBoard too. */}
+          {t.sourceDocTitle && api.canBoard ? ` It came from ${t.sourceDocTitle}.` : ''}
         </Why>
         <NoteBlock label="Why it matters today">
           Small promises are how people learn they're remembered. This is one of them.

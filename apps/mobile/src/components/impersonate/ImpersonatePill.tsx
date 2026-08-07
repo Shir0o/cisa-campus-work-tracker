@@ -1,8 +1,17 @@
 // The strip that stays put while an admin is borrowing someone's view — the
 // design's `imp-pill` (views/mobile/app.jsx): a name, a way to pick someone
 // else, and a way back. Room-agnostic on purpose (Material tokens, not v2's
-// palette): it floats over the trainee's green room, the full-timer's navy
+// palette): it sits above the trainee's green room, the full-timer's navy
 // paper, and the member app alike, so it can't be styled AS any one of them.
+//
+// It takes real space at the top of the screen rather than floating over it.
+// The design never has to make this call — its `.imp-pill` renders in the OUTER
+// preview shell, over the phone FRAME, and the app inside the frame carries no
+// banner at all (views/mobile/app.jsx passes the borrowed role in on the iframe
+// URL). On a real device there is no "outside the phone", so we follow the
+// design's other impersonation strip instead: the web `.imp-bar`, which is
+// in-flow and has never covered anything. ImpersonateLayer owns the layout;
+// this strip owns the top safe-area inset while it is showing.
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,22 +38,13 @@ export function ImpersonatePill({
   return (
     <View
       style={{
-        position: 'absolute',
-        left: 10,
-        right: 10,
-        top: insets.top + 6,
         backgroundColor: colors.surfaceContainerHighest,
-        borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: colors.outlineVariant,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.outlineVariant,
+        paddingTop: insets.top + 8,
         paddingHorizontal: 12,
-        paddingVertical: 8,
+        paddingBottom: 8,
         gap: 6,
-        shadowColor: '#000',
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 3 },
-        elevation: 6,
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

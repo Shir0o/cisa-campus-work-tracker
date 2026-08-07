@@ -28,6 +28,29 @@ export const QUICK_CAPTURE_KINDS: QuickCaptureKind[] = [
   { id: "meet", label: "Ran into" },
 ];
 
+// `M2_TYPE_TITLE` in the design's views/mobile/m2.jsx. The design writes this
+// string onto the interaction and reads it back as `i.title`; our `Interaction`
+// carries only `type`, so the lookup happens where it's shown. The legacy keys
+// below are no longer offered when logging, but they still sit in older logs.
+const KIND_TITLES: Record<string, string> = {
+  gospel: "Gospel conversation",
+  appointment: "Appointment",
+  gathering: "Gathering",
+  phone: "Phone call",
+  text: "Texted",
+  meet: "Ran into each other",
+  coffee: "Coffee",
+  meal: "Shared a meal",
+  "small-group": "Small group",
+  meeting: "Meeting",
+  rehearsal: "Rehearsal",
+};
+
+/** What a logged conversation is called, in words. Never the raw key. */
+export function interactionKindLabel(type: string | null | undefined): string {
+  return (type && KIND_TITLES[type]) || "Conversation";
+}
+
 export interface QuickCaptureCandidate {
   contact: Contact;
   days: number;

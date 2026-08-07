@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { format } from 'date-fns';
 import {
   FIRST_MET_PRESETS,
+  QUICK_CAPTURE_KINDS,
+  interactionKindLabel,
   contactAddedLine,
   firstMetDate,
   followUpDefaultText,
@@ -334,5 +336,39 @@ describe('the saved step’s own lines', () => {
       head: 'Added to what we’re praying',
       sub: 'The team will pray it together too.',
     });
+  });
+});
+
+// `M2_TYPE_TITLE` in the design's views/mobile/m2.jsx. The design stores this
+// string ON the interaction and re-reads it in "Look back at your week"; our
+// Interaction has no `title`, only `type`, so the lookup happens at render.
+describe('interactionKindLabel', () => {
+  it('names each of the six kinds we offer', () => {
+    expect(interactionKindLabel('gospel')).toBe('Gospel conversation');
+    expect(interactionKindLabel('appointment')).toBe('Appointment');
+    expect(interactionKindLabel('gathering')).toBe('Gathering');
+    expect(interactionKindLabel('phone')).toBe('Phone call');
+    expect(interactionKindLabel('text')).toBe('Texted');
+    expect(interactionKindLabel('meet')).toBe('Ran into each other');
+  });
+
+  it('still names the legacy kinds sitting in older logs', () => {
+    expect(interactionKindLabel('coffee')).toBe('Coffee');
+    expect(interactionKindLabel('meal')).toBe('Shared a meal');
+    expect(interactionKindLabel('small-group')).toBe('Small group');
+    expect(interactionKindLabel('meeting')).toBe('Meeting');
+    expect(interactionKindLabel('rehearsal')).toBe('Rehearsal');
+  });
+
+  it('never leaks a raw key for something it does not know', () => {
+    expect(interactionKindLabel('some-new-key')).toBe('Conversation');
+    expect(interactionKindLabel('')).toBe('Conversation');
+    expect(interactionKindLabel(undefined)).toBe('Conversation');
+  });
+
+  it('covers every kind the log sheet can write', () => {
+    for (const kind of QUICK_CAPTURE_KINDS) {
+      expect(interactionKindLabel(kind.id)).not.toBe('Conversation');
+    }
   });
 });
