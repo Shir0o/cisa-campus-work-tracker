@@ -1262,7 +1262,7 @@ export default function ContactDetailsModal({
                           }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="e.g. Alex"
+                        placeholder="First name is plenty"
                       />
                     </div>
                     {/* Last Name */}
