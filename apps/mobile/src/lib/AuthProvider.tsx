@@ -10,25 +10,37 @@ import { GoogleAuthProvider, onAuthStateChanged, signInWithCredential, signOut, 
 import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { isAppOwner, canSimulateRole, getEffectiveRole, type AppRole } from '@cisa/core';
+import {
+  isAppOwner,
+  canSimulateRole,
+  getEffectiveRole,
+  resolveImpersonateTarget,
+  type AppRole,
+  type ImpersonateTarget,
+} from '@cisa/core';
 import { auth, db, signIn } from './firebase';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
 });
 
-export type { AppRole };
+export type { AppRole, ImpersonateTarget };
 
 const STORAGE_KEY_MOBILE_OWNER_VIEW = 'cisa.owner_view_role';
+const STORAGE_KEY_MOBILE_IMP_TARGET = 'cisa.impersonate.v1';
 
 interface AuthContextValue {
   user: User | null;
   uid: string | null;
+  effectiveUserId: string | null;
+  effectiveIdentityKey: string | null;
   role: AppRole | null;
   actualRole: AppRole | null;
   isOwner: boolean;
   ownerViewRole: AppRole | null;
   setOwnerViewRole: (role: AppRole | null) => void;
+  impersonateTarget: ImpersonateTarget | null;
+  setImpersonateTarget: (target: ImpersonateTarget | null) => void;
   isApproved: boolean;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
@@ -42,20 +54,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [actualRole, setActualRole] = useState<AppRole | null>(null);
   const [ownerViewRole, setOwnerViewRoleState] = useState<AppRole | null>(null);
+  const [impersonateTarget, setImpersonateTargetState] = useState<ImpersonateTarget | null>(null);
   const [isApproved, setIsApproved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const isOwner = canSimulateRole(actualRole, user?.email);
 
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY_MOBILE_OWNER_VIEW)
-      .then((saved) => {
-        if (saved === 'admin' || saved === 'manager' || saved === 'operator' || saved === 'viewer') {
-          setOwnerViewRoleState(saved as AppRole);
+    Promise.all([
+      AsyncStorage.getItem(STORAGE_KEY_MOBILE_OWNER_VIEW),
+      AsyncStorage.getItem(STORAGE_KEY_MOBILE_IMP_TARGET),
+    ])
+      .then(([savedRole, savedTargetKey]) => {
+        let role: AppRole | null = null;
+        if (savedRole === 'admin' || savedRole === 'manager' || savedRole === 'operator' || savedRole === 'viewer') {
+          role = savedRole as AppRole;
+        }
+        if (savedTargetKey) {
+          const resolved = resolveImpersonateTarget(savedTargetKey);
+          if (resolved) {
+            setImpersonateTargetState(resolved);
+            setOwnerViewRoleState(resolved.role);
+            return;
+          }
+        }
+        if (role) {
+          setOwnerViewRoleState(role);
         }
       })
       .catch((err) => {
-        console.warn('Could not read saved owner view role preference:', err);
+        console.warn('Could not read saved owner view preference:', err);
       });
   }, []);
 
@@ -65,14 +93,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       AsyncStorage.setItem(STORAGE_KEY_MOBILE_OWNER_VIEW, nextRole).catch((err) => {
         console.warn('Could not save owner view role preference:', err);
       });
+      if (impersonateTarget && impersonateTarget.role !== nextRole) {
+        setImpersonateTargetState(null);
+        AsyncStorage.removeItem(STORAGE_KEY_MOBILE_IMP_TARGET).catch(() => {});
+      }
     } else {
-      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch((err) => {
-        console.warn('Could not remove owner view role preference:', err);
-      });
+      setImpersonateTargetState(null);
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch(() => {});
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_IMP_TARGET).catch(() => {});
+    }
+  };
+
+  const setImpersonateTarget = (target: ImpersonateTarget | null) => {
+    setImpersonateTargetState(target);
+    if (target) {
+      setOwnerViewRoleState(target.role);
+      AsyncStorage.setItem(STORAGE_KEY_MOBILE_OWNER_VIEW, target.role).catch(() => {});
+      AsyncStorage.setItem(STORAGE_KEY_MOBILE_IMP_TARGET, target.key).catch(() => {});
+    } else {
+      setOwnerViewRoleState(null);
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_OWNER_VIEW).catch(() => {});
+      AsyncStorage.removeItem(STORAGE_KEY_MOBILE_IMP_TARGET).catch(() => {});
     }
   };
 
   const effectiveRole = getEffectiveRole(user?.email, actualRole, ownerViewRole);
+
+  const effectiveUserId = impersonateTarget
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || null)
+    : (ownerViewRole === 'manager'
+        ? 'cisa-trainee'
+        : ownerViewRole === 'operator'
+        ? 'cisa-student'
+        : ownerViewRole === 'viewer'
+        ? 'cisa-community'
+        : user?.uid || null);
+
+  const effectiveIdentityKey = impersonateTarget
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || null)
+    : (effectiveRole || null);
 
   useEffect(() => {
     let unsubUserDoc: (() => void) | null = null;
@@ -109,12 +168,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value: AuthContextValue = {
     user,
-    uid: user?.uid ?? null,
+    uid: effectiveUserId,
+    effectiveUserId,
+    effectiveIdentityKey,
     role: effectiveRole,
     actualRole,
     isOwner,
     ownerViewRole,
     setOwnerViewRole,
+    impersonateTarget,
+    setImpersonateTarget,
     isApproved,
     loading,
     signInWithEmail: async (email, password) => {
