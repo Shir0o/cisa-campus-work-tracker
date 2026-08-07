@@ -1,103 +1,38 @@
 # AGENTS.md
 
-Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Behavioral guidelines to maximize code quality, prevent regressions, and minimize context/token cost.
 
-**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+---
 
-## 1. Think Before Coding
+## 1. Think & Clarify Before Coding
+- **State Assumptions & Tradeoffs**: Surface ambiguity early. Do not silently pick an implementation path if alternate approaches exist.
+- **Cost & Token Efficiency**: Avoid unnecessary tool calls, large file dumps, or speculative iterations.
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+## 2. Simplicity First & Surgical Changes
+- **Targeted Edits**: Touch only what is necessary to fulfill the request. Every changed line must trace directly to the user requirement.
+- **No Over-Engineering**: Avoid speculative features, unnecessary abstractions, or unrequested configuration options.
+- **No Mock Data**: Always wire real data from Firestore, props, or state. Never hardcode fake/mock data in component logic.
+- **Clean Up Own Mess**: Remove only imports, variables, and code introduced or made unused by your changes. Do not touch pre-existing dead code.
 
-Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+## 3. Targeted Changelog Context & Tracking
+- **Selective Reading**: Do NOT read the entire `CHANGELOG.md` file (which can be large). Check only recent entries, the `[Unreleased]` section, or search for sections relevant to the code being modified to prevent regressions.
+- **Update After Completion**: Append a concise bullet point under `[Unreleased]` in `CHANGELOG.md` summarizing core changes added, modified, or fixed.
 
-## 2. Simplicity First
+## 4. Test-Driven Development (TDD) & Quality
+- **TDD First**: Follow Red → Green → Refactor. Write or update unit tests before writing implementation code.
+- **Coverage & Ratcheting**: Enforce test coverage thresholds (e.g. in `vitest.config.ts`). Thresholds must never be lowered; only ratchet upwards as coverage improves.
+- **Goal Verification**: Transform tasks into verifiable goals (e.g. reproducing a bug via test first, ensuring all unit tests pass after).
 
-**Minimum code that solves the problem. Nothing speculative.**
-
-- No features beyond what was asked.
-- No abstractions for single-use code.
-- No "flexibility" or "configurability" that wasn't requested.
-- No error handling for impossible scenarios.
-- No design mock data: Do not use static design mock data when implementing components or features; always wire up real data from Firestore, state, or props.
-- If you write 200 lines and it could be 50, rewrite it.
-
-Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
-
-## 3. Surgical Changes
-
-**Touch only what you must. Clean up only your own mess.**
-
-When editing existing code:
-- Don't "improve" adjacent code, comments, or formatting.
-- Don't refactor things that aren't broken.
-- Match existing style, even if you'd do it differently.
-- If you notice unrelated dead code, mention it - don't delete it.
-
-When your changes create orphans:
-- Remove imports/variables/functions that YOUR changes made unused.
-- Don't remove pre-existing dead code unless asked.
-
-The test: Every changed line should trace directly to the user's request.
-
-## 4. Goal-Driven Execution
-
-**Define success criteria. Loop until verified.**
-
-Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
-
-For multi-step tasks, state a brief plan:
-```
-1. [Step] → verify: [check]
-2. [Step] → verify: [check]
-3. [Step] → verify: [check]
-```
-
-Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
-
-## 5. Changelog Context & Tracking
-
-**Always prevent regression by checking the changelog before making changes, and always update the changelog after.**
-
-Before starting any feature or bug fix:
-- Check [CHANGELOG.md](CHANGELOG.md) to understand the recent context, PR merges, and changes. This helps prevent regression.
-
-After completing a feature or bug fix:
-- Update the `[Unreleased]` section of `CHANGELOG.md` with a concise bullet point describing the change. Focus on the core functionality added, modified, or fixed.
-- Keep changelog descriptions brief and distinct from full release notes.
-
-## 6. Testing Policy
-
-- **TDD (Test-Driven Development)**: Write tests first, then implement. Red → Green → Refactor.
-- **Unit Tests**: Coverage thresholds are enforced in `vitest.config.ts`.
-- **Ratcheting**: Thresholds must never be lowered; they should only go up as coverage improves.
-- **New Code**: All new features and bug fixes must ship with matching unit tests.
-
-## 7. Pre-PR Gate
-
-**CI must pass locally before pushing a PR. No exceptions.**
-
-Before creating or updating a pull request, run every step the CI pipeline runs — in order — and fix any failures before pushing:
+## 5. Pre-PR Gate
+Before creating or pushing a PR, run local CI pipeline steps in order and fix all failures:
 
 ```bash
-git fetch origin main && git rebase origin/main   # stay current, resolve conflicts
+git fetch origin main && git rebase origin/main   # stay up-to-date and resolve conflicts
 npm run typecheck                                  # tsc --noEmit
 npm run lint                                       # eslint .
 npm run test:coverage                              # vitest run --coverage
 npm run build                                      # vite build + esbuild server
 ```
 
-- **Rebase first**: Always rebase onto an up-to-date `origin/main` before pushing. Resolve any merge conflicts locally.
-- **Fix, don't skip**: If any step fails, fix the issue and re-run. Do not push with known failures.
-- **Coverage thresholds**: `test:coverage` enforces thresholds in `vitest.config.ts`. If new code drops coverage below the threshold, add tests.
-- **Match the function signatures**: When calling existing utility functions (e.g., `logActivity`, `sendNotification`), always check the actual function signature in the source — do not guess the parameter list.
-
----
-
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+- **Fix, don't skip**: Do not push with failing lints, build errors, or test coverage drops.
+- **Signature Verification**: Always match actual function signatures across callers when modifying utility functions.
