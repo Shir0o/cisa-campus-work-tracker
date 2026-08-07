@@ -95,8 +95,8 @@ function WaitingRow({
 export function LandingTrainee() {
   const { colors, radius, spacing } = useTheme();
   const router = useRouter();
-  const { user } = useAuth();
-  const data = useTraineeLandingData(user?.uid ?? null, user?.displayName ?? null);
+  const { uid, user } = useAuth();
+  const data = useTraineeLandingData(uid, user?.displayName ?? null);
   const firstName = (user?.displayName || 'friend').split(' ')[0];
 
   const onOpenContact = (contact: Contact) => {

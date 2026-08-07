@@ -1,3 +1,5 @@
+import type { AppRole } from './permissions';
+
 export interface Contact {
   id: string;
   name: string;
@@ -303,4 +305,14 @@ export interface ChatMessage {
   timestamp: unknown;
   type: 'text' | 'system';
   attachments?: ChatAttachment[];
+}
+
+export interface ImpersonateTarget {
+  key: string;
+  name: string;
+  initials: string;
+  sub: string;
+  note: string;
+  role: AppRole;
+  persona?: any;
 }

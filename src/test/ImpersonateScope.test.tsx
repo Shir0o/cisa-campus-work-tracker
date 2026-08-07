@@ -90,4 +90,26 @@ describe('Impersonation Scope & Identity Utilities', () => {
     expect(screen.getByText('1 person — the one they added')).toBeInTheDocument();
     expect(screen.getByText(/No History/)).toBeInTheDocument();
   });
+
+  it('maps role simulation views and target impersonation to correct effectiveUserIds', () => {
+    const resolve = (target: any, role: string | null, userUid = 'u1_admin') => {
+      return target
+        ? (target.persona?.staffId || target.persona?.contactId || target.persona?.id || null)
+        : (role === 'manager'
+            ? 'cisa-trainee'
+            : role === 'operator'
+            ? 'cisa-student'
+            : role === 'viewer'
+            ? 'cisa-community'
+            : userUid);
+    };
+
+    expect(resolve(null, null, 'u1_admin')).toBe('u1_admin');
+    expect(resolve(null, 'manager', 'u1_admin')).toBe('cisa-trainee');
+    expect(resolve(null, 'operator', 'u1_admin')).toBe('cisa-student');
+    expect(resolve(null, 'viewer', 'u1_admin')).toBe('cisa-community');
+
+    const customTrainee = impStaffTarget({ id: 'trainee_99', name: 'Custom Trainee', role: 'Trainee', isTrainee: true });
+    expect(resolve(customTrainee, 'manager', 'u1_admin')).toBe('trainee_99');
+  });
 });
