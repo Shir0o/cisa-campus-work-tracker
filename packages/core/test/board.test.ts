@@ -10,9 +10,6 @@ import {
   boardLevelForRole,
   isTrashedBoardDoc,
   docSortOrder,
-  parseDocNotes,
-  parseDocTasks,
-  collectDocTaskNodes,
   mdPreview,
   mdOpenTasks,
   boardRowLine,
@@ -104,38 +101,15 @@ describe('docSortOrder', () => {
   });
 });
 
-describe('parseDocNotes', () => {
-  it('parses note comments with and without type from markdown', () => {
-    const md = `
-# Title
-Some text
-<!-- note:n-1 type:learning -->
-More text
-<!-- note:n-2 -->
-    `;
-    const notes = parseDocNotes(md);
-    expect(notes).toEqual([
-      { id: 'n-1', type: 'learning', rawLine: '<!-- note:n-1 type:learning -->' },
-      { id: 'n-2', type: 'record', rawLine: '<!-- note:n-2 -->' },
-    ]);
-  });
-});
-
-describe('parseDocTasks & collectDocTaskNodes edge cases', () => {
-  it('skips task lines without a valid task ID format', () => {
-    const md = '- [ ] Just plain text without id tag';
-    expect(parseDocTasks(md)).toEqual([]);
-  });
-
-  it('returns empty array when taskItem has no textblock child', () => {
-    const mockDoc = {
-      descendants: (cb: (node: any, pos: number) => void) => {
-        cb({ type: { name: 'taskItem' }, firstChild: null }, 0);
-      },
-    } as any;
-    expect(collectDocTaskNodes(mockDoc)).toEqual([]);
-  });
-});
+// parseDocNotes / parseDocTasks / collectDocTaskNodes are NOT here: they're
+// TipTap-editor-specific (collectDocTaskNodes walks a live ProseMirror doc),
+// only ever run in the web coordination editor, and covered there in
+// src/test/board.test.ts against the real functions in src/lib/board.ts.
+// apps/mobile's Board is read-only and carries no TipTap dependency at all, so
+// this platform-agnostic package never had them — these two blocks were a
+// stray copy-paste duplicate that happened to still pass because vitest treats
+// an undefined import as `undefined`... except calling `undefined(md)` throws,
+// which is exactly what was failing here.
 
 describe('isExpiredTrash', () => {
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
