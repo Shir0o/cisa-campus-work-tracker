@@ -15,6 +15,8 @@ import {
   canSimulateRole,
   getEffectiveRole,
   resolveImpersonateTarget,
+  meIdFor,
+  identityKey,
   type AppRole,
   type ImpersonateTarget,
 } from '@cisa/core';
@@ -120,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const effectiveRole = getEffectiveRole(user?.email, actualRole, ownerViewRole);
 
   const effectiveUserId = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || null)
+    ? meIdFor(impersonateTarget.persona)
     : (ownerViewRole === 'manager'
         ? 'cisa-trainee'
         : ownerViewRole === 'operator'
@@ -130,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : user?.uid || null);
 
   const effectiveIdentityKey = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || null)
+    ? identityKey(impersonateTarget.persona, impersonateTarget.role)
     : (effectiveRole || null);
 
   useEffect(() => {

@@ -13,7 +13,7 @@ import { sleep } from '../lib/utils';
 
 import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole } from '../lib/permissions';
 import { ImpersonateTarget } from '../types';
-import { Impersonation } from '../lib/impersonate';
+import { Impersonation, meIdFor, identityKey } from '../lib/impersonate';
 
 interface AuthContextType {
   user: User | null;
@@ -93,11 +93,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isManager = effectiveRole === 'admin' || effectiveRole === 'manager';
 
   const effectiveUserId = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || null)
+    ? meIdFor(impersonateTarget.persona)
     : (user?.uid || null);
 
   const effectiveIdentityKey = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || null)
+    ? identityKey(impersonateTarget.persona, impersonateTarget.role)
     : (effectiveRole || null);
 
   useEffect(() => {
