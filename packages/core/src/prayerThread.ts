@@ -15,6 +15,19 @@ function weekStartOf(date: Date): Date {
 
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 
+/**
+ * Whether a burden belongs on the team prayer page. The log sheet's "Bring it
+ * to team prayer" toggle is off by default, so it writes `teamPrayer: false`
+ * when the trainee keeps a burden to themselves.
+ *
+ * An ABSENT flag means team: every prayer written before the toggle existed
+ * stays exactly where it was, so the page needs no backfill. That is why this
+ * is a function and not `p.teamPrayer` at the call site.
+ */
+export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
+  return p.teamPrayer !== false;
+}
+
 export interface PrayerThreadGroups {
   weekItem: PrayerRecord | null;
   lastItem: PrayerRecord | null;

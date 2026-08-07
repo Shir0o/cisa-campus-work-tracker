@@ -168,6 +168,21 @@ export interface PrayerRecord {
   updatedBy?: string;
   updatedByName?: string;
   prayerPage?: boolean;
+  /**
+   * Whether this burden is carried by the whole team, i.e. whether it shows on
+   * the team prayer page ("Who we're carrying" / "On our hearts"). The log
+   * sheet's "Bring it to team prayer" toggle, off by default.
+   *
+   * ABSENT MEANS TEAM. Every prayer written before the toggle existed has no
+   * field, and all of them stay where they were — read it through
+   * `isTeamPrayer`, never as a bare truthiness check.
+   *
+   * Not an access boundary: a private prayer is still readable by the team
+   * under the Firestore rules, it just isn't surfaced on that page. It always
+   * shows on its own contact's Prayers tab, where the person who wrote it
+   * looks for it.
+   */
+  teamPrayer?: boolean;
 }
 
 export interface AppUser {

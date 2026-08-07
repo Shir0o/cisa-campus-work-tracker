@@ -18,7 +18,6 @@ import {
   FIRST_MET_PRESETS,
   QUICK_CAPTURE_KINDS,
   REMINDER_PRESETS,
-  SIGNUP_SPIRITUAL_BACKGROUNDS,
   SIGNUP_YEARS,
   firstMetDate,
   firstName,
@@ -77,10 +76,7 @@ interface Draft {
   email: string;
   year: string;
   major: string;
-  /** The design's "Part of" → this app's `Contact.role` (its contact group). */
-  group: string;
   stage: string;
-  background: string;
   met: FirstMetPreset;
 }
 
@@ -151,9 +147,7 @@ function LogSheetBody({
     email: '',
     year: '',
     major: '',
-    group: '',
     stage: '',
-    background: '',
     met: 'today',
   });
 
@@ -169,6 +163,10 @@ function LogSheetBody({
   const [fuPreset, setFuPreset] = useState<ReminderPreset>('few');
   const [fuSet, setFuSet] = useState<ReminderPreset | null>(null);
   const [burden, setBurden] = useState('');
+  // Off by default, as the design draws it: what you write here sits with that
+  // person until you say otherwise. Held after saving so the done row can name
+  // where the burden actually went.
+  const [prTeam, setPrTeam] = useState(false);
   const [prSet, setPrSet] = useState(false);
   // The card is held in a ref, not state: `finish()` reads it once on the way
   // out, and "Log another" must not be able to hand the same card back twice.
@@ -206,6 +204,7 @@ function LogSheetBody({
     setFuPreset('few');
     setFuSet(null);
     setBurden('');
+    setPrTeam(false);
     setPrSet(false);
   }
 
@@ -263,8 +262,6 @@ function LogSheetBody({
           email: draft.email,
           year: draft.year,
           major: draft.major,
-          group: draft.group,
-          background: draft.background,
           metISO: draft.more && draft.met !== 'today' ? firstMetDate(draft.met) : undefined,
         }),
         { uid, name: user?.displayName },
@@ -306,12 +303,16 @@ function LogSheetBody({
     }
   };
 
+  /** "Something to pray for". `teamPrayer` only reaches Firestore when the
+   * burden is being kept off the team prayer page — leaving the field off the
+   * doc is what every prayer written before this toggle existed looks like, and
+   * that reads as the team's. */
   const savePrayer = async () => {
     if (!saved || !burden.trim() || saving) return;
     setSaving(true);
     try {
       await addPrayer(
-        { contactId: saved.contactId, burden: burden.trim() },
+        { contactId: saved.contactId, burden: burden.trim(), teamPrayer: prTeam },
         { uid, name: user?.displayName },
       );
       setPrSet(true);
@@ -489,18 +490,13 @@ function LogSheetBody({
                     <V2Input value={draft.major} onChangeText={(v) => set('major', v)} placeholder="Major" />
                   </View>
 
-                  {/* The design picks "Part of" from a fellowships list this app
-                      doesn't have; `Contact.role` IS its contact group, and its
-                      own form types that free-hand, so this does too. */}
-                  <View style={{ gap: 9 }}>
-                    <Kicker>Part of</Kicker>
-                    <V2Input
-                      value={draft.group}
-                      onChangeText={(v) => set('group', v)}
-                      placeholder="e.g. Student, Faculty"
-                    />
-                  </View>
-
+                  {/* The design also folds out "Part of" and "Faith, so far"
+                      here. Both are gone: "Part of" picks from a fellowships
+                      list this app doesn't have (its nearest field is a
+                      category — "Student", "Faculty" — not a group), and
+                      neither question belongs in a sheet meant to be finished
+                      while walking. The sign-up form still asks both, and the
+                      person screen still shows them when they're there. */}
                   {stages.length > 0 && (
                     <ChipField label="Where they're at">
                       {stages.map((s) => (
@@ -513,17 +509,6 @@ function LogSheetBody({
                       ))}
                     </ChipField>
                   )}
-
-                  <ChipField label="Faith, so far">
-                    {SIGNUP_SPIRITUAL_BACKGROUNDS.map((b) => (
-                      <Chip
-                        key={b.value}
-                        label={b.label}
-                        on={draft.background === b.value}
-                        onPress={() => set('background', draft.background === b.value ? '' : b.value)}
-                      />
-                    ))}
-                  </ChipField>
 
                   <ChipField label="First met">
                     {FIRST_MET_PRESETS.map((p) => (
@@ -691,7 +676,7 @@ function LogSheetBody({
                 )}
 
                 {prSet ? (
-                  <DoneRow {...prayerAddedLine(saved.contactName)} />
+                  <DoneRow {...prayerAddedLine(saved.contactName, prTeam)} />
                 ) : (
                   <>
                     <Disclosure
@@ -707,6 +692,13 @@ function LogSheetBody({
                           onChangeText={setBurden}
                           placeholder="In their words, if you can"
                         />
+                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                          <Chip
+                            label="Bring it to team prayer"
+                            on={prTeam}
+                            onPress={() => setPrTeam(!prTeam)}
+                          />
+                        </View>
                         <PrimaryButton
                           title={saving ? 'Saving…' : 'Start praying'}
                           tone="deep"

@@ -180,6 +180,10 @@ export interface PrayerRecord {
   updatedBy?: string;
   updatedByName?: string;
   prayerPage?: boolean;
+  /** Whether the whole team carries this burden — see the fuller note on
+   *  `PrayerRecord` in packages/core/src/types.ts. Absent means team; read it
+   *  through `isTeamPrayer`, never as a bare truthiness check. */
+  teamPrayer?: boolean;
 }
 
 export interface AppUser {

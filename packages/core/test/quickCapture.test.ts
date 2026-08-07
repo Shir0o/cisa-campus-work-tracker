@@ -237,18 +237,30 @@ describe('newContactFromLog', () => {
       email: ' alex@campus.edu ',
       year: 'Sophomore',
       major: ' Music ',
-      // The design's "Part of" — this app's Contact.role IS its "contact group".
-      group: ' Worship team ',
-      background: 'Exploring',
       metISO: '2026-07-01',
     });
     expect(input.phone).toBe('(555) 000-0000');
     expect(input.email).toBe('alex@campus.edu');
     expect(input.year).toBe('Sophomore');
     expect(input.major).toBe('Music');
-    expect(input.role).toBe('Worship team');
-    expect(input.spiritualBackground).toBe('Exploring');
     expect(input.createdAt).toBe('2026-07-01');
+  });
+
+  it('never sets "Part of" or "Faith, so far" — the log sheet stopped asking', () => {
+    // Both came out of the 20-second capture: the design picks "Part of" from a
+    // fellowships list this app doesn't have, and neither question belongs in a
+    // sheet meant to be done while walking. The public sign-up form still fills
+    // them, and the person screen still shows them when it has them.
+    const input = newContactFromLog({
+      name: 'Alex Johnson',
+      where: 'Org fair',
+      note: 'Plays bass.',
+      stageLabel: 'First conversation',
+      tags: ['fall-2026'],
+      year: 'Sophomore',
+    });
+    expect(input.role).toBe('');
+    expect(input.spiritualBackground).toBe('');
   });
 
   it('still lands "where you met" on location even with the disclosure open', () => {
@@ -313,12 +325,14 @@ describe('the saved step’s own lines', () => {
     expect(reminderSetLine('week')).toBe("You'll be reminded — next week");
   });
 
-  it('says where the prayer went', () => {
-    // No "bring it to team prayer" toggle: addPrayer already writes
-    // prayerPage: true, so every contact prayer is already on the team's page.
-    expect(prayerAddedLine('Rio Alvarez')).toEqual({
+  it('says where the prayer went, and the two places differ', () => {
+    expect(prayerAddedLine('Rio Alvarez', false)).toEqual({
       head: 'Added to what we’re praying',
-      sub: "It sits with Rio's prayers, and on the team's prayer page.",
+      sub: "It sits with Rio's prayers.",
+    });
+    expect(prayerAddedLine('Rio Alvarez', true)).toEqual({
+      head: 'Added to what we’re praying',
+      sub: 'The team will pray it together too.',
     });
   });
 });

@@ -356,6 +356,10 @@ service cloud.firestore {
                (!('prayedFor' in data) || (data.prayedFor is string && data.prayedFor.size() <= 10000)) &&
                (!('unanswered' in data) || (data.unanswered is string && data.unanswered.size() <= 10000)) &&
                (!('prayerPage' in data) || data.prayerPage is bool) &&
+               // Whether the team carries this burden. Absent means the team's,
+               // so this validates the shape only — surfacing is the app's call,
+               // not an access boundary (every approved user still reads it).
+               (!('teamPrayer' in data) || data.teamPrayer is bool) &&
                (!('updatedAt' in data) || data.updatedAt is string);
       }
 

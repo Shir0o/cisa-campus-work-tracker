@@ -13,6 +13,7 @@ import { Contact, PrayerRecord } from '../types';
 import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
+import { isTeamPrayer } from '../lib/prayers';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -245,10 +246,15 @@ export default function PrayerList() {
       .filter((p) => prayerMs(p) < THIS_WEEK_START)
       .sort((a, b) => prayerMs(b) - prayerMs(a))[0] || null;
 
+  // Burdens someone kept to themselves in the phone's log sheet never reach
+  // this page — they live on their own contact's Prayer tab. Prayers written
+  // before that toggle existed carry no flag and stay here (`isTeamPrayer`).
+  const teamPrayers = useMemo(() => prayers.filter(isTeamPrayer), [prayers]);
+
   // One entry per person we're holding (has a prayer, or we just started).
   const entries = useMemo(() => {
     const ids = new Set<string>();
-    prayers.forEach((p) => {
+    teamPrayers.forEach((p) => {
       if (!hiddenIds.has(p.contactId)) ids.add(p.contactId);
     });
     startedIds.forEach((id) => {
@@ -259,7 +265,7 @@ export default function PrayerList() {
     ids.forEach((id) => {
       const contact = contacts.find((c) => c.id === id);
       if (!contact) return;
-      list.push({ contact, prayers: prayers.filter((p) => p.contactId === id) });
+      list.push({ contact, prayers: teamPrayers.filter((p) => p.contactId === id) });
     });
 
     // Needs-attention first (last-week prayer still unmarked), then most recent.
@@ -272,7 +278,7 @@ export default function PrayerList() {
       return bRecent - aRecent;
     });
     return list;
-  }, [prayers, contacts, startedIds, hiddenIds]);
+  }, [teamPrayers, contacts, startedIds, hiddenIds]);
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -297,12 +303,12 @@ export default function PrayerList() {
 
   const answeredThisYear = useMemo(() => {
     const year = new Date().getFullYear();
-    return prayers.filter((p) => {
+    return teamPrayers.filter((p) => {
       if (p.status !== 'answered') return false;
       const when = new Date(p.updatedAt || p.date);
       return when.getFullYear() === year;
     }).length;
-  }, [prayers]);
+  }, [teamPrayers]);
 
   const awaiting = useMemo(
     () => entries.filter((e) => lastBeforeThisWeek(e.prayers)?.status === 'pending').length,
@@ -356,7 +362,7 @@ export default function PrayerList() {
     return (
       <PrayerListMobile
         contacts={contacts}
-        prayers={prayers}
+        prayers={teamPrayers}
         entries={filteredEntries}
         suggestions={suggestions}
         searchQuery={searchQuery}
