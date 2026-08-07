@@ -17,6 +17,8 @@ import { Impersonation } from '../lib/impersonate';
 
 interface AuthContextType {
   user: User | null;
+  effectiveUserId: string | null;
+  effectiveIdentityKey: string;
   isAdmin: boolean;
   isManager: boolean;
   role: string | null;
@@ -89,6 +91,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const effectiveRole = getEffectiveRole(user?.email, actualRole as AppRole, ownerViewRole);
   const isAdmin = effectiveRole === 'admin';
   const isManager = effectiveRole === 'admin' || effectiveRole === 'manager';
+
+  const effectiveUserId = impersonateTarget
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || null)
+    : (user?.uid || null);
+
+  const effectiveIdentityKey = impersonateTarget
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || null)
+    : (effectiveRole || null);
 
   useEffect(() => {
     let userDocUnsubscribe: (() => void) | null = null;
@@ -240,6 +250,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        effectiveUserId,
+        effectiveIdentityKey,
         isAdmin,
         isManager,
         role: effectiveRole,

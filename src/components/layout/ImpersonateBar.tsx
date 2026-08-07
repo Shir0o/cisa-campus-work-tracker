@@ -1,6 +1,7 @@
 import React from 'react';
 import { Eye, RotateCcw, Users } from 'lucide-react';
 import { ImpersonateTarget } from '../../types';
+import { impScope } from '../../lib/impersonate';
 
 interface ImpersonateBarProps {
   target: ImpersonateTarget;
@@ -9,6 +10,7 @@ interface ImpersonateBarProps {
 }
 
 export default function ImpersonateBar({ target, onSwitch, onExit }: ImpersonateBarProps) {
+  const sc = impScope(target);
   return (
     <div className="bg-amber-500/15 border-b border-amber-500/30 text-on-surface px-4 py-2.5 pt-[calc(0.625rem+env(safe-area-inset-top,0px))] flex flex-wrap items-center justify-between gap-3 text-xs z-50 transition-all">
       <div className="flex items-center gap-2.5 font-medium min-w-0">
@@ -18,7 +20,7 @@ export default function ImpersonateBar({ target, onSwitch, onExit }: Impersonate
         <span className="text-on-surface truncate">
           You're seeing CISA as <strong>{target.name}</strong> — {target.sub}.
           <span className="hidden md:inline text-on-surface-variant ml-1.5">
-            Anything you do here is saved as them.
+            {sc.people ? `${sc.people}. ` : ''}{sc.pages ? `${sc.pages}. ` : ''}Anything you do here is saved as them.
           </span>
         </span>
       </div>

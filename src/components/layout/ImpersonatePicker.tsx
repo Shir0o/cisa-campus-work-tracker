@@ -8,7 +8,10 @@ import {
   impStaffTarget,
   impPersonaTarget,
   impContactTarget,
+  impScope,
 } from '../../lib/impersonate';
+import { visibleContacts as calcVisibleContacts } from '../../lib/permissions';
+import { useAuth } from '../AuthProvider';
 import { cn } from '../../lib/utils';
 
 interface ImpersonatePickerProps {
@@ -23,11 +26,17 @@ export function ImpRow({
   target,
   active,
   onPick,
+  totalContacts = 0,
+  visibleCount,
 }: {
   target: ImpersonateTarget;
   active: boolean;
   onPick: (t: ImpersonateTarget) => void;
+  totalContacts?: number;
+  visibleCount?: number;
 }) {
+  const sc = impScope(target, totalContacts, visibleCount);
+
   return (
     <button
       onClick={() => onPick(target)}
@@ -45,7 +54,10 @@ export function ImpRow({
         </div>
         <div className="text-xs text-on-surface-variant truncate">{target.sub}</div>
       </div>
-      <div className="hidden sm:block text-xs text-on-surface-variant/80 shrink-0">{target.note}</div>
+      <div className="hidden sm:flex flex-col text-right text-xs shrink-0 max-w-[220px]">
+        <b className="text-on-surface font-semibold text-[11px] truncate">{sc.people}</b>
+        <span className="text-on-surface-variant/80 text-[11px] truncate">{sc.pages}</span>
+      </div>
       <div className="shrink-0 text-xs font-medium">
         {active ? (
           <span className="px-2.5 py-1 rounded-full bg-primary text-on-primary flex items-center gap-1">
@@ -66,6 +78,7 @@ export default function ImpersonatePicker({
   users: initialUsers,
   autoFocus = false,
 }: ImpersonatePickerProps) {
+  const { user } = useAuth();
   const [q, setQ] = useState('');
   const [openAllRoster, setOpenAllRoster] = useState(false);
   const [fetchedUsers, setFetchedUsers] = useState<any[]>([]);
@@ -118,8 +131,9 @@ export default function ImpersonatePicker({
     }
   }, [initialContacts]);
 
-  const rawUsers = (initialUsers && initialUsers.length > 0 ? initialUsers : fetchedUsers);
-  
+  const rawUsers = initialUsers && initialUsers.length > 0 ? initialUsers : fetchedUsers;
+  const rosterSource = initialContacts && initialContacts.length > 0 ? initialContacts : fetchedContacts;
+
   // Combine real Firestore users with default cisa-* test accounts if not already present
   const teamList = [...rawUsers];
   DEFAULT_TEST_ACCOUNTS.forEach((testAcc) => {
@@ -128,14 +142,21 @@ export default function ImpersonatePicker({
     }
   });
 
-  const rosterSource = (initialContacts && initialContacts.length > 0 ? initialContacts : fetchedContacts);
+  // Never offer yourself as someone to become
+  const meId = user?.uid || null;
+  const filteredTeam = teamList.filter((u) => {
+    const uid = u.uid || u.id;
+    if (meId && (uid === meId || uid === 'u1')) return false;
+    if (user?.email && u.email === user.email) return false;
+    return true;
+  });
 
   const rawGroups = [
     {
       id: 'team',
       label: 'The team & test accounts',
       note: 'Staff, trainees, and cisa-* test accounts — the workspace as they see it.',
-      items: teamList.map(impStaffTarget),
+      items: filteredTeam.map(impStaffTarget),
     },
     {
       id: 'members',
@@ -201,9 +222,20 @@ export default function ImpersonatePicker({
             <p className="text-xs text-on-surface-variant">{g.note}</p>
           </div>
           <div className="space-y-2">
-            {g.shown.map((t) => (
-              <ImpRow key={t.key} target={t} active={t.key === currentKey} onPick={onPick} />
-            ))}
+            {g.shown.map((t) => {
+              const staffId = t.persona?.staffId;
+              const visibleCount = t.role === 'manager' ? calcVisibleContacts('manager', staffId, rosterSource).length : undefined;
+              return (
+                <ImpRow
+                  key={t.key}
+                  target={t}
+                  active={t.key === currentKey}
+                  onPick={onPick}
+                  totalContacts={rosterSource.length}
+                  visibleCount={visibleCount}
+                />
+              );
+            })}
           </div>
 
           {g.shown.length < g.items.length && (
