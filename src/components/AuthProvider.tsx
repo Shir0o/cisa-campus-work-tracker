@@ -93,12 +93,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isManager = effectiveRole === 'admin' || effectiveRole === 'manager';
 
   const effectiveUserId = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || 'anon')
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || null)
     : (user?.uid || null);
 
   const effectiveIdentityKey = impersonateTarget
-    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || 'anon')
-    : (effectiveRole || 'anon');
+    ? (impersonateTarget.persona?.staffId || impersonateTarget.persona?.contactId || impersonateTarget.persona?.id || impersonateTarget.role || null)
+    : (effectiveRole || null);
 
   useEffect(() => {
     let userDocUnsubscribe: (() => void) | null = null;
