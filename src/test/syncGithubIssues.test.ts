@@ -176,11 +176,8 @@ describe('sync-github-issues script', () => {
     const testOutputPath = path.join(testOutputDir, 'issues.json');
 
     afterEach(() => {
-      if (fs.existsSync(testOutputPath)) {
-        fs.unlinkSync(testOutputPath);
-      }
       if (fs.existsSync(testOutputDir)) {
-        fs.rmdirSync(testOutputDir);
+        fs.rmSync(testOutputDir, { recursive: true, force: true });
       }
     });
 

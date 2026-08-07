@@ -126,11 +126,9 @@ export async function syncIssuesToDocs(opts?: { repo?: string; token?: string; o
   console.log(`Fetched ${issues.length} issues.`);
 
   const dir = path.dirname(outputPath);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  await fs.promises.mkdir(dir, { recursive: true });
 
-  fs.writeFileSync(outputPath, JSON.stringify(issues, null, 2) + '\n', 'utf8');
+  await fs.promises.writeFile(outputPath, JSON.stringify(issues, null, 2) + '\n', 'utf8');
   console.log(`Successfully written issues to ${outputPath}`);
 }
 
