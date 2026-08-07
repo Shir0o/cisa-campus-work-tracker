@@ -66,16 +66,30 @@ describe('NewContactModal', () => {
   });
 
   it('prefills the stage select from initialStage (e.g. "Add to {stage}")', async () => {
+    const user = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Unassigned" />);
     await waitFor(() => {
-      // Stage select is the first combobox; spiritual background is the second.
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    // Reveal full fields disclosure
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    await waitFor(() => {
       const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
       expect(stageSelect.value).toBe('Unassigned');
     });
   });
 
   it('defaults the stage to the first stage when no initialStage is given', async () => {
+    const user = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
     await waitFor(() => {
       const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
       expect(stageSelect.value).toBe('Contacted');
@@ -83,36 +97,52 @@ describe('NewContactModal', () => {
   });
 
   it('falls back to the first stage when initialStage is not a valid option', async () => {
+    const user = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={vi.fn()} initialStage="Nonexistent" />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
     await waitFor(() => {
       const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
       expect(stageSelect.value).toBe('Contacted');
     });
   });
 
-  it('shows error when phone number is missing', async () => {
+  it('allows adding a contact with only first name (2-field light intake)', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={onClose} />);
 
-    const phone = await screen.findByPlaceholderText('(555) 000-0000');
-    fireEvent.blur(phone);
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await mockUserAct.type(firstName, 'John');
 
-    expect(await screen.findByText('Phone number is required')).toBeInTheDocument();
-    expect(addDoc).not.toHaveBeenCalled();
+    // Submit without phone or disclosures
+    const submitBtn = screen.getByRole('button', { name: /Add Contact/i });
+    await mockUserAct.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+      expect(vi.mocked(addDoc)).toHaveBeenCalled();
+    });
   });
 
-  it('submits correctly when required fields (first name and phone) are provided', async () => {
+  it('submits correctly when full fields are provided via disclosure', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
     render(<NewContactModal isOpen={true} onClose={onClose} />);
 
-    // Fill in required fields
-    const firstName = await screen.findByPlaceholderText('e.g. Alex');
+    // Fill in 2 primary fields
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
     await mockUserAct.type(firstName, 'John');
 
     const phone = await screen.findByPlaceholderText('(555) 000-0000');
     await mockUserAct.type(phone, '5551234567');
+
+    // Expand rest of fields
+    await mockUserAct.click(screen.getByText(/\+ Add the rest/i));
 
     const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
     await mockUserAct.type(role, 'Student');
@@ -135,7 +165,6 @@ describe('NewContactModal', () => {
       expect(vi.mocked(addDoc)).toHaveBeenCalled();
     });
 
-    // The new contact carries the active season cohort tag.
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
     expect(contactArg?.tags).toEqual(expect.arrayContaining(["Summer '26"]));
   });
@@ -235,7 +264,7 @@ describe('NewContactModal', () => {
     });
 
     // Fill in a name
-    const firstName = await screen.findByPlaceholderText('e.g. Alex');
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
     await user.type(firstName, 'John');
 
     // Create a phone error

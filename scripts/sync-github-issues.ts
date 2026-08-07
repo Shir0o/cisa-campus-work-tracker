@@ -49,7 +49,7 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
   }
 
   while (true) {
-    const url = `https://api.github.com/repos/${repo}/issues?state=all&per_page=${perPage}&page=${page}`;
+    const url = `https://api.github.com/repos/${repo}/issues?state=open&per_page=${perPage}&page=${page}`;
     const res = await fetch(url, { headers });
 
     if (!res.ok) {

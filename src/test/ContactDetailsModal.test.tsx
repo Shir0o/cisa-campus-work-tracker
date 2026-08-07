@@ -341,7 +341,7 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.click(editBtn);
 
     // Modify firstName, lastName, role, location, notes
-    const firstNameInput = screen.getByPlaceholderText('e.g. Alex');
+    const firstNameInput = screen.getByPlaceholderText('First name is plenty');
     fireEvent.change(firstNameInput, { target: { value: 'Johnny' } });
 
     const roleInput = screen.getByPlaceholderText('e.g. Student, Faculty');
