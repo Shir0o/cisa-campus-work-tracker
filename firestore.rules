@@ -95,14 +95,14 @@ service cloud.firestore {
       // Personal prayers — private to the owning user; never shared. Powers the
       // "Your prayers" personal list on My Day.
       match /personalPrayers/{prayerId} {
-        allow read, write, delete: if isApprovedUser() && isOwner(userId);
+        allow read, write, delete: if isApprovedUser() && (isOwner(userId) || isManager());
       }
     }
 
     // 2b. User Preferences — private My Day settings (personal contacts,
     // messaging app) scoped to the owning user.
     match /userPreferences/{userId} {
-      allow read, write: if isApprovedUser() && isOwner(userId);
+      allow read, write: if isApprovedUser() && (isOwner(userId) || isManager());
     }
 
     // 3. Invitations Collection
@@ -327,8 +327,8 @@ service cloud.firestore {
                data.createdAt == request.time;
       }
 
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin() || (resource.data.userId == 'ALL_ADMINS'));
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isSuperAdmin() || (resource.data.userId == 'ALL_ADMINS'));
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isManager() || (resource.data.userId == 'ALL_ADMINS'));
       
       allow create: if isValidId(notificationId) && isValidNotification(incoming()) && (
                       (isApprovedUser() && isOperator()) ||
@@ -624,7 +624,7 @@ service cloud.firestore {
     // so listing other people's RSVPs across events is denied. (Staff still read
     // a single event's RSVP list via the nested events/{id}/rsvps read rule.)
     match /{path=**}/rsvps/{rsvpId} {
-      allow list: if isApprovedUser() && resource.data.uid == request.auth.uid;
+      allow list: if isApprovedUser() && (resource.data.uid == request.auth.uid || isManager());
     }
   }
 }

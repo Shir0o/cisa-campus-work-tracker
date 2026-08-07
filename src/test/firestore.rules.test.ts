@@ -488,6 +488,7 @@ describeRules('Firestore Security Rules', () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users', 'u1'), { role: 'admin', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'u2'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
         await setDoc(doc(context.firestore(), 'users', 'pending1'), { role: 'viewer', approved: false });
       });
     };
@@ -500,14 +501,18 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(ref));
     });
 
-    it('MP2: A user cannot read or write another user’s preferences', async () => {
+    it('MP2: A manager can read and write another user’s preferences, but a non-manager cannot', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'userPreferences', 'u1'), { personalContactIds: ['c1'] });
       });
-      const db = getFirestore({ uid: 'u2' });
-      await assertFails(getDoc(doc(db, 'userPreferences', 'u1')));
-      await assertFails(setDoc(doc(db, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
+      const dbManager = getFirestore({ uid: 'u2' });
+      await assertSucceeds(getDoc(doc(dbManager, 'userPreferences', 'u1')));
+      await assertSucceeds(setDoc(doc(dbManager, 'userPreferences', 'u1'), { personalContactIds: ['x'] }));
+
+      const dbStudent = getFirestore({ uid: 'student1' });
+      await assertFails(getDoc(doc(dbStudent, 'userPreferences', 'u1')));
+      await assertFails(setDoc(doc(dbStudent, 'userPreferences', 'u1'), { personalContactIds: ['y'] }));
     });
 
     it('MP3: An unapproved user cannot touch their own preferences', async () => {
@@ -526,16 +531,22 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(ref));
     });
 
-    it('MP5: A user cannot read or write another user’s personal prayers', async () => {
+    it('MP5: A manager can read and write another user’s personal prayers, but a non-manager cannot', async () => {
       await seedUsers();
       await testEnv.withSecurityRulesDisabled(async (context) => {
         await setDoc(doc(context.firestore(), 'users/u1/personalPrayers/pp1'), {
           title: 'private', contactId: null, date: '2026-05-15', status: 'open',
         });
       });
-      const db = getFirestore({ uid: 'u2' });
-      await assertFails(getDoc(doc(db, 'users/u1/personalPrayers/pp1')));
-      await assertFails(setDoc(doc(db, 'users/u1/personalPrayers/pp2'), {
+      const dbManager = getFirestore({ uid: 'u2' });
+      await assertSucceeds(getDoc(doc(dbManager, 'users/u1/personalPrayers/pp1')));
+      await assertSucceeds(setDoc(doc(dbManager, 'users/u1/personalPrayers/pp2'), {
+        title: 'manager prayer', contactId: null, date: '2026-05-15', status: 'open',
+      }));
+
+      const dbStudent = getFirestore({ uid: 'student1' });
+      await assertFails(getDoc(doc(dbStudent, 'users/u1/personalPrayers/pp1')));
+      await assertFails(setDoc(doc(dbStudent, 'users/u1/personalPrayers/pp3'), {
         title: 'intruder', contactId: null, date: '2026-05-15', status: 'open',
       }));
     });
