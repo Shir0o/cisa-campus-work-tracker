@@ -27,3 +27,16 @@ export async function updatePrayerStatus(
     handleFirestoreError(e, OperationType.UPDATE, `prayers/${prayerId}`);
   }
 }
+
+/**
+ * Whether a burden belongs on the team prayer page ("On our hearts"). Mirrors
+ * `isTeamPrayer` in packages/core/src/prayerThread.ts — keep the two in step.
+ *
+ * An ABSENT flag means team: every prayer written before the phone's "Bring it
+ * to team prayer" toggle existed stays exactly where it was, so this page needs
+ * no backfill. That is why this is a function and not `p.teamPrayer` at the
+ * call site.
+ */
+export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
+  return p.teamPrayer !== false;
+}

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrayerThread } from '../src/prayerThread';
+import { groupPrayerThread, isTeamPrayer } from '../src/prayerThread';
 import type { PrayerRecord } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime(); // Monday, this-week start
@@ -61,5 +61,16 @@ describe('groupPrayerThread', () => {
     expect(weekItem?.id).toBe('this-week');
     expect(lastItem?.id).toBe('last-week');
     expect(earlier.map((p) => p.id)).toEqual(['two-weeks-ago', 'three-weeks-ago']);
+  });
+});
+
+describe('isTeamPrayer', () => {
+  it('treats a prayer with no flag as the team\'s — every doc written before the toggle existed', () => {
+    expect(isTeamPrayer(prayer())).toBe(true);
+  });
+
+  it('honours the flag both ways', () => {
+    expect(isTeamPrayer(prayer({ teamPrayer: true }))).toBe(true);
+    expect(isTeamPrayer(prayer({ teamPrayer: false }))).toBe(false);
   });
 });

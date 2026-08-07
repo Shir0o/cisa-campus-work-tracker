@@ -66,14 +66,28 @@ export interface ShellLink {
   href: string;
 }
 
-/** `M2_DRAWER` in `views/mobile/m2.jsx`, verbatim and in order. The trainee's
- *  everything-else; the queue itself is the app. */
+/**
+ * `M2_DRAWER` in `views/mobile/m2.jsx`, in order. The trainee's
+ * everything-else; the queue itself is the app.
+ *
+ * The design runs `M2_DRAWER` through `m2DrawerFor(role)` so a row can never
+ * open a screen the role is locked out of. This list is the trainee's already
+ * resolved: **Gatherings and The Board are dropped**, because
+ * `canAccessRoute("manager", …)` closes `/attendance` and `/coordination` and
+ * a listed row that lands on "Not available" is worse than no row.
+ *
+ * Settings stays. `canAccessRoute` closes `/settings` to the trainee for the
+ * WEB sidebar, but the queue's own prefs (the on-campus window, the nudges,
+ * the day cap) live on that screen, so mobile gates it on `canSeePrefs`
+ * instead — the same predicate the design's `M2Sub` uses.
+ */
 export const TRAINEE_DRAWER: ShellLink[] = [
   { key: "people", label: "People", href: "/people" },
   { key: "journey", label: "The Journey", href: "/journey" },
-  { key: "gatherings", label: "Gatherings", href: "/attendance" },
-  { key: "board", label: "The Board", href: "/coordination" },
   { key: "messages", label: "Messages", href: "/messages" },
+  // Not an app login — the form you hand to someone new so the team can keep
+  // in touch (the design's navId "*": open to every role). See SIGNUP.md.
+  { key: "signup", label: "Sign-up form", href: "/signup" },
   { key: "settings", label: "Settings", href: "/settings" },
 ];
 

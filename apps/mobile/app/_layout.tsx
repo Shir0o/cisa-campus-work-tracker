@@ -94,13 +94,16 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <AuthProvider>
+        {/* AuthProvider wraps ThemeProvider, not the other way round: the
+            appearance preference is saved per person, so the theme needs a uid.
+            AuthProvider itself reads no theme. */}
+        <AuthProvider>
+          <ThemeProvider>
             <BottomSheetModalProvider>
               <RootNavigator />
             </BottomSheetModalProvider>
-          </AuthProvider>
-        </ThemeProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

@@ -131,3 +131,13 @@ export function settingsFoot(role: AppRole | string | null): string {
 export function caredForBy(name: string | null | undefined): string {
   return name ? `${firstName(name)} cares for you` : "";
 }
+
+/** Settings → "How it looks" → Daylight / Dark / Match my phone. The design
+ *  keeps this on `M2Prefs.appearance`, per person. */
+export type SchemePref = "light" | "dark" | "system";
+
+/** Narrow whatever came back out of storage. `null` means nothing usable was
+ *  saved, so the caller keeps its own default rather than guessing. */
+export function parseSchemePref(raw: unknown): SchemePref | null {
+  return raw === "light" || raw === "dark" || raw === "system" ? raw : null;
+}

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   roleLabel,
   canAccessRoute,
+  canSeePrefs,
   hasMinRole,
   defaultRouteForRole,
   pickLandingForRole,
@@ -33,6 +34,18 @@ describe('permissions', () => {
     expect(canAccessRoute('admin', '/nonexistent')).toBe(true);
     // null role is never allowed
     expect(canAccessRoute(null, '/')).toBe(false);
+  });
+
+  // What the trainee's mobile drawer and route guards read. Gatherings and The
+  // Board are closed to them; Settings is NOT — the queue prefs live there, so
+  // that screen gates on canSeePrefs instead (see apps/mobile/app/settings.tsx).
+  it('keeps Gatherings and The Board closed to the trainee, but not their prefs', () => {
+    expect(canAccessRoute('manager', '/attendance')).toBe(false);
+    expect(canAccessRoute('manager', '/coordination')).toBe(false);
+    expect(canAccessRoute('admin', '/attendance')).toBe(true);
+    expect(canAccessRoute('viewer', '/attendance')).toBe(true);
+    expect(canSeePrefs('manager')).toBe(true);
+    expect(canSeePrefs('viewer')).toBe(false);
   });
 
   it('hasMinRole respects the level ladder', () => {

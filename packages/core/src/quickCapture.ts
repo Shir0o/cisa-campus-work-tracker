@@ -155,12 +155,12 @@ export interface LogSheetNewContact {
   year?: string;
   /** The design's "Studying". */
   major?: string;
-  /** The design's "Part of". This app's `Contact.role` IS its contact group —
-   * the new-contact form labels that field "CONTACT GROUP (e.g. Student,
-   * Faculty)" — so the two are the same field, and no `group` is invented. */
-  group?: string;
-  /** The design's "Faith, so far". */
-  background?: string;
+  // The design also folds out "Part of" and "Faith, so far". Both are dropped:
+  // "Part of" picks from a fellowships list this app doesn't have — its nearest
+  // field, `Contact.role`, is a category ("Student", "Faculty"), not a group —
+  // and neither question belongs in a sheet meant to be finished while walking.
+  // The public sign-up form still asks both, and the person screen still shows
+  // them when they're there.
   /** The design's "First met", `yyyy-MM-dd`. Backdates the contact's
    * `createdAt`, which is what "days known" and the recents sort read. */
   metISO?: string;
@@ -207,21 +207,21 @@ export function newContactFromLog({
   email,
   year,
   major,
-  group,
-  background,
   metISO,
 }: LogSheetNewContact): NewContactInput {
   const trimmed = name.trim();
   return {
     name: trimmed,
-    role: (group ?? "").trim(),
+    // The sheet no longer asks for either of these; both stay on the shape so
+    // the contact matches what every other addContact caller writes.
+    role: "",
     location: where.trim(),
     email: (email ?? "").trim(),
     phone: (phone ?? "").trim(),
     stage: stageLabel,
     tags,
     notes: note.trim(),
-    spiritualBackground: (background ?? "").trim(),
+    spiritualBackground: "",
     initials: getUserInitials(trimmed),
     year: (year ?? "").trim() || undefined,
     major: (major ?? "").trim() || undefined,
@@ -274,17 +274,12 @@ export function reminderSetLine(preset: ReminderPreset): string {
   return `You'll be reminded — ${label.toLowerCase()}`;
 }
 
-/** The prayer's collapsed row.
- *
- * SUBSTITUTION: the design offers a "Bring it to team prayer" toggle. A
- * `PrayerRecord` here carries no team flag, and `addPrayer` already writes
- * `prayerPage: true` — every contact prayer is already on the team's prayer
- * page — so the toggle is dropped rather than faked, and the line says where it
- * actually went. Same call as `ContactPrayerSheet` dropping the design's tag
- * chips. */
-export function prayerAddedLine(name: string): { head: string; sub: string } {
+/** The prayer's collapsed row, once it's written down. The sub-line names
+ *  where the burden actually went, so the design's "Bring it to team prayer"
+ *  toggle has a visible consequence. */
+export function prayerAddedLine(name: string, team: boolean): { head: string; sub: string } {
   return {
     head: "Added to what we’re praying",
-    sub: `It sits with ${firstName(name)}'s prayers, and on the team's prayer page.`,
+    sub: team ? "The team will pray it together too." : `It sits with ${firstName(name)}'s prayers.`,
   };
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { canAccessRoute } from '../src/permissions';
 import {
   FT_MORE,
   TRAINEE_DRAWER,
@@ -88,11 +89,21 @@ describe('the drawer and More lists', () => {
     expect(TRAINEE_DRAWER.map((l) => l.label)).toEqual([
       'People',
       'The Journey',
-      'Gatherings',
-      'The Board',
       'Messages',
+      'Sign-up form',
       'Settings',
     ]);
+  });
+
+  // The drawer's hrefs are Expo routes, so most of them don't line up with the
+  // web paths canAccessRoute is keyed on. The two that DO are exactly the two
+  // the trainee is locked out of, and neither may be listed — a drawer row that
+  // opens "Not available" is the bug this list exists to prevent.
+  it('never lists a screen the trainee is locked out of', () => {
+    for (const href of ['/attendance', '/coordination']) {
+      expect(canAccessRoute('manager', href)).toBe(false);
+      expect(TRAINEE_DRAWER.some((l) => l.href === href)).toBe(false);
+    }
   });
 
   it("matches the design's full-timer More, in order", () => {

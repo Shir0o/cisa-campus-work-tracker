@@ -3,7 +3,7 @@
 // subscriptions + entry logic in the web app's src/views/PrayerList.tsx.
 import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
-import type { Contact, PrayerRecord } from '@cisa/core';
+import { isTeamPrayer, type Contact, type PrayerRecord } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { addPrayer, subscribeAllPrayers, updatePrayerBurden, updatePrayerStatus } from './data/prayers';
 import { PrayerHidden, usePrayerHidden } from './data/prayerHidden';
@@ -40,31 +40,36 @@ export function usePrayerData(uid: string | null, displayName: string | null) {
     };
   }, [uid]);
 
+  // Burdens the trainee kept to themselves in the log sheet never reach this
+  // page — they live on their own contact's Prayers tab. Prayers written before
+  // that toggle existed carry no flag and stay here (see `isTeamPrayer`).
+  const teamPrayers = useMemo(() => prayers.filter(isTeamPrayer), [prayers]);
+
   const heldContactIds = useMemo(() => {
     if (!uid) return new Set<string>();
     const ids = new Set<string>();
-    for (const p of prayers) if (!hiddenApi.isHidden(uid, p.contactId)) ids.add(p.contactId);
+    for (const p of teamPrayers) if (!hiddenApi.isHidden(uid, p.contactId)) ids.add(p.contactId);
     for (const id of startedIds) if (!hiddenApi.isHidden(uid, id)) ids.add(id);
     return ids;
-  }, [uid, prayers, startedIds, hiddenApi]);
+  }, [uid, teamPrayers, startedIds, hiddenApi]);
 
   const entries = useMemo(() => {
     const list: { contact: Contact; prayers: PrayerRecord[] }[] = [];
     for (const id of heldContactIds) {
       const contact = contacts.find((c) => c.id === id);
       if (!contact) continue;
-      list.push({ contact, prayers: prayers.filter((p) => p.contactId === id) });
+      list.push({ contact, prayers: teamPrayers.filter((p) => p.contactId === id) });
     }
     return list;
-  }, [heldContactIds, contacts, prayers]);
+  }, [heldContactIds, contacts, teamPrayers]);
 
   const answeredThisYear = useMemo(() => {
     const year = new Date().getFullYear();
-    return prayers.filter((p) => {
+    return teamPrayers.filter((p) => {
       if (p.status !== 'answered') return false;
       return new Date(p.updatedAt || p.date).getFullYear() === year;
     }).length;
-  }, [prayers]);
+  }, [teamPrayers]);
 
   const meName = displayName || 'Someone';
 

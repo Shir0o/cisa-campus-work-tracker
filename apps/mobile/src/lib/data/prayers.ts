@@ -37,7 +37,7 @@ export function subscribeContactPrayers(
 }
 
 export async function addPrayer(
-  input: { contactId: string; burden: string },
+  input: { contactId: string; burden: string; teamPrayer?: boolean },
   by: { uid?: string | null; name?: string | null },
 ): Promise<void> {
   try {

@@ -8,6 +8,7 @@ import {
   settingsCareLine,
   settingsFoot,
   caredForBy,
+  parseSchemePref,
 } from '../src/settings';
 import type { AppUser, Invitation } from '../src/types';
 
@@ -164,5 +165,22 @@ describe('mobile v2 Settings copy', () => {
     expect(caredForBy(null)).toBe('');
     expect(caredForBy('')).toBe('');
     expect(caredForBy(undefined)).toBe('');
+  });
+
+  describe('parseSchemePref', () => {
+    it('accepts the three "How it looks" choices', () => {
+      expect(parseSchemePref('light')).toBe('light');
+      expect(parseSchemePref('dark')).toBe('dark');
+      expect(parseSchemePref('system')).toBe('system');
+    });
+
+    it('returns null for anything else, so a bad stored value falls back', () => {
+      expect(parseSchemePref(null)).toBeNull();
+      expect(parseSchemePref(undefined)).toBeNull();
+      expect(parseSchemePref('')).toBeNull();
+      expect(parseSchemePref('daylight')).toBeNull();
+      expect(parseSchemePref('Dark')).toBeNull();
+      expect(parseSchemePref(1)).toBeNull();
+    });
   });
 });

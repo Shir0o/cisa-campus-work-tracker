@@ -153,6 +153,47 @@ describe('PrayerList', () => {
     });
   });
 
+  // The phone's log sheet can keep a burden off this page ("Bring it to team
+  // prayer", off by default). Prayers written before that toggle existed have
+  // no flag at all and must stay — hence `teamPrayer !== false`, not truthiness.
+  it('leaves out burdens kept private, and keeps flagless ones', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({
+          docs: [
+            // Flagless — written before the toggle, still the team's.
+            mockPrayers[0],
+            {
+              id: 'p-private',
+              data: () => ({
+                contactId: 'c2',
+                burden: 'Something Bob told me in confidence',
+                date: '2026-06-12T00:00:00.000Z',
+                status: 'pending',
+                updatedAt: '2026-06-12T00:00:00.000Z',
+                teamPrayer: false,
+              }),
+            },
+          ],
+          size: 2,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Something Bob told me in confidence')).not.toBeInTheDocument();
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+  });
+
   it('shows empty state when no prayers exist and mock is empty', async () => {
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
       if (ref?.path === 'contacts') {
