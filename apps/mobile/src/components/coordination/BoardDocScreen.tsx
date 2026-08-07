@@ -7,7 +7,7 @@
 import { Fragment } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import { useMarkdown } from 'react-native-marked';
 import { BOARD_AUDIENCE, audienceOf, boardKeeperFoot, dateLabelOf, weekdayOf, type BoardDoc } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';

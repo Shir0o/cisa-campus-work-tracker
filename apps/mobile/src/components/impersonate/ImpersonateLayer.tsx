@@ -13,7 +13,6 @@
 // start ~10px below the same inset) and buried them.
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
-import { SafeAreaInsetsContext } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
   impGroups,
@@ -25,6 +24,7 @@ import {
   type ImpersonateTarget,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { TopInsetOwnedContext } from '../../lib/screenChrome';
 import { subscribeUsers } from '../../lib/data/users';
 import { subscribeContacts } from '../../lib/data/contacts';
 import { ImpersonatePill } from './ImpersonatePill';
@@ -133,16 +133,13 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
           />
           {/* The strip has consumed the top inset, so the screens below must
            * not claim it a second time — QueueScreen and the member/FT shells
-           * all open with <SafeAreaView edges={['top']}>. */}
-          <SafeAreaInsetsContext.Consumer>
-            {(insets) => (
-              <SafeAreaInsetsContext.Provider
-                value={{ ...(insets ?? { top: 0, bottom: 0, left: 0, right: 0 }), top: 0 }}
-              >
-                <View style={{ flex: 1 }}>{children}</View>
-              </SafeAreaInsetsContext.Provider>
-            )}
-          </SafeAreaInsetsContext.Consumer>
+           * all open with <SafeAreaView edges={['top']}>. They read this and
+           * drop the edge (components/ui/SafeArea); a JS inset override would
+           * not do it, since the library's SafeAreaView is a native view on
+           * device and only its .web build reads SafeAreaInsetsContext. */}
+          <TopInsetOwnedContext.Provider value>
+            <View style={{ flex: 1 }}>{children}</View>
+          </TopInsetOwnedContext.Provider>
         </View>
       ) : (
         children

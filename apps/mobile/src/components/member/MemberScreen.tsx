@@ -6,7 +6,7 @@
 // green one. What differs is the shape: a member scrolls, they don't queue.
 import React from 'react';
 import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useV2Theme } from '../../theme/v2';

@@ -8,7 +8,7 @@
 import { useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import { format, isValid } from 'date-fns';
 import { firstName, type Contact, type Event, type MissedContact } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';

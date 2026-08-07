@@ -8,7 +8,7 @@
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
