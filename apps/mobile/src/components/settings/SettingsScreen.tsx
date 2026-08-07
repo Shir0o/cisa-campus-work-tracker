@@ -20,11 +20,9 @@ import {
   hourLabel,
   onCampusNowLine,
   onCampusSummary,
-  OWNER_VIEW_ROLES,
   settingsCareLine,
   settingsFoot,
   shellForRole,
-  type AppRole,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
@@ -159,7 +157,7 @@ function Settings() {
   const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
-  const { user, uid, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+  const { user, uid, role } = useAuth();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
@@ -351,24 +349,6 @@ function Settings() {
             onPick={setTint}
           />
         </Section>
-
-        {isOwner && (
-          <Section title="See their view">
-            <Choice
-              label="Preview role view"
-              sub="Step into another role's phone experience to test what they see. Full-timer preview mode."
-              options={OWNER_VIEW_ROLES.map((r) => ({ value: r.key, label: r.label }))}
-              value={ownerViewRole || role}
-              onPick={(r) => setOwnerViewRole(ownerViewRole === r ? null : (r as AppRole))}
-            />
-            {ownerViewRole && (
-              <SecondaryButton
-                title="Reset to Full-timer view"
-                onPress={() => setOwnerViewRole(null)}
-              />
-            )}
-          </Section>
-        )}
 
         {hasQueue && (
           <Section title="Today's queue">

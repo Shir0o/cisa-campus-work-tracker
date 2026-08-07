@@ -21,6 +21,7 @@ import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
 import { useRoomTint } from '../src/lib/roomTint';
 import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
+import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
 
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.
@@ -74,17 +75,25 @@ function RootNavigator() {
   return (
     <V2RoomTintContext.Provider value={tint}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.background },
-        }}
-      >
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="login" />
-        <Stack.Screen name="signup" />
-        <Stack.Screen name="history" />
-      </Stack>
+      {/* Wraps the Stack rather than sitting beside it, so the "See it as they
+          do" pill (position: 'absolute') floats over every route — including
+          the trainee's tab-less queue — the way the design's impersonation
+          layer rides over every branch of its App. */}
+      <View style={{ flex: 1 }}>
+        <ImpersonateLayer>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              contentStyle: { backgroundColor: colors.background },
+            }}
+          >
+            <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="login" />
+            <Stack.Screen name="signup" />
+            <Stack.Screen name="history" />
+          </Stack>
+        </ImpersonateLayer>
+      </View>
       {!user && !PUBLIC_ROUTES.includes(pathname) && <Redirect href="/login" />}
     </V2RoomTintContext.Provider>
   );

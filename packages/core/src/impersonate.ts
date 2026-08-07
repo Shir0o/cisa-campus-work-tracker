@@ -1,5 +1,5 @@
 import { AppRole } from './permissions';
-import { ImpersonateTarget } from './types';
+import { AppUser, ImpersonateTarget } from './types';
 
 export const IMP_KEY = 'cisa.impersonate.v1';
 
@@ -203,6 +203,63 @@ export function impScope(
     : `No ${missingLabels.slice(0, 3).join(', ')} or ${missingLabels.length - 3} more`;
 
   return { people, pages };
+}
+
+export interface ImpGroup {
+  id: string;
+  label: string;
+  note: string;
+  items: ImpersonateTarget[];
+}
+
+// The four groups an admin thinks in, in that order — mirrors the design's
+// `impGroups` (views/impersonate.jsx). Student/community carry a `persona`
+// fallback because most teams have no such logins yet; full-timers and
+// trainees never do, since impersonating "nobody" isn't a thing to offer.
+const IMP_GROUP_DEFS: { id: string; label: string; note: string; role: AppRole; persona?: string }[] = [
+  { id: 'ft', label: 'Full-timers', note: 'The whole workspace, as they read it.', role: 'admin' },
+  {
+    id: 'trainee',
+    label: 'Trainees',
+    note: 'In training — a smaller window, and only the people they brought in.',
+    role: 'manager',
+  },
+  {
+    id: 'student',
+    label: 'Students',
+    note: "Club members and officers — what's on, prayer, messages.",
+    role: 'operator',
+    persona: 'student',
+  },
+  {
+    id: 'community',
+    label: 'Community',
+    note: 'Friends of the work — host families, alumni, supporters.',
+    role: 'viewer',
+    persona: 'community',
+  },
+];
+
+/** The mobile "See it as they do" picker's groups: the approved team roster,
+ * bucketed by role, excluding the caller and anyone unapproved. `query`
+ * filters every group's rows on name + sub. Empty groups are dropped, except
+ * student/community, which fall back to a synthetic persona when no real
+ * account exists yet. */
+export function impGroups(users: AppUser[], meUid: string | null | undefined, query?: string): ImpGroup[] {
+  const needle = (query || '').trim().toLowerCase();
+  const eligible = users.filter((u) => u.uid !== meUid && u.approved !== false);
+
+  return IMP_GROUP_DEFS.map((def) => {
+    let items = eligible.filter((u) => u.role === def.role).map((u) => impStaffTarget(u));
+    if (!items.length && def.persona) {
+      const persona = impPersonaTarget(def.persona);
+      if (persona) items = [persona];
+    }
+    if (needle) {
+      items = items.filter((t) => (t.name + ' ' + t.sub).toLowerCase().includes(needle));
+    }
+    return { id: def.id, label: def.label, note: def.note, items };
+  }).filter((g) => g.items.length > 0);
 }
 
 export function resolveImpersonateTarget(k: string | null, contacts: any[] = [], users: any[] = []): ImpersonateTarget | null {

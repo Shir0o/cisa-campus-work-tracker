@@ -8,7 +8,7 @@ import React from 'react';
 import { Animated, Dimensions, Modal, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { OWNER_VIEW_ROLES, TRAINEE_DRAWER, TRAINEE_DRAWER_FOOT, roleLabel, type AppRole } from '@cisa/core';
+import { TRAINEE_DRAWER, TRAINEE_DRAWER_FOOT, roleLabel } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from './atoms';
@@ -44,11 +44,9 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
 
 export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { c, font, shadow, fs } = useV2Theme();
-  const { user, uid, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+  const { user, uid, role } = useAuth();
   const router = useRouter();
   const slide = React.useRef(new Animated.Value(-WIDTH)).current;
-
-  const activeRole = ownerViewRole || role;
 
   React.useEffect(() => {
     Animated.timing(slide, {
@@ -112,48 +110,6 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
               </Pressable>
             ))}
           </View>
-
-          {isOwner && (
-            <View style={{ marginTop: 14, paddingTop: 14, borderTopWidth: 1, borderTopColor: c.line, gap: 6 }}>
-              <Text
-                style={{
-                  fontFamily: font.bold,
-                  fontSize: fs(11),
-                  letterSpacing: 1.1,
-                  textTransform: 'uppercase',
-                  color: c.cardInk3,
-                  marginBottom: 2,
-                }}
-              >
-                See their view
-              </Text>
-              {OWNER_VIEW_ROLES.map((r) => {
-                const on = activeRole === r.key;
-                return (
-                  <Pressable
-                    key={r.key}
-                    onPress={() => {
-                      setOwnerViewRole(r.key === 'admin' ? null : (r.key as AppRole));
-                      onClose();
-                    }}
-                    style={({ pressed }) => ({
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      minHeight: 38,
-                      paddingHorizontal: 10,
-                      borderRadius: 10,
-                      backgroundColor: on ? c.roomChip : 'transparent',
-                      opacity: pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk }}>{r.label}</Text>
-                    {on && <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.cardInk }}>✓ Active</Text>}
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
 
           <Text
             style={{

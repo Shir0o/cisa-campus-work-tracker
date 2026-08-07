@@ -9,10 +9,11 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, OWNER_VIEW_ROLES, roleLabel, type AppRole } from '@cisa/core';
+import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
+import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
 
 export function FtMoreScreen() {
   return (
@@ -24,10 +25,9 @@ export function FtMoreScreen() {
 
 function FtMore() {
   const { c, font, radius, shadow, fs } = useV2Theme();
-  const { user, role, isOwner, ownerViewRole, setOwnerViewRole } = useAuth();
+  const { user, role, isOwner } = useAuth();
   const router = useRouter();
-
-  const activeRole = ownerViewRole || role;
+  const { open: openImpersonateSheet } = useImpersonateSheet();
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
@@ -100,70 +100,35 @@ function FtMore() {
               />
             </Pressable>
           ))}
-        </View>
-
-        {isOwner && (
-          <View style={{ marginTop: 22 }}>
-            <Text
-              style={{
-                fontFamily: font.bold,
-                fontSize: fs(10.5),
-                letterSpacing: 1.26,
-                textTransform: 'uppercase',
-                color: c.roomInk3,
-                marginBottom: 8,
-              }}
-            >
-              See their view
-            </Text>
-            <View style={{ backgroundColor: c.card, borderRadius: radius.tile, padding: 14, gap: 8, ...shadow.soft }}>
-              {OWNER_VIEW_ROLES.map((r) => {
-                const on = activeRole === r.key;
-                return (
-                  <Pressable
-                    key={r.key}
-                    onPress={() => setOwnerViewRole(r.key === 'admin' && !ownerViewRole ? null : (r.key as AppRole))}
-                    style={({ pressed }) => ({
-                      minHeight: 44,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      paddingHorizontal: 14,
-                      borderRadius: radius.button,
-                      borderWidth: 1.5,
-                      borderColor: on ? c.cardInk : c.line,
-                      backgroundColor: on ? c.roomChip : 'transparent',
-                      opacity: pressed ? 0.7 : 1,
-                    })}
-                  >
-                    <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.cardInk }}>
-                      {r.label}
-                    </Text>
-                    {on && <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk }}>✓ Active</Text>}
-                  </Pressable>
-                );
+          {isOwner && (
+            <Pressable
+              onPress={openImpersonateSheet}
+              style={({ pressed }) => ({
+                flexDirection: 'row',
+                alignItems: 'center',
+                minHeight: 58,
+                paddingHorizontal: 18,
+                borderTopWidth: 1,
+                borderTopColor: c.line,
+                opacity: pressed ? 0.7 : 1,
               })}
-              {ownerViewRole && (
-                <Pressable
-                  onPress={() => setOwnerViewRole(null)}
-                  style={({ pressed }) => ({
-                    minHeight: 44,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    borderRadius: radius.button,
-                    backgroundColor: c.cardInk,
-                    opacity: pressed ? 0.7 : 1,
-                    marginTop: 4,
-                  })}
-                >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card }}>
-                    Reset to Full-timer view
-                  </Text>
-                </Pressable>
-              )}
-            </View>
-          </View>
-        )}
+            >
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk, flex: 1 }}>
+                See it as they do
+              </Text>
+              <View
+                style={{
+                  width: 9,
+                  height: 9,
+                  borderRightWidth: 2,
+                  borderTopWidth: 2,
+                  borderColor: c.cardInk3,
+                  transform: [{ rotate: '45deg' }],
+                }}
+              />
+            </Pressable>
+          )}
+        </View>
 
         <Text
           style={{
