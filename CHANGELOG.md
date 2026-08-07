@@ -7,6 +7,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 ## [Unreleased]
 
 ### Added
+- **GitHub Issues Sync to `docs/issues.json`** — Added `scripts/sync-github-issues.ts`, npm command `npm run sync:issues`, GitHub Action workflow `.github/workflows/sync-issues.yml`, and unit tests in `src/test/syncGithubIssues.test.ts` to sync repository issues into `docs/issues.json`.
 - **iOS EAS Distribution Configuration** — Configured `apps/mobile/GoogleService-Info.plist` and `google-services.json` from Firebase (`sac-campus-hub` / `com.cisa.campus`), and added `testflight` and `production` store distribution profiles to `apps/mobile/eas.json`.
 
 ### Changed
