@@ -9,6 +9,8 @@ import {
   daysAgoWords,
   firstName,
   personSubLine,
+  prayerCarryLine,
+  roleLabel,
   type QueueCard as QueueCardData,
 } from '@cisa/core';
 import { FocusCard } from './FocusCard';
@@ -111,7 +113,7 @@ export function QueueCard({
           </>
         }
       >
-        <WhoBlock name={m.fromName} id={m.from} sub="Full-time · cares for you" />
+        <WhoBlock name={m.fromName} id={m.from} sub={`${roleLabel('admin')} · cares for you`} />
         <Quote>{m.body}</Quote>
         {!!c && <AboutChip name={c.name} id={c.id} detail={c.stage} onPress={() => api.openContact(c.id, 'thread')} />}
         <Reactions options={THREAD_REACTIONS} mine={mine} onPick={(e) => api.react(card, e)} />
@@ -200,7 +202,7 @@ export function QueueCard({
       >
         {!!c && <WhoBlock name={c.name} id={c.id} sub={personSubLine(c)} />}
         <Said>“{p.burden}”</Said>
-        {!!p.answer && <Why>{p.answer}</Why>}
+        <Why>{prayerCarryLine(p, { me })}</Why>
       </FocusCard>
     );
   }

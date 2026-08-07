@@ -10,6 +10,7 @@
 import type { AppRole } from "./permissions";
 import { pickLandingForRole } from "./permissions";
 import { MEMBER_TABS, memberRoleOf } from "./memberHome";
+import { firstName } from "./history";
 
 export type ShellKind = "queue" | "member" | "ft";
 
@@ -88,7 +89,8 @@ export const TRAINEE_DRAWER: ShellLink[] = [
   // Not an app login — the form you hand to someone new so the team can keep
   // in touch (the design's navId "*": open to every role). See SIGNUP.md.
   { key: "signup", label: "Sign-up form", href: "/signup" },
-  { key: "settings", label: "Settings", href: "/settings" },
+  // "Your app", not "Settings" — M2_DRAWER's own label.
+  { key: "settings", label: "Your app", href: "/settings" },
 ];
 
 export const TRAINEE_DRAWER_FOOT = "The queue is the app. Everything else lives here.";
@@ -121,11 +123,15 @@ export interface QueueMeta {
  * The two labels either side of the meta row. `total` counts what the day
  * held — everything still queued PLUS what's already been looked after — so
  * working through cards moves the counter instead of shrinking the day.
+ *
+ * `index` is where the current card sits within what's still queued (0 for
+ * the card on top). Jumping to the 4th card from "Everything today", or
+ * swiping one to Later, moves the position even though nothing was handled.
  */
-export function queueMeta(remaining: number, handled: number): QueueMeta {
+export function queueMeta(remaining: number, handled: number, index = 0): QueueMeta {
   const total = remaining + handled;
   if (total === 0) return { left: "Today", right: "" };
-  const position = Math.min(handled + 1, total);
+  const position = Math.min(handled + index + 1, total);
   return {
     left: `Today · ${total} to look after`,
     right: `${position} of ${total}`,
@@ -148,4 +154,29 @@ export function upNextLine(names: string[]): string {
 export function allClearLine(handled: number): string {
   if (handled === 0) return "Nothing is waiting on you right now. Enjoy the walk to class.";
   return `${handled} ${handled === 1 ? "thing" : "things"} looked after today. That's the work.`;
+}
+
+// ── "Everything today" (`M2AllList`) ────────────────────────────────────────
+
+/** The header's right-hand count: "8 left". */
+export function allTodayCount(n: number): string {
+  return `${n} left`;
+}
+
+/** The line under the rows, naming what's already done. */
+export function lookedAfterLine(handled: number): string {
+  return `${handled} looked after already today`;
+}
+
+/** The note under a day-capped list — held-back cards, not lost ones. */
+export function heldForTomorrowLine(held: number): string {
+  return `${held} more ${held === 1 ? "is" : "are"} waiting for tomorrow. You can widen the day in Settings.`;
+}
+
+// ── the reply sheet ("Write back") ──────────────────────────────────────────
+
+/** Where a reply lands — the sheet's subtitle, in place of re-quoting the
+ *  message the card already showed. */
+export function replyDestinationLine(contactName?: string | null): string {
+  return contactName ? `This stays on ${firstName(contactName)}'s thread.` : "Straight to the thread.";
 }

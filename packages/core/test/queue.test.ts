@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {
   ON_CAMPUS_DEFAULT,
+  ON_CAMPUS_SUB,
   QUEUE_PREF_DEFAULTS,
   buildQueue,
   dueInDays,
@@ -8,6 +9,7 @@ import {
   isOnCampus,
   normalizeOnCampusWindow,
   normalizeQueuePrefs,
+  onCampusHeadline,
   onCampusSummary,
   onCampusNowLine,
   personColor,
@@ -475,6 +477,16 @@ describe('queue preferences', () => {
 
     it('says so rather than lying when no day is set', () => {
       expect(onCampusSummary({ days: [], from: 12, to: 15 })).toBe('No days set');
+    });
+
+    it("puts the deadline in the strip's headline, the way the design does", () => {
+      expect(onCampusHeadline({ days: [2, 3], from: 0, to: 0 })).toBe("You're on campus until 12am");
+      expect(onCampusHeadline({ days: [2, 3], from: 9, to: 12 })).toBe("You're on campus until 12pm");
+      expect(onCampusHeadline(ON_CAMPUS_DEFAULT)).toBe("You're on campus until 3pm");
+    });
+
+    it('keeps the sub line fixed', () => {
+      expect(ON_CAMPUS_SUB).toBe('Log it while you remember — 20 seconds.');
     });
   });
 

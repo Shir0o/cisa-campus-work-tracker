@@ -2,6 +2,8 @@
 // week / earlier — shared by web (src/views/PrayerList.tsx) and mobile (the
 // Prayer tab). Ported from PrayerList.tsx's PrayerThread component.
 import type { PrayerRecord } from "./types";
+import { daysAgoWords } from "./queue";
+import { firstName } from "./history";
 
 const DAY_MS = 86_400_000;
 
@@ -26,6 +28,30 @@ const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
  */
 export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
   return p.teamPrayer !== false;
+}
+
+export interface PrayerCarryLineOptions {
+  me: string;
+  now?: number;
+}
+
+/**
+ * The pray queue card's third block: when the burden was written, who wrote
+ * it (unless that's you), and whether the team is carrying it too. Stands in
+ * for the design's `p.body` + "Ana is carrying this too." line — this
+ * schema's `PrayerRecord` has neither an elaboration field nor a `prayedBy`
+ * list, so the line is built from what it does have instead.
+ */
+export function prayerCarryLine(p: PrayerRecord, { me, now = Date.now() }: PrayerCarryLineOptions): string {
+  const author = p.updatedByName && p.updatedBy !== me ? firstName(p.updatedByName) : null;
+  const ago = daysAgoWords(p.date, now);
+  const added = ago
+    ? `Added ${ago}${author ? ` by ${author}` : ""}.`
+    : author
+      ? `${author} added this one.`
+      : "This one was added.";
+  const carry = isTeamPrayer(p) ? "The team is carrying this one too." : "This one is just yours to carry.";
+  return `${added} ${carry}`;
 }
 
 export interface PrayerThreadGroups {

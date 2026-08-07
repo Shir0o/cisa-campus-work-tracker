@@ -2,17 +2,21 @@
 // posted onto the same Alongside thread the message came from.
 import React from 'react';
 import { Text, TextInput, View } from 'react-native';
-import { firstName, type ThreadMessageWithContact } from '@cisa/core';
+import { firstName, replyDestinationLine, type ThreadMessageWithContact } from '@cisa/core';
 import { Sheet } from '../ui';
 import { useV2Theme } from '../../theme/v2';
 import { PrimaryButton, SecondaryButton } from './atoms';
 
 export function ReplySheet({
   message,
+  contactName,
   onClose,
   onSend,
 }: {
   message: ThreadMessageWithContact | null;
+  /** Whose thread the reply lands on, for the "This stays on {first}'s
+   *  thread." subtitle. */
+  contactName?: string | null;
   onClose: () => void;
   onSend: (body: string) => void;
 }) {
@@ -34,16 +38,14 @@ export function ReplySheet({
         <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
           Write back to {who}
         </Text>
-        {!!message && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
-            “{message.body}”
-          </Text>
-        )}
+        <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
+          {replyDestinationLine(contactName)}
+        </Text>
 
         <TextInput
           value={body}
           onChangeText={setBody}
-          placeholder="A sentence is plenty."
+          placeholder="Say it how you'd say it out loud."
           placeholderTextColor={c.cardInk3}
           multiline
           style={{
@@ -63,7 +65,7 @@ export function ReplySheet({
         />
 
         <View style={{ gap: 9, marginTop: 18 }}>
-          <PrimaryButton title="Send it" onPress={send} />
+          <PrimaryButton title="Send" onPress={send} />
           <SecondaryButton title="Not now" onPress={onClose} />
         </View>
       </View>

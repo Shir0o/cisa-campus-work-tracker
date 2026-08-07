@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { groupPrayerThread, isTeamPrayer } from '../src/prayerThread';
+import { groupPrayerThread, isTeamPrayer, prayerCarryLine } from '../src/prayerThread';
 import type { PrayerRecord } from '../src/types';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime(); // Monday, this-week start
@@ -72,5 +72,48 @@ describe('isTeamPrayer', () => {
   it('honours the flag both ways', () => {
     expect(isTeamPrayer(prayer({ teamPrayer: true }))).toBe(true);
     expect(isTeamPrayer(prayer({ teamPrayer: false }))).toBe(false);
+  });
+});
+
+describe('prayerCarryLine', () => {
+  it('names who added it and says the team is carrying it too, when it is not you', () => {
+    const p = prayer({
+      date: new Date(NOW - 3 * 86_400_000).toISOString(),
+      updatedByName: 'Ana',
+      updatedBy: 'u-ana',
+      teamPrayer: true,
+    });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+      'Added 3 days ago by Ana. The team is carrying this one too.',
+    );
+  });
+
+  it('drops the byline when you wrote it yourself', () => {
+    const p = prayer({
+      date: new Date(NOW - 86_400_000).toISOString(),
+      updatedByName: 'Zion',
+      updatedBy: 'u-me',
+      teamPrayer: false,
+    });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+      "Added yesterday. This one is just yours to carry.",
+    );
+  });
+
+  it('drops the byline when no author is recorded', () => {
+    const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: undefined, teamPrayer: true });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe(
+      'Added today. The team is carrying this one too.',
+    );
+  });
+
+  it('reads private prayers as just yours — the absent-flag-means-team rule only flips the other way', () => {
+    const p = prayer({ date: new Date(NOW).toISOString(), updatedByName: 'Ana', updatedBy: 'u-ana', teamPrayer: false });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Added today by Ana. This one is just yours to carry.');
+  });
+
+  it('handles a missing or invalid date without throwing', () => {
+    const p = prayer({ date: '', updatedByName: 'Ana', updatedBy: 'u-ana' });
+    expect(prayerCarryLine(p, { me: 'u-me', now: NOW })).toBe('Ana added this one. The team is carrying this one too.');
   });
 });

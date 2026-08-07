@@ -426,6 +426,15 @@ export function normalizeOnCampusWindow(raw: unknown): OnCampusWindow {
  * strip and the settings screen must not disagree about when the window ends. */
 export const hourLabel = (h: number): string => `${h % 12 === 0 ? 12 : h % 12}${h >= 12 ? "pm" : "am"}`;
 
+/** The on-campus strip's headline — the deadline lives here, not buried in the
+ * sub line, because it's what makes the strip urgent. */
+export function onCampusHeadline(w: OnCampusWindow): string {
+  return `You're on campus until ${hourLabel(w.to)}`;
+}
+
+/** The strip's fixed sub line. */
+export const ON_CAMPUS_SUB = "Log it while you remember — 20 seconds.";
+
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 /** The settings screen's live read on the window: "Right now: you're in the

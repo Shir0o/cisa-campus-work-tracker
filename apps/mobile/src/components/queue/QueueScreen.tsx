@@ -159,12 +159,12 @@ export function QueueScreen() {
           cards={queue}
           currentId={current?.id}
           held={queue.held}
+          handledCount={queueState.handledCount}
           onPick={(i) => {
             setIndex(i);
             setShowAll(false);
           }}
           onBack={() => setShowAll(false)}
-          onOpenSettings={() => router.push('/settings')}
         />
       </SafeAreaView>
     );
@@ -182,7 +182,7 @@ export function QueueScreen() {
   // behind it calls itself by its label, as the design's `nextName` does.
   const waiting = queue.slice(at + 1);
   const upNext = waiting.slice(0, 3);
-  const meta = queueMeta(queue.length, queueState.handledCount);
+  const meta = queueMeta(queue.length, queueState.handledCount, at);
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
@@ -379,6 +379,7 @@ export function QueueScreen() {
       <ReplySheet
         key={replyTo?.id ?? 'no-reply'}
         message={replyTo?.msg ?? null}
+        contactName={replyTo?.contact?.name}
         onClose={() => setReplyTo(null)}
         onSend={sendReply}
       />
