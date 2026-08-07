@@ -49,15 +49,16 @@ function ToneIcon({ tone, type }: { tone: Tone; type?: Notification['type'] }) {
 }
 
 export default function NotificationCenter() {
-  const { role } = useAuth();
+  const { role, effectiveUserId } = useAuth();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const currentUserId = effectiveUserId || auth.currentUser?.uid;
 
   useEffect(() => {
-    if (!auth.currentUser) return;
+    if (!currentUserId) return;
 
     let localNotifs: Notification[] = [];
     let globalNotifs: Notification[] = [];
@@ -73,7 +74,7 @@ export default function NotificationCenter() {
 
     const qPersonal = query(
       collection(db, 'notifications'),
-      where('userId', '==', auth.currentUser.uid),
+      where('userId', '==', currentUserId),
       orderBy('createdAt', 'desc'),
       limit(20),
     );
@@ -90,7 +91,7 @@ export default function NotificationCenter() {
       return {
         id: d.id,
         ...data,
-        read: data.readBy?.includes(auth.currentUser?.uid) ?? data.read,
+        read: data.readBy?.includes(currentUserId) ?? data.read,
         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
       };
     };
@@ -98,13 +99,13 @@ export default function NotificationCenter() {
     const unsubPersonal = onSnapshot(qPersonal, (snap) => {
       localNotifs = snap.docs
         .map(mapDoc)
-        .filter((n: any) => !n.dismissedBy?.includes(auth.currentUser?.uid)) as Notification[];
+        .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
 
       if (!isInitialPersonal) {
         snap.docChanges().forEach((change) => {
           if (change.type === 'added') {
             const notif = mapDoc(change.doc);
-            if (!notif.read && auth.currentUser && notif.userId === auth.currentUser.uid) {
+            if (!notif.read && currentUserId && notif.userId === currentUserId) {
               void showWebPushNotification(notif.title, {
                 body: notif.message,
                 data: { link: notif.link || '/', targetId: notif.targetId },
@@ -120,12 +121,12 @@ export default function NotificationCenter() {
     const unsubGlobal = onSnapshot(qGlobal, (snap) => {
       globalNotifs = snap.docs
         .map(mapDoc)
-        .filter((n: any) => !n.dismissedBy?.includes(auth.currentUser?.uid)) as Notification[];
+        .filter((n: any) => !n.dismissedBy?.includes(currentUserId)) as Notification[];
       updateCombined();
     }, (err) => handleFirestoreError(err, OperationType.LIST, 'notifications'));
 
     return () => { unsubPersonal(); unsubGlobal(); };
-  }, []);
+  }, [currentUserId]);
 
 
   useEffect(() => {

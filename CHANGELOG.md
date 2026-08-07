@@ -8,6 +8,9 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ### Added
 - **GitHub Issues Sync to `docs/issues.json`** — Added `scripts/sync-github-issues.ts`, npm command `npm run sync:issues`, GitHub Action workflow `.github/workflows/sync-issues.yml`, and unit tests in `src/test/syncGithubIssues.test.ts` to sync repository issues into `docs/issues.json`.
+
+### Fixed
+- **GitHub Issues 216 & 217 — Impersonation Truth, Messages Inbox Scoping, and Scope Preview** — Updated impersonation UI and scoping logic so that when impersonating a team member, student, or community member, the session is indistinguishable from that person's own view. Added `impScope` helper in `src/lib/impersonate.ts` providing plain-words scope preview lines on `ImpRow` cards in `ImpersonatePicker.tsx` (Fixes #216) and rendering scope text in `ImpersonateBar.tsx`. Excluded the admin's own staff account from the target picker. Updated `Messages.tsx` room fetching, message sending, and unread tracking to use `effectiveUserId` (and target display profile) instead of hardcoding the admin's Auth ID (Fixes #217). Updated `NotificationCenter.tsx` subscriptions and `Sidebar.tsx` user footer to display impersonated target details. Included unit tests in `src/test/ImpersonateScope.test.tsx`.
 - **iOS EAS Distribution Configuration** — Configured `apps/mobile/GoogleService-Info.plist` and `google-services.json` from Firebase (`sac-campus-hub` / `com.cisa.campus`), and added `testflight` and `production` store distribution profiles to `apps/mobile/eas.json`.
 
 ### Changed

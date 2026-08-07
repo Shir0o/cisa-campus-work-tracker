@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
-  const { logOut, isAdmin, role, user } = useAuth();
+  const { logOut, isAdmin, role, user, impersonateTarget } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
   const [viewportWidth, setViewportWidth] = React.useState(
     typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -249,9 +249,13 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             effectiveIsCollapsed ? "justify-center px-0" : "px-2"
           )}>
             <img
-              src={getUserAvatar(user?.photoURL)}
-              alt={user?.displayName || 'Signed-in user'}
+              src={impersonateTarget ? '' : getUserAvatar(user?.photoURL)}
+              alt={impersonateTarget ? impersonateTarget.name : (user?.displayName || 'Signed-in user')}
               className="w-9 h-9 min-w-[36px] rounded-full object-cover border border-outline-variant shrink-0"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
             />
             <motion.div
               initial={false}
@@ -259,8 +263,12 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
               transition={{ duration: 0.2 }}
               className="whitespace-nowrap overflow-hidden min-w-0"
             >
-              <div className="text-sm font-medium text-on-surface leading-tight truncate">{user?.displayName || 'Signed in'}</div>
-              <div className="text-xs text-on-surface-variant mt-0.5 truncate">{getRoleLabel(role)}</div>
+              <div className="text-sm font-medium text-on-surface leading-tight truncate">
+                {impersonateTarget ? impersonateTarget.name : (user?.displayName || 'Signed in')}
+              </div>
+              <div className="text-xs text-on-surface-variant mt-0.5 truncate">
+                {impersonateTarget ? impersonateTarget.sub : getRoleLabel(role)}
+              </div>
             </motion.div>
           </div>
 

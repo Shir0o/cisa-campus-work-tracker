@@ -45,7 +45,8 @@ import ChatDetailsModal from '../components/modals/ChatDetailsModal';
 import AttachDataModal from '../components/modals/AttachDataModal';
 
 export default function Messages() {
-  const { user: currentUser, role: userRole } = useAuth();
+  const { user: currentUser, role: userRole, effectiveUserId, impersonateTarget } = useAuth();
+  const effectiveUid = effectiveUserId || currentUser?.uid;
   const { setSelectedContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -102,13 +103,13 @@ export default function Messages() {
 
   // 1. Fetch Rooms (Real-time)
   useEffect(() => {
-    if (!currentUser) return;
+    if (!effectiveUid) return;
 
     setLoadingRooms(true);
-    // Admins see all chats; other users only see chats they are member of
+    // Admins see all chats; other users (and impersonated views) only see chats they are member of
     const roomsQuery = isAdmin
       ? query(collection(db, 'chatRooms'), orderBy('createdAt', 'desc'))
-      : query(collection(db, 'chatRooms'), where('memberIds', 'array-contains', currentUser.uid));
+      : query(collection(db, 'chatRooms'), where('memberIds', 'array-contains', effectiveUid));
 
     const unsubscribe = onSnapshot(roomsQuery, (snapshot) => {
       const chatRooms: ChatRoom[] = [];
@@ -129,7 +130,7 @@ export default function Messages() {
     });
 
     return unsubscribe;
-  }, [currentUser, isAdmin]);
+  }, [effectiveUid, isAdmin]);
 
   // 2. Fetch Active Room Messages
   useEffect(() => {
@@ -224,8 +225,9 @@ export default function Messages() {
 
   // Check unread status
   const isUnread = (room: ChatRoom) => {
-    if (!room.lastMessage || room.lastMessage.senderId === currentUser?.uid) return false;
-    const lastRead = localStorage.getItem(`chat_read_${room.id}`);
+    if (!room.lastMessage || room.lastMessage.senderId === effectiveUid) return false;
+    const readKey = effectiveUid ? `chat_read_${effectiveUid}_${room.id}` : `chat_read_${room.id}`;
+    const lastRead = localStorage.getItem(readKey) || localStorage.getItem(`chat_read_${room.id}`);
     if (!lastRead) return true;
     const lastMsgTime = room.lastMessage.timestamp?.seconds * 1000 || 0;
     return lastMsgTime > parseInt(lastRead);
@@ -234,13 +236,13 @@ export default function Messages() {
   const getRoomName = (room: ChatRoom) => {
     if (room.type === 'announcement') return room.name || 'Announcement';
     if (room.type === 'group') return room.name || 'Group';
-    const otherUid = room.memberIds.find(id => id !== currentUser?.uid);
+    const otherUid = room.memberIds.find(id => id !== effectiveUid);
     return otherUid ? usersCache[otherUid]?.displayName || 'Direct Chat' : 'Direct Chat';
   };
 
   const getRoomPhoto = (room: ChatRoom) => {
     if (room.type !== 'direct') return null;
-    const otherUid = room.memberIds.find(id => id !== currentUser?.uid);
+    const otherUid = room.memberIds.find(id => id !== effectiveUid);
     return otherUid ? usersCache[otherUid]?.photoURL || '' : '';
   };
 
@@ -251,19 +253,22 @@ export default function Messages() {
 
   const handleSend = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!currentUser || !activeRoomId) return;
+    if (!effectiveUid || !activeRoomId) return;
 
     const textToSend = inputText.trim();
     if (!textToSend && attachments.length === 0) return;
+
+    const senderName = impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member');
+    const senderPhoto = impersonateTarget ? '' : (currentUser?.photoURL || '');
 
     try {
       await sendMessage(
         activeRoomId,
         textToSend,
         {
-          uid: currentUser.uid,
-          displayName: currentUser.displayName || 'Member',
-          photoURL: currentUser.photoURL || ''
+          uid: effectiveUid,
+          displayName: senderName,
+          photoURL: senderPhoto
         },
         attachments,
         activeRoom?.memberIds
@@ -316,7 +321,7 @@ export default function Messages() {
   const seenDirectUids = new Set<string>();
   const filteredRooms = rooms.filter((r) => {
     if (r.type === 'direct') {
-      const otherUid = r.memberIds.find(id => id !== currentUser?.uid) || r.memberIds[0];
+      const otherUid = r.memberIds.find(id => id !== effectiveUid) || r.memberIds[0];
       if (otherUid) {
         const otherUser = usersCache[otherUid];
         if (otherUser) {
@@ -588,7 +593,7 @@ export default function Messages() {
                     </div>
 
                     {groupedMessages[day].map((msg) => {
-                      const isMe = msg.senderId === currentUser.uid;
+                      const isMe = msg.senderId === effectiveUid;
                       const isSys = msg.type === 'system';
 
                       if (isSys) {
