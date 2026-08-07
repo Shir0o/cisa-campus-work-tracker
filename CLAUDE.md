@@ -4,15 +4,15 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## 1. Think Before Coding
+## 1. Think Before Acting
 
-**Don't assume. Don't hide confusion. Surface tradeoffs.**
+**Don't hide confusion. Surface tradeoffs. But don't stall on questions you can answer yourself.**
 
 Before implementing:
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- Make routine judgment calls yourself. State the assumption inline and keep going.
+- Ask only when different readings would produce materially different work, or when the action is irreversible.
 - If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- Name real tradeoffs and unknowns as you go - one sentence, then continue.
 
 ## 2. Simplicity First
 
@@ -64,20 +64,36 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **Always prevent regression by checking the changelog before making changes, and always update the changelog after.**
 
-Before starting any feature or bug fix:
-- Check [CHANGELOG.md](CHANGELOG.md) to understand the recent context, PR merges, and changes. This helps prevent regression.
+Before starting a feature or bug fix, when it touches an area with recent churn:
+- Check the `[Unreleased]` section and recent entries of [CHANGELOG.md](CHANGELOG.md) for context on recent PRs and changes. This helps prevent regression.
+- Read it targeted (`head`, or `grep` for the files/features you're touching). Never read the whole file - it is 600+ lines and grows every PR.
 
-After completing a feature or bug fix:
+After completing a feature or bug fix (always):
 - Update the `[Unreleased]` section of `CHANGELOG.md` with a concise bullet point describing the change. Focus on the core functionality added, modified, or fixed.
 - Keep changelog descriptions brief and distinct from full release notes.
 
 ## 6. Testing Policy
 
-- **TDD (Test-Driven Development)**: Write tests first, then implement. Red → Green → Refactor.
+- **TDD (Test-Driven Development)**: Mandatory for logic, data, and permissions code, and for all bug fixes. Write a failing test first, then implement. Red → Green → Refactor.
+- **UI-only changes**: Pure styling/copy/markup changes need tests only where behavior is actually assertable - don't write hollow snapshot tests just to satisfy this policy.
+- **Multi-step features**: Invoke the `tdd` skill so the red-green-refactor loop is followed consistently rather than from memory.
 - **Unit Tests**: Coverage thresholds are enforced in `vitest.config.ts`.
 - **Ratcheting**: Thresholds must never be lowered; they should only go up as coverage improves.
 - **New Code**: All new features and bug fixes must ship with matching unit tests.
 
+## 7. Cost Discipline
+
+**Minimize tokens and round-trips without sacrificing correctness.**
+
+- **Subagents**: Delegate to a subagent only for large tasks that are genuinely independent and parallelizable, such as a wide multi-file investigation. Do not delegate work you can finish yourself in a handful of tool calls, and do not use subagents to verify or double-check your own work. If one subagent can complete the task, use one rather than several, and keep spawn counts low.
+- **Tool calls**: Batch independent tool calls into a single turn instead of sequencing them. Read targeted ranges instead of whole files when you know what you need. Don't re-read a file just to confirm an edit landed - Edit/Write already error on failure. Don't re-verify something you've already verified.
+- **Verification scope**: While iterating, run only the checks the change can actually break - a doc-only change needs no typecheck/lint/test/build at all. Before pushing a PR, run the full gate once, in order:
+  ```bash
+  git fetch origin main && git rebase origin/main
+  npm run typecheck && npm run lint && npm run test:coverage && npm run build
+  ```
+  This mirrors `.github/workflows/ci.yml` - keep it in sync if CI changes. Fix failures; never push through them.
+
 ---
 
-**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, clarifying questions come before implementation rather than after mistakes, and fewer redundant tool calls or subagent spawns.
