@@ -13,3 +13,9 @@ coverage/
 e2e/.auth/
 playwright-report/
 test-results/
+
+# AI coding-assistant session state & pack outputs — never commit
+.deepcode/
+.aider*
+repomix-output.xml
+design-spec.xml
