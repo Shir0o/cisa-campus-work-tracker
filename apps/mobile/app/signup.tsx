@@ -21,10 +21,19 @@ import { submitSignUp } from '../src/lib/data/signup';
 
 // Public welcome form — ported from src/views/SignUp.tsx. Unauthenticated
 // (see app/_layout.tsx's redirect exemption): a prospective student fills
-// this out themselves, so unlike AddContactSheet there's no logged-in actor
-// to attribute the contact to.
+// this out themselves, so there's no logged-in actor to attribute the contact to.
+//
+// Deliberately NOT in the mobile v2 language, and that IS the design: its whole
+// styling is mobile.css's two `.m2-signup` rules, which push the SHARED form
+// (`.signup-wrap`, from styles.css) full-screen over whichever of the three
+// phone apps you were in — "not an app login, the form you hand to someone new"
+// (see the design project's SIGNUP.md). All we take from `.m2-signup` is the
+// paper backdrop, so it reads as a handed-over sheet rather than an app screen.
 export default function SignUp() {
-  const { colors, spacing, radius } = useTheme();
+  const { colors, spacing, radius, mode } = useTheme();
+  // `.m2-signup{background:var(--bg,#eceae6)}` — warm paper in daylight, the
+  // app's own background at night, exactly as the shared `--bg` var resolves.
+  const paper = mode === 'dark' ? colors.background : '#eceae6';
   const router = useRouter();
   const season = useActiveSeason();
 
@@ -113,7 +122,7 @@ export default function SignUp() {
 
   if (step === 3) {
     return (
-      <Screen>
+      <Screen style={{ backgroundColor: paper }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
           <View
             style={{
@@ -147,7 +156,7 @@ export default function SignUp() {
   }
 
   return (
-    <Screen>
+    <Screen style={{ backgroundColor: paper }}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
           <AppText variant="caption" color={colors.onSurfaceVariant}>

@@ -19,7 +19,7 @@ export default function People() {
   // The tab bar hides this tab below 'operator' (see (tabs)/_layout.tsx), but
   // that only removes the tab entry — a direct URL/deep link still renders
   // this screen, so it needs its own guard too (same pattern as
-  // feedback-admin.tsx).
+  // prayer-log.tsx).
   if (!canAccessRoute(role, '/directory')) {
     return (
       <Screen>

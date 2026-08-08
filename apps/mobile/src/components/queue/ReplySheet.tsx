@@ -4,7 +4,7 @@ import React from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { firstName, replyDestinationLine, type ThreadMessageWithContact } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { PrimaryButton, SecondaryButton } from './atoms';
 
 export function ReplySheet({
@@ -33,7 +33,7 @@ export function ReplySheet({
   };
 
   return (
-    <Sheet visible={!!message} onClose={onClose} maxHeightRatio={0.7} backgroundColor={c.card}>
+    <Sheet visible={!!message} onClose={onClose} maxHeightRatio={0.7} {...v2SheetChrome(c)}>
       <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
         <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
           Write back to {who}

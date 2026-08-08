@@ -29,14 +29,21 @@ function SheetBackdrop({
   animatedIndex,
   visible,
   onClose,
-}: BottomSheetBackdropProps & { visible: boolean; onClose: () => void }) {
+  color,
+  opacity,
+}: BottomSheetBackdropProps & {
+  visible: boolean;
+  onClose: () => void;
+  color: string;
+  opacity: number;
+}) {
   const fadeStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(animatedIndex.value, [-1, 0], [0, 0.35], Extrapolation.CLAMP),
+    opacity: interpolate(animatedIndex.value, [-1, 0], [0, opacity], Extrapolation.CLAMP),
   }));
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents={visible ? 'auto' : 'none'}>
-      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: '#000' }, fadeStyle]} pointerEvents="none" />
+      <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: color }, fadeStyle]} pointerEvents="none" />
       <Pressable
         style={StyleSheet.absoluteFill}
         onPress={onClose}
@@ -55,6 +62,10 @@ export function Sheet({
   maxHeightRatio,
   footer,
   backgroundColor,
+  radius,
+  handleColor,
+  scrimColor,
+  scrimOpacity,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -67,8 +78,17 @@ export function Sheet({
    * (src/theme/v2.ts) and would otherwise show a Material surface behind their
    * rounded top. Defaults to the theme's `surface`. */
   backgroundColor?: string;
+  /** The rest of the chrome the surface used to be alone in overriding: the
+   * design's `.m2-sheet` is a 26px cream paper sheet with a `.m2-grab` handle
+   * and its own room-tinted scrim, none of which the Material defaults below
+   * resemble. Every v2 caller passes all four from `useV2Theme()`; the
+   * Field-Notes callers pass none and keep what they always had. */
+  radius?: number;
+  handleColor?: string;
+  scrimColor?: string;
+  scrimOpacity?: number;
 }) {
-  const { colors, radius } = useTheme();
+  const { colors, radius: themeRadius } = useTheme();
   const insets = useSafeAreaInsets();
   // enableDynamicSizing (the library default) has a widely-reported bug where
   // the sheet mounts with real content/height but never animates open —
@@ -116,8 +136,16 @@ export function Sheet({
   // Stable identities so the backdrop/footer only remount when what they
   // actually depend on changes, not on every unrelated Sheet re-render.
   const renderBackdrop = useCallback(
-    (props: BottomSheetBackdropProps) => <SheetBackdrop {...props} visible={visible} onClose={onClose} />,
-    [visible, onClose],
+    (props: BottomSheetBackdropProps) => (
+      <SheetBackdrop
+        {...props}
+        visible={visible}
+        onClose={onClose}
+        color={scrimColor ?? '#000'}
+        opacity={scrimOpacity ?? 0.35}
+      />
+    ),
+    [visible, onClose, scrimColor, scrimOpacity],
   );
   const renderFooter = useCallback(
     (props: BottomSheetFooterProps) => (
@@ -137,10 +165,17 @@ export function Sheet({
       animationConfigs={animationConfigs}
       backgroundStyle={{
         backgroundColor: backgroundColor ?? colors.surface,
-        borderTopLeftRadius: radius.lg,
-        borderTopRightRadius: radius.lg,
+        borderTopLeftRadius: radius ?? themeRadius.lg,
+        borderTopRightRadius: radius ?? themeRadius.lg,
       }}
-      handleIndicatorStyle={{ width: 40, height: 4, backgroundColor: colors.outline, opacity: 0.4 }}
+      // 40×4 is already the design's `.m2-grab` geometry; only the colour moves.
+      // `.m2-grab` is a solid colour, so the Material fade is opt-out, not opt-in.
+      handleIndicatorStyle={{
+        width: 40,
+        height: 4,
+        backgroundColor: handleColor ?? colors.outline,
+        opacity: handleColor ? 1 : 0.4,
+      }}
       backdropComponent={renderBackdrop}
       footerComponent={footer ? renderFooter : undefined}
     >

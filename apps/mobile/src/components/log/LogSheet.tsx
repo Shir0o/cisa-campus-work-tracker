@@ -38,7 +38,7 @@ import {
   type ReminderPreset,
 } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme, type V2Room } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room, V2Input, V2TextArea } from '../v2/Widget';
 import { useAuth } from '../../lib/AuthProvider';
@@ -341,7 +341,7 @@ function LogSheetBody({
       visible={visible}
       onClose={mode === 'saved' ? () => finish(false) : onClose}
       maxHeightRatio={0.85}
-      backgroundColor={c.card}
+      {...v2SheetChrome(c)}
     >
       <Room room={room}>
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>

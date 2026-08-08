@@ -97,6 +97,18 @@ export interface V2Palette {
   mark: string;
   onMark: string;
 
+  /** The bottom sheet's own surface (`.m2-sheet`) — cream paper in the light
+   * rooms, `--n-sheet` at night. NOT `card`: the focus card went white in the
+   * Jul-26 revision and the sheet deliberately stayed paper. */
+  sheet: string;
+  /** The sheet's grab handle (`.m2-grab`). */
+  grab: string;
+  /** The scrim behind a sheet or the drawer (`.m2-sheetwrap` / `.m2-scrim`),
+   * as a solid colour — `scrimOpacity` carries the alpha so the entrance
+   * animation can interpolate it. */
+  scrim: string;
+  scrimOpacity: number;
+
   /** Text fields on a card or sheet. */
   field: string;
   /** The "Dates worth knowing" block, which sits on the room, not on a card. */
@@ -156,6 +168,11 @@ const lightV2: V2Palette = {
   mark: '#f4f1e6',
   onMark: '#16332b',
 
+  sheet: '#f4f1e6',
+  grab: '#d6cfba',
+  scrim: '#091a15',
+  scrimOpacity: 0.55,
+
   field: '#fbfaf8',
   datebox: 'rgba(244,241,230,0.07)',
   dateboxLine: 'rgba(244,241,230,0.12)',
@@ -177,14 +194,14 @@ const darkV2: V2Palette = {
   roomInk: '#eaefe9',
   roomInk2: '#ccd6cf',
   roomInk3: '#a3afa7',
-  roomFaint: '#8e97a6',
+  roomFaint: '#8e9a92',
   roomChip: 'rgba(234,239,233,0.08)',
 
   card: '#1b2a23',
   card2: '#243429',
   cardInk: '#eaefe9',
   cardInk2: '#ccd6cf',
-  cardInk3: '#8e97a6',
+  cardInk3: '#8e9a92',
   line: 'rgba(234,239,233,0.10)',
   border: '#31423a',
 
@@ -193,7 +210,7 @@ const darkV2: V2Palette = {
   why: '#ccd6cf',
   quoteLine: '#31423a',
   note: '#243429',
-  noteLabel: '#8e97a6',
+  noteLabel: '#8e9a92',
   noteInk: '#ccd6cf',
   react: '#243429',
 
@@ -218,6 +235,11 @@ const darkV2: V2Palette = {
 
   mark: '#31614e',
   onMark: '#eaf3ec',
+
+  sheet: '#16221c',
+  grab: '#3a4a42',
+  scrim: '#040a08',
+  scrimOpacity: 0.62,
 
   field: '#243429',
   datebox: '#1b2a23',
@@ -264,6 +286,11 @@ const lightBlueQueue: V2Palette = {
   reactOnBorder: '#17293f',
   reactOnBg: '#dfe6ee',
 
+  // The paper sheet and its handle are NOT restated by mobile-blue.css — only
+  // the room and its ink move — so they stay `.m2.deck`'s cream. The scrim is
+  // restated (`rgba(9,18,31,.55)`).
+  scrim: '#09121f',
+
   field: '#fbfaf8',
   datebox: 'rgba(233,237,243,0.07)',
   dateboxLine: 'rgba(233,237,243,0.12)',
@@ -277,8 +304,12 @@ const darkBlueQueue: V2Palette = {
   roomInk: '#e9edf4',
   roomInk2: '#ccd4e0',
   roomInk3: '#a3adbc',
+  // `.m2.blue.night`'s own `--n-ink4`. The navy night floor is a shade cooler
+  // than the green one (#8e9a92) — the two are not interchangeable.
   roomFaint: '#8e97a6',
-  roomChip: 'rgba(233,237,244,0.08)',
+  // `.m2-mn` is not restated by mobile-blue.css, so the chrome tint stays
+  // `.m2.night`'s.
+  roomChip: 'rgba(234,239,233,0.08)',
 
   card: '#1a2433',
   card2: '#232f41',
@@ -297,11 +328,17 @@ const darkBlueQueue: V2Palette = {
   react: '#232f41',
 
   primary: '#31506e',
-  onPrimary: '#eaeff5',
+  // `--n-prim` moves to navy but its ON-colour does not: `.m2.night .m2-b1`
+  // and `.m2-mark` keep #eaf3ec in both tints.
+  onPrimary: '#eaf3ec',
   inverse: '#e9edf4',
   onInverse: '#0a1220',
   mark: '#31506e',
-  onMark: '#eaeff5',
+  onMark: '#eaf3ec',
+
+  sheet: '#15202e',
+  grab: '#3a4450',
+  scrim: '#04080e',
 
   field: '#232f41',
   datebox: '#1a2433',
@@ -320,73 +357,63 @@ const darkBlueQueue: V2Palette = {
 const lightFt: V2Palette = {
   ...lightV2,
 
-  // the room is paper now, so its ink is dark rather than cream
+  // `mobile.css`'s `.m2.mem.ft.blue:not(.night)` `--mb-*` block, verbatim. It is
+  // the warm PAPER room of `Mobile Today - hybrid.html` state B — near-black
+  // warm ink on #eceae6, with navy as an ACCENT — not the navy-inked room the
+  // blue tint gives the trainee. Only the room and its widgets are `--mb-*`;
+  // the person screen this shell pushes into is still `.m2.deck.blue`, which is
+  // where the cooler `said`/`why`/`noteInk`/`react*` values below come from.
   room: '#eceae6',
-  roomInk: '#17293f',
-  roomInk2: '#607182',
-  roomInk3: '#7e8598',
-  roomFaint: '#7e8598',
-  roomChip: 'rgba(23,41,63,0.06)',
+  roomInk: '#1b1a18',
+  roomInk2: '#413c36',
+  roomInk3: '#6a645c',
+  roomFaint: '#8d8880',
+  // No `--mb-chip` in the design; the nearest counterpart is `.mbr-tabs
+  // button.on`'s 9% navy. Kept as a tint of the room's own ink.
+  roomChip: 'rgba(27,26,24,0.06)',
 
-  cardInk: '#17293f',
-  cardInk2: '#607182',
-  cardInk3: '#7e8598',
+  // the widgets: --mb-card / --mb-tile / --mb-cink*
+  card2: '#f5f3ef',
+  cardInk: '#1b1a18',
+  cardInk2: '#524d47',
+  cardInk3: '#8d8880',
+  line: '#f0eeea',
   said: '#1f3145',
   why: '#2d4055',
   noteInk: '#3c4a5d',
 
-  primary: '#17293f',
-  onPrimary: '#f4f1e6',
-  // "the opposite of the room" — dark on paper, where it was cream on green
-  inverse: '#17293f',
-  onInverse: '#f4f1e6',
-  mark: '#17293f',
-  onMark: '#f4f1e6',
+  primary: '#2b4a6e',
+  onPrimary: '#ffffff',
+  // `.ftw-acts button:first-child` — the widget's lead action is the room's ink
+  // on the widget's paper.
+  inverse: '#1b1a18',
+  onInverse: '#ffffff',
+  mark: '#2b4a6e',
+  onMark: '#ffffff',
 
   reactOnBorder: '#17293f',
   reactOnBg: '#dfe6ee',
 
+  scrim: '#09121f',
+
   // the week-ahead chips are white widgets, not translucent cut-outs
   datebox: '#ffffff',
-  dateboxLine: '#e6e3dc',
+  dateboxLine: '#f0eeea',
 };
 
+// At night the FT room IS the navy night room: the design has no
+// `.m2.mem.ft.night` block, so it falls through to `.m2.mem.night`, which maps
+// every `--mb-*` onto the `--n-*` palette that `.m2.blue.night` has already
+// re-pointed to navy. Only the three tokens that block re-aims are restated.
 const darkFt: V2Palette = {
-  ...darkV2,
+  ...darkBlueQueue,
 
-  room: '#0a1220',
-  roomInk: '#e9edf4',
-  roomInk2: '#ccd4e0',
-  roomInk3: '#a3adbc',
-  roomFaint: '#8e97a6',
-  roomChip: 'rgba(233,237,244,0.08)',
-
-  card: '#1a2433',
-  card2: '#232f41',
-  cardInk: '#e9edf4',
-  cardInk2: '#ccd4e0',
-  cardInk3: '#8e97a6',
-  line: 'rgba(233,237,244,0.10)',
-  border: '#313c4e',
-
-  said: '#ccd4e0',
-  why: '#ccd4e0',
-  quoteLine: '#313c4e',
-  note: '#232f41',
-  noteLabel: '#8e97a6',
-  noteInk: '#ccd4e0',
-  react: '#232f41',
-
-  primary: '#31506e',
-  onPrimary: '#eaeff5',
-  inverse: '#e9edf4',
-  onInverse: '#0a1220',
-  mark: '#31506e',
-  onMark: '#eaeff5',
-
-  field: '#232f41',
-  datebox: '#1a2433',
-  dateboxLine: 'rgba(233,237,244,0.10)',
+  // `--mb-prim: var(--n-inv)` / `--mb-onprim: var(--n-invk)` — the widget's lead
+  // action inverts at night, the same way it is the room's ink on paper.
+  primary: '#e9edf4',
+  onPrimary: '#0a1220',
+  // `--mb-line: var(--n-bd)` — a solid hairline, not the room's 10% white.
+  line: '#313c4e',
 };
 
 /** Which room a v2 screen is standing in. */
@@ -403,6 +430,21 @@ export type V2RoomTint = 'green' | 'blue';
  * read this rather than hard-coding a room. */
 export function roomForRole(role: AppRole | string | null | undefined): V2Room {
   return shellForRole(role) === 'ft' ? 'ft' : 'queue';
+}
+
+/** The design's `.m2-sheet` chrome, as props for the shared `<Sheet>`. Spread
+ * it at every v2 call site (`<Sheet {...v2SheetChrome(c)} …>`) so the sheet's
+ * paper, its 26px corners, its `.m2-grab` handle and its room-tinted scrim all
+ * move together — they are one surface, and picking them off one prop at a time
+ * is how the sheet ended up cream-on-Material in the first place. */
+export function v2SheetChrome(c: V2Palette) {
+  return {
+    backgroundColor: c.sheet,
+    radius: 26,
+    handleColor: c.grab,
+    scrimColor: c.scrim,
+    scrimOpacity: c.scrimOpacity,
+  };
 }
 
 export function getV2Palette(room: V2Room, mode: ThemeMode, tint: V2RoomTint = 'green'): V2Palette {

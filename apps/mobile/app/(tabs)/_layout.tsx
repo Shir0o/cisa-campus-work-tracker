@@ -28,7 +28,7 @@ import { useMessagesData } from '../../src/lib/useMessagesData';
  *  for an icon and puts the label under it, which leaves a 5px dot floating
  *  with the word crushed against the floor of the bar. */
 function TabButton({ focused, color, label }: { focused: boolean; color: string; label: string }) {
-  const { font } = useV2Theme();
+  const { font, fs } = useV2Theme();
   return (
     <View style={{ alignItems: 'center', gap: 5 }}>
       <View
@@ -39,7 +39,7 @@ function TabButton({ focused, color, label }: { focused: boolean; color: string;
           backgroundColor: focused ? color : 'transparent',
         }}
       />
-      <Text style={{ fontFamily: font.semi, fontSize: 11.5, lineHeight: 16, color }} numberOfLines={1}>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), lineHeight: fs(16), color }} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -64,7 +64,7 @@ export default function TabsLayout() {
 }
 
 function RoleTabs() {
-  const { c, font } = useV2Theme();
+  const { c, font, fs } = useV2Theme();
   const { role } = useAuth();
   const messages = useMessagesData();
 
@@ -116,7 +116,7 @@ function RoleTabs() {
             backgroundColor: c.window,
             color: c.onWindow,
             fontFamily: font.bold,
-            fontSize: 10,
+            fontSize: fs(10),
           },
         }}
       />
