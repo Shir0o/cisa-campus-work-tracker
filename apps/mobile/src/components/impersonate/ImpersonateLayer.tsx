@@ -109,13 +109,29 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
     setImpersonateTarget(target);
     setSheetOpen(false);
     setQuery('');
-    router.replace('/');
+    goHome();
   };
 
   const exit = () => {
     setImpersonateTarget(null);
     setSheetOpen(false);
-    router.replace('/');
+    goHome();
+  };
+
+  // Landing on the role's home must wait for the impersonation change to
+  // commit: the change re-keys the tab navigator in the same render, so a
+  // replace dispatched synchronously is queued against the OLD key and
+  // expo-router logs "The action 'REPLACE' ... was not handled by any
+  // navigator" (and skips the move entirely). Running after the commit builds
+  // the action against the current navigators. Prefer popping back to the
+  // existing tabs when there is one to pop — replace('/') from a pushed root
+  // screen would stack a SECOND (tabs) instance on the root stack, leaving the
+  // old shell mounted underneath (a stale back button).
+  const goHome = () => {
+    setTimeout(() => {
+      if (router.canGoBack()) router.back();
+      else router.replace('/');
+    }, 0);
   };
 
   const showPill = isOwner && isSimulating;
