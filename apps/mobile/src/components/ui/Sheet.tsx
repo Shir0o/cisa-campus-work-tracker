@@ -169,11 +169,13 @@ export function Sheet({
         borderTopRightRadius: radius ?? themeRadius.lg,
       }}
       // 40×4 is already the design's `.m2-grab` geometry; only the colour moves.
-      handleIndicatorStyle={
-        handleColor
-          ? { width: 40, height: 4, backgroundColor: handleColor }
-          : { width: 40, height: 4, backgroundColor: colors.outline, opacity: 0.4 }
-      }
+      // `.m2-grab` is a solid colour, so the Material fade is opt-out, not opt-in.
+      handleIndicatorStyle={{
+        width: 40,
+        height: 4,
+        backgroundColor: handleColor ?? colors.outline,
+        opacity: handleColor ? 1 : 0.4,
+      }}
       backdropComponent={renderBackdrop}
       footerComponent={footer ? renderFooter : undefined}
     >
