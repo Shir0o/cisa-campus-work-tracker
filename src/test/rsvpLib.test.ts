@@ -45,6 +45,17 @@ describe("rsvp lib", () => {
     expect(handleFirestoreError).toHaveBeenCalled();
   });
 
+  it("setRsvp(going=false) routes delete errors through handleFirestoreError", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    vi.mocked(deleteDoc).mockRejectedValueOnce(new Error("denied"));
+    await setRsvp("ev1", { uid: "u1", name: "Ada" }, false);
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      new Error("denied"),
+      "DELETE",
+      "events/ev1/rsvps/u1",
+    );
+  });
+
   it("subscribeEventRsvps maps snapshot docs to Rsvp[]", () => {
     vi.mocked(onSnapshot).mockImplementation((_ref: any, next: any) => {
       next({ docs: [{ data: () => ({ uid: "u1", name: "Ada", status: "going" }) }] });
@@ -69,5 +80,47 @@ describe("rsvp lib", () => {
     const cb = vi.fn();
     subscribeMyRsvps("u1", cb);
     expect(cb).toHaveBeenCalledWith(new Set(["ev1", "ev2"]));
+  });
+
+  it("subscribeEventRsvps routes subscription errors to onError", () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, err: any) => {
+      err(new Error("boom"));
+      return vi.fn();
+    });
+    const onError = vi.fn();
+    subscribeEventRsvps("ev1", vi.fn(), onError);
+    expect(onError).toHaveBeenCalledWith(new Error("boom"));
+  });
+
+  it("subscribeEventRsvps logs to console when no onError is given", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, err: any) => {
+      err(new Error("boom"));
+      return vi.fn();
+    });
+    subscribeEventRsvps("ev1", vi.fn());
+    expect(spy).toHaveBeenCalledWith("event rsvps subscription error", new Error("boom"));
+    spy.mockRestore();
+  });
+
+  it("subscribeMyRsvps routes subscription errors to onError", () => {
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, err: any) => {
+      err(new Error("boom"));
+      return vi.fn();
+    });
+    const onError = vi.fn();
+    subscribeMyRsvps("u1", vi.fn(), onError);
+    expect(onError).toHaveBeenCalledWith(new Error("boom"));
+  });
+
+  it("subscribeMyRsvps logs to console when no onError is given", () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(onSnapshot).mockImplementation((_ref: any, _next: any, err: any) => {
+      err(new Error("boom"));
+      return vi.fn();
+    });
+    subscribeMyRsvps("u1", vi.fn());
+    expect(spy).toHaveBeenCalledWith("my rsvps subscription error", new Error("boom"));
+    spy.mockRestore();
   });
 });

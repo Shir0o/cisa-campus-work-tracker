@@ -1,36 +1,11 @@
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
+import type { Firestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
 import dotenv from 'dotenv';
 
 // Load local .env variables
 dotenv.config();
-
-const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-const GITHUB_REPO = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO;
-
-if (!GITHUB_TOKEN) {
-  console.error('ERROR: GITHUB_TOKEN environment variable is required.');
-  console.error('Please run the script as:');
-  console.error('  GITHUB_TOKEN="your_token" npx tsx scripts/migrate-feedback-to-github.ts');
-  process.exit(1);
-}
-
-if (!GITHUB_REPO) {
-  console.error('ERROR: GITHUB_REPO or VITE_GITHUB_REPO environment variable is required.');
-  console.error('Please define it in your .env file or run the script as:');
-  console.error('  GITHUB_REPO="owner/repo" npx tsx scripts/migrate-feedback-to-github.ts');
-  process.exit(1);
-}
-
-if (!existsSync('firebase-applet-config.json')) {
-  console.error('ERROR: firebase-applet-config.json was not found in the workspace.');
-  process.exit(1);
-}
-
-const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
-admin.initializeApp({ projectId: cfg.projectId });
-const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
 
 const kindLabels: Record<string, string> = {
   thought: 'A thought',
@@ -39,18 +14,29 @@ const kindLabels: Record<string, string> = {
   request: 'A request',
 };
 
-async function migrate() {
-  console.log(`Connecting to Firestore projectId="${cfg.projectId}"...`);
+// Core migration, extracted so it can be unit-tested. Requires GITHUB_TOKEN and
+// GITHUB_REPO (or VITE_GITHUB_REPO) in the environment.
+export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
+  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
+  const GITHUB_REPO = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO;
+
+  if (!GITHUB_TOKEN) {
+    throw new Error('GITHUB_TOKEN environment variable is required.');
+  }
+  if (!GITHUB_REPO) {
+    throw new Error('GITHUB_REPO or VITE_GITHUB_REPO environment variable is required.');
+  }
+
   const feedbackColl = db.collection('feedback');
-  
+
   // Get all feedbacks
   const snapshot = await feedbackColl.get();
   const docs: any[] = [];
-  snapshot.forEach(doc => {
+  snapshot.forEach((doc: any) => {
     docs.push({ id: doc.id, ...doc.data() });
   });
 
-  const unlinked = docs.filter(d => !d.githubIssueUrl && d.status !== 'resolved');
+  const unlinked = docs.filter((d) => !d.githubIssueUrl && d.status !== 'resolved');
   if (unlinked.length === 0) {
     console.log('No unresolved, unlinked feedback items found for migration.');
     return;
@@ -62,9 +48,9 @@ async function migrate() {
     const kindLabel = item.kind ? (kindLabels[item.kind] || item.kind) : item.type;
     const cleanMsg = item.message || '';
     const title = `[Feedback] ${kindLabel}: ${cleanMsg.slice(0, 50)}${cleanMsg.length > 50 ? '...' : ''}`;
-    
-    const createdAtStr = item.createdAt ? 
-      (typeof item.createdAt.toDate === 'function' ? item.createdAt.toDate().toISOString() : String(item.createdAt)) : 
+
+    const createdAtStr = item.createdAt ?
+      (typeof item.createdAt.toDate === 'function' ? item.createdAt.toDate().toISOString() : String(item.createdAt)) :
       new Date().toISOString();
 
     const body = `### Feedback Details
@@ -123,6 +109,42 @@ ${cleanMsg}
   }
 }
 
-migrate()
-  .then(() => { console.log('Migration complete.'); process.exit(0); })
-  .catch((err) => { console.error('Migration failed:', err); process.exit(1); });
+// Only run the migration when executed directly (not when imported by tests).
+if (process.env.NODE_ENV !== 'test') {
+  if (!process.env.GITHUB_TOKEN) {
+    console.error('ERROR: GITHUB_TOKEN environment variable is required.');
+    console.error('Please run the script as:');
+    console.error('  GITHUB_TOKEN="your_token" npx tsx scripts/migrate-feedback-to-github.ts');
+    process.exit(1);
+  }
+
+  if (!process.env.GITHUB_REPO && !process.env.VITE_GITHUB_REPO) {
+    console.error('ERROR: GITHUB_REPO or VITE_GITHUB_REPO environment variable is required.');
+    console.error('Please define it in your .env file or run the script as:');
+    console.error('  GITHUB_REPO="owner/repo" npx tsx scripts/migrate-feedback-to-github.ts');
+    process.exit(1);
+  }
+
+  if (!existsSync('firebase-applet-config.json')) {
+    console.error('ERROR: firebase-applet-config.json was not found in the workspace.');
+    process.exit(1);
+  }
+
+  const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
+  if (!cfg.projectId) {
+    console.error('ERROR: firebase-applet-config.json is missing projectId.');
+    process.exit(1);
+  }
+  if (!cfg.firestoreDatabaseId) {
+    console.error('ERROR: firebase-applet-config.json is missing firestoreDatabaseId.');
+    process.exit(1);
+  }
+  admin.initializeApp({ projectId: cfg.projectId });
+  const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
+
+  console.log(`Connecting to Firestore projectId="${cfg.projectId}"...`);
+
+  migrateFeedbackToGithub(db)
+    .then(() => { console.log('Migration complete.'); process.exit(0); })
+    .catch((err) => { console.error('Migration failed:', err); process.exit(1); });
+}

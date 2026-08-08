@@ -13,9 +13,8 @@ import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 
 dotenv.config();
 
-async function startServer() {
+export async function createApp() {
   const app = express();
-  const PORT = 3000;
 
   app.use(express.json({
     limit: "50mb",
@@ -1554,12 +1553,23 @@ ${JSON.stringify(contactsList)}`;
     });
   }
 
+  return app;
+}
+
+async function startServer() {
+  const app = await createApp();
+  const PORT = 3000;
+
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Full-Stack Express Server active on http://0.0.0.0:${PORT}`);
   });
 }
 
-startServer().catch((err) => {
-  console.error("Fatal Server Startup Error:", err);
-  process.exit(1);
-});
+// Only auto-start when run as the server entrypoint — vitest (NODE_ENV=test)
+// imports createApp() directly and must not bind port 3000.
+if (process.env.NODE_ENV !== "test") {
+  startServer().catch((err) => {
+    console.error("Fatal Server Startup Error:", err);
+    process.exit(1);
+  });
+}
