@@ -19,7 +19,7 @@ export default function Journey() {
 
   // The More list hides this below 'manager', but that only removes the entry —
   // a direct URL/deep link still renders this screen, so it needs its own guard
-  // too (same pattern as feedback-admin.tsx).
+  // too (same pattern as prayer-log.tsx).
   if (!canAccessRoute(role, '/board')) {
     return (
       <Screen>

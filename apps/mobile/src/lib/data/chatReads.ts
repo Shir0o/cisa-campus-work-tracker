@@ -1,8 +1,7 @@
 // Per-user, per-room last-read marker for Messages — mirrors the web app's
 // localStorage `chat_read_${roomId}` marker in src/views/Messages.tsx,
 // swapping in AsyncStorage + a uid prefix (this device may switch between
-// e2e test users), same async-hydrate-cache pattern as ./prayerHidden.ts and
-// ./inboxReads.ts.
+// e2e test users), same async-hydrate-cache pattern as ./inboxReads.ts.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 

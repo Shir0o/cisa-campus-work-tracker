@@ -10,7 +10,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { firstName } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme, type V2Room } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { Kicker, PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room, V2Input, V2TextArea } from '../v2/Widget';
 
@@ -46,7 +46,7 @@ function ContactPrayerSheetBody({ visible, contactName, room, onSave, onClose }:
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} {...v2SheetChrome(c)}>
       <Room room={room}>
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>

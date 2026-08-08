@@ -6,7 +6,7 @@ import React from 'react';
 import { Pressable, Share, Text, View } from 'react-native';
 import { inviteMessage, type Event } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 
 export function InviteSheet({
@@ -22,7 +22,7 @@ export function InviteSheet({
 }) {
   const { c, fs } = useV2Theme();
   return (
-    <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} {...v2SheetChrome(c)}>
       {/* The provider again inside: BottomSheetModal re-parents its children to
           the app root, so the outer one doesn't travel with them. */}
       <Room room="queue">

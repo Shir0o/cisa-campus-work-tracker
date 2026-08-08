@@ -4,7 +4,7 @@
 import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Sheet } from '../ui';
-import { useV2Theme } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 
 function Body({
@@ -97,7 +97,7 @@ export function AskSheet({
 }) {
   const { c, fs } = useV2Theme();
   return (
-    <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} {...v2SheetChrome(c)}>
       <Room room="queue">
         <Body
           title="Ask the team to pray"
@@ -126,7 +126,7 @@ export function OnYourHeartSheet({
 }) {
   const { c, fs } = useV2Theme();
   return (
-    <Sheet visible={visible} onClose={onClose} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} {...v2SheetChrome(c)}>
       <Room room="queue">
         <Body
           title="Who's on your heart?"

@@ -4,7 +4,7 @@ import React from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { duePresetToISO, firstName, type AppUser, type Contact } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { PrimaryButton, SecondaryButton } from '../queue/atoms';
 import { Room } from '../v2/Widget';
 
@@ -98,7 +98,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
   };
 
   return (
-    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} {...v2SheetChrome(c)}>
       <Room room="ft">
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text

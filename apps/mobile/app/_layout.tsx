@@ -90,7 +90,6 @@ function RootNavigator() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="login" />
             <Stack.Screen name="signup" />
-            <Stack.Screen name="history" />
           </Stack>
         </ImpersonateLayer>
       </View>

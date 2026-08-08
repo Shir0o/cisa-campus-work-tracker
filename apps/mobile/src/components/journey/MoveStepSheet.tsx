@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { firstName, stageToneKey, type Contact } from '@cisa/core';
 import { Sheet } from '../ui';
-import { useV2Theme, type V2Room } from '../../theme/v2';
+import { useV2Theme, v2SheetChrome, type V2Room } from '../../theme/v2';
 import { SecondaryButton } from '../queue/atoms';
 import { Room } from '../v2/Widget';
 import type { JourneyStage } from '../../lib/useJourneyData';
@@ -49,7 +49,7 @@ function MoveStepSheetBody({ visible, contact, stages, room, onMove, onClose }: 
       : stage.label === shown.stage;
 
   return (
-    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.8} backgroundColor={c.card}>
+    <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.8} {...v2SheetChrome(c)}>
       <Room room={room}>
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
