@@ -45,8 +45,8 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
         paddingHorizontal: 15,
         borderRadius: radius.chip,
         borderWidth: 1.5,
-        borderColor: on ? c.primary : c.border,
-        backgroundColor: on ? c.primary : 'transparent',
+        borderColor: on ? c.card.primary : c.card.border,
+        backgroundColor: on ? c.card.primary : 'transparent',
         opacity: pressed ? 0.7 : 1,
       })}
     >
@@ -54,7 +54,7 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
         style={{
           fontFamily: font.bold,
           fontSize: fs(13.5),
-          color: on ? c.onPrimary : c.cardInk2,
+          color: on ? c.card.onPrimary : c.card.ink2,
         }}
       >
         {label}
@@ -73,7 +73,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
           fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
-          color: c.cardInk3,
+          color: c.card.ink3,
           marginBottom: 9,
         }}
       >
@@ -106,7 +106,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
               fontFamily: font.extra,
               fontSize: fs(20),
               letterSpacing: -0.5,
-              color: c.cardInk,
+              color: c.card.ink,
             }}
           >
             Something to carry
@@ -115,7 +115,7 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
             style={{
               fontFamily: font.semi,
               fontSize: fs(13),
-              color: c.cardInk3,
+              color: c.card.ink3,
               marginTop: 7,
             }}
           >
@@ -126,20 +126,20 @@ function TodoSheetBody({ visible, contact, me, assignees, onClose, onSave }: FtT
             value={title}
             onChangeText={setTitle}
             placeholder="What needs doing, in plain words…"
-            placeholderTextColor={c.cardInk3}
+            placeholderTextColor={c.card.ink3}
             multiline
             style={{
               marginTop: 16,
               minHeight: 84,
-              backgroundColor: c.field,
+              backgroundColor: c.card.field,
               borderWidth: 1.5,
-              borderColor: c.line,
+              borderColor: c.card.line,
               borderRadius: radius.note,
               paddingVertical: 14,
               paddingHorizontal: 15,
               fontFamily: font.semi,
               fontSize: fs(15),
-              color: c.cardInk,
+              color: c.card.ink,
               textAlignVertical: 'top',
             }}
           />

@@ -24,7 +24,7 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
             fontFamily: font.medium,
             fontSize: fs(14.5),
             lineHeight: fs(21),
-            color: c.roomInk3,
+            color: c.room.ink3,
             paddingVertical: 18,
           }}
         >
@@ -35,7 +35,7 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
         <View
           key={i.id}
           style={{
-            backgroundColor: c.card,
+            backgroundColor: c.card.bg,
             borderRadius: radius.tile,
             paddingVertical: 16,
             paddingHorizontal: 18,
@@ -48,7 +48,7 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
               fontSize: fs(10.5),
               letterSpacing: 1.26,
               textTransform: 'uppercase',
-              color: c.cardInk3,
+              color: c.card.ink3,
             }}
           >
             {/* The design stores a written title on the interaction and reads
@@ -62,14 +62,14 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
               fontSize: fs(15.5),
               lineHeight: fs(20),
               letterSpacing: -0.31,
-              color: c.cardInk,
+              color: c.card.ink,
               marginTop: 10,
             }}
           >
             {i.contactName || 'A conversation'}
           </Text>
           {!!i.content && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.cardInk2, marginTop: 6 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.card.ink2, marginTop: 6 }}>
               {i.content}
             </Text>
           )}

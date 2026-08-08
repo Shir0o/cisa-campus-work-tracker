@@ -22,12 +22,14 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
             key={d.id}
             style={{
               width: 168,
-              backgroundColor: c.datebox,
+              // `.ft-chip` is a widget card, not the trainee's translucent
+              // `.m2-datebox` cut-out — so it carries the widget's own paper
+              // and the soft shadow, and needs no border to separate it.
+              backgroundColor: c.widget.bg,
               borderRadius: radius.note,
-              borderWidth: 1,
-              borderColor: c.dateboxLine,
               paddingVertical: 13,
               paddingHorizontal: 14,
+              ...c.widget.shadow,
             }}
           >
             <Text
@@ -36,7 +38,7 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
                 fontSize: fs(10.5),
                 letterSpacing: 1.26,
                 textTransform: 'uppercase',
-                color: c.cardInk3,
+                color: c.widget.ink3,
               }}
             >
               {d.when}
@@ -46,7 +48,7 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
                 fontFamily: font.extra,
                 fontSize: fs(16),
                 lineHeight: fs(21),
-                color: c.cardInk,
+                color: c.widget.ink,
                 marginTop: 6,
               }}
               numberOfLines={2}
@@ -58,7 +60,7 @@ export function WeekAhead({ chips }: { chips: FtWeekChip[] }) {
                 style={{
                   fontFamily: font.medium,
                   fontSize: fs(12.5),
-                  color: c.cardInk2,
+                  color: c.widget.ink2,
                   marginTop: 4,
                 }}
                 numberOfLines={1}

@@ -40,7 +40,7 @@ export function ThreadMessageRow({
   return (
     <View
       style={{
-        backgroundColor: isNudge ? c.tones.follow.band : nested ? c.card2 : c.card,
+        backgroundColor: isNudge ? c.card.tones.follow.band : nested ? c.card.bg2 : c.card.bg,
         borderRadius: 20,
         paddingHorizontal: 17,
         paddingVertical: 15,
@@ -48,7 +48,7 @@ export function ThreadMessageRow({
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
         <PersonMark name={message.fromName} id={message.from} size={28} radius={9} fontSize={10.5} />
-        <Text style={{ fontFamily: font.extra, fontSize: fs(14), letterSpacing: -0.28, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(14), letterSpacing: -0.28, color: c.card.ink }}>
           {mine ? 'You' : firstName(message.fromName)}
         </Text>
         <Text
@@ -57,23 +57,23 @@ export function ThreadMessageRow({
             fontSize: fs(10),
             letterSpacing: 1,
             textTransform: 'uppercase',
-            color: c.cardInk3,
+            color: c.card.ink3,
           }}
         >
           {THREAD_KINDS[message.kind].v2Label}
         </Text>
-        <Text style={{ marginLeft: 'auto', fontFamily: font.semi, fontSize: fs(11.5), color: c.cardInk3 }}>
+        <Text style={{ marginLeft: 'auto', fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3 }}>
           {relTime(message.at)}
         </Text>
       </View>
 
       {!!about && (
-        <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.cardInk3, marginTop: 9 }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.card.ink3, marginTop: 9 }}>
           on “{about}”
         </Text>
       )}
 
-      <Text style={{ fontFamily: font.medium, fontSize: fs(15), lineHeight: fs(22.5), color: c.said, marginTop: 11 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(15), lineHeight: fs(22.5), color: c.card.said, marginTop: 11 }}>
         {message.body}
       </Text>
 
@@ -92,8 +92,8 @@ export function ThreadMessageRow({
                 paddingHorizontal: 8,
                 borderRadius: 12,
                 borderWidth: 1.5,
-                borderColor: on ? c.reactOnBorder : c.line,
-                backgroundColor: on ? c.reactOnBg : c.react,
+                borderColor: on ? c.card.reactOnBorder : c.card.line,
+                backgroundColor: on ? c.card.reactOnBg : c.card.react,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -103,7 +103,7 @@ export function ThreadMessageRow({
             >
               <Text style={{ fontSize: fs(15) }}>{emoji}</Text>
               {count > 1 && (
-                <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.cardInk2 }}>{count}</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.card.ink2 }}>{count}</Text>
               )}
             </Pressable>
           );

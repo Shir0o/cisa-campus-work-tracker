@@ -31,12 +31,12 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 4,
-        backgroundColor: c.roomChip,
+        backgroundColor: c.room.chip,
         opacity: pressed ? 0.7 : 1,
       })}
     >
       {[0, 1, 2].map((i) => (
-        <View key={i} style={{ width: 16, height: 2, borderRadius: 1, backgroundColor: c.roomInk2 }} />
+        <View key={i} style={{ width: 16, height: 2, borderRadius: 1, backgroundColor: c.room.ink2 }} />
       ))}
     </Pressable>
   );
@@ -71,7 +71,7 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
           bottom: 0,
           left: 0,
           width: WIDTH,
-          backgroundColor: c.card,
+          backgroundColor: c.card.bg,
           transform: [{ translateX: slide }],
           ...shadow.card,
         }}
@@ -81,18 +81,18 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
             <PersonMark name={user?.displayName || 'You'} id={uid} size={42} radius={14} fontSize={13} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text
-                style={{ fontFamily: font.extra, fontSize: fs(15.5), letterSpacing: -0.4, color: c.cardInk }}
+                style={{ fontFamily: font.extra, fontSize: fs(15.5), letterSpacing: -0.4, color: c.card.ink }}
                 numberOfLines={1}
               >
                 {user?.displayName ?? 'You'}
               </Text>
-              <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.cardInk3, marginTop: 2 }}>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.card.ink3, marginTop: 2 }}>
                 {roleLabel(role)}
               </Text>
             </View>
           </View>
 
-          <View style={{ borderTopWidth: 1, borderTopColor: c.line }}>
+          <View style={{ borderTopWidth: 1, borderTopColor: c.card.line }}>
             {TRAINEE_DRAWER.map((item) => (
               <Pressable
                 key={item.key}
@@ -105,8 +105,8 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.cardInk3 }} />
-                <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.cardInk }}>{item.label}</Text>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
+                <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>{item.label}</Text>
               </Pressable>
             ))}
           </View>
@@ -116,7 +116,7 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
               fontFamily: font.medium,
               fontSize: fs(12.5),
               lineHeight: fs(18),
-              color: c.cardInk3,
+              color: c.card.ink3,
               marginTop: 'auto',
               paddingBottom: 18,
             }}

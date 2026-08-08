@@ -13,7 +13,7 @@ export function OnCampusStrip({ window: w, onPress }: { window: OnCampusWindow; 
       onPress={onPress}
       style={({ pressed }) => ({
         marginBottom: 18,
-        backgroundColor: c.window,
+        backgroundColor: c.card.window,
         borderRadius: radius.note,
         paddingVertical: 12,
         paddingHorizontal: 15,
@@ -29,14 +29,14 @@ export function OnCampusStrip({ window: w, onPress }: { window: OnCampusWindow; 
           width: 10,
           height: 10,
           borderRadius: 5,
-          backgroundColor: c.windowDot,
+          backgroundColor: c.card.windowDot,
           borderWidth: 5,
           borderColor: 'rgba(255,255,255,0.16)',
         }}
       />
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(13.5), color: c.onWindow }}>{onCampusHeadline(w)}</Text>
-        <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(16), color: c.onWindowSub, marginTop: 3 }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(13.5), color: c.card.onWindow }}>{onCampusHeadline(w)}</Text>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(16), color: c.card.onWindowSub, marginTop: 3 }}>
           {ON_CAMPUS_SUB}
         </Text>
       </View>

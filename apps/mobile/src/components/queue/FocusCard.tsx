@@ -96,7 +96,7 @@ export function FocusCard({
         style={[
           {
             flex: 1,
-            backgroundColor: c.card,
+            backgroundColor: c.card.bg,
             borderRadius: radius.card,
             overflow: 'hidden',
           },
@@ -125,5 +125,5 @@ export function FocusCard({
 /** The all-clear / empty variants borrow the card's ink but not its geometry. */
 export function CardText({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
-  return <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.cardInk2 }}>{children}</Text>;
+  return <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.card.ink2 }}>{children}</Text>;
 }

@@ -34,14 +34,14 @@ export function MemberScreen({
     return (
       <SafeAreaView
         edges={['top']}
-        style={{ flex: 1, backgroundColor: c.room, justifyContent: 'center' }}
+        style={{ flex: 1, backgroundColor: c.room.bg, justifyContent: 'center' }}
       >
-        <ActivityIndicator color={c.roomInk2} />
+        <ActivityIndicator color={c.room.ink2} />
       </SafeAreaView>
     );
   }
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 18,
@@ -52,7 +52,7 @@ export function MemberScreen({
         showsVerticalScrollIndicator={false}
       >
         {!!error && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>
             {error}
           </Text>
         )}
@@ -80,7 +80,7 @@ export function MemberBack() {
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
     </Pressable>
   );
 }
@@ -105,7 +105,7 @@ export function MemberHead({
             fontSize: fs(10.5),
             letterSpacing: 1.26,
             textTransform: 'uppercase',
-            color: c.roomInk3,
+            color: c.room.ink3,
           }}
         >
           {format(new Date(), 'EEEE, MMMM d')}
@@ -120,7 +120,7 @@ export function MemberHead({
           fontSize: fs(28),
           lineHeight: fs(32),
           letterSpacing: -0.9,
-          color: c.roomInk,
+          color: c.room.ink,
           marginTop: showDate ? 6 : 0,
         }}
       >
@@ -132,7 +132,7 @@ export function MemberHead({
             fontFamily: font.medium,
             fontSize: fs(14.5),
             lineHeight: fs(21),
-            color: c.roomInk2,
+            color: c.room.ink2,
             marginTop: 8,
           }}
         >
@@ -152,7 +152,7 @@ export function MemberFoot({ children }: { children: string }) {
         fontFamily: font.medium,
         fontSize: fs(12.5),
         lineHeight: fs(18),
-        color: c.roomFaint,
+        color: c.room.faint,
         marginTop: 2,
       }}
     >

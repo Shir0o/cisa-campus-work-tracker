@@ -36,21 +36,21 @@ export function EndOfQueue({
           width: 64,
           height: 64,
           borderRadius: 22,
-          backgroundColor: c.mark,
+          backgroundColor: c.room.mark,
           alignItems: 'center',
           justifyContent: 'center',
           marginTop: 40,
         }}
       >
         {/* Drawn, not a glyph — text marks render unreliably in tinted blocks. */}
-        <Ionicons name="checkmark" size={30} color={c.onMark} />
+        <Ionicons name="checkmark" size={30} color={c.room.onMark} />
       </View>
 
-      <Text style={{ fontFamily: font.serif, fontSize: fs(37), lineHeight: fs(41), color: c.roomInk, marginTop: 20 }}>
+      <Text style={{ fontFamily: font.serif, fontSize: fs(37), lineHeight: fs(41), color: c.room.ink, marginTop: 20 }}>
         {"That's everything,\n"}
         {firstName}.
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.roomInk2, marginTop: 12 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(15.5), lineHeight: fs(23), color: c.room.ink2, marginTop: 12 }}>
         {allClearLine(handledCount)}
       </Text>
 
@@ -59,12 +59,12 @@ export function EndOfQueue({
       </View>
 
       <Pressable onPress={onLookBack} style={{ minHeight: 44, justifyContent: 'center', marginTop: 12 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>Look back at your week  →</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>Look back at your week  →</Text>
       </Pressable>
 
       {handledCount > 0 && (
         <Pressable onPress={onReset} style={{ minHeight: 44, justifyContent: 'center', marginTop: 4 }}>
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk3 }}>Bring back today's queue</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink3 }}>Bring back today's queue</Text>
         </Pressable>
       )}
     </ScrollView>

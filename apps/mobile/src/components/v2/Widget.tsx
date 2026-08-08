@@ -6,7 +6,7 @@
 // It lived in components/ft/ until the member app (student · community) needed
 // the same shell; nothing in here is full-timer-specific — every value comes
 // from whichever room the provider below puts it in.
-import React from 'react';
+import React, { createContext, useContext } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View, type TextInputProps } from 'react-native';
 import { getUserInitials, personColor } from '@cisa/core';
 import { useV2Theme, V2RoomContext, type V2Room } from '../../theme/v2';
@@ -56,7 +56,7 @@ export function Sech({
           fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
-          color: c.roomInk3,
+          color: c.room.ink3,
         }}
       >
         {label}
@@ -68,11 +68,11 @@ export function Sech({
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: radius.chip,
-            backgroundColor: c.roomChip,
+            backgroundColor: c.room.chip,
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.roomInk2 }}>{count}</Text>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.room.ink2 }}>{count}</Text>
         </View>
       )}
       {!!link && onLink && (
@@ -84,15 +84,26 @@ export function Sech({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.roomInk2 }}>{link}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.room.ink2 }}>{link}</Text>
         </Pressable>
       )}
     </View>
   );
 }
 
+/** Which ground the rows inside a widget are standing on. `.ftw.deep` restates
+ * every hairline and every ink it contains, so the pieces below have to know —
+ * a context rather than three optional props, because they are nested inside
+ * `children` and cannot be passed to. */
+const WidgetToneContext = createContext<'plain' | 'deep'>('plain');
+
 /** A section head, then the widget's own sheet. `deep` is the violet ground the
- * prayer widget carries. */
+ * prayer widget carries.
+ *
+ * The sheet is `theme/v2.ts`'s WIDGET layer (`--mb-card`), not the deck's card:
+ * on the green room that's cream where a focus card or a pushed person screen
+ * beside it is white, and in the full-timer's room it takes the paper ink the
+ * deck layer doesn't. Everything that sits INSIDE one reads `c.widget.*` too. */
 export function Widget({
   label,
   count,
@@ -108,39 +119,54 @@ export function Widget({
   onLink?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, radius, shadow, fs } = useV2Theme();
+  const { c, radius, fs } = useV2Theme();
   return (
     <View>
       <Sech label={label} count={count} link={link} onLink={onLink} />
       <View
         style={{
-          backgroundColor: tone === 'deep' ? c.tones.pray.band : c.card,
+          // `.ftw.deep{background:var(--mb-deep)}` — the widget layer's own
+          // violet, not the `pray` tone pill's pale band.
+          backgroundColor: tone === 'deep' ? c.widget.deep : c.widget.bg,
           borderRadius: radius.tile,
           paddingVertical: 6,
           paddingHorizontal: 16,
-          ...shadow.soft,
+          ...c.widget.shadow,
         }}
       >
-        {children}
+        <WidgetToneContext.Provider value={tone}>{children}</WidgetToneContext.Provider>
       </View>
     </View>
   );
 }
 
-/** The hairline between two rows inside a widget. */
+/** The hairline between two rows inside a widget. On the violet ground the
+ * design dims it to `rgba(242,238,248,.16)` — `--mb-line` is a paper hairline
+ * and reads as a bright rule there. */
 export function WidgetRow({ first, children }: { first: boolean; children: React.ReactNode }) {
-  const { c, fs } = useV2Theme();
+  const { c } = useV2Theme();
+  const tone = useContext(WidgetToneContext);
   return (
     <View
       style={{
         paddingVertical: 14,
         borderTopWidth: first ? 0 : 1,
-        borderTopColor: c.line,
+        borderTopColor: tone === 'deep' ? 'rgba(242,238,248,0.16)' : c.widget.line,
       }}
     >
       {children}
     </View>
   );
+}
+
+/** The ink for whatever ground the current widget is on — `--mb-cink` on paper,
+ * `.ftw.deep`'s own #f2eef8 on the violet. */
+export function useWidgetInk(): { ink: string; ink3: string } {
+  const { c } = useV2Theme();
+  const tone = useContext(WidgetToneContext);
+  return tone === 'deep'
+    ? { ink: c.widget.onDeep, ink3: c.widget.onDeep }
+    : { ink: c.widget.ink, ink3: c.widget.ink3 };
 }
 
 /** One of the quiet inline actions under a row. */
@@ -156,7 +182,7 @@ export function WidgetAction({ label, onPress }: { label: string; onPress: () =>
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{label}</Text>
     </Pressable>
   );
 }
@@ -185,7 +211,7 @@ export function V2Screen({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
-    <View style={{ flex: 1, backgroundColor: c.room }}>
+    <View style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View
         style={{
           flexDirection: 'row',
@@ -202,16 +228,16 @@ export function V2Screen({
               height: 44,
               paddingHorizontal: 15,
               borderRadius: 15,
-              backgroundColor: c.roomChip,
+              backgroundColor: c.room.chip,
               alignItems: 'center',
               justifyContent: 'center',
             }}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>← Back</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
           </Pressable>
         )}
         <Text
-          style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.45, color: c.roomInk, flexShrink: 1 }}
+          style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.45, color: c.room.ink, flexShrink: 1 }}
           numberOfLines={1}
         >
           {title}
@@ -225,18 +251,18 @@ export function V2Screen({
               justifyContent: 'center',
               paddingHorizontal: 15,
               borderRadius: radius.chip,
-              backgroundColor: c.roomChip,
+              backgroundColor: c.room.chip,
               opacity: pressed ? 0.65 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk }}>{action.label}</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink }}>{action.label}</Text>
           </Pressable>
         ) : note ? (
           <Text
             style={{
               fontFamily: font.semi,
               fontSize: fs(12),
-              color: c.roomInk3,
+              color: c.room.ink3,
               marginLeft: 'auto',
               flexShrink: 1,
               textAlign: 'right',
@@ -273,7 +299,7 @@ export function V2RowCard({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
-    <View style={{ backgroundColor: c.card, borderRadius: radius.row, marginTop: 9, overflow: 'hidden' }}>
+    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.row, marginTop: 9, overflow: 'hidden' }}>
       {children}
       {!!action && !!onAction && (
         <Pressable
@@ -283,11 +309,11 @@ export function V2RowCard({
             justifyContent: 'center',
             paddingHorizontal: 16,
             borderTopWidth: 1,
-            borderTopColor: c.line,
+            borderTopColor: c.card.line,
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{action}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{action}</Text>
         </Pressable>
       )}
     </View>
@@ -319,7 +345,7 @@ export function V2Input({
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={c.cardInk3}
+      placeholderTextColor={c.card.ink3}
       keyboardType={keyboardType}
       autoCapitalize={autoCapitalize}
       autoCorrect={false}
@@ -327,12 +353,12 @@ export function V2Input({
         minHeight: 48,
         paddingHorizontal: 16,
         borderRadius: radius.note,
-        backgroundColor: c.field,
+        backgroundColor: c.card.field,
         borderWidth: 1.5,
-        borderColor: c.border,
+        borderColor: c.card.border,
         fontFamily: font.semi,
         fontSize: fs(14.5),
-        color: c.cardInk,
+        color: c.card.ink,
       }}
     />
   );
@@ -359,7 +385,7 @@ export function V2TextArea({
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={c.cardInk3}
+      placeholderTextColor={c.card.ink3}
       multiline
       autoFocus={autoFocus}
       textAlignVertical="top"
@@ -368,13 +394,13 @@ export function V2TextArea({
         paddingHorizontal: 15,
         paddingVertical: 14,
         borderRadius: radius.note,
-        backgroundColor: c.field,
+        backgroundColor: c.card.field,
         borderWidth: 1.5,
-        borderColor: c.border,
+        borderColor: c.card.border,
         fontFamily: font.semi,
         fontSize: fs(15),
         lineHeight: fs(21),
-        color: c.cardInk,
+        color: c.card.ink,
       }}
     />
   );
@@ -406,7 +432,7 @@ export function V2Seg<T extends string>({
               flex: 1,
               minHeight: 44,
               borderRadius: 14,
-              backgroundColor: on ? c.inverse : c.roomChip,
+              backgroundColor: on ? c.card.inverse : c.room.chip,
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'center',
@@ -414,7 +440,7 @@ export function V2Seg<T extends string>({
               opacity: pressed ? 0.7 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.onInverse : c.roomInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card.onInverse : c.room.ink2 }}>
               {item.label}
             </Text>
             {!!item.count && (
@@ -423,7 +449,7 @@ export function V2Seg<T extends string>({
                   fontFamily: font.bold,
                   fontSize: fs(11),
                   opacity: 0.6,
-                  color: on ? c.onInverse : c.roomInk2,
+                  color: on ? c.card.onInverse : c.room.ink2,
                 }}
               >
                 {item.count}
@@ -446,7 +472,7 @@ export function V2Empty({ children }: { children: string }) {
         fontFamily: font.semi,
         fontSize: fs(14),
         lineHeight: fs(20),
-        color: c.roomInk3,
+        color: c.room.ink3,
         paddingVertical: 18,
       }}
     >
@@ -459,7 +485,7 @@ export function V2Empty({ children }: { children: string }) {
 export function V2Hint({ children }: { children: string }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: -4 }}>
+    <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.room.ink3, marginTop: -4 }}>
       {children}
     </Text>
   );
@@ -506,7 +532,7 @@ export function V2PersonRow({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 13,
-        backgroundColor: flat ? 'transparent' : c.card,
+        backgroundColor: flat ? 'transparent' : c.card.bg,
         borderRadius: flat ? 0 : radius.row,
         paddingVertical: 14,
         paddingHorizontal: 16,
@@ -531,18 +557,18 @@ export function V2PersonRow({
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text
-          style={{ fontFamily: font.extra, fontSize: fs(15), letterSpacing: -0.3, color: c.cardInk }}
+          style={{ fontFamily: font.extra, fontSize: fs(15), letterSpacing: -0.3, color: c.card.ink }}
           numberOfLines={1}
         >
           {name}
         </Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }} numberOfLines={2}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3, marginTop: 2 }} numberOfLines={2}>
             {sub}
           </Text>
         )}
         {!!note && (
-          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk2, marginTop: 3 }} numberOfLines={2}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink2, marginTop: 3 }} numberOfLines={2}>
             {note}
           </Text>
         )}
@@ -552,7 +578,7 @@ export function V2PersonRow({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 108 }}>
           {!!dot && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />}
           <Text
-            style={{ fontFamily: font.semi, fontSize: fs(12), color: c.cardInk3, textAlign: 'right', flexShrink: 1 }}
+            style={{ fontFamily: font.semi, fontSize: fs(12), color: c.card.ink3, textAlign: 'right', flexShrink: 1 }}
             numberOfLines={2}
           >
             {rightText}
@@ -565,14 +591,16 @@ export function V2PersonRow({
 
 /** "Nothing due today." — a widget with nothing in it still says something. */
 export function WidgetEmpty({ children }: { children: string }) {
-  const { c, font, fs } = useV2Theme();
+  const { font, fs } = useV2Theme();
+  const { ink3 } = useWidgetInk();
   return (
     <Text
       style={{
         fontFamily: font.semi,
         fontSize: fs(14),
         lineHeight: fs(20),
-        color: c.cardInk3,
+        color: ink3,
+        opacity: 0.85,
         paddingVertical: 16,
       }}
     >

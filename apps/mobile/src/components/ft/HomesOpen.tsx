@@ -33,7 +33,7 @@ export function HomesOpen({
                   fontFamily: font.bold,
                   fontSize: fs(15.5),
                   lineHeight: fs(20),
-                  color: c.cardInk,
+                  color: c.widget.ink,
                 }}
               >
                 {o.name}
@@ -43,7 +43,7 @@ export function HomesOpen({
                   fontFamily: font.medium,
                   fontSize: fs(13),
                   lineHeight: fs(19),
-                  color: c.cardInk2,
+                  color: c.widget.ink2,
                   marginTop: 3,
                 }}
               >
@@ -55,7 +55,7 @@ export function HomesOpen({
                     fontFamily: font.medium,
                     fontSize: fs(13),
                     lineHeight: fs(19),
-                    color: c.cardInk3,
+                    color: c.widget.ink3,
                     marginTop: 4,
                   }}
                 >

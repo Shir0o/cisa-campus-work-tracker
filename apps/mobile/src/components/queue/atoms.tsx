@@ -13,7 +13,7 @@ import { useV2Theme, type V2ToneKey } from '../../theme/v2';
 // width at 360, so a single non-wrapping row would clip.
 export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string; ago?: string }) {
   const { c, font, radius, fs } = useV2Theme();
-  const t = c.tones[tone];
+  const t = c.card.tones[tone];
   return (
     <View
       style={{
@@ -105,11 +105,11 @@ export function WhoBlock({ name, sub, id }: { name: string; sub?: string; id?: s
     <View style={{ marginTop: 22, gap: 16, alignItems: 'flex-start' }}>
       <PersonMark name={name} id={id} />
       <View>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(31), lineHeight: fs(33), letterSpacing: -1, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(31), lineHeight: fs(33), letterSpacing: -1, color: c.card.ink }}>
           {name}
         </Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 8 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.card.ink3, marginTop: 8 }}>
             {sub}
           </Text>
         )}
@@ -125,7 +125,7 @@ export function NoteBlock({ label, children }: { label: string; children: string
     <View
       style={{
         marginTop: 18,
-        backgroundColor: c.note,
+        backgroundColor: c.card.note,
         borderRadius: radius.note,
         paddingVertical: 14,
         paddingHorizontal: 16,
@@ -136,14 +136,14 @@ export function NoteBlock({ label, children }: { label: string; children: string
           fontFamily: font.bold,
           fontSize: fs(10.5),
           letterSpacing: 1.26,
-          color: c.noteLabel,
+          color: c.card.noteLabel,
           textTransform: 'uppercase',
           marginBottom: 7,
         }}
       >
         {label}
       </Text>
-      <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.noteInk }}>{children}</Text>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.card.noteInk }}>{children}</Text>
     </View>
   );
 }
@@ -154,7 +154,7 @@ export function NoteBlock({ label, children }: { label: string; children: string
 export function Ask({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.bold, fontSize: fs(18), lineHeight: fs(25), letterSpacing: -0.22, color: c.ask, marginTop: 20 }}>
+    <Text style={{ fontFamily: font.bold, fontSize: fs(18), lineHeight: fs(25), letterSpacing: -0.22, color: c.card.ask, marginTop: 20 }}>
       {children}
     </Text>
   );
@@ -164,7 +164,7 @@ export function Ask({ children }: { children: React.ReactNode }) {
 export function Lead({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.extra, fontSize: fs(27), lineHeight: fs(31), letterSpacing: -0.86, color: c.cardInk, marginTop: 22 }}>
+    <Text style={{ fontFamily: font.extra, fontSize: fs(27), lineHeight: fs(31), letterSpacing: -0.86, color: c.card.ink, marginTop: 22 }}>
       {children}
     </Text>
   );
@@ -174,7 +174,7 @@ export function Lead({ children }: { children: React.ReactNode }) {
 export function Said({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <Text style={{ fontFamily: font.medium, fontSize: fs(20), lineHeight: fs(28), letterSpacing: -0.24, color: c.said, marginTop: 18 }}>
+    <Text style={{ fontFamily: font.medium, fontSize: fs(20), lineHeight: fs(28), letterSpacing: -0.24, color: c.card.said, marginTop: 18 }}>
       {children}
     </Text>
   );
@@ -189,11 +189,11 @@ export function Why({ children }: { children: React.ReactNode }) {
         fontFamily: font.medium,
         fontSize: fs(16),
         lineHeight: fs(25),
-        color: c.why,
+        color: c.card.why,
         marginTop: 22,
         paddingTop: 20,
         borderTopWidth: 1,
-        borderTopColor: c.line,
+        borderTopColor: c.card.line,
       }}
     >
       {children}
@@ -205,8 +205,8 @@ export function Why({ children }: { children: React.ReactNode }) {
 export function Quote({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
   return (
-    <View style={{ marginTop: 20, paddingLeft: 16, borderLeftWidth: 3, borderLeftColor: c.quoteLine }}>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(18), lineHeight: fs(26), color: c.said }}>{children}</Text>
+    <View style={{ marginTop: 20, paddingLeft: 16, borderLeftWidth: 3, borderLeftColor: c.card.quoteLine }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(18), lineHeight: fs(26), color: c.card.said }}>{children}</Text>
     </View>
   );
 }
@@ -224,8 +224,8 @@ export function PrimaryButton({
   tone?: ButtonTone;
 }) {
   const { c, font, radius, fs } = useV2Theme();
-  const bg = { primary: c.primary, warm: c.warm, deep: c.deep, green: c.green }[tone];
-  const fg = { primary: c.onPrimary, warm: c.onWarm, deep: c.onDeep, green: c.onGreen }[tone];
+  const bg = { primary: c.card.primary, warm: c.card.warm, deep: c.card.deep, green: c.card.green }[tone];
+  const fg = { primary: c.card.onPrimary, warm: c.card.onWarm, deep: c.card.onDeep, green: c.card.onGreen }[tone];
   return (
     <Pressable
       onPress={onPress}
@@ -252,13 +252,13 @@ export function SecondaryButton({ title, onPress }: { title: string; onPress: ()
         height: 52,
         borderRadius: radius.button,
         borderWidth: 1.5,
-        borderColor: c.border,
+        borderColor: c.card.border,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.cardInk2 }}>{title}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.ink2 }}>{title}</Text>
     </Pressable>
   );
 }
@@ -271,7 +271,7 @@ export function LaterButton({ label = 'Later', onPress }: { label?: string; onPr
       onPress={onPress}
       style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingVertical: 14 }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>{label}  →</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>{label}  →</Text>
     </Pressable>
   );
 }
@@ -298,7 +298,7 @@ export function AboutChip({
         alignItems: 'center',
         gap: 9,
         marginTop: 16,
-        backgroundColor: c.card2,
+        backgroundColor: c.card.bg2,
         borderRadius: radius.chip,
         paddingLeft: 8,
         paddingRight: 14,
@@ -307,8 +307,8 @@ export function AboutChip({
       }}
     >
       <PersonMark name={name} id={id} size={26} radius={9} fontSize={10} />
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk2 }}>{name}</Text>
-      {!!detail && <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk3 }}>· {detail}</Text>}
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>{name}</Text>
+      {!!detail && <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink3 }}>· {detail}</Text>}
     </Pressable>
   );
 }
@@ -337,8 +337,8 @@ export function Reactions({
               height: 46,
               borderRadius: 14,
               borderWidth: 1.5,
-              borderColor: on ? c.reactOnBorder : c.border,
-              backgroundColor: on ? c.reactOnBg : c.react,
+              borderColor: on ? c.card.reactOnBorder : c.card.border,
+              backgroundColor: on ? c.card.reactOnBg : c.card.react,
               alignItems: 'center',
               justifyContent: 'center',
             }}
@@ -362,7 +362,7 @@ export function Kicker({ children, onRoom, style }: { children: string; onRoom?:
           fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
-          color: onRoom ? c.roomInk3 : c.cardInk3,
+          color: onRoom ? c.room.ink3 : c.card.ink3,
         }}
       >
         {children}

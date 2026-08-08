@@ -17,7 +17,7 @@ export function Announcements({
   label: string;
   onOpen: (roomId: string) => void;
 }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View>
       <Sech label={label} count={rows.filter((r) => r.unread).length} />
@@ -27,11 +27,11 @@ export function Announcements({
             key={row.roomId}
             onPress={() => onOpen(row.roomId)}
             style={({ pressed }) => ({
-              backgroundColor: c.card,
+              backgroundColor: c.widget.bg,
               borderRadius: radius.tile,
               padding: 16,
               opacity: pressed ? 0.85 : 1,
-              ...shadow.soft,
+              ...c.widget.shadow,
             })}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -41,14 +41,14 @@ export function Announcements({
                     width: 7,
                     height: 7,
                     borderRadius: 4,
-                    backgroundColor: c.tones.follow.dot,
+                    backgroundColor: c.card.tones.follow.dot,
                   }}
                 />
               )}
-              <Text style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk, flex: 1 }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15), color: c.widget.ink, flex: 1 }}>
                 {row.name}
               </Text>
-              <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.cardInk3 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.widget.ink3 }}>
                 {memberAgo(row.at)}
               </Text>
             </View>
@@ -58,7 +58,7 @@ export function Announcements({
                 fontFamily: font.medium,
                 fontSize: fs(14),
                 lineHeight: fs(20),
-                color: c.cardInk2,
+                color: c.widget.ink2,
                 marginTop: 6,
               }}
             >

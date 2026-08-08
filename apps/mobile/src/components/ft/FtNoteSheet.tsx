@@ -68,7 +68,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
               fontFamily: font.extra,
               fontSize: fs(20),
               letterSpacing: -0.5,
-              color: c.cardInk,
+              color: c.card.ink,
             }}
           >
             {title}
@@ -78,7 +78,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
               style={{
                 fontFamily: font.semi,
                 fontSize: fs(13),
-                color: c.cardInk3,
+                color: c.card.ink3,
                 marginTop: 7,
               }}
             >
@@ -95,7 +95,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
                   style={({ pressed }) => ({
                     minHeight: 44,
                     justifyContent: 'center',
-                    backgroundColor: c.card2,
+                    backgroundColor: c.card.bg2,
                     borderRadius: radius.note,
                     paddingVertical: 12,
                     paddingHorizontal: 14,
@@ -107,7 +107,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
                       fontFamily: font.semi,
                       fontSize: fs(14),
                       lineHeight: fs(19),
-                      color: c.cardInk2,
+                      color: c.card.ink2,
                     }}
                   >
                     {t}
@@ -123,20 +123,20 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
             placeholder={
               target?.kind === 'nudge' ? 'A gentle reminder, in your own words…' : 'Say it in your own words…'
             }
-            placeholderTextColor={c.cardInk3}
+            placeholderTextColor={c.card.ink3}
             multiline
             style={{
               marginTop: 14,
               minHeight: 96,
-              backgroundColor: c.field,
+              backgroundColor: c.card.field,
               borderWidth: 1.5,
-              borderColor: c.line,
+              borderColor: c.card.line,
               borderRadius: radius.note,
               paddingVertical: 14,
               paddingHorizontal: 15,
               fontFamily: font.semi,
               fontSize: fs(15),
-              color: c.cardInk,
+              color: c.card.ink,
               textAlignVertical: 'top',
             }}
           />
@@ -152,7 +152,7 @@ function NoteSheetBody({ visible, target, onClose, onSend }: FtNoteSheetProps) {
                 fontFamily: font.medium,
                 fontSize: fs(12),
                 lineHeight: fs(17),
-                color: c.cardInk3,
+                color: c.card.ink3,
                 marginTop: 14,
               }}
             >

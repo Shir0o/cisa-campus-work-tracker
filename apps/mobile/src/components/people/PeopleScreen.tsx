@@ -46,7 +46,7 @@ function PersonRows({ rows, stages, own }: { rows: Leader[]; stages: Stage[]; ow
           name={leader.contact.name}
           colorSeed={leader.contact.id}
           sub={subLine(leader)}
-          dot={c.tones[stageToneKey(stages, leader.contact.stage)].dot}
+          dot={c.card.tones[stageToneKey(stages, leader.contact.stage)].dot}
           rightText={own ? touchWords(leader.days) : leader.contact.createdByName || '—'}
           onPress={() => router.push(`/contact/${leader.contact.id}`)}
         />
@@ -67,7 +67,7 @@ function People() {
   const nothing = data.mine.length === 0 && data.rest.length === 0;
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
         title="People"
         action={role !== 'viewer' ? { label: '＋ New', onPress: () => setShowAddSheet(true) } : undefined}
@@ -80,7 +80,7 @@ function People() {
         />
 
         {data.loading ? (
-          <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
+          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : nothing ? (

@@ -45,7 +45,7 @@ export function NeedsYouToday({
                   height: 22,
                   borderRadius: 7,
                   borderWidth: 1.5,
-                  borderColor: c.border,
+                  borderColor: c.widget.line,
                   marginTop: 1,
                 }}
               />
@@ -55,7 +55,7 @@ export function NeedsYouToday({
                     fontFamily: font.bold,
                     fontSize: fs(15.5),
                     lineHeight: fs(21),
-                    color: c.cardInk,
+                    color: c.widget.ink,
                   }}
                 >
                   {t.title}
@@ -65,7 +65,7 @@ export function NeedsYouToday({
                     style={{
                       fontFamily: font.semi,
                       fontSize: fs(12),
-                      color: chip.tone === 'overdue' ? c.tones.follow.text : c.cardInk3,
+                      color: chip.tone === 'overdue' ? c.card.tones.follow.text : c.widget.ink3,
                       marginTop: 4,
                     }}
                   >

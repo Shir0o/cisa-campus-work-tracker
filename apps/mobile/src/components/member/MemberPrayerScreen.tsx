@@ -52,13 +52,13 @@ function CarryButton({
         marginTop: 10,
         borderRadius: radius.chip,
         borderWidth: 1.5,
-        borderColor: carried ? 'transparent' : c.deep,
-        backgroundColor: carried ? c.card2 : 'transparent',
+        borderColor: carried ? 'transparent' : c.card.deep,
+        backgroundColor: carried ? c.widget.tile : 'transparent',
         opacity: pressed ? 0.6 : 1,
       })}
     >
       <Text
-        style={{ fontFamily: font.bold, fontSize: fs(13.5), color: carried ? c.cardInk3 : c.deep }}
+        style={{ fontFamily: font.bold, fontSize: fs(13.5), color: carried ? c.widget.ink3 : c.card.deep }}
       >
         {carried ? 'Prayed today ✓' : label}
       </Text>
@@ -78,24 +78,24 @@ function PrayerCard({
   quiet?: boolean;
   children?: React.ReactNode;
 }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <View
       style={{
-        backgroundColor: c.card,
+        backgroundColor: c.widget.bg,
         borderRadius: radius.tile,
         padding: 16,
         opacity: quiet ? 0.75 : 1,
-        ...shadow.soft,
+        ...c.widget.shadow,
       }}
     >
       <Text
-        style={{ fontFamily: font.bold, fontSize: fs(15.5), lineHeight: fs(22), color: c.cardInk }}
+        style={{ fontFamily: font.bold, fontSize: fs(15.5), lineHeight: fs(22), color: c.widget.ink }}
       >
         {title}
       </Text>
       {!!meta && (
-        <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 4 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.widget.ink3, marginTop: 4 }}>
           {meta}
         </Text>
       )}
@@ -116,7 +116,7 @@ function InlineLink({ label, onPress }: { label: string; onPress: () => void }) 
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{label}</Text>
     </Pressable>
   );
 }
@@ -140,7 +140,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           <View style={{ gap: 10 }}>
             {data.holding.length === 0 && (
               <Text
-                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}
+                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
               >
                 Nothing open right now.
               </Text>
@@ -176,15 +176,18 @@ function MemberPrayer({ role }: { role: MemberRole }) {
 
         <Pressable
           onPress={() => setSheet('ask')}
+          // `.mbr-askbtn` is the widget layer's violet ground, not the `pray`
+          // tone pill: the design fills it with `--mb-deep` and writes #f2eef8
+          // on top. The pale tone band would have been ink-on-ink here.
           style={({ pressed }) => ({
-            backgroundColor: c.tones.pray.band,
+            backgroundColor: c.widget.deep,
             borderRadius: radius.tile,
             padding: 18,
             opacity: pressed ? 0.85 : 1,
             ...shadow.soft,
           })}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: fs(16.5), color: c.tones.pray.text }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(16.5), color: c.widget.onDeep }}>
             Ask the team to pray
           </Text>
           <Text
@@ -192,7 +195,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               fontFamily: font.medium,
               fontSize: fs(13),
               lineHeight: fs(19),
-              color: c.tones.pray.text,
+              color: c.widget.onDeep,
               opacity: 0.8,
               marginTop: 3,
             }}
@@ -231,7 +234,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               fontFamily: font.medium,
               fontSize: fs(13),
               lineHeight: fs(19),
-              color: c.roomInk3,
+              color: c.room.ink3,
               marginTop: -4,
               marginBottom: 10,
             }}
@@ -241,7 +244,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           <View style={{ gap: 10 }}>
             {data.onYourHeart.open.length === 0 && (
               <Text
-                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}
+                style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
               >
                 Nobody yet — add the first person below.
               </Text>
@@ -277,11 +280,11 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               justifyContent: 'center',
               borderRadius: radius.button,
               borderWidth: 1.5,
-              borderColor: c.roomChip,
+              borderColor: c.room.chip,
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.roomInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.room.ink2 }}>
               Add someone
             </Text>
           </Pressable>

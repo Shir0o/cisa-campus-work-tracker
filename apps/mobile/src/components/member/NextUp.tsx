@@ -21,15 +21,15 @@ export function NextUp({
   onToggle: () => void;
   onInvite: () => void;
 }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const sub = memberEventSub(event);
   return (
     <View
       style={{
-        backgroundColor: c.card,
+        backgroundColor: c.widget.bg,
         borderRadius: radius.hero,
         padding: 20,
-        ...shadow.soft,
+        ...c.widget.shadow,
       }}
     >
       <Text
@@ -38,7 +38,9 @@ export function NextUp({
           fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
-          color: c.tones.follow.text,
+          // `.mbr-tag{color:var(--mb-warm)}` — the widget layer's terracotta,
+          // which unlike `card.warm` does not shift at night.
+          color: c.widget.warm,
         }}
       >
         {role === 'student' ? 'Next up' : 'Nearest'} · {memberWhenWords(event.date)}
@@ -49,7 +51,7 @@ export function NextUp({
           fontSize: fs(25),
           lineHeight: fs(30),
           letterSpacing: -0.7,
-          color: c.cardInk,
+          color: c.widget.ink,
           marginTop: 8,
         }}
       >
@@ -61,7 +63,7 @@ export function NextUp({
             fontFamily: font.medium,
             fontSize: fs(14),
             lineHeight: fs(20),
-            color: c.cardInk2,
+            color: c.widget.ink2,
             marginTop: 4,
           }}
         >
@@ -74,7 +76,7 @@ export function NextUp({
           style={({ pressed }) => ({
             height: 54,
             borderRadius: radius.button,
-            backgroundColor: going ? c.green : c.primary,
+            backgroundColor: going ? c.card.green : c.card.primary,
             alignItems: 'center',
             justifyContent: 'center',
             opacity: pressed ? 0.85 : 1,
@@ -84,7 +86,7 @@ export function NextUp({
             style={{
               fontFamily: font.bold,
               fontSize: fs(16.5),
-              color: going ? c.onGreen : c.onPrimary,
+              color: going ? c.card.onGreen : c.card.onPrimary,
             }}
           >
             {going
@@ -101,13 +103,13 @@ export function NextUp({
               height: 52,
               borderRadius: radius.button,
               borderWidth: 1.5,
-              borderColor: c.border,
+              borderColor: c.card.border,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.cardInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.widget.ink2 }}>
               Bring a friend
             </Text>
           </Pressable>

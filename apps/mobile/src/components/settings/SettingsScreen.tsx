@@ -104,13 +104,13 @@ function Choice<T>({
           paddingHorizontal: 14,
           borderRadius: radius.chip,
           borderWidth: 1.5,
-          borderColor: on ? c.cardInk : c.border,
-          backgroundColor: on ? c.cardInk : c.react,
+          borderColor: on ? c.card.ink : c.card.border,
+          backgroundColor: on ? c.card.ink : c.card.react,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card : c.cardInk2 }}>{o.label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card.bg : c.card.ink2 }}>{o.label}</Text>
       </Pressable>
     );
   });
@@ -118,9 +118,9 @@ function Choice<T>({
   return (
     <View style={{ gap: 10 }}>
       <View>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk }}>{label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>{label}</Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}>
             {sub}
           </Text>
         )}
@@ -148,7 +148,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <Kicker onRoom style={{ marginHorizontal: 4 }}>
         {title}
       </Kicker>
-      <View style={{ backgroundColor: c.card, borderRadius: radius.card, padding: 20, gap: 22 }}>{children}</View>
+      <View style={{ backgroundColor: c.card.bg, borderRadius: radius.card, padding: 20, gap: 22 }}>{children}</View>
     </View>
   );
 }
@@ -190,7 +190,7 @@ function Settings() {
   const setPref = (patch: Partial<QueueSettings>) => set(patch);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen title="Settings" onBack={back}>
         <View
           style={{
@@ -199,19 +199,19 @@ function Settings() {
             gap: 14,
             padding: 16,
             borderRadius: radius.card,
-            backgroundColor: c.card,
+            backgroundColor: c.card.bg,
           }}
         >
           <PersonMark name={user?.displayName || 'You'} id={uid} size={52} radius={17} fontSize={17} />
           <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.cardInk }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.card.ink }}>
               {user?.displayName || 'You'}
             </Text>
-            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk2, marginTop: 2 }}>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 2 }}>
               {user?.email || ''}
             </Text>
             {!!carer && (
-              <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 3 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink3, marginTop: 3 }}>
                 {carer}
               </Text>
             )}
@@ -223,7 +223,7 @@ function Settings() {
             fontFamily: font.medium,
             fontSize: fs(13.5),
             lineHeight: fs(20),
-            color: c.roomInk2,
+            color: c.room.ink2,
             marginTop: 12,
             marginHorizontal: 4,
           }}
@@ -235,9 +235,9 @@ function Settings() {
           <Section title="When you're on campus">
             <View style={{ gap: 10 }}>
               <View>
-                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk }}>The days you're there</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>The days you're there</Text>
                 <Text
-                  style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}
+                  style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}
                 >
                   {onCampusSummary(w)} — logging gets promoted while you're in it.
                 </Text>
@@ -257,20 +257,20 @@ function Settings() {
                         height: 46,
                         borderRadius: 15,
                         borderWidth: 1.5,
-                        borderColor: on ? c.cardInk : c.border,
-                        backgroundColor: on ? c.cardInk : c.react,
+                        borderColor: on ? c.card.ink : c.card.border,
+                        backgroundColor: on ? c.card.ink : c.card.react,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
                     >
-                      <Text style={{ fontFamily: font.extra, fontSize: fs(14), color: on ? c.card : c.cardInk3 }}>
+                      <Text style={{ fontFamily: font.extra, fontSize: fs(14), color: on ? c.card.bg : c.card.ink3 }}>
                         {initial}
                       </Text>
                     </Pressable>
                   );
                 })}
               </View>
-              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk2 }}>{onCampusNowLine(w)}</Text>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink2 }}>{onCampusNowLine(w)}</Text>
             </View>
 
             <Choice
@@ -353,7 +353,7 @@ function Settings() {
         {hasQueue && (
           <Section title="Today's queue">
             <View style={{ gap: 12 }}>
-              <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.cardInk2 }}>
+              <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.card.ink2 }}>
                 You've dealt with {queueState.handledCount}{' '}
                 {queueState.handledCount === 1 ? 'card' : 'cards'} today. Bringing them back starts the day over — it
                 doesn't undo anything you did.
@@ -374,7 +374,7 @@ function Settings() {
             fontFamily: font.medium,
             fontSize: fs(12.5),
             lineHeight: fs(19),
-            color: c.roomFaint,
+            color: c.room.faint,
             marginHorizontal: 4,
             marginTop: 26,
           }}
