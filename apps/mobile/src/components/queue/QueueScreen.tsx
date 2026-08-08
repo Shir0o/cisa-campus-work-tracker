@@ -10,8 +10,9 @@ import React from 'react';
 import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import {
+  canAccessRoute,
   firstName,
   getUserInitials,
   isOnCampus,
@@ -45,7 +46,7 @@ const tomorrowISO = () => {
 
 export function QueueScreen() {
   const { c, font, shadow, fs } = useV2Theme();
-  const { uid, user } = useAuth();
+  const { uid, user, role } = useAuth();
   const router = useRouter();
   const data = useTraineeLandingData(uid, user?.displayName ?? null);
 
@@ -71,8 +72,24 @@ export function QueueScreen() {
   const current = queue[at];
 
   const onCampus = isOnCampus(queuePrefs.prefs.onCampus);
+  // The design's due card hides this button rather than offering a door that
+  // doesn't open (`api.canBoard !== false` in views/mobile/cards.jsx), and a
+  // trainee is exactly who can't open it — canAccessRoute('manager', …) closes
+  // /coordination, which is why The Board isn't in TRAINEE_DRAWER either.
+  const canBoard = canAccessRoute(role, '/coordination');
+
+  // Logging from nowhere in particular: no contact, no to-do, and — the one
+  // that bit — no card. Leaving `logCard` behind meant dismissing a card's log
+  // sheet and then logging something unrelated marked the stale card handled.
+  const openBlankLog = () => {
+    setLogFor(null);
+    setLogTask(null);
+    setLogCard(null);
+    setLogOpen(true);
+  };
 
   const api: QueueCardApi = {
+    canBoard,
     handle: (id) => {
       queueState.handle(id);
       setIndex(0);
@@ -93,7 +110,15 @@ export function QueueScreen() {
       setIndex(0);
       setToast('Moved to tomorrow.');
     },
-    openBoardDoc: (docId) => router.push(docId ? `/coordination/${docId}` : '/coordination'),
+    openBoardDoc: (docId) => {
+      // The button is hidden without access, so this only fires if something
+      // else routes here — say it plainly rather than pushing a locked screen.
+      if (!canBoard) {
+        setToast('That page lives with the team.');
+        return;
+      }
+      router.push(docId ? `/coordination/${docId}` : '/coordination');
+    },
     openContact: (contactId, tab) =>
       router.push(tab ? `/contact/${contactId}?tab=${tab}` : `/contact/${contactId}`),
     openReply: (card) => setReplyTo(card),
@@ -258,11 +283,7 @@ export function QueueScreen() {
               onCampus ? (
                 <OnCampusStrip
                   window={queuePrefs.prefs.onCampus}
-                  onPress={() => {
-                    setLogFor(null);
-                    setLogTask(null);
-                    setLogOpen(true);
-                  }}
+                  onPress={openBlankLog}
                 />
               ) : undefined
             }
@@ -333,11 +354,7 @@ export function QueueScreen() {
 
         <Pressable
           accessibilityLabel="Log a conversation"
-          onPress={() => {
-            setLogFor(null);
-            setLogTask(null);
-            setLogOpen(true);
-          }}
+          onPress={openBlankLog}
           style={[
             {
               width: 54,

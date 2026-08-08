@@ -76,9 +76,9 @@ function RootNavigator() {
     <V2RoomTintContext.Provider value={tint}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       {/* Wraps the Stack rather than sitting beside it, so the "See it as they
-          do" pill (position: 'absolute') floats over every route — including
-          the trainee's tab-less queue — the way the design's impersonation
-          layer rides over every branch of its App. */}
+          do" strip sits above every route — including the trainee's tab-less
+          queue — the way the design's impersonation layer covers every branch
+          of its App. */}
       <View style={{ flex: 1 }}>
         <ImpersonateLayer>
           <Stack

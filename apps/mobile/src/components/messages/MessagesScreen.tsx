@@ -6,7 +6,7 @@
 // of, not a place you go looking. Starting a conversation is desktop work.
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import {
   chatKindNote,
   chatRowPreview,

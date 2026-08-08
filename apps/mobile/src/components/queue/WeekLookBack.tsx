@@ -5,7 +5,7 @@
 // finished, and a list growing underneath it undoes that.
 import React from 'react';
 import { Text, View } from 'react-native';
-import { daysAgoWords, type Interaction } from '@cisa/core';
+import { daysAgoWords, interactionKindLabel, type Interaction } from '@cisa/core';
 import { useV2Theme } from '../../theme/v2';
 import { V2Screen } from '../v2/Widget';
 
@@ -51,7 +51,10 @@ export function WeekLookBack({ week, onBack }: { week: Interaction[]; onBack: ()
               color: c.cardInk3,
             }}
           >
-            {[daysAgoWords(i.dateTime), i.type].filter(Boolean).join(' · ')}
+            {/* The design stores a written title on the interaction and reads
+                it back here; ours carries only the key, so it's named on the
+                way out — never "small-group" or "meet" in front of anyone. */}
+            {[daysAgoWords(i.dateTime), interactionKindLabel(i.type)].join(' · ')}
           </Text>
           <Text
             style={{

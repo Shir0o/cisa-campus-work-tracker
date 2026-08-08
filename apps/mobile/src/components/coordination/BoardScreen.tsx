@@ -8,7 +8,7 @@
 // used to route into.
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import {
   AUDIENCE_TONE_KEY,
   BOARD_AUDIENCE,

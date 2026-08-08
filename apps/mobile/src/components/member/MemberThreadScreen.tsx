@@ -15,7 +15,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
 import { canPostToRoom, getRoomName, memberSenderName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';

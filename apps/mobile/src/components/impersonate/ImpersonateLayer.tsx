@@ -1,12 +1,18 @@
 // Mobile v2 — "See it as they do". Ported from the design's impersonation
 // layer (views/impersonate.jsx, the `impUI` fragment in views/mobile/app.jsx):
-// a pill that floats over whichever shell is active while an admin is
-// borrowing someone's view, and the full-screen picker that opens it.
+// a strip across the top saying whose eyes you're borrowing, and the
+// full-screen picker that opens it.
 //
 // Mounted once at the app root (app/_layout.tsx), OUTSIDE the tab navigator,
-// so it rides over every shell — the trainee's tab-less queue included — the
+// so it covers every shell — the trainee's tab-less queue included — the
 // same way the design's `impUI` renders alongside every branch of `App`.
+//
+// The strip is IN FLOW, not floating: it takes real space and the app renders
+// beneath it. It used to float, which put it straight on top of the queue's
+// own chrome row (☰ and the "Today · N to look after" counter, both of which
+// start ~10px below the same inset) and buried them.
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   impGroups,
@@ -18,6 +24,7 @@ import {
   type ImpersonateTarget,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { TopInsetOwnedContext } from '../../lib/screenChrome';
 import { subscribeUsers } from '../../lib/data/users';
 import { subscribeContacts } from '../../lib/data/contacts';
 import { ImpersonatePill } from './ImpersonatePill';
@@ -111,18 +118,31 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
     router.replace('/');
   };
 
+  const showPill = isOwner && isSimulating;
+
   return (
     <ImpersonateSheetContext.Provider value={{ open: closeAndOpenSheet }}>
-      {children}
-
-      {isOwner && isSimulating && (
-        <ImpersonatePill
-          name={impersonateTarget?.name}
-          role={impersonateTarget?.role ?? ownerViewRole ?? 'admin'}
-          scope={activeScope}
-          onSwitch={closeAndOpenSheet}
-          onExit={exit}
-        />
+      {showPill ? (
+        <View style={{ flex: 1 }}>
+          <ImpersonatePill
+            name={impersonateTarget?.name}
+            role={impersonateTarget?.role ?? ownerViewRole ?? 'admin'}
+            scope={activeScope}
+            onSwitch={closeAndOpenSheet}
+            onExit={exit}
+          />
+          {/* The strip has consumed the top inset, so the screens below must
+           * not claim it a second time — QueueScreen and the member/FT shells
+           * all open with <SafeAreaView edges={['top']}>. They read this and
+           * drop the edge (components/ui/SafeArea); a JS inset override would
+           * not do it, since the library's SafeAreaView is a native view on
+           * device and only its .web build reads SafeAreaInsetsContext. */}
+          <TopInsetOwnedContext.Provider value>
+            <View style={{ flex: 1 }}>{children}</View>
+          </TopInsetOwnedContext.Provider>
+        </View>
+      ) : (
+        children
       )}
 
       {isOwner && (

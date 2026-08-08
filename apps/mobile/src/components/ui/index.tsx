@@ -15,7 +15,8 @@ import {
   type TextInputProps,
   type StyleProp,
 } from 'react-native';
-import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
+import { type Edge } from 'react-native-safe-area-context';
+import { SafeAreaView } from './SafeArea';
 import { Ionicons } from '@expo/vector-icons';
 import { getUserInitials } from '@cisa/core';
 import { useTheme } from '../../theme/ThemeProvider';

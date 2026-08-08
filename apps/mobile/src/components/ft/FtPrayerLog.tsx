@@ -10,7 +10,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ActivityIndicator } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from '../ui/SafeArea';
 import type { FtCarryRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useFtHomeData } from '../../lib/useFtHomeData';

@@ -9,6 +9,7 @@ export * from './board';
 export * from './seasons';
 export * from './myday';
 export * from './queue';
+export * from './queueDay';
 export * from './ftHome';
 export * from './hospitality';
 export * from './memberHome';
