@@ -131,6 +131,14 @@ if (process.env.NODE_ENV !== 'test') {
   }
 
   const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
+  if (!cfg.projectId) {
+    console.error('ERROR: firebase-applet-config.json is missing projectId.');
+    process.exit(1);
+  }
+  if (!cfg.firestoreDatabaseId) {
+    console.error('ERROR: firebase-applet-config.json is missing firestoreDatabaseId.');
+    process.exit(1);
+  }
   admin.initializeApp({ projectId: cfg.projectId });
   const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
 
