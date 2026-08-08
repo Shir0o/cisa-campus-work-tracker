@@ -1,8 +1,6 @@
 name: Sync GitHub Issues to Docs
 
 on:
-  schedule:
-    - cron: '0 */6 * * *'
   workflow_dispatch:
   issues:
     types: [opened, edited, closed, reopened, labeled, unlabeled, deleted]
