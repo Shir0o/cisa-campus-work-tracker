@@ -171,15 +171,15 @@ export function QueueScreen() {
   // ── loading / error ──────────────────────────────────────────────────────
   if (data.loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.room, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={c.roomInk2} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: c.room.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={c.room.ink2} />
       </SafeAreaView>
     );
   }
 
   if (showAll) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <AllTodayList
           cards={queue}
           currentId={current?.id}
@@ -197,7 +197,7 @@ export function QueueScreen() {
 
   if (showWeek) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <WeekLookBack week={data.week} onBack={() => setShowWeek(false)} />
       </SafeAreaView>
     );
@@ -210,13 +210,13 @@ export function QueueScreen() {
   const meta = queueMeta(queue.length, queueState.handledCount, at);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       {!!data.error && (
         <Text
           style={{
             fontFamily: font.semi,
             fontSize: fs(12.5),
-            color: c.roomInk2,
+            color: c.room.ink2,
             paddingHorizontal: 18,
             paddingTop: 8,
           }}
@@ -259,7 +259,7 @@ export function QueueScreen() {
               fontSize: fs(10.5),
               letterSpacing: 1.47,
               textTransform: 'uppercase',
-              color: c.roomInk2,
+              color: c.room.ink2,
               flexShrink: 1,
             }}
             numberOfLines={1}
@@ -267,7 +267,7 @@ export function QueueScreen() {
             {meta.left}
           </Text>
           {!!meta.right && (
-            <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.roomInk3 }}>{meta.right}</Text>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.room.ink3 }}>{meta.right}</Text>
           )}
         </Pressable>
       </View>
@@ -325,10 +325,10 @@ export function QueueScreen() {
                 justifyContent: 'center',
                 marginLeft: i === 0 ? 0 : -9,
                 borderWidth: 2,
-                borderColor: c.room,
+                borderColor: c.room.bg,
                 backgroundColor: card.contact
                   ? personColor(card.contact.id)
-                  : c.tones[card.tone].dot,
+                  : c.card.tones[card.tone].dot,
               }}
             >
               <Text style={{ fontFamily: font.extra, fontSize: fs(10.5), color: '#fff' }}>
@@ -341,7 +341,7 @@ export function QueueScreen() {
               style={{
                 fontFamily: font.medium,
                 fontSize: fs(12),
-                color: c.roomFaint,
+                color: c.room.faint,
                 marginLeft: upNext.length > 0 ? 10 : 0,
                 flexShrink: 1,
               }}
@@ -360,14 +360,14 @@ export function QueueScreen() {
               width: 54,
               height: 54,
               borderRadius: 27,
-              backgroundColor: c.inverse,
+              backgroundColor: c.card.inverse,
               alignItems: 'center',
               justifyContent: 'center',
             },
             shadow.fab,
           ]}
         >
-          <Ionicons name="add" size={28} color={c.onInverse} />
+          <Ionicons name="add" size={28} color={c.card.onInverse} />
         </Pressable>
       </View>
 

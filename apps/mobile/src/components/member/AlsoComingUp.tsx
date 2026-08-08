@@ -15,7 +15,7 @@ function DateBlock({ date }: { date: string }) {
   const d = toLocalDate(date);
   return (
     <View style={{ width: 46, alignItems: 'center' }}>
-      <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(17), color: c.card.ink }}>
         {d ? format(d, 'd') : '—'}
       </Text>
       <Text
@@ -24,7 +24,7 @@ function DateBlock({ date }: { date: string }) {
           fontSize: fs(10.5),
           letterSpacing: 0.8,
           textTransform: 'uppercase',
-          color: c.cardInk3,
+          color: c.card.ink3,
           marginTop: 1,
         }}
       >
@@ -49,7 +49,7 @@ export function AlsoComingUp({
       <Sech label="Also coming up" />
       <View
         style={{
-          backgroundColor: c.datebox,
+          backgroundColor: c.room.datebox,
           borderRadius: radius.tile,
           paddingHorizontal: 14,
           ...shadow.soft,
@@ -67,17 +67,17 @@ export function AlsoComingUp({
                 gap: 12,
                 paddingVertical: 13,
                 borderTopWidth: i === 0 ? 0 : 1,
-                borderTopColor: c.dateboxLine,
+                borderTopColor: c.room.dateboxLine,
               }}
             >
               <DateBlock date={ev.date} />
               <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.cardInk }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.card.ink }}>
                   {ev.name}
                 </Text>
                 {!!sub && (
                   <Text
-                    style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.cardInk3, marginTop: 2 }}
+                    style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink3, marginTop: 2 }}
                   >
                     {sub}
                   </Text>
@@ -91,8 +91,8 @@ export function AlsoComingUp({
                   paddingHorizontal: 13,
                   borderRadius: radius.chip,
                   borderWidth: 1.5,
-                  borderColor: going ? 'transparent' : c.border,
-                  backgroundColor: going ? c.green : 'transparent',
+                  borderColor: going ? 'transparent' : c.card.border,
+                  backgroundColor: going ? c.card.green : 'transparent',
                   opacity: pressed ? 0.7 : 1,
                 })}
               >
@@ -100,7 +100,7 @@ export function AlsoComingUp({
                   style={{
                     fontFamily: font.bold,
                     fontSize: fs(12.5),
-                    color: going ? c.onGreen : c.cardInk2,
+                    color: going ? c.card.onGreen : c.card.ink2,
                   }}
                 >
                   {going ? 'Going' : 'Count me in'}

@@ -24,19 +24,19 @@ function Tile({
   detail: string;
   onPress: () => void;
 }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => ({
         flex: 1,
         minHeight: 128,
-        backgroundColor: c.card,
+        backgroundColor: c.widget.bg,
         borderRadius: radius.tile,
         paddingVertical: 14,
         paddingHorizontal: 15,
         opacity: pressed ? 0.85 : 1,
-        ...shadow.soft,
+        ...c.widget.shadow,
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
@@ -47,7 +47,7 @@ function Tile({
             fontSize: fs(10.5),
             letterSpacing: 1.26,
             textTransform: 'uppercase',
-            color: c.cardInk3,
+            color: c.widget.ink3,
           }}
         >
           {label}
@@ -59,7 +59,7 @@ function Tile({
           fontSize: fs(34),
           lineHeight: fs(38),
           letterSpacing: -1.2,
-          color: c.cardInk,
+          color: c.widget.ink,
           marginTop: 8,
         }}
       >
@@ -69,7 +69,7 @@ function Tile({
         style={{
           fontFamily: font.semi,
           fontSize: fs(13),
-          color: c.cardInk2,
+          color: c.widget.ink2,
           marginTop: 1,
         }}
       >
@@ -80,7 +80,7 @@ function Tile({
           fontFamily: font.medium,
           fontSize: fs(12),
           lineHeight: fs(16),
-          color: c.cardInk3,
+          color: c.widget.ink3,
           marginTop: 8,
         }}
         numberOfLines={2}
@@ -108,7 +108,7 @@ export function FtGlance({
       <Sech label="At a glance" />
       <View style={{ flexDirection: 'row', gap: 10 }}>
         <Tile
-          dot={c.tones.pray.dot}
+          dot={c.card.tones.pray.dot}
           label="Carrying"
           value={String(carrying.count)}
           caption={carrying.count === 1 ? 'open prayer' : 'open prayers'}
@@ -116,7 +116,7 @@ export function FtGlance({
           onPress={onOpenPrayers}
         />
         <Tile
-          dot={c.tones.note.dot}
+          dot={c.card.tones.note.dot}
           label="Next gathering"
           value={next ? next.when : '—'}
           caption={next ? next.title : 'nothing this week'}

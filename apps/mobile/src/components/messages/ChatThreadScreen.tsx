@@ -54,7 +54,7 @@ function ChatThread({ roomId }: { roomId: string }) {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View
         style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}
       >
@@ -63,17 +63,17 @@ function ChatThread({ roomId }: { roomId: string }) {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
-            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.roomInk }}
+            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.room.ink }}
           >
             {name || 'Loading…'}
           </Text>
           {!!data.room && !!chatKindNote(data.room) && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.roomInk3 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
               {chatKindNote(data.room)}
             </Text>
           )}
@@ -99,27 +99,27 @@ function ChatThread({ roomId }: { roomId: string }) {
                 paddingHorizontal: 16,
                 marginBottom: 4,
                 borderRadius: radius.note,
-                backgroundColor: c.card,
+                backgroundColor: c.card.bg,
                 opacity: pressed ? 0.75 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.link }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.link }}>
                 {`Open ${firstName(name)}'s page →`}
               </Text>
             </Pressable>
           )}
 
           {data.error ? (
-            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>{data.error}</Text>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>{data.error}</Text>
           ) : data.loading ? (
-            <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
+            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
           ) : data.dayGroups.length === 0 ? (
             <Text
               style={{
                 fontFamily: font.medium,
                 fontSize: fs(14.5),
                 lineHeight: fs(21),
-                color: c.roomInk2,
+                color: c.room.ink2,
                 textAlign: 'center',
                 paddingVertical: 24,
               }}
@@ -135,7 +135,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                     fontSize: fs(10.5),
                     letterSpacing: 1.26,
                     textTransform: 'uppercase',
-                    color: c.roomInk3,
+                    color: c.room.ink3,
                     textAlign: 'center',
                     marginVertical: 8,
                   }}
@@ -150,7 +150,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                       style={{
                         alignSelf: mine ? 'flex-end' : 'flex-start',
                         maxWidth: '82%',
-                        backgroundColor: mine ? c.primary : c.card,
+                        backgroundColor: mine ? c.card.primary : c.card.bg,
                         borderRadius: radius.note,
                         paddingHorizontal: 14,
                         paddingVertical: 11,
@@ -158,7 +158,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                     >
                       {isGroupish && !mine && (
                         <Text
-                          style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.cardInk3, marginBottom: 3 }}
+                          style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink3, marginBottom: 3 }}
                         >
                           {memberSenderName(m, uid)}
                         </Text>
@@ -168,7 +168,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                           fontFamily: font.medium,
                           fontSize: fs(15),
                           lineHeight: fs(21),
-                          color: mine ? c.onPrimary : c.said,
+                          color: mine ? c.card.onPrimary : c.card.said,
                         }}
                       >
                         {m.text}
@@ -184,11 +184,11 @@ function ChatThread({ roomId }: { roomId: string }) {
                             paddingHorizontal: 10,
                             paddingVertical: 5,
                             borderRadius: radius.chip,
-                            backgroundColor: mine ? c.roomChip : c.card2,
+                            backgroundColor: mine ? c.room.chip : c.card.bg2,
                           }}
                         >
                           <Text
-                            style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.onPrimary : c.cardInk2 }}
+                            style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.card.onPrimary : c.card.ink2 }}
                           >
                             {a.name}
                           </Text>
@@ -218,20 +218,20 @@ function ChatThread({ roomId }: { roomId: string }) {
               placeholder={
                 isGroupish ? 'Write to the group…' : `Write to ${firstName(name || 'them')}…`
               }
-              placeholderTextColor={c.cardInk3}
+              placeholderTextColor={c.card.ink3}
               multiline
               style={{
                 flex: 1,
                 maxHeight: 110,
                 minHeight: 48,
-                backgroundColor: c.card,
+                backgroundColor: c.card.bg,
                 borderRadius: radius.note,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontFamily: font.medium,
                 fontSize: fs(15),
                 lineHeight: fs(21),
-                color: c.cardInk,
+                color: c.card.ink,
               }}
             />
             <Pressable
@@ -241,13 +241,13 @@ function ChatThread({ roomId }: { roomId: string }) {
                 height: 48,
                 paddingHorizontal: 20,
                 borderRadius: radius.button,
-                backgroundColor: c.primary,
+                backgroundColor: c.card.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.onPrimary }}>Send</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.onPrimary }}>Send</Text>
             </Pressable>
           </View>
         ) : (
@@ -257,7 +257,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                 fontFamily: font.medium,
                 fontSize: fs(13.5),
                 lineHeight: fs(20),
-                color: c.roomInk3,
+                color: c.room.ink3,
                 textAlign: 'center',
               }}
             >

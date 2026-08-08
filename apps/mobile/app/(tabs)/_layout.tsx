@@ -2,7 +2,7 @@ import { Tabs } from 'expo-router';
 import { Text, View } from 'react-native';
 import { shellForRole, tabsForRole } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
-import { useV2Theme } from '../../src/theme/v2';
+import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
 
@@ -54,10 +54,12 @@ const button =
 
 export default function TabsLayout() {
   const { role } = useAuth();
-  // The full-timer stands in the paper/navy room; everyone else in the green
-  // one. Screens that set their own Room still win inside.
+  // The full-timer stands in the paper/navy room; members stand in the trainee's
+  // green one and take their own look from `V2Palette.widget`, not from a room
+  // of their own (see theme/v2.ts). Screens that set their own Room still win
+  // inside.
   return (
-    <Room room={shellForRole(role) === 'ft' ? 'ft' : 'queue'}>
+    <Room room={roomForRole(role)}>
       <RoleTabs />
     </Room>
   );
@@ -83,15 +85,15 @@ function RoleTabs() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: c.roomInk,
-        tabBarInactiveTintColor: c.roomInk3,
+        tabBarActiveTintColor: c.room.ink,
+        tabBarInactiveTintColor: c.room.ink3,
         tabBarShowLabel: false,
         tabBarStyle:
           // The trainee's shell has no bar at all: the queue is the screen, and
           // ☰ carries everything else.
           shell === 'queue'
             ? { display: 'none' }
-            : { backgroundColor: c.room, borderTopColor: c.roomChip, borderTopWidth: 1 },
+            : { backgroundColor: c.room.bg, borderTopColor: c.room.chip, borderTopWidth: 1 },
       }}
     >
       <Tabs.Screen
@@ -113,8 +115,8 @@ function RoleTabs() {
           tabBarIcon: button('Messages'),
           tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
           tabBarBadgeStyle: {
-            backgroundColor: c.window,
-            color: c.onWindow,
+            backgroundColor: c.card.window,
+            color: c.card.onWindow,
             fontFamily: font.bold,
             fontSize: fs(10),
           },

@@ -102,7 +102,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 
   if (data.error || (!data.loading && !data.contact)) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <BackRow onBack={back} note="" />
         <View style={{ paddingHorizontal: 14 }}>
           <V2Empty>{data.error || "We can't find this person."}</V2Empty>
@@ -113,9 +113,9 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 
   if (data.loading || !data.contact) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <BackRow onBack={back} note="" />
-        <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
+        <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
       </SafeAreaView>
     );
   }
@@ -125,7 +125,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const lastTime = lastTimeLine(story[0]);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <BackRow onBack={back} note={contactCareLine(data.inYourCare, contact.createdByName)} />
 
       <ScrollView
@@ -134,15 +134,15 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         keyboardShouldPersistTaps="handled"
       >
         {/* ── the hero ─────────────────────────────────────────────────── */}
-        <View style={{ backgroundColor: c.card, borderRadius: radius.hero, padding: 20, ...shadow.soft }}>
+        <View style={{ backgroundColor: c.card.bg, borderRadius: radius.hero, padding: 20, ...shadow.soft }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
             <PersonMark name={contact.name} id={contact.id} size={60} radius={21} fontSize={19} />
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: font.extra, fontSize: fs(25), lineHeight: fs(28), letterSpacing: -0.875, color: c.cardInk }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(25), lineHeight: fs(28), letterSpacing: -0.875, color: c.card.ink }}>
                 {contact.name}
               </Text>
               {!![contact.year, contact.major].filter(Boolean).length && (
-                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 5 }}>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 5 }}>
                   {[contact.year, contact.major].filter(Boolean).join(' · ')}
                 </Text>
               )}
@@ -155,18 +155,18 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 width: 9,
                 height: 9,
                 borderRadius: 3,
-                backgroundColor: c.tones[stageToneKey(data.stages, contact.stage)].dot,
+                backgroundColor: c.card.tones[stageToneKey(data.stages, contact.stage)].dot,
               }}
             />
-            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.cardInk2 }}>{contact.stage}</Text>
-            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.border }}>·</Text>
-            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.cardInk2 }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.ink2 }}>{contact.stage}</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.border }}>·</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.ink2 }}>
               {contactConnectedLine(lastTouchDays)}
             </Text>
           </View>
 
           {!!lastTime && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2, marginTop: 10 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.card.ink2, marginTop: 10 }}>
               {lastTime}
             </Text>
           )}
@@ -192,7 +192,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         {tab === 'story' && (
           <View style={{ gap: 10 }}>
             {data.interactionsLoading ? (
-              <ActivityIndicator color={c.roomInk2} style={{ marginTop: 20 }} />
+              <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
             ) : story.length === 0 ? (
               <V2Empty>{`Nothing logged with ${first} yet. Even a text counts.`}</V2Empty>
             ) : (
@@ -224,7 +224,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
               onPress={() => setShowDetails(!showDetails)}
               style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4, opacity: pressed ? 0.6 : 1 })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.roomInk2 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.room.ink2 }}>
                 {showDetails ? 'Hide the details' : 'Details, notes, how to reach them'}
               </Text>
             </Pressable>
@@ -244,7 +244,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             {canWrite && <PrimaryButton title={`Pray for ${first}`} tone="deep" onPress={() => setSheet('pray')} />}
 
             {data.prayersLoading ? (
-              <ActivityIndicator color={c.roomInk2} style={{ marginTop: 20 }} />
+              <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
             ) : data.prayers.length === 0 ? (
               <V2Empty>Nothing written down yet.</V2Empty>
             ) : null}
@@ -337,16 +337,16 @@ function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
           height: 44,
           paddingHorizontal: 15,
           borderRadius: 15,
-          backgroundColor: c.roomChip,
+          backgroundColor: c.room.chip,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>← Back</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
       </Pressable>
       {!!note && (
-        <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.roomInk3, marginLeft: 'auto' }} numberOfLines={1}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.room.ink3, marginLeft: 'auto' }} numberOfLines={1}>
           {note}
         </Text>
       )}
@@ -383,14 +383,14 @@ function HeroAction({
         height: 48,
         borderRadius: radius.note,
         borderWidth: 1.5,
-        borderColor: dark ? c.cardInk : c.border,
-        backgroundColor: dark ? c.cardInk : 'transparent',
+        borderColor: dark ? c.card.ink : c.card.border,
+        backgroundColor: dark ? c.card.ink : 'transparent',
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.4 : pressed ? 0.7 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: dark ? c.card : c.cardInk }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: dark ? c.card.bg : c.card.ink }}>{label}</Text>
     </Pressable>
   );
 }
@@ -417,9 +417,9 @@ function StoryCard({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   return (
-    <View style={{ backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 18, paddingVertical: 16 }}>
+    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingVertical: 16 }}>
       <Kicker>{storyRowLine(interaction, meUid)}</Kicker>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.said, marginTop: 10 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.card.said, marginTop: 10 }}>
         {interaction.content}
       </Text>
 
@@ -427,13 +427,13 @@ function StoryCard({
         onPress={onToggle}
         style={({ pressed }) => ({ minHeight: 44, justifyContent: 'flex-end', paddingTop: 14, paddingBottom: 2, opacity: pressed ? 0.6 : 1 })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
           {open ? 'Hide' : threadCount ? `Alongside · ${threadCount}` : 'Think this through together'}
         </Text>
       </Pressable>
 
       {open && (
-        <View style={{ borderTopWidth: 1, borderTopColor: c.line, marginTop: 8, paddingTop: 14, gap: 10 }}>
+        <View style={{ borderTopWidth: 1, borderTopColor: c.card.line, marginTop: 8, paddingTop: 14, gap: 10 }}>
           {children}
         </View>
       )}
@@ -461,7 +461,7 @@ function PrayerCard({
   return (
     <View
       style={{
-        backgroundColor: done ? c.card2 : c.card,
+        backgroundColor: done ? c.card.bg2 : c.card.bg,
         borderRadius: radius.tile,
         paddingHorizontal: 18,
         paddingVertical: 16,
@@ -474,14 +474,14 @@ function PrayerCard({
           fontSize: fs(16),
           lineHeight: fs(20.8),
           letterSpacing: -0.4,
-          color: done ? c.cardInk2 : c.cardInk,
+          color: done ? c.card.ink2 : c.card.ink,
           marginTop: 10,
         }}
       >
         {prayer.burden}
       </Text>
       {!!prayer.answer && (
-        <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.cardInk2, marginTop: 7 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.card.ink2, marginTop: 7 }}>
           {prayer.answer}
         </Text>
       )}
@@ -495,13 +495,13 @@ function PrayerCard({
               flex: 1,
               minHeight: 46,
               borderRadius: 15,
-              backgroundColor: prayed ? c.deep : c.tones.pray.band,
+              backgroundColor: prayed ? c.card.deep : c.card.tones.pray.band,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.75 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.onDeep : c.tones.pray.text }}>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.card.onDeep : c.card.tones.pray.text }}>
               {prayed ? 'Prayed ✓' : 'I prayed just now'}
             </Text>
           </Pressable>
@@ -512,13 +512,13 @@ function PrayerCard({
               paddingHorizontal: 18,
               borderRadius: 15,
               borderWidth: 1.5,
-              borderColor: c.border,
+              borderColor: c.card.border,
               alignItems: 'center',
               justifyContent: 'center',
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk2 }}>Answered</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink2 }}>Answered</Text>
           </Pressable>
         </View>
       )}
@@ -540,11 +540,11 @@ function Details({
   const tags = contact.tags ?? [];
 
   return (
-    <View style={{ backgroundColor: c.card, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 }}>
+    <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 }}>
       {!!contact.notes && (
-        <View style={{ backgroundColor: c.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
+        <View style={{ backgroundColor: c.card.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
           <Kicker>First impression</Kicker>
-          <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.noteInk, marginTop: 7 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}>
             {contact.notes}
           </Text>
         </View>
@@ -553,8 +553,8 @@ function Details({
       {tags.length > 0 && (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 14, marginBottom: 4 }}>
           {tags.map((tag) => (
-            <View key={tag} style={{ backgroundColor: c.note, borderRadius: radius.chip, paddingHorizontal: 13, paddingVertical: 7 }}>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.cardInk2 }}>{tag}</Text>
+            <View key={tag} style={{ backgroundColor: c.card.note, borderRadius: radius.chip, paddingHorizontal: 13, paddingVertical: 7 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.card.ink2 }}>{tag}</Text>
             </View>
           ))}
         </View>
@@ -594,12 +594,12 @@ function DetailRow({ label, value, onPress }: { label: string; value?: string | 
         minHeight: 48,
         paddingVertical: 14,
         borderTopWidth: 1,
-        borderTopColor: c.line,
+        borderTopColor: c.card.line,
         opacity: pressed && onPress ? 0.6 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk3 }}>{label}</Text>
-      <Text style={{ flex: 1, fontFamily: font.semi, fontSize: fs(14), color: onPress ? c.link : c.cardInk, textAlign: 'right' }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink3 }}>{label}</Text>
+      <Text style={{ flex: 1, fontFamily: font.semi, fontSize: fs(14), color: onPress ? c.card.link : c.card.ink, textAlign: 'right' }}>
         {value}
       </Text>
     </Pressable>

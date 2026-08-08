@@ -45,7 +45,7 @@ export function FromTeam({
                       width: 7,
                       height: 7,
                       borderRadius: 4,
-                      backgroundColor: c.tones.follow.dot,
+                      backgroundColor: c.card.tones.follow.dot,
                     }}
                   />
                 )}
@@ -55,7 +55,7 @@ export function FromTeam({
                     fontFamily: font.bold,
                     fontSize: fs(15),
                     lineHeight: fs(20),
-                    color: c.cardInk,
+                    color: c.widget.ink,
                   }}
                 >
                   {row.headline}
@@ -67,7 +67,7 @@ export function FromTeam({
                     fontFamily: font.medium,
                     fontSize: fs(13),
                     lineHeight: fs(18),
-                    color: c.cardInk2,
+                    color: c.widget.ink2,
                     marginTop: 4,
                   }}
                   numberOfLines={3}

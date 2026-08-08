@@ -35,10 +35,10 @@ export function ReplySheet({
   return (
     <Sheet visible={!!message} onClose={onClose} maxHeightRatio={0.7} {...v2SheetChrome(c)}>
       <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.card.ink }}>
           Write back to {who}
         </Text>
-        <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.card.ink3, marginTop: 7 }}>
           {replyDestinationLine(contactName)}
         </Text>
 
@@ -46,20 +46,20 @@ export function ReplySheet({
           value={body}
           onChangeText={setBody}
           placeholder="Say it how you'd say it out loud."
-          placeholderTextColor={c.cardInk3}
+          placeholderTextColor={c.card.ink3}
           multiline
           style={{
             marginTop: 16,
             minHeight: 104,
-            backgroundColor: c.field,
+            backgroundColor: c.card.field,
             borderWidth: 1.5,
-            borderColor: c.line,
+            borderColor: c.card.line,
             borderRadius: radius.note,
             paddingVertical: 14,
             paddingHorizontal: 15,
             fontFamily: font.semi,
             fontSize: fs(15),
-            color: c.cardInk,
+            color: c.card.ink,
             textAlignVertical: 'top',
           }}
         />

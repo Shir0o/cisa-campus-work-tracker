@@ -324,10 +324,10 @@ function LogSheetBody({
 
   const head = (title: string, sub: string) => (
     <>
-      <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.card.ink }}>
         {title}
       </Text>
-      <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.card.ink3, marginTop: 7 }}>
         {sub}
       </Text>
     </>
@@ -380,11 +380,11 @@ function LogSheetBody({
                           paddingLeft: 7,
                           paddingRight: 14,
                           borderRadius: radius.chip,
-                          backgroundColor: c.card2,
+                          backgroundColor: c.card.bg2,
                         }}
                       >
                         <PersonMark name={person.name} id={person.id} size={26} radius={13} fontSize={10} />
-                        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.cardInk2 }}>
+                        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.ink2 }}>
                           {firstName(person.name)}
                         </Text>
                       </Pressable>
@@ -399,7 +399,7 @@ function LogSheetBody({
                     fontFamily: font.semi,
                     fontSize: fs(12),
                     lineHeight: fs(17),
-                    color: c.cardInk3,
+                    color: c.card.ink3,
                     marginTop: 20,
                   }}
                 >
@@ -557,7 +557,7 @@ function LogSheetBody({
                 ))}
               </View>
               {matches.length === 0 && (
-                <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.cardInk3, marginTop: 14 }}>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink3, marginTop: 14 }}>
                   No one by that name yet.
                 </Text>
               )}
@@ -616,18 +616,18 @@ function LogSheetBody({
                     width: 34,
                     height: 34,
                     borderRadius: 17,
-                    backgroundColor: c.green,
+                    backgroundColor: c.card.green,
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.onGreen }}>✓</Text>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.onGreen }}>✓</Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.4, color: c.cardInk }}>
+                  <Text style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.4, color: c.card.ink }}>
                     {saved.head}
                   </Text>
-                  <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.cardInk3, marginTop: 4 }}>
+                  <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3, marginTop: 4 }}>
                     {saved.sub}
                   </Text>
                 </View>
@@ -730,7 +730,7 @@ function LogSheetBody({
                     opacity: pressed ? 0.6 : 1,
                   })}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
                     Open {firstName(saved.contactName)}'s page →
                   </Text>
                 </Pressable>
@@ -769,14 +769,14 @@ function Disclosure({
         paddingVertical: 12,
         marginTop: 14,
         borderRadius: radius.note,
-        backgroundColor: c.card2,
+        backgroundColor: c.card.bg2,
         opacity: pressed ? 0.75 : 1,
       })}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.cardInk }}>{label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>{label}</Text>
         {!!sub && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.cardInk3, marginTop: 3 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.card.ink3, marginTop: 3 }}>
             {sub}
           </Text>
         )}
@@ -788,7 +788,7 @@ function Disclosure({
           height: 9,
           borderRightWidth: 2,
           borderBottomWidth: 2,
-          borderColor: c.cardInk3,
+          borderColor: c.card.ink3,
           transform: [{ rotate: open ? '-135deg' : '45deg' }, { translateY: open ? 2 : -2 }],
         }}
       />
@@ -810,13 +810,13 @@ function DoneRow({ head, sub }: { head: string; sub: string }) {
         paddingVertical: 12,
         marginTop: 14,
         borderRadius: radius.note,
-        backgroundColor: c.note,
+        backgroundColor: c.card.note,
       }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.green }}>✓</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.green }}>✓</Text>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.noteInk }}>{head}</Text>
-        <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.cardInk3, marginTop: 3 }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.noteInk }}>{head}</Text>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.card.ink3, marginTop: 3 }}>
           {sub}
         </Text>
       </View>
@@ -857,7 +857,7 @@ function Tile({
         gap: 10,
         padding: 14,
         borderRadius: radius.tile,
-        backgroundColor: c.card2,
+        backgroundColor: c.card.bg2,
         opacity: pressed ? 0.75 : 1,
       })}
     >
@@ -866,7 +866,7 @@ function Tile({
           width: 38,
           height: 38,
           borderRadius: 13,
-          backgroundColor: c.inverse,
+          backgroundColor: c.card.inverse,
           alignItems: 'center',
           justifyContent: 'center',
           flexDirection: 'row',
@@ -875,17 +875,17 @@ function Tile({
       >
         {icon === 'new' ? (
           <>
-            <View style={{ position: 'absolute', width: 15, height: 2.5, borderRadius: 2, backgroundColor: c.onInverse }} />
-            <View style={{ position: 'absolute', width: 2.5, height: 15, borderRadius: 2, backgroundColor: c.onInverse }} />
+            <View style={{ position: 'absolute', width: 15, height: 2.5, borderRadius: 2, backgroundColor: c.card.onInverse }} />
+            <View style={{ position: 'absolute', width: 2.5, height: 15, borderRadius: 2, backgroundColor: c.card.onInverse }} />
           </>
         ) : (
           [0, 1, 2].map((i) => (
-            <View key={i} style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.onInverse }} />
+            <View key={i} style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c.card.onInverse }} />
           ))
         )}
       </View>
-      <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.cardInk }}>{label}</Text>
-      <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.cardInk3 }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.card.ink }}>{label}</Text>
+      <Text style={{ fontFamily: font.semi, fontSize: fs(12), lineHeight: fs(16), color: c.card.ink3 }}>
         {caption}
       </Text>
     </Pressable>
@@ -905,11 +905,11 @@ function Chip({ label, on, onPress }: { label: string; on: boolean; onPress: () 
         paddingHorizontal: 14,
         borderRadius: radius.chip,
         borderWidth: 1.5,
-        borderColor: on ? c.inverse : c.border,
-        backgroundColor: on ? c.inverse : 'transparent',
+        borderColor: on ? c.card.inverse : c.card.border,
+        backgroundColor: on ? c.card.inverse : 'transparent',
       }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: on ? c.onInverse : c.cardInk2 }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: on ? c.card.onInverse : c.card.ink2 }}>
         {label}
       </Text>
     </Pressable>

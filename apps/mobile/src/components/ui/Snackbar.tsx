@@ -52,7 +52,7 @@ export function Snackbar({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
-          backgroundColor: c.inverse,
+          backgroundColor: c.card.inverse,
           borderRadius: radius.note,
           paddingVertical: 12,
           paddingHorizontal: 16,
@@ -61,11 +61,11 @@ export function Snackbar({
       ]}
     >
       <View style={{ flex: 1 }}>
-        <Text style={{ fontFamily: font.semi, fontSize: fs(13.5), color: c.onInverse }}>{message}</Text>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(13.5), color: c.card.onInverse }}>{message}</Text>
       </View>
       {actionLabel && onAction ? (
         <Pressable onPress={onAction} hitSlop={8}>
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.onInverse }}>{actionLabel}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.onInverse }}>{actionLabel}</Text>
         </Pressable>
       ) : null}
     </Animated.View>

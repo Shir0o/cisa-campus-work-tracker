@@ -59,7 +59,7 @@ function QuickTile({
   dark?: boolean;
   onPress: () => void;
 }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
     <Pressable
       onPress={onPress}
@@ -67,12 +67,12 @@ function QuickTile({
         flex: 1,
         minHeight: 92,
         justifyContent: 'center',
-        backgroundColor: dark ? c.inverse : c.card,
+        backgroundColor: dark ? c.card.inverse : c.widget.bg,
         borderRadius: radius.tile,
         paddingVertical: 15,
         paddingHorizontal: 15,
         opacity: pressed ? 0.85 : 1,
-        ...shadow.soft,
+        ...c.widget.shadow,
       })}
     >
       <Text
@@ -81,7 +81,7 @@ function QuickTile({
           fontSize: fs(15.5),
           lineHeight: fs(21),
           letterSpacing: -0.4,
-          color: dark ? c.onInverse : c.cardInk,
+          color: dark ? c.card.onInverse : c.widget.ink,
         }}
       >
         {title}
@@ -90,7 +90,7 @@ function QuickTile({
         style={{
           fontFamily: font.semi,
           fontSize: fs(12.5),
-          color: dark ? c.onInverse : c.cardInk3,
+          color: dark ? c.card.onInverse : c.widget.ink3,
           opacity: dark ? 0.72 : 1,
           marginTop: 3,
         }}
@@ -149,14 +149,14 @@ function FtHome() {
 
   if (data.loading) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room, justifyContent: 'center' }}>
-        <ActivityIndicator color={c.roomInk2} />
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg, justifyContent: 'center' }}>
+        <ActivityIndicator color={c.room.ink2} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 18,
@@ -171,7 +171,7 @@ function FtHome() {
             style={{
               fontFamily: font.semi,
               fontSize: fs(13),
-              color: c.tones.follow.text,
+              color: c.card.tones.follow.text,
             }}
           >
             {data.error}
@@ -187,7 +187,7 @@ function FtHome() {
                 fontSize: fs(10.5),
                 letterSpacing: 1.26,
                 textTransform: 'uppercase',
-                color: c.roomInk3,
+                color: c.room.ink3,
               }}
             >
               {format(new Date(), 'EEEE, MMMM d')}
@@ -198,7 +198,7 @@ function FtHome() {
                 fontSize: fs(28),
                 lineHeight: fs(32),
                 letterSpacing: -0.9,
-                color: c.roomInk,
+                color: c.room.ink,
                 marginTop: 6,
               }}
             >
@@ -209,7 +209,7 @@ function FtHome() {
                 fontFamily: font.medium,
                 fontSize: fs(14.5),
                 lineHeight: fs(21),
-                color: c.roomInk2,
+                color: c.room.ink2,
                 marginTop: 8,
               }}
             >
@@ -289,7 +289,7 @@ function FtHome() {
             fontFamily: font.medium,
             fontSize: fs(12.5),
             lineHeight: fs(18),
-            color: c.roomFaint,
+            color: c.room.faint,
             marginTop: 2,
           }}
         >

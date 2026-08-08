@@ -61,7 +61,7 @@ function StepPill({
         paddingVertical: 11,
         paddingHorizontal: 14,
         borderRadius: 16,
-        backgroundColor: active ? c.inverse : c.card2,
+        backgroundColor: active ? c.card.inverse : c.card.bg2,
         opacity: pressed ? 0.75 : 1,
       })}
     >
@@ -70,15 +70,15 @@ function StepPill({
           width: 8,
           height: 8,
           borderRadius: 3,
-          backgroundColor: c.tones[tone].dot,
+          backgroundColor: c.card.tones[tone].dot,
           opacity: active ? 1 : 0.55,
         }}
       />
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 7, marginTop: 8 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: active ? c.onInverse : c.cardInk2 }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: active ? c.card.onInverse : c.card.ink2 }}>
           {tab.label}
         </Text>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(12), color: active ? c.onInverse : c.cardInk3 }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(12), color: active ? c.card.onInverse : c.card.ink3 }}>
           {tab.count}
         </Text>
       </View>
@@ -117,13 +117,13 @@ function Journey() {
         : undefined;
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
         title="The Journey"
         note={`${data.totalCount} ${data.totalCount === 1 ? 'person' : 'people'}`}
         onBack={isPushedScreen(role, 'journey') ? back : undefined}
       >
-        <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.roomInk2, marginBottom: 14 }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.room.ink2, marginBottom: 14 }}>
           From a first hello toward a church home. Nobody walks it on a schedule.
         </Text>
 
@@ -149,7 +149,7 @@ function Journey() {
 
         <View style={{ marginTop: 16 }}>
           {data.loading ? (
-            <ActivityIndicator color={c.roomInk2} style={{ marginTop: 20 }} />
+            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
           ) : data.error ? (
             <V2Empty>{data.error}</V2Empty>
           ) : data.items.length === 0 ? (
@@ -163,7 +163,7 @@ function Journey() {
                   colorSeed={leader.contact.id}
                   sub={[leader.contact.year, leader.contact.major].filter(Boolean).join(' · ') || undefined}
                   note={noteFor(leader)}
-                  dot={c.tones[stageToneKey(data.mobileStages, leader.contact.stage)].dot}
+                  dot={c.card.tones[stageToneKey(data.mobileStages, leader.contact.stage)].dot}
                   rightText={touchWords(leader.days)}
                   onPress={() => router.push(`/contact/${leader.contact.id}`)}
                 />

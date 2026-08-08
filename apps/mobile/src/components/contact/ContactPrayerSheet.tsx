@@ -49,10 +49,10 @@ function ContactPrayerSheetBody({ visible, contactName, room, onSave, onClose }:
     <Sheet visible={visible} onClose={onClose} maxHeightRatio={0.85} {...v2SheetChrome(c)}>
       <Room room={room}>
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
-          <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.cardInk }}>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.card.ink }}>
             Pray for {firstName(contactName)}
           </Text>
-          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.cardInk3, marginTop: 7 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(13), lineHeight: fs(18), color: c.card.ink3, marginTop: 7 }}>
             Short is fine. You're the one who'll read it back.
           </Text>
 

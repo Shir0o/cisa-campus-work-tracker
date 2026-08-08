@@ -36,13 +36,13 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
         justifyContent: 'center',
         paddingHorizontal: 14,
         borderRadius: radius.chip,
-        backgroundColor: prayed ? c.tones.pray.band : 'transparent',
+        backgroundColor: prayed ? c.card.tones.pray.band : 'transparent',
         borderWidth: prayed ? 0 : 1,
-        borderColor: c.border,
+        borderColor: c.card.border,
         opacity: pressed ? 0.65 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: prayed ? c.tones.pray.text : c.cardInk2 }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: prayed ? c.card.tones.pray.text : c.card.ink2 }}>
         {prayed ? 'Prayed ✓' : 'I prayed'}
       </Text>
     </Pressable>
@@ -64,9 +64,9 @@ function FtPrayerLog() {
     return (
       <SafeAreaView
         edges={['top']}
-        style={{ flex: 1, backgroundColor: c.room, alignItems: 'center', justifyContent: 'center' }}
+        style={{ flex: 1, backgroundColor: c.room.bg, alignItems: 'center', justifyContent: 'center' }}
       >
-        <ActivityIndicator color={c.roomInk2} />
+        <ActivityIndicator color={c.room.ink2} />
       </SafeAreaView>
     );
   }
@@ -74,14 +74,14 @@ function FtPrayerLog() {
   const open = (row: FtCarryRow) => row.contactId && router.push(`/contact/${row.contactId}`);
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
         title="Prayer log"
         note={`${rows.length} ${rows.length === 1 ? 'prayer' : 'prayers'} we're carrying`}
         onBack={back}
       >
         {rows.length === 0 && (
-          <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.roomInk3, paddingVertical: 20 }}>
+          <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.room.ink3, paddingVertical: 20 }}>
             Nothing open right now.
           </Text>
         )}

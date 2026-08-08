@@ -24,13 +24,13 @@ export function FtMoreScreen() {
 }
 
 function FtMore() {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { user, role, isOwner } = useAuth();
   const router = useRouter();
   const { open: openImpersonateSheet } = useImpersonateSheet();
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 32 }}>
         <View style={{ paddingTop: 14, paddingBottom: 22 }}>
           <Text
@@ -39,7 +39,7 @@ function FtMore() {
               fontSize: fs(10.5),
               letterSpacing: 1.26,
               textTransform: 'uppercase',
-              color: c.roomInk3,
+              color: c.room.ink3,
             }}
           >
             {roleLabel(role)}
@@ -50,7 +50,7 @@ function FtMore() {
               fontSize: fs(28),
               lineHeight: fs(32),
               letterSpacing: -0.9,
-              color: c.roomInk,
+              color: c.room.ink,
               marginTop: 6,
             }}
           >
@@ -61,7 +61,7 @@ function FtMore() {
               fontFamily: font.medium,
               fontSize: fs(14.5),
               lineHeight: fs(21),
-              color: c.roomInk2,
+              color: c.room.ink2,
               marginTop: 8,
             }}
           >
@@ -69,7 +69,7 @@ function FtMore() {
           </Text>
         </View>
 
-        <View style={{ backgroundColor: c.card, borderRadius: radius.tile, ...shadow.soft }}>
+        <View style={{ backgroundColor: c.widget.bg, borderRadius: radius.tile, ...c.widget.shadow }}>
           {FT_MORE.map((item, i) => (
             <Pressable
               key={item.key}
@@ -80,11 +80,11 @@ function FtMore() {
                 minHeight: 58,
                 paddingHorizontal: 18,
                 borderTopWidth: i === 0 ? 0 : 1,
-                borderTopColor: c.line,
+                borderTopColor: c.widget.line,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk, flex: 1 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
                 {item.label}
               </Text>
               {/* Drawn, not a glyph — v2's rule about text marks in tinted blocks. */}
@@ -94,7 +94,7 @@ function FtMore() {
                   height: 9,
                   borderRightWidth: 2,
                   borderTopWidth: 2,
-                  borderColor: c.cardInk3,
+                  borderColor: c.widget.ink3,
                   transform: [{ rotate: '45deg' }],
                 }}
               />
@@ -109,11 +109,11 @@ function FtMore() {
                 minHeight: 58,
                 paddingHorizontal: 18,
                 borderTopWidth: 1,
-                borderTopColor: c.line,
+                borderTopColor: c.widget.line,
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.cardInk, flex: 1 }}>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
                 See it as they do
               </Text>
               <View
@@ -122,7 +122,7 @@ function FtMore() {
                   height: 9,
                   borderRightWidth: 2,
                   borderTopWidth: 2,
-                  borderColor: c.cardInk3,
+                  borderColor: c.widget.ink3,
                   transform: [{ rotate: '45deg' }],
                 }}
               />
@@ -135,7 +135,7 @@ function FtMore() {
             fontFamily: font.medium,
             fontSize: fs(13),
             lineHeight: fs(19),
-            color: c.roomFaint,
+            color: c.room.faint,
             marginTop: 22,
           }}
         >

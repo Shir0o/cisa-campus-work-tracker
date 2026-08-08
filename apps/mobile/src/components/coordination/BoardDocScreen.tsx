@@ -30,7 +30,7 @@ function DocBody({ doc }: { doc: BoardDoc }) {
   const elements = useMarkdown(doc.md?.trim() ? doc.md : '_This page is empty._', {
     colorScheme: mode,
     theme: {
-      colors: { text: c.cardInk, link: c.link, code: c.cardInk2, border: c.line },
+      colors: { text: c.card.ink, link: c.card.link, code: c.card.ink2, border: c.card.line },
     },
   });
   return (
@@ -51,19 +51,19 @@ function BoardDoc({ docId }: { docId: string }) {
   const title = data.doc ? weekdayOf(data.doc.date) || data.doc.title : 'The Board';
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen title={title} note={data.doc ? dateLabelOf(data.doc.date) : undefined} onBack={back}>
         {data.error || (!data.loading && !data.doc) ? (
           <V2Empty>{data.error || "This page couldn't be found."}</V2Empty>
         ) : !data.allowed ? (
           <V2Empty>This page isn't open to your role.</V2Empty>
         ) : data.loading || !data.doc ? (
-          <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
+          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 2 }}>
               <AudiencePill doc={data.doc} />
-              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.roomInk3 }}>
+              <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.room.ink3 }}>
                 {BOARD_AUDIENCE[audienceOf(data.doc)].sub}
               </Text>
             </View>
@@ -74,14 +74,14 @@ function BoardDoc({ docId }: { docId: string }) {
                 paddingHorizontal: 16,
                 paddingVertical: 6,
                 borderRadius: radius.hero,
-                backgroundColor: c.card,
+                backgroundColor: c.card.bg,
               }}
             >
               <DocBody doc={data.doc} />
             </View>
 
             <Text
-              style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: 22 }}
+              style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.room.ink3, marginTop: 22 }}
             >
               {boardKeeperFoot(data.keeperName)}
             </Text>

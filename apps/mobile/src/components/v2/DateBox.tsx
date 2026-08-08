@@ -24,7 +24,7 @@ export function V2DateBox({ label, dates }: { label: string; dates: QueueDate[] 
   if (dates.length === 0) return null;
 
   return (
-    <View style={{ backgroundColor: c.datebox, borderRadius: 24, padding: 18 }}>
+    <View style={{ backgroundColor: c.room.datebox, borderRadius: 24, padding: 18 }}>
       <Kicker onRoom>{label}</Kicker>
       {dates.map((d, i) => {
         const day = dayOf(d.date);
@@ -37,23 +37,23 @@ export function V2DateBox({ label, dates }: { label: string; dates: QueueDate[] 
               marginTop: i === 0 ? 16 : 14,
               paddingTop: i === 0 ? 0 : 14,
               borderTopWidth: i === 0 ? 0 : 1,
-              borderTopColor: c.dateboxLine,
+              borderTopColor: c.room.dateboxLine,
             }}
           >
             <View style={{ width: 48, alignItems: 'center' }}>
-              <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.5, color: c.roomInk }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.5, color: c.room.ink }}>
                 {day.num}
               </Text>
               <Text
-                style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.95, color: c.roomInk3, marginTop: 5 }}
+                style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.95, color: c.room.ink3, marginTop: 5 }}
               >
                 {day.mon}
               </Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.roomInk }}>{d.title}</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.room.ink }}>{d.title}</Text>
               <Text
-                style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.roomInk3, marginTop: 4 }}
+                style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.room.ink3, marginTop: 4 }}
               >
                 {[day.weekday, d.sub].filter(Boolean).join(' · ')}
               </Text>

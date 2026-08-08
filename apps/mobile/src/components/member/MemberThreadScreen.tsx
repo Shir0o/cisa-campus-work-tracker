@@ -51,7 +51,7 @@ function MemberThread({ roomId }: { roomId: string }) {
   };
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View
         style={{
           flexDirection: 'row',
@@ -66,17 +66,17 @@ function MemberThread({ roomId }: { roomId: string }) {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.roomInk2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
-            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.roomInk }}
+            style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.room.ink }}
           >
             {name || 'Loading…'}
           </Text>
           {isGroupish && (
-            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.roomInk3 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
               {data.room!.type === 'announcement'
                 ? 'Announcement'
                 : `${data.room!.memberIds.length} people`}
@@ -95,7 +95,7 @@ function MemberThread({ roomId }: { roomId: string }) {
           showsVerticalScrollIndicator={false}
         >
           {data.error ? (
-            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.tones.follow.text }}>
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>
               {data.error}
             </Text>
           ) : data.dayGroups.length === 0 && !data.loading ? (
@@ -104,7 +104,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 fontFamily: font.medium,
                 fontSize: fs(14.5),
                 lineHeight: fs(21),
-                color: c.roomInk2,
+                color: c.room.ink2,
                 textAlign: 'center',
                 paddingVertical: 24,
               }}
@@ -120,7 +120,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                     fontSize: fs(10.5),
                     letterSpacing: 1.26,
                     textTransform: 'uppercase',
-                    color: c.roomInk3,
+                    color: c.room.ink3,
                     textAlign: 'center',
                     marginVertical: 8,
                   }}
@@ -135,7 +135,9 @@ function MemberThread({ roomId }: { roomId: string }) {
                       style={{
                         alignSelf: mine ? 'flex-end' : 'flex-start',
                         maxWidth: '82%',
-                        backgroundColor: mine ? c.primary : c.card,
+                        // `.mbr-bub` / `.mbr-bub.mine` — the widget layer's own
+                        // pair, not the room's primary button
+                        backgroundColor: mine ? c.widget.mine : c.widget.bg,
                         borderRadius: radius.note,
                         paddingHorizontal: 14,
                         paddingVertical: 11,
@@ -146,7 +148,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                           style={{
                             fontFamily: font.bold,
                             fontSize: fs(11.5),
-                            color: c.cardInk3,
+                            color: c.widget.ink3,
                             marginBottom: 3,
                           }}
                         >
@@ -158,7 +160,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                           fontFamily: font.medium,
                           fontSize: fs(15),
                           lineHeight: fs(21),
-                          color: mine ? c.onPrimary : c.said,
+                          color: mine ? c.widget.onMine : c.widget.ink,
                         }}
                       >
                         {m.text}
@@ -185,20 +187,20 @@ function MemberThread({ roomId }: { roomId: string }) {
               value={text}
               onChangeText={setText}
               placeholder="Say it how you'd say it out loud."
-              placeholderTextColor={c.cardInk3}
+              placeholderTextColor={c.card.ink3}
               multiline
               style={{
                 flex: 1,
                 maxHeight: 110,
                 minHeight: 48,
-                backgroundColor: c.card,
+                backgroundColor: c.card.bg,
                 borderRadius: radius.note,
                 paddingHorizontal: 14,
                 paddingVertical: 12,
                 fontFamily: font.medium,
                 fontSize: fs(15),
                 lineHeight: fs(21),
-                color: c.cardInk,
+                color: c.card.ink,
               }}
             />
             <Pressable
@@ -208,13 +210,13 @@ function MemberThread({ roomId }: { roomId: string }) {
                 height: 48,
                 paddingHorizontal: 20,
                 borderRadius: radius.button,
-                backgroundColor: c.primary,
+                backgroundColor: c.card.primary,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.onPrimary }}>Send</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.onPrimary }}>Send</Text>
             </Pressable>
           </View>
         ) : (
@@ -224,7 +226,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 fontFamily: font.medium,
                 fontSize: fs(13.5),
                 lineHeight: fs(20),
-                color: c.roomInk3,
+                color: c.room.ink3,
                 textAlign: 'center',
               }}
             >

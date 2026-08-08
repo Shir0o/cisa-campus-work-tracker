@@ -51,7 +51,7 @@ export function FtSech({
           fontSize: fs(10.5),
           letterSpacing: 1.26,
           textTransform: 'uppercase',
-          color: c.roomInk3,
+          color: c.room.ink3,
         }}
       >
         {label}
@@ -63,11 +63,11 @@ export function FtSech({
             paddingHorizontal: 6,
             paddingVertical: 2,
             borderRadius: radius.chip,
-            backgroundColor: c.roomChip,
+            backgroundColor: c.room.chip,
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.roomInk2 }}>{count}</Text>
+          <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: c.room.ink2 }}>{count}</Text>
         </View>
       )}
       {!!link && onLink && (
@@ -79,7 +79,7 @@ export function FtSech({
             opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.roomInk2 }}>{link}</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.room.ink2 }}>{link}</Text>
         </Pressable>
       )}
     </View>
@@ -109,7 +109,7 @@ export function FtWidget({
       <FtSech label={label} count={count} link={link} onLink={onLink} />
       <View
         style={{
-          backgroundColor: tone === 'deep' ? c.tones.pray.band : c.card,
+          backgroundColor: tone === 'deep' ? c.card.tones.pray.band : c.card.bg,
           borderRadius: radius.tile,
           paddingVertical: 6,
           paddingHorizontal: 16,
@@ -130,7 +130,7 @@ export function FtRow({ first, children }: { first: boolean; children: React.Rea
       style={{
         paddingVertical: 14,
         borderTopWidth: first ? 0 : 1,
-        borderTopColor: c.line,
+        borderTopColor: c.card.line,
       }}
     >
       {children}
@@ -151,7 +151,7 @@ export function FtAction({ label, onPress }: { label: string; onPress: () => voi
         opacity: pressed ? 0.55 : 1,
       })}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.link }}>{label}</Text>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>{label}</Text>
     </Pressable>
   );
 }
@@ -165,7 +165,7 @@ export function FtEmpty({ children }: { children: string }) {
         fontFamily: font.semi,
         fontSize: fs(14),
         lineHeight: fs(20),
-        color: c.cardInk3,
+        color: c.card.ink3,
         paddingVertical: 16,
       }}
     >

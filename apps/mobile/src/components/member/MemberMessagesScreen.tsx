@@ -23,7 +23,7 @@ export function MemberMessagesScreen({ role }: { role: MemberRole }) {
 }
 
 function MemberMessages({ role }: { role: MemberRole }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { uid } = useAuth();
   const router = useRouter();
   const data = useMessagesData();
@@ -49,7 +49,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
 
       <View style={{ gap: 10 }}>
         {data.rooms.length === 0 && (
-          <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.roomInk2 }}>
+          <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}>
             Nothing yet.
           </Text>
         )}
@@ -66,24 +66,24 @@ function MemberMessages({ role }: { role: MemberRole }) {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 12,
-                backgroundColor: c.card,
+                backgroundColor: c.widget.bg,
                 borderRadius: radius.tile,
                 padding: 14,
                 opacity: pressed ? 0.85 : 1,
-                ...shadow.soft,
+                ...c.widget.shadow,
               })}
             >
               <PersonMark name={name} id={room.id} size={40} radius={13} fontSize={14} />
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text
                   numberOfLines={1}
-                  style={{ fontFamily: font.extra, fontSize: fs(15), color: c.cardInk }}
+                  style={{ fontFamily: font.extra, fontSize: fs(15), color: c.widget.ink }}
                 >
                   {name}
                 </Text>
                 <Text
                   numberOfLines={1}
-                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk2, marginTop: 2 }}
+                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink2, marginTop: 2 }}
                 >
                   {last
                     ? `${last.senderId === uid ? 'You' : firstName(last.senderName)}: ${last.text}`
@@ -91,7 +91,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
                 </Text>
               </View>
               <View style={{ alignItems: 'flex-end', gap: 5 }}>
-                <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.cardInk3 }}>
+                <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.widget.ink3 }}>
                   {last ? memberAgo(last.timestamp as string | null) : ''}
                 </Text>
                 {unread && (
@@ -100,7 +100,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
                       width: 8,
                       height: 8,
                       borderRadius: 4,
-                      backgroundColor: c.tones.follow.dot,
+                      backgroundColor: c.card.tones.follow.dot,
                     }}
                   />
                 )}

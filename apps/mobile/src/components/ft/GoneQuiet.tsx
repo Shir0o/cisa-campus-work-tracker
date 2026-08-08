@@ -43,7 +43,7 @@ export function GoneQuiet({
                   fontFamily: font.bold,
                   fontSize: fs(15.5),
                   lineHeight: fs(20),
-                  color: c.cardInk,
+                  color: c.widget.ink,
                 }}
               >
                 {l.contact.name}
@@ -52,7 +52,7 @@ export function GoneQuiet({
                 style={{
                   fontFamily: font.medium,
                   fontSize: fs(13),
-                  color: c.cardInk2,
+                  color: c.widget.ink2,
                   marginTop: 3,
                 }}
               >

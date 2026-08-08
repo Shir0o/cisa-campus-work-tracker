@@ -24,7 +24,7 @@ export function AllTodayList({
   const { c, font, radius, fs } = useV2Theme();
 
   return (
-    <View style={{ flex: 1, backgroundColor: c.room }}>
+    <View style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
         <Pressable
           onPress={onBack}
@@ -32,17 +32,17 @@ export function AllTodayList({
             height: 44,
             paddingHorizontal: 15,
             borderRadius: 15,
-            backgroundColor: c.roomChip,
+            backgroundColor: c.room.chip,
             alignItems: 'center',
             justifyContent: 'center',
           }}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.roomInk2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
         </Pressable>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.45, color: c.roomInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(18), letterSpacing: -0.45, color: c.room.ink }}>
           Everything today
         </Text>
-        <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.roomInk3, marginLeft: 'auto' }}>
+        <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.room.ink3, marginLeft: 'auto' }}>
           {allTodayCount(cards.length)}
         </Text>
       </View>
@@ -52,7 +52,7 @@ export function AllTodayList({
         showsVerticalScrollIndicator={false}
       >
         {cards.map((card, i) => {
-          const tone = c.tones[card.tone];
+          const tone = c.card.tones[card.tone];
           return (
             <Pressable
               key={card.id}
@@ -61,23 +61,23 @@ export function AllTodayList({
                 flexDirection: 'row',
                 gap: 12,
                 alignItems: 'flex-start',
-                backgroundColor: c.card,
+                backgroundColor: c.card.bg,
                 borderRadius: radius.row,
                 paddingVertical: 15,
                 paddingHorizontal: 17,
                 borderWidth: 2,
-                borderColor: card.id === currentId ? c.reactOnBorder : 'transparent',
+                borderColor: card.id === currentId ? c.card.reactOnBorder : 'transparent',
                 minHeight: 60,
               }}
             >
               <View style={{ width: 10, height: 10, borderRadius: 3, marginTop: 5, backgroundColor: tone.dot }} />
               <View style={{ flex: 1 }}>
                 <Text
-                  style={{ fontFamily: font.extra, fontSize: fs(15), lineHeight: fs(20), letterSpacing: -0.3, color: c.cardInk }}
+                  style={{ fontFamily: font.extra, fontSize: fs(15), lineHeight: fs(20), letterSpacing: -0.3, color: c.card.ink }}
                 >
                   {card.title}
                 </Text>
-                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 4 }}>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 4 }}>
                   {[card.label, card.ago].filter(Boolean).join(' · ')}
                 </Text>
               </View>
@@ -90,7 +90,7 @@ export function AllTodayList({
             style={{
               fontFamily: font.semi,
               fontSize: fs(12.5),
-              color: c.roomFaint,
+              color: c.room.faint,
               marginTop: 14,
               marginHorizontal: 4,
             }}
@@ -105,12 +105,12 @@ export function AllTodayList({
               fontFamily: font.semi,
               fontSize: fs(12.5),
               lineHeight: fs(18),
-              color: c.roomFaint,
+              color: c.room.faint,
               marginTop: 14,
               marginHorizontal: 4,
               paddingTop: 12,
               borderTopWidth: 1,
-              borderTopColor: c.roomChip,
+              borderTopColor: c.room.chip,
             }}
           >
             {heldForTomorrowLine(held)}

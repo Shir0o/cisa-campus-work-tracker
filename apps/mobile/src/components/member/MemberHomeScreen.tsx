@@ -40,7 +40,7 @@ export function MemberHomeScreen({ role }: { role: MemberRole }) {
 }
 
 function MemberHome({ role }: { role: MemberRole }) {
-  const { c, font, radius, shadow, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { uid, user } = useAuth();
   const router = useRouter();
   const data = useMemberHomeData(uid, user?.displayName ?? null);
@@ -84,14 +84,14 @@ function MemberHome({ role }: { role: MemberRole }) {
         ) : (
           <View
             style={{
-              backgroundColor: c.card,
+              backgroundColor: c.widget.bg,
               borderRadius: radius.tile,
               padding: 20,
-              ...shadow.soft,
+              ...c.widget.shadow,
             }}
           >
             <Text
-              style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}
+              style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.widget.ink2 }}
             >
               Nothing on the calendar just yet — check back soon.
             </Text>
@@ -127,18 +127,19 @@ function MemberHome({ role }: { role: MemberRole }) {
           <Pressable
             onPress={() => openInvite(next)}
             style={({ pressed }) => ({
-              backgroundColor: c.card,
+              // the design's `.mbr-inv` is the quiet tile, not the card
+              backgroundColor: c.widget.tile,
               borderRadius: radius.tile,
               padding: 18,
               opacity: pressed ? 0.85 : 1,
-              ...shadow.soft,
+              ...c.widget.shadow,
             })}
           >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.cardInk }}>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
               Bring someone with you
             </Text>
             <Text
-              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.cardInk3, marginTop: 3 }}
+              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
             >
               An invitation you can send in a text
             </Text>

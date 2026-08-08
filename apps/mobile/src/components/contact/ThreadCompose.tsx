@@ -32,8 +32,8 @@ export function ThreadCompose({
   const [body, setBody] = useState('');
 
   const chip = onRoom
-    ? { on: c.inverse, onInk: c.onInverse, off: c.roomChip, offInk: c.roomInk2, edge: 'transparent' }
-    : { on: c.primary, onInk: c.onPrimary, off: c.field, offInk: c.cardInk2, edge: c.border };
+    ? { on: c.card.inverse, onInk: c.card.onInverse, off: c.room.chip, offInk: c.room.ink2, edge: 'transparent' }
+    : { on: c.card.primary, onInk: c.card.onPrimary, off: c.card.field, offInk: c.card.ink2, edge: c.card.border };
 
   const send = () => {
     const said = body.trim();

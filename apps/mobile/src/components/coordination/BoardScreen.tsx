@@ -38,7 +38,7 @@ export function BoardScreen() {
 export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
   const { c, font, radius, fs } = useV2Theme();
   const audience = audienceOf(doc);
-  const tone = c.tones[AUDIENCE_TONE_KEY[audience]];
+  const tone = c.card.tones[AUDIENCE_TONE_KEY[audience]];
   return (
     <View
       style={{
@@ -72,27 +72,27 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
         paddingVertical: 12,
         marginTop: 9,
         borderRadius: radius.row,
-        backgroundColor: c.card,
+        backgroundColor: c.card.bg,
         opacity: pressed ? 0.75 : 1,
       })}
     >
       <View style={{ width: 42, alignItems: 'center' }}>
-        <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.5, color: c.cardInk }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.5, color: c.card.ink }}>
           {dayNum(doc.date)}
         </Text>
         <Text
-          style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.9, color: c.cardInk3, marginTop: 4 }}
+          style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.9, color: c.card.ink3, marginTop: 4 }}
         >
           {weekdayShort(doc.date).toUpperCase()}
         </Text>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.cardInk }} numberOfLines={2}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.card.ink }} numberOfLines={2}>
           {doc.title}
         </Text>
         {!!line && (
           <Text
-            style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.cardInk3, marginTop: 3 }}
+            style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}
             numberOfLines={1}
           >
             {line}
@@ -114,16 +114,16 @@ function Board() {
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   return (
-    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room }}>
+    <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen title="The Board" note={boardCountNote(data.total)} onBack={back}>
         <Text
-          style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.roomInk3, marginBottom: 6 }}
+          style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.room.ink3, marginBottom: 6 }}
         >
           What the team talked through, and what came out of it. Open a page to read it.
         </Text>
 
         {data.loading ? (
-          <ActivityIndicator color={c.roomInk2} style={{ marginTop: 28 }} />
+          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : data.sections.length === 0 ? (
@@ -140,7 +140,7 @@ function Board() {
         )}
 
         <Text
-          style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.roomInk3, marginTop: 26 }}
+          style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.room.ink3, marginTop: 26 }}
         >
           Pages are written and kept on the desktop site.
         </Text>

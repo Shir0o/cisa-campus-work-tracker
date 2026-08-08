@@ -32,6 +32,9 @@ export function PrayersToCarry({
   const { c, font, radius, fs } = useV2Theme();
   const shown = rows.slice(0, FT_WIDGET_ROWS);
   return (
+    // Everything below sits on `.ftw.deep`'s violet, so it wears that block's
+    // own ink (#f2eef8) rather than the `pray` tone pill's — which is a dark
+    // violet meant for a pale band and disappears here.
     <Widget
       label="Prayers to carry"
       count={rows.length}
@@ -49,7 +52,7 @@ export function PrayersToCarry({
                 fontFamily: font.bold,
                 fontSize: fs(15.5),
                 lineHeight: fs(21),
-                color: c.tones.pray.text,
+                color: c.widget.onDeep,
               }}
             >
               {row.burden}
@@ -58,7 +61,7 @@ export function PrayersToCarry({
               style={{
                 fontFamily: font.medium,
                 fontSize: fs(13),
-                color: c.tones.pray.text,
+                color: c.widget.onDeep,
                 opacity: 0.75,
                 marginTop: 3,
               }}
@@ -81,8 +84,11 @@ export function PrayersToCarry({
                   marginTop: 10,
                   borderRadius: radius.chip,
                   borderWidth: 1.5,
-                  borderColor: prayed ? 'transparent' : c.deep,
-                  backgroundColor: prayed ? c.card : 'transparent',
+                  // `.ftw-carry` / `.ftw-carry.on` — a hairline of the widget's
+                  // own ink on the violet, going to the semantic green once it's
+                  // been prayed.
+                  borderColor: prayed ? c.card.green : 'rgba(242,238,248,0.28)',
+                  backgroundColor: prayed ? c.card.green : 'transparent',
                   opacity: pressed ? 0.6 : 1,
                 })}
               >
@@ -90,7 +96,7 @@ export function PrayersToCarry({
                   style={{
                     fontFamily: font.bold,
                     fontSize: fs(13.5),
-                    color: prayed ? c.cardInk3 : c.deep,
+                    color: prayed ? c.card.onGreen : c.widget.onDeep,
                   }}
                 >
                   {prayed ? 'Prayed today ✓' : 'I prayed just now'}
@@ -107,7 +113,7 @@ export function PrayersToCarry({
                     opacity: pressed ? 0.55 : 1,
                   })}
                 >
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.tones.pray.text }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.widget.onDeep }}>
                     God answered this
                   </Text>
                 </Pressable>

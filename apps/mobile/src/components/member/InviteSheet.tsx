@@ -45,10 +45,10 @@ function InviteBody({
   const message = inviteMessage(event);
   return (
     <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
-      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.card.ink }}>
         Bring someone with you
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.card.ink2 }}>
         The easiest invitation is “come with me”.
       </Text>
       <Text
@@ -56,8 +56,8 @@ function InviteBody({
           fontFamily: font.medium,
           fontSize: fs(15),
           lineHeight: fs(22),
-          color: c.noteInk,
-          backgroundColor: c.note,
+          color: c.card.noteInk,
+          backgroundColor: c.card.note,
           borderRadius: radius.note,
           padding: 14,
         }}
@@ -84,17 +84,17 @@ function InviteBody({
         style={({ pressed }) => ({
           height: 54,
           borderRadius: radius.button,
-          backgroundColor: c.warm,
+          backgroundColor: c.card.warm,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.onWarm }}>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.card.onWarm }}>
           Send the invitation
         </Text>
       </Pressable>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.cardInk3 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.card.ink3 }}>
         Whoever you bring, someone on the team will look out for them.
       </Text>
     </View>

@@ -28,24 +28,24 @@ function Body({
   const [body, setBody] = React.useState('');
   return (
     <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
-      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.cardInk }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(21), letterSpacing: -0.6, color: c.card.ink }}>
         {title}
       </Text>
-      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.cardInk2 }}>
+      <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.card.ink2 }}>
         {sub}
       </Text>
       <TextInput
         value={body}
         onChangeText={setBody}
         placeholder={placeholder}
-        placeholderTextColor={c.cardInk3}
+        placeholderTextColor={c.card.ink3}
         multiline={multiline}
         autoFocus
         style={{
           borderWidth: 1.5,
-          borderColor: c.border,
+          borderColor: c.card.border,
           borderRadius: radius.note,
-          backgroundColor: c.field,
+          backgroundColor: c.card.field,
           paddingHorizontal: 14,
           paddingVertical: 12,
           minHeight: multiline ? 110 : 52,
@@ -53,7 +53,7 @@ function Body({
           fontFamily: font.medium,
           fontSize: fs(15),
           lineHeight: fs(22),
-          color: c.cardInk,
+          color: c.card.ink,
         }}
       />
       <Pressable
@@ -66,19 +66,19 @@ function Body({
         style={({ pressed }) => ({
           height: 54,
           borderRadius: radius.button,
-          backgroundColor: c.deep,
+          backgroundColor: c.card.deep,
           alignItems: 'center',
           justifyContent: 'center',
           opacity: !body.trim() ? 0.45 : pressed ? 0.85 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.onDeep }}>{cta}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(16.5), color: c.card.onDeep }}>{cta}</Text>
       </Pressable>
       <Pressable
         onPress={onClose}
         style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.cardInk3 }}>Not now</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>Not now</Text>
       </Pressable>
     </View>
   );
