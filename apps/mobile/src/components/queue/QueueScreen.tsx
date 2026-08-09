@@ -97,6 +97,9 @@ export function QueueScreen() {
     later: (id) => {
       queueState.pushLater(id);
       setIndex(0);
+      // Deferring the only card puts it back at the front — the queue can't
+      // advance, so the press would look dead. Say it plainly.
+      if (queue.length === 1) setToast('Moved to later.');
     },
     markDone: (taskId) => {
       void setTodoDone(taskId, true);

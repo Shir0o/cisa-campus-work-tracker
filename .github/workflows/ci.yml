@@ -26,3 +26,24 @@ jobs:
       - run: npm run lint
       - run: npm run test:coverage
       - run: npm run build
+
+  mobile-test:
+    name: Mobile Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: apps/mobile/package-lock.json
+      # apps/mobile is self-contained (its own lockfile + node_modules; the
+      # root's `npm ci` above doesn't touch it), so it installs and tests on
+      # its own. `npm ci` also runs the postinstall patch-package step.
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
