@@ -17,7 +17,6 @@ import { useRouter } from 'expo-router';
 import {
   impGroups,
   impScope,
-  roleLabel,
   visibleContacts,
   type AppUser,
   type Contact,
@@ -80,26 +79,6 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
       visibleContacts(target.role, target.persona?.staffId, contacts).length,
     );
 
-  // A legacy path only: `ownerViewRole` alone (no `impersonateTarget`) can
-  // only exist today from a pre-migration AsyncStorage value restored on
-  // mount (every live picker sets both together). There's no real target to
-  // build a scope from, so this is a fully-valid but nameless stand-in rather
-  // than an `as`-cast partial object.
-  const activeScope = impersonateTarget
-    ? scopeFor(impersonateTarget)
-    : impScope(
-        {
-          key: `role:${ownerViewRole ?? 'admin'}`,
-          name: roleLabel(ownerViewRole ?? 'admin'),
-          initials: '',
-          sub: '',
-          note: '',
-          role: ownerViewRole ?? 'admin',
-        },
-        contacts.length,
-        0,
-      );
-
   const closeAndOpenSheet = () => {
     setQuery('');
     setSheetOpen(true);
@@ -143,7 +122,6 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
           <ImpersonatePill
             name={impersonateTarget?.name}
             role={impersonateTarget?.role ?? ownerViewRole ?? 'admin'}
-            scope={activeScope}
             onSwitch={closeAndOpenSheet}
             onExit={exit}
           />

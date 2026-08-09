@@ -4,7 +4,7 @@
 //
 // No create affordance and no search — the design's list is what you're part
 // of, not a place you go looking. Starting a conversation is desktop work.
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -17,10 +17,12 @@ import {
   type ChatRoom,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
+import { SwipeToDelete } from './SwipeToDelete';
 
 export function MessagesScreen() {
   const { role } = useAuth();
@@ -60,7 +62,6 @@ function ConversationRow({
         minHeight: 68,
         paddingHorizontal: 14,
         paddingVertical: 12,
-        marginTop: 9,
         borderRadius: radius.row,
         backgroundColor: c.card.bg,
         opacity: pressed ? 0.75 : 1,
@@ -116,6 +117,13 @@ function Messages() {
   const { uid, role } = useAuth();
   const data = useMessagesData();
 
+  // "Delete for me" hides the room from this user's list only — anyone can do
+  // it, no admin step involved (see SwipeToDelete). The list only loads with a
+  // signed-in uid, so a null uid here just means the press is moot.
+  const hide = (room: ChatRoom) => {
+    if (uid) void hideChatRoomForUser(room.id, uid);
+  };
+
   // A tab for the full-timer, a drawer row for the trainee — only the one that
   // pushed here has somewhere to go back to.
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -141,16 +149,28 @@ function Messages() {
           <V2Empty>No conversations yet.</V2Empty>
         ) : (
           data.rooms.map((room) => (
-            <ConversationRow
-              key={room.id}
-              room={room}
-              name={getRoomName(room, uid, data.usersCache)}
-              preview={chatRowPreview(room, uid)}
-              unread={data.isUnread(room)}
-            />
+            <View key={room.id} style={styles.row}>
+              <SwipeToDelete onHide={() => hide(room)}>
+                <ConversationRow
+                  room={room}
+                  name={getRoomName(room, uid, data.usersCache)}
+                  preview={chatRowPreview(room, uid)}
+                  unread={data.isUnread(room)}
+                />
+              </SwipeToDelete>
+            </View>
           ))
         )}
       </V2Screen>
     </SafeAreaView>
   );
 }
+
+// The gap between conversation rows — moved off the row itself (it used to be
+// the row's own marginTop) so the swiped-open delete panel lines up with the
+// row's box instead of hanging 9px below it.
+const styles = StyleSheet.create({
+  row: {
+    marginTop: 9,
+  },
+});

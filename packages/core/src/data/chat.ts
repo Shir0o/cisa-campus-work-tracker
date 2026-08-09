@@ -249,6 +249,9 @@ export async function sendMessage(
       senderName: sender.displayName,
       timestamp: serverTimestamp(),
     },
+    // "Delete for me" is reversible: a new message brings the conversation
+    // back for whoever hid it (including the sender — they're active in it).
+    deletedFor: [],
   });
 
   if (opts?.onNotify && opts.memberIds) {
@@ -300,4 +303,16 @@ export async function leaveGroup(
     timestamp: serverTimestamp(),
     type: "system",
   });
+}
+
+/** "Delete for me": hides a conversation from ONE user's list. The room stays
+ *  intact for everyone else, and any user can do this to their own room (the
+ *  update rule lets members write it; the admin-only `delete` on rooms is not
+ *  involved). A new message clears `deletedFor` in sendMessage. */
+export async function hideChatRoomForUser(
+  db: Firestore,
+  roomId: string,
+  uid: string,
+): Promise<void> {
+  await updateDoc(doc(db, "chatRooms", roomId), { deletedFor: arrayUnion(uid) });
 }

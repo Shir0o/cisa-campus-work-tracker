@@ -153,6 +153,14 @@ describe('filterRooms', () => {
   it('returns all non-test rooms when the search is empty', () => {
     expect(filterRooms([room()], 'me', usersCache, '')).toHaveLength(1);
   });
+
+  it('hides a room the current user deleted for themselves', () => {
+    expect(filterRooms([room({ deletedFor: ['me'] })], 'me', usersCache, '')).toEqual([]);
+  });
+
+  it('keeps the room for everyone else', () => {
+    expect(filterRooms([room({ deletedFor: ['me'] })], 'them', usersCache, '')).toHaveLength(1);
+  });
 });
 
 describe('filterChatUsers', () => {

@@ -111,3 +111,14 @@ export async function leaveGroup(
     handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}`);
   }
 }
+
+/** Hides a conversation from ONE user's list — "delete for me". Nobody else
+ *  sees a change, and a new message in the room brings it back (core's
+ *  sendMessage clears `deletedFor`). Any member can do this to their own room. */
+export async function hideChatRoomForUser(roomId: string, uid: string): Promise<void> {
+  try {
+    await core.hideChatRoomForUser(db, roomId, uid);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}`);
+  }
+}

@@ -80,7 +80,9 @@ export function sortRoomsByRecency(rooms: ChatRoom[]): ChatRoom[] {
   return [...rooms].sort((a, b) => roomMs(b) - roomMs(a));
 }
 
-/** Excludes `cisa-` test-account rooms and applies the room-list search box. */
+/** Excludes `cisa-` test-account rooms, rooms the user deleted-for-themselves
+ *  (`.deletedFor`, see hideChatRoomForUser in ./data/chat), and applies the
+ *  room-list search box. */
 export function filterRooms(
   rooms: ChatRoom[],
   currentUid: string | null | undefined,
@@ -91,6 +93,7 @@ export function filterRooms(
   return rooms.filter((r) => {
     const name = getRoomName(r, currentUid, usersCache).toLowerCase();
     if (name.startsWith("cisa-")) return false;
+    if (currentUid && (r.deletedFor || []).includes(currentUid)) return false;
     return !needle || name.includes(needle);
   });
 }
