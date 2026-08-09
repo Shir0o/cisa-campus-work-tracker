@@ -440,10 +440,12 @@ service cloud.firestore {
       allow delete: if isManager() || isSuperAdmin();
     }
 
-    // 10a. Outreach — monthly park outings. Full-timers only, a deliberate
-    // change from the design (which let trainees and community members in).
-    // The record's NAMES are the point: logging an outreach creates the
-    // contacts + follow-up to-dos alongside it, via the contacts/tasks rules.
+    // 10a. Outreach — monthly park outings. Full-timers + the community folk
+    // who go out (they log the names; full-timers oversee). Trainees and
+    // students don't see it. The record's NAMES are the point: logging creates
+    // the contacts (open to any approved user) alongside, via the contacts
+    // rules; the follow-up to-dos ride the tasks rules (operator+, so a
+    // community logger's names just don't get auto-to-dos).
     match /outreach/{outreachId} {
       function isValidOutreach(data) {
         return data.date is string && data.date.size() <= 20 &&
@@ -455,8 +457,9 @@ service cloud.firestore {
                data.photoCount is int && data.photoCount >= 0 &&
                data.names is list;
       }
-      allow list, get: if isAdmin();
-      allow create, update: if isAdmin() && isValidOutreach(incoming());
+      allow list, get: if isAdmin() || hasRole('viewer');
+      allow create: if (isAdmin() || hasRole('viewer')) && isValidOutreach(incoming());
+      allow update: if isAdmin() && isValidOutreach(incoming());
       allow delete: if isAdmin();
     }
 

@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { Sheet } from '../ui';
 import {
+  canLogOutreach,
   firstName,
   outreachDayNum,
   outreachDaysSince,
@@ -25,7 +26,7 @@ import {
   type Touch,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
-import { useV2Theme, v2SheetChrome } from '../../theme/v2';
+import { roomForRole, useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room, V2Empty, V2Input, V2Screen, V2TextArea } from '../v2/Widget';
 import { useOutreachData } from '../../lib/useOutreachData';
 import { addOutreach, removeOutreach, takeOutreachName, updateOutreach } from '../../lib/data/outreach';
@@ -40,8 +41,12 @@ const WHEN_PRESETS = [
 ];
 
 export function OutreachScreen() {
+  const { role } = useAuth();
+  // The outreach screen is reached by two shells — the full-timer's navy room
+  // and, for community, the member app's green one — so it wears the room of
+  // whoever opened it, the same way the shared People/Journey screens do.
   return (
-    <Room room="ft">
+    <Room room={roomForRole(role)}>
       <Outreach />
     </Room>
   );
@@ -104,6 +109,7 @@ function Chip({ label, on, onPress }: { label: string; on?: boolean; onPress: ()
 function PendingRow({
   item,
   me,
+  isAdmin,
   onTake,
   onNudge,
   onOpen,
@@ -111,6 +117,9 @@ function PendingRow({
 }: {
   item: OutreachPendingItem;
   me: string;
+  /** Take / Remind write tasks + threads, which the rules keep operator+ —
+   * community (viewer) sees the queue and can open people, nothing more. */
+  isAdmin: boolean;
   onTake: (o: OutreachRecord, n: OutreachName) => void;
   onNudge: (o: OutreachRecord, n: OutreachName) => void;
   onOpen: (contactId: string) => void;
@@ -123,7 +132,7 @@ function PendingRow({
   const cold = days >= 7;
   const actions = (
     <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-      {n.spokeWith !== me && !n.takenBy && (
+      {isAdmin && n.spokeWith !== me && !n.takenBy && (
         <Pressable
           onPress={() => onNudge(o, n)}
           style={({ pressed }) => ({
@@ -141,7 +150,7 @@ function PendingRow({
           </Text>
         </Pressable>
       )}
-      {!n.takenBy && (
+      {isAdmin && !n.takenBy && (
         <Pressable
           onPress={() => onTake(o, n)}
           style={({ pressed }) => ({
@@ -215,6 +224,7 @@ function OutreachCard({
   onOpen,
   onEdit,
   onRemove,
+  isAdmin,
   touches,
   userById,
 }: {
@@ -224,6 +234,9 @@ function OutreachCard({
   onOpen: (contactId: string) => void;
   onEdit: () => void;
   onRemove: () => void;
+  /** Edit / Remove are admin-only (the rules keep outreach update/delete
+   * admin); community (viewer) reads the record and opens the people. */
+  isAdmin: boolean;
   touches: Touch[];
   userById: (id?: string | null) => AppUser | undefined;
 }) {
@@ -380,26 +393,28 @@ function OutreachCard({
             )}
           </View>
 
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14 }}>
-            <Pressable onPress={onEdit} hitSlop={8}>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink2 }}>Edit this one</Text>
-            </Pressable>
-            {confirm ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.card.ink3 }}>Remove it from the record?</Text>
-                <Pressable onPress={onRemove} hitSlop={8}>
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.tones.ask.text }}>Remove</Text>
-                </Pressable>
-                <Pressable onPress={() => setConfirm(false)} hitSlop={8}>
-                  <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink2 }}>Keep</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Pressable onPress={() => setConfirm(true)} hitSlop={8}>
-                <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink3 }}>Remove</Text>
+          {isAdmin && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 14 }}>
+              <Pressable onPress={onEdit} hitSlop={8}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink2 }}>Edit this one</Text>
               </Pressable>
-            )}
-          </View>
+              {confirm ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={{ fontFamily: font.semi, fontSize: fs(11), color: c.card.ink3 }}>Remove it from the record?</Text>
+                  <Pressable onPress={onRemove} hitSlop={8}>
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.tones.ask.text }}>Remove</Text>
+                  </Pressable>
+                  <Pressable onPress={() => setConfirm(false)} hitSlop={8}>
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink2 }}>Keep</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable onPress={() => setConfirm(true)} hitSlop={8}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(11.5), color: c.card.ink3 }}>Remove</Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       )}
     </View>
@@ -411,6 +426,7 @@ function OutreachLogSheet({
   item,
   me,
   userName,
+  canCreateTasks,
   goers,
   visible,
   onClose,
@@ -419,6 +435,9 @@ function OutreachLogSheet({
   item: OutreachRecord | null;
   me: string;
   userName: string;
+  /** The rules keep task creation operator+ — a community (viewer) logger's
+   * names still become contacts, just without the auto-to-do. */
+  canCreateTasks: boolean;
   goers: AppUser[];
   visible: boolean;
   onClose: () => void;
@@ -476,7 +495,7 @@ function OutreachLogSheet({
         });
         onSaved('Record updated.');
       } else {
-        await addOutreach(draft, { uid: me, name: userName });
+        await addOutreach(draft, { uid: me, name: userName, canCreateTasks });
         onSaved('Logged — the names are real people now.');
       }
     } finally {
@@ -660,10 +679,14 @@ function OutreachLogSheet({
 // ── the page ───────────────────────────────────────────────────────────────
 function Outreach() {
   const { c, font, fs } = useV2Theme();
-  const { uid, user } = useAuth();
+  const { uid, user, role } = useAuth();
   const router = useRouter();
   const me = uid || '';
   const userName = user?.displayName || 'Someone';
+  // Outreach is full-timer + community: both see and log (canLog); only the
+  // full-timer takes, nudges, edits or removes (admin-only writes in the rules).
+  const isAdmin = role === 'admin';
+  const canLog = canLogOutreach(role);
   const { loading, error, users, touches, pending, thisMonth, earlier, stats, userById } = useOutreachData();
   const [openId, setOpenId] = useState<string | null>(null);
   const [sheet, setSheet] = useState<{ mode: 'log' } | { mode: 'edit'; item: OutreachRecord } | null>(null);
@@ -722,7 +745,7 @@ function Outreach() {
       <V2Screen
         title="Outreach"
         note={last ? `Last out: ${outreachWhen(last.date)}` : 'Nothing written down yet'}
-        action={{ label: 'Log an outreach', onPress: () => setSheet({ mode: 'log' }) }}
+        action={canLog ? { label: 'Log an outreach', onPress: () => setSheet({ mode: 'log' }) } : undefined}
         onBack={back}
       >
         <View style={{ marginTop: 10 }}>
@@ -749,7 +772,7 @@ function Outreach() {
             <Kicker label="People we met, not yet reached" sub="A number given is a door held open. It doesn't stay open long." />
             <View style={{ gap: 10 }}>
               {pending.map((p) => (
-                <PendingRow key={p.name.id} item={p} me={me} onTake={take} onNudge={nudge} onOpen={openContact} userById={userById} />
+                <PendingRow key={p.name.id} item={p} me={me} isAdmin={isAdmin} onTake={take} onNudge={nudge} onOpen={openContact} userById={userById} />
               ))}
             </View>
           </>
@@ -774,6 +797,7 @@ function Outreach() {
                       onOpen={openContact}
                       onEdit={() => setSheet({ mode: 'edit', item: o })}
                       onRemove={() => remove(o)}
+                      isAdmin={isAdmin}
                       touches={touches}
                       userById={userById}
                     />
@@ -795,6 +819,7 @@ function Outreach() {
                       onOpen={openContact}
                       onEdit={() => setSheet({ mode: 'edit', item: o })}
                       onRemove={() => remove(o)}
+                      isAdmin={isAdmin}
                       touches={touches}
                       userById={userById}
                     />
@@ -837,6 +862,7 @@ function Outreach() {
           item={sheet.mode === 'edit' ? sheet.item : null}
           me={me}
           userName={userName}
+          canCreateTasks={isAdmin}
           goers={users}
           visible
           onClose={() => setSheet(null)}

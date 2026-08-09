@@ -26,6 +26,7 @@ import {
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { addTodo } from '../lib/todos';
 import { addThreadMessage } from '../lib/threads';
+import { canLogOutreach } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact } from '../types';
@@ -257,6 +258,7 @@ const initialsOf = (name?: string, fallback?: string) => getUserInitials(name) |
 function PendingRow({
   item,
   me,
+  isAdmin,
   onOpenContact,
   onTake,
   onNudge,
@@ -265,6 +267,9 @@ function PendingRow({
 }: {
   item: { o: OutreachRecord; n: OutreachName; days: number };
   me: string;
+  /** Take / Remind write tasks + threads, which the rules keep operator+ —
+   * community (viewer) sees the queue and can open people, nothing more. */
+  isAdmin: boolean;
   onOpenContact: (c: Contact) => void;
   onTake: (o: OutreachRecord, n: OutreachName) => void;
   onNudge: (o: OutreachRecord, n: OutreachName) => void;
@@ -303,12 +308,12 @@ function PendingRow({
         </div>
       </div>
       <div className="flex gap-2 flex-wrap">
-        {n.spokeWith !== me && !n.takenBy && (
+        {isAdmin && n.spokeWith !== me && !n.takenBy && (
           <button className={BTN_SM_GHOST} onClick={() => onNudge(o, n)}>
             Remind {otFirst(who?.displayName || n.spokeWith || 'them')}
           </button>
         )}
-        {!n.takenBy && (
+        {isAdmin && !n.takenBy && (
           <button className={BTN_SM_PRIMARY} onClick={() => onTake(o, n)}>
             I'll take this
           </button>
@@ -331,6 +336,7 @@ function OutreachCard({
   onOpenContact,
   onEdit,
   onRemove,
+  isAdmin,
   touches,
   contactById,
   userById,
@@ -341,6 +347,9 @@ function OutreachCard({
   onOpenContact: (c: Contact) => void;
   onEdit: () => void;
   onRemove: () => void;
+  /** Edit / Remove are admin-only (the rules keep outreach update/delete
+   * admin); community (viewer) reads the record and opens the people. */
+  isAdmin: boolean;
   touches: Touch[];
   contactById: (id?: string | null) => Contact | undefined;
   userById: (id?: string | null) => AppUser | undefined;
@@ -489,26 +498,28 @@ function OutreachCard({
             )}
           </div>
 
-          <div className="flex items-center gap-4 pt-1">
-            <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface" onClick={onEdit}>
-              <Pencil className="w-3 h-3" /> Edit this one
-            </button>
-            {confirm ? (
-              <span className="inline-flex items-center gap-2 text-xs text-on-surface-variant">
-                Remove it from the record?
-                <button className={cn(BTN_SM, 'bg-error text-on-error')} onClick={onRemove}>
-                  Remove
-                </button>
-                <button className={BTN_SM_GHOST} onClick={() => setConfirm(false)}>
-                  Keep
-                </button>
-              </span>
-            ) : (
-              <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-error" onClick={() => setConfirm(true)}>
-                <Trash2 className="w-3 h-3" /> Remove
+          {isAdmin && (
+            <div className="flex items-center gap-4 pt-1">
+              <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface" onClick={onEdit}>
+                <Pencil className="w-3 h-3" /> Edit this one
               </button>
-            )}
-          </div>
+              {confirm ? (
+                <span className="inline-flex items-center gap-2 text-xs text-on-surface-variant">
+                  Remove it from the record?
+                  <button className={cn(BTN_SM, 'bg-error text-on-error')} onClick={onRemove}>
+                    Remove
+                  </button>
+                  <button className={BTN_SM_GHOST} onClick={() => setConfirm(false)}>
+                    Keep
+                  </button>
+                </span>
+              ) : (
+                <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-error" onClick={() => setConfirm(true)}>
+                  <Trash2 className="w-3 h-3" /> Remove
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </article>
@@ -520,6 +531,7 @@ function LogOutreachModal({
   item,
   me,
   userName,
+  canCreateTasks,
   goers,
   onClose,
   onSaved,
@@ -527,6 +539,9 @@ function LogOutreachModal({
   item: OutreachRecord | null;
   me: string;
   userName: string;
+  /** The rules keep task creation operator+ — a community (viewer) logger's
+   * names still become contacts, just without the auto-to-do. */
+  canCreateTasks: boolean;
   goers: AppUser[];
   onClose: () => void;
   onSaved: () => void;
@@ -583,7 +598,7 @@ function LogOutreachModal({
           hasNewActivity: true,
           attendance: {},
         });
-        if (r.spokeWith) {
+        if (canCreateTasks && r.spokeWith) {
           await addTodo(
             { title: `Ring ${otFirst(trimmed)} — met at ${where.trim()}`, assigneeId: r.spokeWith, dueDate: dueTomorrow(), contactId: contactRef.id, contactName: trimmed },
             { uid: me, name: userName },
@@ -764,6 +779,10 @@ export default function Outreach() {
   const { user, role } = useAuth();
   const me = user?.uid || '';
   const userName = user?.displayName || 'Someone';
+  // Outreach is full-timer + community: both see and log (canLog); only the
+  // full-timer takes, nudges, edits or removes (admin-only writes in the rules).
+  const isAdmin = role === 'admin';
+  const canLog = canLogOutreach(role);
   const { loading, error, users, touches, contactById, userById, pending, thisMonth, earlier, stats } = useOutreachData();
   const [logOpen, setLogOpen] = useState(false);
   const [editing, setEditing] = useState<OutreachRecord | null>(null);
@@ -830,6 +849,7 @@ export default function Outreach() {
               onOpenContact={setSelectedContact}
               onEdit={() => setEditing(o)}
               onRemove={() => remove(o)}
+              isAdmin={isAdmin}
               touches={touches}
               contactById={contactById}
               userById={userById}
@@ -867,7 +887,7 @@ export default function Outreach() {
             )}
           </p>
         </div>
-        {role === 'admin' && (
+        {canLog && (
           <button className={BTN_PRIMARY} onClick={() => setLogOpen(true)}>
             <Plus className="w-4 h-4" /> Log an outreach
           </button>
@@ -882,7 +902,7 @@ export default function Outreach() {
           </div>
           <div className="flex flex-col gap-2.5">
             {pending.map((p) => (
-              <PendingRow key={p.n.id} item={p} me={me} onOpenContact={setSelectedContact} onTake={take} onNudge={nudge} contactById={contactById} userById={userById} />
+              <PendingRow key={p.n.id} item={p} me={me} isAdmin={isAdmin} onOpenContact={setSelectedContact} onTake={take} onNudge={nudge} contactById={contactById} userById={userById} />
             ))}
           </div>
         </section>
@@ -903,7 +923,7 @@ export default function Outreach() {
               <p className="text-on-surface-variant">
                 Nothing here yet. An outreach gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
               </p>
-              {role === 'admin' && (
+              {canLog && (
                 <button className={cn(BTN_PRIMARY, 'mt-4')} onClick={() => setLogOpen(true)}>
                   <Plus className="w-4 h-4" /> Log an outreach
                 </button>
@@ -934,6 +954,7 @@ export default function Outreach() {
           item={null}
           me={me}
           userName={userName}
+          canCreateTasks={isAdmin}
           goers={users}
           onClose={() => setLogOpen(false)}
           onSaved={() => {
@@ -947,6 +968,7 @@ export default function Outreach() {
           item={editing}
           me={me}
           userName={userName}
+          canCreateTasks={isAdmin}
           goers={users}
           onClose={() => setEditing(null)}
           onSaved={() => {

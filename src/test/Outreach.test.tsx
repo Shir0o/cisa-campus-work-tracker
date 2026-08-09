@@ -138,9 +138,10 @@ describe('Outreach', () => {
     expect(await screen.findByText(/Nothing here yet/)).toBeTruthy();
   });
 
-  it('is admin-only — trainees, students and community are locked out', () => {
+  it('is full-timer + community — trainees and students are locked out', () => {
     expect(canAccessRoute('admin', '/outreach')).toBe(true);
-    for (const role of ['manager', 'operator', 'viewer']) {
+    expect(canAccessRoute('viewer', '/outreach')).toBe(true);
+    for (const role of ['manager', 'operator']) {
       expect(canAccessRoute(role, '/outreach')).toBe(false);
     }
   });

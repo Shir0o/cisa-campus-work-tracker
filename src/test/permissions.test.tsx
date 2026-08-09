@@ -99,7 +99,7 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', 'https://shared-calendar-6u6.pages.dev/'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
     manager:  ['/', '/directory', '/board', '/messages', '/feedback'],
     admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', '/outreach', 'https://shared-calendar-6u6.pages.dev/'],

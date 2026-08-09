@@ -42,7 +42,10 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/directory': 'operator',
   '/history': 'manager',
   '/attendance': 'viewer',
-  '/outreach': 'admin',
+  // Outreach is admin + community — a deliberately non-ladder access, so
+  // `canAccessRoute` special-cases it below (viewer and admin only, never
+  // operator or manager). This entry only exists so the route has an entry.
+  '/outreach': 'viewer',
   '/prayer': 'viewer',
   '/answered': 'viewer',
   '/settings': 'viewer',
@@ -70,7 +73,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: 'https://shared-calendar-6u6.pages.dev/', label: 'Shared Calendar', minRole: 'viewer', isExternal: true },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
-  { href: '/outreach', label: 'Outreach', minRole: 'admin' },
+  { href: '/outreach', label: 'Outreach', minRole: 'viewer' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
   { href: '/answered', label: 'Answered', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },
@@ -80,6 +83,10 @@ export const NAV_ITEMS: NavItem[] = [
 
 export function canAccessRoute(role: AppRole | string | null, path: string): boolean {
   if (!role) return false;
+  // Outreach is full-timer + community — not a ladder: viewer and admin can,
+  // operator (student) and manager (trainee) cannot, even though a viewer-level
+  // min role would let them through. Keep it explicit here.
+  if (path === '/outreach') return role === 'admin' || role === 'viewer';
   if (role === 'manager') {
     const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
     return allowedTraineeRoutes.includes(path);
@@ -101,6 +108,13 @@ export const canSeeSettings = (role: AppRole | string | null) => role === 'admin
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
 export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
+// Outreach: full-timers + the community folk who go out and log the names
+// (the design's "community members go out and log these; full-timers oversee").
+// Trainees and students don't see it. Visits stays full-timer-only when built.
+export const canSeeOutreach = (role: AppRole | string | null) => role === 'admin' || role === 'viewer';
+export const canLogOutreach = (role: AppRole | string | null) => role === 'admin' || role === 'viewer';
+export const canSeeVisits = (role: AppRole | string | null) => role === 'admin';
+export const canLogVisits = (role: AppRole | string | null) => role === 'admin';
 export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
 
 export function canSeeContact(

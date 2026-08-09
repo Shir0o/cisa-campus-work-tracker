@@ -135,6 +135,32 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
           </View>
         </View>
 
+        {role === 'community' && (
+          <View>
+            <Sech label="Outreach" />
+            <Pressable
+              onPress={() => router.push('/outreach')}
+              style={({ pressed }) => ({
+                // the design's `.mbr-inv` quiet tile, like the student's invite
+                backgroundColor: c.widget.tile,
+                borderRadius: radius.tile,
+                padding: 18,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
+              })}
+            >
+              <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+                The monthly park outing
+              </Text>
+              <Text
+                style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+              >
+                Write down who came back with you — the names are the part that matters
+              </Text>
+            </Pressable>
+          </View>
+        )}
+
         <View>
           <Sech label="How it looks" />
           {/* Reads and writes ThemeProvider's own scheme — the one source of

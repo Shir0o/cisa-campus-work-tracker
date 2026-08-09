@@ -71,16 +71,19 @@ async function firstStageLabel(db: Firestore): Promise<string> {
   }
 }
 
-/** One filled name row → a real contact (and a follow-up to-do for whoever
- * spoke with them), the same intake→contact shape the log sheet and sign-up
- * use. Returns the new contact's id. */
+/** One filled name row → a real contact (and, when the logger may create
+ * tasks, a follow-up to-do for whoever spoke with them). The rules let anyone
+ * create contacts but keep task creation operator+ — so a community (viewer)
+ * logger passes `canCreateTasks: false` and the name still becomes a real
+ * contact, just without the auto-todo. Same intake→contact shape as the log
+ * sheet and sign-up. Returns the new contact's id. */
 async function nameToContact(
   db: Firestore,
   row: OutreachNameDraft,
   where: string,
   date: string,
   stage: string,
-  by: { uid?: string | null; name?: string | null },
+  by: { uid?: string | null; name?: string | null; canCreateTasks?: boolean },
 ): Promise<string> {
   const trimmed = row.name.trim();
   const isEmail = row.contact.includes("@");
@@ -101,7 +104,7 @@ async function nameToContact(
     createdAt: date,
   };
   const contactId = await addContact(db, input, by);
-  if (row.spokeWith) {
+  if (row.spokeWith && by.canCreateTasks !== false) {
     await addTodo(
       db,
       {
@@ -118,14 +121,16 @@ async function nameToContact(
 }
 
 /**
- * Log an outreach: create a contact + follow-up to-do per filled name row,
- * then write the record. `onNotify` (when given) forwards to addContact /
- * addTodo so each app supplies its own notification write.
+ * Log an outreach: create a contact per filled name row (and a follow-up
+ * to-do when `by.canCreateTasks !== false` — viewers can't create tasks, so
+ * the callers pass false for them), then write the record. `onNotify` (when
+ * given) forwards to addContact / addTodo so each app supplies its own
+ * notification write.
  */
 export async function addOutreach(
   db: Firestore,
   draft: OutreachDraft,
-  by: { uid?: string | null; name?: string | null },
+  by: { uid?: string | null; name?: string | null; canCreateTasks?: boolean },
   onNotify?: (payload: unknown) => void,
 ): Promise<string> {
   const stage = await firstStageLabel(db);

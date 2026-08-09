@@ -5,9 +5,9 @@
 // someone rings them, usually the next day.
 //
 // Ported from the design project (`views/outreach.jsx` + the outreach section
-// of `data.jsx`). One deliberate divergence: in the prototype trainees and
-// community members could see (and log) outreach; here only full-timers
-// (`admin`) can — see `canSeeOutreach` / `canLogOutreach` in permissions.ts.
+// of `data.jsx`). Access: full-timers + the community folk who go out — see
+// `canSeeOutreach` / `canLogOutreach` in permissions.ts (trainees and students
+// don't see it; the separate Visits page, when built, is full-timer-only).
 //
 // The Firestore writes live in `./data/outreach.ts` behind an injected `db`;
 // this file is the pure, testable part (derivations, dates, stats).

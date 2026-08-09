@@ -16,11 +16,12 @@ export function subscribeOutreach(
 const namesSummary = (names: string[]) =>
   names.length ? `${names.length} ${names.length === 1 ? 'person' : 'people'} left their number: ${names.join(', ')}.` : 'No names written down.';
 
-/** Log an outreach — every filled name becomes a real contact + a follow-up
- * to-do inside core.addOutreach. */
+/** Log an outreach — every filled name becomes a real contact inside
+ * core.addOutreach; the follow-up to-do only when the logger may create tasks
+ * (viewers can't, so their names log without the auto-todo). */
 export async function addOutreach(
   draft: core.OutreachDraft,
-  by: { uid?: string | null; name?: string | null },
+  by: { uid?: string | null; name?: string | null; canCreateTasks?: boolean },
 ): Promise<string | undefined> {
   try {
     const id = await core.addOutreach(db, draft, by);

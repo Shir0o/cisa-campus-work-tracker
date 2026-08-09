@@ -13,7 +13,7 @@ import {
   type OutreachRecord,
 } from '../src/outreach';
 import type { Touch } from '../src/myday';
-import { canSeeOutreach, canLogOutreach } from '../src/permissions';
+import { canSeeOutreach, canLogOutreach, canSeeVisits, canLogVisits } from '../src/permissions';
 
 const NOW = new Date('2026-07-13T12:00:00Z').getTime();
 const DAY_MS = 86_400_000;
@@ -136,13 +136,25 @@ describe('outreachStats', () => {
   });
 });
 
-describe('outreach permissions — full-timers only (a deliberate change from the design)', () => {
-  it('only admin can see or log outreach', () => {
-    expect(canSeeOutreach('admin')).toBe(true);
-    expect(canLogOutreach('admin')).toBe(true);
-    for (const role of ['manager', 'operator', 'viewer', null]) {
+describe('outreach permissions — full-timers + community', () => {
+  it('admin and community (viewer) can see and log outreach', () => {
+    for (const role of ['admin', 'viewer']) {
+      expect(canSeeOutreach(role)).toBe(true);
+      expect(canLogOutreach(role)).toBe(true);
+    }
+    // Trainees and students don't see it at all.
+    for (const role of ['manager', 'operator', null]) {
       expect(canSeeOutreach(role)).toBe(false);
       expect(canLogOutreach(role)).toBe(false);
+    }
+  });
+
+  it('visits stay full-timer-only when built', () => {
+    expect(canSeeVisits('admin')).toBe(true);
+    expect(canLogVisits('admin')).toBe(true);
+    for (const role of ['manager', 'operator', 'viewer', null]) {
+      expect(canSeeVisits(role)).toBe(false);
+      expect(canLogVisits(role)).toBe(false);
     }
   });
 });
