@@ -432,7 +432,7 @@ describe('OutreachBoard', () => {
     // Click column header menu for "First Contact"
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const renameBtn = screen.getByRole('button', { name: /Rename step/i });
@@ -470,7 +470,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
@@ -826,7 +826,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
@@ -870,7 +870,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const renameBtn = screen.getByRole('button', { name: /Rename step/i });
@@ -922,5 +922,55 @@ describe('OutreachBoard', () => {
     });
 
     confirmSpy.mockRestore();
+  });
+
+  it('skips persisting when a stage is dragged away and back to its original position', async () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: [] });
+    const { writeBatch } = await import('firebase/firestore');
+
+    const { container } = render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('First Contact');
+
+    const fiberKey = Object.keys(container.firstChild as any).find(
+      (k) => k.startsWith('__reactFiber') || k.startsWith('__reactInternalInstance')
+    );
+    const fiberNode = (container.firstChild as any)[fiberKey!];
+
+    function findDndContextProps(node: any): any {
+      let curr = node;
+      while (curr) {
+        if (curr.memoizedProps && curr.memoizedProps.onDragStart && curr.memoizedProps.onDragEnd) {
+          return curr.memoizedProps;
+        }
+        curr = curr.return;
+      }
+      return null;
+    }
+
+    const stageActive = { id: 'stage:s1', data: { current: { type: 'stage', stageId: 's1' } } };
+
+    act(() => {
+      findDndContextProps(fiberNode).onDragStart({ active: stageActive });
+    });
+    // Drag First Contact (s1) past Regular (s2) …
+    act(() => {
+      findDndContextProps(fiberNode).onDragOver({ active: stageActive, over: { id: 's2' } });
+    });
+    // … then back onto its own column: the logical order is unchanged.
+    act(() => {
+      findDndContextProps(fiberNode).onDragOver({ active: stageActive, over: { id: 's2' } });
+    });
+
+    const headings = screen.getAllByRole('heading', { level: 3 });
+    expect(headings[0]).toHaveTextContent('First Contact');
+
+    await act(async () => {
+      await findDndContextProps(fiberNode).onDragEnd({ active: stageActive, over: { id: 's2' } });
+    });
+
+    // No logical change → no batch write.
+    expect(writeBatch).not.toHaveBeenCalled();
   });
 });

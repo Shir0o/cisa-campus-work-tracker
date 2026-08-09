@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Filter,
+  GripVertical,
   MoreHorizontal,
   Plus,
   Settings2,
@@ -21,6 +22,7 @@ import {
   DragStartEvent,
   DragOverEvent,
   DragEndEvent,
+  useDraggable,
   defaultDropAnimationSideEffects,
   DropAnimation
 } from '@dnd-kit/core';
@@ -51,6 +53,7 @@ import {
   writeBatch
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -178,6 +181,15 @@ export default function OutreachBoard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
+  useEffect(() => { stagesRef.current = stages; }, [stages]);
+  // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
+  // stage drag; stagesBeforeDragRef remembers the pre-drag order so a failed
+  // persist can roll the optimistic reorder back.
+  const [activeStageId, setActiveStageId] = useState<string | null>(null);
+  const stagesBeforeDragRef = useRef<Stage[]>([]);
+  // Latest stages, kept in a ref so the drag-end handler (which may be invoked
+  // with a stale closure) always decides against the current order.
+  const stagesRef = useRef<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
 
@@ -470,12 +482,30 @@ export default function OutreachBoard() {
   );
 
   const handleDragStart = (event: DragStartEvent) => {
+    const dragData = event.active.data?.current as { type?: string; stageId?: string } | undefined;
+    if (dragData?.type === 'stage' && dragData.stageId) {
+      stagesBeforeDragRef.current = stages;
+      setActiveStageId(dragData.stageId);
+      setActiveId(null);
+      return;
+    }
     setActiveId(event.active.id as string);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
     const { active, over } = event;
     if (!over) return;
+
+    // Stage reorder (issue #211): hovering another column moves the dragged
+    // stage there, live, mirroring how contact drags preview their new column.
+    if (activeStageId) {
+      const overId = over.id as string;
+      const overStage = stages.find((s) => s.id === overId);
+      if (overStage && overStage.id !== activeStageId) {
+        setStages((prev) => applyStageReorder(prev, activeStageId, overStage.id));
+      }
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
@@ -515,6 +545,30 @@ export default function OutreachBoard() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+
+    // Stage reorder (issue #211): handleDragOver already moved the stage
+    // live, so the current `stages` state holds the final order — persist it.
+    if (activeStageId) {
+      const overId = over?.id as string | undefined;
+      setActiveStageId(null);
+      setActiveId(null);
+      if (!overId || overId === activeStageId) return;
+      const finalOrder = stagesRef.current;
+      // applyStageReorder always returns a fresh array, so reference equality
+      // can't tell "hovered and came back" from "actually moved" — compare the
+      // logical order instead, or a no-op drag rewrites the whole batch.
+      if (finalOrder.map((s) => s.id).join(',') === stagesBeforeDragRef.current.map((s) => s.id).join(',')) {
+        return;
+      }
+      try {
+        await persistStageOrder(finalOrder);
+      } catch (error) {
+        setStages(stagesBeforeDragRef.current);
+        handleFirestoreError(error, OperationType.UPDATE, 'stages');
+      }
+      return;
+    }
+
     const dragId = active.id as string;
 
     // We get the final stage from the contact in our local state
@@ -847,7 +901,13 @@ export default function OutreachBoard() {
         </AnimatePresence>
 
         <DragOverlay dropAnimation={dropAnimation}>
-          {activeId && activeContact ? (
+          {activeStageId ? (
+            <div className="w-[220px] rounded-2xl bg-surface-container-high border border-outline-variant/40 shadow-lg px-4 py-3 pointer-events-none">
+              <p className="font-serif text-[17px] text-on-surface truncate">
+                {stages.find((s) => s.id === activeStageId)?.label}
+              </p>
+            </div>
+          ) : activeId && activeContact ? (
             <div className="w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] rotate-3 scale-105 pointer-events-none">
               <InternalKanbanCard
                 contact={activeContact}
@@ -897,6 +957,15 @@ function KanbanColumn({
     id: stageInfo.id,
   });
 
+  // Issue #211 — the column header grip reorders the journey. Uses the outer
+  // DndContext (same one that moves contact cards between columns), tagged so
+  // the drag handlers can tell a stage drag from a contact drag.
+  const { attributes, listeners } = useDraggable({
+    id: `stage:${stageInfo.id}`,
+    data: { type: 'stage', stageId: stageInfo.id },
+    disabled: !isAdmin || stageInfo.id === 'uncategorized',
+  });
+
   const [showMenu, setShowMenu] = useState(false);
   const toneCx = tone ? TONE_CLASSES[tone] : null;
   const caption = captionFor(stageInfo.label);
@@ -924,9 +993,19 @@ function KanbanColumn({
         </div>
 
         {isAdmin && stageInfo.id !== 'uncategorized' && (
-          <div className="relative shrink-0">
+          <div className="relative shrink-0 flex items-center gap-1">
+            <button
+              {...attributes}
+              {...listeners}
+              aria-label={`Reorder ${stageInfo.label}`}
+              title="Drag to reorder"
+              className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant cursor-grab active:cursor-grabbing touch-none transition-colors"
+            >
+              <GripVertical className="w-4 h-4" />
+            </button>
             <button
               onClick={() => setShowMenu(!showMenu)}
+              aria-label="Stage options"
               className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
             >
               <MoreHorizontal className="w-4 h-4" />

@@ -5,6 +5,9 @@ This project is not version-tagged; entries are grouped by month. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed).
 
 ## [Unreleased]
+### Added
+- **The Journey — Drag to Reorder Stages (#211)** — Stage columns on `/board` can now be rearranged: admins get a grip handle in each column header (`aria-label="Reorder …"`), dragging a column over another moves it live, and the new order persists via a batched `order` rewrite (`src/lib/data/stages.ts`). All consumers (`orderBy('order')` on web and mobile core, directory filters, the header breakdown) follow the new order automatically. The stage menu button also gained an `aria-label` ("Stage options") so the header's two buttons are distinguishable.
+
 
 ### Added
 - **Visits — A Record of Having Gone to Where Someone Lives** — Ported the design project's `views/visits.jsx` (issue #200) into the app as a full-timer-only page at `/visits`. A visit is logged after the fact, usually by a pair, sometimes covering several people at once: who you saw, when, where, why you went, how it went, plus the two things a visit tends to leave behind — something to chase and something to carry. The page opens on the homes we haven't been round to in three weeks or more, longest-neglected first and capped at four; people never visited are deliberately excluded, because the nudge is about letting a relationship lapse, not about working through a backlog. Below that the record groups into This week / Last week / Earlier on Monday-start weeks, each visit expanding in place to read back. A quiet footer counts visits, people we've sat with, and how many of us have gone out — "counted only so we notice whose door we haven't knocked on".
