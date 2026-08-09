@@ -1,6 +1,8 @@
+import { useEffect, useContext } from 'react';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Text, View } from 'react-native';
-import { shellForRole, tabsForRole } from '@cisa/core';
+import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { tabsForRole } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
 import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
@@ -19,38 +21,133 @@ import { useMessagesData } from '../../src/lib/useMessagesData';
 // screens that need a back row when they're NOT a tab (people, journey) read
 // the same source rather than repeating the role checks.
 //
-// The bar wears the v2 room (the design's `.mbr-tabs`): words, not invented
-// icons, with a small active dot in the icon slot and a terracotta unread badge
-// on Messages.
+// The bar is the design's `.mbr-tabs` (mobile.css), rendered as a CUSTOM tab
+// bar: words, not invented icons, and the active tab is a soft PILL behind the
+// word — the old 5px dot above the label read as a rendering glitch, so the
+// design replaced it. react-navigation's default bar reserves a fixed 31×28
+// icon box and draws the icon twice for an active/inactive crossfade, which
+// can't hold a full-width pill — or a bar with no tabs at all, the trainee's
+// shell — so the bar is drawn here instead.
 
-/** One button: the design's 5px active dot over the word. Both live in the icon
- *  slot (`tabBarShowLabel` is off) — react-navigation reserves a fixed height
- *  for an icon and puts the label under it, which leaves a 5px dot floating
- *  with the word crushed against the floor of the bar. */
-function TabButton({ focused, color, label }: { focused: boolean; color: string; label: string }) {
-  const { font, fs } = useV2Theme();
+/** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
+ *  with a terracotta unread pill on Messages. */
+function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
+  const { c, font, fs, mode, room } = useV2Theme();
+  const { width } = useWindowDimensions();
+  const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
+
+  const isFt = room === 'ft';
+  const night = mode === 'dark';
+
+  // `.mbr-tabs button.on` — the active tab is a soft PILL behind the word. The
+  // full-timer's paper room re-inks it navy (`.m2.mem.ft.blue:not(.night)`:
+  // rgba(43,74,110,.09) on #2b4a6e); every other room keeps the base rule
+  // (rgba(238,241,233,.10) on the room ink).
+  const pill = isFt && !night ? 'rgba(43,74,110,0.09)' : 'rgba(238,241,233,0.10)';
+  const activeInk = isFt && !night ? '#2b4a6e' : c.room.ink;
+  // Resting ink is `--mb-ink4` — `room.ink3` by day, the night floor
+  // (`--n-ink4`, `room.faint`) after dark.
+  const idleInk = night ? c.room.faint : c.room.ink3;
+  // `.m2.mem.ft.blue:not(.night) .mbr-tabs` — the FT bar floats as a near-white
+  // strip over the paper room; everyone else wears the room itself.
+  const bar = isFt && !night
+    ? { backgroundColor: 'rgba(255,255,255,0.94)', borderTopColor: '#e0ddd8' }
+    : { backgroundColor: c.room.bg, borderTopColor: c.room.dateboxLine };
+
+  // Only the routes this role actually tabs render; the rest stay reachable by
+  // push and deep link (`href: null` on the screens below).
+  const routes = state.routes.filter((route) => tabNames.includes(route.name));
+
+  // The trainee's shell has no bar at all — report a zero height so the queue
+  // fills the screen instead of leaving the default 49px gap.
+  useEffect(() => {
+    if (routes.length === 0) onHeightChange?.(0);
+  }, [routes.length, onHeightChange]);
+  if (routes.length === 0) return null;
+
+  // `.mbr-tabs em` — `right: calc(50% - 28px)`: the pill's right edge sits
+  // 28px left of the button's centre, which tracks the tab width per screen.
+  const tabWidth = (width - 18 - 4 * (routes.length - 1)) / routes.length;
+  const badgeRight = Math.max(6, tabWidth / 2 - 28);
+
   return (
-    <View style={{ alignItems: 'center', gap: 5 }}>
-      <View
-        style={{
-          width: 5,
-          height: 5,
-          borderRadius: 3,
-          backgroundColor: focused ? color : 'transparent',
-        }}
-      />
-      <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), lineHeight: fs(16), color }} numberOfLines={1}>
-        {label}
-      </Text>
+    <View
+      style={[styles.bar, bar, { paddingBottom: 9 + insets.bottom }]}
+      onLayout={(e) => onHeightChange?.(e.nativeEvent.layout.height)}
+    >
+      {routes.map((route) => {
+        const { options } = descriptors[route.key];
+        const focused = state.index === state.routes.indexOf(route);
+        const label = (options.tabBarLabel as string | undefined) ?? options.title ?? route.name;
+        const badge = options.tabBarBadge;
+        return (
+          <Pressable
+            key={route.key}
+            onPress={() => {
+              const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+              if (!focused && !event.defaultPrevented) navigation.navigate(route.name, route.params);
+            }}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: focused }}
+            accessibilityLabel={label}
+            style={({ pressed }) => [styles.tab, focused && { backgroundColor: pill }, pressed && { opacity: 0.8 }]}
+          >
+            <Text
+              style={{
+                fontFamily: font.bold,
+                fontSize: fs(12),
+                letterSpacing: -0.12,
+                lineHeight: fs(16),
+                color: focused ? activeInk : idleInk,
+              }}
+              numberOfLines={1}
+            >
+              {label}
+            </Text>
+            {typeof badge === 'number' && badge > 0 && (
+              <View style={[styles.badge, { right: badgeRight }]}>
+                <Text style={{ fontFamily: font.extra, fontSize: fs(10), lineHeight: 17, color: '#fff', textAlign: 'center' }}>{badge}</Text>
+              </View>
+            )}
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
 
-const button =
-  (label: string) =>
-  ({ focused, color }: { focused: boolean; color: string }) => (
-    <TabButton focused={focused} color={color} label={label} />
-  );
+const styles = StyleSheet.create({
+  // `.mbr-tabs` — gap 4, 7px above the buttons, 9px sides and below
+  // (safe-area bottom added at render time), hairline on top.
+  bar: {
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingTop: 7,
+    borderTopWidth: 1,
+  },
+  // `.mbr-tabs button` — flex:1, 46 tall, the pill's 13px radius.
+  tab: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // `.mbr-tabs em` — the terracotta unread pill, top-right of the button.
+  badge: {
+    position: 'absolute',
+    top: 4,
+    // `right` is set at render time — the design's `calc(50% - 28px)`.
+    minWidth: 17,
+    height: 17,
+    borderRadius: 99,
+    paddingHorizontal: 4,
+    backgroundColor: '#c9622f',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
 
 export default function TabsLayout() {
   const { role } = useAuth();
@@ -66,11 +163,9 @@ export default function TabsLayout() {
 }
 
 function RoleTabs() {
-  const { c, font, fs } = useV2Theme();
   const { role } = useAuth();
   const messages = useMessagesData();
 
-  const shell = shellForRole(role);
   const tabs = tabsForRole(role);
   const titleOf = (name: string) => tabs.find((t) => t.name === name)?.title;
   // A tab this role doesn't have drops out of the bar — `href: null` keeps the
@@ -80,52 +175,28 @@ function RoleTabs() {
     const title = titleOf(name);
     return title ? { title, href: undefined } : { title: fallback, href: null };
   };
+  const tabNames = tabs.map((t) => t.name);
 
   return (
     <Tabs
+      // The design's `.mbr-tabs` — `tabBar` is a navigator-level config prop,
+      // not a screen option, so it sits on the navigator itself.
+      tabBar={(props) => <V2TabBar {...props} tabNames={tabNames} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: c.room.ink,
-        tabBarInactiveTintColor: c.room.ink3,
-        tabBarShowLabel: false,
-        tabBarStyle:
-          // The trainee's shell has no bar at all: the queue is the screen, and
-          // ☰ carries everything else.
-          shell === 'queue'
-            ? { display: 'none' }
-            : { backgroundColor: c.room.bg, borderTopColor: c.room.chip, borderTopWidth: 1 },
       }}
     >
-      <Tabs.Screen
-        name="index"
-        options={{
-          // Home is the one screen every shell keeps reachable — for the
-          // trainee it's the whole app, and the hidden bar is what makes the
-          // missing tabs invisible rather than `href: null`.
-          title: titleOf('index') ?? 'Today',
-          tabBarIcon: button(titleOf('index') ?? 'Today'),
-        }}
-      />
-      <Tabs.Screen name="people" options={{ ...slot('people', 'People'), tabBarIcon: button('People') }} />
-      <Tabs.Screen name="prayer" options={{ ...slot('prayer', 'Prayer'), tabBarIcon: button('Prayer') }} />
+      <Tabs.Screen name="index" options={{ title: titleOf('index') ?? 'Today' }} />
+      <Tabs.Screen name="people" options={slot('people', 'People')} />
+      <Tabs.Screen name="prayer" options={slot('prayer', 'Prayer')} />
       <Tabs.Screen
         name="messages"
         options={{
           ...slot('messages', 'Messages'),
-          tabBarIcon: button('Messages'),
           tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: c.card.window,
-            color: c.card.onWindow,
-            fontFamily: font.bold,
-            fontSize: fs(10),
-          },
         }}
       />
-      <Tabs.Screen
-        name="more"
-        options={{ ...slot('more', 'More'), tabBarIcon: button(titleOf('more') ?? 'More') }}
-      />
+      <Tabs.Screen name="more" options={slot('more', 'More')} />
       {/* Nobody has The Journey as a tab: the trainee reaches it from the
           drawer, the full-timer from More. */}
       <Tabs.Screen name="journey" options={{ title: 'The Journey', href: null }} />
