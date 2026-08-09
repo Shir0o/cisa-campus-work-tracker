@@ -181,11 +181,15 @@ export default function OutreachBoard() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role } = useAuth();
   const [stages, setStages] = useState<Stage[]>([]);
+  useEffect(() => { stagesRef.current = stages; }, [stages]);
   // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
   // stage drag; stagesBeforeDragRef remembers the pre-drag order so a failed
   // persist can roll the optimistic reorder back.
   const [activeStageId, setActiveStageId] = useState<string | null>(null);
   const stagesBeforeDragRef = useRef<Stage[]>([]);
+  // Latest stages, kept in a ref so the drag-end handler (which may be invoked
+  // with a stale closure) always decides against the current order.
+  const stagesRef = useRef<Stage[]>([]);
   const [showAddStage, setShowAddStage] = useState(false);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
 
@@ -549,8 +553,13 @@ export default function OutreachBoard() {
       setActiveStageId(null);
       setActiveId(null);
       if (!overId || overId === activeStageId) return;
-      const finalOrder = stages;
-      if (finalOrder === stagesBeforeDragRef.current) return;
+      const finalOrder = stagesRef.current;
+      // applyStageReorder always returns a fresh array, so reference equality
+      // can't tell "hovered and came back" from "actually moved" — compare the
+      // logical order instead, or a no-op drag rewrites the whole batch.
+      if (finalOrder.map((s) => s.id).join(',') === stagesBeforeDragRef.current.map((s) => s.id).join(',')) {
+        return;
+      }
       try {
         await persistStageOrder(finalOrder);
       } catch (error) {
