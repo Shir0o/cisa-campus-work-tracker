@@ -277,7 +277,7 @@ const mirrorRef = (contactId: string, visitId: string) =>
   doc(db, 'contacts', contactId, 'interactions', visitInteractionId(visitId));
 
 const removeMirror = async (contactId: string, visitId: string): Promise<void> => {
-  await Promise.resolve(deleteDoc(mirrorRef(contactId, visitId))).catch(() => {
+  await deleteDoc(mirrorRef(contactId, visitId)).catch(() => {
     /* Already gone — the record is what matters, not the copy. */
   });
 };
@@ -319,14 +319,12 @@ async function syncVisitMirrors(
       // A visit is the strongest kind of contact there is — it should move the
       // person's "last seen", not just sit in their history. Only the fields
       // the contacts update rule allows are touched here.
-      await Promise.resolve(
-        updateDoc(doc(db, 'contacts', cid), {
-          lastSeen: input.date,
-          updatedAt: new Date().toISOString(),
-          updatedBy: by.uid,
-          updatedByName: by.name,
-        }),
-      ).catch(() => {
+      await updateDoc(doc(db, 'contacts', cid), {
+        lastSeen: input.date,
+        updatedAt: new Date().toISOString(),
+        updatedBy: by.uid,
+        updatedByName: by.name,
+      }).catch(() => {
         /* The visit is the record; a stale lastSeen isn't worth failing the save. */
       });
     }),
