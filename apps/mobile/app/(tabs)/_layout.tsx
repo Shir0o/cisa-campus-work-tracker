@@ -1,5 +1,5 @@
 import { useEffect, useContext } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BottomTabBarHeightCallbackContext, type BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { tabsForRole } from '@cisa/core';
@@ -30,10 +30,9 @@ import { useMessagesData } from '../../src/lib/useMessagesData';
 // shell — so the bar is drawn here instead.
 
 /** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
- *  with a terracotta unread pill on Messages. */
+ *  with a terracotta unread dot beside Messages. */
 function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
   const { c, font, fs, mode, room } = useV2Theme();
-  const { width } = useWindowDimensions();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
   const isFt = room === 'ft';
@@ -65,11 +64,6 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
   }, [routes.length, onHeightChange]);
   if (routes.length === 0) return null;
 
-  // `.mbr-tabs em` — `right: calc(50% - 28px)`: the pill's right edge sits
-  // 28px left of the button's centre, which tracks the tab width per screen.
-  const tabWidth = (width - 18 - 4 * (routes.length - 1)) / routes.length;
-  const badgeRight = Math.max(6, tabWidth / 2 - 28);
-
   return (
     <View
       style={[styles.bar, bar, { paddingBottom: 9 + insets.bottom }]}
@@ -80,6 +74,7 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
         const focused = state.index === state.routes.indexOf(route);
         const label = (options.tabBarLabel as string | undefined) ?? options.title ?? route.name;
         const badge = options.tabBarBadge;
+        const unread = typeof badge === 'number' && badge > 0;
         return (
           <Pressable
             key={route.key}
@@ -89,7 +84,9 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
             }}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
-            accessibilityLabel={label}
+            // The dot carries no visible text; the count still reaches a screen
+            // reader this way (the design clips the same text out of view).
+            accessibilityLabel={unread ? `${label}, ${badge} unread` : label}
             style={({ pressed }) => [styles.tab, focused && { backgroundColor: pill }, pressed && { opacity: 0.8 }]}
           >
             <Text
@@ -104,10 +101,22 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
             >
               {label}
             </Text>
-            {typeof badge === 'number' && badge > 0 && (
-              <View style={[styles.badge, { right: badgeRight }]}>
-                <Text style={{ fontFamily: font.extra, fontSize: fs(10), lineHeight: 17, color: '#fff', textAlign: 'center' }}>{badge}</Text>
-              </View>
+            {unread && (
+              // `.mbr-tabs em` — the unread marker is a 6px terracotta DOT,
+              // not a counted pill: "Messages" is too long a word for a number
+              // to sit beside. The exact count lives on the Messages screen.
+              <View
+                accessible={false}
+                style={{
+                  alignSelf: 'flex-start',
+                  marginTop: 11,
+                  marginLeft: 5,
+                  width: 6,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: '#c9622f',
+                }}
+              />
             )}
           </Pressable>
         );
@@ -126,24 +135,13 @@ const styles = StyleSheet.create({
     paddingTop: 7,
     borderTopWidth: 1,
   },
-  // `.mbr-tabs button` — flex:1, 46 tall, the pill's 13px radius.
+  // `.mbr-tabs button` — flex:1, 46 tall, the pill's 13px radius. Row layout
+  // so the word and the unread dot sit side by side, as in the design.
   tab: {
     flex: 1,
     minHeight: 46,
     borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // `.mbr-tabs em` — the terracotta unread pill, top-right of the button.
-  badge: {
-    position: 'absolute',
-    top: 4,
-    // `right` is set at render time — the design's `calc(50% - 28px)`.
-    minWidth: 17,
-    height: 17,
-    borderRadius: 99,
-    paddingHorizontal: 4,
-    backgroundColor: '#c9622f',
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
