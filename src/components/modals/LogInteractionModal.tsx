@@ -117,11 +117,11 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
         
         batch.set(interactionRef, {
           type,
-          date,
+          dateTime: date,
           content: notes,
           createdAt: serverTimestamp(),
-          createdById: user?.uid,
-          createdByName: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
+          userId: user?.uid,
+          userName: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
           contactId,
           contactName: contact?.name || 'Unknown'
         });
