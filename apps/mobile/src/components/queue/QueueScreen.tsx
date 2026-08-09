@@ -95,11 +95,14 @@ export function QueueScreen() {
       setIndex(0);
     },
     later: (id) => {
+      // The queue this handler closes over is the pre-press one. Deferring a
+      // 1-of-1 queue puts the only card back at the front, so it stays on
+      // screen — read the length BEFORE the deferral so the toast condition
+      // sees the same queue the press was made against.
+      const isOnlyCard = queue.length === 1;
       queueState.pushLater(id);
       setIndex(0);
-      // Deferring the only card puts it back at the front — the queue can't
-      // advance, so the press would look dead. Say it plainly.
-      if (queue.length === 1) setToast('Moved to later.');
+      if (isOnlyCard) setToast('Moved to later.');
     },
     markDone: (taskId) => {
       void setTodoDone(taskId, true);
