@@ -40,32 +40,36 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('firebase/firestore', () => {
-  const docOf = (d: { id: string; refPath?: string }) => ({ id: d.id, data: () => d, ref: { path: d.refPath ?? `contacts/${d.id}` } });
-  const snap = (docs: unknown[]) => ({ docs: docs.map((d) => docOf(d as { id: string })), size: docs.length, empty: docs.length === 0 });
-  return {
-    collection: vi.fn((_db, path) => ({ path })),
-    collectionGroup: vi.fn((_db, path) => ({ path })),
-    query: vi.fn((ref) => ref),
-    orderBy: vi.fn(),
-    limit: vi.fn(),
-    onSnapshot: vi.fn((ref: { path?: string }, callback: (s: unknown) => void) => {
-      const path = ref?.path ?? '';
-      if (path === 'outreach') callback(snap([SEED_OUTREACH]));
-      else if (path === 'contacts') callback(snap(SEED_CONTACTS));
-      else if (path === 'users') callback(snap(SEED_USERS));
-      else if (path === 'interactions') callback(snap(SEED_TOUCHES));
-      else callback(snap([]));
-      return () => {};
-    }),
-    updateDoc: vi.fn(() => Promise.resolve()),
-    addDoc: vi.fn(() => Promise.resolve({ id: 'new-outreach-id' })),
-    deleteDoc: vi.fn(() => Promise.resolve()),
-    doc: vi.fn((_db, path, id) => ({ path, id })),
-    getDocs: vi.fn(() => Promise.resolve({ empty: true, docs: [] })),
-    serverTimestamp: vi.fn(() => 'mock-timestamp'),
-  };
-});
+// The default onSnapshot routing — re-applied in beforeEach so tests that
+// override it (the empty-state one) don't leak into the tests after them.
+// Defined via vi.hoisted because the vi.mock factory below can't reference
+// top-level consts (mocks are hoisted above them).
+const { defaultOnSnapshot } = vi.hoisted(() => ({
+  defaultOnSnapshot: ((ref: { path?: string }, callback: (s: unknown) => void) => {
+    const path = ref?.path ?? '';
+    if (path === 'outreach') callback({ docs: [SEED_OUTREACH].map((d) => ({ id: 'OT-1', data: () => d, ref: { path: 'outreach/OT-1' } })), size: 1, empty: false });
+    else if (path === 'contacts') callback({ docs: SEED_CONTACTS.map((d) => ({ id: d.id, data: () => d, ref: { path: `contacts/${d.id}` } })), size: SEED_CONTACTS.length, empty: false });
+    else if (path === 'users') callback({ docs: SEED_USERS.map((d) => ({ id: d.id, data: () => d, ref: { path: `users/${d.id}` } })), size: SEED_USERS.length, empty: false });
+    else if (path === 'interactions') callback({ docs: SEED_TOUCHES.map((d) => ({ id: d.id, data: () => d, ref: { path: d.refPath } })), size: SEED_TOUCHES.length, empty: false });
+    else callback({ docs: [], size: 0, empty: true });
+    return () => {};
+  }) as never,
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db, path) => ({ path })),
+  collectionGroup: vi.fn((_db, path) => ({ path })),
+  query: vi.fn((ref) => ref),
+  orderBy: vi.fn(),
+  limit: vi.fn(),
+  onSnapshot: vi.fn(defaultOnSnapshot),
+  updateDoc: vi.fn(() => Promise.resolve()),
+  addDoc: vi.fn(() => Promise.resolve({ id: 'new-outreach-id' })),
+  deleteDoc: vi.fn(() => Promise.resolve()),
+  doc: vi.fn((_db, path, id) => ({ path, id: id ?? 'auto-name-id' })),
+  getDocs: vi.fn(() => Promise.resolve({ empty: true, docs: [] })),
+  serverTimestamp: vi.fn(() => 'mock-timestamp'),
+}));
 
 vi.mock('../lib/firebase', () => ({
   db: {},
@@ -87,11 +91,17 @@ vi.mock('../components/modals/ContactDetailsModal', () => ({
 }));
 
 import { addTodo } from '../lib/todos';
-import { updateDoc } from 'firebase/firestore';
+import { addThreadMessage } from '../lib/threads';
+import { logActivity } from '../lib/firebase';
+import { addDoc, deleteDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+
+const asRole = (role: string, uid = 'u1') =>
+  vi.mocked(useAuth).mockReturnValue({ user: { uid, displayName: uid === 'u1' ? 'Tony Wang' : 'Community Member' }, role } as never);
 
 describe('Outreach', () => {
   beforeEach(() => {
-    vi.mocked(useAuth).mockReturnValue({ user: { uid: 'u1', displayName: 'Tony Wang' }, role: 'admin' } as never);
+    asRole('admin');
+    vi.mocked(onSnapshot).mockImplementation(defaultOnSnapshot);
     vi.clearAllMocks();
   });
 
@@ -123,12 +133,92 @@ describe('Outreach', () => {
     expect(todoCall.assigneeId).toBe('u1');
   });
 
+  it('nudge reminds whoever spoke with them via a thread message', async () => {
+    render(<Outreach />);
+    const remind = await screen.findByRole('button', { name: 'Remind Ana' });
+    fireEvent.click(remind);
+    await waitFor(() => expect(addThreadMessage).toHaveBeenCalled());
+    const call = vi.mocked(addThreadMessage).mock.calls[0];
+    expect(call[0]).toBe('C-2'); // Chloe's contact
+    expect(call[1].kind).toBe('nudge');
+    expect(call[2]?.to).toBe('u3'); // Ana was the one who spoke with her
+  });
+
+  it('logs an outreach: every filled name becomes a contact + a ring-todo', async () => {
+    render(<Outreach />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log an outreach' }));
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn'), { target: { value: 'Boardwalk' } });
+    fireEvent.change(screen.getByPlaceholderText('Their name'), { target: { value: 'Nadia Halim' } });
+    fireEvent.change(screen.getByPlaceholderText('Number or email'), { target: { value: '+1 (555) 0109' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log the outreach' }));
+
+    await waitFor(() => expect(addDoc).toHaveBeenCalledTimes(2)); // the contact, then the outreach
+    const contactDoc = vi.mocked(addDoc).mock.calls[0][1] as Record<string, unknown>;
+    expect(contactDoc.name).toBe('Nadia Halim');
+    expect(contactDoc.phone).toBe('+1 (555) 0109');
+    expect((contactDoc.tags as string[]).includes('outreach')).toBe(true);
+    const outreachDoc = vi.mocked(addDoc).mock.calls[1][1] as { where: string; names: { name: string }[] };
+    expect(outreachDoc.where).toBe('Boardwalk');
+    expect(outreachDoc.names[0].name).toBe('Nadia Halim');
+    await waitFor(() => expect(addTodo).toHaveBeenCalled());
+    expect(vi.mocked(addTodo).mock.calls[0][0].title).toContain('Ring Nadia');
+    expect(logActivity).toHaveBeenCalled();
+  });
+
+  it('a community logger creates the contact but not the auto-todo', async () => {
+    asRole('viewer', 'v9');
+    render(<Outreach />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Log an outreach' }));
+    fireEvent.change(await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn'), { target: { value: 'Riverside' } });
+    fireEvent.change(screen.getByPlaceholderText('Their name'), { target: { value: 'Sam Ortiz' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log the outreach' }));
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    expect(addTodo).not.toHaveBeenCalled();
+  });
+
+  it('edits an outing without touching its names', async () => {
+    render(<Outreach />);
+    fireEvent.click(screen.getByText('Cedar Park — the north lawn'));
+    fireEvent.click(await screen.findByText('Edit this one'));
+    const where = await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn');
+    fireEvent.change(where, { target: { value: 'Cedar Park — by the bandstand' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(updateDoc).toHaveBeenCalled());
+    const patch = vi.mocked(updateDoc).mock.calls[0][1] as unknown as { where: string; names?: unknown };
+    expect(patch.where).toBe('Cedar Park — by the bandstand');
+    expect(patch.names).toBeUndefined(); // names are the record's whole point — never edited
+    expect(logActivity).toHaveBeenCalled();
+  });
+
+  it('removes an outing after the two-tap confirm', async () => {
+    render(<Outreach />);
+    fireEvent.click(screen.getByText('Cedar Park — the north lawn'));
+    fireEvent.click(await screen.findByText('Remove'));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await waitFor(() => expect(deleteDoc).toHaveBeenCalled());
+    expect(logActivity).toHaveBeenCalled();
+  });
+
+  it('community sees the page read-mostly: no take, remind, edit or remove', async () => {
+    asRole('viewer', 'v9');
+    render(<Outreach />);
+    // The queue still shows Chloe, and she can open her — but not take her.
+    expect(await screen.findByText('Chloe Baptiste')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: "I'll take this" })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Remind/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Open' })).toBeTruthy();
+    // Cards read, but no manage row.
+    fireEvent.click(screen.getByText('Cedar Park — the north lawn'));
+    expect(await screen.findByText('Duy Pham')).toBeTruthy();
+    expect(screen.queryByText('Edit this one')).toBeNull();
+    expect(screen.queryByText('Remove')).toBeNull();
+  });
+
   it('renders an empty state when nothing has been logged', async () => {
-    const { onSnapshot } = await import('firebase/firestore');
     vi.mocked(onSnapshot).mockImplementation(((ref: { path?: string }, callback: (s: unknown) => void) => {
       const path = ref?.path ?? '';
       callback({
-        docs: [],
+        docs: path === 'outreach' ? [] : [{ id: 'x', data: () => ({}), ref: { path } }],
         size: 0,
         empty: true,
       });
@@ -136,6 +226,8 @@ describe('Outreach', () => {
     }) as never);
     render(<Outreach />);
     expect(await screen.findByText(/Nothing here yet/)).toBeTruthy();
+    // Both the header and the empty-state card carry a Log button.
+    expect(screen.getAllByRole('button', { name: 'Log an outreach' }).length).toBeGreaterThan(0);
   });
 
   it('is full-timer + community — trainees and students are locked out', () => {

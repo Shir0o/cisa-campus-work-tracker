@@ -618,7 +618,8 @@ function LogOutreachModal({
         photoCount: 0,
       };
       if (editing && item) {
-        await updateDoc(doc(db, 'outreach', item.id), { ...payload, names: item.names });
+        // Editing never touches the names — they're the record's whole point.
+        await updateDoc(doc(db, 'outreach', item.id), payload);
         logActivity({ action: 'edited the outreach at', targetId: item.id, targetName: where.trim(), targetType: 'event', type: 'edit', description: where.trim() });
       } else {
         const ref = await addDoc(collection(db, 'outreach'), { ...payload, names, createdById: me, createdByName: userName, createdAt: serverTimestamp() });
