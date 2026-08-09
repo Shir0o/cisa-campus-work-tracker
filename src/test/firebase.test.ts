@@ -61,6 +61,10 @@ vi.mock('firebase/database', () => ({
   getDatabase: vi.fn(),
 }));
 
+vi.mock('firebase/storage', () => ({
+  getStorage: vi.fn(),
+}));
+
 // We will load this dynamically to ensure mocks are set up first
 let handleFirestoreError: any;
 let logActivity: any;

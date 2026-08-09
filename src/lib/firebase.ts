@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getDatabase, type Database } from 'firebase/database';
+import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const finalConfig = { ...firebaseConfig };
@@ -12,6 +13,10 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 const app = initializeApp(finalConfig);
 export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
+
+// Cloud Storage — only visit photos live here (see storage.rules). The bucket
+// name comes from firebase-applet-config.json.
+export const storage = getStorage(app);
 
 // Realtime Database — the live transport for The Board's collaborative editor.
 // Opt-in: only initialized when a database URL is configured (env or config),

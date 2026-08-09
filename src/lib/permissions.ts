@@ -46,6 +46,9 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   // `canAccessRoute` special-cases it below (viewer and admin only, never
   // operator or manager). This entry only exists so the route has an entry.
   '/outreach': 'viewer',
+  // Full-timers only, on both sides: what a visit records is pastoral detail,
+  // not team-wide reading.
+  '/visits': 'admin',
   '/prayer': 'viewer',
   '/answered': 'viewer',
   '/settings': 'viewer',
@@ -74,6 +77,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/outreach', label: 'Outreach', minRole: 'viewer' },
+  { href: '/visits', label: 'Visits', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
   { href: '/answered', label: 'Answered', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },

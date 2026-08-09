@@ -43,6 +43,7 @@ import { lazyWithRetry } from "./lib/lazyWithRetry";
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
 const Messages = lazyWithRetry(() => import("./views/Messages"));
+const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 
 
@@ -460,6 +461,19 @@ export default function App() {
                     <RoleGuard minRole="manager">
                       <DashboardLayout>
                         <History />
+                      </DashboardLayout>
+                    </RoleGuard>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/visits"
+                element={
+                  <ProtectedRoute>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <Visits />
                       </DashboardLayout>
                     </RoleGuard>
                   </ProtectedRoute>

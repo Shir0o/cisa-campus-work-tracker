@@ -462,6 +462,33 @@ service cloud.firestore {
       allow update: if isAdmin() && isValidOutreach(incoming());
       allow delete: if isAdmin();
     }
+    // 10b. Visits Collection — a record of having gone to where someone lives.
+    // Full-timers only, on both sides: what's written in a visit ("she's been
+    // quiet since her dad's surgery") is pastoral detail that shouldn't be a
+    // team-wide read. The photos live in Cloud Storage; only their metadata is
+    // here. Optional keys use the `!('x' in data)` guard for the same reason
+    // isValidContact does — a partial update merges to a doc that may omit them.
+    match /visits/{visitId} {
+      function isValidVisit(data) {
+        return data.keys().hasAll(['date', 'contactIds', 'went']) &&
+               data.date is string && data.date.size() <= 20 &&
+               data.contactIds is list && data.contactIds.size() > 0 && data.contactIds.size() <= 20 &&
+               data.went is list && data.went.size() <= 20 &&
+               (!('contactNames' in data) || data.contactNames is list) &&
+               (!('wentNames' in data) || data.wentNames is list) &&
+               (!('where' in data) || data.where == null || (data.where is string && data.where.size() <= 200)) &&
+               (!('purpose' in data) || data.purpose == null || (data.purpose is string && data.purpose.size() <= 500)) &&
+               (!('how' in data) || data.how == null || (data.how is string && data.how.size() <= 5000)) &&
+               (!('followUp' in data) || data.followUp == null || (data.followUp is string && data.followUp.size() <= 500)) &&
+               (!('followUpTaskId' in data) || data.followUpTaskId == null || (data.followUpTaskId is string && data.followUpTaskId.size() <= 128)) &&
+               (!('prayerId' in data) || data.prayerId == null || (data.prayerId is string && data.prayerId.size() <= 128)) &&
+               (!('photos' in data) || data.photos is list && data.photos.size() <= 12);
+      }
+
+      allow list, get: if isApprovedUser() && isAdmin();
+      allow create, update: if isValidId(visitId) && isApprovedUser() && isAdmin() && isValidVisit(incoming());
+      allow delete: if isValidId(visitId) && isAdmin();
+    }
 
     // 11. Feedback Collection
     match /feedback/{feedbackId} {

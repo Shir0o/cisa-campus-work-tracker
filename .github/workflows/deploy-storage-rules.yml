@@ -1,0 +1,70 @@
+name: Deploy Storage Rules
+
+# Publishes storage.rules (Cloud Storage security rules) to the live project on
+# merge to main, mirroring deploy-firestore-rules.yml and deploy-database-rules.yml.
+# Visit photos are the only files this app stores, and their rules are the only
+# thing standing between the bucket and the open internet — so they deploy the
+# same way the other rule files do rather than by hand.
+#
+# Auth: keyless via Workload Identity Federation (WIF) — the same pool/provider/SA
+# as the other two rule deploys. GitHub's per-run OIDC token is exchanged for
+# short-lived credentials that impersonate github-action@sac-campus-hub; no key is
+# stored. NOTE: this needs Cloud Storage for Firebase to be enabled on the project
+# (so the sac-campus-hub.firebasestorage.app bucket exists) — until then the deploy
+# fails with "bucket not found". Publishing the rules themselves uses the same
+# roles/firebaserules.admin the Firestore deploy already has.
+
+on:
+  # Manual trigger — re-publish rules or validate the deploy credential without
+  # a code change. (GitHub only allows this once the workflow is on the default
+  # branch.)
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - storage.rules
+      - firebase.json
+      - .firebaserc
+      - .github/workflows/deploy-storage-rules.yml
+
+# Never let two rule deploys race each other.
+concurrency:
+  group: deploy-storage-rules
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy Cloud Storage rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # id-token: write is required to mint the GitHub OIDC token that WIF exchanges
+    # for short-lived GCP credentials.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@^15
+      # Authenticates the Firebase CLI non-interactively via WIF: this action
+      # exchanges the GitHub OIDC token for short-lived credentials, writes them to
+      # a temp file, and exports GOOGLE_APPLICATION_CREDENTIALS, which the CLI honors.
+      # No long-lived key is involved.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: sac-campus-hub
+          workload_identity_provider: projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github
+          service_account: github-action@sac-campus-hub.iam.gserviceaccount.com
+      - name: Deploy Cloud Storage rules
+        run: >
+          firebase deploy
+          --only storage
+          --project sac-campus-hub
+          --non-interactive

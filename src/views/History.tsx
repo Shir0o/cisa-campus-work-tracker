@@ -18,6 +18,7 @@ import {
   Mail,
   Calendar,
   MessageSquare,
+  House,
   Tag,
   Pencil,
   Users,
@@ -148,6 +149,21 @@ const humanize = (a: Hist): Humanized => {
       lead: "updated a prayer for",
       showTarget: true,
       detail: status ? `Now marked ${status}.` : undefined,
+    };
+  }
+  if (act.startsWith("logged a visit to") || act.startsWith("edited a visit to") || act.startsWith("removed a visit to")) {
+    const lead = act.startsWith("logged")
+      ? "went round to"
+      : act.startsWith("edited")
+        ? "wrote more about a visit to"
+        : "removed a visit to";
+    const where = scrub(desc);
+    return {
+      bucket: "talk",
+      icon: House,
+      lead,
+      showTarget: true,
+      detail: where ? `At ${where}.` : undefined,
     };
   }
   if (act.startsWith("logged an interaction for") || act.startsWith("logged a batch interaction for")) {

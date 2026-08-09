@@ -483,6 +483,79 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Visits', () => {
+    const validVisit = {
+      date: '2026-08-13',
+      contactIds: ['contact1'],
+      contactNames: ['Ama Osei'],
+      went: ['admin1'],
+      wentNames: ['Tony'],
+      where: 'Whitman Hall, room 214',
+      purpose: "She's been quiet since her dad's surgery",
+      how: 'Sat on the floor and talked for an hour.',
+      followUp: '',
+      followUpTaskId: null,
+      prayerId: null,
+      photos: [],
+    };
+
+    const seedRoles = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+      });
+    };
+
+    it('VS1: Full-timer can log, edit and remove a visit', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'visits', 'v1'), validVisit));
+      await assertSucceeds(updateDoc(doc(db, 'visits', 'v1'), { how: 'A longer write-up.' }));
+      await assertSucceeds(deleteDoc(doc(db, 'visits', 'v1')));
+    });
+
+    it('VS2: Trainee and below can neither read nor write a visit', async () => {
+      await seedRoles();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'visits', 'v1'), validVisit);
+      });
+      for (const uid of ['manager1', 'operator1', 'viewer1']) {
+        const db = getFirestore({ uid });
+        await assertFails(getDoc(doc(db, 'visits', 'v1')));
+        await assertFails(setDoc(doc(db, 'visits', 'vX'), validVisit));
+        await assertFails(deleteDoc(doc(db, 'visits', 'v1')));
+      }
+    });
+
+    it('VS3: Rejects a visit with nobody on it', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'visits', 'vBad'), { ...validVisit, contactIds: [] }));
+    });
+
+    it('VS4: Rejects an oversized write-up', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'visits', 'vBig'), { ...validVisit, how: 'a'.repeat(5001) }));
+    });
+
+    it('VS5: Accepts a visit covering several people with no address noted', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'visits', 'v2'), {
+          ...validVisit,
+          contactIds: ['contact1', 'contact2'],
+          contactNames: ['Ama Osei', 'Bo Chen'],
+          went: ['admin1', 'manager1'],
+          where: '',
+        }),
+      );
+    });
+  });
+
   describe('My Day — user preferences & personal prayers', () => {
     const seedUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (context) => {
