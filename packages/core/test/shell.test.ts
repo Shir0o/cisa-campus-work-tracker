@@ -111,11 +111,14 @@ describe('the drawer and More lists', () => {
   });
 
   it("matches the design's full-timer More, in order", () => {
+    // Outreach sits right after The Board — the other going-out record — and
+    // is full-timer-only (a deliberate change from the design).
     expect(FT_MORE.map((l) => l.label)).toEqual([
       'The Journey',
       'Gatherings',
       'Prayer log',
       'The Board',
+      'Outreach',
       'Settings',
     ]);
   });

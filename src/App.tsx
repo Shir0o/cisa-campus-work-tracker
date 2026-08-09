@@ -16,6 +16,7 @@ import MobileNav from "./components/layout/MobileNav";
 import NewContactModal from "./components/modals/NewContactModal";
 import Landing from "./views/landings/Landing";
 import Attendance from "./views/Attendance";
+import Outreach from "./views/Outreach";
 import OutreachBoard from "./views/OutreachBoard";
 import Directory from "./views/Directory";
 import History from "./views/History";
@@ -409,6 +410,19 @@ export default function App() {
                     <DashboardLayout>
                       <Attendance />
                     </DashboardLayout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/outreach"
+                element={
+                  <ProtectedRoute>
+                    <RoleGuard minRole="admin">
+                      <DashboardLayout>
+                        <Outreach />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
