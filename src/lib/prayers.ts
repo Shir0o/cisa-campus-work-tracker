@@ -1,6 +1,36 @@
-import { doc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "./firebase";
 import { PrayerRecord } from "../types";
+
+// Start carrying something for a contact. Mirrors PrayerList.tsx's
+// `handleAddBurden` write, minus the activity entry — callers that already log
+// their own action (a visit, say) shouldn't produce two entries for one thing.
+// Returns the new prayer's id so the caller can link back to it.
+export async function addPrayerBurden(
+  contactId: string,
+  burden: string,
+  by: { uid?: string | null; name?: string | null },
+): Promise<string | null> {
+  const text = burden.trim();
+  if (!contactId || !text) return null;
+  try {
+    const now = new Date().toISOString();
+    const ref = await addDoc(collection(db, "prayers"), {
+      contactId,
+      date: now,
+      burden: text,
+      status: "pending",
+      prayerPage: true,
+      updatedAt: now,
+      updatedBy: by.uid || null,
+      updatedByName: by.name || null,
+    });
+    return ref?.id ?? null;
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, "prayers");
+    return null;
+  }
+}
 
 // Update a shared prayer's status from My Day. Mirrors the bookkeeping stamp the
 // Prayer page writes (PrayerList.tsx) so both surfaces stay consistent. The

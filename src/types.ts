@@ -133,6 +133,43 @@ export interface Interaction {
   createdAt: string;
 }
 
+/** One photo attached to a visit. `path` is the Cloud Storage object path (what
+ *  we need to delete it); `url` is the download URL we render. */
+export interface VisitPhoto {
+  path: string;
+  url: string;
+  name?: string;
+}
+
+/** A record of having gone to where someone lives. Logged after the fact,
+ *  full-timers only, usually a pair, sometimes several people seen at once.
+ *  The source of truth for a visit is this doc — each person we saw also gets a
+ *  mirrored interaction so their card tells the whole story and links back. */
+export interface Visit {
+  id: string;
+  /** 'YYYY-MM-DD' — the day we went, not when it was written down. */
+  date: string;
+  contactIds: string[];
+  /** Denormalized so a card renders without joining the contacts collection. */
+  contactNames: string[];
+  /** uids of the staff who went. */
+  went: string[];
+  wentNames: string[];
+  where: string;
+  purpose: string;
+  how: string;
+  followUp: string;
+  followUpTaskId?: string | null;
+  prayerId?: string | null;
+  photos: VisitPhoto[];
+  createdAt: string;
+  createdById: string;
+  createdByName: string;
+  updatedAt?: string;
+  updatedBy?: string;
+  updatedByName?: string;
+}
+
 export interface Event {
   id: string;
   name: string;

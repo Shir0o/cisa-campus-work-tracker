@@ -1,0 +1,28 @@
+rules_version = '2';
+
+// Cloud Storage rules. The only thing this project stores as a file is a photo
+// taken on a visit; everything else lives in Firestore.
+//
+// Why there is no full-timer check here: Storage rules can only reach Firestore
+// through `firestore.get()` on the (default) database, and this project's
+// Firestore is a *named* database (see firestore.databaseId in
+// firebase-applet-config.json). So the role gate lives on the `visits` doc in
+// firestore.rules, which is admin-only for both read and write. A photo
+// uploaded without a matching visit doc is an orphan blob nobody can find, and
+// the size and content-type caps below bound what can be put there.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /visits/{visitId}/{photoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+
+    // Nothing else is stored as a file.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
