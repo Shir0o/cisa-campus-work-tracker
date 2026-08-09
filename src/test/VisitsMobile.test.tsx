@@ -3,6 +3,24 @@ import { describe, it, expect, vi } from 'vitest';
 import VisitsMobile from '../views/VisitsMobile';
 import type { Contact, Visit } from '../types';
 
+// The page's lib chain imports src/lib/firebase, which calls initializeApp at
+// module scope using firebase-applet-config.json's (empty) apiKey — the real
+// key comes from .env, which CI doesn't have. Mock the firebase modules like
+// Visits.test.tsx does so the suite runs keyless.
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db: unknown, path: string) => ({ path })),
+  query: vi.fn((ref: unknown) => ref),
+  orderBy: vi.fn(),
+  onSnapshot: vi.fn(() => vi.fn()),
+}));
+
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  handleFirestoreError: vi.fn(),
+  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE', DELETE: 'DELETE', WRITE: 'WRITE' },
+  logActivity: vi.fn(),
+}));
+
 const visit = (overrides: Partial<Visit> = {}): Visit => ({
   id: 'v1',
   date: '2026-08-13',
