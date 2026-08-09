@@ -604,7 +604,9 @@ function LogOutreachModal({
             { uid: me, name: userName },
           );
         }
-        names.push({ id: 'ON-' + Date.now() + '-' + names.length, name: trimmed, contact: r.contact.trim(), spokeWith: r.spokeWith, note: r.note.trim(), contactId: contactRef.id, takenBy: null });
+        // Firestore's client-side id generator — unique across records and
+        // devices (Date.now()+length wasn't), so PendingRow's keys never clash.
+        names.push({ id: 'ON-' + doc(collection(db, 'outreach')).id, name: trimmed, contact: r.contact.trim(), spokeWith: r.spokeWith, note: r.note.trim(), contactId: contactRef.id, takenBy: null });
       }
       const payload = {
         date,

@@ -141,7 +141,9 @@ export async function addOutreach(
     if (!trimmed) continue;
     const contactId = await nameToContact(db, row, where, draft.date, stage, by);
     names.push({
-      id: "ON-" + Date.now() + "-" + names.length,
+      // Firestore's client-side id generator — unique across records and
+      // devices (Date.now()+length wasn't), so PendingRow's keys never clash.
+      id: "ON-" + doc(collection(db, "outreach")).id,
       name: trimmed,
       contact: row.contact.trim(),
       spokeWith: row.spokeWith,
