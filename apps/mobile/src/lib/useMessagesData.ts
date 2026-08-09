@@ -59,7 +59,9 @@ export function useMessagesData() {
 
   const isUnread = (room: ChatRoom) => isRoomUnread(room, uid, uid ? reads.getLastRead(uid, room.id) : null);
 
-  const unreadCount = useMemo(() => rooms.filter(isUnread).length, [rooms, uid, reads]);
+  // Count unread from the VISIBLE list — a room the user deleted-for-themselves
+  // (`filterRooms` strips it) must not keep lighting the tab-bar badge.
+  const unreadCount = useMemo(() => visibleRooms.filter(isUnread).length, [visibleRooms, uid, reads]);
 
   return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading, error };
 }

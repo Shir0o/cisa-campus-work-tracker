@@ -9,9 +9,11 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { memberAgo, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
+import { SwipeToDelete } from '../messages/SwipeToDelete';
 import { MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
 
 export function MemberMessagesScreen({ role }: { role: MemberRole }) {
@@ -59,53 +61,59 @@ function MemberMessages({ role }: { role: MemberRole }) {
           const kind = kindLine(room);
           const last = room.lastMessage;
           return (
-            <Pressable
+            <SwipeToDelete
               key={room.id}
-              onPress={() => router.push(`/messages/${room.id}`)}
-              style={({ pressed }) => ({
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 12,
-                backgroundColor: c.widget.bg,
-                borderRadius: radius.tile,
-                padding: 14,
-                opacity: pressed ? 0.85 : 1,
-                ...c.widget.shadow,
-              })}
+              onHide={() => {
+                if (uid) void hideChatRoomForUser(room.id, uid);
+              }}
             >
-              <PersonMark name={name} id={room.id} size={40} radius={13} fontSize={14} />
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text
-                  numberOfLines={1}
-                  style={{ fontFamily: font.extra, fontSize: fs(15), color: c.widget.ink }}
-                >
-                  {name}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink2, marginTop: 2 }}
-                >
-                  {last
-                    ? `${last.senderId === uid ? 'You' : firstName(last.senderName)}: ${last.text}`
-                    : kind || 'No messages yet'}
-                </Text>
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 5 }}>
-                <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.widget.ink3 }}>
-                  {last ? memberAgo(last.timestamp as string | null) : ''}
-                </Text>
-                {unread && (
-                  <View
-                    style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: c.card.tones.follow.dot,
-                    }}
-                  />
-                )}
-              </View>
-            </Pressable>
+              <Pressable
+                onPress={() => router.push(`/messages/${room.id}`)}
+                style={({ pressed }) => ({
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  backgroundColor: c.widget.bg,
+                  borderRadius: radius.tile,
+                  padding: 14,
+                  opacity: pressed ? 0.85 : 1,
+                  ...c.widget.shadow,
+                })}
+              >
+                <PersonMark name={name} id={room.id} size={40} radius={13} fontSize={14} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    numberOfLines={1}
+                    style={{ fontFamily: font.extra, fontSize: fs(15), color: c.widget.ink }}
+                  >
+                    {name}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink2, marginTop: 2 }}
+                  >
+                    {last
+                      ? `${last.senderId === uid ? 'You' : firstName(last.senderName)}: ${last.text}`
+                      : kind || 'No messages yet'}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 5 }}>
+                  <Text style={{ fontFamily: font.medium, fontSize: fs(11.5), color: c.widget.ink3 }}>
+                    {last ? memberAgo(last.timestamp as string | null) : ''}
+                  </Text>
+                  {unread && (
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: c.card.tones.follow.dot,
+                      }}
+                    />
+                  )}
+                </View>
+              </Pressable>
+            </SwipeToDelete>
           );
         })}
       </View>

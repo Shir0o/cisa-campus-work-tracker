@@ -267,6 +267,10 @@ export interface ChatRoom {
     senderName: string;
     timestamp: unknown;
   };
+  /** Uids who hid this conversation from their own list ("delete for me").
+   *  The room stays intact for everyone else; `sendMessage` clears the array
+   *  so a new message brings the conversation back (WhatsApp-style). */
+  deletedFor?: string[];
 }
 
 // A member asking the team to pray for them (MOBILE-V2.md, the member app's
