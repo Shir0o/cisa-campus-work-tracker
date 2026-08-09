@@ -26,3 +26,31 @@ jobs:
       - run: npm run lint
       - run: npm run test:coverage
       - run: npm run build
+
+  mobile-test:
+    name: Mobile Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            apps/mobile/package-lock.json
+      # apps/mobile is self-contained (its own lockfile + node_modules), but the
+      # suite compiles @cisa/core's TypeScript, whose imports (firebase,
+      # date-fns, @babel/runtime) resolve from the REPO ROOT's node_modules on
+      # every dev machine — the root tree has to be installed here too, or
+      # typecheck and jest fail with "Cannot find module". `npm ci` also runs
+      # apps/mobile's postinstall patch-package step.
+      - run: npm ci
+        working-directory: .
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
