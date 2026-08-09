@@ -148,7 +148,9 @@ service cloud.firestore {
       // (createdAt/createdBy/createdByName/serverCreatedAt) are deliberately
       // omitted so updates cannot rewrite who/when a contact was created; the
       // updatedAt/updatedBy/updatedByName trio stays because the client stamps
-      // them on every edit.
+      // them on every edit. The lastContactedBy/ById/Date trio is likewise
+      // client-stamped whenever an interaction is logged (LogInteractionModal's
+      // batch and ContactDetailsModal.handleAddInteraction).
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
                       isValidContact(incoming()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
@@ -156,6 +158,7 @@ service cloud.firestore {
                         'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
                         'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
+                        'lastContactedBy', 'lastContactedById', 'lastContactedDate',
                         'updatedAt', 'updatedBy', 'updatedByName'
                       ]);
       allow delete: if isValidId(contactId) && isManager();

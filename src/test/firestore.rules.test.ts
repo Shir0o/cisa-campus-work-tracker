@@ -175,8 +175,28 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'operator1' });
       const longId = 'a'.repeat(200);
       const contactRef = doc(db, 'contacts', longId);
-      
+
       await assertFails(setDoc(contactRef, { name: 'Test', email: 'test@example.com' }));
+    });
+
+    it('lets an operator stamp the last-contacted trio when logging an interaction', async () => {
+      // Mirrors the contact update inside LogInteractionModal's writeBatch and
+      // ContactDetailsModal.handleAddInteraction: both stamp lastContactedBy /
+      // lastContactedById / lastContactedDate alongside lastSeen.
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+        lastSeen: '2026-08-08',
+        lastContactedBy: 'Operator One',
+        lastContactedById: 'operator1',
+        lastContactedDate: '2026-08-08',
+        updatedAt: serverTimestamp(),
+      }));
     });
   });
 
@@ -205,6 +225,26 @@ describeRules('Firestore Security Rules', () => {
         content: largeContent,
         dateTime: new Date().toISOString(),
         createdAt: serverTimestamp()
+      }));
+    });
+
+    it('lets an operator create the interaction shape LogInteractionModal writes', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(setDoc(doc(db, 'contacts/contact1/interactions/int2'), {
+        type: 'meeting',
+        dateTime: '2026-08-08',
+        content: 'Coffee after class',
+        createdAt: serverTimestamp(),
+        userId: 'operator1',
+        userName: 'Operator One',
+        contactId: 'contact1',
+        contactName: 'Test',
       }));
     });
   });
