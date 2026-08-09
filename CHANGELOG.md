@@ -5,6 +5,9 @@ This project is not version-tagged; entries are grouped by month. Format loosely
 follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed).
 
 ## [Unreleased]
+### Added
+- **The Journey — Drag to Reorder Stages (#211)** — Stage columns on `/board` can now be rearranged: admins get a grip handle in each column header (`aria-label="Reorder …"`), dragging a column over another moves it live, and the new order persists via a batched `order` rewrite (`src/lib/data/stages.ts`). All consumers (`orderBy('order')` on web and mobile core, directory filters, the header breakdown) follow the new order automatically. The stage menu button also gained an `aria-label` ("Stage options") so the header's two buttons are distinguishable.
+
 
 ### Removed
 - **Removed GitHub Issues Sync Cron Schedule** — Removed the `schedule` cron trigger from `.github/workflows/sync-issues.yml` to prevent automated scheduled runs, retaining manual `workflow_dispatch` and issue event triggers while documenting local execution via `npm run sync:issues`.

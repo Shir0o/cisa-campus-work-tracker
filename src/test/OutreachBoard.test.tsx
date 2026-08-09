@@ -432,7 +432,7 @@ describe('OutreachBoard', () => {
     // Click column header menu for "First Contact"
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const renameBtn = screen.getByRole('button', { name: /Rename step/i });
@@ -470,7 +470,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
@@ -826,7 +826,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
@@ -870,7 +870,7 @@ describe('OutreachBoard', () => {
 
     const firstContactHeader = screen.getByRole('heading', { name: 'First Contact', level: 3 });
     const columnHeaderContainer = firstContactHeader.parentElement?.parentElement?.parentElement;
-    const menuBtn = columnHeaderContainer?.querySelector('button')!;
+    const menuBtn = columnHeaderContainer?.querySelector('button[aria-label="Stage options"]')!;
     fireEvent.click(menuBtn);
 
     const renameBtn = screen.getByRole('button', { name: /Rename step/i });
