@@ -50,6 +50,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/contact': 'viewer',
+  '/outreach': 'admin',
 };
 
 export interface NavItem {
@@ -66,6 +67,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
+  { href: '/outreach', label: 'Outreach', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
   { href: '/answered', label: 'Answered', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },
@@ -96,6 +98,10 @@ export const canSeeSettings = (role: AppRole | string | null) => role === 'admin
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
 export const canSeeBoardNotes = (role: AppRole | string | null) => role === 'admin';
+// Outreach (and, when built, Visits) are full-timer-only — a deliberate change
+// from the design, which let trainees and community members see them.
+export const canSeeOutreach = (role: AppRole | string | null) => role === 'admin';
+export const canLogOutreach = (role: AppRole | string | null) => role === 'admin';
 export const seesAllPeople = (role: AppRole | string | null) => role !== 'manager';
 
 export function canSeeContact(

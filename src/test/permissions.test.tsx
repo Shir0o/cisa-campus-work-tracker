@@ -102,7 +102,7 @@ describe('canAccessRoute()', () => {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
     manager:  ['/', '/directory', '/board', '/messages', '/feedback'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/admin/feedback', '/coordination', '/messages', '/answered', '/outreach', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {

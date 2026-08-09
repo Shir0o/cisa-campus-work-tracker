@@ -440,6 +440,26 @@ service cloud.firestore {
       allow delete: if isManager() || isSuperAdmin();
     }
 
+    // 10a. Outreach — monthly park outings. Full-timers only, a deliberate
+    // change from the design (which let trainees and community members in).
+    // The record's NAMES are the point: logging an outreach creates the
+    // contacts + follow-up to-dos alongside it, via the contacts/tasks rules.
+    match /outreach/{outreachId} {
+      function isValidOutreach(data) {
+        return data.date is string && data.date.size() <= 20 &&
+               data.where is string && data.where.size() <= 300 &&
+               data.went is list &&
+               data.others is int && data.others >= 0 &&
+               data.handed is map &&
+               data.how is string &&
+               data.photoCount is int && data.photoCount >= 0 &&
+               data.names is list;
+      }
+      allow list, get: if isAdmin();
+      allow create, update: if isAdmin() && isValidOutreach(incoming());
+      allow delete: if isAdmin();
+    }
+
     // 11. Feedback Collection
     match /feedback/{feedbackId} {
       function isValidFeedback(data) {
