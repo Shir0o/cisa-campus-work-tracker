@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 
 const TONES: ('accent' | 'violet' | 'amber' | 'sage')[] = ['accent', 'violet', 'amber', 'sage'];
 function getToneForId(id: string): 'accent' | 'violet' | 'amber' | 'sage' {
@@ -108,6 +109,18 @@ export default function AnsweredList() {
       totalThisYear: thisYearCount,
     };
   }, [prayers]);
+
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!profileContact);
+  if (profileContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => setProfileContact(null)}
+        contact={profileContact}
+      />
+    );
+  }
 
   if (error) {
     return <DataLoadError label={error} />;
@@ -275,14 +288,6 @@ export default function AnsweredList() {
             </section>
           )}
         </div>
-      )}
-
-      {profileContact && (
-        <ContactDetailsModal
-          isOpen={true}
-          onClose={() => setProfileContact(null)}
-          contact={profileContact}
-        />
       )}
     </PageContainer>
   );

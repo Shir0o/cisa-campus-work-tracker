@@ -28,6 +28,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
 import { cn, getUserInitials } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 import CoordinationNotesMobile from './CoordinationNotesMobile';
 import { Skeleton } from '../components/ui/Skeleton';
 import {
@@ -1476,6 +1477,21 @@ export default function CoordinationNotes() {
     </section>
   ) : null;
 
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
+  if (isDetailsModalOpen && selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedContact(null);
+        }}
+        contact={selectedContact}
+      />
+    );
+  }
+
   if (isMobile && !loadingDocs && !loadingNotes) {
     return (
       <>
@@ -1508,14 +1524,6 @@ export default function CoordinationNotes() {
           ReadOnlyDocComponent={ReadOnlyDoc}
           TodoSectionComponent={TodoSectionComponent}
           NotesSectionComponent={NotesSectionComponent}
-        />
-        <ContactDetailsModal
-          isOpen={isDetailsModalOpen}
-          onClose={() => {
-            setIsDetailsModalOpen(false);
-            setSelectedContact(null);
-          }}
-          contact={selectedContact}
         />
       </>
     );
@@ -1869,12 +1877,6 @@ export default function CoordinationNotes() {
       )}
 
       <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
-
-      <ContactDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        contact={selectedContact}
-      />
     </div>
   );
 }

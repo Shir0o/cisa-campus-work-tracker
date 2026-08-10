@@ -32,6 +32,7 @@ import { useAuth } from '../components/AuthProvider';
 import { Contact } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 
@@ -862,6 +863,18 @@ export default function Outreach() {
       </section>
     );
 
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!selectedContact);
+  if (selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => setSelectedContact(null)}
+        contact={selectedContact}
+      />
+    );
+  }
+
   if (error) return <DataLoadError label="the outreach page" />;
 
   return (
@@ -980,7 +993,6 @@ export default function Outreach() {
           }}
         />
       )}
-      <ContactDetailsModal isOpen={selectedContact !== null} onClose={() => setSelectedContact(null)} contact={selectedContact} />
       {toast && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[110]">
           <div className="px-4 py-2.5 rounded-full bg-surface-container shadow-xl border border-outline-variant text-sm font-medium text-on-surface">{toast}</div>

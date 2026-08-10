@@ -536,9 +536,9 @@ describe('History View', () => {
 
     fireEvent.click(screen.getByText('Alice Johnson'));
 
-    // ContactDetailsModal should open — it renders when selectedContact is not null.
-    // After clicking, both the activity and the modal show "Alice Johnson".
-    const aliceElements = screen.getAllByText('Alice Johnson');
-    expect(aliceElements.length).toBeGreaterThanOrEqual(2);
+    // The person detail is now a full page (not a popup): it replaces the
+    // history view and shows the contact's name in the page header.
+    expect(document.querySelector('.cd-page')).toBeTruthy();
+    expect(screen.getAllByText('Alice Johnson').length).toBeGreaterThanOrEqual(1);
   });
 });

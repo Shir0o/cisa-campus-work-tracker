@@ -150,6 +150,11 @@ describe('LandingTrainee component', () => {
     const openBtns = screen.getAllByRole('button', { name: /Open/i });
     fireEvent.click(openBtns[0]);
 
+    // The person detail is now a full page (not a popup) — go back to the
+    // dashboard before continuing with the row's other actions.
+    const closePageBtn = screen.getByRole('button', { name: /^Close$/i });
+    fireEvent.click(closePageBtn);
+
     // Click Mark handled
     const handledBtn = screen.getByRole('button', { name: /Mark handled/i });
     fireEvent.click(handledBtn);
@@ -168,6 +173,10 @@ describe('LandingTrainee component', () => {
     // Click for Alex Student linked button
     const linkedBtn = screen.getAllByRole('button', { name: /for Alex Student/i })[0];
     fireEvent.click(linkedBtn);
+
+    // That opens the person page again — go back to the dashboard.
+    const closePageBtn2 = screen.getByRole('button', { name: /^Close$/i });
+    fireEvent.click(closePageBtn2);
 
     // Click status pill on team prayer
     const teamPrayerPill = screen.getAllByRole('button', { name: /^ongoing$/i })[0];

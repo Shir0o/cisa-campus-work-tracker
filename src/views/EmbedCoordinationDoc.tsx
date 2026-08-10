@@ -21,6 +21,7 @@ import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type Note
 import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
 import { Contact } from '../types';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 
 declare global {
   interface Window {
@@ -40,6 +41,9 @@ export default function EmbedCoordinationDoc() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
 
   useEffect(() => {
     if (attemptedSignIn || loading || user) return;
@@ -198,6 +202,21 @@ export default function EmbedCoordinationDoc() {
     return <EmbedStatus>Document not found.</EmbedStatus>;
   }
 
+  // The person detail is a full page (the design's ContactDetail): it replaces
+  // the view, so back returns here.
+  if (isDetailsModalOpen && selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedContact(null);
+        }}
+        contact={selectedContact}
+      />
+    );
+  }
+
   return (
     <div style={{ height: '100vh', overflow: 'hidden' }}>
       <DocEditor
@@ -218,14 +237,6 @@ export default function EmbedCoordinationDoc() {
         contacts={contacts}
         onSelectContact={setSelectedContact}
         onOpenContactModal={setIsDetailsModalOpen}
-      />
-      <ContactDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => {
-          setIsDetailsModalOpen(false);
-          setSelectedContact(null);
-        }}
-        contact={selectedContact}
       />
       {noteForm && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">

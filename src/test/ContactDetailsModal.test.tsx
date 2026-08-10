@@ -130,8 +130,28 @@ describe('ContactDetailsModal Component', () => {
 
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john.doe@example.com')).toBeInTheDocument();
-    expect(screen.getByText('Main Hall')).toBeInTheDocument();
+    // Location shows in the header meta and the aside — the design's duplication.
+    expect(screen.getAllByText('Main Hall').length).toBeGreaterThan(0);
     expect(screen.getByText('Christian')).toBeInTheDocument();
+  });
+
+  it('renders as a full desktop page with a two-column aside, not a popup', () => {
+    const { container } = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
+    );
+
+    expect(container.querySelector('.cd-page')).toBeTruthy();
+    expect(container.querySelector('.cd-page-main')).toBeTruthy();
+    expect(container.querySelector('.cd-page-aside')).toBeTruthy();
+    // No popup chrome: no backdrop, no dialog role, no max-w-2xl card.
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container.querySelector('.bg-black\\/40')).toBeNull();
+    // The design's aside sections are all present.
+    expect(screen.getByText('How to reach John')).toBeInTheDocument();
+    expect(screen.getByText('Where they are')).toBeInTheDocument();
+    expect(screen.getByText('Cared for by')).toBeInTheDocument();
+    expect(screen.getByText('Who else can see them')).toBeInTheDocument();
+    expect(screen.getByText('Tags')).toBeInTheDocument();
   });
 
   it('allows clicking tabs and switching views', async () => {
@@ -790,9 +810,10 @@ describe('ContactDetailsModal Component', () => {
 
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithMeta} />);
     
-    // Header subhead should include "contacted by Tony Wang"
+    // Header since-line should include "contacted by Tony Wang"
     expect(screen.getAllByText(/contacted by Tony Wang/i).length).toBeGreaterThan(0);
-    // Timestamps section should include "by Sarah Connor"
-    expect(screen.getByText(/by Sarah Connor/i)).toBeInTheDocument();
+    // The aside's "Cared for by" shows who added them (the name is emphasised).
+    expect(screen.getByText(/Added by/i)).toBeInTheDocument();
+    expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThan(0);
   });
 });
