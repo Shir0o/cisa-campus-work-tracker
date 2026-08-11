@@ -1040,5 +1040,80 @@ describe('Messages View Component', () => {
         expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull();
       });
     });
+
+    it('triggers mention autocomplete when @ is typed and inserts selected user', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
+
+      const composer = screen.getByPlaceholderText(/Write a message/i);
+      fireEvent.change(composer, { target: { value: 'Hey @Al', selectionStart: 6 } });
+
+      // Check if mention popup appears with Alice Green
+      expect(await screen.findByText('Alice Green')).toBeInTheDocument();
+
+      // Click Alice Green
+      fireEvent.click(screen.getByText('Alice Green'));
+      expect(composer).toHaveValue('Hey @Alice Green ');
+    });
+
+    it('renders system messages in the message stream', async () => {
+      const mockRoomsWithSys = [
+        {
+          id: 'room1',
+          type: 'group' as const,
+          name: 'Trainees Chat',
+          memberIds: ['u1', 'u2'],
+          createdById: 'u1',
+          createdByName: 'Current User',
+          createdAt: { seconds: 100000 },
+        },
+      ];
+
+      const mockSysMsg = [
+        {
+          id: 'sys1',
+          roomId: 'room1',
+          senderId: 'system',
+          senderName: 'System',
+          text: 'User Alice joined the group',
+          type: 'system',
+          createdAt: { seconds: 100001 },
+        },
+      ];
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? mockSysMsg : mockRoomsWithSys;
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      expect(await screen.findByText('User Alice joined the group')).toBeInTheDocument();
+    });
   });
 });
+

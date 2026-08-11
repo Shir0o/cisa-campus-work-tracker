@@ -1,3 +1,4 @@
+import './useMediaQuery.mock';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, deleteDoc, updateDoc } from 'firebase/firestore';
@@ -278,6 +279,48 @@ describe('Attendance', () => {
     expect(deleteDoc).toHaveBeenCalled();
   });
 
+  it('opens edit event modal when pencil button is clicked', async () => {
+    const { container } = render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    const editBtn = container.querySelector('span[title="Edit gathering"]');
+    expect(editBtn).not.toBeNull();
+    fireEvent.click(editBtn!);
+
+    expect(screen.getByTestId('edit-event-modal')).toBeInTheDocument();
+  });
+
+  it('cycles attendance for absent contact in expanded gathering', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    // Expand Friday Gathering 1 (e1, where Alice is absent)
+    fireEvent.click(screen.getByText('Friday Gathering 1'));
+
+    // Alice is in "We missed" section for e1
+    const aliceBtn = screen.getByRole('button', { name: /Alice Johnson/ });
+    fireEvent.click(aliceBtn);
+
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('opens manage gathering types modal when gear button is clicked', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Manage kinds/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText(/Manage kinds/));
+    expect(screen.getByTestId('manage-types-modal')).toBeInTheDocument();
+  });
+
   it('opens sync sheet modal', async () => {
     render(<Attendance />);
 
@@ -289,5 +332,38 @@ describe('Attendance', () => {
     fireEvent.click(syncBtn);
 
     expect(screen.getByTestId('sync-sheet-modal')).toBeInTheDocument();
+  });
+
+  it('renders coming up section for future events', async () => {
+    const futureDate = new Date(Date.now() + 10 * 86_400_000).toISOString().split('T')[0];
+    const futureEvents = [
+      {
+        id: 'e-future',
+        data: () => ({
+          name: 'Upcoming Retreat',
+          date: futureDate,
+          type: 'Special',
+          location: 'Camp Ground',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'events') {
+        callback({ docs: futureEvents, size: 1 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Coming up')).toBeInTheDocument();
+      expect(screen.getAllByText('Upcoming Retreat').length).toBeGreaterThan(0);
+    });
   });
 });

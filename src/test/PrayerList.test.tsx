@@ -356,22 +356,68 @@ describe('PrayerList', () => {
     expect(screen.queryByText('Earlier 1')).not.toBeInTheDocument();
   });
 
-  it('opens contact details profile modal on avatar click', async () => {
+  it('handles writing and saving a testimony when marking prayer as answered', async () => {
     render(<PrayerList />);
+
     await waitFor(() => {
-      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
     });
 
-    const profileButton = screen.getAllByTitle('Open profile')[0];
-    fireEvent.click(profileButton);
+    const answerButton = screen.getAllByRole('button', { name: 'Answered' }).find(btn => !btn.className.includes('ans-toggle-opt'))!;
+    fireEvent.click(answerButton);
 
-    expect(screen.getByTestId('contact-modal')).toBeInTheDocument();
-    expect(screen.getByText('Modal Open for Alice Johnson')).toBeInTheDocument();
+    const textarea = await screen.findByPlaceholderText(/A sentence on how God answered/i);
+    fireEvent.change(textarea, { target: { value: 'God provided grace and peace during exams' } });
 
-    // Close modal
-    const closeBtn = screen.getByRole('button', { name: 'Close' });
-    fireEvent.click(closeBtn);
-    expect(screen.queryByTestId('contact-modal')).not.toBeInTheDocument();
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
+    expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('handles editing an existing testimony on answered prayer', async () => {
+    const answeredPrayer = [
+      {
+        id: 'p-ans',
+        data: () => ({
+          contactId: 'c1',
+          burden: 'Passed all exams',
+          date: '2026-06-12T00:00:00.000Z',
+          status: 'answered',
+          answer: 'Got an A on the final',
+          answeredAt: '2026-06-12',
+          updatedAt: '2026-06-12T00:00:00.000Z',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: answeredPrayer, size: 1 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Passed all exams')).toBeInTheDocument();
+    });
+
+    const editTestimonyBtn = screen.getByText('Edit Testimony');
+    fireEvent.click(editTestimonyBtn);
+
+    const textarea = screen.getByDisplayValue('Got an A on the final');
+    fireEvent.change(textarea, { target: { value: 'Got an A+ on the final!' } });
+
+    const saveBtn = screen.getByRole('button', { name: 'Save' });
+    fireEvent.click(saveBtn);
+
+    expect(updateDoc).toHaveBeenCalled();
   });
 });
 

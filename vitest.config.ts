@@ -28,17 +28,14 @@ export default defineConfig({
         'src/lib/yjsRtdbProvider.ts',
         'src/constants.ts',
       ],
-      // Baseline after adding server.ts and the *Mobile.tsx views to the
-      // coverage scope (previously 0% and invisible). New measured totals:
-      // ~86.7% lines, ~74.4% branches, ~80.1% functions, ~84.8% statements.
-      // Re-baselined thresholds (scope changes, not regressions) with a small
-      // buffer to prevent flaky single-line regressions from failing CI.
-      // Known weak spot: MyDayMobile.tsx (~38% — shallow pre-existing test).
+      // Re-baselined & ratcheted thresholds after boosting unit test coverage across
+      // views, modals, server endpoints, and mobile components.
+      // Measured totals: ~87.9% lines, ~75.2% branches, ~81.4% functions, ~85.8% statements.
       thresholds: {
-        lines: 86.3,
-        branches: 74.0,
-        functions: 79.5,
-        statements: 84.4,
+        lines: 87.5,
+        branches: 75.0,
+        functions: 81.0,
+        statements: 85.5,
       },
     },
   },

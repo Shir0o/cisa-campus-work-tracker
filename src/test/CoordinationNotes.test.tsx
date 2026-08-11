@@ -2275,5 +2275,50 @@ describe('CoordinationNotes', () => {
 
       expect(screen.getByText('Added')).toBeInTheDocument();
     });
+
+    it('handles changing fields, priority buttons, and calling onDismiss', async () => {
+      const onSaveTask = vi.fn().mockResolvedValue(undefined);
+      const onAdd = vi.fn();
+      const onDismiss = vi.fn();
+      const contacts = [{ id: 'c-1', name: 'John' }, { id: 'c-2', name: 'Mary' }];
+
+      const { container } = render(
+        <SuggestedTaskCard
+          task={mockTask}
+          isAdded={false}
+          contacts={contacts as any}
+          team={[{ uid: 'u-1', name: 'Alice' } as any]}
+          meUid="u-1"
+          onAdd={onAdd}
+          onDismiss={onDismiss}
+          onSaveTask={onSaveTask}
+        />,
+      );
+
+      const dateInput = container.querySelector('input[type="date"]')!;
+      fireEvent.change(dateInput, { target: { value: '2026-09-01' } });
+
+      const selects = container.querySelectorAll('select');
+      fireEvent.change(selects[1], { target: { value: 'c-2' } }); // contact select
+
+      const medPriorityBtn = screen.getByRole('button', { name: 'med' });
+      fireEvent.click(medPriorityBtn);
+
+      const dismissBtn = screen.getByRole('button', { name: 'Dismiss' });
+      fireEvent.click(dismissBtn);
+      expect(onDismiss).toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /add task/i }));
+
+      await waitFor(() => {
+        expect(onSaveTask).toHaveBeenCalledWith({
+          title: 'Follow up with student',
+          dueDate: '2026-09-01',
+          priority: 'medium',
+          contactId: 'c-2',
+          assigneeId: 'u-1',
+        });
+      });
+    });
   });
 

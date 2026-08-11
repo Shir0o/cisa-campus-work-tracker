@@ -167,8 +167,36 @@ describe('AttendanceMobile', () => {
     expect(screen.queryByText('Nothing on the calendar this week.')).not.toBeInTheDocument();
   });
 
-  it('shows the empty session state', () => {
-    render(<AttendanceMobile {...baseProps} />);
-    expect(screen.getByText('No gatherings of this kind yet.')).toBeInTheDocument();
+  it('calls onEditSession when Edit details is clicked in session sheet', () => {
+    const onEditSession = vi.fn();
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[contact()]}
+        onEditSession={onEditSession}
+        here={vi.fn(() => true)}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    fireEvent.click(screen.getByText('Edit details'));
+    expect(onEditSession).toHaveBeenCalledWith(expect.objectContaining({ id: 's1' }));
+  });
+
+  it('cycles attendance for absent contacts in roster sheet', () => {
+    const cycleAttendance = vi.fn().mockResolvedValue(undefined);
+    const absentContact = contact({ attendance: { s1: 'absent' } });
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[absentContact]}
+        here={vi.fn(() => false)}
+        cycleAttendance={cycleAttendance}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    fireEvent.click(screen.getByText('Alice Smith'));
+    expect(cycleAttendance).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), 's1');
   });
 });
