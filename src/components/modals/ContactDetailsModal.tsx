@@ -17,11 +17,11 @@ import {
   UserCircle,
   Clock,
   Plus,
-  Tag,
   Sparkles,
   Heart,
   Footprints,
-  Users,
+  Instagram,
+  Check,
 } from "lucide-react";
 import {
   db,
@@ -67,18 +67,6 @@ interface ContactDetailsModalProps {
   // thread; otherwise honours initialTab.
   initialTab?: "thread";
   initialInteractionId?: string | null;
-}
-
-function formatCreatedDate(val: unknown): string {
-  if (!val) return '—';
-  if (typeof val === 'object' && val !== null && 'toDate' in val && typeof (val as { toDate: () => Date }).toDate === 'function') {
-    return (val as { toDate: () => Date }).toDate().toLocaleDateString();
-  }
-  if (typeof val === 'object' && val !== null && 'seconds' in val && typeof (val as { seconds: number }).seconds === 'number') {
-    return new Date((val as { seconds: number }).seconds * 1000).toLocaleDateString();
-  }
-  const d = new Date(val as string | number);
-  return isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
 }
 
 function AuditActivityItem({
@@ -967,31 +955,43 @@ export default function ContactDetailsModal({
 
   const firstName = contact.name.split(" ")[0];
 
+  // ── Desktop page aside data (Field Notes: how to reach / where they are /
+  //    cared for by / who else can see / tags) ──
+  const fmtDate = (v?: string | null): string => {
+    if (!v) return "—";
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+  };
+  const sinceText = contact.lastContactedDate
+    ? `Last connected ${fmtDate(contact.lastContactedDate)}`
+    : contact.lastSeen
+      ? `Last seen ${fmtDate(contact.lastSeen)}`
+      : "Not connected yet";
+  const sinceBy = contact.lastContactedBy || null;
+  const ownerInfo = teamMembers.find((m) => m.id === ownerId);
+  const ownerName = ownerInfo?.name || contact.createdByName || "—";
+  const ownerRole = ownerInfo?.role || "";
+  const addedByName =
+    contact.createdByName ||
+    (contact.addedBy ? teamMembers.find((m) => m.id === contact.addedBy)?.name : null);
+  const sortedStages = [...stages].sort((a, b) => a.order - b.order);
+  const stageIdx = contact.stage
+    ? sortedStages.findIndex((s) => s.label === contact.stage)
+    : -1;
+  const openPrayers = prayers.filter(
+    (p) => p.status !== "answered" && p.status !== "unanswered",
+  );
+  const heldDays = (date?: string): number | null => {
+    if (!date) return null;
+    const d = new Date(date).getTime();
+    return isNaN(d) ? null : Math.max(1, Math.floor((Date.now() - d) / 86_400_000));
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className={cn("fixed inset-0 z-[100] flex", isMobile ? "w-full h-full bg-surface" : "items-center justify-center p-4 md:p-10")}>
-          {!isMobile && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={onClose}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[-1]"
-            />
-          )}
-
-          <motion.div
-            initial={isMobile ? { opacity: 0, y: 80 } : { opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={isMobile ? { opacity: 0, y: 80 } : { opacity: 0, scale: 0.95, y: 20 }}
-            className={cn(
-              "relative flex flex-col overflow-hidden max-h-full",
-              isMobile
-                ? "w-full h-full bg-surface-container-lowest"
-                : "w-full max-w-2xl bg-surface-container rounded-[28px] shadow-2xl border border-outline-variant"
-            )}
-          >
+        <div className={isMobile ? "cdm-page" : "cd-page"}>
+          <div className={isMobile ? "cdm-page-main" : "cd-page-main"}>
             {isMobile ? (
               isEditing ? (
                 /* Mobile Editing Header */
@@ -1095,95 +1095,111 @@ export default function ContactDetailsModal({
                 </div>
               )
             ) : (
-              /* Desktop Header */
-              <div className="px-6 py-5 border-b border-outline-variant shrink-0">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
-                    <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
-                      {contact.initials}
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="font-serif text-2xl text-on-surface leading-tight line-clamp-1">
-                        {isEditing ? "Edit details" : contact.name}
-                      </h2>
-                      {!isEditing && (
-                        <p className="text-sm text-on-surface-variant mt-0.5 truncate">
-                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
+              /* Desktop header — Field Notes: avatar, name, stage, since, actions */
+              <header className="cd-head">
+                <div className="w-14 h-14 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl shrink-0">
+                  {contact.initials}
+                </div>
+                <div className="cd-head-main">
+                  <div className="cd-name-row">
+                    <h2 className="cd-name">{isEditing ? "Edit details" : contact.name}</h2>
+                    {!isEditing && contact.pronouns && (
+                      <span className="cd-pronouns">{contact.pronouns}</span>
+                    )}
                     {!isEditing && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-variant text-on-surface-variant">
+                        {contact.stage || "Unassigned"}
+                      </span>
+                    )}
+                  </div>
+
+                  {!isEditing && (
+                    <>
+                      <div className="cd-since">
+                        {sinceText}
+                        {sinceBy && <span className="cd-by">contacted by {sinceBy}</span>}
+                      </div>
+                      <div className="cd-meta">
+                        <span>{[contact.year, contact.major].filter(Boolean).join(" · ") || "—"}</span>
+                        {contact.location && (
+                          <>
+                            <span className="sep">·</span>
+                            <span className="row"><MapPin className="w-3.5 h-3.5" /> {contact.location}</span>
+                          </>
+                        )}
+                        <span className="sep">·</span>
+                        <span>added {fmtDate(contact.createdAt)}</span>
+                      </div>
+                    </>
+                  )}
+
+                  {!isEditing && (
+                    <div className="cd-actions">
+                      {contact.phone && (
+                        <button
+                          onClick={callContact}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          <Phone className="w-3.5 h-3.5" /> Call
+                        </button>
+                      )}
+                      {contact.phone && (
+                        <button
+                          onClick={textContact}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" /> Text
+                        </button>
+                      )}
+                      {contact.email && (
+                        <button
+                          onClick={emailContact}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                        >
+                          <Mail className="w-3.5 h-3.5" /> Email
+                        </button>
+                      )}
+                      <button
+                        onClick={startLogInteraction}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" /> Log interaction
+                      </button>
+                      <button
+                        onClick={startAddPrayer}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                      >
+                        <Heart className="w-3.5 h-3.5" /> Add prayer
+                      </button>
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         title="Edit details"
+                        aria-label="Edit details"
                       >
-                        <Edit3 className="w-5 h-5" />
+                        <Edit3 className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button
-                      onClick={onClose}
-                      className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
+                    </div>
+                  )}
                 </div>
-
-                {/* Header actions */}
-                {!isEditing && (
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {contact.phone && (
-                      <button
-                        onClick={callContact}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <Phone className="w-3.5 h-3.5" /> Call
-                      </button>
-                    )}
-                    {contact.phone && (
-                      <button
-                        onClick={textContact}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" /> Text
-                      </button>
-                    )}
-                    {contact.email && (
-                      <button
-                        onClick={emailContact}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                      >
-                        <Mail className="w-3.5 h-3.5" /> Email
-                      </button>
-                    )}
-                    <button
-                      onClick={startLogInteraction}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" /> Log interaction
-                    </button>
-                    <button
-                      onClick={startAddPrayer}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <Heart className="w-3.5 h-3.5" /> Add prayer
-                    </button>
-                  </div>
-                )}
-              </div>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant shrink-0"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </header>
             )}
 
             {/* Content Tab Switcher */}
             {!isEditing && (() => {
               const visibleTabList = [
                 { id: "overview", label: "Overview" },
-                { id: "interactions", label: "Interactions", count: interactions.length },
                 { id: "thread", label: "Follow-up", count: countFor(threadMessages, null) },
-                { id: "prayer", label: "Prayer", count: prayers.length },
                 ...((role === "admin" || isAdmin) ? [{ id: "comments", label: "Discussion", count: countFor(threadMessages, null, "team") }] : []),
+                { id: "interactions", label: "Interactions", count: interactions.length },
+                { id: "prayer", label: "Prayer", count: prayers.length },
                 ...(canSeeHistory(role) ? [{ id: "history", label: "History" }] : []),
               ];
 
@@ -1208,28 +1224,17 @@ export default function ContactDetailsModal({
                   </div>
                 </div>
               ) : (
-                /* Desktop Tab Bar */
-                <div className="flex px-6 border-b border-outline-variant bg-surface-container-low/30 shrink-0 overflow-x-auto no-scrollbar">
+                /* Desktop Tab Bar — Field Notes */
+                <div className="cd-tabs-bar">
                   {visibleTabList.map((t) => (
                     <button
                       key={t.id}
                       onClick={() => setActiveTab(t.id as any)}
-                      className={cn(
-                        "px-4 py-3 text-sm font-medium transition-colors relative whitespace-nowrap",
-                        activeTab === t.id
-                          ? "text-primary"
-                          : "text-on-surface-variant/70 hover:text-on-surface",
-                      )}
+                      className={cn("cd-tab", activeTab === t.id && "on")}
                     >
                       {t.label}
                       {"count" in t && t.count != null && (
-                        <span className="ml-1.5 text-on-surface-variant/50">{t.count}</span>
-                      )}
-                      {activeTab === t.id && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
-                        />
+                        <span className="count">{t.count}</span>
                       )}
                     </button>
                   ))}
@@ -1238,7 +1243,7 @@ export default function ContactDetailsModal({
             })()}
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+            <div className={isMobile ? "cdm-page-body" : "cd-page-content"}>
               {isEditing ? (
                 <form
                   id="edit-contact-form"
@@ -1462,250 +1467,106 @@ export default function ContactDetailsModal({
                 </form>
               ) : (
                 <div className="min-h-[400px]">
-                  {activeTab === "overview" && (
+{activeTab === "overview" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-8"
                     >
-                      {/* Info Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-6 gap-x-12">
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0 transition-colors">
-                            <Mail className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
-                              Email Address
-                            </p>
-                            <p className="text-sm font-bold text-on-surface break-all">
-                              {contact.email}
-                            </p>
-                          </div>
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">What we know</h3>
                         </div>
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                            <Phone className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
-                              Phone Number
-                            </p>
-                            <p className="text-sm font-bold text-on-surface">
-                              {contact.phone || "Not provided"}
-                            </p>
-                          </div>
+                        <div className="cd-prose">
+                          {contact.notes || "No notes recorded for this contact yet."}
                         </div>
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                            <MapPin className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
-                              {contact?.tags?.includes('New Sign Up') ? 'Residence Hall' : 'First Met'}
-                            </p>
-                            <p className="text-sm font-bold text-on-surface">
-                              {contact.location || "Not recorded"}
-                            </p>
-                          </div>
+                      </div>
+
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">Lately</h3>
+                          <span className="cd-sec-sub">Our last few conversations</span>
                         </div>
-                        <div className="flex items-start gap-4">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                            <Briefcase className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-medium text-on-surface-variant mb-0.5">
-                              Stage
-                            </p>
-                            <div className="flex flex-col gap-1 mt-1">
-                              <span className="px-2.5 py-0.5 rounded-full bg-surface-variant text-on-surface-variant text-xs font-medium w-fit">
-                                {stages.some(s => s.label === contact.stage) ? contact.stage : "Unassigned"}
-                              </span>
+                        {interactionsLoading ? (
+                          <div className="flex gap-3">
+                            <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                            <div className="flex-1 space-y-2">
+                              <Skeleton className="h-3 w-24 rounded-full" />
+                              <Skeleton className="h-12 w-full rounded-xl" />
                             </div>
                           </div>
-                        </div>
-                        {contact.spiritualBackground && (
-                          <div className="flex items-start gap-4">
-                            <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                              <Sparkles className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-medium text-on-surface-variant mb-0.5">
-                                Spiritual Background
-                              </p>
-                              <p className="text-sm font-bold text-on-surface">
-                                {contact.spiritualBackground}
-                              </p>
-                            </div>
+                        ) : interactions.length === 0 ? (
+                          <div className="cd-empty">No conversations logged yet.</div>
+                        ) : (
+                          <div className="cd-tl">
+                            {[...interactions].reverse().slice(0, 3).map((i) => (
+                              <div className="cd-tl-item" key={i.id}>
+                                <div className="cd-tl-dot"></div>
+                                <div className="cd-tl-title">{i.content}</div>
+                                <div className="cd-tl-meta">
+                                  {i.dateTime ? new Date(i.dateTime).toLocaleDateString() : ""}
+                                  <span className="sep">·</span>
+                                  <span>{i.userName || "Someone"}</span>
+                                  {i.type && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-variant text-on-surface-variant">
+                                      {i.type}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
-                        <div className="flex items-start gap-4 md:col-span-2">
-                          <div className="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-primary shrink-0">
-                            <Tag className="w-5 h-5" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-medium text-on-surface-variant mb-1.5">
-                              Tags
-                            </p>
-                            <div className="flex flex-wrap items-center gap-2">
-                              {formData.tags.map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="group/tag inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-medium border border-outline-variant/40"
-                                >
-                                  {tag}
-                                  <button
-                                    onClick={() => removeTag(tag)}
-                                    className="text-on-surface-variant/50 hover:text-error transition-colors"
-                                    title="Remove tag"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </span>
-                              ))}
-                              {addingTag ? (
-                                <input
-                                  autoFocus
-                                  value={tagInput}
-                                  onChange={(e) => setTagInput(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      commitTag();
-                                    }
-                                    if (e.key === "Escape") {
-                                      setTagInput("");
-                                      setAddingTag(false);
-                                    }
-                                  }}
-                                  onBlur={commitTag}
-                                  placeholder="new tag…"
-                                  className="h-7 px-2.5 rounded-full bg-surface border border-primary/40 text-xs text-on-surface outline-none w-28"
-                                />
-                              ) : (
-                                <button
-                                  onClick={() => setAddingTag(true)}
-                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
-                                >
-                                  <Plus className="w-3 h-3" /> add
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
                       </div>
 
-                      {/* Notes Section */}
-                      <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
-                        <h3 className="font-serif text-lg text-on-surface flex items-center gap-2 mb-3">
-                          <MessageSquare className="w-4 h-4 text-primary" /> What we know
-                        </h3>
-                        <div className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap min-h-[60px]">
-                          {contact.notes ||
-                            "No notes recorded for this contact yet."}
+                      <div className="cd-sec">
+                        <div className="cd-sec-head">
+                          <h3 className="cd-sec-title">Prayers we're holding</h3>
                         </div>
-                      </div>
-
-                      {/* Who else can see them (coCreators) */}
-                      <div className="p-5 rounded-[20px] bg-surface-container-low border border-outline-variant">
-                        <div className="flex items-center justify-between gap-2 mb-3">
-                          <h3 className="font-serif text-lg text-on-surface flex items-center gap-2">
-                            <Users className="w-4 h-4 text-primary" /> Who else can see them
-                          </h3>
-                          {canShare && !sharing && (
-                            <button
-                              onClick={() => setSharing(true)}
-                              className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
-                            >
-                              <Plus className="w-3.5 h-3.5" /> Share
-                            </button>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          {sharedWith.length === 0 ? (
-                            <p className="text-xs text-on-surface-variant/70 italic">
-                              Just {contact.createdByName ? contact.createdByName.split(" ")[0] : "you"} for now.
-                            </p>
-                          ) : (
-                            sharedWith.map((s) => (
-                              <div
-                                key={s.id}
-                                className="flex items-center justify-between p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/30"
-                              >
-                                <div className="flex items-center gap-2.5">
-                                  <div className="w-7 h-7 rounded-full bg-primary/15 text-primary text-xs font-bold grid place-items-center">
-                                    {s.initials}
+                        {prayersLoading ? (
+                          <Skeleton className="h-20 w-full rounded-2xl" />
+                        ) : openPrayers.length === 0 ? (
+                          <div className="cd-empty">Nothing open right now.</div>
+                        ) : (
+                          <div className="cd-pray">
+                            {openPrayers.map((p) => {
+                              const burden = p.burden || "";
+                              const title = burden.split("\n\n")[0] || burden;
+                              const context = burden.includes("\n\n") ? burden.split("\n\n").slice(1).join("\n\n") : null;
+                              return (
+                                <div key={p.id} className="cd-pray-card">
+                                  <div className="cd-pray-top">
+                                    <strong className="cd-pray-title">
+                                      {title}
+                                    </strong>
+                                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stage-violet-soft text-stage-violet">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-stage-violet" /> open
+                                    </span>
                                   </div>
-                                  <div>
-                                    <p className="text-xs font-semibold text-on-surface">{s.name}</p>
-                                    <p className="text-[11px] text-on-surface-variant">{s.role}</p>
+                                  {context && (
+                                    <div className="cd-pray-body">
+                                      {context}
+                                    </div>
+                                  )}
+                                  <div className="cd-pray-foot">
+                                    {heldDays(p.date) != null &&
+                                      `Held ${heldDays(p.date)} ${heldDays(p.date) === 1 ? "day" : "days"}`}
                                   </div>
                                 </div>
-                                {canShare && (
-                                  <button
-                                    onClick={() => removeShare(s.id)}
-                                    className="w-6 h-6 rounded-full hover:bg-error/10 text-on-surface-variant hover:text-error grid place-items-center text-sm transition-colors"
-                                    title="Remove access"
-                                  >
-                                    ×
-                                  </button>
-                                )}
-                              </div>
-                            ))
-                          )}
-                          {sharing && (
-                            <div className="mt-3 flex items-center gap-2">
-                              <select
-                                onChange={(e) => {
-                                  if (e.target.value) addShare(e.target.value);
-                                }}
-                                defaultValue=""
-                                className="flex-1 h-9 px-3 rounded-xl bg-surface border border-outline text-xs text-on-surface"
-                              >
-                                <option value="" disabled>Select team member to share with…</option>
-                                {shareOptions.map((s) => (
-                                  <option key={s.id} value={s.id}>
-                                    {s.name} ({s.role})
-                                  </option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => setSharing(false)}
-                                className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Timestamps */}
-                      <div className="flex items-center justify-between px-2 pt-3 border-t border-outline-variant/30">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs text-on-surface-variant/70">
-                            Last seen {contact.lastSeen || "—"}
-                            {contact.lastContactedBy ? ` · Contacted by ${contact.lastContactedBy}` : ""}
-                          </span>
-                          <span className="text-xs text-on-surface-variant/50">
-                            Added {formatCreatedDate(contact.createdAt)}
-                            {(contact.createdByName || contact.addedBy)
-                              ? ` by ${contact.createdByName || contact.addedBy}`
-                              : ""}
-                          </span>
-                        </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
                     </motion.div>
                   )}
-
-                  {activeTab === "interactions" && (
+{activeTab === "interactions" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
+                      className="cd-sec"
                     >
-                      <div className="flex items-center justify-between px-2">
-                        <h3 className="font-serif text-lg text-on-surface">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">
                           Every conversation
                         </h3>
                         <button
@@ -1810,7 +1671,7 @@ export default function ContactDetailsModal({
                         )}
                       </AnimatePresence>
 
-                      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-4">
                         {interactionsLoading ? (
                           <div className="space-y-3">
                             {[1, 2, 3].map((i) => (
@@ -2048,10 +1909,13 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "thread" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">{walkLabel}</h3>
+                        <span className="cd-sec-sub">
+                          {`Comments on ${firstName} — anyone who can see them can weigh in, and reply to a comment.`}
+                        </span>
+                      </div>
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
@@ -2059,17 +1923,17 @@ export default function ContactDetailsModal({
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                       />
-                    </motion.div>
+                    </div>
                   )}
 
                   {activeTab === "prayer" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
+                      className="cd-sec"
                     >
-                      <div className="flex items-center justify-between px-2">
-                        <h3 className="font-serif text-lg text-on-surface">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">
                           Prayers we're holding
                         </h3>
                         <button
@@ -2138,7 +2002,7 @@ export default function ContactDetailsModal({
                         )}
                       </AnimatePresence>
 
-                      <div className="space-y-3 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-3">
                         {prayersLoading ? (
                           <div className="space-y-3">
                             {[1, 2].map((i) => (
@@ -2213,14 +2077,13 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "comments" && (role === "admin" || isAdmin) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-serif text-lg text-on-surface px-2">
-                        Team discussion
-                      </h3>
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">Discussion</h3>
+                        <span className="cd-sec-sub">
+                          {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
+                        </span>
+                      </div>
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
@@ -2229,22 +2092,18 @@ export default function ContactDetailsModal({
                         contactName={contact.name}
                         scope="team"
                       />
-                    </motion.div>
+                    </div>
                   )}
 
 
 
                   {activeTab === "history" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-serif text-lg text-on-surface px-2">
-                        Looking back
-                      </h3>
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">Looking back</h3>
+                      </div>
 
-                      <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-6">
                         {activitiesLoading ? (
                           <div className="space-y-4">
                             {[1, 2, 3, 4].map((i) => (
@@ -2274,14 +2133,14 @@ export default function ContactDetailsModal({
                           ))
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               )}
             </div>
 
             {/* Footer */}
-            <div className={cn("px-6 py-4 border-t border-outline-variant shrink-0 flex items-center justify-between bg-surface-container-low/50", isMobile && "hidden")}>
+            <div className={cn("cd-page-foot", isMobile && "hidden")}>
               <div className="hidden sm:block">
                 <button
                   onClick={handleDelete}
@@ -2346,7 +2205,196 @@ export default function ContactDetailsModal({
                 )}
               </button>
             </div>
-          </motion.div>
+          </div>
+          {!isMobile && (
+            <aside className="cd-page-aside">
+              <div className="cd-aside-sec">
+                <h3 className="cd-aside-title">How to reach {firstName}</h3>
+                <div className="cd-kv">
+                  {contact.phone && (
+                    <div className="cd-kv-row">
+                      <Phone className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val">{contact.phone}</span>
+                    </div>
+                  )}
+                  {contact.email && (
+                    <div className="cd-kv-row">
+                      <Mail className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val dim">{contact.email}</span>
+                    </div>
+                  )}
+                  {contact.instagram && (
+                    <div className="cd-kv-row">
+                      <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val dim">{contact.instagram}</span>
+                    </div>
+                  )}
+                  {contact.location && (
+                    <div className="cd-kv-row">
+                      <MapPin className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val">{contact.location}</span>
+                    </div>
+                  )}
+                  {contact.role && (
+                    <div className="cd-kv-row">
+                      <Briefcase className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val dim">{contact.role}</span>
+                    </div>
+                  )}
+                  {contact.spiritualBackground && (
+                    <div className="cd-kv-row">
+                      <Sparkles className="w-3.5 h-3.5 cd-kv-ico" />
+                      <span className="cd-kv-val dim">{contact.spiritualBackground}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="cd-aside-sec">
+                <h3 className="cd-aside-title">Where they are</h3>
+                <div className="cd-journey">
+                  {sortedStages.length === 0 && (
+                    <span className="text-xs text-on-surface-variant">No steps shaped yet.</span>
+                  )}
+                  {sortedStages.map((s, i) => {
+                    const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
+                    return (
+                      <div key={s.id} className={cn("cd-journey-step", state)}>
+                        <span className="cd-step-mark">
+                          {state === "on" && <Check className="w-2.5 h-2.5 text-white" />}
+                          {state === "done" && <span className="pd" />}
+                        </span>
+                        <span className="cd-step-name">{s.label}</span>
+                        {state === "on" && <span className="cd-step-here">here now</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="cd-aside-sec">
+                <h3 className="cd-aside-title">Cared for by</h3>
+                <div className="cd-owner">
+                  <div className="w-10 h-10 rounded-full bg-primary/15 text-primary text-sm font-bold grid place-items-center shrink-0">
+                    {ownerInfo?.initials || "?"}
+                  </div>
+                  <div>
+                    <div className="cd-owner-name">{ownerName}</div>
+                    {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
+                  </div>
+                </div>
+                {(addedByName || sinceBy) && (
+                  <div className="cd-whowho">
+                    {addedByName && (
+                      <div className="cd-lastby">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold grid place-items-center shrink-0">
+                          {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
+                        </div>
+                        <span>Added by <b>{addedByName}</b>{contact.createdAt ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                      </div>
+                    )}
+                    {sinceBy && (
+                      <div className="cd-lastby">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold grid place-items-center shrink-0">
+                          {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
+                        </div>
+                        <span>Last contacted by <b>{sinceBy}</b>{contact.lastContactedDate ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="cd-aside-sec">
+                <h3 className="cd-aside-title">Who else can see them</h3>
+                <div className="cd-share">
+                  {sharedWith.length === 0 && (
+                    <span className="text-xs text-on-surface-variant">
+                      Just {ownerName.split(" ")[0] || "you"} for now.
+                    </span>
+                  )}
+                  {sharedWith.map((s) => (
+                    <div key={s.id} className="cd-share-row">
+                      <div className="w-7 h-7 rounded-full bg-primary/15 text-primary text-xs font-bold grid place-items-center shrink-0">{s.initials}</div>
+                      <span className="cd-share-name">{s.name}</span>
+                      <span className="cd-share-role">{s.role}</span>
+                      {canShare && (
+                        <button className="cd-share-x" onClick={() => removeShare(s.id)} title="Remove access">×</button>
+                      )}
+                    </div>
+                  ))}
+                  {canShare && shareOptions.length > 0 && (
+                    sharing ? (
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="cd-share-sel flex-1"
+                          autoFocus
+                          defaultValue=""
+                          onChange={(e) => e.target.value && addShare(e.target.value)}
+                        >
+                          <option value="" disabled>Add someone…</option>
+                          {shareOptions.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => setSharing(false)}
+                          className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setSharing(true)}
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors self-start"
+                      >
+                        <Plus className="w-3 h-3" /> add someone
+                      </button>
+                    )
+                  )}
+                </div>
+              </div>
+
+              <div className="cd-aside-sec">
+                <h3 className="cd-aside-title">Tags</h3>
+                <div className="cd-tags">
+                  {formData.tags.length === 0 && !addingTag && (
+                    <span className="text-xs text-on-surface-variant">None yet</span>
+                  )}
+                  {formData.tags.map((tag) => (
+                    <span key={tag} className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-medium border border-outline-variant/40">
+                      {tag}
+                      <button onClick={() => removeTag(tag)} className="cd-tag-x" title="Remove tag">×</button>
+                    </span>
+                  ))}
+                  {addingTag ? (
+                    <span className="cd-tag-input-wrap">
+                      <input
+                        className="cd-tag-input"
+                        autoFocus
+                        value={tagInput}
+                        onChange={(e) => setTagInput(e.target.value)}
+                        placeholder="new tag…"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitTag();
+                          if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
+                        }}
+                        onBlur={commitTag}
+                      />
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setAddingTag(true)}
+                      className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> add
+                    </button>
+                  )}
+                </div>
+              </div>
+            </aside>
+          )}
         </div>
       )}
     </AnimatePresence>

@@ -39,6 +39,7 @@ import FeedbackList from "./views/FeedbackList";
 import SubmitFeedback from "./views/SubmitFeedback";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
+import { usePreserveScroll } from "./lib/usePreserveScroll";
 
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
@@ -55,6 +56,7 @@ interface LayoutContextType {
   openNewContact: (initialStage?: string) => void;
   openLogInteraction: () => void;
   openSmartImport: () => void;
+  selectedContact: Contact | null;
   setSelectedContact: (contact: Contact | null) => void;
   searchOpen: boolean;
   setSearchOpen: (value: boolean) => void;
@@ -295,6 +297,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     });
   };
 
+  // Opening a person swaps the view for the full-page detail; remember where
+  // the list was scrolled so "back" lands where you tapped (same pattern as the
+  // design's `openContactFor` / `backFromContact`).
+  usePreserveScroll(!!selectedContact);
+
   return (
     <LayoutContext.Provider
       value={{
@@ -308,6 +315,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         },
         openLogInteraction: () => setIsLogInteractionOpen(true),
         openSmartImport: () => setIsSmartImportOpen(true),
+        selectedContact,
         setSelectedContact: (contact: Contact | null) =>
           setSelectedContact(contact),
         searchOpen,
@@ -322,13 +330,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
         <div
           className={cn(
-            "flex-1 flex flex-col min-h-screen transition-all duration-300 min-w-0",
+            "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",
           )}
         >
           <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
           <TopBar onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
           <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
-            {children}
+            {/* People detail is a full page on desktop (the design's ContactDetail),
+                not a popup — it replaces the current view inside the shell. */}
+            {selectedContact ? (
+              <ContactDetailsModal
+                isOpen
+                onClose={() => setSelectedContact(null)}
+                contact={selectedContact}
+              />
+            ) : (
+              children
+            )}
           </main>
         </div>
 
@@ -351,12 +369,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         <SmartImportModal
           isOpen={isSmartImportOpen}
           onClose={() => setIsSmartImportOpen(false)}
-        />
-
-        <ContactDetailsModal
-          isOpen={selectedContact !== null}
-          onClose={() => setSelectedContact(null)}
-          contact={selectedContact}
         />
 
         <ImpersonateModal

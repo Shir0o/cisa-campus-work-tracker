@@ -30,6 +30,7 @@ import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import PageContainer from "../components/layout/PageContainer";
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
@@ -296,6 +297,9 @@ export default function History() {
     if (c) setSelectedContact(c);
   };
 
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!selectedContact);
+
   // Distinct staff for the "Whole team ▾" select.
   const staff = useMemo(() => {
     const names = new Set<string>();
@@ -341,6 +345,18 @@ export default function History() {
     day: "numeric",
   });
 
+  // The person detail is a full page (the design's ContactDetail), not a popup:
+  // it replaces the view, so back returns here.
+  if (selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => setSelectedContact(null)}
+        contact={selectedContact}
+      />
+    );
+  }
+
   if (isMobile && !loading && !error) {
     return (
       <>
@@ -359,11 +375,6 @@ export default function History() {
           humanize={humanize}
           dayInfo={dayInfo}
           firstName={firstName}
-        />
-        <ContactDetailsModal
-          isOpen={selectedContact !== null}
-          onClose={() => setSelectedContact(null)}
-          contact={selectedContact}
         />
       </>
     );
@@ -531,12 +542,6 @@ export default function History() {
           </span>
         </div>
       )}
-
-      <ContactDetailsModal
-        isOpen={selectedContact !== null}
-        onClose={() => setSelectedContact(null)}
-        contact={selectedContact}
-      />
     </PageContainer>
   );
 }

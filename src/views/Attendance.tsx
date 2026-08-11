@@ -29,6 +29,7 @@ import SyncSheetModal from '../components/modals/SyncSheetModal';
 import PageContainer from '../components/layout/PageContainer';
 import { format, parseISO, isValid } from 'date-fns';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 import AttendanceMobile from './AttendanceMobile';
 
 const DAY_MS = 86_400_000;
@@ -286,6 +287,18 @@ export default function Attendance() {
   }, [contacts, events]);
 
   const openContact = (c: Contact) => setSelectedContact(c);
+
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!selectedContact);
+  if (selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => setSelectedContact(null)}
+        contact={selectedContact}
+      />
+    );
+  }
 
   if (error) {
     return <DataLoadError label={error} />;
@@ -693,11 +706,6 @@ export default function Attendance() {
         isOpen={isManageTypesOpen}
         onClose={() => setIsManageTypesOpen(false)}
         types={gatheringTypes}
-      />
-      <ContactDetailsModal
-        isOpen={selectedContact !== null}
-        onClose={() => setSelectedContact(null)}
-        contact={selectedContact}
       />
     </>
   );

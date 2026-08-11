@@ -11,6 +11,7 @@ import { Skeleton } from "../../components/ui/Skeleton";
 import { DataLoadError } from "../../components/ui/DataLoadError";
 import ContactDetailsModal from "../../components/modals/ContactDetailsModal";
 import PageContainer from "../../components/layout/PageContainer";
+import { usePreserveScroll } from "../../lib/usePreserveScroll";
 import { SectionHead } from "../../components/landing/primitives";
 import { ReachCard } from "../../components/landing/ReachCard";
 import {
@@ -237,6 +238,24 @@ export default function LandingTrainee() {
     setIsDetailsModalOpen(true);
   };
 
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
+  if (isDetailsModalOpen && selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => {
+          setIsDetailsModalOpen(false);
+          setSelectedContact(null);
+          setInitialInteractionId(null);
+        }}
+        contact={selectedContact}
+        initialTab={initialTab}
+        initialInteractionId={initialInteractionId}
+      />
+    );
+  }
+
   if (error) return <DataLoadError label={error} />;
 
   if (loading) {
@@ -414,14 +433,6 @@ export default function LandingTrainee() {
       <p className="mt-14 text-sm text-on-surface-variant italic">
         Small, steady faithfulness is the whole job.
       </p>
-
-      <ContactDetailsModal
-        isOpen={isDetailsModalOpen}
-        onClose={() => setIsDetailsModalOpen(false)}
-        contact={selectedContact}
-        initialTab={initialTab}
-        initialInteractionId={initialInteractionId}
-      />
     </PageContainer>
   );
 }

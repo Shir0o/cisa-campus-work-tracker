@@ -40,7 +40,7 @@ interface TopBarProps {
 
 export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
   const { user, logOut, isOwner, impersonateTarget, ownerViewRole } = useAuth();
-  const { setIsMobileMenuOpen, setSearchOpen } = useLayout();
+  const { setIsMobileMenuOpen, setSearchOpen, selectedContact } = useLayout();
   const { pathname } = useLocation();
   const pageTitle = pageTitleFor(pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -74,10 +74,20 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
         </Link>
         <span className="text-on-surface-variant/50 select-none" aria-hidden="true">/</span>
         <h1 className="font-serif text-lg font-medium text-on-surface leading-none truncate">{pageTitle}</h1>
+        {selectedContact && (
+          <>
+            <span className="text-on-surface-variant/50 select-none" aria-hidden="true">/</span>
+            <span className="font-serif text-lg font-medium text-on-surface leading-none truncate shrink-0">
+              {selectedContact.name}
+            </span>
+          </>
+        )}
       </nav>
 
       {/* Mobile page title — serif */}
-      <h1 className="lg:hidden font-serif text-lg font-medium text-on-surface leading-none truncate min-w-0">{pageTitle}</h1>
+      <h1 className="lg:hidden font-serif text-lg font-medium text-on-surface leading-none truncate min-w-0">
+        {selectedContact ? selectedContact.name : pageTitle}
+      </h1>
 
       <div className="flex-1" />
 

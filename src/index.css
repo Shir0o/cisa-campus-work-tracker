@@ -3420,3 +3420,227 @@ body.msgs-fullscreen .content { padding-bottom: 0 !important; }
 
   .cdm-about .cd-aside-sec:first-child { padding-top: 20px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Contact detail — DESKTOP FULL PAGE (Field Notes).
+   Aligned to the design project's `views/contact-detail.jsx`: a `.detail`
+   grid of a scrolling main column + a 320px aside. Rendered by
+   ContactDetailsModal on !isMobile instead of the old popup card.
+   Tokens are this app's own (--primary / --surface / …) — the design's
+   --accent/--bg/--panel/--border-soft aliases are not defined here, so these
+   rules spell the values out rather than inheriting from the copied
+   mobile-only `.cdm-*` block above.
+   ═══════════════════════════════════════════════════════════════════════ */
+.cd-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  height: 100%;
+  min-height: 0;
+  background: var(--surface);
+}
+.cd-page-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid var(--outline-variant);
+}
+.cd-page-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.cd-page-aside {
+  overflow-y: auto;
+  background: var(--surface-container-low);
+  border-left: 1px solid var(--outline-variant);
+}
+.cd-page-foot {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 28px;
+  border-top: 1px solid var(--outline-variant);
+  background: var(--surface-container-low);
+  flex: none;
+}
+
+/* Mobile keeps the full-screen sheet (no popup card); same body reflow. */
+.cdm-page {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--surface);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.cdm-page-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.cdm-page-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 24px; }
+/* The tab panels share the desktop `.cd-sec` markup; on the sheet the body's
+   own 24px padding is the inset, so drop the section's side padding/border. */
+.cdm-page-body .cd-sec { padding-left: 0; padding-right: 0; border-bottom: 0; }
+.cdm-page-body .cd-sec-head { margin-bottom: 14px; }
+
+/* ── header ── */
+.cd-head {
+  display: flex; gap: 18px; align-items: flex-start;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--outline-variant);
+}
+.cd-head-main { flex: 1; min-width: 0; }
+.cd-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cd-name {
+  font-family: var(--font-serif); font-weight: 500;
+  font-size: clamp(22px, 1.2vw + 15px, 29px);
+  letter-spacing: -0.015em; line-height: 1.1; margin: 0;
+  color: var(--on-surface);
+}
+.cd-pronouns { font-size: 12.5px; color: var(--on-surface-variant); }
+.cd-since { margin-top: 9px; font-size: 14.5px; color: var(--primary); font-weight: 600; }
+.cd-since.is-overdue { color: var(--warning); }
+.cd-by { color: var(--on-surface-variant); font-weight: 400; }
+.cd-by::before { content: "·"; color: var(--outline); margin: 0 6px; }
+.cd-meta {
+  margin-top: 7px; font-size: 13.5px; color: var(--on-surface-variant);
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.cd-meta .sep { color: var(--outline); }
+.cd-meta .row { display: inline-flex; align-items: center; gap: 6px; }
+.cd-actions { display: flex; gap: 9px; margin-top: 18px; flex-wrap: wrap; }
+
+/* ── tabs ── */
+.cd-tabs-bar {
+  display: flex; align-items: center; gap: 2px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--outline-variant);
+  background: var(--surface);
+  overflow-x: auto; scrollbar-width: none;
+}
+.cd-tabs-bar::-webkit-scrollbar { display: none; }
+.cd-tab {
+  padding: 14px 12px; font-size: 14px; color: var(--on-surface-variant);
+  background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px;
+  cursor: pointer; white-space: nowrap; flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-sans); transition: color 120ms ease;
+}
+.cd-tab:hover { color: var(--on-surface); }
+.cd-tab.on { color: var(--on-surface); border-color: var(--primary); font-weight: 500; }
+.cd-tab .count {
+  font-size: 11.5px; font-weight: 600; color: var(--on-surface-variant);
+  background: var(--surface-container-high); border: 1px solid var(--outline-variant);
+  border-radius: 999px; padding: 0 7px; line-height: 17px; min-width: 17px; text-align: center;
+}
+.cd-tab.on .count {
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
+  border-color: color-mix(in srgb, var(--primary) 32%, transparent);
+}
+
+/* ── sections ── */
+.cd-sec { padding: 24px 28px; border-bottom: 1px solid var(--outline-variant); }
+.cd-sec-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.cd-sec-title { font-family: var(--font-serif); font-size: 20px; font-weight: 500; letter-spacing: -0.01em; margin: 0; color: var(--on-surface); }
+.cd-sec-sub { font-size: 13px; color: var(--on-surface-variant); }
+.cd-prose { font-size: 15px; line-height: 1.66; color: var(--on-surface); text-wrap: pretty; max-width: 72ch; white-space: pre-wrap; }
+.cd-empty { font-size: 14px; color: var(--on-surface-variant); font-style: italic; padding: 6px 0; }
+
+/* warm timeline */
+.cd-tl { position: relative; padding-left: 22px; }
+.cd-tl::before { content: ""; position: absolute; left: 6px; top: 9px; bottom: 9px; width: 1px; background: var(--outline-variant); }
+.cd-tl-item { position: relative; padding: 3px 0 20px; }
+.cd-tl-item:last-child { padding-bottom: 3px; }
+.cd-tl-dot { position: absolute; left: -21px; top: 7px; width: 11px; height: 11px; border-radius: 50%; background: var(--surface); border: 2px solid var(--primary); }
+.cd-tl-dot.success { border-color: var(--success); background: var(--success); }
+.cd-tl-dot.violet { border-color: var(--tertiary); background: var(--tertiary); }
+.cd-tl-dot.mute { border-color: var(--on-surface-variant); }
+.cd-tl-title { font-size: 15px; font-weight: 600; color: var(--on-surface); }
+.cd-tl-meta { font-size: 12.5px; color: var(--on-surface-variant); margin-top: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cd-tl-meta .sep { color: var(--outline); }
+.cd-tl-body { font-size: 14px; color: var(--on-surface-variant); line-height: 1.6; margin-top: 7px; text-wrap: pretty; white-space: pre-wrap; }
+
+/* open-prayer soft cards */
+.cd-pray { display: flex; flex-direction: column; gap: 11px; }
+.cd-pray-card { padding: 16px 17px; background: var(--surface-container-low); border: 1px solid var(--outline-variant); border-radius: 14px; }
+.cd-pray-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cd-pray-title { font-size: 15.5px; font-weight: 600; color: var(--on-surface); }
+.cd-pray-body { font-size: 14px; color: var(--on-surface-variant); line-height: 1.56; margin-top: 8px; text-wrap: pretty; white-space: pre-wrap; }
+.cd-pray-foot { font-size: 12.5px; color: var(--on-surface-variant); margin-top: 11px; }
+
+.cd-answered {
+  margin-top: 11px; padding: 12px 14px;
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  border-left: 2px solid var(--success); border-radius: 8px;
+  font-size: 14px; color: var(--on-surface-variant); line-height: 1.56;
+}
+.cd-answered b { color: var(--success); font-weight: 600; }
+
+/* ── aside ── */
+.cd-aside-sec { padding: 22px 22px; border-bottom: 1px solid var(--outline-variant); }
+.cd-aside-title { font-family: var(--font-serif); font-size: 15.5px; font-weight: 500; color: var(--on-surface); margin: 0 0 14px; letter-spacing: -0.005em; }
+
+.cd-kv { display: flex; flex-direction: column; gap: 12px; }
+.cd-kv-row { display: flex; align-items: center; gap: 12px; font-size: 14px; min-width: 0; color: var(--on-surface); }
+.cd-kv-ico { color: var(--on-surface-variant); flex: none; margin-top: 1px; }
+.cd-kv-val { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.cd-kv-val.dim { color: var(--on-surface-variant); }
+
+.cd-journey { display: flex; flex-direction: column; }
+.cd-journey-step { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--outline-variant); }
+.cd-journey-step:first-child { border-top: 0; }
+.cd-step-mark {
+  width: 18px; height: 18px; border-radius: 999px; flex: none;
+  display: grid; place-items: center;
+  border: 1.5px solid var(--outline); background: var(--surface-container-high);
+}
+.cd-journey-step.done .cd-step-mark .pd { width: 7px; height: 7px; border-radius: 50%; background: var(--success); opacity: .55; }
+.cd-journey-step.on .cd-step-mark { background: var(--primary); border-color: transparent; }
+.cd-step-name { font-size: 14px; color: var(--on-surface-variant); }
+.cd-journey-step.on .cd-step-name { color: var(--on-surface); font-weight: 600; }
+.cd-step-here { margin-left: auto; font-size: 12px; color: var(--primary); font-weight: 600; }
+
+.cd-owner { display: flex; align-items: center; gap: 12px; }
+.cd-owner-name { font-weight: 600; font-size: 14.5px; color: var(--on-surface); }
+.cd-owner-role { font-size: 12.5px; color: var(--on-surface-variant); margin-top: 1px; }
+.cd-whowho { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--outline); display: flex; flex-direction: column; gap: 10px; }
+.cd-lastby { display: flex; align-items: center; gap: 9px; font-size: 13px; color: var(--on-surface-variant); }
+.cd-lastby b { color: var(--on-surface); font-weight: 600; }
+
+.cd-share { display: flex; flex-direction: column; gap: 10px; }
+.cd-share-row { display: flex; align-items: center; gap: 10px; }
+.cd-share-name { font-size: 13.5px; font-weight: 600; color: var(--on-surface); }
+.cd-share-role { font-size: 12px; color: var(--on-surface-variant); margin-left: auto; }
+.cd-share-x {
+  background: none; border: 0; padding: 0 4px; margin: 0; cursor: pointer;
+  color: var(--on-surface-variant); font-size: 15px; line-height: 1;
+  opacity: 0; transition: opacity 120ms;
+}
+.cd-share-row:hover .cd-share-x { opacity: 1; }
+.cd-share-x:hover { color: var(--error); }
+.cd-share-sel {
+  width: 100%; height: 38px; padding: 0 10px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--outline);
+  font-family: var(--font-sans); font-size: 13px; color: var(--on-surface);
+}
+.cd-share-sel:focus { outline: none; border-color: var(--primary); }
+
+.cd-tags { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+.cd-tag-add { border-style: dashed; cursor: pointer; }
+.cd-tag-item { display: inline-flex; align-items: center; gap: 5px; padding-right: 5px; }
+.cd-tag-x {
+  background: none; border: none; padding: 0; margin: 0;
+  color: var(--on-surface-variant); cursor: pointer; font-size: 13px; line-height: 1;
+  opacity: 0; transition: opacity 120ms;
+}
+.cd-tag-item:hover .cd-tag-x { opacity: 1; }
+.cd-tag-input-wrap {
+  display: inline-flex; align-items: center;
+  border: 1px dashed color-mix(in srgb, var(--primary) 60%, transparent);
+  border-radius: 20px; padding: 2px 10px;
+  background: color-mix(in srgb, var(--primary) 10%, transparent);
+}
+.cd-tag-input {
+  background: none; border: none; outline: none;
+  font-size: 12.5px; font-family: var(--font-sans); color: var(--on-surface);
+  width: 90px;
+}
+.cd-tag-input::placeholder { color: var(--on-surface-variant); }
+
+/* ── Tablet (design: .detail stacks, aside moves below) ── */
+@media (max-width: 1024px) {
+  .cd-page { grid-template-columns: 1fr; }
+  .cd-page-main { border-right: 0; }
+  .cd-page-aside { border-left: 0; border-top: 1px solid var(--outline-variant); }
+}

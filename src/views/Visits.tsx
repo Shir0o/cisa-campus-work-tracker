@@ -12,6 +12,7 @@ import { db, handleFirestoreError, logActivity, OperationType } from '../lib/fir
 import { deleteVisit, groupVisits, initialsOf, overdueVisits, subscribeVisits, visitStats } from '../lib/visits';
 import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { usePreserveScroll } from '../lib/usePreserveScroll';
 import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -97,6 +98,18 @@ export default function Visits() {
     if (contact) setSelectedContact(contact);
   };
 
+  // People detail is a full page (the design's ContactDetail), not a popup.
+  usePreserveScroll(!!selectedContact);
+  if (selectedContact) {
+    return (
+      <ContactDetailsModal
+        isOpen
+        onClose={() => setSelectedContact(null)}
+        contact={selectedContact}
+      />
+    );
+  }
+
   const removeVisit = async (visit: Visit) => {
     setOpenId(null);
     try {
@@ -129,11 +142,6 @@ export default function Visits() {
         contacts={contacts}
         staff={staff}
         visit={editing}
-      />
-      <ContactDetailsModal
-        isOpen={selectedContact !== null}
-        onClose={() => setSelectedContact(null)}
-        contact={selectedContact}
       />
     </>
   );
