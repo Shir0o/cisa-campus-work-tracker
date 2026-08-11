@@ -58,6 +58,9 @@ vi.mock('firebase/firestore', () => {
 // Mock Chat Service
 vi.mock('../services/chat', () => ({
   sendMessage: vi.fn().mockResolvedValue(undefined),
+  reactToMessage: vi.fn().mockResolvedValue(undefined),
+  togglePinMessage: vi.fn().mockResolvedValue(undefined),
+  removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
 }));
 
 // Mock modals to support full callback interaction
@@ -174,8 +177,8 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByText('Fellowship Messaging')).toBeInTheDocument();
-    expect(screen.getByText(/Connect with the team in real-time/i)).toBeInTheDocument();
+    expect(screen.getByText('Pick a conversation')).toBeInTheDocument();
+    expect(screen.getByText(/Or start a new one — everyone in the app is reachable from here/i)).toBeInTheDocument();
   });
 
   it('renders chat list and messages, and handles composing a new message', async () => {
@@ -189,23 +192,23 @@ describe('Messages View Component', () => {
     expect(screen.getByText('Trainees Chat')).toBeInTheDocument();
     
     // Select the first room
-    const roomBtn = screen.getByText('Trainees Chat').closest('button');
+    const roomBtn = screen.getByText('Trainees Chat').closest('.msgs-item');
     expect(roomBtn).toBeTruthy();
     fireEvent.click(roomBtn!);
 
     // Verify chat messages rendered
     await waitFor(() => {
-      const messagesStream = container.querySelector('.overflow-y-auto.p-6');
+      const messagesStream = container.querySelector('.msgs-stream');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     });
 
     // Type a message in composer
-    const textarea = screen.getByPlaceholderText(/Type a message/i);
+    const textarea = screen.getByPlaceholderText(/Write a message/i);
     fireEvent.change(textarea, { target: { value: 'Welcome to the team!' } });
 
     // Wait for the send button to be enabled
-    const sendButton = container.querySelector('button[type="submit"]');
+    const sendButton = container.querySelector('.msgs-send');
     expect(sendButton).toBeTruthy();
     await waitFor(() => {
       expect(sendButton).not.toHaveAttribute('disabled');
@@ -251,27 +254,27 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    const roomBtn = screen.getByText('Trainees Chat').closest('button');
+    const roomBtn = screen.getByText('Trainees Chat').closest('.msgs-item');
     fireEvent.click(roomBtn!);
 
     await waitFor(() => {
-      const messagesStream = container.querySelector('.overflow-y-auto.p-6');
+      const messagesStream = container.querySelector('.msgs-stream');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     }, { timeout: 500 });
 
-    const textarea = screen.getByPlaceholderText(/Type a message/i) as HTMLTextAreaElement;
+    const textarea = screen.getByPlaceholderText(/Write a message/i) as HTMLTextAreaElement;
     textarea.selectionStart = 1;
     textarea.selectionEnd = 1;
     fireEvent.change(textarea, { target: { value: '@' } });
 
     await waitFor(() => {
-      const mentionDropdown = container.querySelector('.absolute.bottom-full');
+      const mentionDropdown = container.querySelector('.msgs-mention-pop');
       expect(mentionDropdown).toBeTruthy();
       expect(within(mentionDropdown as HTMLElement).queryByText('Alice')).not.toBeNull();
     }, { timeout: 500 });
 
-    const mentionDropdown = container.querySelector('.absolute.bottom-full');
+    const mentionDropdown = container.querySelector('.msgs-mention-pop');
     fireEvent.click(within(mentionDropdown as HTMLElement).getByText('Alice'));
     expect(textarea.value).toBe('@Alice ');
   });
@@ -283,11 +286,11 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    const roomBtn = screen.getByText('Trainees Chat').closest('button');
+    const roomBtn = screen.getByText('Trainees Chat').closest('.msgs-item');
     fireEvent.click(roomBtn!);
 
     await waitFor(() => {
-      const messagesStream = container.querySelector('.overflow-y-auto.p-6');
+      const messagesStream = container.querySelector('.msgs-stream');
       expect(messagesStream).toBeTruthy();
       expect(within(messagesStream as HTMLElement).queryByText('Hello trainees')).not.toBeNull();
     }, { timeout: 500 });
@@ -441,7 +444,7 @@ describe('Messages View Component', () => {
     );
 
     // Unread badge should exist
-    expect(screen.getByText('Trainees Chat').closest('button')?.querySelector('.bg-error')).toBeTruthy();
+    expect(screen.getByText('Trainees Chat').closest('.msgs-item')?.querySelector('.msgs-unread-dot')).toBeTruthy();
     unmount();
 
     // Mark as read
@@ -454,7 +457,7 @@ describe('Messages View Component', () => {
     );
 
     // Unread badge should not be present
-    expect(screen.getByText('Trainees Chat').closest('button')?.querySelector('.bg-error')).toBeFalsy();
+    expect(screen.getByText('Trainees Chat').closest('.msgs-item')?.querySelector('.msgs-unread-dot')).toBeFalsy();
   });
 
   it('handles clicking different attachment cards to trigger navigation/detail actions', async () => {
@@ -504,7 +507,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
     expect(await screen.findByText('Contact Attachment')).toBeInTheDocument();
 
@@ -594,7 +597,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
     expect(await screen.findByText('Todo Attachment')).toBeInTheDocument();
 
@@ -614,7 +617,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
     await waitFor(() => {
       expect(screen.getByTitle('Group details')).toBeInTheDocument();
@@ -632,7 +635,7 @@ describe('Messages View Component', () => {
       expect(screen.queryByTestId('chat-details-modal')).toBeNull();
     });
 
-    expect(screen.getByText('Fellowship Messaging')).toBeInTheDocument();
+    expect(screen.getByText('Pick a conversation')).toBeInTheDocument();
   });
 
   it('handles room selection from CreateChatModal', async () => {
@@ -728,7 +731,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching messages:', expect.any(Error));
     });
@@ -743,8 +746,8 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
-    const textarea = screen.getByPlaceholderText(/Type a message/i) as HTMLTextAreaElement;
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+    const textarea = screen.getByPlaceholderText(/Write a message/i) as HTMLTextAreaElement;
 
     // Typing with space after @ should not trigger mention
     textarea.selectionStart = 2;
@@ -767,12 +770,12 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+    fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
     
-    const textarea = screen.getByPlaceholderText(/Type a message/i);
+    const textarea = screen.getByPlaceholderText(/Write a message/i);
     fireEvent.change(textarea, { target: { value: 'Press Enter message' } });
 
-    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', charCode: 13 });
+    fireEvent.keyDown(textarea, { key: 'Enter', code: 'Enter', charCode: 13, metaKey: true });
 
     await waitFor(() => {
       expect(chatService.sendMessage).toHaveBeenCalledWith(
@@ -785,7 +788,7 @@ describe('Messages View Component', () => {
     });
   });
 
-  it('triggers CreateChatModal when New Conversation is clicked in empty state', async () => {
+  it('triggers CreateChatModal from the rail New button in the empty state', async () => {
     (firestore.onSnapshot as any).mockImplementationOnce((q: any, successCallback: any) => {
       successCallback({ forEach: () => {} });
       return vi.fn();
@@ -797,8 +800,7 @@ describe('Messages View Component', () => {
       </MemoryRouter>
     );
 
-    const newConversationBtn = screen.getByText('New Conversation');
-    fireEvent.click(newConversationBtn);
+    fireEvent.click(screen.getByTitle('Start Chat'));
 
     expect(screen.getByTestId('create-chat-modal')).toBeInTheDocument();
   });
@@ -910,7 +912,7 @@ describe('Messages View Component', () => {
     };
 
     const openTheRoom = () => {
-      fireEvent.click(screen.getByText('Weekly notes').closest('button')!);
+      fireEvent.click(screen.getByText('Weekly notes').closest('.msgs-item')!);
     };
 
     it('names the room and lets a Full-timer post in it', async () => {
@@ -918,7 +920,7 @@ describe('Messages View Component', () => {
       openTheRoom();
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument();
       });
       expect(screen.queryByText(/replies go to the team directly/i)).not.toBeInTheDocument();
     });
@@ -931,7 +933,7 @@ describe('Messages View Component', () => {
       await waitFor(() => {
         expect(screen.getByText(/replies go to the team directly/i)).toBeInTheDocument();
       });
-      expect(screen.queryByPlaceholderText(/Type a message/i)).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText(/Write a message/i)).not.toBeInTheDocument();
     });
 
     it('leaves the composer alone in a group room', async () => {
@@ -941,10 +943,10 @@ describe('Messages View Component', () => {
           <Messages />
         </MemoryRouter>
       );
-      fireEvent.click(screen.getByText('Trainees Chat').closest('button')!);
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText(/Type a message/i)).toBeInTheDocument();
+        expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument();
       });
     });
 
@@ -954,16 +956,89 @@ describe('Messages View Component', () => {
 
       const { container } = renderWithAnnouncement();
 
-      const roomBtn = screen.getByText('Weekly notes').closest('button');
+      const roomBtn = screen.getByText('Weekly notes').closest('.msgs-item');
       fireEvent.click(roomBtn!);
 
       await waitFor(() => {
-        const messagesStream = container.querySelector('.overflow-y-auto.p-6');
+        const messagesStream = container.querySelector('.msgs-stream');
         expect(messagesStream).toBeTruthy();
       });
 
       // Verify scrollIntoView was NOT called (preventing outer page jump)
       expect(scrollIntoViewSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  // Field Notes desktop thread: quick-react, pin, and the ⋯ menu (hide from my
+  // view / take back for everyone) are schema-backed acts on the message.
+  describe('reactions, pin and the message menu', () => {
+    const streamOf = (container: HTMLElement) => {
+      const stream = container.querySelector('.msgs-stream');
+      if (!stream) throw new Error('no .msgs-stream in container');
+      return stream as HTMLElement;
+    };
+
+    it('reacts to a message from the hover picker', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
+
+      const add = container.querySelector('.msgb-react-add');
+      expect(add).toBeTruthy();
+      fireEvent.click(add!);
+
+      await waitFor(() => {
+        expect(chatService.reactToMessage).toHaveBeenCalledWith(
+          'room1', 'm1', 'u1', expect.any(String), []
+        );
+      });
+    });
+
+    it('pins a message from the hover tools', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
+
+      const pin = container.querySelector('.msgb-pin-btn');
+      expect(pin).toBeTruthy();
+      fireEvent.click(pin!);
+
+      await waitFor(() => {
+        expect(chatService.togglePinMessage).toHaveBeenCalledWith('room1', 'm1', true);
+      });
+    });
+
+    it('hides a message from my view via the ⋯ menu, and can bring it back', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
+
+      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
+      fireEvent.click(screen.getByText('Hide from my view'));
+
+      // The bubble is gone for this viewer and the hidden-note appears.
+      await waitFor(() => {
+        expect(within(streamOf(container)).queryByText('Hello trainees')).toBeNull();
+        expect(screen.getByText(/One message is hidden from your view/i)).toBeInTheDocument();
+      });
+
+      // Bring it back.
+      fireEvent.click(screen.getByText('Bring it back'));
+      await waitFor(() => {
+        expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull();
+      });
     });
   });
 });

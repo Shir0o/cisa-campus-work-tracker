@@ -655,7 +655,32 @@ service cloud.firestore {
                       (isAdmin() || !isAnnouncementRoom(get(/databases/$(database)/documents/chatRooms/$(roomId)).data)) &&
                       request.resource.data.senderId == request.auth.uid;
 
-        allow update, delete: if false; // Messages are immutable
+        // A sent message is otherwise immutable — but two distinct field-level
+        // acts are allowed, matching the Field Notes design (views/messages.jsx),
+        // and never in the same write:
+        //   • reactions / pinned — anyone in the room can add or take back
+        //     their own reaction and pin/unpin, on a LIVE message only
+        //   • deleted — a tombstone for "take back for everyone"; only the
+        //     author or a Full-timer may leave it, once set it stays (a
+        //     conversation never silently rewrites itself), and a gone message
+        //     can't be reacted to or pinned
+        // `isRoomMember()` can't be reused here: inside this nested match
+        // `resource` is the message, so membership is looked up on the parent
+        // room like the read/create rules do.
+        allow update: if isSignedIn() &&
+                      (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) || isAdmin()) &&
+                      (
+                        // leaving a tombstone — the author's or a Full-timer's
+                        // act, and ONLY the `deleted` field may change
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted']) &&
+                         resource.data.deleted == null && request.resource.data.deleted != null &&
+                         (request.auth.uid == resource.data.senderId || isAdmin())) ||
+                        // a plain reaction / pin toggle on a live message —
+                        // the message must stay undeleted and untouched
+                        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'pinned']) &&
+                         resource.data.deleted == null && request.resource.data.deleted == null)
+                      );
+        allow delete: if false; // A tombstone replaces deletion
       }
     }
 

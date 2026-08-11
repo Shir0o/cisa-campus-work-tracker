@@ -83,7 +83,7 @@ describe('CreateChatModal Component', () => {
     });
   };
 
-  it('renders tab buttons and user list correctly in Direct Message tab', async () => {
+  it('renders the Message tab with the people list and a start button', async () => {
     setupOnSnapshot(mockUsers);
     render(
       <CreateChatModal
@@ -93,9 +93,11 @@ describe('CreateChatModal Component', () => {
       />
     );
 
-    expect(screen.getByText('Start Conversation')).toBeInTheDocument();
+    expect(screen.getByText('New message')).toBeInTheDocument();
     expect(screen.getByText('Alice Green')).toBeInTheDocument();
     expect(screen.getByText('Bob Brown')).toBeInTheDocument();
+    // The start button is disabled until someone is picked.
+    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
   });
 
   it('filters users list by search input', async () => {
@@ -108,14 +110,14 @@ describe('CreateChatModal Component', () => {
       />
     );
 
-    const searchInput = screen.getByPlaceholderText(/Search users by name or email/i);
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
     fireEvent.change(searchInput, { target: { value: 'Alice' } });
 
     expect(screen.getByText('Alice Green')).toBeInTheDocument();
     expect(screen.queryByText('Bob Brown')).not.toBeInTheDocument();
   });
 
-  it('creates direct chat and selects room when a user is clicked', async () => {
+  it('creates a direct chat when exactly one person is picked', async () => {
     setupOnSnapshot(mockUsers);
     render(
       <CreateChatModal
@@ -125,8 +127,8 @@ describe('CreateChatModal Component', () => {
       />
     );
 
-    const userButton = screen.getByText('Alice Green');
-    fireEvent.click(userButton);
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByRole('button', { name: /Start conversation/i }));
 
     await waitFor(() => {
       expect(chatService.getOrCreateDirectChat).toHaveBeenCalledWith(
@@ -138,7 +140,7 @@ describe('CreateChatModal Component', () => {
     });
   });
 
-  it('allows creating a group chat with multiple selected users', async () => {
+  it('creates a group chat when several people are picked', async () => {
     setupOnSnapshot(mockUsers);
     render(
       <CreateChatModal
@@ -148,27 +150,20 @@ describe('CreateChatModal Component', () => {
       />
     );
 
-    // Switch to Group Chat tab
-    const groupTabButton = screen.getByRole('button', { name: /New Group/i });
-    fireEvent.click(groupTabButton);
+    // Pick both people — the button becomes "Start group (2)".
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByText('Bob Brown'));
 
-    // Enter group name
-    const groupNameInput = screen.getByPlaceholderText(/e.g. Outreach Team/i);
+    // A group-name field appears; give it a name.
+    const groupNameInput = screen.getByPlaceholderText(/Name this group/i);
     fireEvent.change(groupNameInput, { target: { value: 'My Group Chat' } });
 
-    // Select Alice Green
-    const aliceCheckboxContainer = screen.getByText('Alice Green').closest('div');
-    expect(aliceCheckboxContainer).toBeTruthy();
-    fireEvent.click(aliceCheckboxContainer!);
-
-    // Submit form
-    const createButton = screen.getByRole('button', { name: /Create Group/i });
-    fireEvent.click(createButton);
+    fireEvent.click(screen.getByRole('button', { name: /Start group \(2\)/i }));
 
     await waitFor(() => {
       expect(chatService.createGroupChat).toHaveBeenCalledWith(
         'My Group Chat',
-        ['u2'],
+        ['u2', 'u3'],
         { uid: 'u1', displayName: 'Current User' }
       );
       expect(mockOnSelectRoom).toHaveBeenCalledWith('group-room-id');
@@ -199,11 +194,11 @@ describe('CreateChatModal Component', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
     expect(screen.getByText(/only Full-timers can post/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/e.g. Weekly notes/i), {
+    fireEvent.change(screen.getByPlaceholderText(/Weekly notes/i), {
       target: { value: 'Weekly notes' },
     });
-    fireEvent.click(screen.getByText('Alice Green').closest('div')!);
-    fireEvent.click(screen.getByRole('button', { name: /Create Announcement/i }));
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
 
     await waitFor(() => {
       expect(chatService.createAnnouncementRoom).toHaveBeenCalledWith('Weekly notes', ['u2'], {

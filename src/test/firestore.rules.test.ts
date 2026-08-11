@@ -1015,6 +1015,125 @@ describeRules('Firestore Security Rules', () => {
         }),
       );
     });
+
+    // ── message-level acts: react, pin, take back for everyone ──────────────
+    // A sent message is immutable except for `reactions` / `pinned` / `deleted`
+    // (the Field Notes design's desktop thread). Anyone in the room can react
+    // and pin; only the author or a Full-timer can leave the `deleted`
+    // tombstone, and a tombstone stays.
+    const seedMsg = async (roomId: string, msgId: string, senderId: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), `chatRooms/${roomId}/messages/${msgId}`), {
+          ...newChatMsg(senderId),
+          roomId,
+          ...over,
+        });
+      });
+    };
+
+    it('MSG1: any room member can react to or pin a message', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          reactions: [{ by: 'student1', emoji: '🙏' }],
+        }),
+      );
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          pinned: true,
+        }),
+      );
+    });
+
+    it('MSG2: a member cannot edit the text, attachments or sender of a message', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          text: 'Rewritten',
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          senderId: 'student1',
+        }),
+      );
+    });
+
+    it('MSG3: only the author or a Full-timer can take a message back for everyone', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      // A non-author member cannot tombstone it.
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'student1', at: new Date().toISOString() },
+        }),
+      );
+      // The author can.
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+        }),
+      );
+      // A Full-timer can take back anyone's message.
+      await seedMsg('room1', 'm2', 'student1');
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m2'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+        }),
+      );
+    });
+
+    it('MSG4: a tombstone stays — no undelete, and no reacting to a gone message', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1', { deleted: { by: 'ft1', at: new Date().toISOString() } });
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: null,
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1'), {
+          reactions: [{ by: 'student1', emoji: '🙏' }],
+        }),
+      );
+    });
+
+    it('MSG4b: a tombstone write cannot also change reactions or pinned — the acts are separate', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      // The author may tombstone, but not in the same write as a reaction/pin
+      // change — a gone message can't be reacted to or pinned, even mid-write.
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+          reactions: [{ by: 'ft1', emoji: '🙏' }],
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+          pinned: true,
+        }),
+      );
+    });
+
+    it('MSG5: a non-member cannot react to or pin a message', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1'), {
+          reactions: [{ by: 'student2', emoji: '🙏' }],
+        }),
+      );
+    });
   });
 
   describe('Walking-together threads', () => {
