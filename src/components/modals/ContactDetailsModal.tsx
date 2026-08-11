@@ -2325,18 +2325,25 @@ export default function ContactDetailsModal({
                   ))}
                   {canShare && shareOptions.length > 0 && (
                     sharing ? (
-                      <select
-                        className="cd-share-sel"
-                        autoFocus
-                        defaultValue=""
-                        onChange={(e) => e.target.value && addShare(e.target.value)}
-                        onBlur={() => setSharing(false)}
-                      >
-                        <option value="" disabled>Add someone…</option>
-                        {shareOptions.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-2">
+                        <select
+                          className="cd-share-sel flex-1"
+                          autoFocus
+                          defaultValue=""
+                          onChange={(e) => e.target.value && addShare(e.target.value)}
+                        >
+                          <option value="" disabled>Add someone…</option>
+                          {shareOptions.map((s) => (
+                            <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => setSharing(false)}
+                          className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                        >
+                          Cancel
+                        </button>
+                      </div>
                     ) : (
                       <button
                         onClick={() => setSharing(true)}
