@@ -286,9 +286,8 @@ describe('Attendance', () => {
       expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
     });
 
-    const editBtn = container.querySelector('span[title="Edit gathering"]');
-    expect(editBtn).not.toBeNull();
-    fireEvent.click(editBtn!);
+    const editBtn = screen.getAllByTitle('Edit gathering')[0];
+    fireEvent.click(editBtn);
 
     expect(screen.getByTestId('edit-event-modal')).toBeInTheDocument();
   });

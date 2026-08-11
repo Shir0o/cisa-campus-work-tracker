@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc } from 'firebase/firestore';
 import PrayerList from '../views/PrayerList';
@@ -363,7 +363,8 @@ describe('PrayerList', () => {
       expect(screen.getByText('Strength for finals')).toBeInTheDocument();
     });
 
-    const answerButton = screen.getAllByRole('button', { name: 'Answered' }).find(btn => !btn.className.includes('ans-toggle-opt'))!;
+    const markSection = screen.getByText('Mark').parentElement!;
+    const answerButton = within(markSection).getByRole('button', { name: 'Answered' });
     fireEvent.click(answerButton);
 
     const textarea = await screen.findByPlaceholderText(/A sentence on how God answered/i);

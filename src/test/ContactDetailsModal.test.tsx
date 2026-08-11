@@ -861,7 +861,7 @@ describe('ContactDetailsModal Component', () => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          coCreators: ['user-789'],
+          coCreators: firestore.arrayUnion('user-789'),
         })
       );
     });
@@ -874,7 +874,7 @@ describe('ContactDetailsModal Component', () => {
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
         expect.objectContaining({
-          coCreators: expect.not.arrayContaining(['user-456']),
+          coCreators: firestore.arrayRemove('user-456'),
         })
       );
     });
