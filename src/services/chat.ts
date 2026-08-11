@@ -13,7 +13,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, sendNotification } from '../lib/firebase';
-import { ChatAttachment } from '../types';
+import { ChatAttachment, ChatReaction } from '../types';
 
 /**
  * Returns a sorted direct chat ID to ensure uniqueness per user pair.
@@ -278,5 +278,45 @@ export async function leaveGroup(
     senderName: 'System',
     timestamp: serverTimestamp(),
     type: 'system',
+  });
+}
+
+/**
+ * Toggle a reaction on a message. `by` is the reacting user's uid; the emoji
+ * flips on or off for that user only. firestore.rules only lets a room member
+ * write the `reactions` field, so this is a single targeted update.
+ */
+export async function reactToMessage(
+  roomId: string,
+  messageId: string,
+  by: string,
+  emoji: string,
+  current: ChatReaction[]
+): Promise<void> {
+  const has = current.some((r) => r.by === by && r.emoji === emoji);
+  const reactions = has
+    ? current.filter((r) => !(r.by === by && r.emoji === emoji))
+    : [...current, { by, emoji }];
+  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), { reactions });
+}
+
+/**
+ * Pin or unpin a message. Anyone in the room can do it — the pinned strip is a
+ * conversation-level convenience, not a permission boundary.
+ */
+export async function togglePinMessage(roomId: string, messageId: string, pinned: boolean): Promise<void> {
+  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), { pinned });
+}
+
+/**
+ * Take a message back for everyone: leaves a `deleted` tombstone so the thread
+ * shows "Message removed" instead of the text. Only the author or a Full-timer
+ * may call this — firestore.rules enforces it server-side too.
+ */
+export async function removeMessageForEveryone(roomId: string, messageId: string, by: string): Promise<void> {
+  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), {
+    deleted: { by, at: serverTimestamp() },
+    reactions: [],
+    pinned: false,
   });
 }

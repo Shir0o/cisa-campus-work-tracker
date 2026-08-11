@@ -2344,10 +2344,65 @@
 }
 
 /* ── Messages ─────────────────────────────────────────────────────────────── */
+/* The design's Field Notes tokens are not defined globally (see the note near
+   Contact detail's desktop block) — the messages page maps them onto this
+   app's own tokens, scoped to `.page.msgs` so no other page changes. */
 .page.msgs {
   display: grid; grid-template-columns: 328px 1fr;
   padding: 0; max-width: none; height: 100%; overflow: hidden;
+  --panel: var(--surface);
+  --panel-2: var(--surface-variant);
+  --hover: var(--surface-container-high);
+  --border: var(--outline-variant);
+  --border-soft: var(--outline-variant);
+  --text: var(--on-surface);
+  --text-dim: var(--on-surface-variant);
+  --text-mute: var(--outline);
+  --accent: var(--primary);
+  --accent-soft: color-mix(in srgb, var(--primary) 10%, transparent);
+  --accent-line: color-mix(in srgb, var(--primary) 24%, transparent);
+  --bg-elev: var(--surface-container-lowest);
+  --danger: var(--error);
+  --danger-soft: var(--error-container);
+  --amber: var(--warning);
+  --amber-soft: var(--warning-container);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --page-pad-top: clamp(18px, 3vw, 32px);
+  --shadow-pop: 0 1px 0 rgba(255,255,255,0.6) inset, 0 18px 40px -14px rgba(32,45,72,0.20), 0 4px 10px rgba(32,45,72,0.07);
 }
+/* Shared Field Notes primitives the messages page uses, scoped so they never
+   leak into the rest of the app (which has its own button/input styling). */
+.page.msgs .btn {
+  height: 38px; padding: 0 14px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  font-size: 14px; font-weight: 500; font-family: var(--font-sans);
+  display: inline-flex; align-items: center; gap: 7px;
+  cursor: pointer; color: var(--text); white-space: nowrap;
+  transition: border-color 120ms ease, transform 120ms ease, filter 120ms ease;
+}
+.page.msgs .btn:hover { background-color: var(--hover); }
+.page.msgs .btn-primary {
+  background-color: var(--accent); border-color: var(--accent);
+  color: #fff; font-weight: 600;
+}
+.page.msgs .btn-primary:hover { filter: brightness(1.06); }
+.page.msgs .btn-sm { height: 32px; padding: 0 11px; font-size: 13.5px; border-radius: 8px; }
+.page.msgs .icon-btn {
+  width: 34px; height: 34px;
+  display: inline-grid; place-items: center;
+  background: transparent; border: 0; border-radius: 8px;
+  cursor: pointer; color: var(--text-dim);
+}
+.page.msgs .icon-btn:hover { background: var(--hover); color: var(--text); }
+.page.msgs .li-input {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 7px;
+  padding: 8px 10px; font-size: 14px; font-family: var(--font-sans);
+  color: var(--text); outline: none; width: 100%;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.page.msgs .li-input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.page.msgs .li-textarea { resize: vertical; min-height: 90px; line-height: 1.55; }
 .msgs-rail {
   border-right: 1px solid var(--border-soft);
   display: flex; flex-direction: column; min-height: 0;
@@ -2442,7 +2497,7 @@
 .msgb-col { max-width: 62%; min-width: 0; display: flex; flex-direction: column; }
 .msgb.mine .msgb-col { align-items: flex-end; }
 .msgb-name { font-size: 12px; font-weight: 600; color: var(--text-mute); margin-bottom: 3px; }
-.msgb-row { display: flex; align-items: center; gap: 6px; }
+.msgb-row { display: flex; align-items: center; gap: 6px; position: relative; }
 .msgb.mine .msgb-row { flex-direction: row-reverse; }
 .msgb-bubble {
   padding: 10px 13px; border-radius: 14px;
@@ -2457,8 +2512,13 @@
   padding: 7px 10px; border-radius: 9px; background: var(--panel-2); border: 1px solid var(--border-soft);
   font-size: 12.5px; color: var(--text-mute);
 }
-.msgb-tools { display: flex; gap: 2px; opacity: 0; transition: opacity 120ms; flex: none; }
-.msgb:hover .msgb-tools { opacity: 1; }
+.msgb-tools {
+  position: absolute; top: -13px; right: 2px; z-index: 6;
+  display: flex; gap: 2px; opacity: 0; transition: opacity 120ms;
+  background: var(--panel); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 3px;
+}
+.msgb.mine .msgb-tools { right: auto; left: 2px; }
+.msgb:hover .msgb-tools, .msgb-tools:focus-within { opacity: 1; }
 .msgb-react-pick { display: inline-flex; gap: 1px; }
 .msgb-react-add, .msgb-pin-btn {
   width: 24px; height: 24px; border-radius: 50%; border: 0; background: transparent;
@@ -2466,6 +2526,35 @@
   display: inline-flex; align-items: center; justify-content: center; color: var(--text-mute);
 }
 .msgb-react-add:hover, .msgb-pin-btn:hover { background: var(--panel-2); opacity: 1; }
+/* Deleting a message: hide-for-me (anyone) vs remove-for-everyone (author + ft) */
+.msgb-menu-wrap { position: relative; display: inline-flex; }
+.msgb-menu-away { position: fixed; inset: 0; z-index: 40; }
+.msgb-menu {
+  position: absolute; top: 28px; right: 0; z-index: 41; width: 218px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  box-shadow: 0 14px 34px rgba(24, 22, 20, 0.16); padding: 6px; display: flex; flex-direction: column; gap: 2px; text-align: left;
+}
+.msgb-menu button {
+  border: 0; background: none; font: inherit; font-size: 13.5px; color: var(--text);
+  text-align: left; padding: 8px 9px; border-radius: 7px; cursor: pointer;
+}
+.msgb-menu button:hover { background: var(--hover); }
+.msgb-menu-danger { color: var(--danger) !important; }
+.msgb-menu-danger:hover { background: var(--danger-soft) !important; }
+.msgb-menu p { margin: 4px 9px 6px; font-size: 12.5px; line-height: 1.45; color: var(--text-mute); }
+.msgb-gone {
+  font-size: 13.5px; font-style: italic; color: var(--text-mute);
+  padding: 9px 14px; border-radius: var(--radius); border: 1px dashed var(--border); background: transparent;
+}
+.msgs-item-gone { font-style: italic; color: var(--text-mute); }
+.msgs-hidden-note {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 6px; padding: 9px 12px; border-radius: var(--radius);
+  background: var(--panel-2); border: 1px solid var(--border-soft);
+  font-size: 13px; color: var(--text-dim);
+}
+.msgs-hidden-note button { border: 0; background: none; font: inherit; font-weight: 600; color: var(--accent); cursor: pointer; padding: 0; }
+.msgs-hidden-note button:hover { text-decoration: underline; }
 .msgb-foot { display: flex; align-items: center; gap: 8px; margin-top: 5px; }
 .msgb.mine .msgb-foot { flex-direction: row-reverse; }
 .msgb-when { font-size: 11px; color: var(--text-mute); }

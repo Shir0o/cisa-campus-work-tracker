@@ -9,6 +9,12 @@ export function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+/** First name from a display name — "Someone" when absent. Mirrors the shared
+ *  @cisa/core helper (this app deliberately has no @cisa/core dependency). */
+export function firstName(name: string | null | undefined): string {
+  return (name || "Someone").split(" ")[0];
+}
+
 export function getUserAvatar(photoURL: string | null | undefined, gender?: string | null) {
   if (photoURL) return photoURL;
   

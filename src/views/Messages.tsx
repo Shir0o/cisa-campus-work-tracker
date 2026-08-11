@@ -7,7 +7,9 @@ import {
   onSnapshot,
   where,
   doc,
-  getDoc
+  getDoc,
+  updateDoc,
+  serverTimestamp
 } from 'firebase/firestore';
 import {
   MessageSquare,
@@ -27,22 +29,57 @@ import {
   Phone,
   Trash2,
   Check,
-  X
+  X,
+  Pin,
+  Bell
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { cn, getUserInitials } from '../lib/utils';
+import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
-import { sendMessage } from '../services/chat';
+import { sendMessage, reactToMessage, togglePinMessage, removeMessageForEveryone } from '../services/chat';
 import { setTodoDone } from '../lib/todos';
+import { MessageHides } from '../lib/messageHides';
 
 // Modals
 import CreateChatModal from '../components/modals/CreateChatModal';
 import ChatDetailsModal from '../components/modals/ChatDetailsModal';
 import AttachDataModal from '../components/modals/AttachDataModal';
+
+// The Field Notes design's quick reactions (views/messages.jsx).
+const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
+
+/** Can this viewer take the message back for everyone? Its author, or a
+ *  Full-timer — the same gate firestore.rules applies to the `deleted` field. */
+function canRemoveForEveryone(msg: ChatMessage, uid: string | undefined, isAdmin: boolean): boolean {
+  return !!msg && !msg.deleted && (msg.senderId === uid || isAdmin);
+}
+
+/** What a taken-back message reads as ("You took this message back." /
+ *  "Removed by Mei.") — the design's `messageGoneLabel`. */
+function messageGoneLabel(msg: ChatMessage, uid: string | undefined): string {
+  if (!msg.deleted) return "";
+  if (msg.deleted.by === uid) {
+    return msg.senderId === uid ? "You took this message back." : "You removed this message.";
+  }
+  const who = firstName(msg.senderName);
+  return msg.deleted.by === msg.senderId ? `${who} took this message back.` : `Removed by ${firstName(msg.deleted.by)}.`;
+}
+
+/** Bubble body with @mentions highlighted against the room's first names —
+ *  the design's `renderBody`. */
+function renderBody(text: string, memberFirstNames: string[]): React.ReactNode[] {
+  const parts = text.split(/(@[A-Za-z]+)/g);
+  return parts.map((part, i) => {
+    if (/^@[A-Za-z]+$/.test(part)) {
+      const hit = memberFirstNames.some((n) => n.toLowerCase() === part.slice(1).toLowerCase());
+      if (hit) return <span key={i} className="text-primary font-semibold">{part}</span>;
+    }
+    return <React.Fragment key={i}>{part}</React.Fragment>;
+  });
+}
 
 export default function Messages() {
   const { user: currentUser, role: userRole, effectiveUserId, impersonateTarget } = useAuth();
@@ -50,6 +87,8 @@ export default function Messages() {
   const { setSelectedContact, openLogInteraction } = useLayout();
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
+  const isAdmin = userRole === 'admin';
+
   // Modals state
   const [createChatOpen, setCreateChatOpen] = useState(false);
   const [chatDetailsOpen, setChatDetailsOpen] = useState(false);
@@ -64,6 +103,16 @@ export default function Messages() {
   const [roomSearch, setRoomSearch] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
 
+  // Rail filter + thread chrome (the design's msgs-filters / pinned strip / thread search)
+  const [filter, setFilter] = useState<'all' | 'unread' | 'groups' | 'announce'>('all');
+  const [threadSearchOpen, setThreadSearchOpen] = useState(false);
+  const [threadSearch, setThreadSearch] = useState('');
+  const [pinnedOpen, setPinnedOpen] = useState(false);
+
+  // Message ⋯ menu (which message, and whether the confirm step is showing)
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [menuConfirm, setMenuConfirm] = useState(false);
+
   // User details cache (to show correct names for direct chats)
   const [usersCache, setUsersCache] = useState<Record<string, { displayName: string; photoURL?: string }>>({});
 
@@ -75,7 +124,9 @@ export default function Messages() {
   const [mentionIndex, setMentionIndex] = useState(0);
   const [roomMembers, setRoomMembers] = useState<{ uid: string; displayName: string }[]>([]);
 
-  const isAdmin = userRole === 'admin';
+  // Hidden-from-view messages (client-only, per viewer — MessageHides)
+  const [, setHideNonce] = useState(0);
+  useEffect(() => MessageHides.subscribe(() => setHideNonce(n => n + 1)), []);
 
   // Toggle fullscreen chat body class on mobile when a chat is open
   useEffect(() => {
@@ -91,7 +142,7 @@ export default function Messages() {
     const stateId = `chat-room-${activeRoomId}`;
     window.history.pushState({ chatRoomId: stateId }, '');
 
-    const handlePopState = (e: PopStateEvent) => {
+    const handlePopState = () => {
       setActiveRoomId(null);
     };
 
@@ -151,7 +202,7 @@ export default function Messages() {
         roomMsgs.push({ id: doc.id, ...doc.data() } as ChatMessage);
       });
       setMessages(roomMsgs);
-      
+
       // Mark as read in LocalStorage
       localStorage.setItem(`chat_read_${activeRoomId}`, Date.now().toString());
 
@@ -194,7 +245,8 @@ export default function Messages() {
     }
 
     return unsubscribe;
-  }, [activeRoomId, rooms, currentUser, usersCache]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRoomId, rooms, currentUser]);
 
   // 3. User details loader for caching direct chat profiles
   useEffect(() => {
@@ -246,6 +298,15 @@ export default function Messages() {
     return otherUid ? usersCache[otherUid]?.photoURL || '' : '';
   };
 
+  // The thread's kind note — the design's `convSub`.
+  const threadSub = activeRoom
+    ? activeRoom.type === 'group'
+      ? `${activeRoom.memberIds.length} ${activeRoom.memberIds.length === 1 ? 'member' : 'members'}`
+      : activeRoom.type === 'announcement'
+        ? `Announcement · ${activeRoom.memberIds.length} people`
+        : 'Just the two of you'
+    : '';
+
   // Only a Full-timer posts in an announcement room — the same gate
   // firestore.rules applies, so a member sees a note instead of a composer
   // whose send would be denied. Mirrors canPostToRoom in @cisa/core.
@@ -281,8 +342,9 @@ export default function Messages() {
     }
   };
 
+  // Design's composer: Cmd/Ctrl+Enter sends, plain Enter makes a new line.
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
       handleSend();
     }
@@ -317,7 +379,7 @@ export default function Messages() {
     setMentionSearch(null);
   };
 
-  // Filtered and deduplicated room list
+  // Filtered and deduplicated room list (the design's msgs-filters + search)
   const seenDirectUids = new Set<string>();
   const filteredRooms = rooms.filter((r) => {
     if (r.type === 'direct') {
@@ -336,13 +398,16 @@ export default function Messages() {
     }
     const name = getRoomName(r).toLowerCase();
     if (name.startsWith('cisa-')) return false;
-    return name.includes(roomSearch.toLowerCase());
+    if (!name.includes(roomSearch.toLowerCase())) return false;
+    if (filter === 'unread' && !isUnread(r)) return false;
+    if (filter === 'groups' && r.type !== 'group') return false;
+    if (filter === 'announce' && r.type !== 'announcement') return false;
+    return true;
   });
 
   // Handle clicking attachment cards in chat bubble
   const handleAttachmentClick = async (attachment: ChatAttachment) => {
     if (attachment.type === 'contact') {
-      // Fetch details and open ContactDetailsModal
       setLoadingRooms(true);
       try {
         const docRef = doc(db, 'contacts', attachment.id);
@@ -378,26 +443,6 @@ export default function Messages() {
     }
   };
 
-  // Group messages by day
-  const groupMessagesByDay = (msgs: ChatMessage[]) => {
-    const groups: Record<string, ChatMessage[]> = {};
-    msgs.forEach((msg) => {
-      const date = msg.timestamp
-        ? new Date(msg.timestamp.seconds * 1000).toLocaleDateString(undefined, {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-          })
-        : 'Sending...';
-      if (!groups[date]) groups[date] = [];
-      groups[date].push(msg);
-    });
-    return groups;
-  };
-
-  const groupedMessages = groupMessagesByDay(messages);
-
   const getAttachmentIcon = (type: string) => {
     switch (type) {
       case 'contact': return User;
@@ -411,239 +456,294 @@ export default function Messages() {
     }
   };
 
+  // ── the thread's visible messages (the design's visibleMessages: hidden
+  //    messages are filtered out for THIS viewer only, and can be brought back)
+  const hiddenHere = effectiveUid ? messages.filter((m) => MessageHides.has(effectiveUid, m.id)) : [];
+  const visibleMsgs = messages.filter((m) => {
+    if (effectiveUid && MessageHides.has(effectiveUid, m.id)) return false;
+    if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
+    return true;
+  });
+  const pinned = messages.filter((m) => m.pinned);
+  const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
+
+  const jumpTo = (messageId: string) => {
+    const el = document.getElementById(`msgb-${messageId}`);
+    if (el && messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = el.offsetTop - 24;
+    }
+    setPinnedOpen(false);
+  };
+
+  // Take a message back for everyone; if it was the room's last visible one,
+  // keep the rail preview honest (a conversation never leaks removed text).
+  const handleRemoveAll = async (msg: ChatMessage) => {
+    if (!activeRoomId || !effectiveUid) return;
+    await removeMessageForEveryone(activeRoomId, msg.id, effectiveUid);
+    if (messages[messages.length - 1]?.id === msg.id) {
+      await updateDoc(doc(db, 'chatRooms', activeRoomId), {
+        lastMessage: {
+          text: 'Message removed',
+          senderId: msg.senderId,
+          senderName: msg.senderName,
+          timestamp: serverTimestamp(),
+        },
+      });
+    }
+    setMenuFor(null);
+    setMenuConfirm(false);
+  };
+
+  const activeRoomIsGroupish = !!activeRoom && activeRoom.type !== 'direct';
+
   return (
-    <div className="flex h-[calc(100vh-64px)] md:h-screen w-full overflow-hidden bg-background">
-      {/* 1. Left Sidebar Room List */}
+    <div className="page msgs !flex !h-[calc(100vh-64px)] md:!h-screen w-full !overflow-hidden bg-background">
+      {/* 1. Left Rail — the design's msgs-rail */}
       <div className={cn(
-        "flex flex-col border-r border-outline-variant w-full md:w-80 shrink-0 bg-surface",
+        "flex flex-col border-r border-outline-variant w-full md:w-[328px] shrink-0 bg-surface min-h-0",
         activeRoomId ? "hidden md:flex" : "flex"
       )}>
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-          <div>
-            <h1 className="font-serif text-xl text-on-surface">Fellowship Chat</h1>
-            <p className="text-xs text-on-surface-variant">Private team messaging</p>
-          </div>
+        {/* Rail head */}
+        <div className="msgs-rail-head">
+          <h1 className="page-title">Messages</h1>
           <button
             onClick={() => setCreateChatOpen(true)}
-            className="p-2 bg-primary text-on-primary rounded-full hover:bg-primary/90 active:scale-95 transition-all shadow shadow-primary/20 cursor-pointer"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-[13.5px] font-semibold hover:bg-primary/90 active:scale-[0.98] transition-all cursor-pointer"
             title="Start Chat"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5" /> New
           </button>
         </div>
 
-        {/* Sidebar Search */}
-        <div className="p-3 border-b border-outline-variant bg-surface-container-lowest shrink-0 flex items-center gap-2">
-          <Search className="w-4 h-4 text-on-surface-variant shrink-0" />
+        {/* Search */}
+        <div className="msgs-search">
+          <Search className="w-3.5 h-3.5 shrink-0" />
           <input
             type="text"
-            placeholder="Search chats..."
+            placeholder="Search messages…"
             value={roomSearch}
             onChange={(e) => setRoomSearch(e.target.value)}
-            className="w-full bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant/75"
           />
         </div>
 
+        {/* Filter pills */}
+        <div className="msgs-filters">
+          {([["all", "All"], ["unread", "Unread"], ["groups", "Groups"], ["announce", "Announcements"]] as const).map(([id, label]) => (
+            <button
+              key={id}
+              className={cn("msgs-pill", filter === id && "on")}
+              onClick={() => setFilter(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         {/* Rooms Scroll List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="msgs-list">
           {loadingRooms ? (
-            <div className="text-center py-12 text-on-surface-variant text-sm">
-              Loading chat channels...
-            </div>
+            <div className="msgs-people-empty">Loading conversations…</div>
           ) : filteredRooms.length === 0 ? (
-            <div className="text-center py-12 text-on-surface-variant text-sm">
-              No conversations found.
-            </div>
+            <div className="msgs-people-empty">Nothing here yet.</div>
           ) : (
             filteredRooms.map((room) => {
               const isActive = room.id === activeRoomId;
               const name = getRoomName(room);
               const photo = getRoomPhoto(room);
               const unread = isUnread(room);
-              
+              const last = room.lastMessage;
+              const isGroupish = room.type !== 'direct';
+
               return (
-                <button
+                <div
                   key={room.id}
+                  className={cn("msgs-item", isActive && "active", unread && "unread")}
                   onClick={() => setActiveRoomId(room.id)}
-                  className={cn(
-                    "w-full p-3 rounded-2xl flex items-center gap-3.5 transition-all text-left cursor-pointer border",
-                    isActive
-                      ? "bg-primary/10 border-primary/20 text-on-surface"
-                      : "bg-transparent border-transparent hover:bg-surface-container-low text-on-surface-variant hover:text-on-surface"
-                  )}
                 >
-                  {/* Chat Avatar */}
-                  <div className="relative shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-sm">
+                  {isGroupish ? (
+                    <span className={cn("msgs-cluster", room.type === 'announcement' && "broadcast")}>
+                      {room.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                    </span>
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-sm shrink-0">
                       {photo ? (
                         <img src={photo} alt={name} className="w-full h-full object-cover rounded-full" />
                       ) : (
                         getUserInitials(name)
                       )}
                     </div>
-                    {unread && (
-                      <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-error rounded-full border border-surface shadow-sm animate-pulse" />
-                    )}
-                  </div>
-
-                  {/* Chat Metadata */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex justify-between items-baseline gap-2">
-                      <h4 className={cn(
-                        "text-xs truncate leading-snug",
-                        unread ? "font-bold text-on-surface" : "font-semibold"
-                      )}>
-                        {name}
-                      </h4>
-                      {room.lastMessage?.timestamp && (
-                        <span className="text-[9px] text-on-surface-variant">
-                          {new Date(room.lastMessage.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </span>
+                  )}
+                  <div className="msgs-item-main">
+                    <div className="msgs-item-top">
+                      <span className="msgs-item-name">{name}</span>
+                      {last?.timestamp?.seconds && (
+                        <span className="msgs-item-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
                       )}
                     </div>
-                    <p className={cn(
-                      "text-[11px] truncate mt-0.5 leading-snug",
-                      unread ? "text-on-surface font-semibold" : "text-on-surface-variant"
-                    )}>
-                      {room.lastMessage ? (
-                        <>
-                          <span className="font-medium mr-1">{room.lastMessage.senderName}:</span>
-                          {room.lastMessage.text}
-                        </>
-                      ) : (
-                        "No messages yet"
-                      )}
-                    </p>
+                    <div className="msgs-item-bot">
+                      <span className="msgs-item-preview">
+                        {!last ? (
+                          'No messages yet'
+                        ) : last.senderName === 'System' ? (
+                          last.text
+                        ) : (
+                          <>
+                            {isGroupish && <b>{last.senderId === effectiveUid ? 'You' : firstName(last.senderName)}: </b>}
+                            {last.text}
+                          </>
+                        )}
+                      </span>
+                      {unread && <span className="msgs-unread-dot"></span>}
+                    </div>
                   </div>
-                </button>
+                </div>
               );
             })
           )}
         </div>
       </div>
 
-      {/* 2. Right Active Chat Area */}
+      {/* 2. Right — the thread (the design's msgs-thread) */}
       <div className={cn(
-        "flex flex-col flex-1 h-full bg-surface-container-lowest",
+        "flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
         activeRoomId ? "flex" : "hidden md:flex"
       )}>
-        {activeRoom && currentUser ? (
+        {!activeRoom ? (
+          /* Empty Chat Area Placeholder */
+          <div className="msgs-empty">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-1">
+              <MessageSquare className="w-6 h-6" />
+            </div>
+            <div className="ntf-empty-title">Pick a conversation</div>
+            <div className="ntf-empty-sub">Or start a new one — everyone in the app is reachable from here.</div>
+          </div>
+        ) : (
           <>
             {/* Active Room Header */}
-            <div className="px-6 py-3 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0 z-10">
-              <div className="flex items-center gap-3.5 min-w-0">
-                <button
-                  onClick={() => {
-                    if (isMobile) {
-                      window.history.back();
-                    } else {
-                      setActiveRoomId(null);
-                    }
-                  }}
-                  className="p-2 -ml-2 rounded-full hover:bg-surface-container-high text-on-surface md:hidden cursor-pointer"
-                >
-                  <ChevronLeft className="w-5 h-5" />
+            <div className="msgs-thread-head">
+              {isMobile && (
+                <button className="icon-btn" onClick={() => setActiveRoomId(null)}>
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
-                <div className="w-9 h-9 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
+              )}
+              {activeRoom.type === 'direct' ? (
+                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
                   {getRoomPhoto(activeRoom) ? (
                     <img src={getRoomPhoto(activeRoom) || ''} alt={getRoomName(activeRoom)} className="w-full h-full object-cover rounded-full" />
                   ) : (
                     getUserInitials(getRoomName(activeRoom))
                   )}
                 </div>
-                <div className="min-w-0">
-                  <h3 className="font-serif text-base text-on-surface leading-tight truncate">
-                    {getRoomName(activeRoom)}
-                  </h3>
-                  {activeRoom.type === 'group' && (
-                    <span className="text-[10px] text-on-surface-variant font-medium">
-                      {activeRoom.memberIds.length} members
-                    </span>
-                  )}
-                </div>
+              ) : (
+                <span className={cn("msgs-cluster", activeRoom.type === 'announcement' && "broadcast")}>
+                  {activeRoom.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                </span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="msgs-thread-title">{getRoomName(activeRoom)}</div>
+                <div className="msgs-thread-sub">{threadSub}</div>
               </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setChatDetailsOpen(true)}
-                  className="p-2 rounded-full hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface cursor-pointer"
-                  title="Group details"
-                >
-                  <Info className="w-5 h-5" />
+              <div className="msgs-thread-actions">
+                {pinned.length > 0 && (
+                  <button className="icon-btn" title="Pinned messages" onClick={() => setPinnedOpen(o => !o)}>
+                    <Pin className="w-4 h-4" />
+                  </button>
+                )}
+                <button className="icon-btn" title="Search in conversation" onClick={() => setThreadSearchOpen(o => !o)}>
+                  <Search className="w-4 h-4" />
+                </button>
+                <button className="icon-btn" title="Group details" onClick={() => setChatDetailsOpen(true)}>
+                  <Info className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
+            {/* Thread search */}
+            {threadSearchOpen && (
+              <div className="msgs-thread-search">
+                <Search className="w-3.5 h-3.5 shrink-0" />
+                <input autoFocus placeholder="Search this conversation…" value={threadSearch} onChange={(e) => setThreadSearch(e.target.value)} />
+              </div>
+            )}
+
+            {/* Pinned strip */}
+            {pinnedOpen && pinned.length > 0 && (
+              <div className="msgs-pinned-strip">
+                {pinned.map((m) => (
+                  <div key={m.id} className="msgs-pinned-row" onClick={() => jumpTo(m.id)}>
+                    <Pin className="w-3 h-3 shrink-0" />
+                    <span><b>{m.senderId === effectiveUid ? 'You' : firstName(m.senderName)}:</b> {m.text}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Messages Stream */}
-            <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-surface-container-lowest">
+            <div ref={messagesContainerRef} className="msgs-stream">
+              {hiddenHere.length > 0 && (
+                <div className="msgs-hidden-note">
+                  <span>
+                    {hiddenHere.length === 1
+                      ? "One message is hidden from your view. Everyone else still sees it."
+                      : `${hiddenHere.length} messages are hidden from your view. Everyone else still sees them.`}
+                  </span>
+                  <button onClick={() => effectiveUid && MessageHides.unhideAll(effectiveUid, hiddenHere.map((m) => m.id))}>
+                    {hiddenHere.length === 1 ? "Bring it back" : "Bring them back"}
+                  </button>
+                </div>
+              )}
+
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
                   <MessageSquare className="w-10 h-10 text-outline" />
                   <p className="text-sm">No messages yet. Send a message to start the conversation!</p>
                 </div>
+              ) : visibleMsgs.length === 0 && threadSearch ? (
+                <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>
               ) : (
-                Object.keys(groupedMessages).map((day) => (
-                  <div key={day} className="space-y-4">
-                    {/* Day Separator */}
-                    <div className="flex justify-center my-6 select-none">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant/80 bg-surface-container-low px-3 py-1 rounded-full border border-outline-variant/30">
-                        {day}
-                      </span>
-                    </div>
+                visibleMsgs.map((msg) => {
+                  const isMe = msg.senderId === effectiveUid;
+                  const isSys = msg.type === 'system';
+                  const gone = !!msg.deleted;
+                  const tally: Record<string, number> = {};
+                  (msg.reactions || []).forEach((r) => { tally[r.emoji] = (tally[r.emoji] || 0) + 1; });
+                  const mineReacted = (emoji: string) => (msg.reactions || []).some((r) => r.by === effectiveUid && r.emoji === emoji);
+                  const canAll = canRemoveForEveryone(msg, effectiveUid, isAdmin);
+                  const menuOpen = menuFor === msg.id;
 
-                    {groupedMessages[day].map((msg) => {
-                      const isMe = msg.senderId === effectiveUid;
-                      const isSys = msg.type === 'system';
+                  if (isSys) {
+                    return (
+                      <div key={msg.id} className="flex justify-center select-none">
+                        <span className="text-[11px] font-medium bg-surface-container-low/60 text-on-surface-variant border border-outline-variant/10 rounded-full px-3 py-0.5">
+                          {msg.text}
+                        </span>
+                      </div>
+                    );
+                  }
 
-                      if (isSys) {
-                        return (
-                          <div key={msg.id} className="flex justify-center select-none animate-in fade-in duration-200">
-                            <span className="text-[11px] font-medium bg-surface-container-low/60 text-on-surface-variant border border-outline-variant/10 rounded-full px-3 py-0.5">
-                              {msg.text}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={msg.id}
-                          className={cn(
-                            "flex items-end gap-2.5 animate-in slide-in-from-bottom-2 duration-300",
-                            isMe ? "justify-end" : "justify-start"
+                  return (
+                    <div key={msg.id} id={`msgb-${msg.id}`} className={cn("msgb", isMe && "mine")}>
+                      {!isMe && (
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
+                          {msg.senderPhoto ? (
+                            <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            getUserInitials(msg.senderName)
                           )}
-                        >
-                          {/* Sender Photo */}
-                          {!isMe && (
-                            <div
-                              className="w-7 h-7 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20"
-                              title={msg.senderName}
-                            >
-                              {msg.senderPhoto ? (
-                                <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
-                              ) : (
-                                getUserInitials(msg.senderName)
-                              )}
-                            </div>
-                          )}
+                        </div>
+                      )}
+                      <div className="msgb-col">
+                        {activeRoomIsGroupish && !isMe && (
+                          <div className="msgb-name">{firstName(msg.senderName)}</div>
+                        )}
+                        <div className="msgb-row">
+                          {gone ? (
+                            <div className="msgb-gone">{messageGoneLabel(msg, effectiveUid)}</div>
+                          ) : (
+                            <div className={cn("msgb-bubble", msg.pinned && "pinned")}>
+                              {renderBody(msg.text, memberFirstNames)}
 
-                          {/* Speech Bubble */}
-                          <div className={cn("max-w-[70%] space-y-1.5", isMe ? "text-right" : "text-left")}>
-                            {!isMe && (
-                              <span className="text-[10px] font-bold text-on-surface-variant px-1 uppercase tracking-wider block">
-                                {msg.senderName}
-                              </span>
-                            )}
-                            <div className={cn(
-                              "p-3.5 rounded-2xl text-[13.5px] leading-relaxed shadow-sm border",
-                              isMe
-                                ? "bg-primary text-on-primary border-primary-fixed-dim/20 rounded-br-none"
-                                : "bg-surface border-outline-variant/40 rounded-bl-none text-on-surface"
-                            )}>
-                              {msg.text}
-
-                              {/* Render attachments inside bubble */}
+                              {/* Attachments inside bubble */}
                               {msg.attachments && msg.attachments.length > 0 && (
                                 <div className="mt-2.5 space-y-1.5 border-t border-outline-variant/10 pt-2.5">
                                   {msg.attachments.map((attach, idx) => {
@@ -658,7 +758,7 @@ export default function Messages() {
                                         className={cn(
                                           "p-2.5 rounded-xl border flex items-start gap-3 transition-all text-left",
                                           isMe
-                                            ? "bg-on-primary/10 border-on-primary/20 text-on-primary hover:bg-on-primary/15"
+                                            ? "bg-primary/10 border-primary/20 hover:bg-primary/15"
                                             : "bg-surface-container-low border-outline-variant/60 text-on-surface hover:bg-surface-container-high"
                                         )}
                                         style={{ cursor: isTodo ? 'default' : 'pointer' }}
@@ -673,7 +773,7 @@ export default function Messages() {
                                         ) : (
                                           <div className={cn(
                                             "w-7 h-7 rounded-lg flex items-center justify-center shrink-0 border",
-                                            isMe ? "bg-on-primary/20 border-on-primary/30" : "bg-stage-accent-soft text-stage-accent border-outline-variant/30"
+                                            isMe ? "bg-primary/20 border-primary/30 text-on-primary" : "bg-surface-container-high text-on-surface-variant border-outline-variant/30"
                                           )}>
                                             <AttachIcon className="w-3.5 h-3.5" />
                                           </div>
@@ -685,12 +785,14 @@ export default function Messages() {
                                           )}>
                                             {attach.name}
                                           </h5>
-                                          <p className={cn(
-                                            "text-[10px] mt-0.5 leading-normal",
-                                            isMe ? "text-on-primary/80" : "text-on-surface-variant"
-                                          )}>
-                                            {attach.subtitle}
-                                          </p>
+                                          {attach.subtitle && (
+                                            <p className={cn(
+                                              "text-[10px] mt-0.5 leading-normal",
+                                              isMe ? "text-on-surface-variant/80" : "text-on-surface-variant"
+                                            )}>
+                                              {attach.subtitle}
+                                            </p>
+                                          )}
                                         </div>
                                       </div>
                                     );
@@ -698,130 +800,179 @@ export default function Messages() {
                                 </div>
                               )}
                             </div>
-                            {msg.timestamp && (
-                              <span className="text-[9px] text-on-surface-variant/80 px-1 select-none">
-                                {new Date(msg.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          )}
+
+                          {/* hover tools: quick react + pin + ⋯ menu */}
+                          {!gone && (
+                            <div className="msgb-tools">
+                              <span className="msgb-react-pick">
+                                {QUICK_REACTS.filter((e) => !tally[e]).slice(0, 3).map((e) => (
+                                  <button key={e} className="msgb-react-add" title="React" onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}>
+                                    {e}
+                                  </button>
+                                ))}
                               </span>
-                            )}
-                          </div>
+                              <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned)}>
+                                <Pin className="w-3 h-3" />
+                              </button>
+                              <span className="msgb-menu-wrap">
+                                <button
+                                  className="msgb-pin-btn"
+                                  title="More"
+                                  onClick={() => {
+                                    setMenuFor(menuOpen ? null : msg.id);
+                                    setMenuConfirm(false);
+                                  }}
+                                >⋯</button>
+                                {menuOpen && (
+                                  <>
+                                    <div className="msgb-menu-away" onClick={() => { setMenuFor(null); setMenuConfirm(false); }} />
+                                    <div className="msgb-menu">
+                                      {menuConfirm ? (
+                                        <>
+                                          <p>Take this back for everyone? They'll see that a message was removed — not what it said.</p>
+                                          <button className="msgb-menu-danger" onClick={() => void handleRemoveAll(msg)}>Yes, remove it</button>
+                                          <button onClick={() => setMenuConfirm(false)}>Keep it</button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <button onClick={() => { setMenuFor(null); setMenuConfirm(false); effectiveUid && MessageHides.hide(effectiveUid, msg.id); }}>
+                                            Hide from my view
+                                          </button>
+                                          {canAll && (
+                                            <button className="msgb-menu-danger" onClick={() => setMenuConfirm(true)}>
+                                              {isMe ? "Take back for everyone" : "Remove for everyone"}
+                                            </button>
+                                          )}
+                                          {!canAll && (
+                                            <p>Only {firstName(msg.senderName)} or a full-timer can remove it for everyone.</p>
+                                          )}
+                                        </>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="msgb-foot">
+                          <span className="msgb-when">
+                            {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
+                          </span>
+                          {Object.keys(tally).length > 0 && (
+                            <span className="msgb-reacts">
+                              {Object.keys(tally).map((e) => (
+                                <button
+                                  key={e}
+                                  className={cn("msgb-react", mineReacted(e) && "on")}
+                                  onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}
+                                >
+                                  <span>{e}</span><span className="msgb-react-n">{tally[e]}</span>
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Composer / readonly announcement bar */}
+            {canPostToActiveRoom ? (
+              <div className="msgs-composer">
+                {mentionSearch !== null && (
+                  <div className="msgs-mention-pop">
+                    {roomMembers
+                      .filter((m) => m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
+                      .map((m, idx) => (
+                        <div
+                          key={m.uid}
+                          className={cn("msgs-mention-row", idx === mentionIndex && "bg-surface-container-high")}
+                          onClick={() => handleSelectMention(m.displayName)}
+                        >
+                          <User className="w-3.5 h-3.5 shrink-0 text-on-surface-variant" />
+                          {m.displayName}
+                        </div>
+                      ))}
+                  </div>
+                )}
+
+                {attachments.length > 0 && (
+                  <div className="flex flex-wrap gap-2 py-2">
+                    {attachments.map((attach, idx) => {
+                      const AttachIcon = getAttachmentIcon(attach.type);
+                      return (
+                        <div
+                          key={idx}
+                          className="py-1.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant/60 text-xs font-semibold flex items-center gap-2"
+                        >
+                          <AttachIcon className="w-3.5 h-3.5 shrink-0" />
+                          <span className="max-w-[120px] truncate">{attach.name}</span>
+                          <button
+                            onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            className="p-0.5 rounded-full hover:bg-surface-container-high cursor-pointer text-on-surface-variant"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
                         </div>
                       );
                     })}
                   </div>
-                ))
-              )}
-            </div>
+                )}
 
-            {/* Composer tray (for mentions & attachments list) */}
-            {!canPostToActiveRoom ? (
-              <div className="px-6 py-5 bg-surface border-t border-outline-variant shrink-0">
-                <p className="text-sm text-on-surface-variant text-center leading-relaxed">
-                  This one's an announcement — replies go to the team directly.
-                </p>
-              </div>
-            ) : (
-            <div className="px-6 py-2 bg-surface border-t border-outline-variant relative z-20 shrink-0">
-              {/* Mentions list autocomplete */}
-              {mentionSearch !== null && (
-                <div className="absolute bottom-full left-6 mb-2 bg-surface border border-outline shadow-2xl rounded-2xl w-64 max-h-48 overflow-y-auto p-1.5 space-y-1 animate-in slide-in-from-bottom-2 duration-200">
-                  <div className="px-3 py-1 text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">
-                    Mention member
-                  </div>
-                  {roomMembers
-                    .filter((m) => m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
-                    .map((m, idx) => (
-                      <button
-                        key={m.uid}
-                        onClick={() => handleSelectMention(m.displayName)}
-                        className={cn(
-                          "w-full px-3 py-2 rounded-xl text-xs font-semibold text-left transition-colors flex items-center gap-2 cursor-pointer",
-                          idx === mentionIndex ? "bg-primary text-on-primary" : "text-on-surface hover:bg-surface-container-high"
-                        )}
-                      >
-                        <User className="w-3.5 h-3.5 shrink-0" />
-                        {m.displayName}
-                      </button>
-                    ))}
-                </div>
-              )}
-
-              {/* Attachments listing */}
-              {attachments.length > 0 && (
-                <div className="flex flex-wrap gap-2 py-2">
-                  {attachments.map((attach, idx) => {
-                    const AttachIcon = getAttachmentIcon(attach.type);
-                    return (
-                      <div
-                        key={idx}
-                        className="py-1.5 px-3 rounded-full bg-stage-accent-soft text-stage-accent border border-outline-variant/30 text-xs font-semibold flex items-center gap-2 animate-in scale-in duration-200"
-                      >
-                        <AttachIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="max-w-[120px] truncate">{attach.name}</span>
-                        <button
-                          onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
-                          className="p-0.5 rounded-full hover:bg-stage-accent/15 cursor-pointer text-stage-accent"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Composition Input Form */}
-              <form onSubmit={handleSend} className="flex items-end gap-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => setAttachDataOpen(true)}
-                  className="p-3 rounded-2xl bg-surface-container border border-outline hover:border-primary/50 text-on-surface-variant hover:text-primary transition-all cursor-pointer shrink-0"
-                  title="Attach reference data"
-                >
-                  <Paperclip className="w-5 h-5" />
-                </button>
-                
-                <div className="flex-1 relative">
+                <div className="msgs-composer-row">
+                  <button
+                    type="button"
+                    onClick={() => setAttachDataOpen(true)}
+                    className="icon-btn"
+                    title="Attach reference data"
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </button>
                   <textarea
-                    placeholder="Type a message... (use @ to mention)"
+                    placeholder="Write a message… (@ to mention)"
                     value={inputText}
                     onChange={handleInputChange}
                     onKeyDown={handleKeyPress}
                     rows={1}
-                    className="w-full bg-surface-container border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface rounded-2xl py-3 px-4 resize-none min-h-[46px] max-h-32"
+                    className="msgs-ta li-input li-textarea"
                   />
+                  <button
+                    type="button"
+                    disabled={!inputText.trim() && attachments.length === 0}
+                    className="msgs-send"
+                    title="Send"
+                    onClick={handleSend}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={!inputText.trim() && attachments.length === 0}
-                  className="p-3.5 bg-primary text-on-primary rounded-2xl shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all shrink-0 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                >
-                  <Send className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
+              </div>
+            ) : (
+              <div className="msgs-readonly">
+                <span>This one's an announcement — replies go to the team directly.</span>
+                <span className="msgs-readonly-reacts">
+                  {QUICK_REACTS.slice(0, 4).map((e) => {
+                    const last = messages[messages.length - 1];
+                    return (
+                      <button
+                        key={e}
+                        onClick={() => {
+                          if (effectiveUid && last && !last.deleted) {
+                            reactToMessage(activeRoomId!, last.id, effectiveUid, e, last.reactions || []);
+                          }
+                        }}
+                      >{e}</button>
+                    );
+                  })}
+                </span>
+              </div>
             )}
           </>
-        ) : (
-          /* Empty Chat Area Placeholder */
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4 text-on-surface-variant">
-            <div className="w-20 h-20 rounded-3xl bg-surface border border-outline-variant/65 flex items-center justify-center shadow-sm">
-              <MessageSquare className="w-10 h-10 text-primary" />
-            </div>
-            <div>
-              <h2 className="font-serif text-2xl text-on-surface">Fellowship Messaging</h2>
-              <p className="text-sm mt-1.5 max-w-sm leading-relaxed">
-                Connect with the team in real-time. Start a direct one-on-one message or invite members to a group chat.
-              </p>
-            </div>
-            <button
-              onClick={() => setCreateChatOpen(true)}
-              className="py-2.5 px-6 bg-primary text-on-primary font-bold text-sm rounded-full shadow-md hover:bg-primary/95 transition-all flex items-center gap-2 cursor-pointer mt-2"
-            >
-              <Plus className="w-4 h-4" />
-              New Conversation
-            </button>
-          </div>
         )}
       </div>
 

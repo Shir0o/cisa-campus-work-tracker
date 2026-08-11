@@ -655,7 +655,27 @@ service cloud.firestore {
                       (isAdmin() || !isAnnouncementRoom(get(/databases/$(database)/documents/chatRooms/$(roomId)).data)) &&
                       request.resource.data.senderId == request.auth.uid;
 
-        allow update, delete: if false; // Messages are immutable
+        // A sent message is otherwise immutable — but three field-level acts
+        // are allowed, matching the Field Notes design (views/messages.jsx):
+        //   • reactions — anyone in the room can add or take back their own
+        //   • pinned    — anyone in the room can pin/unpin a message
+        //   • deleted   — a tombstone for "take back for everyone"; only the
+        //                 author or a Full-timer may leave it, and once set it
+        //                 stays (a conversation never silently rewrites itself)
+        // `isRoomMember()` can't be reused here: inside this nested match
+        // `resource` is the message, so membership is looked up on the parent
+        // room like the read/create rules do.
+        allow update: if isSignedIn() &&
+                      (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) || isAdmin()) &&
+                      request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'pinned', 'deleted']) &&
+                      (
+                        // leaving a tombstone — the author's or a Full-timer's act
+                        (resource.data.deleted == null && request.resource.data.deleted != null &&
+                         (request.auth.uid == resource.data.senderId || isAdmin())) ||
+                        // a plain reaction / pin toggle on a live message
+                        (resource.data.deleted == null && request.resource.data.deleted == null)
+                      );
+        allow delete: if false; // A tombstone replaces deletion
       }
     }
 
