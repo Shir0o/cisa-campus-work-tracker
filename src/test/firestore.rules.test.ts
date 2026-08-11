@@ -1016,6 +1016,39 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
+    it('AN7: room creator or admin can delete room, non-creator non-admin cannot', async () => {
+      await seedMemberUsers();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'chatRooms', 'room1'), {
+          type: 'group',
+          name: 'Team',
+          memberIds: ['student1', 'student2'],
+          createdById: 'student1',
+          createdByName: 'Student One',
+        });
+      });
+
+      // Non-creator non-admin cannot delete
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms', 'room1')));
+
+      // Room creator can delete
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
+
+      // Re-seed room and test admin delete
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'chatRooms', 'room1'), {
+          type: 'group',
+          name: 'Team',
+          memberIds: ['student1', 'student2'],
+          createdById: 'student1',
+          createdByName: 'Student One',
+        });
+      });
+
+      // Admin (ft1) can delete
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1')));
+    });
+
     // ── message-level acts: react, pin, take back for everyone ──────────────
     // A sent message is immutable except for `reactions` / `pinned` / `deleted`
     // (the Field Notes design's desktop thread). Anyone in the room can react

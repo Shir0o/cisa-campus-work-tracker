@@ -61,6 +61,8 @@ vi.mock('../services/chat', () => ({
   reactToMessage: vi.fn().mockResolvedValue(undefined),
   togglePinMessage: vi.fn().mockResolvedValue(undefined),
   removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
+  deleteChatRoom: vi.fn().mockResolvedValue(undefined),
+  canRemoveConvForEveryone: vi.fn().mockImplementation((r: any, uid: any, isAdmin: any) => Boolean(isAdmin || (r && r.createdById === uid))),
 }));
 
 // Mock modals to support full callback interaction
@@ -1113,6 +1115,150 @@ describe('Messages View Component', () => {
 
       fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
       expect(await screen.findByText('User Alice joined the group')).toBeInTheDocument();
+    });
+
+    it('renders direct chat header with avatar class and composer without li-textarea class', async () => {
+      const mockDirectRooms = [
+        {
+          id: 'room-dm-header',
+          type: 'direct' as const,
+          memberIds: ['u1', 'u2'],
+          createdAt: { seconds: 100000 },
+          lastMessage: { text: 'Direct message', senderId: 'u2', senderName: 'Alice', timestamp: { seconds: 100005 } },
+        },
+      ];
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? [] : mockDirectRooms;
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      (firestore.getDoc as any).mockResolvedValue({
+        exists: () => true,
+        data: () => ({ displayName: 'Alice Direct', photoURL: '' }),
+      });
+
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      // Verify root container flex classes
+      const rootDiv = container.firstElementChild as HTMLElement;
+      expect(rootDiv.className).toContain('page msgs flex flex-1 h-full min-h-0');
+
+      const roomBtn = await screen.findByText('Alice Direct');
+      fireEvent.click(roomBtn.closest('.msgs-item')!);
+
+      // Verify direct chat header avatar container has 'avatar' class
+      await waitFor(() => {
+        const avatarEl = container.querySelector('.msgs-thread-head .avatar');
+        expect(avatarEl).toBeTruthy();
+      });
+
+      // Verify composer textarea has msgs-ta li-input without li-textarea
+      const textarea = screen.getByPlaceholderText(/Write a message/i);
+      expect(textarea.className).toBe('msgs-ta li-input');
+    });
+
+    it('handles room hiding, unhiding via banner, and deleting room for everyone', async () => {
+      const mockRooms = [
+        {
+          id: 'room-delete-test',
+          type: 'group',
+          name: 'Delete Test Group',
+          memberIds: ['user123', 'user456'],
+          createdById: 'user123',
+          createdByName: 'Test User',
+          createdAt: { seconds: 1600000000, nanoseconds: 0 },
+          lastMessage: {
+            text: 'Hello group',
+            senderId: 'user123',
+            senderName: 'Test User',
+            timestamp: { seconds: 1600000000, nanoseconds: 0 },
+          },
+        },
+      ];
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        successCallback({
+          forEach: (fn: any) => {
+            mockRooms.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      const roomTitle = await screen.findByText('Delete Test Group');
+      expect(roomTitle).toBeTruthy();
+
+      // Open room ⋯ menu
+      const moreBtn = screen.getByTitle('More options');
+      fireEvent.click(moreBtn);
+
+      // Hide from my list
+      const hideBtn = screen.getByText('Hide from my list');
+      fireEvent.click(hideBtn);
+
+      // Room is hidden and banner appears
+      await waitFor(() => {
+        expect(screen.queryByText('Delete Test Group')).toBeNull();
+        expect(screen.getByText(/One conversation is hidden from your list/i)).toBeTruthy();
+      });
+
+      // Bring it back
+      const bringBackBtn = screen.getByText('Bring it back');
+      fireEvent.click(bringBackBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Delete Test Group')).toBeTruthy();
+      });
+
+      // Open menu again and test Delete for everyone
+      const moreBtn2 = screen.getByTitle('More options');
+      fireEvent.click(moreBtn2);
+
+      const deleteForEveryoneBtn = screen.getByText('Delete for everyone');
+      fireEvent.click(deleteForEveryoneBtn);
+
+      // Confirmation prompt appears
+      expect(screen.getByText(/Delete this conversation for everyone\?/i)).toBeTruthy();
+
+      const confirmBtn = screen.getByText('Yes, delete it');
+      fireEvent.click(confirmBtn);
+
+      await waitFor(() => {
+        expect(chatService.deleteChatRoom).toHaveBeenCalledWith('room-delete-test');
+      });
     });
   });
 });

@@ -638,7 +638,7 @@ service cloud.firestore {
       // member could flip an announcement to a group and post into it.
       allow update: if isSignedIn() && (isRoomMember() || isAdmin()) &&
                     (isAdmin() || incoming().get('type', 'group') == existing().get('type', 'group'));
-      allow delete: if isSignedIn() && isAdmin();
+      allow delete: if isSignedIn() && (isAdmin() || (resource.data.createdById == request.auth.uid));
 
       // Messages subcollection
       match /messages/{messageId} {

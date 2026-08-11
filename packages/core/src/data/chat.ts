@@ -7,6 +7,7 @@ import {
   arrayRemove,
   arrayUnion,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
@@ -316,3 +317,10 @@ export async function hideChatRoomForUser(
 ): Promise<void> {
   await updateDoc(doc(db, "chatRooms", roomId), { deletedFor: arrayUnion(uid) });
 }
+
+/** Deletes a conversation room for everyone. Only room creator or an admin
+ *  may call this. */
+export async function deleteChatRoom(db: Firestore, roomId: string): Promise<void> {
+  await deleteDoc(doc(db, "chatRooms", roomId));
+}
+

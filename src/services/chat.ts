@@ -8,6 +8,7 @@ import {
   setDoc,
   addDoc,
   updateDoc,
+  deleteDoc,
   arrayUnion,
   arrayRemove,
   serverTimestamp
@@ -319,3 +320,25 @@ export async function removeMessageForEveryone(roomId: string, messageId: string
     deleted: { by, at: serverTimestamp() },
   });
 }
+
+/**
+ * Permanently delete a conversation room for everyone. Only the room's creator
+ * or an Admin / Full-timer may call this — firestore.rules enforces it server-side.
+ */
+export async function deleteChatRoom(roomId: string): Promise<void> {
+  await deleteDoc(doc(db, 'chatRooms', roomId));
+}
+
+/**
+ * Check whether the viewer can delete a room for everyone — its creator or an Admin.
+ */
+export function canRemoveConvForEveryone(
+  room: { createdById?: string } | null | undefined,
+  currentUid: string | null | undefined,
+  isAdmin: boolean
+): boolean {
+  if (!room) return false;
+  return isAdmin || (!!currentUid && room.createdById === currentUid);
+}
+
+

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, UserPlus, LogOut, User, Loader2, Mail, ShieldAlert } from 'lucide-react';
+import { X, UserPlus, LogOut, User, Loader2, Mail, ShieldAlert, Trash2 } from 'lucide-react';
 import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { AppUser, ChatRoom, Contact } from '../../types';
 import { useAuth } from '../AuthProvider';
-import { inviteToGroup, leaveGroup } from '../../services/chat';
+import { inviteToGroup, leaveGroup, deleteChatRoom, canRemoveConvForEveryone } from '../../services/chat';
+import { ConvHides } from '../../lib/convHides';
 import { getUserInitials } from '../../lib/utils';
 import { useLayout } from '../../App';
 
@@ -358,19 +359,56 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
               )}
             </div>
 
-            {/* Footer */}
-            {room.type === 'group' && (
-              <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex gap-3 bg-surface-container-low">
+            {/* Footer / Actions */}
+            <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex flex-col gap-2.5 bg-surface-container-low">
+              {room.type === 'group' && (
                 <button
                   onClick={handleLeaveGroup}
                   disabled={loading}
-                  className="w-full h-11 rounded-full border border-error/45 text-error hover:bg-error/5 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50 shrink-0"
+                  className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
                 >
                   <LogOut className="w-4 h-4" />
                   Leave Group
                 </button>
-              </div>
-            )}
+              )}
+
+              <button
+                onClick={() => {
+                  if (currentUser?.uid) {
+                    ConvHides.hide(currentUser.uid, room.id);
+                    onLeftGroup();
+                    onClose();
+                  }
+                }}
+                className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+              >
+                Hide from my list
+              </button>
+
+              {canRemoveConvForEveryone(room, currentUser?.uid, isUserAdmin) && (
+                <button
+                  onClick={async () => {
+                    if (confirm('Delete this conversation for everyone? It leaves everyone\'s list, messages and all.')) {
+                      setLoading(true);
+                      try {
+                        await deleteChatRoom(room.id);
+                        onLeftGroup();
+                        onClose();
+                      } catch (err) {
+                        console.error('Failed to delete room:', err);
+                      } finally {
+                        setLoading(false);
+                      }
+                    }
+                  }}
+                  disabled={loading}
+                  className="w-full h-10 rounded-full border border-error/45 text-error hover:bg-error/5 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete for everyone
+                </button>
+              )}
+            </div>
           </motion.div>
         </div>
       )}
