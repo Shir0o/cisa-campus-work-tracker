@@ -311,12 +311,11 @@ export async function togglePinMessage(roomId: string, messageId: string, pinned
 /**
  * Take a message back for everyone: leaves a `deleted` tombstone so the thread
  * shows "Message removed" instead of the text. Only the author or a Full-timer
- * may call this — firestore.rules enforces it server-side too.
+ * may call this — firestore.rules enforces it server-side too, and it splits
+ * this tombstone write from reaction/pin toggles: only `deleted` may change.
  */
 export async function removeMessageForEveryone(roomId: string, messageId: string, by: string): Promise<void> {
   await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), {
     deleted: { by, at: serverTimestamp() },
-    reactions: [],
-    pinned: false,
   });
 }

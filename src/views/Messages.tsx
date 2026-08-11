@@ -464,7 +464,7 @@ export default function Messages() {
     if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
     return true;
   });
-  const pinned = messages.filter((m) => m.pinned);
+  const pinned = messages.filter((m) => m.pinned && !m.deleted);
   const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
 
   const jumpTo = (messageId: string) => {
@@ -860,7 +860,7 @@ export default function Messages() {
                           <span className="msgb-when">
                             {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
                           </span>
-                          {Object.keys(tally).length > 0 && (
+                          {!gone && Object.keys(tally).length > 0 && (
                             <span className="msgb-reacts">
                               {Object.keys(tally).map((e) => (
                                 <button

@@ -1104,6 +1104,26 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
+    it('MSG4b: a tombstone write cannot also change reactions or pinned — the acts are separate', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group');
+      await seedMsg('room1', 'm1', 'ft1');
+      // The author may tombstone, but not in the same write as a reaction/pin
+      // change — a gone message can't be reacted to or pinned, even mid-write.
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+          reactions: [{ by: 'ft1', emoji: '🙏' }],
+        }),
+      );
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1'), {
+          deleted: { by: 'ft1', at: new Date().toISOString() },
+          pinned: true,
+        }),
+      );
+    });
+
     it('MSG5: a non-member cannot react to or pin a message', async () => {
       await seedMemberUsers();
       await seedRoom('room1', 'group');

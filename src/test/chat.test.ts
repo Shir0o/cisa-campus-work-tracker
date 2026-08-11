@@ -366,12 +366,10 @@ describe('chat.ts services', () => {
   });
 
   describe('removeMessageForEveryone', () => {
-    it('leaves a tombstone and clears reactions/pin', async () => {
+    it('leaves a tombstone — the rules split it from reaction/pin toggles', async () => {
       await removeMessageForEveryone('r1', 'm1', 'u1');
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
         deleted: { by: 'u1', at: 'SERVER_TS' },
-        reactions: [],
-        pinned: false,
       });
     });
   });

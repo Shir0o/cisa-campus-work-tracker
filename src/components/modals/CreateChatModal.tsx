@@ -173,7 +173,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
             {/* Tabs — the design's Message / Announcement */}
             <div className="flex border-b border-outline-variant shrink-0 bg-surface-container-low/55 p-1.5 gap-1">
               <button
-                onClick={() => { setTab('message'); setSearch(''); }}
+                onClick={() => { setTab('message'); setSearch(''); setSelectedUids([]); setGroupName(''); setAnnounceName(''); }}
                 className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   tab === 'message'
                     ? 'bg-primary text-on-primary shadow-sm'
@@ -184,7 +184,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               </button>
               {canAnnounce && (
                 <button
-                  onClick={() => { setTab('announcement'); setSearch(''); }}
+                  onClick={() => { setTab('announcement'); setSearch(''); setSelectedUids([]); setGroupName(''); setAnnounceName(''); }}
                   className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                     tab === 'announcement'
                       ? 'bg-primary text-on-primary shadow-sm'
