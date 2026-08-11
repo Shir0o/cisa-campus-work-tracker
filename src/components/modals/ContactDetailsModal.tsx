@@ -1563,10 +1563,10 @@ export default function ContactDetailsModal({
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
+                      className="cd-sec"
                     >
-                      <div className="flex items-center justify-between px-2">
-                        <h3 className="font-serif text-lg text-on-surface">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">
                           Every conversation
                         </h3>
                         <button
@@ -1671,7 +1671,7 @@ export default function ContactDetailsModal({
                         )}
                       </AnimatePresence>
 
-                      <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-4">
                         {interactionsLoading ? (
                           <div className="space-y-3">
                             {[1, 2, 3].map((i) => (
@@ -1909,10 +1909,13 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "thread" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                    >
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">{walkLabel}</h3>
+                        <span className="cd-sec-sub">
+                          {`Comments on ${firstName} — anyone who can see them can weigh in, and reply to a comment.`}
+                        </span>
+                      </div>
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
@@ -1920,17 +1923,17 @@ export default function ContactDetailsModal({
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                       />
-                    </motion.div>
+                    </div>
                   )}
 
                   {activeTab === "prayer" && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
+                      className="cd-sec"
                     >
-                      <div className="flex items-center justify-between px-2">
-                        <h3 className="font-serif text-lg text-on-surface">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">
                           Prayers we're holding
                         </h3>
                         <button
@@ -1999,7 +2002,7 @@ export default function ContactDetailsModal({
                         )}
                       </AnimatePresence>
 
-                      <div className="space-y-3 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-3">
                         {prayersLoading ? (
                           <div className="space-y-3">
                             {[1, 2].map((i) => (
@@ -2074,14 +2077,13 @@ export default function ContactDetailsModal({
                   )}
 
                   {activeTab === "comments" && (role === "admin" || isAdmin) && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-serif text-lg text-on-surface px-2">
-                        Team discussion
-                      </h3>
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">Discussion</h3>
+                        <span className="cd-sec-sub">
+                          {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
+                        </span>
+                      </div>
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
@@ -2090,22 +2092,18 @@ export default function ContactDetailsModal({
                         contactName={contact.name}
                         scope="team"
                       />
-                    </motion.div>
+                    </div>
                   )}
 
 
 
                   {activeTab === "history" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="space-y-4"
-                    >
-                      <h3 className="font-serif text-lg text-on-surface px-2">
-                        Looking back
-                      </h3>
+                    <div className="cd-sec">
+                      <div className="cd-sec-head">
+                        <h3 className="cd-sec-title">Looking back</h3>
+                      </div>
 
-                      <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                      <div className="space-y-6">
                         {activitiesLoading ? (
                           <div className="space-y-4">
                             {[1, 2, 3, 4].map((i) => (
@@ -2135,7 +2133,7 @@ export default function ContactDetailsModal({
                           ))
                         )}
                       </div>
-                    </motion.div>
+                    </div>
                   )}
                 </div>
               )}
