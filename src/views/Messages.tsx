@@ -39,9 +39,10 @@ import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
-import { sendMessage, reactToMessage, togglePinMessage, removeMessageForEveryone } from '../services/chat';
+import { sendMessage, reactToMessage, togglePinMessage, removeMessageForEveryone, deleteChatRoom, canRemoveConvForEveryone } from '../services/chat';
 import { setTodoDone } from '../lib/todos';
 import { MessageHides } from '../lib/messageHides';
+import { ConvHides } from '../lib/convHides';
 
 // Modals
 import CreateChatModal from '../components/modals/CreateChatModal';
@@ -124,9 +125,20 @@ export default function Messages() {
   const [mentionIndex, setMentionIndex] = useState(0);
   const [roomMembers, setRoomMembers] = useState<{ uid: string; displayName: string }[]>([]);
 
-  // Hidden-from-view messages (client-only, per viewer — MessageHides)
+  // Hidden-from-view messages & conversations (client-only, per viewer — MessageHides / ConvHides)
   const [, setHideNonce] = useState(0);
-  useEffect(() => MessageHides.subscribe(() => setHideNonce(n => n + 1)), []);
+  useEffect(() => {
+    const unsub1 = MessageHides.subscribe(() => setHideNonce((n) => n + 1));
+    const unsub2 = ConvHides.subscribe(() => setHideNonce((n) => n + 1));
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, []);
+
+  // Conversation ⋯ menu (which room ID, and whether confirm step is showing)
+  const [convMenuFor, setConvMenuFor] = useState<string | null>(null);
+  const [convMenuConfirm, setConvMenuConfirm] = useState(false);
 
   // Toggle fullscreen chat body class on mobile when a chat is open
   useEffect(() => {
@@ -382,8 +394,9 @@ export default function Messages() {
   // Filtered and deduplicated room list (the design's msgs-filters + search)
   const seenDirectUids = new Set<string>();
   const filteredRooms = rooms.filter((r) => {
+    if (effectiveUid && ConvHides.has(effectiveUid, r.id)) return false;
     if (r.type === 'direct') {
-      const otherUid = r.memberIds.find(id => id !== effectiveUid) || r.memberIds[0];
+      const otherUid = r.memberIds.find((id) => id !== effectiveUid) || r.memberIds[0];
       if (otherUid) {
         const otherUser = usersCache[otherUid];
         if (otherUser) {
@@ -404,6 +417,8 @@ export default function Messages() {
     if (filter === 'announce' && r.type !== 'announcement') return false;
     return true;
   });
+
+  const hiddenConvs = effectiveUid ? rooms.filter((r) => ConvHides.has(effectiveUid, r.id)) : [];
 
   // Handle clicking attachment cards in chat bubble
   const handleAttachmentClick = async (attachment: ChatAttachment) => {
@@ -497,7 +512,7 @@ export default function Messages() {
   const activeRoomIsGroupish = !!activeRoom && activeRoom.type !== 'direct';
 
   return (
-    <div className="page msgs !flex !h-[calc(100vh-64px)] md:!h-screen w-full !overflow-hidden bg-background">
+    <div className="page msgs flex flex-1 h-full min-h-0 w-full overflow-hidden bg-background">
       {/* 1. Left Rail — the design's msgs-rail */}
       <div className={cn(
         "flex flex-col border-r border-outline-variant w-full md:w-[328px] shrink-0 bg-surface min-h-0",
@@ -553,6 +568,8 @@ export default function Messages() {
               const unread = isUnread(room);
               const last = room.lastMessage;
               const isGroupish = room.type !== 'direct';
+              const menuOpen = convMenuFor === room.id;
+              const canAllConv = canRemoveConvForEveryone(room, effectiveUid, isAdmin);
 
               return (
                 <div
@@ -594,11 +611,109 @@ export default function Messages() {
                         )}
                       </span>
                       {unread && <span className="msgs-unread-dot"></span>}
+                      <span
+                        className={cn("msgs-item-more", menuOpen && "on")}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          title="More options"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setConvMenuFor(menuOpen ? null : room.id);
+                            setConvMenuConfirm(false);
+                          }}
+                        >
+                          ⋯
+                        </button>
+                        {menuOpen && (
+                          <>
+                            <div
+                              className="msgb-menu-away"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConvMenuFor(null);
+                                setConvMenuConfirm(false);
+                              }}
+                            />
+                            <div className="msgb-menu">
+                              {convMenuConfirm ? (
+                                <>
+                                  <p>Delete this conversation for everyone? It leaves everyone's list, messages and all.</p>
+                                  <button
+                                    className="msgb-menu-danger"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      setConvMenuFor(null);
+                                      setConvMenuConfirm(false);
+                                      try {
+                                        await deleteChatRoom(room.id);
+                                        if (activeRoomId === room.id) setActiveRoomId(null);
+                                      } catch (err) {
+                                        console.error('Failed to delete chat room:', err);
+                                      }
+                                    }}
+                                  >
+                                    Yes, delete it
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConvMenuConfirm(false);
+                                    }}
+                                  >
+                                    Keep it
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setConvMenuFor(null);
+                                      if (effectiveUid) ConvHides.hide(effectiveUid, room.id);
+                                      if (activeRoomId === room.id) setActiveRoomId(null);
+                                    }}
+                                  >
+                                    Hide from my list
+                                  </button>
+                                  {canAllConv ? (
+                                    <button
+                                      className="msgb-menu-danger"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setConvMenuConfirm(true);
+                                      }}
+                                    >
+                                      Delete for everyone
+                                    </button>
+                                  ) : (
+                                    <p>Only whoever started it or a full-timer can delete it for everyone.</p>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </span>
                     </div>
                   </div>
                 </div>
               );
             })
+          )}
+          {hiddenConvs.length > 0 && (
+            <div className="msgs-hidden-note msgs-hidden-convs">
+              <span>
+                {hiddenConvs.length === 1
+                  ? "One conversation is hidden from your list. Everyone else still has it."
+                  : `${hiddenConvs.length} conversations are hidden from your list. Everyone else still have them.`}
+              </span>
+              <button
+                onClick={() => effectiveUid && ConvHides.unhideAll(effectiveUid, hiddenConvs.map((c) => c.id))}
+              >
+                {hiddenConvs.length === 1 ? "Bring it back" : "Bring them back"}
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -627,7 +742,7 @@ export default function Messages() {
                 </button>
               )}
               {activeRoom.type === 'direct' ? (
-                <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
+                <div className="avatar w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
                   {getRoomPhoto(activeRoom) ? (
                     <img src={getRoomPhoto(activeRoom) || ''} alt={getRoomName(activeRoom)} className="w-full h-full object-cover rounded-full" />
                   ) : (
@@ -939,7 +1054,7 @@ export default function Messages() {
                     onChange={handleInputChange}
                     onKeyDown={handleKeyPress}
                     rows={1}
-                    className="msgs-ta li-input li-textarea"
+                    className="msgs-ta li-input"
                   />
                   <button
                     type="button"

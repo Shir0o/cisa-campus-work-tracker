@@ -270,6 +270,8 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 }
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const location = useLocation();
+  const isMessagesPage = location.pathname === "/messages";
   const { setImpersonateTarget, impersonateTarget } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
@@ -335,7 +337,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         >
           <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
           <TopBar onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
-          <main className="flex-1 overflow-x-hidden w-full overflow-y-auto pb-36 md:pb-8">
+          <main
+            className={cn(
+              "flex-1 w-full min-h-0",
+              isMessagesPage
+                ? "flex flex-col overflow-hidden"
+                : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+            )}
+          >
             {/* People detail is a full page on desktop (the design's ContactDetail),
                 not a popup — it replaces the current view inside the shell. */}
             {selectedContact ? (

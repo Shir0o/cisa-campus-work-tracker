@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   announcementCreatedSystemMessage,
   canPostToRoom,
+  canRemoveConvForEveryone,
   getDirectChatId,
   getRoomName,
   getRoomPhoto,
@@ -269,6 +270,23 @@ describe('canPostToRoom', () => {
   it('lets an admin post in any non-announcement room they can read', () => {
     // Mirrors the rules' admin read/write bypass on chatRooms.
     expect(canPostToRoom(room({ type: 'group', memberIds: ['a', 'b'] }), 'boss', true)).toBe(true);
+  });
+});
+
+describe('canRemoveConvForEveryone', () => {
+  it('returns false for null or undefined room', () => {
+    expect(canRemoveConvForEveryone(null as any, 'u1', false)).toBe(false);
+  });
+
+  it('allows the creator of the room to delete it for everyone', () => {
+    const r = room({ createdById: 'u1' });
+    expect(canRemoveConvForEveryone(r, 'u1', false)).toBe(true);
+    expect(canRemoveConvForEveryone(r, 'u2', false)).toBe(false);
+  });
+
+  it('allows an admin to delete any room for everyone', () => {
+    const r = room({ createdById: 'u1' });
+    expect(canRemoveConvForEveryone(r, 'u2', true)).toBe(true);
   });
 });
 

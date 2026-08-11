@@ -37,6 +37,8 @@ vi.mock('firebase/firestore', () => ({
 vi.mock('../services/chat', () => ({
   inviteToGroup: vi.fn().mockResolvedValue(undefined),
   leaveGroup: vi.fn().mockResolvedValue(undefined),
+  deleteChatRoom: vi.fn().mockResolvedValue(undefined),
+  canRemoveConvForEveryone: vi.fn().mockImplementation((r: any, uid: any, isAdmin: any) => Boolean(isAdmin || (r && r.createdById === uid))),
 }));
 
 // Mock motion

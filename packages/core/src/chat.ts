@@ -39,6 +39,17 @@ export function canPostToRoom(
   return isAdmin || (!!currentUid && room.memberIds.includes(currentUid));
 }
 
+/** Whether the viewer can delete this room for everyone — its creator or a
+ *  Full-timer / Admin. */
+export function canRemoveConvForEveryone(
+  room: ChatRoom,
+  currentUid: string | null | undefined,
+  isAdmin: boolean,
+): boolean {
+  if (!room) return false;
+  return isAdmin || (!!currentUid && room.createdById === currentUid);
+}
+
 export function getRoomName(
   room: ChatRoom,
   currentUid: string | null | undefined,

@@ -6,6 +6,7 @@ const mockGetDocs = vi.fn().mockResolvedValue({ docs: [] });
 const mockSetDoc = vi.fn().mockResolvedValue(undefined);
 const mockAddDoc = vi.fn().mockResolvedValue({ id: 'new-doc-id' });
 const mockUpdateDoc = vi.fn().mockResolvedValue(undefined);
+const mockDeleteDoc = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('firebase/firestore', () => ({
   getDoc: (...args: any[]) => mockGetDoc(...args),
@@ -13,6 +14,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc: (...args: any[]) => mockSetDoc(...args),
   addDoc: (...args: any[]) => mockAddDoc(...args),
   updateDoc: (...args: any[]) => mockUpdateDoc(...args),
+  deleteDoc: (...args: any[]) => mockDeleteDoc(...args),
   query: vi.fn((...args: any[]) => `query:${args.join('/')}`),
   where: vi.fn((field: string, op: string, val: any) => `where:${field}_${op}_${val}`),
   collection: vi.fn((_db: any, ...paths: string[]) => `col:${paths.join('/')}`),
@@ -39,7 +41,8 @@ import {
   leaveGroup,
   reactToMessage,
   togglePinMessage,
-  removeMessageForEveryone
+  removeMessageForEveryone,
+  deleteChatRoom
 } from '../services/chat';
 
 describe('chat.ts services', () => {
@@ -371,6 +374,13 @@ describe('chat.ts services', () => {
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1/messages/m1', {
         deleted: { by: 'u1', at: 'SERVER_TS' },
       });
+    });
+  });
+
+  describe('deleteChatRoom', () => {
+    it('deletes the room document from Firestore', async () => {
+      await deleteChatRoom('r1');
+      expect(mockDeleteDoc).toHaveBeenCalledWith('doc:chatRooms/r1');
     });
   });
 });

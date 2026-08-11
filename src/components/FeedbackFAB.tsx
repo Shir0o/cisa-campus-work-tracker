@@ -12,6 +12,7 @@ const MAX_PAYLOAD_LENGTH = 600000;
 
 export default function FeedbackFAB() {
   const { user, role } = useAuth();
+  const isMessagesPage = typeof window !== 'undefined' && window.location.pathname === '/messages';
   const [isOpen, setIsOpen] = useState(false);
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
@@ -161,7 +162,9 @@ export default function FeedbackFAB() {
       <button
         id="feedback-fab-btn"
         onClick={() => (isOpen ? close() : setIsOpen(true))}
-        className={`fixed bottom-20 right-4 lg:bottom-6 lg:right-6 z-[100] w-12 h-12 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+          isMessagesPage ? 'bottom-20 lg:bottom-20 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
+        } ${
           isOpen
             ? 'bg-surface-container-highest text-on-surface-variant'
             : 'bg-primary text-on-primary hover:scale-105'
@@ -195,7 +198,9 @@ export default function FeedbackFAB() {
               role="dialog"
               aria-modal="true"
               aria-label="Leave a note for the team"
-              className="fixed bottom-36 right-4 lg:bottom-20 lg:right-6 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none"
+              className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none ${
+                isMessagesPage ? 'bottom-36 lg:bottom-36 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
+              }`}
             >
               {phase === 'done' ? (
                 /* Success */
