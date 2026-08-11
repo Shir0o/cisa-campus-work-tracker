@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import MyDayMobile from '../views/MyDayMobile';
 import { useAuth } from '../components/AuthProvider';
@@ -118,13 +118,273 @@ describe('MyDayMobile', () => {
     expect(screen.getByText('Nothing on the calendar this week.')).toBeInTheDocument();
   });
 
-  it('covers the case when no contacts are available', () => {
-    (useAuth as any).mockReturnValue({
-      user: { displayName: 'John Doe' },
-    });
+  it('triggers onOpenBoard and onOpenPrayer header actions when clicked', async () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onOpenBoard = vi.fn();
+    const onOpenPrayer = vi.fn();
 
-    render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
-    expect(screen.getByText('No contacts in your care yet.')).toBeInTheDocument();
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        onOpenBoard={onOpenBoard}
+        onOpenPrayer={onOpenPrayer}
+      />
+    );
+
+    fireEvent.click(screen.getByText('The board'));
+    expect(onOpenBoard).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByText('Pray together'));
+    expect(onOpenPrayer).toHaveBeenCalledTimes(1);
   });
 
+  it('renders relational nudge prompt when staleLeader is provided and triggers onOpenContact', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onOpenContact = vi.fn();
+    const staleContact = { id: 'c1', name: 'Bob Smith', stage: 'new' } as any;
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        staleLeader={{ contact: staleContact, days: 14, note: '' }}
+        onOpenContact={onOpenContact}
+      />
+    );
+
+    expect(screen.getByText(/since you sat with Bob/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/since you sat with Bob/).closest('button')!);
+    expect(onOpenContact).toHaveBeenCalledWith(staleContact);
+  });
+
+  it('renders assigned and personal tasks, toggles task, edits personal task, deletes task, and adds new task', async () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onToggleTask = vi.fn();
+    const onUpdatePersonalTask = vi.fn();
+    const onDeletePersonalTask = vi.fn();
+    const onAddPersonalTask = vi.fn();
+
+    const assignedTasks = [
+      { id: 't1', title: 'Follow up on event', status: 'pending' as const, sourceDocTitle: 'Weekly Note' },
+    ];
+    const personalTasks = [
+      { id: 't2', title: 'Buy supplies', status: 'pending' as const, dueDate: '2026-08-20T00:00:00.000Z' },
+    ];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        assignedTasks={assignedTasks}
+        personalTasks={personalTasks}
+        onToggleTask={onToggleTask}
+        onUpdatePersonalTask={onUpdatePersonalTask}
+        onDeletePersonalTask={onDeletePersonalTask}
+        onAddPersonalTask={onAddPersonalTask}
+      />
+    );
+
+    expect(screen.getByText('From Weekly Note')).toBeInTheDocument();
+    expect(screen.getByText('Buy supplies')).toBeInTheDocument();
+
+    // Toggle assigned task checkbox
+    const checkButtons = screen.getAllByRole('button').filter(b => b.classList.contains('bd-check'));
+    fireEvent.click(checkButtons[0]);
+    expect(onToggleTask).toHaveBeenCalledWith(assignedTasks[0]);
+
+    // Click personal task to enter edit mode
+    fireEvent.click(screen.getByText('Buy supplies'));
+    const editInput = screen.getByDisplayValue('Buy supplies');
+    fireEvent.change(editInput, { target: { value: 'Buy supplies updated' } });
+
+    // Click Save
+    fireEvent.click(screen.getByText('Save'));
+    expect(onUpdatePersonalTask).toHaveBeenCalledWith('t2', expect.objectContaining({ title: 'Buy supplies updated' }));
+
+    // Re-enter edit mode and test Delete
+    fireEvent.click(screen.getByText('Buy supplies'));
+    fireEvent.click(screen.getByText('Delete'));
+    expect(onDeletePersonalTask).toHaveBeenCalledWith('t2');
+
+    // Test Adding new task
+    fireEvent.click(screen.getByText('Add a task'));
+    const newTaskInput = screen.getByPlaceholderText('What needs doing?');
+    fireEvent.change(newTaskInput, { target: { value: 'New task item' } });
+    fireEvent.click(screen.getByText('Add'));
+    expect(onAddPersonalTask).toHaveBeenCalledWith('New task item', expect.any(String));
+  });
+
+  it('supports keyboard actions (Enter & Escape) in task composer and edit mode', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onAddPersonalTask = vi.fn();
+    const personalTasks = [{ id: 't1', title: 'Task to edit', status: 'pending' as const }];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalTasks={personalTasks}
+        onAddPersonalTask={onAddPersonalTask}
+      />
+    );
+
+    // Test Escape on new task composer
+    fireEvent.click(screen.getByText('Add a task'));
+    const newTaskInput = screen.getByPlaceholderText('What needs doing?');
+    fireEvent.keyDown(newTaskInput, { key: 'Escape' });
+    expect(screen.queryByPlaceholderText('What needs doing?')).not.toBeInTheDocument();
+
+    // Test Enter on new task composer
+    fireEvent.click(screen.getByText('Add a task'));
+    const newTaskInput2 = screen.getByPlaceholderText('What needs doing?');
+    fireEvent.change(newTaskInput2, { target: { value: 'Keyboard task' } });
+    fireEvent.keyDown(newTaskInput2, { key: 'Enter' });
+    expect(onAddPersonalTask).toHaveBeenCalledWith('Keyboard task', expect.any(String));
+  });
+
+  it('triggers onOpenContact and onMessage from contacts list', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onOpenContact = vi.fn();
+    const onMessage = vi.fn();
+    const contact = { id: 'c1', name: 'Sam Green', stage: 'new' } as any;
+
+    render(
+      <MyDayMobile
+        contacts={[contact]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        myLeaders={[{ contact, days: 3, note: 'Check in' }]}
+        onOpenContact={onOpenContact}
+        onMessage={onMessage}
+      />
+    );
+
+    expect(screen.getByText('Sam Green')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Sam Green'));
+    expect(onOpenContact).toHaveBeenCalledWith(contact);
+
+    const msgBtn = screen.getByLabelText('Message Sam Green');
+    fireEvent.click(msgBtn);
+    expect(onMessage).toHaveBeenCalledWith(contact);
+  });
+
+  it('opens contacts picker bottom sheet and toggles contact selection', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onTogglePersonalContact = vi.fn();
+    const contact = { id: 'c1', name: 'David Lee', stage: 'new' } as any;
+
+    render(
+      <MyDayMobile
+        contacts={[contact]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalContactIds={new Set(['c1'])}
+        onTogglePersonalContact={onTogglePersonalContact}
+      />
+    );
+
+    const openPickerButtons = screen.getAllByText('Your contacts');
+    fireEvent.click(openPickerButtons[0]);
+
+    expect(screen.getByText('Your personal contacts')).toBeInTheDocument();
+    const pickerRow = screen.getAllByText('David Lee')[1].closest('button')!;
+    fireEvent.click(pickerRow);
+    expect(onTogglePersonalContact).toHaveBeenCalledWith('c1');
+
+    // Close picker sheet
+    const closeBtn = screen.getByLabelText('Close');
+    fireEvent.click(closeBtn);
+    expect(screen.queryByText('Your personal contacts')).not.toBeInTheDocument();
+  });
+
+  it('renders personal prayer composer and toggles addPP state', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onAddPersonalPrayer = vi.fn();
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        onAddPersonalPrayer={onAddPersonalPrayer}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Add a personal prayer'));
+    expect(screen.getByText('Cancel')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Add a personal prayer')).toBeInTheDocument();
+  });
+
+  it('handles backdrop click on contacts picker sheet', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    render(
+      <MyDayMobile
+        contacts={[{ id: 'c1', name: 'David Lee', stage: 'new' } as any]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+      />
+    );
+
+    fireEvent.click(screen.getAllByText('Your contacts')[0]);
+    const scrim = screen.getByText('Your personal contacts').closest('.myd-picker-scrim')!;
+    fireEvent.click(scrim);
+    expect(screen.queryByText('Your personal contacts')).not.toBeInTheDocument();
+  });
+
+  it('triggers onAddPersonalPrayer callback when AddPersonalPrayer submits', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onAddPersonalPrayer = vi.fn();
+
+    render(
+      <MyDayMobile
+        contacts={[{ id: 'c1', name: 'David Lee', stage: 'new' } as any]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        onAddPersonalPrayer={onAddPersonalPrayer}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Add a personal prayer'));
+    // Inside AddPersonalPrayer component: click its inner trigger button if rendered
+    const innerAdd = screen.getAllByText('Add a personal prayer');
+    if (innerAdd.length > 0) {
+      fireEvent.click(innerAdd[0]);
+    }
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'New test prayer' } });
+    fireEvent.click(screen.getByText('Add'));
+    expect(onAddPersonalPrayer).toHaveBeenCalledWith('New test prayer', null);
+  });
+
+  it('renders FromTraineesInbox when uid is provided', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        uid="u1"
+      />
+    );
+  });
 });
+

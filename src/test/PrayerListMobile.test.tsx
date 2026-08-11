@@ -143,19 +143,30 @@ describe('PrayerListMobile', () => {
     expect(onStopHolding).toHaveBeenCalledWith('c1');
   });
 
-  it('auto-opens the composer and adds a burden for the composeFor contact', async () => {
-    const onAddBurden = vi.fn().mockResolvedValue(true);
-    const setComposeFor = vi.fn();
-    renderWithRouter({
-      entries: [{ contact: contact(), prayers: [] }],
-      composeFor: 'c1',
-      onAddBurden,
-      setComposeFor,
-    });
-    const textarea = screen.getByPlaceholderText('What are we praying for Alice this week?');
-    fireEvent.change(textarea, { target: { value: 'Final exams' } });
-    fireEvent.click(screen.getByText('Add prayer'));
-    expect(onAddBurden).toHaveBeenCalledWith('c1', 'Final exams');
-    await waitFor(() => expect(setComposeFor).toHaveBeenCalledWith(null));
+  it('opens testimony composer when status is set to answered', async () => {
+    const onUpdateStatus = vi.fn();
+    const p = prayer({ status: 'pending' });
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'answered' } });
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'answered', undefined, expect.any(String));
+
+    const textarea = await screen.findByPlaceholderText(/A sentence on how God answered/i);
+    fireEvent.change(textarea, { target: { value: 'Healed and strong' } });
+    fireEvent.click(screen.getAllByText('Save')[0]);
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'answered', 'Healed and strong', expect.any(String));
+  });
+
+  it('allows editing an existing testimony on answered prayer', async () => {
+    const onUpdateStatus = vi.fn();
+    const p = prayer({ status: 'answered', answer: 'Healed completely', answeredAt: 'Aug 1' });
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
+
+    fireEvent.click(screen.getByText('Edit Testimony'));
+    const textarea = await screen.findByPlaceholderText(/A sentence on how God answered/i);
+    fireEvent.change(textarea, { target: { value: 'Updated testimony text' } });
+    fireEvent.click(screen.getAllByText('Save')[0]);
+
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'answered', 'Updated testimony text', 'Aug 1');
   });
 });

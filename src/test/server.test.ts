@@ -670,3 +670,53 @@ describe("POST /api/send-push", () => {
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ to: "ExponentPushToken[abc]", title: "Hello" });
   });
 });
+
+describe("GET /api/quick-add/status", () => {
+  it("returns server configuration status", async () => {
+    const res = await request(app).get("/api/quick-add/status");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      geminiConfigured: true,
+      endpointUrl: "/api/quick-add",
+      webhookUrl: "/api/webhook/sms",
+      groupmeWebhookUrl: "/api/webhook/groupme",
+    });
+  });
+});
+
+describe("authorizeAdmin role enforcement", () => {
+  const originalEnv = process.env.NODE_ENV;
+
+  beforeEach(() => {
+    process.env.NODE_ENV = "production";
+  });
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalEnv;
+  });
+
+  it("returns 403 when user does not exist in users collection", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "non-existent-user", email: "user@example.com" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-1", status: "resolved" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("User does not exist");
+  });
+
+  it("returns 403 when user has non-admin role", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "trainee-1", email: "trainee@example.com" });
+    seedDoc("users", "trainee-1", { role: "trainee" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-1", status: "resolved" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toContain("not an administrator");
+  });
+});
+
+

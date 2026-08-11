@@ -32,6 +32,8 @@ vi.mock('firebase/firestore', () => {
     updateDoc: vi.fn().mockResolvedValue(true),
     addDoc: vi.fn().mockResolvedValue({ id: 'mock-new-id' }),
     deleteDoc: vi.fn().mockResolvedValue(true),
+    arrayUnion: vi.fn((...args) => args),
+    arrayRemove: vi.fn((...args) => args),
     query: vi.fn((ref) => ref),
     where: vi.fn(),
     orderBy: vi.fn(),
@@ -816,4 +818,98 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByText(/Added by/i)).toBeInTheDocument();
     expect(screen.getAllByText('Sarah Connor').length).toBeGreaterThan(0);
   });
+
+  it('allows adding and removing sharing permissions in desktop aside', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    const contactWithCoCreator = {
+      ...mockContact,
+      coCreators: ['user-456'],
+    };
+
+    // Mock team members
+    (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+      if (q?.path?.includes('users') || q?.type === 'users') {
+        successCallback({
+          docs: [
+            { id: 'user-456', data: () => ({ name: 'Co Creator', role: 'Staff' }) },
+            { id: 'user-789', data: () => ({ name: 'Other User', role: 'Trainee' }) },
+          ],
+        });
+      } else {
+        successCallback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithCoCreator} />);
+    await screen.findByText('John Doe');
+
+    // Click "Add someone…" trigger button
+    const addShareTrigger = screen.getByRole('button', { name: /add someone/i });
+    fireEvent.click(addShareTrigger);
+
+    // Select a new user to share with
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'user-789' } });
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          coCreators: firestore.arrayUnion('user-789'),
+        })
+      );
+    });
+
+    // Remove share (x button)
+    const removeBtns = screen.getAllByTitle('Remove access');
+    fireEvent.click(removeBtns[0]);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          coCreators: firestore.arrayRemove('user-456'),
+        })
+      );
+    });
+  });
+
+  it('deletes contact when Delete Contact button is clicked', async () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin User' },
+      isAdmin: true,
+      role: 'admin',
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    const deleteBtn = screen.getAllByRole('button', { name: /Delete Contact/i })[0];
+    fireEvent.click(deleteBtn);
+
+    await waitFor(() => {
+      expect(firestore.deleteDoc).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  it('cancels edit mode when Cancel button in footer is pressed', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    const editBtn = screen.getByTitle('Edit details');
+    fireEvent.click(editBtn);
+
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtn);
+
+    expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument();
+  });
 });
+
