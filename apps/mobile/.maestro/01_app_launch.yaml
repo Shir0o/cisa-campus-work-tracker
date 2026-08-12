@@ -1,0 +1,9 @@
+appId: com.cisa.campus
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Sign in"
+- assertVisible: "Use your CISA Campus account."
+- assertVisible: "Email"
+- assertVisible: "Password"
+- assertVisible: "Sign in with Google"
