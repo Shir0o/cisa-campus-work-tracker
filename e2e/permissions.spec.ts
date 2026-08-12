@@ -60,11 +60,11 @@ const EXPECT: Record<Role, {
   trainee: { // manager
     landing: '/',
     nav: {
-      present: ['Home', 'The Journey', 'People', 'Messages', 'Settings'],
-      absent: ['Coordination Notes', 'Visits'],
+      present: ['Home', 'The Journey', 'People', 'Messages'],
+      absent: ['Coordination Notes', 'Visits', 'Settings'],
     },
-    allowed: ['/', '/board', '/directory', '/messages', '/settings', '/feedback'],
-    denied: ['/coordination', '/admin/feedback'],
+    allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
+    denied: ['/coordination', '/admin/feedback', '/settings'],
     fallback: '/',
   },
   fulltimer: { // admin — home nav label is "My Day", not "Home"
