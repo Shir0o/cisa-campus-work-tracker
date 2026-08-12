@@ -63,8 +63,8 @@ const EXPECT: Record<Role, {
       present: ['Home', 'The Journey', 'People', 'Messages'],
       absent: ['Coordination Notes', 'Visits', 'Settings'],
     },
-    allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
-    denied: ['/coordination', '/admin/feedback', '/settings'],
+    allowed: ['/', '/board', '/directory', '/messages', '/settings', '/feedback'],
+    denied: ['/coordination', '/admin/feedback'],
     fallback: '/',
   },
   fulltimer: { // admin — home nav label is "My Day", not "Home"
