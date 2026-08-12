@@ -29,11 +29,10 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       VITE_E2E_MODE: 'true',
-      // If exported in the shell, use it; otherwise the dev server loads
-      // VITE_FIREBASE_API_KEY from the worktree's .env file (gitignored).
+      VITE_USE_FIREBASE_EMULATOR: process.env.VITE_USE_FIREBASE_EMULATOR ?? 'true',
       ...(process.env.VITE_FIREBASE_API_KEY
         ? { VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY }
-        : {}),
+        : { VITE_FIREBASE_API_KEY: 'fake-emulator-api-key' }),
     },
   },
 });

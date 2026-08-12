@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getDatabase, type Database } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -9,10 +9,19 @@ const finalConfig = { ...firebaseConfig };
 if (import.meta.env.VITE_FIREBASE_API_KEY) {
   finalConfig.apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 }
+if (import.meta.env.VITE_FIREBASE_PROJECT_ID) {
+  finalConfig.projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+}
 
 const app = initializeApp(finalConfig);
-export const db = getFirestore(app, (firebaseConfig as any).firestoreDatabaseId);
+export const db = getFirestore(app, (finalConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
+
+if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
+  const emulatorHost = import.meta.env.VITE_FIREBASE_EMULATOR_HOST || '127.0.0.1';
+  connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true });
+  connectFirestoreEmulator(db, emulatorHost, 8080);
+}
 
 // Cloud Storage — only visit photos live here (see storage.rules). The bucket
 // name comes from firebase-applet-config.json.

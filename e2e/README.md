@@ -45,6 +45,16 @@ Every approved role lands on `/`; a guarded route (`/board`, `/directory`,
 
 ## Running
 
+### Recommended: Firebase Emulator (Zero Secrets / Safe Data Mutation)
+
+```bash
+npm run test:e2e:emulator
+```
+
+Starts the local Firebase Auth & Firestore emulators, seeds default test users automatically, and runs Playwright against the local in-memory database.
+
+### Against Real Cloud Firebase
+
 ```bash
 VITE_FIREBASE_API_KEY=<real-web-api-key> npm run test:e2e
 ```
