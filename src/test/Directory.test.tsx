@@ -342,6 +342,19 @@ describe('Directory', () => {
     expect(charlieImg).toHaveAttribute('src', 'https://example.com/charlie.png');
   });
 
+  it('displays scoped count line copy for trainees', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'u1', email: 'trainee@example.com' },
+      role: 'manager',
+      isAdmin: false,
+    } as any);
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText(/everyone you added, or were named on/)).toBeInTheDocument();
+    });
+  });
+
   it('handles snapshot errors for contacts and stages', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any, errorCallback: any) => {

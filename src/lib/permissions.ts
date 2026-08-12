@@ -57,7 +57,7 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
-  'https://shared-calendar-6u6.pages.dev/': 'viewer',
+  'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
 export interface NavItem {
@@ -73,7 +73,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
-  { href: 'https://shared-calendar-6u6.pages.dev/', label: 'Shared Calendar', minRole: 'viewer', isExternal: true },
+  { href: 'https://shared-calendar-6u6.pages.dev/', label: 'Shared Calendar', minRole: 'admin', isExternal: true },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/outreach', label: 'Outreach', minRole: 'viewer' },
@@ -103,10 +103,6 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
 export function navItemsForRole(role: AppRole | string | null): NavItem[] {
   return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
 }
-
-export const NAV_EXTERNAL = [
-  { id: 'calendar', label: 'Shared calendar', href: 'https://shared-calendar-6u6.pages.dev/', external: true },
-];
 
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';

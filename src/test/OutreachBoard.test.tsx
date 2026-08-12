@@ -1,6 +1,6 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { onSnapshot } from 'firebase/firestore';
+import { onSnapshot, writeBatch } from 'firebase/firestore';
 import OutreachBoard from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
@@ -152,9 +152,17 @@ function setupOnSnapshotWith({
 // ── Test suite ──────────────────────────────────────────────────────────────
 
 describe('OutreachBoard', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const { deleteDoc, writeBatch } = await import('firebase/firestore');
+    vi.mocked(deleteDoc).mockReset().mockResolvedValue(undefined);
+    vi.mocked(writeBatch).mockReset().mockReturnValue({
+      update: vi.fn(),
+      delete: vi.fn(),
+      commit: vi.fn().mockResolvedValue(undefined),
+    } as any);
 
     // Default: admin user, empty data
     (useAuth as any).mockReturnValue({
@@ -412,7 +420,7 @@ describe('OutreachBoard', () => {
         expect.objectContaining({ path: 'stages' }),
         expect.objectContaining({
           label: 'New Test Stage',
-          color: 'bg-board-teal',
+          color: 'bg-board-sage',
           order: 2,
         })
       );
@@ -457,11 +465,6 @@ describe('OutreachBoard', () => {
 
   it('handles stage deletion confirmation', async () => {
     setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
-    const { deleteDoc } = await import('firebase/firestore');
-    const confirmSpy = vi.spyOn(window, 'confirm');
-
-    // Cancel deletion
-    confirmSpy.mockReturnValueOnce(false);
     render(<OutreachBoard />);
     vi.advanceTimersByTime(900);
 
@@ -476,19 +479,14 @@ describe('OutreachBoard', () => {
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
     fireEvent.click(removeBtn);
 
-    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('Remove this step'));
-    expect(deleteDoc).not.toHaveBeenCalled();
-
-    // Confirm deletion
-    confirmSpy.mockReturnValueOnce(true);
-    fireEvent.click(menuBtn);
-    fireEvent.click(screen.getByRole('button', { name: /Remove step/i }));
+    // Non-empty stage removal opens reassignment modal asking where people go
+    expect(screen.getByText(/where do they go\?/i)).toBeInTheDocument();
     
-    expect(deleteDoc).toHaveBeenCalledWith(
-      expect.objectContaining({ path: 'stages/s1' })
-    );
+    // Select destination step and submit batch
+    const reassignSubmitBtn = screen.getByRole('button', { name: /Reassign & remove step/i });
+    fireEvent.click(reassignSubmitBtn);
 
-    confirmSpy.mockRestore();
+    expect(writeBatch).toHaveBeenCalled();
   });
 
   it('handles firestore query errors for stages', async () => {
@@ -688,8 +686,10 @@ describe('OutreachBoard', () => {
     expect(deleteDoc).not.toHaveBeenCalled();
 
     // 2. User confirms
-    confirmSpy.mockReturnValueOnce(true);
-    await onDeleteContactProp!('c1');
+    confirmSpy.mockReturnValue(true);
+    await act(async () => {
+      await onDeleteContactProp!('c1');
+    });
     expect(deleteDoc).toHaveBeenCalledWith(
       expect.objectContaining({ path: 'contacts/c1' })
     );
@@ -812,12 +812,15 @@ describe('OutreachBoard', () => {
   // ── 22. Query errors ─────────────────────────────────────────────────
   it('handles stage deletion query errors', async () => {
     setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
-    const { deleteDoc } = await import('firebase/firestore');
+    const { writeBatch } = await import('firebase/firestore');
     const { handleFirestoreError } = await import('../lib/firebase');
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
 
     const mockError = new Error('Delete failed');
-    vi.mocked(deleteDoc).mockRejectedValueOnce(mockError);
+    vi.mocked(writeBatch).mockReturnValueOnce({
+      update: vi.fn(),
+      delete: vi.fn(),
+      commit: vi.fn().mockRejectedValueOnce(mockError),
+    } as any);
 
     render(<OutreachBoard />);
     vi.advanceTimersByTime(900);
@@ -832,11 +835,12 @@ describe('OutreachBoard', () => {
     const removeBtn = screen.getByRole('button', { name: /Remove step/i });
     fireEvent.click(removeBtn);
 
+    const reassignSubmitBtn = screen.getByRole('button', { name: /Reassign & remove step/i });
+    fireEvent.click(reassignSubmitBtn);
+
     await waitFor(() => {
       expect(handleFirestoreError).toHaveBeenCalledWith(mockError, 'DELETE', 'stages');
     });
-
-    confirmSpy.mockRestore();
   });
 
   it('handles stage creation query errors', async () => {
