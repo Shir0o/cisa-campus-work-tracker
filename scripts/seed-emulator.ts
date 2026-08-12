@@ -16,8 +16,8 @@ import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
 process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '127.0.0.1:8080';
 process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 
-const projectId = 'sac-campus-hub';
-const firestoreDatabaseId = 'ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897';
+const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub';
+const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897';
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId });
@@ -71,7 +71,7 @@ export async function seedEmulator() {
     type: 'large_group',
     dateTime: new Date().toISOString(),
     location: 'Campus Center',
-    createdAt: new Date().toISOString(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
   console.log('Emulator seeding complete.');
