@@ -14,6 +14,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:e2e:emulator": "firebase emulators:exec --only auth,firestore \"tsx scripts/seed-emulator.ts && playwright test\"",
+    "seed:emulator": "tsx scripts/seed-emulator.ts",
     "seed:e2e-users": "tsx scripts/seed-test-user-docs.ts",
     "sync:issues": "tsx scripts/sync-github-issues.ts"
   },

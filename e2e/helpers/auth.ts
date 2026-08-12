@@ -5,31 +5,24 @@ import { dirname, resolve } from 'node:path';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-/** Display-name keys for the four roles (mapped to internal role keys in the creds file). */
-export type Role = 'fulltimer' | 'trainee' | 'student' | 'community';
+import { DEFAULT_CREDENTIALS, type Role, type CredentialInfo } from './auth-defaults';
 
-interface Cred {
-  email: string;
-  password: string;
-  role: 'admin' | 'manager' | 'operator' | 'viewer';
-  label: string;
-}
+export type { Role, CredentialInfo as Cred };
 
 const CREDS_PATH = resolve(__dirname, '../.test-credentials.json');
 
-let cache: Record<Role, Cred> | null = null;
+let cache: Record<Role, CredentialInfo> | null = null;
 
-export function credentials(): Record<Role, Cred> {
+export function credentials(): Record<Role, CredentialInfo> {
   if (cache) return cache;
   try {
     const raw = JSON.parse(readFileSync(CREDS_PATH, 'utf8'));
     cache = raw;
     return raw;
   } catch {
-    throw new Error(
-      `Missing ${CREDS_PATH}. Create it from the four real Firebase test users ` +
-        `(see the project memory "e2e-test-users"). This file is gitignored.`,
-    );
+    // Fall back to emulator default credentials when .test-credentials.json is omitted
+    cache = DEFAULT_CREDENTIALS;
+    return DEFAULT_CREDENTIALS;
   }
 }
 
