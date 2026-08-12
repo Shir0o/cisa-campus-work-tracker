@@ -145,7 +145,7 @@
     "assignees": [],
     "comments": 2,
     "created_at": "2026-08-12T17:01:36Z",
-    "updated_at": "2026-08-12T17:02:49Z",
+    "updated_at": "2026-08-12T17:33:13Z",
     "closed_at": null,
     "body": "## Summary of Changes\n\n- **Swipe-to-Delete Button Rounded Edges**: Updated `SwipeToDelete.tsx` with `containerStyle={{ borderRadius: radius.tile, overflow: 'hidden' }}` and rounded action button corners matching the 22px tile design system.\n- **Transparent Back Button**: Removed solid chip background overlay (`backgroundColor: c.room.chip`) from `V2Screen`'s `← Back` pressable in `Widget.tsx`.\n- **Header Spacing**: Added explicit `marginRight: 4` and `gap: 12` spacing between `← Back` and the title in `Widget.tsx` and `ChatThreadScreen.tsx`.\n- **Admin Conversation Room Deletion**: Re-exported `deleteChatRoom` in mobile data wrapper and wired `onDeleteForEveryone` on `MessagesScreen.tsx` & `MemberMessagesScreen.tsx` so full-timers / room creators delete room documents from Firestore for everyone upon confirmation.\n- **Specific Message Deletion**: Exported `deleteChatMessage` in `@cisa/core` and mobile wrapper, and added long-press message deletion for admins / full-timers and authors in `ChatThreadScreen.tsx`.\n- **Tests & Changelog**: Added unit tests in `packages/core/test/chat.test.ts` and `apps/mobile/src/components/messages/SwipeToDelete.test.tsx`, and updated `CHANGELOG.md` under `[Unreleased]`.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/254",

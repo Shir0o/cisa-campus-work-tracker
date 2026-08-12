@@ -6,6 +6,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 ### Fixed
+- **GitHub Issues Sync Script Cleanup** — Updated `scripts/sync-github-issues.ts` and `src/test/syncGithubIssues.test.ts` to explicitly remove existing output files (e.g., `docs/issues.json`) before fetching/writing open GitHub issues, ensuring pre-existing or stale resolved issue entries do not linger on disk.
 - **Mobile Messages — Delete Button Styling, Header Spacing & Full-Timer Room/Message Deletion** — Fixed swipe-to-delete styling in `SwipeToDelete.tsx` by applying `borderRadius: radius.tile` and `overflow: 'hidden'` to the swipe container and rounded top-right/bottom-right corners on action panels. Removed solid chip background overlay from `V2Screen`'s `← Back` pressable in `Widget.tsx` and ensured explicit spacing (`gap: 12`, `marginRight: 4`) between back button and title in `Widget.tsx` and `ChatThreadScreen.tsx`. Re-exported `deleteChatRoom` and added `deleteChatMessage` in `@cisa/core` and `apps/mobile/src/lib/data/chat.ts`, wiring `onDeleteForEveryone` for full-timers / room creators on `MessagesScreen.tsx` & `MemberMessagesScreen.tsx`, and enabling long-press specific message deletion in `ChatThreadScreen.tsx`. Tests in `packages/core/test/chat.test.ts` and `apps/mobile/src/components/messages/SwipeToDelete.test.tsx`.
 
 ### Added

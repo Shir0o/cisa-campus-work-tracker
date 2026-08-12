@@ -216,5 +216,44 @@ describe('sync-github-issues script', () => {
       expect(parsed).toHaveLength(1);
       expect(parsed[0].title).toBe('Test Issue');
     });
+
+    it('removes existing output file before writing fresh issues', async () => {
+      fs.mkdirSync(testOutputDir, { recursive: true });
+      fs.writeFileSync(testOutputPath, JSON.stringify([{ id: 999, title: 'Old Resolved Issue' }]));
+      expect(fs.existsSync(testOutputPath)).toBe(true);
+
+      const mockIssues = [
+        {
+          id: 201,
+          number: 5,
+          title: 'Fresh Active Issue',
+          state: 'open',
+          user: null,
+          labels: [],
+          assignees: [],
+          comments: 0,
+          created_at: '2026-08-01T00:00:00Z',
+          updated_at: '2026-08-01T00:00:00Z',
+          closed_at: null,
+          body: null,
+          html_url: 'https://github.com/owner/repo/issues/5',
+        },
+      ];
+
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(mockIssues), { status: 200 })
+      );
+
+      await syncIssuesToDocs({
+        repo: 'test-owner/test-repo',
+        outputPath: testOutputPath,
+      });
+
+      const writtenContent = fs.readFileSync(testOutputPath, 'utf8');
+      const parsed = JSON.parse(writtenContent);
+      expect(parsed).toHaveLength(1);
+      expect(parsed[0].title).toBe('Fresh Active Issue');
+      expect(parsed[0].id).toBe(201);
+    });
   });
 });

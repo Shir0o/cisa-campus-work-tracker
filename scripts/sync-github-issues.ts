@@ -128,6 +128,11 @@ export async function syncIssuesToDocs(opts?: { repo?: string; token?: string; o
   const dir = path.dirname(outputPath);
   await fs.promises.mkdir(dir, { recursive: true });
 
+  if (fs.existsSync(outputPath)) {
+    console.log(`Removing existing issues file at ${outputPath}...`);
+    await fs.promises.rm(outputPath, { force: true });
+  }
+
   await fs.promises.writeFile(outputPath, JSON.stringify(issues, null, 2) + '\n', 'utf8');
   console.log(`Successfully written issues to ${outputPath}`);
 }
