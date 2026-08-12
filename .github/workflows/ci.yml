@@ -37,6 +37,10 @@ jobs:
         with:
           node-version: 20
           cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
       - run: npm ci
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
