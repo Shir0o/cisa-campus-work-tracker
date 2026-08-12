@@ -400,6 +400,79 @@
   pointer-events: none;
 }
 
+/* --------------------------------------------------------------------
+   The Board — full screen (design: `views/board.jsx` `.bdoc-hold.is-fs`
+   + `styles.css`). `.bdoc-fs-hold` wraps the OPEN PAGE only; `.is-fs`
+   pins it over the whole window (z-220, above the sidebar/topbar/modals)
+   so the page list + app chrome are covered, not removed — the editor is
+   never remounted, so the caret and unsaved keystrokes survive a toggle.
+   -------------------------------------------------------------------- */
+body.bdoc-fs-on { overflow: hidden; }
+.bdoc-fs-hold { display: flex; min-width: 0; min-height: 0; }
+.bdoc-fs-hold > .bdoc-fs-doc { flex: 1; min-width: 0; min-height: 0; }
+.bdoc-fs-hold.is-fs {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  background: var(--surface);
+  animation: bdocFsIn 0.2s ease both;
+}
+@keyframes bdocFsIn {
+  from { transform: scale(0.985); }
+  to { transform: none; }
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-head {
+  padding: 16px 40px;
+  border-bottom: 1px solid var(--outline-variant);
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--surface);
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-title {
+  max-width: none;
+  padding: 26px 56px 0;
+  font-size: 40px;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-toolbar {
+  padding-left: 56px;
+  padding-right: 56px;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas {
+  max-width: none;
+  padding: 30px 56px 100px;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas .bdoc-prose {
+  /* the canvas owns the gutters now; design bumps the body text in fs */
+  max-width: none;
+  padding: 0;
+  font-size: 17px;
+  line-height: 1.75;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas textarea {
+  max-width: none;
+  padding: 0;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas p,
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas li {
+  /* the read-only viewer sets its own 15px on p/li — bump to the fs body size */
+  font-size: 17px;
+  line-height: 1.75;
+}
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas h1 { font-size: 34px; }
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas h2 { font-size: 25px; }
+.bdoc-fs-hold.is-fs .bdoc-fs-canvas h3 { font-size: 20px; }
+@media (min-width: 1500px) {
+  .bdoc-fs-hold.is-fs .bdoc-fs-title,
+  .bdoc-fs-hold.is-fs .bdoc-fs-toolbar,
+  .bdoc-fs-hold.is-fs .bdoc-fs-canvas {
+    padding-left: 88px;
+    padding-right: 88px;
+  }
+}
+
 /* remote collaboration carets & selections (class names kept across cursor→caret→carets renames) */
 .collaboration-cursor__caret,
 .collaboration-caret__caret,

@@ -517,9 +517,9 @@ function ReadOnlyDoc({
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
   return (
-    <div className="flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
+    <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
       {/* head */}
-      <div className="flex items-center justify-between gap-2.5 flex-wrap px-5 lg:px-8 pt-4">
+      <div className="bdoc-fs-head flex items-center justify-between gap-2.5 flex-wrap px-5 lg:px-8 pt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
           {pagesCollapsed && (
             <button
@@ -579,11 +579,11 @@ function ReadOnlyDoc({
         </div>
       </div>
 
-      <h1 className="font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
+      <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
         {d.title}
       </h1>
 
-      <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
+      <div className="bdoc-fs-canvas px-5 lg:px-8 pb-6 bdoc-prose-viewer">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
           {d.md || '_This page is empty._'}
         </ReactMarkdown>
@@ -654,10 +654,15 @@ export default function CoordinationNotes() {
       return !v;
     });
 
-  // Fullscreen mode state & handlers for distraction-free editing/viewing
+  // Fullscreen mode state & handlers for distraction-free editing/viewing.
+  // The open page is wrapped in `.bdoc-fs-hold` (fsHoldRef); in-window FS
+  // pins that hold over the whole window (design: `.bdoc-hold.is-fs`), and
+  // native "Whole screen" requests fullscreen ON THE HOLD, not the document,
+  // so only the browser chrome is hidden, not the app's whole frame.
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [nativeFs, setNativeFs] = useState(false);
   const [canNativeFs, setCanNativeFs] = useState(false);
+  const fsHoldRef = useRef<HTMLDivElement | null>(null);
 
   const toggleFullscreen = () => {
     const next = !isFullscreen;
@@ -670,8 +675,8 @@ export default function CoordinationNotes() {
   const toggleNativeFs = () => {
     if (document.fullscreenElement && document.exitFullscreen) {
       document.exitFullscreen().catch(() => {});
-    } else if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen().catch(() => {});
+    } else if (fsHoldRef.current?.requestFullscreen) {
+      fsHoldRef.current.requestFullscreen().catch(() => {});
     }
   };
 
@@ -687,7 +692,9 @@ export default function CoordinationNotes() {
 
   useEffect(() => {
     if (!isFullscreen) return;
-    setCanNativeFs(!!(document.fullscreenEnabled && document.documentElement.requestFullscreen));
+    setCanNativeFs(!!(document.fullscreenEnabled && fsHoldRef.current && fsHoldRef.current.requestFullscreen));
+    // Lock the page scroll behind the pinned hold (design: `body.bdoc-fs-on`).
+    document.body.classList.add('bdoc-fs-on');
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         // Let the @mention menu take Esc first; the browser owns Esc in native full screen
@@ -697,6 +704,7 @@ export default function CoordinationNotes() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
+      document.body.classList.remove('bdoc-fs-on');
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isFullscreen]);
@@ -1580,7 +1588,6 @@ export default function CoordinationNotes() {
             className={cn(
               'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)] transition-all',
               pagesCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[300px_1fr]',
-              isFullscreen && 'fixed inset-0 z-50 rounded-none border-0 shadow-2xl h-screen w-screen min-h-0 lg:h-screen lg:min-h-0 bg-surface',
             )}
           >
             {/* Pages list */}
@@ -1685,9 +1692,17 @@ export default function CoordinationNotes() {
               </div>
             </aside>
 
-            {/* Open page — full editor for full-timers, read-only render otherwise */}
+            {/* Open page — full editor for full-timers, read-only render otherwise.
+                Wrapped in `.bdoc-fs-hold`: in-window full screen pins ONLY this
+                hold over the window (design: `.bdoc-hold.is-fs`), covering the
+                page list + app chrome instead of keeping them side by side. */}
             {active ? (
-              canEdit ? (
+              <div
+                ref={fsHoldRef}
+                data-testid="coordination-doc-hold"
+                className={cn('flex min-w-0 min-h-0 bg-surface', isFullscreen && 'is-fs')}
+              >
+              {canEdit ? (
                 <DocEditor
                   key={active.id}
                   doc={active}
@@ -1725,7 +1740,8 @@ export default function CoordinationNotes() {
                   onToggleNativeFs={toggleNativeFs}
                   canNativeFs={canNativeFs}
                 />
-              )
+              )}
+              </div>
             ) : (
               <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
             )}
@@ -2861,9 +2877,9 @@ export function DocEditor({
   const chain = () => editor!.chain().focus();
 
   return (
-    <div className="flex flex-col min-w-0 bg-surface">
+    <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface">
       {/* head */}
-      <div className="flex items-center justify-between gap-3 flex-wrap px-5 lg:px-8 pt-4">
+      <div className="bdoc-fs-head flex items-center justify-between gap-3 flex-wrap px-5 lg:px-8 pt-4">
         <div className="flex items-center gap-2.5 flex-wrap">
           {pagesCollapsed && (
             <button
@@ -2965,11 +2981,11 @@ export function DocEditor({
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Untitled page"
         spellCheck={false}
-        className="w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
+        className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
       />
 
       {/* toolbar */}
-      <div className="sticky top-0 z-10 flex items-center gap-1 flex-wrap bg-surface border-y border-outline-variant px-4 lg:px-6 py-1.5 mx-1.5">
+      <div className="bdoc-fs-toolbar sticky top-0 z-10 flex items-center gap-1 flex-wrap bg-surface border-y border-outline-variant px-4 lg:px-6 py-1.5 mx-1.5">
         {editor && (
           <>
             <div className="flex items-center gap-0.5">
@@ -3052,7 +3068,7 @@ export function DocEditor({
         {/* Editor Content */}
         <div
           ref={canvasRef}
-          className="flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-surface"
+          className="bdoc-fs-canvas flex-1 min-h-0 overflow-y-auto custom-scrollbar bg-surface"
           onMouseUp={refreshSelectionFab}
           onKeyUp={refreshSelectionFab}
         >

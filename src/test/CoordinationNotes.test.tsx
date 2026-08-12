@@ -2033,19 +2033,23 @@ describe('CoordinationNotes', () => {
 
       const workspace = screen.getByTestId('coordination-notes-workspace');
       expect(workspace).not.toHaveClass('fixed');
+      const hold = screen.getByTestId('coordination-doc-hold');
+      expect(hold).not.toHaveClass('is-fs');
 
       // Click to enter full screen
       fireEvent.click(fullScreenBtn);
 
       const exitFullScreenBtn = await screen.findByRole('button', { name: /close full screen|back to board|exit full screen/i });
       expect(exitFullScreenBtn).toBeInTheDocument();
-      expect(workspace).toHaveClass('fixed');
-      expect(workspace).toHaveClass('z-50');
+      // Full screen pins the OPEN PAGE hold (design `.bdoc-hold.is-fs`), not the whole workspace grid
+      expect(hold).toHaveClass('is-fs');
+      expect(workspace).not.toHaveClass('fixed');
 
       // Click to exit full screen
       fireEvent.click(exitFullScreenBtn);
 
       expect(screen.getByRole('button', { name: /full screen/i })).toBeInTheDocument();
+      expect(hold).not.toHaveClass('is-fs');
       expect(workspace).not.toHaveClass('fixed');
     });
 
@@ -2075,11 +2079,14 @@ describe('CoordinationNotes', () => {
       fireEvent.click(fullScreenBtn);
 
       const workspace = screen.getByTestId('coordination-notes-workspace');
-      expect(workspace).toHaveClass('fixed');
+      const hold = screen.getByTestId('coordination-doc-hold');
+      expect(hold).toHaveClass('is-fs');
+      expect(workspace).not.toHaveClass('fixed');
 
       // Press Escape key
       fireEvent.keyDown(window, { key: 'Escape' });
 
+      expect(hold).not.toHaveClass('is-fs');
       expect(workspace).not.toHaveClass('fixed');
       expect(screen.getByRole('button', { name: /full screen/i })).toBeInTheDocument();
     });
@@ -2112,11 +2119,14 @@ describe('CoordinationNotes', () => {
 
       fireEvent.click(fullScreenBtn);
       const workspace = screen.getByTestId('coordination-notes-workspace');
-      expect(workspace).toHaveClass('fixed');
+      const hold = screen.getByTestId('coordination-doc-hold');
+      expect(hold).toHaveClass('is-fs');
+      expect(workspace).not.toHaveClass('fixed');
 
       // Trigger fullscreenchange when no element is in fullscreen
       fireEvent(document, new Event('fullscreenchange'));
-      expect(workspace).toHaveClass('fixed');
+      expect(hold).toHaveClass('is-fs');
+      expect(workspace).not.toHaveClass('fixed');
     });
   });
 
