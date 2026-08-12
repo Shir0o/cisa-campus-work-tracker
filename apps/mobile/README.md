@@ -38,5 +38,5 @@ We use [Maestro](https://maestro.mobile.dev/) for cross-platform mobile UI end-t
 
 ### 3. Continuous Integration (GitHub Actions)
 
-Mobile E2E tests automatically run in GitHub Actions on pull requests touching `apps/mobile/**`.
+Mobile E2E tests run automatically in GitHub Actions on a **daily schedule at midnight (00:00 UTC)** as well as on-demand via manual trigger (`workflow_dispatch`).
 Workflows are defined in [`.github/workflows/mobile-e2e.yml`](file:///Users/twang/.gemini/antigravity/worktrees/cisa-campus-work-traker/setup_mobile_e2e_testing/.github/workflows/mobile-e2e.yml).
