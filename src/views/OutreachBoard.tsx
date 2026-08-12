@@ -85,69 +85,60 @@ const STAGE_CAPTION: Record<string, string> = {
 const captionFor = (label?: string) =>
   (label && STAGE_CAPTION[label.trim().toLowerCase()]) || '';
 
-// The four warm stage tones. Stored stage colors (bg-board-*) map onto these.
-type Tone = 'accent' | 'amber' | 'teal' | 'violet';
-const TONES: Tone[] = ['accent', 'amber', 'teal', 'violet'];
+export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
 
-const TONE_BY_COLOR: Record<string, Tone> = {
-  'bg-board-indigo': 'accent',
-  'bg-board-ocean': 'accent',
-  'bg-primary': 'accent',
-  'bg-primary-fixed-dim': 'accent',
-  'bg-board-amber': 'amber',
-  'bg-board-orange': 'amber',
-  'bg-orange-500': 'amber',
-  'bg-orange': 'amber',
-  'orange': 'amber',
+const TONE_KEY_MAP: Record<string, ToneKey> = {
+  'bg-board-slate': 'slate',
+  'slate': 'slate',
+  'bg-board-clay': 'clay',
+  'clay': 'clay',
+  'bg-board-ochre': 'ochre',
+  'ochre': 'ochre',
+  'bg-board-sage': 'sage',
+  'sage': 'sage',
   'bg-board-teal': 'teal',
-  'bg-board-emerald': 'teal',
+  'teal': 'teal',
+  'bg-board-indigo': 'indigo',
+  'indigo': 'indigo',
+  'bg-board-plum': 'plum',
+  'plum': 'plum',
+  'bg-board-rose': 'rose',
+  'rose': 'rose',
+  // legacy aliases
+  'bg-board-amber': 'clay',
+  'bg-board-orange': 'ochre',
+  'bg-board-emerald': 'sage',
+  'bg-board-crimson': 'rose',
+  'bg-board-ocean': 'slate',
+  'bg-primary': 'indigo',
+  'bg-primary-fixed-dim': 'slate',
   'bg-secondary': 'teal',
-  'bg-board-plum': 'violet',
-  'bg-board-crimson': 'violet',
-  'bg-board-rose': 'violet',
+  'bg-orange-500': 'ochre',
+  'bg-orange': 'ochre',
+  'orange': 'ochre',
+  'accent': 'slate',
+  'amber': 'clay',
+  'violet': 'plum',
 };
 
-// Full static class strings so Tailwind's scanner keeps them.
-const TONE_CLASSES: Record<
-  Tone,
-  { topBorder: string; countText: string; cardHoverBorder: string; dot: string; tagBg: string; tagText: string }
-> = {
-  accent: {
-    topBorder: 'border-t-stage-accent',
-    countText: 'text-stage-accent',
-    cardHoverBorder: 'hover:border-stage-accent',
-    dot: 'bg-stage-accent',
-    tagBg: 'bg-stage-accent-soft',
-    tagText: 'text-stage-accent',
-  },
-  amber: {
-    topBorder: 'border-t-stage-amber',
-    countText: 'text-stage-amber',
-    cardHoverBorder: 'hover:border-stage-amber',
-    dot: 'bg-stage-amber',
-    tagBg: 'bg-stage-amber-soft',
-    tagText: 'text-stage-amber',
-  },
-  teal: {
-    topBorder: 'border-t-stage-teal',
-    countText: 'text-stage-teal',
-    cardHoverBorder: 'hover:border-stage-teal',
-    dot: 'bg-stage-teal',
-    tagBg: 'bg-stage-teal-soft',
-    tagText: 'text-stage-teal',
-  },
-  violet: {
-    topBorder: 'border-t-stage-violet',
-    countText: 'text-stage-violet',
-    cardHoverBorder: 'hover:border-stage-violet',
-    dot: 'bg-stage-violet',
-    tagBg: 'bg-stage-violet-soft',
-    tagText: 'text-stage-violet',
-  },
+const ALL_TONES: ToneKey[] = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'];
+
+export const toneKeyFor = (color: string | undefined, index: number = 0): ToneKey => {
+  if (color && TONE_KEY_MAP[color]) return TONE_KEY_MAP[color];
+  return ALL_TONES[index % ALL_TONES.length];
 };
 
-const toneFor = (color: string | undefined, index: number): Tone =>
-  (color && TONE_BY_COLOR[color]) || TONES[index % TONES.length];
+export const toneStyle = (color: string | undefined, index: number = 0): React.CSSProperties => {
+  const k = toneKeyFor(color, index);
+  return {
+    '--tone': `var(--t-${k})`,
+    '--tone-soft': `var(--t-${k}-soft)`,
+  } as React.CSSProperties;
+};
+
+export type Tone = ToneKey;
+const toneFor = (color: string | undefined, index: number = 0): ToneKey =>
+  toneKeyFor(color, index);
 
 const peopleCount = (n: number) =>
   n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
@@ -207,15 +198,18 @@ export default function OutreachBoard() {
     handleFirestoreError(e, OperationType.LIST, path);
   };
 
-  // Warm tone swatches for the stage editor (stored as bg-board-* class values).
+  const [stageToDeleteModal, setStageToDeleteModal] = useState<{ stage: Stage; count: number; targetStage: string } | null>(null);
+
+  // Eight honest tone swatches for the stage editor (stored as bg-board-* values).
   const colors = [
-    { name: 'Slate', class: 'bg-board-indigo' },
-    { name: 'Terracotta', class: 'bg-board-amber' },
-    { name: 'Orange', class: 'bg-board-orange' },
-    { name: 'Sage', class: 'bg-board-teal' },
+    { name: 'Slate', class: 'bg-board-slate' },
+    { name: 'Clay', class: 'bg-board-clay' },
+    { name: 'Ochre', class: 'bg-board-ochre' },
+    { name: 'Sage', class: 'bg-board-sage' },
+    { name: 'Teal', class: 'bg-board-teal' },
+    { name: 'Indigo', class: 'bg-board-indigo' },
     { name: 'Plum', class: 'bg-board-plum' },
-    { name: 'Clay', class: 'bg-board-crimson' },
-    { name: 'Ocean', class: 'bg-board-ocean' },
+    { name: 'Rose', class: 'bg-board-rose' },
   ];
 
   const sensors = useSensors(
@@ -421,9 +415,46 @@ export default function OutreachBoard() {
   };
 
   const handleDeleteStage = async (stageId: string) => {
-    if (!isAdmin || !window.confirm('Remove this step from the journey? People in it stay, but won\'t show on the board until they\'re moved to another step.')) return;
+    if (!isAdmin) return;
+    const stageInfo = stages.find((s) => s.id === stageId);
+    if (!stageInfo) return;
+
+    const contactsInStage = boardContacts.filter((c) => c.stage === stageInfo.label);
+    const otherStages = stages.filter((s) => s.id !== stageId);
+
+    if (contactsInStage.length > 0) {
+      const defaultTarget = otherStages[0]?.label || '';
+      setStageToDeleteModal({
+        stage: stageInfo,
+        count: contactsInStage.length,
+        targetStage: defaultTarget,
+      });
+      return;
+    }
+
+    if (!window.confirm('Remove this step from the journey?')) return;
     try {
       await deleteDoc(doc(db, 'stages', stageId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'stages');
+    }
+  };
+
+  const handleConfirmDeleteStageWithReassign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stageToDeleteModal) return;
+    const { stage, targetStage } = stageToDeleteModal;
+
+    try {
+      const batch = writeBatch(db);
+      const contactsToReassign = boardContacts.filter((c) => c.stage === stage.label);
+      contactsToReassign.forEach((c) => {
+        batch.update(doc(db, 'contacts', c.id), { stage: targetStage });
+      });
+      batch.delete(doc(db, 'stages', stage.id));
+      await batch.commit();
+
+      setStageToDeleteModal(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'stages');
     }
@@ -861,16 +892,16 @@ export default function OutreachBoard() {
                     <label className="text-sm font-medium text-on-surface-variant px-1">
                       Colour
                     </label>
-                    <div className="grid grid-cols-6 gap-3">
+                    <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                       {colors.map(color => (
                         <button
                           key={color.class}
                           type="button"
+                          style={toneStyle(color.class)}
                           onClick={() => setNewStageColor(color.class)}
                           className={cn(
-                            "h-10 rounded-xl transition-all border-2",
-                            color.class,
-                            newStageColor === color.class ? "border-on-surface ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-60 hover:opacity-100"
+                            "h-10 rounded-xl transition-all border-2 bg-[var(--tone)]",
+                            newStageColor === color.class ? "border-on-surface ring-2 ring-primary ring-offset-2 ring-offset-surface" : "border-transparent opacity-70 hover:opacity-100"
                           )}
                           title={color.name}
                         />
@@ -892,6 +923,82 @@ export default function OutreachBoard() {
                       className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
                     >
                       {editingStage ? 'Save changes' : 'Add this step'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* Delete stage reassign modal */}
+        <AnimatePresence>
+          {stageToDeleteModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setStageToDeleteModal(null)}
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant p-6 space-y-6"
+              >
+                <div className="flex items-center justify-between border-b border-outline-variant pb-4">
+                  <h2 className="font-serif text-xl text-on-surface">Remove step: {stageToDeleteModal.stage.label}</h2>
+                  <button
+                    onClick={() => setStageToDeleteModal(null)}
+                    className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
+                    aria-label="Close"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleConfirmDeleteStageWithReassign} className="space-y-5">
+                  <p className="text-sm text-on-surface leading-relaxed">
+                    <b className="font-semibold">{stageToDeleteModal.count} {stageToDeleteModal.count === 1 ? 'person is' : 'people are'}</b> at this step — where do they go?
+                  </p>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-on-surface-variant px-1 uppercase tracking-wide">
+                      Destination step
+                    </label>
+                    <select
+                      value={stageToDeleteModal.targetStage}
+                      onChange={(e) =>
+                        setStageToDeleteModal((prev) => prev ? { ...prev, targetStage: e.target.value } : null)
+                      }
+                      className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline text-on-surface font-medium outline-none focus:ring-2 focus:ring-primary"
+                    >
+                      {stages
+                        .filter((s) => s.id !== stageToDeleteModal.stage.id)
+                        .map((s) => (
+                          <option key={s.id} value={s.label}>
+                            {s.label}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setStageToDeleteModal(null)}
+                      className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={!stageToDeleteModal.targetStage}
+                      className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+                    >
+                      Reassign & remove step
                     </button>
                   </div>
                 </form>
@@ -967,14 +1074,13 @@ function KanbanColumn({
   });
 
   const [showMenu, setShowMenu] = useState(false);
-  const toneCx = tone ? TONE_CLASSES[tone] : null;
   const caption = captionFor(stageInfo.label);
 
   return (
     <div
+      style={toneStyle(stageInfo.color)}
       className={cn(
-        "flex flex-col w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] shrink-0 bg-surface-container rounded-2xl border border-t-2 max-h-full transition-all",
-        toneCx ? toneCx.topBorder : "border-t-outline-variant",
+        "flex flex-col w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] shrink-0 bg-surface-container rounded-2xl border border-t-2 border-t-[var(--tone)] max-h-full transition-all",
         isOver ? "border-outline ring-2 ring-primary/30" : "border-outline-variant/30",
       )}
     >
@@ -984,7 +1090,7 @@ function KanbanColumn({
           <div className="flex items-baseline gap-2">
             <h3 className="font-serif text-[17px] text-on-surface truncate">{stageInfo.label}</h3>
           </div>
-          <span className={cn("text-xs font-medium", toneCx ? toneCx.countText : "text-on-surface-variant")}>
+          <span className="text-xs font-medium text-[var(--tone)]">
             {peopleCount(contacts.length)}
           </span>
           {caption && (
@@ -1067,6 +1173,7 @@ function KanbanColumn({
               key={contact.id}
               contact={contact}
               tone={tone}
+              stageColor={stageInfo.color}
               lastTouchByContact={lastTouchByContact}
               onEditContact={onEditContact}
               onDeleteContact={onDeleteContact}
@@ -1095,6 +1202,7 @@ function KanbanColumn({
 interface KanbanCardProps {
   contact: Contact;
   tone?: Tone;
+  stageColor?: string;
   lastTouchByContact: TouchMap;
   onEditContact: (contact: Contact) => void;
   onDeleteContact: (id: string) => Promise<void>;
@@ -1135,13 +1243,13 @@ function KanbanCard(props: KanbanCardProps) {
 
 function InternalKanbanCard({
   contact,
-  tone,
+  stageColor,
   lastTouchByContact,
   onEditContact,
+  onDeleteContact,
   isOverlay,
   dragListeners
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
-  const toneCx = tone ? TONE_CLASSES[tone] : null;
   const touch = lastTouchByContact.get(contact.id);
   const ms = touch?.ms ?? parseMs(contact.createdAt);
   const days = ms != null ? daysSince(ms) : null;
@@ -1153,9 +1261,9 @@ function InternalKanbanCard({
   return (
     <div
       onClick={() => !isOverlay && onEditContact(contact)}
+      style={toneStyle(stageColor)}
       className={cn(
-        "bg-surface-container-lowest p-3.5 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/40 flex flex-col gap-2.5 group active:cursor-grabbing",
-        toneCx?.cardHoverBorder,
+        "bg-surface-container-lowest p-3.5 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/40 hover:border-[var(--tone)] flex flex-col gap-2.5 group active:cursor-grabbing",
         isOverlay && "shadow-2xl",
       )}
       {...dragListeners}
@@ -1192,10 +1300,7 @@ function InternalKanbanCard({
           {tags.map((t) => (
             <span
               key={t}
-              className={cn(
-                "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
-                toneCx ? cn(toneCx.tagBg, toneCx.tagText) : "bg-surface-variant text-on-surface-variant",
-              )}
+              className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)]"
             >
               {t === 'leader-track' ? 'leader track' : t}
             </span>

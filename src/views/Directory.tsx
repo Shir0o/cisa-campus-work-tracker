@@ -24,7 +24,7 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { cn, getUserInitials } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
-import { visibleContacts } from '../lib/permissions';
+import { visibleContacts, seesAllPeople } from '../lib/permissions';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -38,77 +38,67 @@ const parseMs = (s?: string | null): number | null => {
   return Number.isNaN(t) ? null : t;
 };
 const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
+
 const connectedLabel = (d: number) =>
   d === 0 ? 'Connected today' : d === 1 ? 'Last connected yesterday' : `Last connected ${d} days ago`;
-const truncate = (s: string | undefined, n: number) =>
-  s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s || '';
+
+const truncate = (str: string, len: number) =>
+  str.length > len ? str.slice(0, len) + '…' : str;
 
 type Touch = { ms: number; note: string };
 type TouchMap = Map<string, Touch>;
 
-// The four warm stage tones. Stored stage colors (bg-board-*) map onto these.
-type Tone = 'accent' | 'amber' | 'teal' | 'violet';
-const TONES: Tone[] = ['accent', 'amber', 'teal', 'violet'];
+// The eight matched stage tones (styles.css --t-*). Stored stage colors (bg-board-*) map onto these.
+export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
 
-const TONE_BY_COLOR: Record<string, Tone> = {
-  'bg-board-indigo': 'accent',
-  'bg-board-ocean': 'accent',
-  'bg-primary': 'accent',
-  'bg-primary-fixed-dim': 'accent',
-  'bg-board-amber': 'amber',
-  'bg-board-orange': 'amber',
-  'bg-orange-500': 'amber',
-  'bg-orange': 'amber',
-  'orange': 'amber',
+const TONE_KEY_MAP: Record<string, ToneKey> = {
+  'bg-board-slate': 'slate',
+  'slate': 'slate',
+  'bg-board-clay': 'clay',
+  'clay': 'clay',
+  'bg-board-ochre': 'ochre',
+  'ochre': 'ochre',
+  'bg-board-sage': 'sage',
+  'sage': 'sage',
   'bg-board-teal': 'teal',
-  'bg-board-emerald': 'teal',
+  'teal': 'teal',
+  'bg-board-indigo': 'indigo',
+  'indigo': 'indigo',
+  'bg-board-plum': 'plum',
+  'plum': 'plum',
+  'bg-board-rose': 'rose',
+  'rose': 'rose',
+  // legacy aliases
+  'bg-board-amber': 'clay',
+  'bg-board-orange': 'ochre',
+  'bg-board-emerald': 'sage',
+  'bg-board-crimson': 'rose',
+  'bg-board-ocean': 'slate',
+  'bg-primary': 'indigo',
+  'bg-primary-fixed-dim': 'slate',
   'bg-secondary': 'teal',
-  'bg-board-plum': 'violet',
-  'bg-board-crimson': 'violet',
-  'bg-board-rose': 'violet',
+  'bg-orange-500': 'ochre',
+  'bg-orange': 'ochre',
+  'orange': 'ochre',
+  'accent': 'slate',
+  'amber': 'clay',
+  'violet': 'plum',
 };
 
-// Full static class strings so Tailwind's scanner keeps them.
-const TONE_CLASSES: Record<
-  Tone,
-  { chipBg: string; chipText: string; dot: string; cardHoverBorder: string; tagBg: string; tagText: string }
-> = {
-  accent: {
-    chipBg: 'bg-stage-accent-soft',
-    chipText: 'text-stage-accent',
-    dot: 'bg-stage-accent',
-    cardHoverBorder: 'hover:border-stage-accent',
-    tagBg: 'bg-stage-accent-soft',
-    tagText: 'text-stage-accent',
-  },
-  amber: {
-    chipBg: 'bg-stage-amber-soft',
-    chipText: 'text-stage-amber',
-    dot: 'bg-stage-amber',
-    cardHoverBorder: 'hover:border-stage-amber',
-    tagBg: 'bg-stage-amber-soft',
-    tagText: 'text-stage-amber',
-  },
-  teal: {
-    chipBg: 'bg-stage-teal-soft',
-    chipText: 'text-stage-teal',
-    dot: 'bg-stage-teal',
-    cardHoverBorder: 'hover:border-stage-teal',
-    tagBg: 'bg-stage-teal-soft',
-    tagText: 'text-stage-teal',
-  },
-  violet: {
-    chipBg: 'bg-stage-violet-soft',
-    chipText: 'text-stage-violet',
-    dot: 'bg-stage-violet',
-    cardHoverBorder: 'hover:border-stage-violet',
-    tagBg: 'bg-stage-violet-soft',
-    tagText: 'text-stage-violet',
-  },
+const ALL_TONES: ToneKey[] = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'];
+
+export const toneKeyFor = (color: string | undefined, index: number = 0): ToneKey => {
+  if (color && TONE_KEY_MAP[color]) return TONE_KEY_MAP[color];
+  return ALL_TONES[index % ALL_TONES.length];
 };
 
-const toneFor = (color: string | undefined, index: number): Tone =>
-  (color && TONE_BY_COLOR[color]) || TONES[index % TONES.length];
+export const toneStyle = (color: string | undefined, index: number = 0): React.CSSProperties => {
+  const k = toneKeyFor(color, index);
+  return {
+    '--tone': `var(--t-${k})`,
+    '--tone-soft': `var(--t-${k}-soft)`,
+  } as React.CSSProperties;
+};
 
 const peopleCount = (n: number) =>
   n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
@@ -308,10 +298,10 @@ export default function Directory() {
     return result;
   }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
 
-  // Tone per stage label, keyed off the stage's stored colour (or its order).
-  const toneByStage = useMemo(() => {
-    const map = new Map<string, Tone>();
-    stagesData.forEach((s, i) => map.set(s.label, toneFor(s.color, i)));
+  // Stage color per stage label.
+  const stageColorByLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    stagesData.forEach((s) => map.set(s.label, s.color));
     return map;
   }, [stagesData]);
 
@@ -642,7 +632,13 @@ export default function Directory() {
           <span className="text-sm text-on-surface-variant">
             {selectedIds.size > 0
               ? `${selectedIds.size} selected`
-              : `${peopleCount(filteredContacts.length)}${filteredContacts.length === userContacts.length ? '' : ` of ${userContacts.length}`}`}
+              : !seesAllPeople(role)
+                ? filteredContacts.length === userContacts.length
+                  ? `${peopleCount(filteredContacts.length)} — everyone you added, or were named on`
+                  : `${filteredContacts.length} of the ${userContacts.length} people you added or were named on`
+                : filteredContacts.length === userContacts.length
+                  ? peopleCount(filteredContacts.length)
+                  : `${peopleCount(filteredContacts.length)} of ${userContacts.length}`}
           </span>
         </label>
 
@@ -692,9 +688,9 @@ export default function Directory() {
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
           {filteredContacts.map((contact) => {
-            const tone = toneByStage.get(contact.stage);
-            const toneCx = tone ? TONE_CLASSES[tone] : null;
+            const stageColor = stageColorByLabel.get(contact.stage);
             const isStage = stagesData.some(s => s.label === contact.stage);
+            const tStyle = isStage ? toneStyle(stageColor) : undefined;
             const touch = lastTouchByContact.get(contact.id);
             const ms = touch?.ms ?? parseMs(contact.createdAt);
             const days = ms != null ? daysSince(ms) : null;
@@ -708,9 +704,9 @@ export default function Directory() {
               <div
                 key={contact.id}
                 onClick={() => setSelectedContact(contact)}
+                style={tStyle}
                 className={cn(
-                  "group relative bg-surface rounded-2xl border border-outline-variant/60 p-5 transition-colors cursor-pointer",
-                  toneCx ? toneCx.cardHoverBorder : "hover:border-primary/40",
+                  "group relative bg-surface rounded-2xl border border-outline-variant/60 p-5 transition-colors cursor-pointer hover:border-[var(--tone)]",
                   selected && "border-primary bg-primary/5"
                 )}
               >
@@ -735,9 +731,10 @@ export default function Directory() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-serif text-lg text-on-surface leading-tight">{contact.name}</span>
                       <span
+                        style={tStyle}
                         className={cn(
                           "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium whitespace-nowrap",
-                          toneCx && isStage ? cn(toneCx.chipBg, toneCx.chipText) : "bg-surface-variant text-on-surface-variant"
+                          isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
                         )}
                       >
                         {isStage ? contact.stage : 'Unassigned'}
@@ -769,7 +766,7 @@ export default function Directory() {
                             key={t}
                             className={cn(
                               "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
-                              toneCx ? cn(toneCx.tagBg, toneCx.tagText) : "bg-surface-variant text-on-surface-variant"
+                              isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
                             )}
                           >
                             {t}

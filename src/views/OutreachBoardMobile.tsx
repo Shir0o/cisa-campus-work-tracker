@@ -19,55 +19,55 @@ interface OutreachBoardMobileProps {
   onAddContact: (stageLabel: string) => void;
 }
 
-// Full static class strings for tone colors matching OutreachBoard.tsx TONE_CLASSES
-const TONE_CLASSES: Record<string, { dot: string; text: string; bg: string; border: string }> = {
-  accent: {
-    dot: 'bg-primary',
-    text: 'text-primary',
-    bg: 'bg-stage-accent-soft',
-    border: 'border-primary/20',
-  },
-  amber: {
-    dot: 'bg-stage-amber',
-    text: 'text-stage-amber',
-    bg: 'bg-stage-amber-soft',
-    border: 'border-stage-amber/20',
-  },
-  teal: {
-    dot: 'bg-stage-teal',
-    text: 'text-stage-teal',
-    bg: 'bg-stage-teal-soft',
-    border: 'border-stage-teal/20',
-  },
-  violet: {
-    dot: 'bg-stage-violet',
-    text: 'text-stage-violet',
-    bg: 'bg-stage-violet-soft',
-    border: 'border-stage-violet/20',
-  },
+export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
+
+const TONE_KEY_MAP: Record<string, ToneKey> = {
+  'bg-board-slate': 'slate',
+  'slate': 'slate',
+  'bg-board-clay': 'clay',
+  'clay': 'clay',
+  'bg-board-ochre': 'ochre',
+  'ochre': 'ochre',
+  'bg-board-sage': 'sage',
+  'sage': 'sage',
+  'bg-board-teal': 'teal',
+  'teal': 'teal',
+  'bg-board-indigo': 'indigo',
+  'indigo': 'indigo',
+  'bg-board-plum': 'plum',
+  'plum': 'plum',
+  'bg-board-rose': 'rose',
+  'rose': 'rose',
+  // legacy aliases
+  'bg-board-amber': 'clay',
+  'bg-board-orange': 'ochre',
+  'bg-board-emerald': 'sage',
+  'bg-board-crimson': 'rose',
+  'bg-board-ocean': 'slate',
+  'bg-primary': 'indigo',
+  'bg-primary-fixed-dim': 'slate',
+  'bg-secondary': 'teal',
+  'bg-orange-500': 'ochre',
+  'bg-orange': 'ochre',
+  'orange': 'ochre',
+  'accent': 'slate',
+  'amber': 'clay',
+  'violet': 'plum',
 };
 
-type Tone = 'accent' | 'amber' | 'teal' | 'violet';
-const toneFor = (color: string | undefined, index: number): Tone => {
-  if (!color) return 'accent';
-  const TONE_BY_COLOR: Record<string, Tone> = {
-    'bg-board-indigo': 'accent',
-    'bg-board-ocean': 'accent',
-    'bg-primary': 'accent',
-    'bg-primary-fixed-dim': 'accent',
-    'bg-board-amber': 'amber',
-    'bg-board-orange': 'amber',
-    'bg-orange-500': 'amber',
-    'bg-orange': 'amber',
-    'orange': 'amber',
-    'bg-board-teal': 'teal',
-    'bg-board-emerald': 'teal',
-    'bg-secondary': 'teal',
-    'bg-board-plum': 'violet',
-    'bg-board-crimson': 'violet',
-    'bg-board-rose': 'violet',
-  };
-  return TONE_BY_COLOR[color] || (['accent', 'amber', 'teal', 'violet'][index % 4] as Tone);
+const ALL_TONES: ToneKey[] = ['slate', 'clay', 'ochre', 'sage', 'teal', 'indigo', 'plum', 'rose'];
+
+export const toneKeyFor = (color: string | undefined, index: number = 0): ToneKey => {
+  if (color && TONE_KEY_MAP[color]) return TONE_KEY_MAP[color];
+  return ALL_TONES[index % ALL_TONES.length];
+};
+
+export const toneStyle = (color: string | undefined, index: number = 0): React.CSSProperties => {
+  const k = toneKeyFor(color, index);
+  return {
+    '--tone': `var(--t-${k})`,
+    '--tone-soft': `var(--t-${k}-soft)`,
+  } as React.CSSProperties;
 };
 
 const connectedLabel = (d: number) =>
@@ -116,8 +116,6 @@ export default function OutreachBoardMobile({
 
   const idx = Math.min(active, mobileStages.length - 1);
   const stage = mobileStages[idx] || { id: 'uncategorized', label: 'Unassigned', color: 'bg-surface-variant' };
-  const tone = stage.id === 'uncategorized' ? 'accent' : toneFor(stage.color, idx);
-  const toneCx = TONE_CLASSES[tone];
 
   const getStageContacts = (stageLabel: string) => {
     if (stageLabel === 'Unassigned') return unmappedContacts;
@@ -175,24 +173,24 @@ export default function OutreachBoardMobile({
         ref={switchRef}
       >
         {mobileStages.map((s, i) => {
-          const sTone = s.id === 'uncategorized' ? 'accent' : toneFor(s.color, i);
-          const sToneCx = TONE_CLASSES[sTone];
           const count = getStageContacts(s.label).length;
           const activeTab = i === idx;
+          const tStyle = toneStyle(s.color, i);
           return (
             <button
               key={s.id}
+              style={tStyle}
               className={cn(
                 "inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold border transition-all jrnm-seg shrink-0",
                 activeTab
-                  ? cn(sToneCx.bg, sToneCx.border, sToneCx.text, "is-on font-bold border-primary/30 shadow-sm")
+                  ? "bg-[var(--tone-soft)] border-[var(--tone)]/40 text-[var(--tone)] is-on font-bold shadow-sm"
                   : "bg-surface border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/55"
               )}
               onClick={() => setActive(i)}
             >
-              <span className={cn("w-1.5 h-1.5 rounded-full jrnm-seg-dot", sToneCx.dot)} aria-hidden />
+              <span className="w-1.5 h-1.5 rounded-full jrnm-seg-dot bg-[var(--tone)]" aria-hidden />
               <span className="jrnm-seg-name">{s.label}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant/80 font-medium jrnm-seg-count", activeTab && "bg-surface/80 text-primary font-bold")}>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant/80 font-medium jrnm-seg-count", activeTab && "bg-surface/80 text-[var(--tone)] font-bold")}>
                 {count}
               </span>
             </button>
@@ -202,7 +200,8 @@ export default function OutreachBoardMobile({
 
       {/* List content panel */}
       <section
-        className={cn("flex-1 px-5 pt-6 pb-2 jrnm-panel transition-all", toneCx.bg)}
+        style={toneStyle(stage.color, idx)}
+        className="flex-1 px-5 pt-6 pb-2 jrnm-panel transition-all bg-[var(--tone-soft)]"
         key={stage.id}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -319,28 +318,28 @@ export default function OutreachBoardMobile({
             <div className="overflow-y-auto px-4 pb-8 pt-4 flex flex-col gap-2 mds-body">
               <div className="flex flex-col gap-2 jrnm-move-list">
                 {mobileStages.map((s, i) => {
-                  const sTone = s.id === 'uncategorized' ? 'accent' : toneFor(s.color, i);
-                  const sToneCx = TONE_CLASSES[sTone];
                   const here = s.label === movingContact.stage || (s.id === 'uncategorized' && !movingContact.stage);
+                  const tStyle = toneStyle(s.color, i);
 
                   return (
                     <button
                       key={s.id}
+                      style={tStyle}
                       onClick={() => {
                         if (!here) onMove(movingContact.id, s.label === 'Unassigned' ? '' : s.label);
                         setMovingContact(null);
                       }}
                       className={cn(
                         "flex items-center gap-3.5 p-4 rounded-xl text-left border transition-all jrnm-move-opt w-full",
-                        here ? cn(sToneCx.bg, sToneCx.border, sToneCx.text, "is-here border-primary/30") : "bg-surface border-outline-variant hover:bg-surface-variant"
+                        here ? "bg-[var(--tone-soft)] border-[var(--tone)]/30 text-[var(--tone)] is-here" : "bg-surface border-outline-variant hover:bg-surface-variant"
                       )}
                     >
-                      <span className={cn("w-2 h-2 rounded-full jrnm-move-dot", sToneCx.dot)} />
+                      <span className="w-2 h-2 rounded-full jrnm-move-dot bg-[var(--tone)]" />
                       <div className="flex-1 min-w-0 jrnm-move-text">
                         <div className="font-medium text-[15px] jrnm-move-name">{s.label}</div>
                       </div>
                       {here ? (
-                        <span className="text-xs font-bold uppercase tracking-wider text-primary jrnm-move-here">here now</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--tone)] jrnm-move-here">here now</span>
                       ) : (
                         <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
                       )}
