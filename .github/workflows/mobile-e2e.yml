@@ -48,6 +48,12 @@ jobs:
           curl -FsSL "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
+      - name: Ensure google-services.json exists
+        run: |
+          if [ ! -f google-services.json ]; then
+            cp google-services.example.json google-services.json
+          fi
+
       - name: Prebuild Android project
         run: npx expo prebuild --platform android
 
