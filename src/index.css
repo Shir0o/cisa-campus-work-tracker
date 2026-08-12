@@ -408,6 +408,10 @@
    never remounted, so the caret and unsaved keystrokes survive a toggle.
    -------------------------------------------------------------------- */
 body.bdoc-fs-on { overflow: hidden; }
+/* The design scrolls on `body`; this app scrolls inside the shell's `<main>`
+   (`App.tsx`), so the lock has to reach that element too or the view behind the
+   pinned page keeps scrolling. */
+body.bdoc-fs-on main { overflow: hidden; }
 .bdoc-fs-hold { display: flex; min-width: 0; min-height: 0; }
 .bdoc-fs-hold > .bdoc-fs-doc { flex: 1; min-width: 0; min-height: 0; }
 .bdoc-fs-hold.is-fs {

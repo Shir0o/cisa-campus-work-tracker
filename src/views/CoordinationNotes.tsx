@@ -1700,7 +1700,7 @@ export default function CoordinationNotes() {
               <div
                 ref={fsHoldRef}
                 data-testid="coordination-doc-hold"
-                className={cn('flex min-w-0 min-h-0 bg-surface', isFullscreen && 'is-fs')}
+                className={cn('bdoc-fs-hold bg-surface', isFullscreen && 'is-fs')}
               >
               {canEdit ? (
                 <DocEditor

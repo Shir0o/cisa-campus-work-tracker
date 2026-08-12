@@ -2034,6 +2034,9 @@ describe('CoordinationNotes', () => {
       const workspace = screen.getByTestId('coordination-notes-workspace');
       expect(workspace).not.toHaveClass('fixed');
       const hold = screen.getByTestId('coordination-doc-hold');
+      // Every full-screen rule is keyed on `.bdoc-fs-hold.is-fs` — without the
+      // base class `is-fs` matches nothing and the whole feature is inert.
+      expect(hold).toHaveClass('bdoc-fs-hold');
       expect(hold).not.toHaveClass('is-fs');
 
       // Click to enter full screen
