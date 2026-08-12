@@ -10,8 +10,16 @@ import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 
-export function SwipeToDelete({ onHide, children }: { onHide: () => void; children: React.ReactNode }) {
-  const { c, font, fs } = useV2Theme();
+export function SwipeToDelete({
+  onHide,
+  onDeleteForEveryone,
+  children,
+}: {
+  onHide: () => void;
+  onDeleteForEveryone?: () => void;
+  children: React.ReactNode;
+}) {
+  const { c, font, radius, fs } = useV2Theme();
   const { colors } = useTheme();
   const methodsRef = useRef<SwipeableMethods | null>(null);
   const [confirming, setConfirming] = useState(false);
@@ -23,11 +31,19 @@ export function SwipeToDelete({ onHide, children }: { onHide: () => void; childr
       friction={1.5}
       rightThreshold={40}
       overshootRight={false}
+      containerStyle={{ borderRadius: radius.tile, overflow: 'hidden' }}
       onSwipeableWillClose={() => setConfirming(false)}
       renderRightActions={(_progress, _translation, methods) => {
         methodsRef.current = methods;
         return (
-          <View style={{ width: 132 }}>
+          <View
+            style={{
+              width: 140,
+              borderTopRightRadius: radius.tile,
+              borderBottomRightRadius: radius.tile,
+              overflow: 'hidden',
+            }}
+          >
             {!confirming ? (
               <Pressable
                 onPress={() => setConfirming(true)}
@@ -41,7 +57,7 @@ export function SwipeToDelete({ onHide, children }: { onHide: () => void; childr
                   style={{ fontFamily: font.semi, fontSize: fs(9), color: c.room.ink3, textAlign: 'center' }}
                   numberOfLines={1}
                 >
-                  Delete for me?
+                  {onDeleteForEveryone ? 'Delete conversation?' : 'Delete for me?'}
                 </Text>
                 <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
                   <Pressable
@@ -57,7 +73,11 @@ export function SwipeToDelete({ onHide, children }: { onHide: () => void; childr
                     onPress={() => {
                       setConfirming(false);
                       close();
-                      onHide();
+                      if (onDeleteForEveryone) {
+                        onDeleteForEveryone();
+                      } else {
+                        onHide();
+                      }
                     }}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: colors.error }}
                   >

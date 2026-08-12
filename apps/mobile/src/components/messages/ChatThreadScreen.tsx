@@ -9,7 +9,7 @@
 // per-message reactions and pin strip live on the desktop messages page, and
 // the mobile port keeps M2Thread minimal. When the mobile app grows them, they
 // can read `message.reactions`/`message.pinned` off the same docs.
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -20,33 +20,30 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
-import { canPostToRoom, chatKindNote, firstName, getRoomName, memberSenderName } from '@cisa/core';
+import { canPostToRoom, chatKindNote, getRoomName, memberSenderName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { deleteChatMessage } from '../../lib/data/chat';
 import { useChatThreadData } from '../../lib/useChatThreadData';
-import { roomForRole, useV2Theme } from '../../theme/v2';
-import { Room } from '../v2/Widget';
+import { useTheme } from '../../theme/ThemeProvider';
+import { useV2Theme } from '../../theme/v2';
+import { PersonMark } from '../queue/atoms';
 
-export function ChatThreadScreen({ roomId }: { roomId: string }) {
-  const { role } = useAuth();
-  return (
-    <Room room={roomForRole(role)}>
-      <ChatThread roomId={roomId} />
-    </Room>
-  );
-}
-
-function ChatThread({ roomId }: { roomId: string }) {
+export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {}) {
+  const params = useLocalSearchParams<{ id?: string; roomId?: string }>();
+  const roomId = propRoomId ?? params.id ?? params.roomId;
   const { c, font, radius, fs } = useV2Theme();
+  const { colors } = useTheme();
   const router = useRouter();
   const { uid, role } = useAuth();
-  const data = useChatThreadData(roomId);
-  const [text, setText] = React.useState('');
+  const data = useChatThreadData(roomId ?? '');
+  const [text, setText] = useState('');
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; text: string } | null>(null);
 
   const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
   const canPost = !data.room || canPostToRoom(data.room, uid, role === 'admin');
-  const isGroupish = !!data.room && data.room.type !== 'direct';
+  const isGroupish = !!data.room && (data.room.type === 'group' || data.room.type === 'announcement');
 
   const send = async () => {
     if (!text.trim()) return;
@@ -58,12 +55,12 @@ function ChatThread({ roomId }: { roomId: string }) {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <View
-        style={{ flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 10 }}
+        style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}
       >
         <Pressable
           onPress={() => router.back()}
           hitSlop={10}
-          style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
+          style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', marginRight: 4, opacity: pressed ? 0.6 : 1 })}
         >
           <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
         </Pressable>
@@ -91,30 +88,34 @@ function ChatThread({ roomId }: { roomId: string }) {
           contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* The person you're messaging is also someone we're walking with. */}
           {!!data.partnerContactId && (
             <Pressable
               onPress={() => router.push(`/contact/${data.partnerContactId}`)}
               style={({ pressed }) => ({
-                minHeight: 46,
-                justifyContent: 'center',
-                paddingHorizontal: 16,
-                marginBottom: 4,
-                borderRadius: radius.note,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 10,
                 backgroundColor: c.card.bg,
-                opacity: pressed ? 0.75 : 1,
+                borderRadius: radius.tile,
+                padding: 12,
+                opacity: pressed ? 0.85 : 1,
+                ...c.widget.shadow,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.link }}>
-                {`Open ${firstName(name)}'s page →`}
-              </Text>
+              <PersonMark name={name} id={data.partnerContactId} size={36} radius={11} fontSize={13} />
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink }}>{name}</Text>
+                <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
+                  Tap to view profile →
+                </Text>
+              </View>
             </Pressable>
           )}
 
           {data.error ? (
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>{data.error}</Text>
           ) : data.loading ? (
-            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 24 }} />
           ) : data.dayGroups.length === 0 ? (
             <Text
               style={{
@@ -146,9 +147,11 @@ function ChatThread({ roomId }: { roomId: string }) {
                 </Text>
                 {group.messages.map((m) => {
                   const mine = m.senderId === uid;
+                  const canDeleteMsg = mine || role === 'admin';
                   return (
-                    <View
+                    <Pressable
                       key={m.id}
+                      onLongPress={canDeleteMsg ? () => setDeleteTarget({ id: m.id, text: m.text }) : undefined}
                       style={{
                         alignSelf: mine ? 'flex-end' : 'flex-start',
                         maxWidth: '82%',
@@ -175,8 +178,6 @@ function ChatThread({ roomId }: { roomId: string }) {
                       >
                         {m.text}
                       </Text>
-                      {/* Attachments are read-only here — there is no picker on
-                          the phone, so a chip only ever names what came in. */}
                       {(m.attachments ?? []).map((a) => (
                         <View
                           key={`${a.type}:${a.id}`}
@@ -196,7 +197,7 @@ function ChatThread({ roomId }: { roomId: string }) {
                           </Text>
                         </View>
                       ))}
-                    </View>
+                    </Pressable>
                   );
                 })}
               </View>
@@ -208,66 +209,112 @@ function ChatThread({ roomId }: { roomId: string }) {
           <View
             style={{
               flexDirection: 'row',
-              alignItems: 'flex-end',
-              gap: 10,
-              paddingHorizontal: 16,
-              paddingVertical: 12,
+              alignItems: 'center',
+              gap: 8,
+              paddingHorizontal: 14,
+              paddingVertical: 10,
+              backgroundColor: c.room.bg,
             }}
           >
             <TextInput
               value={text}
               onChangeText={setText}
-              placeholder={
-                isGroupish ? 'Write to the group…' : `Write to ${firstName(name || 'them')}…`
-              }
-              placeholderTextColor={c.card.ink3}
+              placeholder="Write a message…"
+              placeholderTextColor={c.room.ink3}
               multiline
               style={{
                 flex: 1,
+                minHeight: 44,
                 maxHeight: 110,
-                minHeight: 48,
                 backgroundColor: c.card.bg,
-                borderRadius: radius.note,
-                paddingHorizontal: 14,
-                paddingVertical: 12,
+                borderRadius: radius.row,
+                paddingHorizontal: 16,
+                paddingVertical: 10,
                 fontFamily: font.medium,
                 fontSize: fs(15),
                 lineHeight: fs(21),
-                color: c.card.ink,
+                color: c.room.ink,
               }}
+              onSubmitEditing={() => void send()}
             />
             <Pressable
-              onPress={send}
+              onPress={() => void send()}
               disabled={!text.trim()}
               style={({ pressed }) => ({
-                height: 48,
-                paddingHorizontal: 20,
-                borderRadius: radius.button,
-                backgroundColor: c.card.primary,
+                height: 44,
+                paddingHorizontal: 18,
+                borderRadius: radius.row,
+                backgroundColor: text.trim() ? c.card.primary : c.room.chip,
                 alignItems: 'center',
                 justifyContent: 'center',
-                opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
+                opacity: pressed ? 0.75 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.onPrimary }}>Send</Text>
+              <Text
+                style={{
+                  fontFamily: font.bold,
+                  fontSize: fs(14),
+                  color: text.trim() ? c.card.onPrimary : c.room.ink3,
+                }}
+              >
+                Send
+              </Text>
             </Pressable>
           </View>
         ) : (
-          <View style={{ paddingHorizontal: 20, paddingVertical: 18 }}>
-            <Text
-              style={{
-                fontFamily: font.medium,
-                fontSize: fs(13.5),
-                lineHeight: fs(20),
-                color: c.room.ink3,
-                textAlign: 'center',
-              }}
-            >
-              Announcements only — the team posts here, and you'll see it.
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.room.ink3, textAlign: 'center' }}>
+              Only full-timers post into announcements.
             </Text>
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {deleteTarget && (
+        <View
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: c.card.bg,
+              borderRadius: radius.tile,
+              padding: 20,
+              width: '100%',
+              gap: 12,
+            }}
+          >
+            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.room.ink }}>Delete message?</Text>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.room.ink2 }} numberOfLines={2}>
+              "{deleteTarget.text}"
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <Pressable
+                onPress={() => setDeleteTarget(null)}
+                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: c.room.chip }}
+              >
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>Cancel</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  const targetId = deleteTarget.id;
+                  setDeleteTarget(null);
+                  if (roomId) void deleteChatMessage(roomId, targetId);
+                }}
+                style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.error }}
+              >
+                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }

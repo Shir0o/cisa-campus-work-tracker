@@ -324,3 +324,12 @@ export async function deleteChatRoom(db: Firestore, roomId: string): Promise<voi
   await deleteDoc(doc(db, "chatRooms", roomId));
 }
 
+/** Deletes a specific message document from a room. Only author or admin may call this. */
+export async function deleteChatMessage(
+  db: Firestore,
+  roomId: string,
+  messageId: string,
+): Promise<void> {
+  await deleteDoc(doc(db, "chatRooms", roomId, "messages", messageId));
+}
+

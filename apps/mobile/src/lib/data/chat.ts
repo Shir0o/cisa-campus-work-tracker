@@ -122,3 +122,19 @@ export async function hideChatRoomForUser(roomId: string, uid: string): Promise<
     handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}`);
   }
 }
+
+export async function deleteChatRoom(roomId: string): Promise<void> {
+  try {
+    await core.deleteChatRoom(db, roomId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}`);
+  }
+}
+
+export async function deleteChatMessage(roomId: string, messageId: string): Promise<void> {
+  try {
+    await core.deleteChatMessage(db, roomId, messageId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}/messages/${messageId}`);
+  }
+}

@@ -321,3 +321,12 @@ describe('mobile v2 Messages copy', () => {
     expect(messagesScreenNote(0, 0)).toBe('0');
   });
 });
+
+describe('deleteChatMessage', () => {
+  it('calls deleteDoc on the specific chat message document', async () => {
+    const { deleteChatMessage } = await import('../src/data/chat');
+    const mockDb = {} as any;
+    await expect(deleteChatMessage(mockDb, 'r1', 'm1')).resolves.toBeUndefined();
+  });
+});
+

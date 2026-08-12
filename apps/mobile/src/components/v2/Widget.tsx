@@ -224,14 +224,13 @@ export function V2Screen({
         {!!onBack && (
           <Pressable
             onPress={onBack}
-            style={{
-              height: 44,
-              paddingHorizontal: 15,
-              borderRadius: 15,
-              backgroundColor: c.room.chip,
-              alignItems: 'center',
+            hitSlop={10}
+            style={({ pressed }) => ({
+              minHeight: 44,
               justifyContent: 'center',
-            }}
+              marginRight: 4,
+              opacity: pressed ? 0.6 : 1,
+            })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
           </Pressable>
