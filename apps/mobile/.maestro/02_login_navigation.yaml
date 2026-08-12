@@ -1,0 +1,12 @@
+appId: com.cisa.campus
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Sign in"
+- tapOn: "Email"
+- inputText: "testuser@example.com"
+- tapOn: "Password"
+- inputText: "password123"
+- tapOn: "New here? Fill out our welcome form"
+- assertVisible: "Tell us about you."
+- assertVisible: "STEP 1 OF 2"
