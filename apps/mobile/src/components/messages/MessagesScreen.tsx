@@ -124,6 +124,10 @@ function Messages() {
     if (uid) void hideChatRoomForUser(room.id, uid);
   };
 
+  const removeForEveryone = (room: ChatRoom) => {
+    void deleteChatRoom(room.id);
+  };
+
   // A tab for the full-timer, a drawer row for the trainee — only the one that
   // pushed here has somewhere to go back to.
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
@@ -148,18 +152,28 @@ function Messages() {
         ) : data.rooms.length === 0 ? (
           <V2Empty>No conversations yet.</V2Empty>
         ) : (
-          data.rooms.map((room) => (
-            <View key={room.id} style={styles.row}>
-              <SwipeToDelete onHide={() => hide(room)}>
-                <ConversationRow
-                  room={room}
-                  name={getRoomName(room, uid, data.usersCache)}
-                  preview={chatRowPreview(room, uid)}
-                  unread={data.isUnread(room)}
-                />
-              </SwipeToDelete>
-            </View>
-          ))
+          data.rooms.map((room) => {
+            const canDeleteForEveryone = canRemoveConvForEveryone(
+              room,
+              uid,
+              role === 'full-timer' || role === 'admin',
+            );
+            return (
+              <View key={room.id} style={styles.row}>
+                <SwipeToDelete
+                  onHide={() => hide(room)}
+                  onDeleteForEveryone={canDeleteForEveryone ? () => removeForEveryone(room) : undefined}
+                >
+                  <ConversationRow
+                    room={room}
+                    name={getRoomName(room, uid, data.usersCache)}
+                    preview={chatRowPreview(room, uid)}
+                    unread={data.isUnread(room)}
+                  />
+                </SwipeToDelete>
+              </View>
+            );
+          })
         )}
       </V2Screen>
     </SafeAreaView>

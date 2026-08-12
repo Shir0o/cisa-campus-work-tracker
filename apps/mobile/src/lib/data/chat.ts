@@ -122,3 +122,22 @@ export async function hideChatRoomForUser(roomId: string, uid: string): Promise<
     handleFirestoreError(e, OperationType.UPDATE, `chatRooms/${roomId}`);
   }
 }
+
+/** Deletes a conversation room for everyone (creator or admin). */
+export async function deleteChatRoom(roomId: string): Promise<void> {
+  try {
+    await core.deleteChatRoom(db, roomId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}`);
+  }
+}
+
+/** Deletes a specific message from a conversation room for everyone. */
+export async function deleteChatMessage(roomId: string, messageId: string): Promise<void> {
+  try {
+    await core.deleteChatMessage(db, roomId, messageId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}/messages/${messageId}`);
+  }
+}
+

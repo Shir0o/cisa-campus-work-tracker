@@ -324,3 +324,13 @@ export async function deleteChatRoom(db: Firestore, roomId: string): Promise<voi
   await deleteDoc(doc(db, "chatRooms", roomId));
 }
 
+/** Deletes a specific message from a conversation room for everyone. */
+export async function deleteChatMessage(
+  db: Firestore,
+  roomId: string,
+  messageId: string,
+): Promise<void> {
+  await deleteDoc(doc(db, "chatRooms", roomId, "messages", messageId));
+}
+
+

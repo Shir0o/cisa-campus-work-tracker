@@ -10,38 +10,80 @@ import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 
-export function SwipeToDelete({ onHide, children }: { onHide: () => void; children: React.ReactNode }) {
-  const { c, font, fs } = useV2Theme();
+export function SwipeToDelete({
+  onHide,
+  onDeleteForEveryone,
+  children,
+}: {
+  onHide: () => void;
+  onDeleteForEveryone?: () => void;
+  children: React.ReactNode;
+}) {
+  const { c, font, fs, radius } = useV2Theme();
   const { colors } = useTheme();
   const methodsRef = useRef<SwipeableMethods | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   const close = () => methodsRef.current?.close();
 
+  const handleConfirmDelete = () => {
+    setConfirming(false);
+    close();
+    if (onDeleteForEveryone) {
+      onDeleteForEveryone();
+    } else {
+      onHide();
+    }
+  };
+
   return (
     <ReanimatedSwipeable
       friction={1.5}
       rightThreshold={40}
       overshootRight={false}
+      containerStyle={{ borderRadius: radius.tile, overflow: 'hidden' }}
       onSwipeableWillClose={() => setConfirming(false)}
       renderRightActions={(_progress, _translation, methods) => {
         methodsRef.current = methods;
         return (
-          <View style={{ width: 132 }}>
+          <View
+            style={{
+              width: 132,
+              borderTopRightRadius: radius.tile,
+              borderBottomRightRadius: radius.tile,
+              overflow: 'hidden',
+            }}
+          >
             {!confirming ? (
               <Pressable
                 onPress={() => setConfirming(true)}
-                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.error }}
+                style={{
+                  flex: 1,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: colors.error,
+                  borderTopRightRadius: radius.tile,
+                  borderBottomRightRadius: radius.tile,
+                }}
               >
                 <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>Delete</Text>
               </Pressable>
             ) : (
-              <View style={{ flex: 1, backgroundColor: c.room.bg, padding: 5, gap: 4 }}>
+              <View
+                style={{
+                  flex: 1,
+                  backgroundColor: c.room.bg,
+                  padding: 5,
+                  gap: 4,
+                  borderTopRightRadius: radius.tile,
+                  borderBottomRightRadius: radius.tile,
+                }}
+              >
                 <Text
                   style={{ fontFamily: font.semi, fontSize: fs(9), color: c.room.ink3, textAlign: 'center' }}
                   numberOfLines={1}
                 >
-                  Delete for me?
+                  {onDeleteForEveryone ? 'Delete for everyone?' : 'Delete for me?'}
                 </Text>
                 <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
                   <Pressable
@@ -54,11 +96,7 @@ export function SwipeToDelete({ onHide, children }: { onHide: () => void; childr
                     <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink2 }}>Keep</Text>
                   </Pressable>
                   <Pressable
-                    onPress={() => {
-                      setConfirming(false);
-                      close();
-                      onHide();
-                    }}
+                    onPress={handleConfirmDelete}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: colors.error }}
                   >
                     <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: '#fff' }}>Delete</Text>
@@ -74,3 +112,4 @@ export function SwipeToDelete({ onHide, children }: { onHide: () => void; childr
     </ReanimatedSwipeable>
   );
 }
+

@@ -7,9 +7,9 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { memberAgo, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
+import { canRemoveConvForEveryone, memberAgo, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
-import { hideChatRoomForUser } from '../../lib/data/chat';
+import { deleteChatRoom, hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
@@ -60,12 +60,24 @@ function MemberMessages({ role }: { role: MemberRole }) {
           const unread = data.isUnread(room);
           const kind = kindLine(room);
           const last = room.lastMessage;
+          const canDeleteForEveryone = canRemoveConvForEveryone(
+            room,
+            uid,
+            role === 'full-timer' || role === 'admin',
+          );
           return (
             <SwipeToDelete
               key={room.id}
               onHide={() => {
                 if (uid) void hideChatRoomForUser(room.id, uid);
               }}
+              onDeleteForEveryone={
+                canDeleteForEveryone
+                  ? () => {
+                      void deleteChatRoom(room.id);
+                    }
+                  : undefined
+              }
             >
               <Pressable
                 onPress={() => router.push(`/messages/${room.id}`)}
