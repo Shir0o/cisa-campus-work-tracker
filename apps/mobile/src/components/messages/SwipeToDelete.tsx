@@ -19,22 +19,12 @@ export function SwipeToDelete({
   onDeleteForEveryone?: () => void;
   children: React.ReactNode;
 }) {
-  const { c, font, fs, radius } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   const { colors } = useTheme();
   const methodsRef = useRef<SwipeableMethods | null>(null);
   const [confirming, setConfirming] = useState(false);
 
   const close = () => methodsRef.current?.close();
-
-  const handleConfirmDelete = () => {
-    setConfirming(false);
-    close();
-    if (onDeleteForEveryone) {
-      onDeleteForEveryone();
-    } else {
-      onHide();
-    }
-  };
 
   return (
     <ReanimatedSwipeable
@@ -48,7 +38,7 @@ export function SwipeToDelete({
         return (
           <View
             style={{
-              width: 132,
+              width: 140,
               borderTopRightRadius: radius.tile,
               borderBottomRightRadius: radius.tile,
               overflow: 'hidden',
@@ -57,33 +47,17 @@ export function SwipeToDelete({
             {!confirming ? (
               <Pressable
                 onPress={() => setConfirming(true)}
-                style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: colors.error,
-                  borderTopRightRadius: radius.tile,
-                  borderBottomRightRadius: radius.tile,
-                }}
+                style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.error }}
               >
                 <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>Delete</Text>
               </Pressable>
             ) : (
-              <View
-                style={{
-                  flex: 1,
-                  backgroundColor: c.room.bg,
-                  padding: 5,
-                  gap: 4,
-                  borderTopRightRadius: radius.tile,
-                  borderBottomRightRadius: radius.tile,
-                }}
-              >
+              <View style={{ flex: 1, backgroundColor: c.room.bg, padding: 5, gap: 4 }}>
                 <Text
                   style={{ fontFamily: font.semi, fontSize: fs(9), color: c.room.ink3, textAlign: 'center' }}
                   numberOfLines={1}
                 >
-                  {onDeleteForEveryone ? 'Delete for everyone?' : 'Delete for me?'}
+                  {onDeleteForEveryone ? 'Delete conversation?' : 'Delete for me?'}
                 </Text>
                 <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
                   <Pressable
@@ -96,7 +70,15 @@ export function SwipeToDelete({
                     <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink2 }}>Keep</Text>
                   </Pressable>
                   <Pressable
-                    onPress={handleConfirmDelete}
+                    onPress={() => {
+                      setConfirming(false);
+                      close();
+                      if (onDeleteForEveryone) {
+                        onDeleteForEveryone();
+                      } else {
+                        onHide();
+                      }
+                    }}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: colors.error }}
                   >
                     <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: '#fff' }}>Delete</Text>
@@ -112,4 +94,3 @@ export function SwipeToDelete({
     </ReanimatedSwipeable>
   );
 }
-

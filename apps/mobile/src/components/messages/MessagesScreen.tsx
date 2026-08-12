@@ -8,6 +8,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
+  canRemoveConvForEveryone,
   chatKindNote,
   chatRowPreview,
   getRoomName,
@@ -17,7 +18,7 @@ import {
   type ChatRoom,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
-import { hideChatRoomForUser } from '../../lib/data/chat';
+import { deleteChatRoom, hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
@@ -153,11 +154,7 @@ function Messages() {
           <V2Empty>No conversations yet.</V2Empty>
         ) : (
           data.rooms.map((room) => {
-            const canDeleteForEveryone = canRemoveConvForEveryone(
-              room,
-              uid,
-              role === 'full-timer' || role === 'admin',
-            );
+            const canDeleteForEveryone = canRemoveConvForEveryone(room, uid, role === 'admin');
             return (
               <View key={room.id} style={styles.row}>
                 <SwipeToDelete

@@ -60,11 +60,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
           const unread = data.isUnread(room);
           const kind = kindLine(room);
           const last = room.lastMessage;
-          const canDeleteForEveryone = canRemoveConvForEveryone(
-            room,
-            uid,
-            role === 'full-timer' || role === 'admin',
-          );
+          const canDeleteForEveryone = canRemoveConvForEveryone(room, uid, false);
           return (
             <SwipeToDelete
               key={room.id}

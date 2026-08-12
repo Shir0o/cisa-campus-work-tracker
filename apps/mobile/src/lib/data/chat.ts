@@ -123,7 +123,6 @@ export async function hideChatRoomForUser(roomId: string, uid: string): Promise<
   }
 }
 
-/** Deletes a conversation room for everyone (creator or admin). */
 export async function deleteChatRoom(roomId: string): Promise<void> {
   try {
     await core.deleteChatRoom(db, roomId);
@@ -132,7 +131,6 @@ export async function deleteChatRoom(roomId: string): Promise<void> {
   }
 }
 
-/** Deletes a specific message from a conversation room for everyone. */
 export async function deleteChatMessage(roomId: string, messageId: string): Promise<void> {
   try {
     await core.deleteChatMessage(db, roomId, messageId);
@@ -140,4 +138,3 @@ export async function deleteChatMessage(roomId: string, messageId: string): Prom
     handleFirestoreError(e, OperationType.DELETE, `chatRooms/${roomId}/messages/${messageId}`);
   }
 }
-

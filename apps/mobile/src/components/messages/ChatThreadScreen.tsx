@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
-import { chatKindNote, memberSenderName } from '@cisa/core';
+import { canPostToRoom, chatKindNote, getRoomName, memberSenderName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { deleteChatMessage } from '../../lib/data/chat';
 import { useChatThreadData } from '../../lib/useChatThreadData';
@@ -30,9 +30,9 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
 
-export function ChatThreadScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
-  const roomId = params.id;
+export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {}) {
+  const params = useLocalSearchParams<{ id?: string; roomId?: string }>();
+  const roomId = propRoomId ?? params.id ?? params.roomId;
   const { c, font, radius, fs } = useV2Theme();
   const { colors } = useTheme();
   const router = useRouter();
@@ -41,9 +41,9 @@ export function ChatThreadScreen() {
   const [text, setText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; text: string } | null>(null);
 
-  const name = data.name;
-  const isGroupish = data.room?.type === 'group' || data.room?.type === 'announcement';
-  const canPost = data.canPost;
+  const name = data.room ? getRoomName(data.room, uid, data.usersCache) : '';
+  const canPost = !data.room || canPostToRoom(data.room, uid, role === 'admin');
+  const isGroupish = !!data.room && (data.room.type === 'group' || data.room.type === 'announcement');
 
   const send = async () => {
     if (!text.trim()) return;
@@ -88,7 +88,6 @@ export function ChatThreadScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8, flexGrow: 1 }}
           showsVerticalScrollIndicator={false}
         >
-          {/* The person you're messaging is also someone we're walking with. */}
           {!!data.partnerContactId && (
             <Pressable
               onPress={() => router.push(`/contact/${data.partnerContactId}`)}
@@ -113,7 +112,9 @@ export function ChatThreadScreen() {
             </Pressable>
           )}
 
-          {data.loading ? (
+          {data.error ? (
+            <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>{data.error}</Text>
+          ) : data.loading ? (
             <ActivityIndicator color={c.room.ink2} style={{ marginTop: 24 }} />
           ) : data.dayGroups.length === 0 ? (
             <Text
@@ -146,7 +147,7 @@ export function ChatThreadScreen() {
                 </Text>
                 {group.messages.map((m) => {
                   const mine = m.senderId === uid;
-                  const canDeleteMsg = mine || role === 'full-timer' || role === 'admin';
+                  const canDeleteMsg = mine || role === 'admin';
                   return (
                     <Pressable
                       key={m.id}
@@ -220,14 +221,18 @@ export function ChatThreadScreen() {
               onChangeText={setText}
               placeholder="Write a message…"
               placeholderTextColor={c.room.ink3}
+              multiline
               style={{
                 flex: 1,
                 minHeight: 44,
+                maxHeight: 110,
                 backgroundColor: c.card.bg,
                 borderRadius: radius.row,
                 paddingHorizontal: 16,
+                paddingVertical: 10,
                 fontFamily: font.medium,
                 fontSize: fs(15),
+                lineHeight: fs(21),
                 color: c.room.ink,
               }}
               onSubmitEditing={() => void send()}
