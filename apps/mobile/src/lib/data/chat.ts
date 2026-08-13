@@ -4,6 +4,7 @@
 import * as core from '@cisa/core';
 import type { ChatAttachment, ChatMessage, ChatRoom } from '@cisa/core';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
+import { sendPushNotification } from '../push';
 
 export function subscribeChatRooms(
   uid: string,
@@ -81,7 +82,16 @@ export async function sendMessage(
   try {
     await core.sendMessage(db, roomId, text, sender, attachments, {
       memberIds,
-      onNotify: (payload) => void sendNotification(payload),
+      onNotify: (payload) => {
+        void sendNotification(payload);
+        // Same trigger as the in-app bell, but as an OS-level push (#270).
+        void sendPushNotification({
+          userId: payload.userId,
+          title: payload.title,
+          body: payload.message,
+          data: { targetId: payload.targetId, link: payload.link },
+        });
+      },
     });
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, `chatRooms/${roomId}/messages`);

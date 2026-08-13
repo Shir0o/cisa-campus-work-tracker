@@ -12,13 +12,22 @@
       "distribution": "internal",
       "ios": {
         "simulator": false
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
       }
     },
     "testflight": {
-      "distribution": "store"
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+      }
     },
     "production": {
-      "distribution": "store"
+      "distribution": "store",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+      }
     }
   },
   "submit": {

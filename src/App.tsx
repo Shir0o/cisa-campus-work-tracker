@@ -304,6 +304,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   // design's `openContactFor` / `backFromContact`).
   usePreserveScroll(!!selectedContact);
 
+  // Navigating to another page leaves the open person detail behind (#257): the
+  // detail replaces `children` in <main>, and DashboardLayout is reused across
+  // routes, so an uncleared selection would keep the person on screen even after
+  // the sidebar/topbar navigates elsewhere.
+  React.useEffect(() => {
+    setSelectedContact(null);
+  }, [location.pathname]);
+
   return (
     <LayoutContext.Provider
       value={{

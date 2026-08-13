@@ -27,6 +27,7 @@ export interface Contact {
   spiritualBackground?: string;
   // Captured by the public sign-up form (Overhaul #22); surfaced in the profile later.
   pronouns?: string;
+  gender?: string;
   year?: string;
   major?: string;
   instagram?: string;
