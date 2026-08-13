@@ -181,6 +181,7 @@ export interface VisitInput {
   followUp: string;
   followUpTaskId?: string | null;
   prayerId?: string | null;
+  prayerBurden?: string | null;
   photos?: VisitPhoto[];
 }
 
@@ -215,6 +216,7 @@ const cleanInput = (input: VisitInput) => ({
   followUp: input.followUp.trim(),
   followUpTaskId: input.followUpTaskId ?? null,
   prayerId: input.prayerId ?? null,
+  prayerBurden: input.prayerBurden?.trim() || null,
   photos: input.photos ?? [],
 });
 

@@ -155,7 +155,10 @@ export default function VisitCard({
               </span>
             )}
             {visit.prayerId && (
-              <span title="A prayer came out of this" className="text-stage-violet">
+              <span
+                title={visit.prayerBurden ? `Prayer: ${visit.prayerBurden}` : 'A prayer came out of this'}
+                className="text-stage-violet"
+              >
                 <HeartHandshake className="w-3.5 h-3.5" />
               </span>
             )}
@@ -225,7 +228,7 @@ export default function VisitCard({
               {visit.prayerId && (
                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-stage-violet-soft text-sm text-on-surface">
                   <HeartHandshake className="w-4 h-4 text-stage-violet shrink-0" />
-                  <span className="min-w-0">A prayer came out of this visit</span>
+                  <span className="min-w-0">{visit.prayerBurden || 'A prayer came out of this visit'}</span>
                   <span className="ml-auto text-xs text-on-surface-variant shrink-0">now on our hearts</span>
                 </div>
               )}
@@ -234,14 +237,25 @@ export default function VisitCard({
 
           {photos.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {photos.map((p) => (
-                <img
-                  key={p.path}
-                  src={p.url}
-                  alt={p.name || 'A photo from the visit'}
-                  className="w-24 h-24 object-cover rounded-xl border border-outline-variant"
-                />
-              ))}
+              {photos.map((p) =>
+                p.url ? (
+                  <img
+                    key={p.path}
+                    src={p.url}
+                    alt={p.name || 'A photo from the visit'}
+                    className="w-24 h-24 object-cover rounded-xl border border-outline-variant"
+                  />
+                ) : (
+                  // The file has gone, but the record that there was one hasn't.
+                  <span
+                    key={p.path}
+                    title={p.name || 'A photo from the visit'}
+                    className="w-24 h-24 grid place-items-center rounded-xl border border-outline-variant bg-surface-container-low text-on-surface-variant/60"
+                  >
+                    <ImageIcon className="w-5 h-5" />
+                  </span>
+                ),
+              )}
             </div>
           )}
 

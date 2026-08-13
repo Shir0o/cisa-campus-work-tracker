@@ -162,6 +162,32 @@ describe('Visits', () => {
     expect(logActivity).toHaveBeenCalledWith(expect.objectContaining({ action: 'removed a visit to' }));
   });
 
+  it("reads back the prayer's own words, not just that there was one", async () => {
+    emitVisits([visit({ prayerId: 'p1', prayerBurden: "Her mum's recovery" })]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByText("Her mum's recovery")).toBeInTheDocument();
+    expect(screen.getByText('now on our hearts')).toBeInTheDocument();
+  });
+
+  it('still says something for a visit logged before we kept the words', async () => {
+    emitVisits([visit({ prayerId: 'p1' })]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.getByText('A prayer came out of this visit')).toBeInTheDocument();
+  });
+
+  it('marks a photo whose file has gone rather than showing a broken one', async () => {
+    emitVisits([visit({ photos: [{ path: 'visits/v1/1.jpg', url: '', name: 'room.jpg' }] })]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+    expect(screen.getByTitle('room.jpg')).toBeInTheDocument();
+  });
+
   it('opens an existing visit for editing', async () => {
     emitVisits([visit()]);
     render(<Visits />);

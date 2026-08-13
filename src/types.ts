@@ -161,6 +161,10 @@ export interface Visit {
   followUp: string;
   followUpTaskId?: string | null;
   prayerId?: string | null;
+  /** The prayer's own words, denormalized like `contactNames` — the card reads
+   *  it back without joining the prayers collection. Absent on visits logged
+   *  before we kept it, which still read as "a prayer came out of this". */
+  prayerBurden?: string | null;
   photos: VisitPhoto[];
   createdAt: string;
   createdById: string;

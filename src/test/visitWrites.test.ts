@@ -95,10 +95,17 @@ describe('addVisit', () => {
       followUp: '',
       followUpTaskId: null,
       prayerId: null,
+      prayerBurden: null,
       photos: [],
       createdById: 'u1',
       createdByName: 'Mei Tanaka',
     });
+  });
+
+  it("keeps the prayer's own words on the visit, so the card need not go looking", async () => {
+    await addVisit(input({ prayerId: 'p1', prayerBurden: "  Her mum's recovery  " }), by);
+    const [, payload] = mock(addDoc).mock.calls[0];
+    expect(payload).toMatchObject({ prayerId: 'p1', prayerBurden: "Her mum's recovery" });
   });
 
   it('mirrors the visit onto each person, with a server timestamp the rules require', async () => {

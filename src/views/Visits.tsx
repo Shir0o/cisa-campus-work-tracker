@@ -186,7 +186,7 @@ export default function Visits() {
             {groups.thisWeek.length > 0 ? (
               <>
                 We've been round to{' '}
-                <span className="text-on-surface font-medium">
+                <span className="text-on-surface font-semibold">
                   {groups.thisWeek.length} {groups.thisWeek.length === 1 ? 'home' : 'homes'}
                 </span>{' '}
                 this week
@@ -223,23 +223,26 @@ export default function Visits() {
                   You've been to theirs before — it's been a few weeks.
                 </span>
               </div>
+              {/* The design's `.reach`: a two-column row that lifts on hover. */}
               <div className="flex flex-col gap-3">
                 {overdue.map(({ contact, visit, daysAgo }) => (
                   <div
                     key={contact.id}
-                    className="flex items-center gap-4 flex-wrap p-5 rounded-2xl bg-surface border border-outline-variant"
+                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant shadow-sm transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px hover:shadow-lg"
                   >
-                    <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
-                      {initialsOf(contact.name)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-[17px] font-semibold text-on-surface">{contact.name}</div>
-                      <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
-                        Last visit {daysAgo} days ago · {visit.where || contact.location}
-                        {visit.followUp && (
-                          <> · you said you'd {visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1)}</>
-                        )}
-                      </p>
+                    <div className="flex items-start gap-4 min-w-0">
+                      <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
+                        {initialsOf(contact.name)}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[17px] font-semibold text-on-surface">{contact.name}</div>
+                        <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
+                          Last visit {daysAgo} days ago · {visit.where || contact.location}
+                          {visit.followUp && (
+                            <> · you said you'd {visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1)}</>
+                          )}
+                        </p>
+                      </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
                       <button

@@ -485,6 +485,7 @@ service cloud.firestore {
                (!('followUp' in data) || data.followUp == null || (data.followUp is string && data.followUp.size() <= 500)) &&
                (!('followUpTaskId' in data) || data.followUpTaskId == null || (data.followUpTaskId is string && data.followUpTaskId.size() <= 128)) &&
                (!('prayerId' in data) || data.prayerId == null || (data.prayerId is string && data.prayerId.size() <= 128)) &&
+               (!('prayerBurden' in data) || data.prayerBurden == null || (data.prayerBurden is string && data.prayerBurden.size() <= 500)) &&
                (!('photos' in data) || data.photos is list && data.photos.size() <= 12);
       }
 

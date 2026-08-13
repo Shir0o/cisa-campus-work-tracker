@@ -136,7 +136,45 @@ describe('LogVisitModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
 
     await waitFor(() => expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything()));
-    expect((addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0].prayerId).toBe('prayer-1');
+    const input = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    expect(input.prayerId).toBe('prayer-1');
+    // Kept on the visit too, so the card can read it back without going looking.
+    expect(input.prayerBurden).toBe('Peace for her dad');
+  });
+
+  it('shows what was picked as a thumbnail, not just a filename', async () => {
+    render(<LogVisitModal {...baseProps} />);
+    pick('Ama');
+    const file = new File(['x'], 'room.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('visit-photo-input'), { target: { files: [file] } });
+
+    const thumb = await screen.findByAltText('room.jpg');
+    expect(thumb).toHaveAttribute('src', 'blob:preview');
+    expect(screen.getByRole('button', { name: 'Remove room.jpg' })).toBeInTheDocument();
+  });
+
+  it('shows a photo already on the visit, and drops it when removed', () => {
+    const visit = {
+      id: 'v1',
+      date: '2026-08-10',
+      contactIds: ['c1'],
+      contactNames: ['Ama Osei'],
+      went: ['u1'],
+      wentNames: ['Mei Tanaka'],
+      where: 'Whitman Hall',
+      purpose: '',
+      how: 'A long chat.',
+      followUp: '',
+      photos: [{ path: 'visits/v1/1.jpg', url: 'https://example.test/1.jpg', name: 'room.jpg' }],
+      createdAt: '',
+      createdById: 'u1',
+      createdByName: 'Mei Tanaka',
+    } as Visit;
+
+    render(<LogVisitModal {...baseProps} visit={visit} />);
+    expect(screen.getByAltText('room.jpg')).toHaveAttribute('src', 'https://example.test/1.jpg');
+    fireEvent.click(screen.getByRole('button', { name: 'Remove room.jpg' }));
+    expect(screen.queryByAltText('room.jpg')).not.toBeInTheDocument();
   });
 
   it('uploads photos only after the visit has somewhere to put them', async () => {
