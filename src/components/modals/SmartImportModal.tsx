@@ -14,6 +14,7 @@ import {
   Square,
   ChevronDown,
   ChevronUp,
+  Trash2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
@@ -578,13 +579,26 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
-                              className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                              title="Edit item details"
-                            >
-                              {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setParsedContacts((prev) => prev.filter((c) => c.tempId !== contact.tempId))
+                                }
+                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                                title="Delete item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
+                                className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
+                                title="Edit item details"
+                              >
+                                {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
 
                           {/* Editable Form */}
@@ -721,13 +735,26 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
-                              className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                              title="Edit item details"
-                            >
-                              {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setParsedInteractions((prev) => prev.filter((i) => i.tempId !== interaction.tempId))
+                                }
+                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                                title="Delete item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
+                                className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
+                                title="Edit item details"
+                              >
+                                {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
 
                           {/* Editable Form */}
@@ -844,13 +871,26 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
-                              className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                              title="Edit item details"
-                            >
-                              {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setParsedDiscussions((prev) => prev.filter((d) => d.tempId !== discussion.tempId))
+                                }
+                                className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
+                                title="Delete item"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
+                                className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
+                                title="Edit item details"
+                              >
+                                {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                              </button>
+                            </div>
                           </div>
 
                           {/* Editable Form */}

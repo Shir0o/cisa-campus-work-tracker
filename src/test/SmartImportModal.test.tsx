@@ -254,6 +254,37 @@ describe('SmartImportModal', () => {
     });
   });
 
+  it('allows deleting parsed items during dry run preview step', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          contacts: [{ tempId: 'c1', name: 'John Doe', stage: 'lead' }],
+          interactions: [],
+          discussions: [{ tempId: 'd1', title: 'Weekly Meeting', content: 'Notes', audience: 'team' }],
+        },
+      }),
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Sample input');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText('John Doe')).toBeInTheDocument();
+      expect(screen.getByText('Weekly Meeting')).toBeInTheDocument();
+    });
+
+    // Delete discussion item
+    const deleteButtons = screen.getAllByTitle('Delete item');
+    await userEvent.click(deleteButtons[1]);
+
+    expect(screen.queryByText('Weekly Meeting')).not.toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+
   it('supports tabs, select/deselect all, individual toggling, editing fields, and back button', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
