@@ -15,15 +15,6 @@ export function firstName(name: string | null | undefined): string {
   return (name || "Someone").split(" ")[0];
 }
 
-export function getUserAvatar(photoURL: string | null | undefined, gender?: string | null) {
-  if (photoURL) return photoURL;
-  
-  const isFemale = gender === 'female';
-  return isFemale 
-    ? "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka&gender=female" 
-    : "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix&gender=male";
-}
-
 export function formatPhoneNumber(value: string) {
   if (!value) return value;
   const phoneNumber = value.replace(/[^\d]/g, '');
