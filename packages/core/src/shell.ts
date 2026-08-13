@@ -103,6 +103,7 @@ export const FT_MORE: ShellLink[] = [
   { key: "prayers", label: "Prayer log", href: "/prayer-log" },
   { key: "board", label: "The Board", href: "/coordination" },
   { key: "outreach", label: "Outreach", href: "/outreach" },
+  { key: "signup", label: "Sign-up form", href: "/signup" },
   { key: "settings", label: "Settings", href: "/settings" },
 ];
 

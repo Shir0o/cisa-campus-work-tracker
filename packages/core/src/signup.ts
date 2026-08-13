@@ -9,11 +9,8 @@ export const SIGNUP_MAJORS = [
   'English Lit', 'Business', 'Architecture', 'Music', 'Math', 'Nursing',
   'Linguistics', 'Civil Eng.', 'Sociology',
 ];
-export const SIGNUP_HALLS = [
-  'Whitman Hall', 'Ridgewood House', 'Oak Commons', 'Eastfield Apts',
-  'Briarcliff', 'Stratton Tower', 'off-campus',
-];
-export const SIGNUP_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
+export const SIGNUP_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+export const SIGNUP_GENDERS = ['Male', 'Female', 'Other'];
 export const SIGNUP_HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flyer', 'Instagram', 'Other'];
 export const SIGNUP_INTERESTS = ['Friday gathering', 'Small group', 'Worship team', 'Outreach', 'Prayer group', '1:1 mentorship'];
 export const SIGNUP_SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = [
@@ -26,13 +23,11 @@ export const SIGNUP_SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = 
 
 export interface SignUpFormState {
   name: string;
-  pronouns: string;
+  gender: string;
   year: string;
   major: string;
   phone: string;
   email: string;
-  instagram: string;
-  hall: string;
   spiritualBackground: string;
   howHeard: string;
   interests: string[];
@@ -42,13 +37,11 @@ export interface SignUpFormState {
 
 export const emptySignUpForm: SignUpFormState = {
   name: '',
-  pronouns: '',
+  gender: '',
   year: '',
   major: '',
   phone: '',
   email: '',
-  instagram: '',
-  hall: '',
   spiritualBackground: '',
   howHeard: '',
   interests: [],
@@ -56,16 +49,27 @@ export const emptySignUpForm: SignUpFormState = {
   notes: '',
 };
 
-/** Step-1 required-field checks — ports SignUp.tsx's validateBasics(). */
+/** Step-1 required-field checks: name, gender, year, major, email, phone (cell number) are mandatory. */
 export function validateSignUpBasics(form: SignUpFormState): string | null {
   if (!form.name.trim()) return 'Please enter your full name.';
+  if (!form.gender) return 'Please select your gender.';
+  if (!form.year) return 'Please select your year.';
+  if (!form.major) return 'Please select your major.';
   if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
   if (!form.phone.trim()) return 'Please enter your phone number.';
-  if (!form.spiritualBackground) return 'Please let us know where you are with faith.';
   return null;
 }
 
-/** Anti-abuse math challenge check — ports SignUp.tsx's inline comparison. */
+/** Step-2 required-field checks: interested in (interests) is mandatory. */
+export function validateSignUpInterests(form: SignUpFormState): string | null {
+  if (!form.interests || form.interests.length === 0) {
+    return 'Please select at least one area you are interested in.';
+  }
+  return null;
+}
+
+/** Anti-abuse math challenge check — retained for backward compatibility. */
 export function checkMathAnswer(challenge: { a: number; b: number }, answer: string): boolean {
   return parseInt(answer, 10) === challenge.a + challenge.b;
 }
+

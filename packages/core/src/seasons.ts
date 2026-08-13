@@ -50,3 +50,20 @@ export function seasonTags(activeId: SeasonId, clubRush: boolean): string[] {
   if (clubRush) tags.push("Club Rush");
   return tags;
 }
+
+/** Auto tags based on semester and school year (e.g. ["Fall 2026", "2026-27"]). */
+export function getAutoSemesterAndSchoolYearTags(d: Date = new Date()): string[] {
+  const month = d.getMonth();
+  const year = d.getFullYear();
+
+  const season = seasonForDate(d);
+  const seasonName = season.charAt(0).toUpperCase() + season.slice(1);
+  const semesterTag = `${seasonName} ${year}`;
+
+  const startYear = month >= 7 ? year : year - 1;
+  const endYearShort = String((startYear + 1) % 100).padStart(2, '0');
+  const schoolYearTag = `${startYear}-${endYearShort}`;
+
+  return [semesterTag, schoolYearTag];
+}
+

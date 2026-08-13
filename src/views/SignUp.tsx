@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -15,22 +15,18 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, getDocs, limit } from 'firebase/firestore';
-import { useSeason } from '../lib/seasons';
+import { useSeason, getAutoSemesterAndSchoolYearTags } from '../lib/seasons';
+import { useAuth } from '../components/AuthProvider';
 
-// ── Intake options (mirrors the Field Notes design) ──────────────
 const MAJORS = [
   'Computer Science', 'Biology', 'Economics', 'Mech. Engineering', 'Psychology',
   'English Lit', 'Business', 'Architecture', 'Music', 'Math', 'Nursing',
   'Linguistics', 'Civil Eng.', 'Sociology',
 ];
-const HALLS = [
-  'Whitman Hall', 'Ridgewood House', 'Oak Commons', 'Eastfield Apts',
-  'Briarcliff', 'Stratton Tower', 'off-campus',
-];
-const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
+const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+const GENDERS = ['Male', 'Female', 'Other'];
 const HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flyer', 'Instagram', 'Other'];
 const INTERESTS = ['Friday gathering', 'Small group', 'Worship team', 'Outreach', 'Prayer group', '1:1 mentorship'];
-// Values kept identical to the old form so Directory / Global Search filters stay consistent.
 const SPIRITUAL: { value: string; label: string }[] = [
   { value: 'Exploring', label: 'Exploring faith' },
   { value: 'Christian', label: 'Christian' },
@@ -47,21 +43,19 @@ const FEATURES = [
 
 const emptyForm = {
   name: '',
-  pronouns: '',
+  gender: '',
   year: '',
   major: '',
   phone: '',
   email: '',
-  instagram: '',
-  hall: '',
   spiritualBackground: '',
   howHeard: '',
   interests: [] as string[],
   prayerRequest: '',
   notes: '',
-  botField: '', // honeypot
+  botField: '',
 };
-type FormState = typeof emptyForm;
+type SignUpFormState = typeof emptyForm;
 
 const inputCls =
   'w-full h-11 px-3.5 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/50';
@@ -69,11 +63,12 @@ const textareaCls =
   'w-full px-3.5 py-3 bg-surface-container rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none';
 
 // ── Small local form primitives (no shared form lib exists) ────────────
-function Field({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+function Field({ label, optional, required, children }: { label: string; optional?: boolean; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1.5 cursor-pointer">
       <span className="text-[13px] font-medium text-on-surface-variant">
         {label}
+        {required && <span className="text-error"> *</span>}
         {optional && <span className="text-on-surface-variant/60"> (optional)</span>}
       </span>
       {children}
@@ -137,32 +132,33 @@ function Chip({ active, onClick, children }: { active: boolean; onClick: () => v
 export default function SignUp() {
   const navigate = useNavigate();
   const season = useSeason();
+  const { user } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [form, setForm] = useState<FormState>(emptyForm);
+  const [form, setForm] = useState<SignUpFormState>(emptyForm);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Anti-abuse math challenge
-  const [mathChallenge, setMathChallenge] = useState({ a: 0, b: 0 });
-  const [mathAnswer, setMathAnswer] = useState('');
-
-  useEffect(() => {
-    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
-  }, []);
-
-  const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((prev) => ({ ...prev, [k]: v }));
+  const set = <K extends keyof SignUpFormState>(k: K, v: SignUpFormState[K]) => setForm((prev) => ({ ...prev, [k]: v }));
   const toggleInterest = (i: string) =>
     setForm((prev) => ({
       ...prev,
       interests: prev.interests.includes(i) ? prev.interests.filter((x) => x !== i) : [...prev.interests, i],
     }));
 
-  // Step-1 required checks — preserves the old form's validation rules.
   const validateBasics = (): string | null => {
     if (!form.name.trim()) return 'Please enter your full name.';
+    if (!form.gender) return 'Please select your gender.';
+    if (!form.year) return 'Please select your year.';
+    if (!form.major) return 'Please select your major.';
     if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
     if (!form.phone.trim()) return 'Please enter your phone number.';
-    if (!form.spiritualBackground) return 'Please let us know where you are with faith.';
+    return null;
+  };
+
+  const validateInterests = (): string | null => {
+    if (!form.interests || form.interests.length === 0) {
+      return 'Please select at least one area you are interested in.';
+    }
     return null;
   };
 
@@ -178,19 +174,18 @@ export default function SignUp() {
 
   const resetForm = () => {
     setForm(emptyForm);
-    setMathAnswer('');
-    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
     setError(null);
     setStep(1);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Enter from step 1 advances rather than submitting.
     if (step === 1) {
       goNext();
       return;
     }
+
+
     setError(null);
 
     // Anti-abuse: honeypot — silently "succeed" with no write.
@@ -198,53 +193,62 @@ export default function SignUp() {
       setStep(3);
       return;
     }
-    // Anti-abuse: math challenge.
-    if (parseInt(mathAnswer) !== mathChallenge.a + mathChallenge.b) {
-      setError("Hmm, that didn't quite add up — mind trying the math again?");
+
+    const errBasics = validateBasics();
+    if (errBasics) {
+      setError(errBasics);
+      setStep(1);
       return;
     }
-    // Safety: re-check the required basics from step 1.
-    const err = validateBasics();
-    if (err) {
-      setError(err);
-      setStep(1);
+
+    const errInterests = validateInterests();
+    if (errInterests) {
+      setError(errInterests);
       return;
     }
 
     setLoading(true);
     try {
-      // Assign the first stage (Lead/New) to the new contact.
       const stagesSnapshot = await getDocs(query(collection(db, 'stages'), limit(1)));
       const firstStage = stagesSnapshot.empty ? 'Lead' : stagesSnapshot.docs[0].data().label;
 
-      const contactData = {
+      const autoTags = getAutoSemesterAndSchoolYearTags();
+      const allTags = Array.from(new Set(['New Sign Up', ...autoTags, ...season.tags]));
+
+      const now = new Date();
+      const contactData: Record<string, any> = {
         name: form.name.trim(),
         email: form.email.trim(),
         phone: form.phone.trim(),
-        location: form.hall || 'Online Form',
+        location: 'Online Form',
         role: 'Student',
         stage: firstStage,
         initials: getUserInitials(form.name),
         notes: form.notes.trim(),
         spiritualBackground: form.spiritualBackground,
-        pronouns: form.pronouns.trim(),
+        gender: form.gender,
         year: form.year,
         major: form.major,
-        instagram: form.instagram.trim(),
         howHeard: form.howHeard,
         interests: form.interests,
         prayerRequest: form.prayerRequest.trim(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        lastSeen: new Date().toLocaleDateString(),
-        // Stamp the cohort (e.g. "Fall '26", plus "Club Rush" during intake weeks)
-        // so a whole season's sign-ups can be found again later.
-        tags: ['New Sign Up', ...season.tags],
+        createdTime: now.toISOString(),
+        lastSeen: now.toLocaleDateString(),
+        tags: allTags,
       };
+
+      if (user?.uid) {
+        contactData.createdBy = user.uid;
+        contactData.createdByName = user.displayName || user.email || null;
+        contactData.lastContactedById = user.uid;
+        contactData.lastContactedBy = user.displayName || user.email || null;
+        contactData.lastContactedDate = now.toISOString();
+      }
 
       await addDoc(collection(db, 'contacts'), contactData);
 
-      // Notify admins/managers about the new public sign-up.
       try {
         await addDoc(collection(db, 'notifications'), {
           userId: 'ALL_ADMINS',
@@ -265,6 +269,13 @@ export default function SignUp() {
       setLoading(false);
     }
   };
+
+
+
+
+
+
+
 
   const firstName = form.name.trim().split(' ')[0] || 'friend';
 
@@ -364,7 +375,7 @@ export default function SignUp() {
               <div className="w-14 h-14 rounded-2xl bg-success-container text-success flex items-center justify-center mb-5">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h1 className="font-serif page-title font-medium tracking-tight text-on-surface">Thanks, {firstName}.</h1>
+              <h1 className="font-serif page-title font-medium tracking-tight text-on-surface">{`Thanks, ${firstName}.`}</h1>
               <p className="mt-3 text-[15px] leading-relaxed text-on-surface-variant max-w-[42ch]">
                 We got it. Someone from the team will reach out within two days. If you&rsquo;d like, you&rsquo;re
                 always welcome at our Friday gathering this week (7pm, Lower Common Room).
@@ -409,8 +420,8 @@ export default function SignUp() {
               </h1>
               <p className="mt-1.5 text-[15px] text-on-surface-variant">
                 {step === 1
-                  ? "Just the basics. We'll cover the rest in person."
-                  : 'All optional — skip anything you’d rather not answer.'}
+                  ? "Just the basics. Fields marked with * are required."
+                  : 'Fields marked with * are required.'}
               </p>
 
               <AnimatePresence>
@@ -435,7 +446,7 @@ export default function SignUp() {
               >
                   {step === 1 ? (
                     <>
-                      <Field label="Full name">
+                      <Field label="Full name" required>
                         <input
                           className={inputCls}
                           value={form.name}
@@ -444,19 +455,14 @@ export default function SignUp() {
                         />
                       </Field>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Pronouns" optional>
-                          <input
-                            className={inputCls}
-                            value={form.pronouns}
-                            onChange={(e) => set('pronouns', e.target.value)}
-                            placeholder="she / her"
-                          />
+                        <Field label="Gender" required>
+                          <SelectInput value={form.gender} onChange={(v) => set('gender', v)} placeholder="Choose…" options={GENDERS} />
                         </Field>
-                        <Field label="Year">
+                        <Field label="Year" required>
                           <SelectInput value={form.year} onChange={(v) => set('year', v)} placeholder="Choose…" options={YEARS} />
                         </Field>
                       </div>
-                      <Field label="Major">
+                      <Field label="Major" required>
                         <SelectInput
                           value={form.major}
                           onChange={(v) => set('major', v)}
@@ -465,7 +471,7 @@ export default function SignUp() {
                         />
                       </Field>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Phone">
+                        <Field label="Cell number" required>
                           <input
                             className={inputCls}
                             type="tel"
@@ -474,7 +480,7 @@ export default function SignUp() {
                             placeholder="(___) ___-____"
                           />
                         </Field>
-                        <Field label="Email">
+                        <Field label="Email" required>
                           <input
                             className={inputCls}
                             type="email"
@@ -484,20 +490,7 @@ export default function SignUp() {
                           />
                         </Field>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <Field label="Instagram" optional>
-                          <input
-                            className={inputCls}
-                            value={form.instagram}
-                            onChange={(e) => set('instagram', e.target.value)}
-                            placeholder="@handle"
-                          />
-                        </Field>
-                        <Field label="Where do you live?">
-                          <SelectInput value={form.hall} onChange={(v) => set('hall', v)} placeholder="Choose…" options={HALLS} />
-                        </Field>
-                      </div>
-                      <Field label="Where are you with faith right now?">
+                      <Field label="Where are you with faith right now?" optional>
                         <SelectInput
                           value={form.spiritualBackground}
                           onChange={(v) => set('spiritualBackground', v)}
@@ -517,16 +510,17 @@ export default function SignUp() {
                         <button
                           type="button"
                           onClick={goNext}
-                          disabled={!form.name.trim()}
+                          disabled={!form.name.trim() || !form.gender || !form.year || !form.major || !form.phone.trim() || !form.email.trim()}
                           className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                         >
                           Continue <ArrowRight className="w-4 h-4" />
                         </button>
+
                       </div>
                     </>
                   ) : (
                     <>
-                      <Field label="How did you hear about us?">
+                      <Field label="How did you hear about us?" optional>
                         <div className="flex flex-wrap gap-2">
                           {HOW_HEARD.map((o) => (
                             <Chip key={o} active={form.howHeard === o} onClick={() => set('howHeard', form.howHeard === o ? '' : o)}>
@@ -536,7 +530,7 @@ export default function SignUp() {
                         </div>
                       </Field>
 
-                      <Field label="What are you drawn to?">
+                      <Field label="What are you drawn to?" required>
                         <div className="flex flex-wrap gap-2">
                           {INTERESTS.map((o) => {
                             const active = form.interests.includes(o);
@@ -570,18 +564,6 @@ export default function SignUp() {
                         />
                       </Field>
 
-                      <Field label={`Quick check — what's ${mathChallenge.a} + ${mathChallenge.b}?`}>
-                        <input
-                          className={cn(inputCls, 'max-w-[160px]')}
-                          type="number"
-                          min="0"
-                          inputMode="numeric"
-                          value={mathAnswer}
-                          onChange={(e) => setMathAnswer(e.target.value)}
-                          placeholder="Your answer"
-                        />
-                      </Field>
-
                       {/* Anti-abuse: honeypot (off-screen, accessible to bots) */}
                       <div className="absolute left-[-9999px] top-auto w-1 h-1 overflow-hidden" aria-hidden="true">
                         <label htmlFor="botField">Leave this field blank</label>
@@ -591,8 +573,8 @@ export default function SignUp() {
                           type="text"
                           tabIndex={-1}
                           autoComplete="off"
-                          value={form.botField}
-                          onChange={(e) => set('botField', e.target.value)}
+                          value={form.botField || ''}
+                          onChange={(e) => setForm((prev) => ({ ...prev, botField: e.target.value }))}
                         />
                       </div>
 
@@ -609,7 +591,7 @@ export default function SignUp() {
                         </button>
                         <button
                           type="submit"
-                          disabled={loading}
+                          disabled={loading || form.interests.length === 0}
                           className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                         >
                           {loading ? (
@@ -633,3 +615,4 @@ export default function SignUp() {
     </div>
   );
 }
+

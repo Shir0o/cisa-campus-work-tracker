@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  checkMathAnswer,
   emptySignUpForm,
   validateSignUpBasics,
-  SIGNUP_HALLS,
+  validateSignUpInterests,
+  SIGNUP_GENDERS,
   SIGNUP_HOW_HEARD,
   SIGNUP_INTERESTS,
   SIGNUP_MAJORS,
@@ -17,38 +17,21 @@ import {
 import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
 import { useActiveSeason } from '../src/lib/useActiveSeason';
+import { useAuth } from '../src/lib/AuthProvider';
 import { submitSignUp } from '../src/lib/data/signup';
 
-// Public welcome form — ported from src/views/SignUp.tsx. Unauthenticated
-// (see app/_layout.tsx's redirect exemption): a prospective student fills
-// this out themselves, so there's no logged-in actor to attribute the contact to.
-//
-// Deliberately NOT in the mobile v2 language, and that IS the design: its whole
-// styling is mobile.css's two `.m2-signup` rules, which push the SHARED form
-// (`.signup-wrap`, from styles.css) full-screen over whichever of the three
-// phone apps you were in — "not an app login, the form you hand to someone new"
-// (see the design project's SIGNUP.md). All we take from `.m2-signup` is the
-// paper backdrop, so it reads as a handed-over sheet rather than an app screen.
 export default function SignUp() {
   const { colors, spacing, radius, mode } = useTheme();
-  // `.m2-signup{background:var(--bg,#eceae6)}` — warm paper in daylight, the
-  // app's own background at night, exactly as the shared `--bg` var resolves.
   const paper = mode === 'dark' ? colors.background : '#eceae6';
   const router = useRouter();
   const season = useActiveSeason();
+  const { user } = useAuth();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState<SignUpFormState>(emptySignUpForm);
   const [botField, setBotField] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [mathChallenge, setMathChallenge] = useState({ a: 0, b: 0 });
-  const [mathAnswer, setMathAnswer] = useState('');
-
-  useEffect(() => {
-    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
-  }, []);
 
   const set = <K extends keyof SignUpFormState>(k: K, v: SignUpFormState[K]) =>
     setForm((prev) => ({ ...prev, [k]: v }));
@@ -71,8 +54,6 @@ export default function SignUp() {
   const resetForm = () => {
     setForm(emptySignUpForm);
     setBotField('');
-    setMathAnswer('');
-    setMathChallenge({ a: Math.floor(Math.random() * 10) + 1, b: Math.floor(Math.random() * 10) + 1 });
     setError(null);
     setStep(1);
   };
@@ -85,20 +66,24 @@ export default function SignUp() {
       setStep(3);
       return;
     }
-    if (!checkMathAnswer(mathChallenge, mathAnswer)) {
-      setError("Hmm, that didn't quite add up — mind trying the math again?");
+
+    const errBasics = validateSignUpBasics(form);
+    if (errBasics) {
+      setError(errBasics);
+      setStep(1);
       return;
     }
-    const err = validateSignUpBasics(form);
-    if (err) {
-      setError(err);
-      setStep(1);
+
+    const errInterests = validateSignUpInterests(form);
+    if (errInterests) {
+      setError(errInterests);
       return;
     }
 
     setLoading(true);
     try {
-      await submitSignUp(form, season.tags);
+      const byActor = user ? { uid: user.uid, name: user.displayName || user.email } : undefined;
+      await submitSignUp(form, season.tags, byActor);
       setStep(3);
     } catch {
       setError('Something went wrong sending that — mind trying again?');
@@ -169,7 +154,7 @@ export default function SignUp() {
 
         <AppText variant="title">{step === 1 ? 'Tell us about you.' : 'And a little more.'}</AppText>
         <AppText variant="body" color={colors.onSurfaceVariant}>
-          {step === 1 ? "Just the basics. We'll cover the rest in person." : "All optional — skip anything you'd rather not answer."}
+          {step === 1 ? "Just the basics. Fields marked with * are required." : "Fields marked with * are required."}
         </AppText>
 
         {error && (
@@ -182,19 +167,19 @@ export default function SignUp() {
 
         {step === 1 ? (
           <>
-            <Field label="Full name">
+            <Field label="Full name" required>
               <TextInput style={inputStyle} value={form.name} onChangeText={(v) => set('name', v)} placeholder="e.g. Naomi Park" placeholderTextColor={colors.onSurfaceVariant} />
             </Field>
-            <Field label="Pronouns (optional)">
-              <TextInput style={inputStyle} value={form.pronouns} onChangeText={(v) => set('pronouns', v)} placeholder="she / her" placeholderTextColor={colors.onSurfaceVariant} />
+            <Field label="Gender" required>
+              <PillRow options={SIGNUP_GENDERS} value={form.gender} onChange={(v) => set('gender', v)} />
             </Field>
-            <Field label="Year">
+            <Field label="Year" required>
               <PillRow options={SIGNUP_YEARS} value={form.year} onChange={(v) => set('year', v)} />
             </Field>
-            <Field label="Major">
+            <Field label="Major" required>
               <PillRow options={[...SIGNUP_MAJORS, 'Other / undecided']} value={form.major} onChange={(v) => set('major', v)} />
             </Field>
-            <Field label="Phone">
+            <Field label="Cell number" required>
               <TextInput
                 style={inputStyle}
                 value={form.phone}
@@ -204,7 +189,7 @@ export default function SignUp() {
                 placeholderTextColor={colors.onSurfaceVariant}
               />
             </Field>
-            <Field label="Email">
+            <Field label="Email" required>
               <TextInput
                 style={inputStyle}
                 value={form.email}
@@ -215,13 +200,7 @@ export default function SignUp() {
                 placeholderTextColor={colors.onSurfaceVariant}
               />
             </Field>
-            <Field label="Instagram (optional)">
-              <TextInput style={inputStyle} value={form.instagram} onChangeText={(v) => set('instagram', v)} placeholder="@handle" autoCapitalize="none" placeholderTextColor={colors.onSurfaceVariant} />
-            </Field>
-            <Field label="Where do you live?">
-              <PillRow options={SIGNUP_HALLS} value={form.hall} onChange={(v) => set('hall', v)} />
-            </Field>
-            <Field label="Where are you with faith right now?">
+            <Field label="Where are you with faith right now? (optional)">
               <PillRow
                 options={SIGNUP_SPIRITUAL_BACKGROUNDS.map((o) => o.label)}
                 value={SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.value === form.spiritualBackground)?.label ?? ''}
@@ -231,15 +210,15 @@ export default function SignUp() {
 
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
               <Button title="Cancel" variant="ghost" onPress={() => router.replace('/')} />
-              <Button title="Continue" onPress={goNext} disabled={!form.name.trim()} />
+              <Button title="Continue" onPress={goNext} disabled={!form.name.trim() || !form.gender || !form.year || !form.major || !form.phone.trim() || !form.email.trim()} />
             </View>
           </>
         ) : (
           <>
-            <Field label="How did you hear about us?">
+            <Field label="How did you hear about us? (optional)">
               <PillRow options={SIGNUP_HOW_HEARD} value={form.howHeard} onChange={(v) => set('howHeard', form.howHeard === v ? '' : v)} />
             </Field>
-            <Field label="What are you drawn to?">
+            <Field label="What are you drawn to?" required>
               <MultiPillRow options={SIGNUP_INTERESTS} value={form.interests} onToggle={toggleInterest} />
             </Field>
             <Field label="Anything we can pray for? (optional)">
@@ -262,18 +241,7 @@ export default function SignUp() {
                 multiline
               />
             </Field>
-            <Field label={`Quick check — what's ${mathChallenge.a} + ${mathChallenge.b}?`}>
-              <TextInput
-                style={[inputStyle, { maxWidth: 140 }]}
-                value={mathAnswer}
-                onChangeText={setMathAnswer}
-                placeholder="Your answer"
-                keyboardType="number-pad"
-                placeholderTextColor={colors.onSurfaceVariant}
-              />
-            </Field>
-            {/* Anti-abuse honeypot: off-screen, still reachable by scripted bots
-                (relevant once this screen also serves as the public web page). */}
+            {/* Anti-abuse honeypot: off-screen, still reachable by scripted bots */}
             <View
               style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
               accessibilityElementsHidden
@@ -291,7 +259,7 @@ export default function SignUp() {
                   setStep(1);
                 }}
               />
-              <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading} />
+              <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading || form.interests.length === 0} />
             </View>
           </>
         )}
@@ -300,12 +268,13 @@ export default function SignUp() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   const { colors } = useTheme();
   return (
     <View style={{ gap: 6 }}>
       <AppText variant="label" color={colors.onSurfaceVariant}>
         {label}
+        {required && <Text style={{ color: colors.error }}> *</Text>}
       </AppText>
       {children}
     </View>
@@ -377,3 +346,4 @@ function MultiPillRow({
     </View>
   );
 }
+

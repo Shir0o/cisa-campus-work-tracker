@@ -13,42 +13,60 @@ import {
 } from "firebase/firestore";
 import { getUserInitials } from "../utils";
 import type { SignUpFormState } from "../signup";
+import { getAutoSemesterAndSchoolYearTags } from "../seasons";
 
 /**
  * Writes the new lead to `contacts` (stage defaults to the first `stages`
  * doc, falling back to "Lead") and best-effort broadcasts an ALL_ADMINS
- * notification. Returns the new contact id.
+ * notification. If `by` is supplied, stamps the creator/contacting actor.
+ * Auto-tags with semester and school year (e.g. Fall 2026, 2026-27).
+ * Returns the new contact id.
  */
 export async function submitSignUp(
   db: Firestore,
   form: SignUpFormState,
   seasonTags: string[],
+  by?: { uid?: string | null; name?: string | null },
 ): Promise<string> {
   const stagesSnapshot = await getDocs(query(collection(db, "stages"), limit(1)));
   const firstStage = stagesSnapshot.empty ? "Lead" : (stagesSnapshot.docs[0].data().label as string);
 
-  const docRef = await addDoc(collection(db, "contacts"), {
+  const autoTags = getAutoSemesterAndSchoolYearTags();
+  const allTags = Array.from(new Set(["New Sign Up", ...autoTags, ...seasonTags]));
+
+  const now = new Date();
+  const contactData: Record<string, any> = {
     name: form.name.trim(),
     email: form.email.trim(),
     phone: form.phone.trim(),
-    location: form.hall || "Online Form",
+    location: "Online Form",
     role: "Student",
     stage: firstStage,
     initials: getUserInitials(form.name),
     notes: form.notes.trim(),
     spiritualBackground: form.spiritualBackground,
-    pronouns: form.pronouns.trim(),
+    gender: form.gender,
     year: form.year,
     major: form.major,
-    instagram: form.instagram.trim(),
     howHeard: form.howHeard,
     interests: form.interests,
     prayerRequest: form.prayerRequest.trim(),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
-    lastSeen: new Date().toLocaleDateString(),
-    tags: ["New Sign Up", ...seasonTags],
-  });
+    createdTime: now.toISOString(),
+    lastSeen: now.toLocaleDateString(),
+    tags: allTags,
+  };
+
+  if (by?.uid) {
+    contactData.createdBy = by.uid;
+    contactData.createdByName = by.name ?? null;
+    contactData.lastContactedById = by.uid;
+    contactData.lastContactedBy = by.name ?? null;
+    contactData.lastContactedDate = now.toISOString();
+  }
+
+  const docRef = await addDoc(collection(db, "contacts"), contactData);
 
   try {
     await addDoc(collection(db, "notifications"), {
@@ -65,3 +83,4 @@ export async function submitSignUp(
 
   return docRef.id;
 }
+

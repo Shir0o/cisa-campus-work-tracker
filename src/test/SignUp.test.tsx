@@ -1,6 +1,6 @@
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { addDoc, getDocs } from 'firebase/firestore';
+import { addDoc } from 'firebase/firestore';
 import SignUp from '../views/SignUp';
 import React from 'react';
 
@@ -35,6 +35,12 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+vi.mock('../components/AuthProvider', () => ({
+  useAuth: () => ({
+    user: { uid: 'ft-123', displayName: 'Staff Tester', email: 'staff@test.com' },
+  }),
+}));
+
 vi.mock('../lib/seasons', () => ({
   useSeason: () => ({
     autoId: 'summer',
@@ -48,6 +54,7 @@ vi.mock('../lib/seasons', () => ({
     resetSeason: vi.fn(),
     toggleClubRush: vi.fn(),
   }),
+  getAutoSemesterAndSchoolYearTags: () => ['Summer 2026', '2026-27'],
 }));
 
 describe('SignUp View', () => {
@@ -55,169 +62,147 @@ describe('SignUp View', () => {
     vi.clearAllMocks();
   });
 
-  it('renders Step 1 with basic fields', () => {
+  it('renders Step 1 with mandatory fields', () => {
     render(<SignUp />);
 
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('e.g. Naomi Park')).toBeInTheDocument();
+    expect(screen.getByLabelText(/Gender/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Year/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Major/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Cell number/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
   });
 
-  it('navigates through steps and validates input', async () => {
+  it('navigates through steps after filling mandatory fields and submits', async () => {
     render(<SignUp />);
 
-    const nameInput = screen.getByPlaceholderText('e.g. Naomi Park');
-    fireEvent.change(nameInput, { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
+    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
+    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
-    fireEvent.change(spiritualSelect, { target: { value: 'None' } });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
 
     const continueButton = screen.getByRole('button', { name: /Continue/i });
+    await waitFor(() => expect(continueButton).not.toBeDisabled());
     fireEvent.click(continueButton);
 
     // Should now be on Step 2
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
-
-    // Verify step number matches step 2
     expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
-  });
 
-  it('shows error on invalid math answer, submits correctly on valid answer', async () => {
-    render(<SignUp />);
+    // Select interest (mandatory step 2)
+    const firstInterestChip = screen.getByText('Friday gathering');
+    fireEvent.click(firstInterestChip);
 
-    // Step 1
-    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
-    fireEvent.change(spiritualSelect, { target: { value: 'None' } });
-
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
-
-    // Find the math question to answer
-    const mathLabelElement = screen.getByText(/Quick check/i);
-    const mathLabelText = mathLabelElement.textContent || '';
-    const match = mathLabelText.match(/(\d+)\s*\+\s*(\d+)/);
-    expect(match).not.toBeNull();
-
-    const a = parseInt(match![1], 10);
-    const b = parseInt(match![2], 10);
-    const wrongSum = a + b + 1;
-    const correctSum = a + b;
-
-    const mathInput = screen.getByPlaceholderText('Your answer');
-
-    // Submit with wrong answer
-    fireEvent.change(mathInput, { target: { value: wrongSum.toString() } });
     const submitBtn = screen.getByRole('button', { name: /Send it/i });
-    fireEvent.click(submitBtn);
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+    fireEvent.submit(submitBtn.closest('form')!);
 
-    expect(await screen.findByText(/didn't quite add up/i)).toBeInTheDocument();
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
-    // Submit with correct answer
-    fireEvent.change(mathInput, { target: { value: correctSum.toString() } });
-    fireEvent.click(submitBtn);
+    await waitFor(() => {
+      expect(screen.getByText(/Thanks, Jane\./i)).toBeInTheDocument();
+    });
 
-    // Step 3 success page
-    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
-    expect(addDoc).toHaveBeenCalled();
-
-    // The new contact is stamped with the season cohort (+ the "New Sign Up" tag).
+    // Verify contact contains logged in actor and auto tags
     const contactArg = (addDoc as any).mock.calls.find(
       (c: any[]) => c[1] && Array.isArray(c[1].tags),
     )?.[1];
+    expect(contactArg?.gender).toBe('Female');
+    expect(contactArg?.createdBy).toBe('ft-123');
+    expect(contactArg?.createdByName).toBe('Staff Tester');
     expect(contactArg?.tags).toEqual(expect.arrayContaining(['New Sign Up', "Summer '26"]));
   });
 
-  it('covers optional inputs, back navigation, honeypot, and success page actions', async () => {
+  it('covers optional fields, chip toggles, back navigation, reset form, and spiritual background', async () => {
     render(<SignUp />);
-
-    // Cancel on step 1 goes back to '/'
-    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
-    fireEvent.click(cancelBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/');
 
     // Fill step 1
     fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
+    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
+    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
     fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    
-    // Fill optional inputs
-    fireEvent.change(screen.getByLabelText(/Pronouns/i), { target: { value: 'she/her' } });
-    fireEvent.change(screen.getByLabelText(/Instagram/i), { target: { value: '@jane_doe' } });
-
-    const yearSelect = screen.getByLabelText('Year') as HTMLSelectElement;
-    fireEvent.change(yearSelect, { target: { value: 'Freshman' } });
-
-    const majorSelect = screen.getByLabelText('Major') as HTMLSelectElement;
-    fireEvent.change(majorSelect, { target: { value: 'Computer Science' } });
-
-    const hallSelect = screen.getByLabelText('Where do you live?') as HTMLSelectElement;
-    fireEvent.change(hallSelect, { target: { value: 'Whitman Hall' } });
-
-    const spiritualSelect = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
-    fireEvent.change(spiritualSelect, { target: { value: 'None' } });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Where are you with faith/i), { target: { value: 'Christian' } });
 
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
 
-    // Toggle some interests
-    const firstInterestChip = screen.getByText('Friday gathering');
-    fireEvent.click(firstInterestChip); // select
-    fireEvent.click(firstInterestChip); // deselect
-    fireEvent.click(firstInterestChip); // select again
+    // Toggle how heard chip
+    const friendChip = screen.getByText('Friend');
+    fireEvent.click(friendChip); // select
+    fireEvent.click(friendChip); // deselect
 
-    // Fill optional textareas
-    fireEvent.change(screen.getByPlaceholderText(/Confidentially/i), { target: { value: 'Please pray for my exams.' } });
-    fireEvent.change(screen.getByPlaceholderText(/Allergies/i), { target: { value: 'No allergies.' } });
+    // Toggle interest chip
+    const interestChip = screen.getByText('Friday gathering');
+    fireEvent.click(interestChip); // select
+    fireEvent.click(interestChip); // deselect
+    fireEvent.click(interestChip); // select again
+
+    // Optional textareas
+    fireEvent.change(screen.getByPlaceholderText(/Confidentially/i), { target: { value: 'Pray for exams' } });
+    fireEvent.change(screen.getByPlaceholderText(/Allergies/i), { target: { value: 'No allergies' } });
 
     // Test back button
     const backBtn = screen.getByRole('button', { name: 'Back' });
     fireEvent.click(backBtn);
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
 
-    // Continue to step 2 again
+    // Continue again
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+
+    const submitBtn = screen.getByRole('button', { name: /Send it/i });
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+    fireEvent.submit(submitBtn.closest('form')!);
+
+    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
+
+    // Add another resets form
+    fireEvent.click(screen.getByRole('button', { name: /Add another/i }));
+    expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
+  });
+
+  it('handles cancel button on step 1 and honeypot check', async () => {
+    render(<SignUp />);
+
+    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
+    fireEvent.click(cancelBtn);
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+
+    // Fill step 1
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
+    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
+    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
+    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
+
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
+    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+
+    // Select interest so step 2 submit button is enabled
+    const firstInterestChip = screen.getByText('Friday gathering');
+    fireEvent.click(firstInterestChip);
 
     // Trigger honeypot
     const botInput = document.getElementById('botField') as HTMLInputElement;
     fireEvent.change(botInput, { target: { value: 'I am a bot' } });
 
-    // Submit (with correct math, though honeypot bypasses it anyway)
     const submitBtn = screen.getByRole('button', { name: /Send it/i });
-    fireEvent.click(submitBtn);
+    await waitFor(() => expect(submitBtn).not.toBeDisabled());
+    fireEvent.submit(submitBtn.closest('form')!);
 
-    // It should go straight to step 3 success state without database writes
     expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
     expect(addDoc).not.toHaveBeenCalled();
-
-    // Click "Add another" to reset
-    fireEvent.click(screen.getByRole('button', { name: /Add another/i }));
-    expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
-
-    // Go to step 3 again via normal path
-    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    const spiritualSelect2 = screen.getByLabelText('Where are you with faith right now?') as HTMLSelectElement;
-    fireEvent.change(spiritualSelect2, { target: { value: 'None' } });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-
-    const mathLabelElement = screen.getByText(/Quick check/i);
-    const mathLabelText = mathLabelElement.textContent || '';
-    const match = mathLabelText.match(/(\d+)\s*\+\s*(\d+)/);
-    const correctSum = parseInt(match![1], 10) + parseInt(match![2], 10);
-    fireEvent.change(screen.getByPlaceholderText('Your answer'), { target: { value: correctSum.toString() } });
-    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
-
-    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
-
-    // Click "Back to app"
-    fireEvent.click(screen.getByRole('button', { name: 'Back to app' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 });
+
+
+
+
+
