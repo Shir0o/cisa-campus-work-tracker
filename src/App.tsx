@@ -24,6 +24,7 @@ import PrayerList from "./views/PrayerList";
 import AnsweredList from "./views/AnsweredList";
 import Settings from "./views/Settings";
 import SignUp from "./views/SignUp";
+import PrivacyPolicy from "./views/PrivacyPolicy";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Plus } from "lucide-react";
@@ -124,6 +125,14 @@ function EmailPasswordForm() {
       >
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
+      <div className="pt-2 text-center">
+        <a
+          href="/privacy"
+          className="text-xs text-on-surface-variant hover:text-primary transition-colors underline"
+        >
+          Privacy Policy
+        </a>
+      </div>
     </form>
   );
 }
@@ -419,6 +428,8 @@ export default function App() {
                   </React.Suspense>
                 }
               />
+
+              <Route path="/privacy" element={<PrivacyPolicy />} />
 
               <Route
                 path="/"

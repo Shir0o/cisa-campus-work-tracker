@@ -24,9 +24,11 @@
       }
     },
     "production": {
+      "developmentClient": false,
       "distribution": "store",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev",
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
       }
     }
   },
