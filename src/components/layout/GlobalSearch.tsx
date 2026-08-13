@@ -212,8 +212,8 @@ export default function GlobalSearch() {
     }
     close();
   };
-  const go = (path: string) => {
-    navigate(path);
+  const go = (path: string, state?: object) => {
+    navigate(path, state ? { state } : undefined);
     close();
   };
 
@@ -270,7 +270,12 @@ export default function GlobalSearch() {
   } else {
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
-    boardResults.forEach((n) => navItems.push({ key: `b:${n.id}`, run: () => go('/coordination') }));
+    boardResults.forEach((n) =>
+      navItems.push({
+        key: `b:${n.id}`,
+        run: () => go('/coordination', { focusNoteId: n.id, focusDocId: (n as { sessionId?: string }).sessionId }),
+      }),
+    );
     historyResults.forEach((a) => navItems.push({ key: `h:${a.id}`, run: () => go('/history') }));
   }
   const indexByKey: Record<string, number> = {};

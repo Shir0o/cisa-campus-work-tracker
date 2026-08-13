@@ -45,6 +45,7 @@ interface CoordinationNotesMobileProps {
   ReadOnlyDocComponent: any;
   TodoSectionComponent: React.ReactNode;
   NotesSectionComponent: React.ReactNode;
+  SearchBarComponent?: React.ReactNode;
 }
 
 export default function CoordinationNotesMobile({
@@ -78,6 +79,7 @@ export default function CoordinationNotesMobile({
   ReadOnlyDocComponent: ReadOnlyDoc,
   TodoSectionComponent,
   NotesSectionComponent,
+  SearchBarComponent,
 }: CoordinationNotesMobileProps) {
   const [mReading, setMReading] = useState(false);
   const [mEditing, setMEditing] = useState(false);
@@ -179,6 +181,8 @@ export default function CoordinationNotesMobile({
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">{heading}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 bdm-state">{intro}</p>
       </header>
+
+      {SearchBarComponent && <div className="px-5 mt-4">{SearchBarComponent}</div>}
 
       {/* Pages Section */}
       <section className="px-5 mt-5 bdm-pages">

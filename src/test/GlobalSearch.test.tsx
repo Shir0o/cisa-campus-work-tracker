@@ -173,6 +173,16 @@ describe('GlobalSearch', () => {
     expect(screen.getAllByText('History').length).toBeGreaterThan(0);
   });
 
+  it('clicking a Coordination Note result navigates to /coordination with note and doc state', () => {
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    const boardNoteBtn = screen.getAllByText('Coordination Notes')[0].closest('section')?.querySelector('button');
+    if (boardNoteBtn) {
+      fireEvent.click(boardNoteBtn);
+      expect(h.mockNavigate).toHaveBeenCalledWith('/coordination', expect.objectContaining({ state: expect.objectContaining({ focusNoteId: 'b1' }) }));
+    }
+  });
+
   it('operator does not see staff-only groups or the history toggle', () => {
     h.mockAuth.value = TEST_USERS.operator;
     render(<GlobalSearch />);

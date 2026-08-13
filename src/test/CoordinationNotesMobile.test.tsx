@@ -66,6 +66,7 @@ function Harness({ docs, canEdit = true, onNewDoc = vi.fn(), onDelete = vi.fn(),
       ReadOnlyDocComponent={ReadOnlyDocStub}
       TodoSectionComponent={<div>todo section</div>}
       NotesSectionComponent={<div>notes section</div>}
+      SearchBarComponent={<div data-testid="mobile-search-bar">Search Bar</div>}
     />
   );
 }
