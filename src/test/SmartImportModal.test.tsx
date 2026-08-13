@@ -212,6 +212,27 @@ describe('SmartImportModal', () => {
     });
   });
 
+  it('handles 404 HTML responses gracefully without crashing with SyntaxError', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: async () => {
+        throw new SyntaxError("Unexpected token '<', \"<!DOCTYPE \"... is not valid JSON");
+      },
+      text: async () => '<!DOCTYPE html><html><body><pre>Cannot POST /api/smart-import/parse</pre></body></html>',
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Some text');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/404/i)).toBeInTheDocument();
+    });
+  });
+
   it('supports tabs, select/deselect all, individual toggling, editing fields, and back button', async () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
