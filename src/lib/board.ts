@@ -8,6 +8,7 @@
 import { format, parseISO, isValid, isThisWeek } from 'date-fns';
 import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import type { AppRole } from './permissions';
+import { mdSummary } from './markdown';
 
 // ── Categories → warm stage tones (matches BOARD_CATEGORIES in the design) ──
 export type BoardCategory = 'gathering' | 'outreach' | 'care' | 'prayer' | 'logistics';
@@ -481,4 +482,168 @@ export function planDocTaskEdits(
 
   return edits;
 }
+
+// ── Search & Jump to Anchor Helpers ─────────────────────────────────────────
+
+export interface DocHeadingAnchor {
+  level: number;
+  text: string;
+  id: string;
+  lineIndex: number;
+}
+
+export interface BoardSearchResult {
+  id: string;
+  kind: 'doc' | 'heading' | 'note' | 'task';
+  docId?: string;
+  noteId?: string;
+  taskId?: string;
+  title: string;
+  subtitle?: string;
+  headingText?: string;
+  anchorId?: string;
+  snippet?: string;
+  date?: string;
+}
+
+export function slugifyHeading(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
+}
+
+export function parseDocHeadings(md: string): DocHeadingAnchor[] {
+  if (!md) return [];
+  const lines = md.split('\n');
+  const headings: DocHeadingAnchor[] = [];
+  lines.forEach((line, idx) => {
+    const match = line.match(/^(#{1,4})\s+(.+)$/);
+    if (match) {
+      const level = match[1].length;
+      const rawText = match[2].trim().replace(/[\*\_\`]/g, '');
+      const id = slugifyHeading(rawText);
+      if (id) {
+        headings.push({ level, text: rawText, id, lineIndex: idx });
+      }
+    }
+  });
+  return headings;
+}
+
+export function searchBoardContent(
+  docs: BoardDoc[],
+  notes: BoardNote[],
+  tasks: Array<{ id: string; title: string; assigneeName?: string | null; status?: string; dueDate?: string | null; sourceDocId?: string | null }>,
+  query: string,
+): BoardSearchResult[] {
+  const ql = query.trim().toLowerCase();
+  if (!ql) return [];
+
+  const results: BoardSearchResult[] = [];
+
+  // Search docs and their headings/content
+  docs.forEach((docItem) => {
+    const docTitle = docItem.title || 'Untitled page';
+    const titleMatch = docTitle.toLowerCase().includes(ql);
+    const dateStr = docItem.date || '';
+
+    const headings = parseDocHeadings(docItem.md || '');
+    let matchedHeadingInDoc = false;
+
+    headings.forEach((h) => {
+      if (h.text.toLowerCase().includes(ql)) {
+        matchedHeadingInDoc = true;
+        results.push({
+          id: `doc-${docItem.id}-h-${h.id}`,
+          kind: 'heading',
+          docId: docItem.id,
+          title: docTitle,
+          subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+          headingText: h.text,
+          anchorId: h.id,
+          snippet: `Section: ${h.text}`,
+          date: dateStr,
+        });
+      }
+    });
+
+    if (titleMatch) {
+      results.push({
+        id: `doc-${docItem.id}`,
+        kind: 'doc',
+        docId: docItem.id,
+        title: docTitle,
+        subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+        snippet: mdSummary(docItem.md || '') || 'Page document',
+        date: dateStr,
+      });
+    } else if (!matchedHeadingInDoc && docItem.md && docItem.md.toLowerCase().includes(ql)) {
+      const lines = docItem.md.split('\n');
+      const matchingLine = lines.find((l) => l.toLowerCase().includes(ql));
+      const snippetText = matchingLine
+        ? matchingLine.trim().replace(/^#{1,6}\s*/, '').replace(/[\*\_\`]/g, '')
+        : mdSummary(docItem.md);
+
+      let nearestAnchor: string | undefined;
+      if (matchingLine) {
+        const lineIdx = lines.indexOf(matchingLine);
+        const prevHeading = headings.filter((h) => h.lineIndex <= lineIdx).pop();
+        if (prevHeading) nearestAnchor = prevHeading.id;
+      }
+
+      results.push({
+        id: `doc-${docItem.id}-content`,
+        kind: 'doc',
+        docId: docItem.id,
+        title: docTitle,
+        subtitle: dateStr ? dateLabelOf(dateStr) : undefined,
+        anchorId: nearestAnchor,
+        snippet: snippetText.length > 120 ? snippetText.slice(0, 120) + '...' : snippetText,
+        date: dateStr,
+      });
+    }
+  });
+
+  // Search Notes
+  notes.forEach((n) => {
+    if (n.deletedAt) return;
+    const hay = `${n.title} ${n.body} ${n.series} ${(n.tags || []).join(' ')}`.toLowerCase();
+    if (hay.includes(ql)) {
+      results.push({
+        id: `note-${n.id}`,
+        kind: 'note',
+        noteId: n.id,
+        title: n.title || 'Untitled note',
+        subtitle: n.series,
+        snippet: n.body.length > 120 ? n.body.slice(0, 120) + '...' : n.body,
+        date: n.date,
+      });
+    }
+  });
+
+  // Search Tasks
+  tasks.forEach((t) => {
+    if (t.status === 'canceled') return;
+    const hay = `${t.title} ${t.assigneeName || ''}`.toLowerCase();
+    if (hay.includes(ql)) {
+      results.push({
+        id: `task-${t.id}`,
+        kind: 'task',
+        taskId: t.id,
+        docId: t.sourceDocId || undefined,
+        title: t.title,
+        subtitle: t.assigneeName ? `Assigned to ${t.assigneeName}` : 'Task',
+        snippet: t.status === 'completed' ? 'Completed task' : 'Pending task',
+        date: t.dueDate || undefined,
+      });
+    }
+  });
+
+  return results;
+}
+
 

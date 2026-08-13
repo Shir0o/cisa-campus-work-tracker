@@ -23,8 +23,13 @@ import {
   canViewBoardNotes,
   canEditBoard,
   BOARD_SERIES,
+  slugifyHeading,
+  parseDocHeadings,
+  searchBoardContent,
   type BoardSession,
   type BoardDoc,
+  type BoardNote,
+  type BoardSearchResult,
 } from '../lib/board';
 
 describe('Board Pure Helpers', () => {
@@ -321,6 +326,95 @@ More text
   describe('BOARD_SERIES', () => {
     it('has the updated series options without Friday Gathering and with Conferences/Trainings', () => {
       expect(BOARD_SERIES).toEqual(['Small Groups', 'Outreach', 'Conferences/Trainings', 'Team']);
+    });
+  });
+
+  describe('slugifyHeading', () => {
+    it('creates URL-friendly slug IDs from heading text', () => {
+      expect(slugifyHeading('Small Groups & Outreach')).toBe('small-groups-outreach');
+      expect(slugifyHeading('  Meeting Agenda #1  ')).toBe('meeting-agenda-1');
+      expect(slugifyHeading('Follow-up items')).toBe('follow-up-items');
+    });
+  });
+
+  describe('parseDocHeadings', () => {
+    it('extracts Markdown headings with levels, line indices, and slug anchor IDs', () => {
+      const md = `# Meeting Agenda\nWelcome team!\n## Small Groups\nDiscussion here\n### Breakout 1\nDetails\n## Follow Up`;
+      const headings = parseDocHeadings(md);
+      expect(headings).toHaveLength(4);
+      expect(headings[0]).toEqual({ level: 1, text: 'Meeting Agenda', id: 'meeting-agenda', lineIndex: 0 });
+      expect(headings[1]).toEqual({ level: 2, text: 'Small Groups', id: 'small-groups', lineIndex: 2 });
+      expect(headings[2]).toEqual({ level: 3, text: 'Breakout 1', id: 'breakout-1', lineIndex: 4 });
+      expect(headings[3]).toEqual({ level: 2, text: 'Follow Up', id: 'follow-up', lineIndex: 6 });
+    });
+
+    it('returns empty array for empty or non-heading markdown', () => {
+      expect(parseDocHeadings('')).toEqual([]);
+      expect(parseDocHeadings('Just some paragraph text\nwith bullet points\n- item 1')).toEqual([]);
+    });
+  });
+
+  describe('searchBoardContent', () => {
+    const mockDocs: BoardDoc[] = [
+      {
+        id: 'doc1',
+        title: 'Weekly Standup',
+        date: '2026-06-25',
+        md: '# Agenda\n- Welcome\n## Small Groups\nDiscuss conferences and outreach',
+        audience: 'team',
+      },
+      {
+        id: 'doc2',
+        title: 'Retreat Planning',
+        date: '2026-06-20',
+        md: '# Retreat Overview\nLocation details and welcome pack',
+        audience: 'team',
+      },
+    ];
+
+    const mockNotes: BoardNote[] = [
+      {
+        id: 'note1',
+        title: 'Conferences Recap',
+        body: 'Great turnout at the summer training',
+        series: 'Conferences/Trainings',
+        date: '2026-06-10',
+        type: 'record',
+        tags: ['conferences', 'training'],
+        contributorIds: ['u1'],
+      },
+    ];
+
+    const mockTasks: any[] = [
+      {
+        id: 'task1',
+        title: 'Send welcome emails',
+        assigneeName: 'Alex',
+        status: 'pending',
+        sourceDocId: 'doc1',
+      },
+    ];
+
+    it('returns empty array for empty search queries', () => {
+      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '')).toEqual([]);
+      expect(searchBoardContent(mockDocs, mockNotes, mockTasks, '   ')).toEqual([]);
+    });
+
+    it('searches doc titles and content headings', () => {
+      const results = searchBoardContent(mockDocs, mockNotes, mockTasks, 'Small Groups');
+      expect(results).toHaveLength(1);
+      expect(results[0].kind).toBe('heading');
+      expect(results[0].docId).toBe('doc1');
+      expect(results[0].headingText).toBe('Small Groups');
+      expect(results[0].anchorId).toBe('small-groups');
+    });
+
+    it('searches across notes and tasks', () => {
+      const noteResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'training');
+      expect(noteResults.some((r) => r.kind === 'note' && r.noteId === 'note1')).toBe(true);
+
+      const taskResults = searchBoardContent(mockDocs, mockNotes, mockTasks, 'welcome emails');
+      expect(taskResults.some((r) => r.kind === 'task' && r.taskId === 'task1')).toBe(true);
     });
   });
 });

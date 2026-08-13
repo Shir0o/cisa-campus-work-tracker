@@ -3824,3 +3824,25 @@ body.msgs-fullscreen .content { padding-bottom: 0 !important; }
   .cd-page-main { border-right: 0; }
   .cd-page-aside { border-left: 0; border-top: 1px solid var(--outline-variant); }
 }
+
+/* ── Coordination Notes Anchor Jump Highlight ── */
+@keyframes bdocAnchorPulse {
+  0% {
+    background-color: color-mix(in srgb, var(--stage-accent) 25%, transparent);
+    box-shadow: 0 0 0 2px var(--stage-accent);
+  }
+  60% {
+    background-color: color-mix(in srgb, var(--stage-accent) 25%, transparent);
+    box-shadow: 0 0 0 2px var(--stage-accent);
+  }
+  100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+}
+
+.bdoc-anchor-highlight {
+  animation: bdocAnchorPulse 2.2s ease-out forwards;
+  border-radius: 0.375rem;
+}
+

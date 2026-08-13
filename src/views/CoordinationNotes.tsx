@@ -85,6 +85,8 @@ import {
   Edit3,
   Maximize2,
   Minimize2,
+  Hash,
+  FileText,
 } from 'lucide-react';
 import * as Y from 'yjs';
 import { Awareness } from 'y-protocols/awareness';
@@ -134,6 +136,10 @@ import {
   parseDocNotes,
   collectDocTaskNodes,
   planDocTaskEdits,
+  slugifyHeading,
+  parseDocHeadings,
+  searchBoardContent,
+  type BoardSearchResult,
 } from '../lib/board';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
@@ -385,15 +391,7 @@ const CustomTab = Extension.create({
 });
 
 // Helper functions for heading anchor tags
-const slugify = (text: string): string => {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w\-]+/g, '') // Remove all non-word chars
-    .replace(/\-\-+/g, '-'); // Replace multiple - with single -
-};
+const slugify = slugifyHeading;
 
 const getHeadingText = (node: React.ReactNode): string => {
   if (!node) return '';
@@ -418,7 +416,7 @@ const HeadingWithAnchor = ({
   const Tag = level === 2 ? 'h2' : level === 3 ? 'h3' : 'h4';
 
   return (
-    <Tag id={id} className={cn('group flex items-center gap-2 scroll-mt-20', className)}>
+    <Tag id={id} data-anchor={id} className={cn('group flex items-center gap-2 scroll-mt-20', className)}>
       <span>{children}</span>
       {id && (
         <a
@@ -726,6 +724,12 @@ export default function CoordinationNotes() {
   const [series, setSeries] = useState('All');
   const [kind, setKind] = useState<'All' | 'Records' | 'Learnings'>('All');
   const [noteTab, setNoteTab] = useState<'active' | 'archived' | 'trash'>('active');
+
+  // unified coordination search state
+  const [boardSearchQ, setBoardSearchQ] = useState('');
+  const [boardSearchTab, setBoardSearchTab] = useState<'all' | 'heading' | 'note' | 'task'>('all');
+  const [isBoardSearchFocused, setIsBoardSearchFocused] = useState(false);
+  const boardSearchRef = useRef<HTMLInputElement>(null);
   // The note form holds optional prefill so "Keep as a note" can seed it from a page.
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
 
@@ -898,12 +902,103 @@ export default function CoordinationNotes() {
     document.getElementById('coordination-notes-panel')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   }, [docs, activeId]);
 
-  // Deep-link from a to-do's source link on My Day: focus the page it came from.
+  // Deep-link from a to-do's source link, GlobalSearch, or URL anchor
   const location = useLocation();
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
+
+  const jumpToAnchor = (docId?: string, anchorId?: string, noteId?: string) => {
+    if (docId) {
+      if (docs.some((d) => d.id === docId)) {
+        setActiveId(docId);
+        if (anchorId) {
+          setTimeout(() => {
+            let el = document.getElementById(anchorId);
+            if (!el) {
+              const headings = Array.from(
+                document.querySelectorAll<HTMLElement>(
+                  '#coordination-notes-workspace h1, #coordination-notes-workspace h2, #coordination-notes-workspace h3, #coordination-notes-workspace h4, .ProseMirror h1, .ProseMirror h2, .ProseMirror h3, .ProseMirror h4'
+                )
+              );
+              el =
+                headings.find(
+                  (h) => slugifyHeading(h.textContent || '') === anchorId || h.getAttribute('data-anchor') === anchorId
+                ) || null;
+            }
+            if (el) {
+              el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              el.classList.remove('bdoc-anchor-highlight');
+              void el.offsetWidth;
+              el.classList.add('bdoc-anchor-highlight');
+              setTimeout(() => el?.classList.remove('bdoc-anchor-highlight'), 2200);
+            } else {
+              document.getElementById('coordination-notes-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 120);
+        } else {
+          document.getElementById('coordination-notes-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      } else {
+        showToast('That page is no longer here.');
+      }
+    } else if (noteId) {
+      setTimeout(() => {
+        const noteEl = document.getElementById(`note-${noteId}`);
+        if (noteEl) {
+          noteEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          noteEl.classList.remove('bdoc-anchor-highlight');
+          void noteEl.offsetWidth;
+          noteEl.classList.add('bdoc-anchor-highlight');
+          setTimeout(() => noteEl.classList.remove('bdoc-anchor-highlight'), 2200);
+        } else {
+          document.getElementById('board-notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 120);
+    }
+  };
+
   useEffect(() => {
-    const focusId = (location.state as { focusDocId?: string } | null)?.focusDocId;
-    if (focusId && docs.some((d) => d.id === focusId)) setActiveId(focusId);
-  }, [location.state, docs]);
+    const locState = location.state as { focusDocId?: string; focusAnchorId?: string; focusNoteId?: string } | null;
+    const focusDoc = locState?.focusDocId || searchParams.get('focusDoc');
+    const focusAnchor = locState?.focusAnchorId || searchParams.get('anchor');
+    const focusNote = locState?.focusNoteId || searchParams.get('focusNote');
+
+    if (focusDoc || focusNote) {
+      jumpToAnchor(focusDoc || undefined, focusAnchor || undefined, focusNote || undefined);
+    }
+  }, [location.state, location.search, docs, searchParams]);
+
+  // Unified search calculations
+  const searchResults = useMemo(() => {
+    return searchBoardContent(docs, notes, todos, boardSearchQ);
+  }, [docs, notes, todos, boardSearchQ]);
+
+  const filteredSearchResults = useMemo(() => {
+    if (boardSearchTab === 'all') return searchResults;
+    if (boardSearchTab === 'heading') return searchResults.filter((r) => r.kind === 'heading' || r.kind === 'doc');
+    if (boardSearchTab === 'note') return searchResults.filter((r) => r.kind === 'note');
+    if (boardSearchTab === 'task') return searchResults.filter((r) => r.kind === 'task');
+    return searchResults;
+  }, [searchResults, boardSearchTab]);
+
+  // Keyboard shortcut listener: '/' or 'Cmd+K' / 'Ctrl+K' focuses search input
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable);
+      const isCmdK = (e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k';
+      const isSlash = e.key === '/' && !isInput;
+      if (isCmdK || isSlash) {
+        e.preventDefault();
+        boardSearchRef.current?.focus();
+        setIsBoardSearchFocused(true);
+      } else if (e.key === 'Escape' && isBoardSearchFocused) {
+        setIsBoardSearchFocused(false);
+        boardSearchRef.current?.blur();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isBoardSearchFocused]);
 
   // ── team to-dos: derived counts + the filtered, sorted list ──────────────────
   const openTodoCount = useMemo(
@@ -932,14 +1027,7 @@ export default function CoordinationNotes() {
       });
   }, [todos, todoFilter, showDoneTodos]);
 
-  const jumpToTodoSource = (docId: string) => {
-    if (docs.some((d) => d.id === docId)) {
-      setActiveId(docId);
-      document.getElementById('coordination-notes-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      showToast('That page is no longer here.');
-    }
-  };
+  const jumpToTodoSource = (docId: string) => jumpToAnchor(docId);
 
   const grouped = useMemo(() => {
     const g: Record<DocGroup, BoardDoc[]> = { Pinned: [], 'This week': [], Earlier: [] };
@@ -1500,6 +1588,132 @@ export default function CoordinationNotes() {
     );
   }
 
+  const searchBarJSX = (
+    <div className="relative mb-6">
+      <div className="relative flex items-center">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant/60" />
+        <input
+          ref={boardSearchRef}
+          value={boardSearchQ}
+          onChange={(e) => {
+            setBoardSearchQ(e.target.value);
+            setIsBoardSearchFocused(true);
+          }}
+          onFocus={() => setIsBoardSearchFocused(true)}
+          placeholder="Search pages, headings, notes & tasks… (press / or ⌘K)"
+          className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-24 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-all shadow-xs"
+        />
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+          {boardSearchQ ? (
+            <button
+              type="button"
+              onClick={() => setBoardSearchQ('')}
+              className="pointer-events-auto text-on-surface-variant/60 hover:text-on-surface p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          ) : (
+            <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono text-on-surface-variant/70 bg-surface-container-high border border-outline-variant rounded-md">
+              ⌘K
+            </kbd>
+          )}
+        </div>
+      </div>
+
+      {/* Search dropdown results */}
+      {isBoardSearchFocused && boardSearchQ.trim() && (
+        <div className="absolute left-0 right-0 top-full mt-2 bg-surface rounded-2xl border border-outline-variant shadow-xl z-50 overflow-hidden max-h-[420px] flex flex-col">
+          {/* Filter tabs */}
+          <div className="flex items-center gap-1 p-2 bg-surface-container-low border-b border-outline-variant shrink-0">
+            {(
+              [
+                { id: 'all', label: 'All', count: searchResults.length },
+                {
+                  id: 'heading',
+                  label: 'Pages & Headings',
+                  count: searchResults.filter((r) => r.kind === 'heading' || r.kind === 'doc').length,
+                },
+                { id: 'note', label: 'Notes', count: searchResults.filter((r) => r.kind === 'note').length },
+                { id: 'task', label: 'Tasks', count: searchResults.filter((r) => r.kind === 'task').length },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setBoardSearchTab(tab.id)}
+                className={cn(
+                  'px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5',
+                  boardSearchTab === tab.id
+                    ? 'bg-surface text-on-surface shadow-xs font-semibold'
+                    : 'text-on-surface-variant hover:text-on-surface',
+                )}
+              >
+                <span>{tab.label}</span>
+                <span className="text-[10px] opacity-70">({tab.count})</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Results list */}
+          <div className="overflow-y-auto p-2 space-y-1 divide-y divide-outline-variant/30">
+            {filteredSearchResults.length === 0 ? (
+              <div className="p-6 text-center text-sm text-on-surface-variant italic">
+                No matching results found for "{boardSearchQ}". Try another search term.
+              </div>
+            ) : (
+              filteredSearchResults.map((res) => (
+                <button
+                  key={res.id}
+                  type="button"
+                  onClick={() => {
+                    jumpToAnchor(res.docId, res.anchorId, res.noteId);
+                    setIsBoardSearchFocused(false);
+                  }}
+                  className="w-full text-left p-2.5 rounded-xl hover:bg-surface-container-low transition-colors flex items-start gap-3 group"
+                >
+                  <div className="p-2 rounded-lg bg-surface-container text-stage-accent shrink-0 mt-0.5 group-hover:bg-stage-accent-soft">
+                    {res.kind === 'heading' ? (
+                      <Hash className="w-4 h-4 text-stage-accent" />
+                    ) : res.kind === 'doc' ? (
+                      <FileText className="w-4 h-4 text-stage-amber" />
+                    ) : res.kind === 'note' ? (
+                      <NotebookPen className="w-4 h-4 text-stage-violet" />
+                    ) : (
+                      <CheckSquare className="w-4 h-4 text-stage-teal" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium text-on-surface truncate group-hover:text-stage-accent transition-colors">
+                        {res.headingText ? res.headingText : res.title}
+                      </span>
+                      {res.date && (
+                        <span className="text-[11px] text-on-surface-variant/70 shrink-0 font-mono">
+                          {dateLabelOf(res.date)}
+                        </span>
+                      )}
+                    </div>
+                    {res.headingText && (
+                      <div className="text-xs text-on-surface-variant truncate">
+                        Page: <span className="font-medium">{res.title}</span> {res.anchorId && <span className="text-stage-accent ml-1 font-mono">#{res.anchorId}</span>}
+                      </div>
+                    )}
+                    {res.subtitle && !res.headingText && (
+                      <div className="text-xs text-on-surface-variant truncate">{res.subtitle}</div>
+                    )}
+                    {res.snippet && (
+                      <p className="text-xs text-on-surface-variant/80 line-clamp-1 mt-0.5">{res.snippet}</p>
+                    )}
+                  </div>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   if (isMobile && !loadingDocs && !loadingNotes) {
     return (
       <>
@@ -1532,6 +1746,7 @@ export default function CoordinationNotes() {
           ReadOnlyDocComponent={ReadOnlyDoc}
           TodoSectionComponent={TodoSectionComponent}
           NotesSectionComponent={NotesSectionComponent}
+          SearchBarComponent={searchBarJSX}
         />
       </>
     );
@@ -1555,6 +1770,9 @@ export default function CoordinationNotes() {
           </button>
         )}
       </header>
+
+      {/* Unified Search */}
+      {searchBarJSX}
 
       {/* Documents workspace */}
       <section>
@@ -3267,6 +3485,7 @@ function NoteCard({
 
   return (
     <article
+      id={`note-${n.id}`}
       className={cn(
         'group bg-surface rounded-2xl border p-5 flex flex-col',
         isLearning ? 'border-stage-amber/30' : 'border-outline-variant',
