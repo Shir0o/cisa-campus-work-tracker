@@ -182,51 +182,53 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         if (contact.matchedContactId) {
           // Linked to existing contact
           tempIdToRealIdMap[contact.tempId] = contact.matchedContactId;
-          if (contact.matchedContactId) {
-            tempIdToRealIdMap[contact.matchedContactId] = contact.matchedContactId;
-          }
+          tempIdToRealIdMap[contact.matchedContactId] = contact.matchedContactId;
         } else {
           // Create new contact in Firestore
-          const newContactRef = doc(collection(db, 'contacts'));
-          const initials = contact.name
-            ? contact.name
-                .split(' ')
-                .map((n) => n[0])
-                .join('')
-                .slice(0, 2)
-                .toUpperCase()
-            : '??';
+          try {
+            const newContactRef = doc(collection(db, 'contacts'));
+            const initials = contact.name
+              ? contact.name
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .slice(0, 2)
+                  .toUpperCase()
+              : '??';
 
-          const newContactData = {
-            name: contact.name || 'Unnamed Contact',
-            role: contact.role || 'Student',
-            location: '',
-            email: contact.email || '',
-            phone: contact.phone || '',
-            stage: contact.stage || 'lead',
-            lastSeen: new Date().toISOString().split('T')[0],
-            initials,
-            notes: contact.notes || '',
-            tags: contact.tags || [],
-            spiritualBackground: contact.spiritualBackground || '',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            createdBy: user?.uid || 'system',
-            createdByName: user?.displayName || 'Smart Import',
-          };
+            const newContactData = {
+              name: (contact.name || 'Unnamed Contact').slice(0, 128),
+              role: (contact.role || 'Student').slice(0, 64),
+              location: '',
+              email: (contact.email || '').slice(0, 128),
+              phone: (contact.phone || '').slice(0, 32),
+              stage: (contact.stage || 'lead').slice(0, 64),
+              lastSeen: new Date().toISOString().split('T')[0],
+              initials,
+              notes: contact.notes || '',
+              tags: contact.tags || [],
+              spiritualBackground: contact.spiritualBackground || '',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              createdBy: user?.uid || 'system',
+              createdByName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
+            };
 
-          await setDoc(newContactRef, newContactData);
-          tempIdToRealIdMap[contact.tempId] = newContactRef.id;
-          cCount++;
+            await setDoc(newContactRef, newContactData);
+            tempIdToRealIdMap[contact.tempId] = newContactRef.id;
+            cCount++;
 
-          if (user) {
-            logActivity({
-              action: 'created contact via Smart Import',
-              targetId: newContactRef.id,
-              targetName: newContactData.name,
-              targetType: 'contact',
-              type: 'create',
-            });
+            if (user) {
+              logActivity({
+                action: 'created contact via Smart Import',
+                targetId: newContactRef.id,
+                targetName: newContactData.name,
+                targetType: 'contact',
+                type: 'create',
+              });
+            }
+          } catch (cErr: any) {
+            console.error('Failed to create contact in Smart Import:', cErr);
           }
         }
       }
@@ -252,29 +254,33 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         }
 
         if (targetContactId) {
-          const interactionRef = collection(db, 'contacts', targetContactId, 'interactions');
-          const interactionData = {
-            contactId: targetContactId,
-            contactName: interaction.contactName || 'Contact',
-            content: interaction.content,
-            dateTime: interaction.dateTime || new Date().toISOString(),
-            type: interaction.type || 'note',
-            userId: user?.uid || 'system',
-            userName: user?.displayName || 'Smart Import',
-            createdAt: new Date().toISOString(),
-          };
+          try {
+            const interactionRef = collection(db, 'contacts', targetContactId, 'interactions');
+            const interactionData = {
+              contactId: targetContactId,
+              contactName: (interaction.contactName || 'Contact').slice(0, 128),
+              content: (interaction.content || '').slice(0, 5000),
+              dateTime: interaction.dateTime || new Date().toISOString().split('T')[0],
+              type: interaction.type || 'note',
+              userId: user?.uid || 'system',
+              userName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
+              createdAt: serverTimestamp(),
+            };
 
-          const docRef = await addDoc(interactionRef, interactionData);
-          iCount++;
+            const docRef = await addDoc(interactionRef, interactionData);
+            iCount++;
 
-          if (user) {
-            logActivity({
-              action: 'logged interaction via Smart Import',
-              targetId: docRef.id,
-              targetName: interaction.contactName || 'Interaction',
-              targetType: 'interaction',
-              type: 'create',
-            });
+            if (user) {
+              logActivity({
+                action: 'logged interaction via Smart Import',
+                targetId: docRef.id,
+                targetName: interaction.contactName || 'Interaction',
+                targetType: 'interaction',
+                type: 'create',
+              });
+            }
+          } catch (iErr: any) {
+            console.error('Failed to log interaction in Smart Import:', iErr);
           }
         }
       }
@@ -283,35 +289,44 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
       for (const discussion of parsedDiscussions) {
         if (!discussion.selected) continue;
 
-        const boardDocRef = doc(collection(db, 'board_docs'));
-        const nowIso = new Date().toISOString();
-        const dateStr = nowIso.split('T')[0];
+        try {
+          const boardDocRef = doc(collection(db, 'board_docs'));
+          const nowIso = new Date().toISOString();
+          const dateStr = nowIso.split('T')[0];
 
-        const boardDocData = {
-          title: discussion.title || 'Imported Discussion',
-          audience: discussion.audience || 'team',
-          md: discussion.content || '',
-          tags: discussion.tags || [],
-          date: dateStr,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          deletedAt: null,
-          authorName: user?.displayName || 'Smart Import',
-          authorId: user?.uid || 'system',
-        };
+          const boardDocData = {
+            title: (discussion.title || 'Imported Discussion').slice(0, 200),
+            audience: discussion.audience || 'team',
+            md: (discussion.content || '').slice(0, 100000),
+            tags: discussion.tags || [],
+            date: dateStr,
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            deletedAt: null,
+            authorName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
+            authorId: user?.uid || 'system',
+          };
 
-        await setDoc(boardDocRef, boardDocData);
-        dCount++;
+          await setDoc(boardDocRef, boardDocData);
+          dCount++;
 
-        if (user) {
-          logActivity({
-            action: 'created discussion doc via Smart Import',
-            targetId: boardDocRef.id,
-            targetName: discussion.title,
-            targetType: 'comment',
-            type: 'create',
-          });
+          if (user) {
+            logActivity({
+              action: 'created discussion doc via Smart Import',
+              targetId: boardDocRef.id,
+              targetName: discussion.title,
+              targetType: 'comment',
+              type: 'create',
+            });
+          }
+        } catch (dErr: any) {
+          console.error('Failed to create discussion doc in Smart Import:', dErr);
         }
+      }
+
+      const totalCreated = cCount + iCount + dCount;
+      if (totalCreated === 0 && totalSelected > 0) {
+        throw new Error('Failed to save imported items due to insufficient database permissions.');
       }
 
       const summary = { contactsCount: cCount, interactionsCount: iCount, discussionsCount: dCount };
