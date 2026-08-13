@@ -503,7 +503,7 @@ export default function LogVisitModal({
                       <li key={`${f.name}-${i}`} className="relative">
                         <img
                           src={newPhotoUrls[i]}
-                          alt={f.name}
+                          alt={f.name || 'photo'}
                           className="w-20 h-20 object-cover rounded-xl border border-primary/30"
                         />
                         <button
