@@ -5,11 +5,16 @@ import * as core from '@cisa/core';
 import type { SignUpFormState } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 
-export async function submitSignUp(form: SignUpFormState, seasonTags: string[]): Promise<string> {
+export async function submitSignUp(
+  form: SignUpFormState,
+  seasonTags: string[],
+  by?: { uid?: string | null; name?: string | null },
+): Promise<string> {
   try {
-    return await core.submitSignUp(db, form, seasonTags);
+    return await core.submitSignUp(db, form, seasonTags, by);
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, 'contacts');
     throw e;
   }
 }
+
