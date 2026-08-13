@@ -32,7 +32,7 @@ const gitHubRepoUrl = `https://github.com/${gitHubRepo}`;
 const getGitHubIssueUrl = (item: Feedback) => {
   const kindLabel = item.kind ? kindMeta(item.kind).label : item.type;
   const title = `[Feedback] ${kindLabel}: ${item.message.slice(0, 50)}${item.message.length > 50 ? '...' : ''}`;
-  const body = `### Feedback Details
+  let body = `### Feedback Details
 - **Submitted By:** ${item.userName} (${item.userEmail})
 - **Type:** ${item.type}
 - **Kind:** ${kindLabel}
@@ -51,6 +51,11 @@ ${item.message}
 
 ---
 *Created from CISA Campus Work Tracker user feedback.*`;
+
+  if (item.screenshot && item.id) {
+    const imageUrl = `${window.location.origin}/api/feedback/${item.id}/screenshot`;
+    body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
+  }
 
   const labels = [item.type, 'feedback'].join(',');
   const params = new URLSearchParams({ title, body, labels });
