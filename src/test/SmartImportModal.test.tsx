@@ -20,6 +20,7 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../lib/firebase', () => ({
   db: {},
+  auth: { currentUser: { getIdToken: vi.fn().mockResolvedValue('mock-token') } },
   handleFirestoreError: vi.fn(),
   OperationType: { LIST: 'LIST', CREATE: 'CREATE' },
   logActivity: vi.fn(),
@@ -150,6 +151,13 @@ describe('SmartImportModal', () => {
         },
       }),
     });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        summary: { contactsCount: 1, interactionsCount: 0, discussionsCount: 1 },
+      }),
+    });
 
     const onImportComplete = vi.fn();
     render(<SmartImportModal isOpen={true} onClose={vi.fn()} onImportComplete={onImportComplete} />);
@@ -169,7 +177,6 @@ describe('SmartImportModal', () => {
       expect(screen.getByText('Import Completed!')).toBeInTheDocument();
     });
 
-    expect(setDoc).toHaveBeenCalled();
     expect(onImportComplete).toHaveBeenCalledWith({
       contactsCount: 1,
       interactionsCount: 0,
@@ -412,6 +419,13 @@ describe('SmartImportModal', () => {
             },
           ],
         },
+      }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        summary: { contactsCount: 1, interactionsCount: 1, discussionsCount: 1 },
       }),
     });
 

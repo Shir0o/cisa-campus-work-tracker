@@ -1523,6 +1523,148 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
+  app.post("/api/smart-import/commit", async (req, res) => {
+    try {
+      let uid = "system";
+      let userName = "Smart Import";
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          const decodedToken = await authenticateFirebaseUser(req);
+          uid = decodedToken.uid;
+          userName = decodedToken.name || decodedToken.email?.split("@")[0] || "Smart Import";
+        } catch (authErr: any) {
+          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+        }
+      }
+
+      const { contacts = [], interactions = [], discussions = [] } = req.body;
+      const db = getAdminDb();
+      const batch = db.batch();
+
+      let cCount = 0;
+      let iCount = 0;
+      let dCount = 0;
+
+      const tempIdToRealIdMap: Record<string, string> = {};
+
+      // 1. Process Contacts
+      for (const contact of contacts) {
+        if (contact.matchedContactId) {
+          tempIdToRealIdMap[contact.tempId] = contact.matchedContactId;
+          tempIdToRealIdMap[contact.matchedContactId] = contact.matchedContactId;
+        } else {
+          const newContactRef = db.collection("contacts").doc();
+          const name = (contact.name || "Unnamed Contact").slice(0, 128);
+          const initials =
+            name
+              .split(" ")
+              .map((n: string) => n[0])
+              .join("")
+              .slice(0, 2)
+              .toUpperCase() || "??";
+
+          const newContactData = {
+            name,
+            role: (contact.role || "Student").slice(0, 64),
+            location: "",
+            email: (contact.email || "").slice(0, 128),
+            phone: (contact.phone || "").slice(0, 32),
+            stage: (contact.stage || "lead").slice(0, 64),
+            lastSeen: new Date().toISOString().split("T")[0],
+            initials,
+            notes: contact.notes || "",
+            tags: contact.tags || [],
+            spiritualBackground: contact.spiritualBackground || "",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            createdBy: uid,
+            createdByName: userName.slice(0, 128),
+          };
+
+          batch.set(newContactRef, newContactData);
+          tempIdToRealIdMap[contact.tempId] = newContactRef.id;
+          cCount++;
+        }
+      }
+
+      // 2. Process Interactions
+      for (const interaction of interactions) {
+        let targetContactId = interaction.contactId || null;
+        if (!targetContactId && interaction.contactRef && tempIdToRealIdMap[interaction.contactRef]) {
+          targetContactId = tempIdToRealIdMap[interaction.contactRef];
+        }
+        if (!targetContactId && interaction.contactName) {
+          const found = contacts.find(
+            (c: any) => c.name?.toLowerCase() === interaction.contactName?.toLowerCase()
+          );
+          if (found && tempIdToRealIdMap[found.tempId]) {
+            targetContactId = tempIdToRealIdMap[found.tempId];
+          }
+        }
+
+        if (targetContactId) {
+          const interactionRef = db.collection("contacts").doc(targetContactId).collection("interactions").doc();
+          const dateStr = interaction.dateTime || new Date().toISOString().split("T")[0];
+          const interactionData = {
+            contactId: targetContactId,
+            contactName: (interaction.contactName || "Contact").slice(0, 128),
+            content: (interaction.content || "").slice(0, 5000),
+            dateTime: dateStr,
+            type: interaction.type || "note",
+            userId: uid,
+            userName: userName.slice(0, 128),
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          };
+
+          batch.set(interactionRef, interactionData);
+          iCount++;
+
+          const contactRef = db.collection("contacts").doc(targetContactId);
+          batch.update(contactRef, {
+            lastSeen: dateStr,
+            lastContactedBy: userName,
+            lastContactedById: uid,
+            lastContactedDate: dateStr,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      }
+
+      // 3. Process Discussions
+      for (const discussion of discussions) {
+        const boardDocRef = db.collection("board_docs").doc();
+        const dateStr = new Date().toISOString().split("T")[0];
+
+        const boardDocData = {
+          title: (discussion.title || "Imported Discussion").slice(0, 200),
+          audience: discussion.audience || "team",
+          md: (discussion.content || "").slice(0, 100000),
+          tags: discussion.tags || [],
+          date: dateStr,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          deletedAt: null,
+          authorName: userName.slice(0, 128),
+          authorId: uid,
+        };
+
+        batch.set(boardDocRef, boardDocData);
+        dCount++;
+      }
+
+      await batch.commit();
+
+      console.log(`[AI Smart Import] Commit complete: ${cCount} contacts, ${iCount} interactions, ${dCount} discussions.`);
+      res.status(200).json({
+        success: true,
+        summary: { contactsCount: cCount, interactionsCount: iCount, discussionsCount: dCount },
+      });
+    } catch (error: any) {
+      console.error("AI Smart Import Commit Error: ", error);
+      res.status(500).json({ error: error.message || "Failed to commit smart import items to database." });
+    }
+  });
+
 
   // Self-service token exchange: mints a short-lived custom token for the
   // caller's own uid, so the mobile app can bridge its Firebase session into
