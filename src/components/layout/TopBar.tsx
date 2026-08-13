@@ -3,7 +3,8 @@ import { Settings, LogOut, Menu, Search, Eye } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../AuthProvider';
-import { getUserAvatar, cn } from '../../lib/utils';
+import { cn } from '../../lib/utils';
+import { UserAvatar } from '../ui/UserAvatar';
 import { useLayout } from '../../App';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
@@ -139,12 +140,13 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
         <div className="relative" ref={dropdownRef}>
           <button 
             onClick={() => setIsProfileOpen(!isProfileOpen)}
+            aria-label="Profile"
             className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
           >
-            <img 
-              src={getUserAvatar(user?.photoURL)} 
-              alt="Profile"
-              className="w-full h-full object-cover"
+            <UserAvatar
+              name={user?.displayName}
+              photoURL={user?.photoURL}
+              className="w-full h-full"
             />
           </button>
 

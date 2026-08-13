@@ -73,7 +73,7 @@ describe('TopBar Component', () => {
 
   it('toggles profile dropdown menu on click', () => {
     renderTopBar('/');
-    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
     
     // Closed initially
     expect(screen.queryByText('Log out')).not.toBeInTheDocument();
@@ -90,7 +90,7 @@ describe('TopBar Component', () => {
 
   it('closes profile dropdown when clicking outside', () => {
     renderTopBar('/');
-    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
     
     // Open the dropdown
     fireEvent.click(profileBtn);
@@ -103,7 +103,7 @@ describe('TopBar Component', () => {
 
   it('calls logOut when clicking sign out in profile dropdown', () => {
     renderTopBar('/');
-    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
     
     fireEvent.click(profileBtn);
     const signOutBtn = screen.getByText('Log out');
@@ -147,14 +147,14 @@ describe('TopBar Component', () => {
       logOut: mockLogOut,
     });
     renderTopBar('/');
-    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
     fireEvent.click(profileBtn);
     expect(screen.getByText('User')).toBeInTheDocument();
   });
 
   it('closes profile dropdown when Settings link is clicked', () => {
     renderTopBar('/');
-    const profileBtn = screen.getByRole('img', { name: /Profile/i }).parentElement!;
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
     fireEvent.click(profileBtn);
     expect(screen.getByText('Log out')).toBeInTheDocument();
 

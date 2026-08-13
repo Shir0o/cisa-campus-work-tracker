@@ -21,7 +21,8 @@ import {
   CalendarDays,
   ExternalLink,
 } from 'lucide-react';
-import { cn, getUserAvatar } from '../../lib/utils';
+import { cn } from '../../lib/utils';
+import { UserAvatar } from '../ui/UserAvatar';
 
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
@@ -248,14 +249,10 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             "flex items-center mb-1 pb-2",
             effectiveIsCollapsed ? "justify-center px-0" : "px-2"
           )}>
-            <img
-              src={impersonateTarget ? '' : getUserAvatar(user?.photoURL)}
-              alt={impersonateTarget ? impersonateTarget.name : (user?.displayName || 'Signed-in user')}
-              className="w-9 h-9 min-w-[36px] rounded-full object-cover border border-outline-variant shrink-0"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.style.display = 'none';
-              }}
+            <UserAvatar
+              name={impersonateTarget ? impersonateTarget.name : user?.displayName}
+              photoURL={impersonateTarget ? null : user?.photoURL}
+              className="w-9 h-9 min-w-[36px] border border-outline-variant"
             />
             <motion.div
               initial={false}

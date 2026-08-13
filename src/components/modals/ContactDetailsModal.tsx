@@ -1248,7 +1248,7 @@ export default function ContactDetailsModal({
                 <form
                   id="edit-contact-form"
                   onSubmit={handleUpdate}
-                  className="space-y-6"
+                  className={cn("space-y-6", !isMobile && "px-7 py-6")}
                 >
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* First Name */}

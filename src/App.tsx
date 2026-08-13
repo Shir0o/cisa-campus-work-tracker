@@ -429,9 +429,11 @@ export default function App() {
                 path="/attendance"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Attendance />
-                    </DashboardLayout>
+                    <RoleGuard minRole="viewer">
+                      <DashboardLayout>
+                        <Attendance />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -505,9 +507,11 @@ export default function App() {
                 path="/prayer"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <PrayerList />
-                    </DashboardLayout>
+                    <RoleGuard minRole="viewer">
+                      <DashboardLayout>
+                        <PrayerList />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -516,9 +520,11 @@ export default function App() {
                 path="/answered"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <AnsweredList />
-                    </DashboardLayout>
+                    <RoleGuard minRole="viewer">
+                      <DashboardLayout>
+                        <AnsweredList />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />
@@ -527,9 +533,11 @@ export default function App() {
                 path="/settings"
                 element={
                   <ProtectedRoute>
-                    <DashboardLayout>
-                      <Settings />
-                    </DashboardLayout>
+                    <RoleGuard minRole="viewer">
+                      <DashboardLayout>
+                        <Settings />
+                      </DashboardLayout>
+                    </RoleGuard>
                   </ProtectedRoute>
                 }
               />

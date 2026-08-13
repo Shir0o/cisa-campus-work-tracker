@@ -2,7 +2,6 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   cn,
   sleep,
-  getUserAvatar,
   formatPhoneNumber,
   validatePhoneNumber,
   getUserInitials,
@@ -25,23 +24,6 @@ describe('sleep', () => {
     vi.advanceTimersByTime(100);
     await expect(promise).resolves.toBeUndefined();
     vi.useRealTimers();
-  });
-});
-
-describe('getUserAvatar', () => {
-  it('returns photoURL if provided', () => {
-    expect(getUserAvatar('https://example.com/avatar.png')).toBe('https://example.com/avatar.png');
-  });
-
-  it('returns female avatar if gender is female and photoURL is missing', () => {
-    expect(getUserAvatar(null, 'female')).toContain('gender=female');
-    expect(getUserAvatar(undefined, 'female')).toContain('gender=female');
-  });
-
-  it('returns male avatar if gender is male or other/missing', () => {
-    expect(getUserAvatar(null, 'male')).toContain('gender=male');
-    expect(getUserAvatar(null)).toContain('gender=male');
-    expect(getUserAvatar(undefined, 'other')).toContain('gender=male');
   });
 });
 
