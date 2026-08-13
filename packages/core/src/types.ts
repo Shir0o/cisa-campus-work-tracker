@@ -166,6 +166,8 @@ export interface PrayerRecord {
   status: 'pending' | 'answered' | 'ongoing' | 'unanswered';
   answer?: string;
   answeredAt?: string;
+  /** Photos attached to "how it was answered" (mirrors web `PrayerRecord`). */
+  answeredPhotos?: { path: string; url: string; name?: string }[];
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;

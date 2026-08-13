@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   collection,
   onSnapshot,
@@ -9,11 +9,12 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
-import { Contact, PrayerRecord } from '../types';
-import { Search, Plus } from 'lucide-react';
+import { Contact, PrayerRecord, VisitPhoto } from '../types';
+import { Check, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import { isTeamPrayer, reconcilePrayerOrder } from '../lib/prayers';
+import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -125,6 +126,8 @@ export default function PrayerList() {
   const [composeFor, setComposeFor] = useState<string | null>(null);
   // Contact whose full profile/history is open in the modal.
   const [profileContact, setProfileContact] = useState<Contact | null>(null);
+  // Whether the "Choose people" picker is open.
+  const [picking, setPicking] = useState(false);
 
   // Load contacts
   useEffect(() => {
@@ -200,11 +203,18 @@ export default function PrayerList() {
     }
   };
 
-  const handleUpdateStatus = async (prayer: PrayerRecord, newStatus: Status, answer?: string, answeredAt?: string) => {
+  const handleUpdateStatus = async (
+    prayer: PrayerRecord,
+    newStatus: Status,
+    answer?: string,
+    answeredAt?: string,
+    answeredPhotos?: VisitPhoto[],
+  ) => {
     try {
       const clean: Record<string, any> = { status: newStatus, ...stamp() };
       if (answer !== undefined) clean.answer = answer;
       if (answeredAt !== undefined) clean.answeredAt = answeredAt;
+      if (answeredPhotos !== undefined) clean.answeredPhotos = answeredPhotos;
       await updateDoc(doc(db, 'prayers', prayer.id), clean);
       logActivity({
         action: `marked a prayer burden as ${newStatus} for`,
@@ -364,6 +374,25 @@ export default function PrayerList() {
     });
   };
 
+  // "Choose people" — the added become empty this-week composers; the removed
+  // are hidden from the page (same bookkeeping as startHolding/stopHolding).
+  const applyPick = (added: string[], removed: string[]) => {
+    if (added.length) setStartedIds((prev) => new Set([...prev, ...added]));
+    if (added.length || removed.length) {
+      setHiddenIds((prev) => {
+        const next = new Set(prev);
+        removed.forEach((id) => next.add(id));
+        added.forEach((id) => next.delete(id));
+        try {
+          localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
+        } catch (e) {}
+        return next;
+      });
+    }
+    setPicking(false);
+    setSearchQuery('');
+  };
+
   if (error) {
     return <DataLoadError label={error} />;
   }
@@ -436,16 +465,26 @@ export default function PrayerList() {
         </div>
       </header>
 
-      {/* Search */}
-      <div className="relative mb-6 max-w-sm">
-        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
-        <input
-          type="text"
-          placeholder="Find someone…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
-        />
+      {/* Search + choose people */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+          <input
+            type="text"
+            placeholder="Find someone…"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+          />
+        </div>
+        {isOperator && (
+          <button
+            onClick={() => setPicking(true)}
+            className="inline-flex items-center gap-2 px-4 h-11 rounded-full border border-outline-variant hover:border-primary text-sm text-on-surface transition-colors shrink-0"
+          >
+            <Users className="w-4 h-4" /> Choose people
+          </button>
+        )}
       </div>
 
       {/* Start holding suggestions */}
@@ -509,6 +548,15 @@ export default function PrayerList() {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
       />
+
+      {picking && (
+        <PickHeldModal
+          contacts={contacts}
+          heldIds={entries.map((e) => e.contact.id)}
+          onClose={() => setPicking(false)}
+          onApply={applyPick}
+        />
+      )}
     </PageContainer>
   );
 }
@@ -530,7 +578,7 @@ function PrayerThread({
   prayers: PrayerRecord[];
   autoCompose: boolean;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
   isOperator: boolean;
@@ -700,7 +748,7 @@ function PrayerItem({
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
   needsMark?: boolean;
-  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
+  onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
 }) {
@@ -709,6 +757,10 @@ function PrayerItem({
   const [draft, setDraft] = useState(prayer.burden);
   const [answering, setAnswering] = useState(false);
   const [howDraft, setHowDraft] = useState(prayer.answer || '');
+  const [answerPhotos, setAnswerPhotos] = useState<VisitPhoto[]>(prayer.answeredPhotos || []);
+  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
+  const [savingAnswer, setSavingAnswer] = useState(false);
+  const answerFileRef = useRef<HTMLInputElement>(null);
   const today = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   const startEdit = () => {
@@ -720,6 +772,39 @@ function PrayerItem({
     const ok = await onUpdateBurden(prayer, draft);
     setSaving(false);
     if (ok) setEditing(false);
+  };
+
+  // Answer photos — previews for the files just picked; revoked when the set
+  // changes or the item unmounts (same hygiene as LogVisitModal).
+  const newPhotoUrls = useMemo(() => newPhotoFiles.map((f) => URL.createObjectURL(f)), [newPhotoFiles]);
+  useEffect(() => () => newPhotoUrls.forEach((u) => URL.revokeObjectURL(u)), [newPhotoUrls]);
+
+  const totalAnswerPhotos = answerPhotos.length + newPhotoFiles.length;
+
+  const openAnswerComposer = () => {
+    setHowDraft(prayer.answer || '');
+    setAnswerPhotos(prayer.answeredPhotos || []);
+    setNewPhotoFiles([]);
+    setAnswering(true);
+  };
+
+  const addAnswerFiles = (files: FileList | null) => {
+    if (!files) return;
+    const remaining = MAX_ANSWER_PHOTOS - answerPhotos.length - newPhotoFiles.length;
+    if (remaining <= 0) return;
+    setNewPhotoFiles((prev) => [...prev, ...Array.from(files)].slice(0, remaining));
+  };
+
+  const saveAnswer = async () => {
+    setSavingAnswer(true);
+    let photos = answerPhotos;
+    if (newPhotoFiles.length) {
+      const uploaded = await uploadPrayerAnswerPhotos(prayer.id, newPhotoFiles);
+      photos = [...answerPhotos, ...uploaded];
+    }
+    onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || today, photos);
+    setSavingAnswer(false);
+    setAnswering(false);
   };
 
   const dimmed = prayer.status === 'answered' || variant === 'earlier';
@@ -796,10 +881,7 @@ function PrayerItem({
             </span>
             {isOperator && (
               <button
-                onClick={() => {
-                  setHowDraft(prayer.answer || "");
-                  setAnswering(true);
-                }}
+                onClick={openAnswerComposer}
                 className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
               >
                 Edit Testimony
@@ -810,6 +892,28 @@ function PrayerItem({
             <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
               "{prayer.answer}"
             </p>
+          )}
+          {(prayer.answeredPhotos || []).length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {prayer.answeredPhotos!.map((ph) =>
+                ph.url ? (
+                  <img
+                    key={ph.path}
+                    src={ph.url}
+                    alt={ph.name || 'photo'}
+                    className="w-16 h-16 object-cover rounded-lg border border-outline-variant"
+                  />
+                ) : (
+                  <span
+                    key={ph.path}
+                    title={ph.name}
+                    className="w-16 h-16 grid place-items-center rounded-lg border border-outline-variant text-on-surface-variant"
+                  >
+                    <ImageIcon className="w-4 h-4" />
+                  </span>
+                ),
+              )}
+            </div>
           )}
         </div>
       )}
@@ -828,6 +932,66 @@ function PrayerItem({
             onChange={(e) => setHowDraft(e.target.value)}
             placeholder="A sentence on how God answered — the testimony."
           />
+          <button
+            type="button"
+            onClick={() => answerFileRef.current?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              addAnswerFiles(e.dataTransfer.files);
+            }}
+            className="mt-2 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed border-outline-variant text-xs text-on-surface-variant hover:border-primary hover:text-on-surface transition-colors"
+          >
+            <ImageIcon className="w-4 h-4" />
+            {totalAnswerPhotos
+              ? `${totalAnswerPhotos} ${totalAnswerPhotos === 1 ? 'photo' : 'photos'} — add another`
+              : 'Add a photo of the answer (optional)'}
+          </button>
+          <input
+            ref={answerFileRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            data-testid="prayer-answer-photo-input"
+            onChange={(e) => addAnswerFiles(e.target.files)}
+          />
+          {totalAnswerPhotos > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {answerPhotos.map((ph) => (
+                <span key={ph.path} className="relative">
+                  <img
+                    src={ph.url}
+                    alt={ph.name || 'photo'}
+                    className="w-16 h-16 object-cover rounded-lg border border-outline-variant"
+                  />
+                  <button
+                    onClick={() => setAnswerPhotos((x) => x.filter((y) => y.path !== ph.path))}
+                    aria-label={`Remove ${ph.name || 'photo'}`}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+              {newPhotoFiles.map((f, i) => (
+                <span key={`${f.name}-${i}`} className="relative">
+                  <img
+                    src={newPhotoUrls[i]}
+                    alt={f.name}
+                    className="w-16 h-16 object-cover rounded-lg border border-primary/30"
+                  />
+                  <button
+                    onClick={() => setNewPhotoFiles((x) => x.filter((_, j) => j !== i))}
+                    aria-label={`Remove ${f.name}`}
+                    className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="mt-2 flex justify-end gap-2">
             <button
               type="button"
@@ -838,13 +1002,11 @@ function PrayerItem({
             </button>
             <button
               type="button"
-              className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary"
-              onClick={() => {
-                onUpdateStatus(prayer, 'answered', howDraft.trim(), prayer.answeredAt || today);
-                setAnswering(false);
-              }}
+              className="px-3 py-1 rounded-full text-xs bg-primary text-on-primary disabled:opacity-50"
+              disabled={savingAnswer}
+              onClick={saveAnswer}
             >
-              Save
+              {savingAnswer ? 'Saving…' : 'Save'}
             </button>
           </div>
         </div>
@@ -869,8 +1031,7 @@ function PrayerItem({
                     } else {
                       onUpdateStatus(prayer, 'answered', prayer.answer || undefined, prayer.answeredAt || today);
                       if (!prayer.answer) {
-                        setHowDraft("");
-                        setAnswering(true);
+                        openAnswerComposer();
                       }
                     }
                   } else {
@@ -960,6 +1121,145 @@ function AddThisWeek({
         >
           Cancel
         </button>
+      </div>
+    </div>
+  );
+}
+
+// ── "Choose people" — tick who shows up on this page (design PickHeldModal) ──
+function PickHeldModal({
+  contacts,
+  heldIds,
+  onClose,
+  onApply,
+}: {
+  contacts: Contact[];
+  heldIds: string[];
+  onClose: () => void;
+  onApply: (added: string[], removed: string[]) => void;
+}) {
+  const [q, setQ] = useState('');
+  const [sel, setSel] = useState<string[]>(() => heldIds.slice());
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const list = useMemo(() => {
+    const sorted = [...contacts].sort((a, b) => a.name.localeCompare(b.name));
+    const needle = q.trim().toLowerCase();
+    if (!needle) return sorted;
+    return sorted.filter((c) =>
+      `${c.name} ${c.role || ''} ${c.location || ''} ${(c.tags || []).join(' ')}`.toLowerCase().includes(needle),
+    );
+  }, [contacts, q]);
+
+  const toggle = (id: string) =>
+    setSel((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
+
+  const added = sel.filter((id) => !heldIds.includes(id));
+  const removed = heldIds.filter((id) => !sel.includes(id));
+  const changed = added.length + removed.length;
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Who are we holding?"
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md max-h-[85vh] bg-surface-container rounded-[2rem] shadow-2xl border border-outline-variant flex flex-col overflow-hidden">
+        <div className="p-6 border-b border-outline-variant bg-surface-container-high/50">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="font-serif text-2xl text-on-surface">Who are we holding?</h2>
+              <p className="text-xs text-on-surface-variant mt-1">Tick the people you want on this page.</p>
+            </div>
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="p-2 rounded-full hover:bg-surface-variant transition-colors shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="relative mt-4">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+            <input
+              autoFocus
+              type="text"
+              placeholder="Search the people you know…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 py-3">
+          {list.length === 0 && (
+            <p className="text-center py-6 text-xs text-on-surface-variant italic">No one matches that name.</p>
+          )}
+          {list.map((c) => {
+            const checked = sel.includes(c.id);
+            const wasHeld = heldIds.includes(c.id);
+            return (
+              <button
+                key={c.id}
+                onClick={() => toggle(c.id)}
+                aria-pressed={checked}
+                className="w-full flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-surface-variant text-left transition-colors"
+              >
+                <span
+                  className={cn(
+                    'w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors',
+                    checked ? 'bg-primary border-primary text-on-primary' : 'border-outline-variant',
+                  )}
+                >
+                  {checked && <Check className="w-3 h-3" />}
+                </span>
+                <Avatar contact={c} size="sm" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-on-surface truncate">{c.name}</span>
+                  <span className="block text-xs text-on-surface-variant truncate mt-0.5">
+                    {[c.role, c.location].filter(Boolean).join(' · ')}
+                  </span>
+                </span>
+                {wasHeld && <span className="text-[11px] text-on-surface-variant shrink-0">already held</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="p-4 border-t border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
+          <span className="text-xs text-on-surface-variant">
+            {sel.length} {sel.length === 1 ? 'person' : 'people'} on our hearts
+            {changed > 0 && (
+              <span className="text-primary font-medium">
+                {added.length > 0 ? ` · +${added.length}` : ''}
+                {removed.length > 0 ? ` · −${removed.length}` : ''}
+              </span>
+            )}
+          </span>
+          <button
+            onClick={onClose}
+            className="ml-auto px-4 py-2 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onApply(added, removed)}
+            disabled={!changed}
+            className="px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            Save
+          </button>
+        </div>
       </div>
     </div>
   );

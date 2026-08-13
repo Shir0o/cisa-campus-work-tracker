@@ -5,6 +5,7 @@ import PrayerList from '../views/PrayerList';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import { logActivity } from '../lib/firebase';
+import { uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import React from 'react';
 
 // Mock dependencies
@@ -39,6 +40,21 @@ vi.mock('../lib/firebase', () => ({
   handleFirestoreError: vi.fn(),
   OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE' },
   logActivity: vi.fn(),
+}));
+
+// The answer-photo upload runs against Cloud Storage; the component test only
+// cares that the returned metadata lands on the prayer, so stub the upload.
+vi.mock('../lib/prayerPhotos', () => ({
+  MAX_ANSWER_PHOTOS: 4,
+  uploadPrayerAnswerPhotos: vi.fn((_id: string, files: File[]) =>
+    Promise.resolve(
+      Array.from(files).map((f, i) => ({
+        path: `prayers/x/${i}.jpg`,
+        url: `https://storage.example/${i}.jpg`,
+        name: f.name,
+      })),
+    ),
+  ),
 }));
 
 // We'll mock the ContactDetailsModal to keep this test fast and isolated
@@ -419,6 +435,72 @@ describe('PrayerList', () => {
     fireEvent.click(saveBtn);
 
     expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('opens the choose-people picker and adds a selected person', async () => {
+    const contacts = [
+      ...mockContacts,
+      {
+        id: 'c3',
+        data: () => ({
+          name: 'Carol Lee',
+          email: 'carol@example.com',
+          role: 'Student',
+          stage: 'New',
+          tags: ['Year 1'],
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: contacts, size: 3 });
+      else if (ref?.path === 'prayers') callback({ docs: mockPrayers, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Choose people/i }));
+
+    // Alice and Bob are already held; Carol is not.
+    expect(screen.getByText('Who are we holding?')).toBeInTheDocument();
+    expect(screen.getAllByText('already held').length).toBe(2);
+
+    fireEvent.click(screen.getByText('Carol Lee').closest('button')!);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(screen.getByText(/Write what we’re holding for Carol this week/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('attaches photos when saving an answer', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    const markSection = screen.getByText('Mark').parentElement!;
+    fireEvent.click(within(markSection).getByRole('button', { name: 'Answered' }));
+
+    const textarea = await screen.findByPlaceholderText(/A sentence on how God answered/i);
+    fireEvent.change(textarea, { target: { value: 'God answered with peace' } });
+
+    const file = new File(['x'], 'answer.jpg', { type: 'image/jpeg' });
+    fireEvent.change(screen.getByTestId('prayer-answer-photo-input'), { target: { files: [file] } });
+
+    // The picked file shows as a thumbnail, not just a filename.
+    expect(await screen.findByAltText('answer.jpg')).toHaveAttribute('src', 'blob:preview');
+    expect(screen.getByText('1 photo — add another')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(uploadPrayerAnswerPhotos).toHaveBeenCalledWith('p2', [file]));
+    const calls = vi.mocked(updateDoc).mock.calls;
+    const patch = calls[calls.length - 1][1] as unknown as Record<string, unknown>;
+    expect(patch.answer).toBe('God answered with peace');
+    expect(patch.answeredPhotos).toEqual([
+      { path: 'prayers/x/0.jpg', url: 'https://storage.example/0.jpg', name: 'answer.jpg' },
+    ]);
   });
 });
 

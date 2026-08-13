@@ -200,6 +200,44 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Prayers', () => {
+    it('lets an operator store up to 4 answeredPhotos on an answered prayer', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertSucceeds(setDoc(doc(db, 'prayers', 'prayer1'), {
+        contactId: 'contact1',
+        date: '2026-08-13T00:00:00.000Z',
+        burden: 'Peace for finals',
+        status: 'answered',
+        answer: 'God provided',
+        answeredAt: 'Aug 13',
+        answeredPhotos: [
+          { path: 'prayers/prayer1/1.jpg', url: 'https://example.test/1.jpg', name: 'a.jpg' },
+          { path: 'prayers/prayer1/2.jpg', url: 'https://example.test/2.jpg', name: 'b.jpg' },
+        ],
+        updatedAt: '2026-08-13T00:00:00.000Z',
+      }));
+    });
+
+    it('rejects a prayer with more than 4 answeredPhotos', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+      });
+
+      await assertFails(setDoc(doc(db, 'prayers', 'prayer2'), {
+        contactId: 'contact1',
+        updatedAt: '2026-08-13T00:00:00.000Z',
+        answeredPhotos: [1, 2, 3, 4, 5].map((i) => ({ path: `p/${i}.jpg`, url: `u${i}`, name: `${i}.jpg` })),
+      }));
+    });
+  });
+
   describe('Interactions', () => {
     it('DD5: Prevents Timestamp Fraud', async () => {
       const db = getFirestore({ uid: 'operator1' });

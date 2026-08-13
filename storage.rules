@@ -1,18 +1,29 @@
 rules_version = '2';
 
-// Cloud Storage rules. The only thing this project stores as a file is a photo
-// taken on a visit; everything else lives in Firestore.
+// Cloud Storage rules. The only files this project stores are photos — one
+// taken on a visit, or attached to a prayer answer — and everything else lives
+// in Firestore.
 //
 // Why there is no full-timer check here: Storage rules can only reach Firestore
 // through `firestore.get()` on the (default) database, and this project's
 // Firestore is a *named* database (see firestore.databaseId in
-// firebase-applet-config.json). So the role gate lives on the `visits` doc in
-// firestore.rules, which is admin-only for both read and write. A photo
-// uploaded without a matching visit doc is an orphan blob nobody can find, and
-// the size and content-type caps below bound what can be put there.
+// firebase-applet-config.json). So the role gate lives on the `visits` and
+// `prayers` docs in firestore.rules. A photo uploaded without a matching doc is
+// an orphan blob nobody can find, and the size and content-type caps below
+// bound what can be put there.
 service firebase.storage {
   match /b/{bucket}/o {
     match /visits/{visitId}/{photoId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null
+                   && request.resource.size < 8 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+      allow delete: if request.auth != null;
+    }
+
+    // Photos attached to a prayer's "how it was answered" (#267). The writer
+    // gate lives on the prayer doc (operator-and-up, like /prayers).
+    match /prayers/{prayerId}/{photoId} {
       allow read: if request.auth != null;
       allow write: if request.auth != null
                    && request.resource.size < 8 * 1024 * 1024
