@@ -127,12 +127,14 @@ function EmailPasswordForm() {
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
       <div className="pt-2 text-center">
-        <Link
-          to="/privacy"
+        <a
+          href="https://shir0o.github.io/cisa-campus-work-traker/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-on-surface-variant hover:text-primary transition-colors underline"
         >
           Privacy Policy
-        </Link>
+        </a>
       </div>
     </form>
   );

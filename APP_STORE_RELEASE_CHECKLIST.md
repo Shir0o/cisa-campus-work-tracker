@@ -41,7 +41,7 @@ TEST ENVIRONMENT NOTES:
 1. The test account is pre-configured with active sample data (contacts, tasks, and attendance records).
 2. No corporate VPN, hardware token, or IP whitelisting is required to log in with these credentials.
 3. User accounts are provisioned exclusively by enterprise workspace administrators. Self-registration and automated public account creation are disabled by design.
-4. Privacy policy is accessible at: https://yourdomain.com/privacy (and directly on the login screen).
+4. Privacy policy is accessible at: https://shir0o.github.io/cisa-campus-work-traker/privacy.html
 
 CONTACT FOR REVIEW ISSUES:
 If you experience any issues logging in, please contact technical lead at support@yourdomain.com.
