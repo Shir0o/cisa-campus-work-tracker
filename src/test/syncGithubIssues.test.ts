@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { fetchGitHubIssues, syncIssuesToDocs } from '../../scripts/sync-github-issues';
+import { fetchGitHubIssues, syncIssuesToDocs, autoCommitAndPush } from '../../scripts/sync-github-issues';
+import * as childProcess from 'node:child_process';
 
 describe('sync-github-issues script', () => {
   const originalFetch = globalThis.fetch;
@@ -255,5 +256,56 @@ describe('sync-github-issues script', () => {
       expect(parsed[0].title).toBe('Fresh Active Issue');
       expect(parsed[0].id).toBe(201);
     });
+
+    it('triggers autoCommitAndPush when autoCommitPush is true', async () => {
+      const execSyncSpy = vi.spyOn(childProcess, 'execSync').mockImplementation((cmd: string) => {
+        if (typeof cmd === 'string' && cmd.startsWith('git status')) {
+          return ' M docs/issues.json' as any;
+        }
+        return '' as any;
+      });
+
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([]), { status: 200 })
+      );
+
+      await syncIssuesToDocs({
+        repo: 'test-owner/test-repo',
+        outputPath: testOutputPath,
+        autoCommitPush: true,
+        branch: 'main',
+      });
+
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git status --porcelain'),
+        expect.any(Object)
+      );
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git add'),
+        expect.any(Object)
+      );
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git commit'),
+        expect.any(Object)
+      );
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git push origin main'),
+        expect.any(Object)
+      );
+    });
+
+    it('skips git commit and push when autoCommitAndPush detects no changes', async () => {
+      const execSyncSpy = vi.spyOn(childProcess, 'execSync').mockImplementation((cmd: string) => {
+        if (typeof cmd === 'string' && cmd.startsWith('git status')) {
+          return '' as any;
+        }
+        return '' as any;
+      });
+
+      const result = autoCommitAndPush(testOutputPath, 'main');
+      expect(result).toBe(false);
+      expect(execSyncSpy).toHaveBeenCalledTimes(1);
+    });
   });
 });
+

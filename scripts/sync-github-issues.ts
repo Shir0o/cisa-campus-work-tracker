@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -112,7 +113,46 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
   return issues;
 }
 
-export async function syncIssuesToDocs(opts?: { repo?: string; token?: string; outputPath?: string }) {
+export function autoCommitAndPush(filePath: string, branch = 'main'): boolean {
+  try {
+    const relativePath = path.relative(process.cwd(), filePath);
+    const status = execSync(`git status --porcelain "${relativePath}"`, { encoding: 'utf8' }).trim();
+
+    if (!status) {
+      console.log(`No changes detected in ${relativePath}. Skipping commit and push.`);
+      return false;
+    }
+
+    console.log(`Staging ${relativePath}...`);
+    execSync(`git add "${relativePath}"`, { stdio: 'inherit' });
+
+    try {
+      execSync('git config user.name', { encoding: 'utf8' });
+    } catch {
+      execSync('git config user.name "github-actions[bot]"', { stdio: 'inherit' });
+      execSync('git config user.email "github-actions[bot]@users.noreply.github.com"', { stdio: 'inherit' });
+    }
+
+    console.log(`Committing changes...`);
+    execSync(`git commit -m "docs: sync github issues into ${relativePath} [skip ci]"`, { stdio: 'inherit' });
+
+    console.log(`Pushing to ${branch}...`);
+    execSync(`git push origin ${branch}`, { stdio: 'inherit' });
+    console.log(`Successfully committed and pushed ${relativePath} to ${branch}.`);
+    return true;
+  } catch (err) {
+    console.error('Error during auto-commit and push:', err);
+    throw err;
+  }
+}
+
+export async function syncIssuesToDocs(opts?: {
+  repo?: string;
+  token?: string;
+  outputPath?: string;
+  autoCommitPush?: boolean;
+  branch?: string;
+}) {
   const repo =
     opts?.repo ||
     process.env.GITHUB_REPO ||
@@ -120,6 +160,8 @@ export async function syncIssuesToDocs(opts?: { repo?: string; token?: string; o
     'Shir0o/cisa-campus-work-traker';
   const token = opts?.token || process.env.GITHUB_TOKEN;
   const outputPath = opts?.outputPath || path.join(process.cwd(), 'docs', 'issues.json');
+  const autoCommitPush = opts?.autoCommitPush ?? false;
+  const branch = opts?.branch || 'main';
 
   console.log(`Fetching GitHub issues for repository "${repo}"...`);
   const issues = await fetchGitHubIssues(repo, token);
@@ -135,6 +177,10 @@ export async function syncIssuesToDocs(opts?: { repo?: string; token?: string; o
 
   await fs.promises.writeFile(outputPath, JSON.stringify(issues, null, 2) + '\n', 'utf8');
   console.log(`Successfully written issues to ${outputPath}`);
+
+  if (autoCommitPush) {
+    autoCommitAndPush(outputPath, branch);
+  }
 }
 
 // Execute CLI if run directly
@@ -143,10 +189,11 @@ const isDirectExecution =
   process.argv[1]?.endsWith('sync-github-issues.ts');
 
 if (isDirectExecution) {
-  syncIssuesToDocs()
+  syncIssuesToDocs({ autoCommitPush: true })
     .then(() => process.exit(0))
     .catch((err) => {
       console.error('Error syncing GitHub issues:', err);
       process.exit(1);
     });
 }
+

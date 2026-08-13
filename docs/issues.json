@@ -1,5 +1,269 @@
 [
   {
+    "id": 5143774132,
+    "number": 272,
+    "title": "[Feedback] off: if trainee (or other user) is switched to from adm...",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:52:27Z",
+    "updated_at": "2026-08-13T16:52:27Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/13/2026, 4:52:27 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nif trainee (or other user) is switched to from admin, it still may show a page they are not allowed to view (because it was there before the see their view)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/272",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143756476,
+    "number": 271,
+    "title": "[Feedback] off: spacing is off",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:50:13Z",
+    "updated_at": "2026-08-13T16:50:13Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/13/2026, 4:50:13 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nspacing is off\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/271",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143748721,
+    "number": 270,
+    "title": "[Feedback] idea: system notification on mobile?",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:49:12Z",
+    "updated_at": "2026-08-13T16:49:12Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/13/2026, 4:49:12 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nsystem notification on mobile?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/270",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143736349,
+    "number": 269,
+    "title": "[Feedback] off: the earlier toggle animation looks strainge",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:47:38Z",
+    "updated_at": "2026-08-13T16:47:38Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/13/2026, 4:47:38 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe earlier toggle animation looks strainge\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/269",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143716093,
+    "number": 268,
+    "title": "[Feedback] off: updated card (last week item) should not jump to b...",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:45:07Z",
+    "updated_at": "2026-08-13T16:45:07Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/13/2026, 4:45:07 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nupdated card (last week item) should not jump to bottom\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/268",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143711835,
+    "number": 267,
+    "title": "[Feedback] request: how it's answered can have a picture input",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:44:36Z",
+    "updated_at": "2026-08-13T16:44:36Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/13/2026, 4:44:36 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nhow it's answered can have a picture input\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/267",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143709463,
+    "number": 266,
+    "title": "[Feedback] request: add select people on this page to select",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:44:19Z",
+    "updated_at": "2026-08-13T16:44:19Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/13/2026, 4:44:19 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nadd select people on this page to select\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/266",
+    "is_pull_request": false
+  },
+  {
+    "id": 5143701803,
+    "number": 265,
+    "title": "[Feedback] thought: filter brothers/sisters",
+    "state": "open",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-13T16:43:19Z",
+    "updated_at": "2026-08-13T16:43:19Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/13/2026, 4:43:19 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nfilter brothers/sisters\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/265",
+    "is_pull_request": false
+  },
+  {
     "id": 5133529704,
     "number": 258,
     "title": "[Feedback] request: refine the flow of opening a card (which jumps to ...",
@@ -130,25 +394,5 @@
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/12/2026, 5:21:52 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nno margin on edit details view (people)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/255",
     "is_pull_request": false
-  },
-  {
-    "id": 5133339417,
-    "number": 254,
-    "title": "fix(mobile): swipe-to-delete styling, back button layout, and admin message deletion",
-    "state": "open",
-    "user": {
-      "login": "Shir0o",
-      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
-      "html_url": "https://github.com/Shir0o"
-    },
-    "labels": [],
-    "assignees": [],
-    "comments": 2,
-    "created_at": "2026-08-12T17:01:36Z",
-    "updated_at": "2026-08-12T17:33:13Z",
-    "closed_at": null,
-    "body": "## Summary of Changes\n\n- **Swipe-to-Delete Button Rounded Edges**: Updated `SwipeToDelete.tsx` with `containerStyle={{ borderRadius: radius.tile, overflow: 'hidden' }}` and rounded action button corners matching the 22px tile design system.\n- **Transparent Back Button**: Removed solid chip background overlay (`backgroundColor: c.room.chip`) from `V2Screen`'s `← Back` pressable in `Widget.tsx`.\n- **Header Spacing**: Added explicit `marginRight: 4` and `gap: 12` spacing between `← Back` and the title in `Widget.tsx` and `ChatThreadScreen.tsx`.\n- **Admin Conversation Room Deletion**: Re-exported `deleteChatRoom` in mobile data wrapper and wired `onDeleteForEveryone` on `MessagesScreen.tsx` & `MemberMessagesScreen.tsx` so full-timers / room creators delete room documents from Firestore for everyone upon confirmation.\n- **Specific Message Deletion**: Exported `deleteChatMessage` in `@cisa/core` and mobile wrapper, and added long-press message deletion for admins / full-timers and authors in `ChatThreadScreen.tsx`.\n- **Tests & Changelog**: Added unit tests in `packages/core/test/chat.test.ts` and `apps/mobile/src/components/messages/SwipeToDelete.test.tsx`, and updated `CHANGELOG.md` under `[Unreleased]`.",
-    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/254",
-    "is_pull_request": true
   }
 ]
