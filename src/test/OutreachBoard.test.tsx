@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, writeBatch } from 'firebase/firestore';
-import OutreachBoard from '../views/OutreachBoard';
+import OutreachBoard, { __resetOutreachBoardStageCache } from '../views/OutreachBoard';
 import { useAuth } from '../components/AuthProvider';
 import { useLayout } from '../App';
 import React from 'react';
@@ -154,6 +154,7 @@ function setupOnSnapshotWith({
 describe('OutreachBoard', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
+    __resetOutreachBoardStageCache();
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
     const { deleteDoc, writeBatch } = await import('firebase/firestore');
@@ -392,6 +393,23 @@ describe('OutreachBoard', () => {
     render(<OutreachBoard />);
 
     expect(document.querySelector('.animate-pulse')).toBeInTheDocument();
+  });
+
+  // ── 13b. No skeleton flash on remount after stages load (#258) ─────────────
+  it('does not re-show the skeleton on remount after stages load (#258)', () => {
+    setupOnSnapshotWith({ stages: mockStages, contacts: mockContacts });
+
+    const { unmount } = render(<OutreachBoard />);
+    act(() => {
+      vi.advanceTimersByTime(900);
+    });
+    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
+
+    // Simulate closing the full-screen contact detail: the board remounts and
+    // must render instantly from the cached stage list, with no skeleton.
+    unmount();
+    render(<OutreachBoard />);
+    expect(document.querySelector('.animate-pulse')).not.toBeInTheDocument();
   });
 
   // ── 14. Stage and Contact modifications ──

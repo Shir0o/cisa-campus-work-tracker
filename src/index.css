@@ -3653,6 +3653,18 @@ body.msgs-fullscreen .content { padding-bottom: 0 !important; }
 .cdm-page-body .cd-sec { padding-left: 0; padding-right: 0; border-bottom: 0; }
 .cdm-page-body .cd-sec-head { margin-bottom: 14px; }
 
+/* Hide the always-on scrollbar in the detail content (feedback #256): keep
+   the window scrollable but don't render the bar at rest. */
+.cd-page-content,
+.cdm-page-body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.cd-page-content::-webkit-scrollbar,
+.cdm-page-body::-webkit-scrollbar {
+  display: none;
+}
+
 /* ── header ── */
 .cd-head {
   display: flex; gap: 18px; align-items: flex-start;

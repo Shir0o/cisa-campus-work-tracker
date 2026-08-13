@@ -48,7 +48,7 @@ const STATUS_LABEL: Record<Status, string> = {
   pending: 'Unmarked',
   ongoing: 'Ongoing',
   answered: 'Answered',
-  unanswered: 'archive',
+  unanswered: 'Archived',
 };
 
 // Warm tone for a status label (text only).
@@ -103,6 +103,8 @@ export default function PrayerList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Brothers/Sisters filter (#265) — filter the roster by the contact's gender.
+  const [genderFilter, setGenderFilter] = useState<'all' | 'brothers' | 'sisters'>('all');
 
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => {
     try {
@@ -316,14 +318,19 @@ export default function PrayerList() {
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return entries;
-    return entries.filter(
-      (e) =>
-        e.contact.name.toLowerCase().includes(q) ||
-        e.contact.role?.toLowerCase().includes(q) ||
-        e.contact.tags?.some((t) => t.toLowerCase().includes(q)),
-    );
-  }, [entries, searchQuery]);
+    return entries.filter((e) => {
+      if (q) {
+        const matches =
+          e.contact.name.toLowerCase().includes(q) ||
+          e.contact.role?.toLowerCase().includes(q) ||
+          e.contact.tags?.some((t) => t.toLowerCase().includes(q));
+        if (!matches) return false;
+      }
+      if (genderFilter === 'all') return true;
+      const g = (e.contact.gender || '').toLowerCase();
+      return genderFilter === 'brothers' ? g === 'male' : g === 'female';
+    });
+  }, [entries, searchQuery, genderFilter]);
 
   // Contacts not yet held that match the search — offer to start holding them.
   const suggestions = useMemo(() => {
@@ -420,6 +427,8 @@ export default function PrayerList() {
         suggestions={suggestions}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        genderFilter={genderFilter}
+        setGenderFilter={setGenderFilter}
         startHolding={startHolding}
         onAddBurden={handleAddBurden}
         onUpdateStatus={handleUpdateStatus}
@@ -477,6 +486,22 @@ export default function PrayerList() {
             className="pl-10 pr-4 h-11 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
           />
         </div>
+        <div className="flex items-center gap-1 rounded-full border border-outline-variant bg-surface p-1 shrink-0">
+          {(['all', 'brothers', 'sisters'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setGenderFilter(v)}
+              className={cn(
+                'px-3 h-8 rounded-full text-[13px] font-medium transition-colors cursor-pointer',
+                genderFilter === v
+                  ? 'bg-primary text-on-primary'
+                  : 'text-on-surface-variant hover:text-on-surface',
+              )}
+            >
+              {v === 'all' ? 'All' : v === 'brothers' ? 'Brothers' : 'Sisters'}
+            </button>
+          ))}
+        </div>
         {isOperator && (
           <button
             onClick={() => setPicking(true)}
@@ -515,12 +540,18 @@ export default function PrayerList() {
       {filteredEntries.length === 0 ? (
         <div className="text-center py-16">
           <h3 className="font-serif text-xl text-on-surface mb-1">
-            {searchQuery ? 'No one matches that just yet' : 'No one to hold yet'}
+            {searchQuery
+              ? 'No one matches that just yet'
+              : genderFilter !== 'all'
+                ? `No ${genderFilter} to hold yet`
+                : 'No one to hold yet'}
           </h3>
           <p className="text-sm text-on-surface-variant">
             {searchQuery
               ? 'Try another name, or start holding someone above.'
-              : 'Find a person above to begin praying for them.'}
+              : genderFilter !== 'all'
+                ? "Try 'All' to see everyone you're holding."
+                : 'Find a person above to begin praying for them.'}
           </p>
         </div>
       ) : (

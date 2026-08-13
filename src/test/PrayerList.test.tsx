@@ -77,6 +77,7 @@ const mockContacts = [
       role: 'Student',
       stage: 'Lead',
       tags: ['Year 2'],
+      gender: 'Female',
     }),
   },
   {
@@ -86,6 +87,7 @@ const mockContacts = [
       email: 'bob@example.com',
       role: 'Leader',
       stage: 'Regular',
+      gender: 'Male',
     }),
   },
 ];
@@ -165,8 +167,32 @@ describe('PrayerList', () => {
       // Bob (legacy prayer)
       expect(screen.getByText('Bob Smith')).toBeInTheDocument();
       expect(screen.getByText('Health and recovery')).toBeInTheDocument();
-      expect(screen.getAllByText('archive').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('Archived').length).toBeGreaterThan(0);
     });
+  });
+
+  it('filters the roster by gender (Brothers/Sisters)', async () => {
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    });
+
+    // Brothers → only Bob (Male) remains
+    fireEvent.click(screen.getByRole('button', { name: 'Brothers' }));
+    await waitFor(() => expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument());
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+
+    // Sisters → only Alice (Female) remains
+    fireEvent.click(screen.getByRole('button', { name: 'Sisters' }));
+    await waitFor(() => expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument());
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+
+    // Back to All → both return
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
   });
 
   // The phone's log sheet can keep a burden off this page ("Bring it to team
@@ -246,7 +272,7 @@ describe('PrayerList', () => {
     expect(updateDoc).toHaveBeenCalled();
 
     // Mark as Still waiting
-    const unansweredButton = screen.getAllByRole('button', { name: 'archive' })[0];
+    const unansweredButton = screen.getAllByRole('button', { name: 'Archived' })[0];
     fireEvent.click(unansweredButton);
     expect(updateDoc).toHaveBeenCalled();
   });

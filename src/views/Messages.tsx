@@ -515,7 +515,7 @@ export default function Messages() {
     <div className="page msgs flex flex-1 h-full min-h-0 w-full overflow-hidden bg-background">
       {/* 1. Left Rail — the design's msgs-rail */}
       <div className={cn(
-        "flex flex-col border-r border-outline-variant w-full md:w-[328px] shrink-0 bg-surface min-h-0",
+        "msgs-rail flex flex-col border-r border-outline-variant w-full md:w-[328px] shrink-0 bg-surface min-h-0",
         activeRoomId ? "hidden md:flex" : "flex"
       )}>
         {/* Rail head */}

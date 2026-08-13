@@ -167,11 +167,21 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
   );
 }
 
+// Cache the stage list across unmount/remount so closing the full-screen
+// contact detail doesn't re-trigger the board skeleton (#258). Stages are
+// shared/global and the onSnapshot listener refreshes them right after mount.
+let cachedStages: Stage[] | null = null;
+
+// Test-only hook to reset the cross-mount cache between tests.
+export function __resetOutreachBoardStageCache() {
+  cachedStages = null;
+}
+
 export default function OutreachBoard() {
   const { setSelectedContact, openNewContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role } = useAuth();
-  const [stages, setStages] = useState<Stage[]>([]);
+  const [stages, setStages] = useState<Stage[]>(cachedStages ?? []);
   useEffect(() => { stagesRef.current = stages; }, [stages]);
   // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
   // stage drag; stagesBeforeDragRef remembers the pre-drag order so a failed
@@ -186,7 +196,7 @@ export default function OutreachBoard() {
 
   const [newStageName, setNewStageName] = useState('');
   const [newStageColor, setNewStageColor] = useState('bg-board-indigo');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(cachedStages == null);
   const [error, setError] = useState<string | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -262,6 +272,7 @@ export default function OutreachBoard() {
       }
 
       setStages(stagesData);
+      cachedStages = stagesData;
       setTimeout(() => setLoading(false), 800);
     }, (e) => onLoadError(e, 'stages'));
 

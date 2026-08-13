@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import App, { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
@@ -343,5 +343,33 @@ describe('App Component', () => {
     const closeDetailsBtn = screen.getByTestId('close-contact-details');
     fireEvent.click(closeDetailsBtn);
     expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
+  });
+
+  it('clears the open contact detail when navigating to another page (#257)', async () => {
+    mockAuthValue.user = { uid: '123', email: 'test@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'operator';
+    window.history.replaceState(null, '', '/');
+
+    render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+
+    // Open the person detail (replaces the page inside the shell).
+    fireEvent.click(screen.getByTestId('dashboard-select-contact-btn'));
+    expect(screen.getByTestId('mock-contact-details-modal')).toBeInTheDocument();
+
+    // Navigate to another page; the stale selection must be dropped so the new
+    // page renders instead of the person detail.
+    act(() => {
+      window.history.pushState(null, '', '/directory');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
+      expect(screen.getByTestId('directory-view')).toBeInTheDocument();
+    });
   });
 });

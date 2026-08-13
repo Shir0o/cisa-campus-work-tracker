@@ -131,6 +131,7 @@ beforeEach(async () => {
   vi.stubEnv("GROUPME_GROUP_ID", "");
   vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
   vi.stubEnv("APP_URL", "https://example.test");
+  vi.stubEnv("EXPO_ACCESS_TOKEN", "test-expo-token");
   vi.stubGlobal("fetch", fetchMock);
 
   resetDb();
@@ -706,6 +707,16 @@ describe("POST /api/send-push", () => {
     expect(res.body).toMatchObject({ success: true, pushSent: false });
   });
 
+  it("returns pushSent false when EXPO_ACCESS_TOKEN is not configured", async () => {
+    vi.stubEnv("EXPO_ACCESS_TOKEN", "");
+    seedDoc("users", "u-3", { pushToken: "ExponentPushToken[abc]" });
+    const res = await request(app).post("/api/send-push").send({ userId: "u-3", title: "Hi" });
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ success: true, pushSent: false });
+    expect(res.body.reason).toContain("EXPO_ACCESS_TOKEN");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it("dispatches a push via Expo when the user has a pushToken", async () => {
     seedDoc("users", "u-2", { pushToken: "ExponentPushToken[abc]" });
     fetchMock.mockResolvedValue(new Response(JSON.stringify({ data: { status: "ok" } }), { status: 200 }));
@@ -715,6 +726,8 @@ describe("POST /api/send-push", () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe("https://exp.host/--/api/v2/push/send");
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer test-expo-token");
     expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ to: "ExponentPushToken[abc]", title: "Hello" });
   });
 });

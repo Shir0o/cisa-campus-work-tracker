@@ -31,6 +31,12 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: (...args: any[]) => mockSendNotification(...args),
 }));
 
+const mockSendPushNotification = vi.fn().mockResolvedValue(undefined);
+
+vi.mock('../lib/push', () => ({
+  sendPushNotification: (...args: any[]) => mockSendPushNotification(...args),
+}));
+
 import {
   getDirectChatId,
   getOrCreateDirectChat,
@@ -252,6 +258,15 @@ describe('chat.ts services', () => {
         type: 'info',
         targetId: 'r1',
         link: '/messages/r1',
+      });
+
+      // Same trigger also dispatches an OS-level push (#270).
+      expect(mockSendPushNotification).toHaveBeenCalledTimes(2);
+      expect(mockSendPushNotification).toHaveBeenCalledWith({
+        userId: 'u2',
+        title: 'New message',
+        body: 'User One: hello world',
+        data: { targetId: 'r1', link: '/messages/r1' },
       });
     });
 

@@ -14,6 +14,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { db, sendNotification } from '../lib/firebase';
+import { sendPushNotification } from '../lib/push';
 import { ChatAttachment, ChatReaction } from '../types';
 
 /**
@@ -216,6 +217,14 @@ export async function sendMessage(
         type: 'info',
         targetId: roomId,
         link: `/messages/${roomId}`,
+      });
+      // Same trigger as the in-app bell, but as an OS-level push to the
+      // recipient's phone (#270).
+      void sendPushNotification({
+        userId: memberId,
+        title: 'New message',
+        body: `${sender.displayName}: ${previewText}`,
+        data: { targetId: roomId, link: `/messages/${roomId}` },
       });
     }
   }

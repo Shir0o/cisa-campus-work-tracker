@@ -14,6 +14,8 @@ interface PrayerListMobileProps {
   suggestions: Contact[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+  genderFilter?: 'all' | 'brothers' | 'sisters';
+  setGenderFilter?: (v: 'all' | 'brothers' | 'sisters') => void;
   startHolding: (contact: Contact) => void;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
@@ -42,7 +44,7 @@ const STATUS_LABEL: Record<Status, string> = {
   pending: 'Unmarked',
   ongoing: 'Ongoing',
   answered: 'Answered',
-  unanswered: 'archive',
+  unanswered: 'Archived',
 };
 
 const STATUS_TONE: Record<Status, string> = {
@@ -86,6 +88,8 @@ export default function PrayerListMobile({
   suggestions,
   searchQuery,
   setSearchQuery,
+  genderFilter = 'all',
+  setGenderFilter,
   startHolding,
   onAddBurden,
   onUpdateStatus,
@@ -164,6 +168,26 @@ export default function PrayerListMobile({
           Answered
         </button>
       </div>
+
+      {/* ── Brothers / Sisters filter (#265) ── */}
+      {setGenderFilter && (
+        <div className="px-5 mt-3 flex gap-1.5">
+          {(['all', 'brothers', 'sisters'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setGenderFilter(v)}
+              className={cn(
+                'px-3.5 h-9 rounded-full text-[13px] font-medium border transition-colors cursor-pointer',
+                genderFilter === v
+                  ? 'bg-primary text-on-primary border-primary'
+                  : 'bg-surface text-on-surface-variant border-outline-variant hover:text-on-surface',
+              )}
+            >
+              {v === 'all' ? 'All' : v === 'brothers' ? 'Brothers' : 'Sisters'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ── Prayer Threads List ── */}
       <div className="mt-4 px-5 flex flex-col gap-4 prt-list">

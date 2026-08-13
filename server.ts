@@ -1538,6 +1538,11 @@ ${JSON.stringify(contactsList)}`;
         return res.status(400).json({ success: false, error: "userId and title are required" });
       }
 
+      const expoAccessToken = process.env.EXPO_ACCESS_TOKEN;
+      if (!expoAccessToken) {
+        return res.status(200).json({ success: true, pushSent: false, reason: "EXPO_ACCESS_TOKEN not configured" });
+      }
+
       const db = getAdminDb();
       const userSnap = await db.collection("users").doc(userId).get();
       const pushToken = userSnap.data()?.pushToken;
@@ -1551,6 +1556,7 @@ ${JSON.stringify(contactsList)}`;
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
+          "Authorization": `Bearer ${expoAccessToken}`,
         },
         body: JSON.stringify({
           to: pushToken,
