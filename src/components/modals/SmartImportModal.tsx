@@ -110,8 +110,23 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         body: JSON.stringify({ text: inputText }),
       });
 
+      if (!response.ok) {
+        let errorMsg = `Server error (HTTP ${response.status} ${response.statusText || ''})`.trim();
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMsg = errorData.error;
+          }
+        } catch {
+          if (response.status === 404) {
+            errorMsg = 'Smart Import endpoint not found (HTTP 404). Please ensure the backend server is deployed.';
+          }
+        }
+        throw new Error(errorMsg);
+      }
+
       const resData = await response.json();
-      if (!response.ok || !resData.success) {
+      if (!resData.success) {
         throw new Error(resData.error || 'Failed to parse text with AI');
       }
 
