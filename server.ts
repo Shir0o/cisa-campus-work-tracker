@@ -272,7 +272,9 @@ ${cleanMsg}
 *Created automatically from CISA Campus Work Tracker user feedback.*`;
 
           if (screenshot) {
-            body += `\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.`;
+            const baseUrl = process.env.APP_URL || process.env.VITE_APP_URL || `${req.protocol}://${req.get('host')}`;
+            const imageUrl = `${baseUrl}/api/feedback/${docRef.id}/screenshot`;
+            body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
           }
 
           const labels = [type || 'enhancement', 'feedback'];
@@ -322,6 +324,47 @@ ${cleanMsg}
       });
     } catch (error: any) {
       console.error("Error in POST /api/feedback: ", error);
+      res.status(500).json({ error: error.message || "Internal Server Error" });
+    }
+  });
+
+  // Endpoint: GET /api/feedback/:id/screenshot (serves binary image bytes for GitHub issue embedding)
+  app.get("/api/feedback/:id/screenshot", async (req, res) => {
+    try {
+      const feedbackId = req.params.id;
+      if (!feedbackId) {
+        return res.status(400).json({ error: "Missing required feedback id parameter." });
+      }
+
+      const db = getAdminDb();
+      const docSnap = await db.collection("feedback").doc(feedbackId).get();
+      if (!docSnap.exists) {
+        return res.status(404).json({ error: `Feedback document with id "${feedbackId}" not found.` });
+      }
+
+      const data = docSnap.data()!;
+      const screenshot = data.screenshot;
+      if (!screenshot || typeof screenshot !== "string") {
+        return res.status(404).json({ error: `No screenshot attached to feedback document "${feedbackId}".` });
+      }
+
+      // Parse data URL format: data:<contentType>;base64,<base64Data>
+      const match = screenshot.match(/^data:([^;]+);base64,(.+)$/);
+      let contentType = "image/jpeg";
+      let base64Data = screenshot;
+
+      if (match) {
+        contentType = match[1];
+        base64Data = match[2];
+      }
+
+      const buffer = Buffer.from(base64Data, "base64");
+      res.setHeader("Content-Type", contentType);
+      res.setHeader("Content-Length", buffer.length);
+      res.setHeader("Cache-Control", "public, max-age=86400");
+      res.status(200).send(buffer);
+    } catch (error: any) {
+      console.error("Error in GET /api/feedback/:id/screenshot: ", error);
       res.status(500).json({ error: error.message || "Internal Server Error" });
     }
   });

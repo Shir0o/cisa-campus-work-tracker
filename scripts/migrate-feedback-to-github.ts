@@ -53,7 +53,7 @@ export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
       (typeof item.createdAt.toDate === 'function' ? item.createdAt.toDate().toISOString() : String(item.createdAt)) :
       new Date().toISOString();
 
-    const body = `### Feedback Details
+    let body = `### Feedback Details
 - **Submitted By:** ${item.userName || 'Anonymous'} (${item.userEmail || 'anonymous'})
 - **Type:** ${item.type || 'enhancement'}
 - **Kind:** ${kindLabel}
@@ -67,6 +67,14 @@ ${cleanMsg}
 
 ---
 *Created automatically via bulk migration script from CISA Campus Work Tracker.*`;
+
+    if (item.screenshot) {
+      const baseUrl = process.env.APP_URL || process.env.VITE_APP_URL || '';
+      if (baseUrl) {
+        const imageUrl = `${baseUrl}/api/feedback/${item.id}/screenshot`;
+        body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
+      }
+    }
 
     const labels = [item.type || 'enhancement', 'feedback'];
 

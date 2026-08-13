@@ -222,6 +222,27 @@ describe("POST /api/feedback", () => {
     expect(saved.status).toBe("in_progress");
   });
 
+  it("includes screenshot markdown in GitHub issue body when screenshot is attached", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    vi.stubEnv("APP_URL", "https://app.example.com");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/43", number: 43 }), { status: 201 })
+    );
+
+    const res = await request(app).post("/api/feedback").send({
+      message: "Bug with screenshot",
+      kind: "bug",
+      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
+    expect(bodyStr).toContain("![Feedback Screenshot](https://app.example.com/api/feedback/");
+    expect(bodyStr).toContain("/screenshot)");
+  });
+
   it("uses the authenticated Firebase user when an Authorization header is present", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah" });
     const res = await request(app)
@@ -242,6 +263,33 @@ describe("POST /api/feedback", () => {
       .send({ message: "hello" });
     expect(res.status).toBe(401);
     expect(res.body.error).toContain("Unauthorized");
+  });
+});
+
+describe("GET /api/feedback/:id/screenshot", () => {
+  it("returns 404 when the feedback document does not exist", async () => {
+    const res = await request(app).get("/api/feedback/non-existent-id/screenshot");
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain("not found");
+  });
+
+  it("returns 404 when the feedback document has no screenshot", async () => {
+    seedDoc("feedback", "fb-no-img", { message: "No screenshot here" });
+    const res = await request(app).get("/api/feedback/fb-no-img/screenshot");
+    expect(res.status).toBe(404);
+    expect(res.body.error).toContain("No screenshot");
+  });
+
+  it("returns 200 with image/jpeg Content-Type and binary buffer for valid base64 screenshot", async () => {
+    const mockBase64 = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+    seedDoc("feedback", "fb-img-1", { message: "Has image", screenshot: mockBase64 });
+
+    const res = await request(app).get("/api/feedback/fb-img-1/screenshot");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("image/jpeg");
+    expect(res.headers["cache-control"]).toContain("public, max-age=86400");
+    expect(res.body).toBeInstanceOf(Buffer);
+    expect(res.body.length).toBeGreaterThan(0);
   });
 });
 

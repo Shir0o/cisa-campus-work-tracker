@@ -305,6 +305,58 @@ describe('FeedbackList View', () => {
     });
   });
 
+  it('includes screenshot image markdown in GitHub issue URL when screenshot exists', async () => {
+    (useAuth as any).mockReturnValue({
+      user: {
+        uid: 'u-admin',
+        displayName: 'Admin User',
+        email: 'admin@example.com',
+        getIdToken: vi.fn().mockResolvedValue('mock-token'),
+      },
+      isAdmin: true,
+    });
+    const mockFeedbackWithImg = [
+      {
+        id: 'f-img-create',
+        data: () => ({
+          userName: 'Dave',
+          userEmail: 'dave@example.com',
+          message: 'Screenshot issue',
+          type: 'bug',
+          kind: 'off',
+          status: 'new',
+          archived: false,
+          screenshot: 'data:image/jpeg;base64,mock',
+          createdAt: '2026-06-15T08:00:00.000Z',
+        }),
+      },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      const forEach = (cb: any) => {
+        mockFeedbackWithImg.forEach(docSnap => cb(docSnap));
+      };
+      callback({ forEach, size: 1 });
+      return vi.fn();
+    });
+
+    const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(<FeedbackList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Screenshot issue')).toBeInTheDocument();
+    });
+
+    const createBtn = screen.getByTitle('Create prefilled GitHub Issue');
+    fireEvent.click(createBtn);
+
+    expect(openSpy).toHaveBeenCalled();
+    const openedUrl = openSpy.mock.calls[0][0] as string;
+    const bodyParam = new URL(openedUrl).searchParams.get('body') || '';
+    expect(bodyParam).toContain('![Feedback Screenshot](');
+    expect(bodyParam).toContain('/api/feedback/f-img-create/screenshot)');
+  });
+
   // ── Save/unlink GitHub link ────────────────────────────────────────
 
   it('links and unlinks GitHub issue URLs', async () => {

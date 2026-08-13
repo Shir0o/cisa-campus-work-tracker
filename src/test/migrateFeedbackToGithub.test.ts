@@ -77,6 +77,17 @@ describe('migrate-feedback-to-github script', () => {
     ]);
   });
 
+  it('includes screenshot image markdown when item has a screenshot and APP_URL is configured', async () => {
+    vi.stubEnv('APP_URL', 'https://app.example.com');
+    const { db } = makeDb([
+      { id: 'f-screen', data: () => ({ message: 'Screen test', screenshot: 'data:image/jpeg;base64,123', type: 'bug' }) },
+    ]);
+    await migrateFeedbackToGithub(db as any);
+
+    const bodyStr = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).body;
+    expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen/screenshot)');
+  });
+
   it('truncates long messages in the title', async () => {
     const longMsg = 'x'.repeat(120);
     const { db } = makeDb([{ id: 'f1', data: () => ({ message: longMsg, type: 'enhancement' }) }]);
