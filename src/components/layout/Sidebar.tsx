@@ -271,7 +271,10 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
 
           {/* Log Out button */}
           <button
-            onClick={logOut}
+            onClick={() => {
+              setIsMobileMenuOpen(false);
+              logOut();
+            }}
             className={cn(
               "flex items-center rounded-xl transition-all duration-200 ease-in-out font-medium w-full text-left h-11 text-error hover:bg-error/10 cursor-pointer gap-0",
               effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3"

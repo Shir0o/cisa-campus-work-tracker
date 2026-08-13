@@ -29,6 +29,9 @@ vi.mock('../lib/seasons', () => ({
   }),
 }));
 
+const mockLogOut = vi.fn();
+const mockSetIsMobileMenuOpen = vi.fn();
+
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: '123' },
@@ -36,14 +39,14 @@ vi.mock('../components/AuthProvider', () => ({
     role: 'admin',
     isApproved: true,
     loading: false,
-    logOut: vi.fn(),
+    logOut: mockLogOut,
   }),
 }));
 
 vi.mock('../App', () => ({
   useLayout: () => ({
-    isMobileMenuOpen: false,
-    setIsMobileMenuOpen: vi.fn(),
+    isMobileMenuOpen: true,
+    setIsMobileMenuOpen: mockSetIsMobileMenuOpen,
     openNewContact: vi.fn(),
     openLogInteraction: vi.fn(),
   }),
@@ -86,6 +89,15 @@ describe('Responsive Layout Components', () => {
     const logOutBtn = screen.getByText(/Log out/i);
     expect(logOutBtn).toBeInTheDocument();
     expect(logOutBtn.closest('button')).toBeInTheDocument();
+  });
+
+  it('Sidebar: clicking Log out triggers logOut and closes mobile menu drawer', () => {
+    renderWithRouter(<Sidebar />);
+    const logOutBtn = screen.getByText(/Log out/i);
+    const { fireEvent } = require('@testing-library/react');
+    fireEvent.click(logOutBtn.closest('button')!);
+    expect(mockLogOut).toHaveBeenCalled();
+    expect(mockSetIsMobileMenuOpen).toHaveBeenCalledWith(false);
   });
 
   it('Accessibility: MobileNav shows Home and Contacts links for admin', () => {
