@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, logActivity } from '../../lib/firebase';
+import { db, logActivity, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
 import {
   ParsedContactItem,
@@ -168,169 +168,46 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
     setError(null);
     setStep('importing');
 
-    let cCount = 0;
-    let iCount = 0;
-    let dCount = 0;
-
     try {
-      // Map temporary contact IDs or matched IDs to real Firestore contact IDs
-      const tempIdToRealIdMap: Record<string, string> = {};
-
-      // 1. Process Contacts
-      for (const contact of parsedContacts) {
-        if (!contact.selected) continue;
-
-        if (contact.matchedContactId) {
-          // Linked to existing contact
-          tempIdToRealIdMap[contact.tempId] = contact.matchedContactId;
-          tempIdToRealIdMap[contact.matchedContactId] = contact.matchedContactId;
-        } else {
-          // Create new contact in Firestore
-          try {
-            const newContactRef = doc(collection(db, 'contacts'));
-            const initials = contact.name
-              ? contact.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .slice(0, 2)
-                  .toUpperCase()
-              : '??';
-
-            const newContactData = {
-              name: (contact.name || 'Unnamed Contact').slice(0, 128),
-              role: (contact.role || 'Student').slice(0, 64),
-              location: '',
-              email: (contact.email || '').slice(0, 128),
-              phone: (contact.phone || '').slice(0, 32),
-              stage: (contact.stage || 'lead').slice(0, 64),
-              lastSeen: new Date().toISOString().split('T')[0],
-              initials,
-              notes: contact.notes || '',
-              tags: contact.tags || [],
-              spiritualBackground: contact.spiritualBackground || '',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: user?.uid || 'system',
-              createdByName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
-            };
-
-            await setDoc(newContactRef, newContactData);
-            tempIdToRealIdMap[contact.tempId] = newContactRef.id;
-            cCount++;
-
-            if (user) {
-              logActivity({
-                action: 'created contact via Smart Import',
-                targetId: newContactRef.id,
-                targetName: newContactData.name,
-                targetType: 'contact',
-                type: 'create',
-              });
-            }
-          } catch (cErr: any) {
-            console.error('Failed to create contact in Smart Import:', cErr);
-          }
-        }
-      }
-
-      // 2. Process Interactions
-      for (const interaction of parsedInteractions) {
-        if (!interaction.selected) continue;
-
-        // Resolve contactId from tempId or matched ID
-        let targetContactId = interaction.contactId || null;
-        if (!targetContactId && interaction.contactRef && tempIdToRealIdMap[interaction.contactRef]) {
-          targetContactId = tempIdToRealIdMap[interaction.contactRef];
-        }
-
-        // If no contact mapped, look for matching contact by name among imported/parsed
-        if (!targetContactId && interaction.contactName) {
-          const found = parsedContacts.find(
-            (c) => c.name.toLowerCase() === interaction.contactName?.toLowerCase()
-          );
-          if (found && tempIdToRealIdMap[found.tempId]) {
-            targetContactId = tempIdToRealIdMap[found.tempId];
-          }
-        }
-
-        if (targetContactId) {
-          try {
-            const interactionRef = collection(db, 'contacts', targetContactId, 'interactions');
-            const interactionData = {
-              contactId: targetContactId,
-              contactName: (interaction.contactName || 'Contact').slice(0, 128),
-              content: (interaction.content || '').slice(0, 5000),
-              dateTime: interaction.dateTime || new Date().toISOString().split('T')[0],
-              type: interaction.type || 'note',
-              userId: user?.uid || 'system',
-              userName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
-              createdAt: serverTimestamp(),
-            };
-
-            const docRef = await addDoc(interactionRef, interactionData);
-            iCount++;
-
-            if (user) {
-              logActivity({
-                action: 'logged interaction via Smart Import',
-                targetId: docRef.id,
-                targetName: interaction.contactName || 'Interaction',
-                targetType: 'interaction',
-                type: 'create',
-              });
-            }
-          } catch (iErr: any) {
-            console.error('Failed to log interaction in Smart Import:', iErr);
-          }
-        }
-      }
-
-      // 3. Process Discussions (Board Docs)
-      for (const discussion of parsedDiscussions) {
-        if (!discussion.selected) continue;
-
+      let idToken = '';
+      if (auth?.currentUser) {
         try {
-          const boardDocRef = doc(collection(db, 'board_docs'));
-          const nowIso = new Date().toISOString();
-          const dateStr = nowIso.split('T')[0];
-
-          const boardDocData = {
-            title: (discussion.title || 'Imported Discussion').slice(0, 200),
-            audience: discussion.audience || 'team',
-            md: (discussion.content || '').slice(0, 100000),
-            tags: discussion.tags || [],
-            date: dateStr,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-            deletedAt: null,
-            authorName: (user?.displayName || user?.email?.split('@')[0] || 'Smart Import').slice(0, 128),
-            authorId: user?.uid || 'system',
-          };
-
-          await setDoc(boardDocRef, boardDocData);
-          dCount++;
-
-          if (user) {
-            logActivity({
-              action: 'created discussion doc via Smart Import',
-              targetId: boardDocRef.id,
-              targetName: discussion.title,
-              targetType: 'comment',
-              type: 'create',
-            });
-          }
-        } catch (dErr: any) {
-          console.error('Failed to create discussion doc in Smart Import:', dErr);
+          idToken = await auth.currentUser.getIdToken();
+        } catch {
+          // fallback
         }
       }
 
-      const totalCreated = cCount + iCount + dCount;
-      if (totalCreated === 0 && totalSelected > 0) {
-        throw new Error('Failed to save imported items due to insufficient database permissions.');
+      const response = await fetch('/api/smart-import/commit', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(idToken ? { Authorization: `Bearer ${idToken}` } : {}),
+        },
+        body: JSON.stringify({
+          contacts: parsedContacts.filter((c) => c.selected),
+          interactions: parsedInteractions.filter((i) => i.selected),
+          discussions: parsedDiscussions.filter((d) => d.selected),
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Commit failed (HTTP ${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch {
+          // fallback
+        }
+        throw new Error(errorMsg);
       }
 
-      const summary = { contactsCount: cCount, interactionsCount: iCount, discussionsCount: dCount };
+      const resData = await response.json();
+      if (!resData.success) {
+        throw new Error(resData.error || 'Failed to save imported items to database');
+      }
+
+      const summary = resData.summary || { contactsCount: 0, interactionsCount: 0, discussionsCount: 0 };
       setImportSummary(summary);
       setStep('success');
 

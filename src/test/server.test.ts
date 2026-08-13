@@ -39,13 +39,18 @@ const {
         col[id] = { ...data };
         return { id, update: async (u: Doc) => { col[id] = { ...col[id], ...u }; } };
       },
-      doc: (id: string) => ({
-        id,
-        get: async () => ({ exists: id in col, data: () => col[id], id }),
-        update: async (u: Doc) => { col[id] = { ...(col[id] ?? {}), ...u }; },
-        ref: { _col: name, _id: id },
-        collection: (sub: string) => collection(`${name}/${id}/${sub}`),
-      }),
+      doc: (id?: string) => {
+        const docId = id || `doc-${++seq}`;
+        return {
+          id: docId,
+          _col: name,
+          _id: docId,
+          get: async () => ({ exists: docId in col, data: () => col[docId], id: docId }),
+          update: async (u: Doc) => { col[docId] = { ...(col[docId] ?? {}), ...u }; },
+          ref: { _col: name, _id: docId },
+          collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
+        };
+      },
       where: (field: string, _op: string, value: any) => ({
         get: async () => snapshot(list().filter((d) => d.data()[field] === value)),
       }),
@@ -62,10 +67,11 @@ const {
     batch: () => {
       const pending: Array<{ _col: string; _id: string; data: Doc }> = [];
       return {
+        set: (ref: { _col: string; _id: string }, data: Doc) => pending.push({ ...ref, data }),
         update: (ref: { _col: string; _id: string }, data: Doc) => pending.push({ ...ref, data }),
         commit: async () => {
           for (const p of pending) {
-            store[p._col][p._id] = { ...(store[p._col][p._id] ?? {}), ...p.data };
+            (store[p._col] ??= {})[p._id] = { ...(store[p._col]?.[p._id] ?? {}), ...p.data };
           }
         },
       };
@@ -613,6 +619,26 @@ describe("POST /api/webhook/groupme", () => {
     const res = await request(app).post("/api/webhook/groupme").send({ text: "!add ", name: "Sam" });
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("ignored_no_trigger_prefix");
+  });
+});
+
+describe("POST /api/smart-import/commit", () => {
+  it("successfully commits contacts, interactions, and discussions to Firestore", async () => {
+    const res = await request(app)
+      .post("/api/smart-import/commit")
+      .send({
+        contacts: [{ tempId: "c1", name: "Alice", email: "alice@test.com" }],
+        interactions: [{ tempId: "i1", contactRef: "c1", content: "Met for coffee", type: "coffee" }],
+        discussions: [{ tempId: "d1", title: "Strategy", content: "Notes", audience: "team" }],
+      });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.summary).toEqual({
+      contactsCount: 1,
+      interactionsCount: 1,
+      discussionsCount: 1,
+    });
   });
 });
 
