@@ -37,7 +37,7 @@ export function MemberYouScreen({ role, showBack }: { role: MemberRole; showBack
 function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean }) {
   const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
-  const { uid, user, role: appRole } = useAuth();
+  const { uid, user, role: appRole, logOut } = useAuth();
   const router = useRouter();
   const [fullTimers, setFullTimers] = React.useState<FullTimerSummary[]>([]);
   const [inviteOpen, setInviteOpen] = React.useState(false);
@@ -226,6 +226,30 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             </Pressable>
           </View>
         )}
+
+        <View>
+          <Sech label="Account & Session" />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
+            onPress={() => logOut()}
+            style={({ pressed }) => ({
+              backgroundColor: c.widget.bg,
+              borderRadius: radius.tile,
+              padding: 16,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderWidth: 1.5,
+              borderColor: '#FCA5A5',
+              opacity: pressed ? 0.75 : 1,
+              ...c.widget.shadow,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
+              Log out
+            </Text>
+          </Pressable>
+        </View>
 
         <MemberFoot>
           {role === 'student'
