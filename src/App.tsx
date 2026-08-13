@@ -6,6 +6,7 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  Link,
 } from "react-router-dom";
 import { cn } from "./lib/utils";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
@@ -127,7 +128,9 @@ function EmailPasswordForm() {
       </button>
       <div className="pt-2 text-center">
         <a
-          href="/privacy"
+          href="https://shir0o.github.io/cisa-campus-work-traker/privacy.html"
+          target="_blank"
+          rel="noopener noreferrer"
           className="text-xs text-on-surface-variant hover:text-primary transition-colors underline"
         >
           Privacy Policy
