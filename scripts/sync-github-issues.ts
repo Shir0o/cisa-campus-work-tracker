@@ -113,10 +113,14 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
   return issues;
 }
 
-export function autoCommitAndPush(filePath: string, branch = 'main'): boolean {
+export function autoCommitAndPush(
+  filePath: string,
+  branch = 'main',
+  execFn: (cmd: string, opts?: any) => any = execSync
+): boolean {
   try {
     const relativePath = path.relative(process.cwd(), filePath);
-    const status = execSync(`git status --porcelain "${relativePath}"`, { encoding: 'utf8' }).trim();
+    const status = (execFn(`git status --porcelain "${relativePath}"`, { encoding: 'utf8' }) || '').toString().trim();
 
     if (!status) {
       console.log(`No changes detected in ${relativePath}. Skipping commit and push.`);
@@ -124,20 +128,20 @@ export function autoCommitAndPush(filePath: string, branch = 'main'): boolean {
     }
 
     console.log(`Staging ${relativePath}...`);
-    execSync(`git add "${relativePath}"`, { stdio: 'inherit' });
+    execFn(`git add "${relativePath}"`, { stdio: 'inherit' });
 
     try {
-      execSync('git config user.name', { encoding: 'utf8' });
+      execFn('git config user.name', { encoding: 'utf8' });
     } catch {
-      execSync('git config user.name "github-actions[bot]"', { stdio: 'inherit' });
-      execSync('git config user.email "github-actions[bot]@users.noreply.github.com"', { stdio: 'inherit' });
+      execFn('git config user.name "github-actions[bot]"', { stdio: 'inherit' });
+      execFn('git config user.email "github-actions[bot]@users.noreply.github.com"', { stdio: 'inherit' });
     }
 
     console.log(`Committing changes...`);
-    execSync(`git commit -m "docs: sync github issues into ${relativePath} [skip ci]"`, { stdio: 'inherit' });
+    execFn(`git commit -m "docs: sync github issues into ${relativePath} [skip ci]"`, { stdio: 'inherit' });
 
     console.log(`Pushing to ${branch}...`);
-    execSync(`git push origin ${branch}`, { stdio: 'inherit' });
+    execFn(`git push origin ${branch}`, { stdio: 'inherit' });
     console.log(`Successfully committed and pushed ${relativePath} to ${branch}.`);
     return true;
   } catch (err) {
@@ -152,6 +156,7 @@ export async function syncIssuesToDocs(opts?: {
   outputPath?: string;
   autoCommitPush?: boolean;
   branch?: string;
+  execFn?: (cmd: string, opts?: any) => any;
 }) {
   const repo =
     opts?.repo ||
@@ -179,7 +184,7 @@ export async function syncIssuesToDocs(opts?: {
   console.log(`Successfully written issues to ${outputPath}`);
 
   if (autoCommitPush) {
-    autoCommitAndPush(outputPath, branch);
+    autoCommitAndPush(outputPath, branch, opts?.execFn);
   }
 }
 

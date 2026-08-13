@@ -258,11 +258,11 @@ describe('sync-github-issues script', () => {
     });
 
     it('triggers autoCommitAndPush when autoCommitPush is true', async () => {
-      const execSyncSpy = vi.spyOn(childProcess, 'execSync').mockImplementation((cmd: string) => {
+      const execSyncSpy = vi.fn().mockImplementation((cmd: string) => {
         if (typeof cmd === 'string' && cmd.startsWith('git status')) {
-          return ' M docs/issues.json' as any;
+          return ' M docs/issues.json';
         }
-        return '' as any;
+        return '';
       });
 
       globalThis.fetch = vi.fn().mockResolvedValue(
@@ -274,6 +274,7 @@ describe('sync-github-issues script', () => {
         outputPath: testOutputPath,
         autoCommitPush: true,
         branch: 'main',
+        execFn: execSyncSpy,
       });
 
       expect(execSyncSpy).toHaveBeenCalledWith(
@@ -295,14 +296,14 @@ describe('sync-github-issues script', () => {
     });
 
     it('skips git commit and push when autoCommitAndPush detects no changes', async () => {
-      const execSyncSpy = vi.spyOn(childProcess, 'execSync').mockImplementation((cmd: string) => {
+      const execSyncSpy = vi.fn().mockImplementation((cmd: string) => {
         if (typeof cmd === 'string' && cmd.startsWith('git status')) {
-          return '' as any;
+          return '';
         }
-        return '' as any;
+        return '';
       });
 
-      const result = autoCommitAndPush(testOutputPath, 'main');
+      const result = autoCommitAndPush(testOutputPath, 'main', execSyncSpy);
       expect(result).toBe(false);
       expect(execSyncSpy).toHaveBeenCalledTimes(1);
     });
