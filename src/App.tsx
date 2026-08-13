@@ -6,6 +6,7 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  Link,
 } from "react-router-dom";
 import { cn } from "./lib/utils";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
@@ -126,12 +127,12 @@ function EmailPasswordForm() {
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
       <div className="pt-2 text-center">
-        <a
-          href="/privacy"
+        <Link
+          to="/privacy"
           className="text-xs text-on-surface-variant hover:text-primary transition-colors underline"
         >
           Privacy Policy
-        </a>
+        </Link>
       </div>
     </form>
   );
