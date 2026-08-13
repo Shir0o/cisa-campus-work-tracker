@@ -157,7 +157,7 @@ function Settings() {
   const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
-  const { user, uid, role } = useAuth();
+  const { user, uid, role, logOut } = useAuth();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
@@ -348,6 +348,33 @@ function Settings() {
             value={tint}
             onPick={setTint}
           />
+        </Section>
+
+        <Section title="Account & Session">
+          <View style={{ gap: 12 }}>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), color: c.card.ink2 }}>
+              Signed in as {user?.email || user?.displayName || 'Campus user'}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Log out"
+              onPress={() => logOut()}
+              style={({ pressed }) => ({
+                minHeight: 48,
+                borderRadius: radius.card,
+                backgroundColor: c.card.bg,
+                borderWidth: 1.5,
+                borderColor: '#FCA5A5',
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
+                Log out
+              </Text>
+            </Pressable>
+          </View>
         </Section>
 
         {hasQueue && (
