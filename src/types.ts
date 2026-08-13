@@ -217,6 +217,10 @@ export interface PrayerRecord {
   status: 'pending' | 'answered' | 'ongoing' | 'unanswered';
   answer?: string;
   answeredAt?: string;
+  /** Photos attached to "how it was answered" (#267). Same shape as `VisitPhoto`:
+   *  `path` locates the Storage object for deletion, `url` is the download URL we
+   *  render. */
+  answeredPhotos?: VisitPhoto[];
   updatedAt: string;
   updatedBy?: string;
   updatedByName?: string;

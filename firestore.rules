@@ -355,6 +355,7 @@ service cloud.firestore {
                (!('date' in data) || (data.date is string && data.date.size() <= 64)) &&
                (!('burden' in data) || (data.burden is string && data.burden.size() <= 10000)) &&
                (!('answer' in data) || (data.answer is string && data.answer.size() <= 10000)) &&
+               (!('answeredPhotos' in data) || (data.answeredPhotos is list && data.answeredPhotos.size() <= 4)) &&
                (!('status' in data) || data.status in ['pending', 'answered', 'ongoing', 'unanswered']) &&
                (!('prayedFor' in data) || (data.prayedFor is string && data.prayedFor.size() <= 10000)) &&
                (!('unanswered' in data) || (data.unanswered is string && data.unanswered.size() <= 10000)) &&
