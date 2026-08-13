@@ -8,6 +8,11 @@ vi.mock('html2canvas-pro', () => ({
   }),
 }));
 
+// jsdom implements no object URLs, and the visit modal previews picked photos
+// with them.
+URL.createObjectURL = vi.fn(() => 'blob:preview');
+URL.revokeObjectURL = vi.fn();
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({

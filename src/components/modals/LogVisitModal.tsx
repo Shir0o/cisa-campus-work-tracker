@@ -109,6 +109,11 @@ export default function LogVisitModal({
 
   const photoCount = existingPhotos.length + newPhotos.length;
 
+  // Previews for the files just picked. Revoked whenever the set changes or the
+  // modal goes, so picking and un-picking doesn't leave blobs behind.
+  const newPhotoUrls = useMemo(() => newPhotos.map((f) => URL.createObjectURL(f)), [newPhotos]);
+  useEffect(() => () => newPhotoUrls.forEach((u) => URL.revokeObjectURL(u)), [newPhotoUrls]);
+
   const addPhotos = (files: FileList | null) => {
     if (!files) return;
     setNewPhotos((prev) => [...prev, ...Array.from(files)].slice(0, MAX_PHOTOS_PER_VISIT - existingPhotos.length));
@@ -130,6 +135,7 @@ export default function LogVisitModal({
         followUp: followUpOn ? followUp : '',
         followUpTaskId: visit?.followUpTaskId ?? null,
         prayerId: visit?.prayerId ?? null,
+        prayerBurden: visit?.prayerBurden ?? null,
         photos: existingPhotos,
       };
       const by = { uid: me, name: myName, photoURL: user?.photoURL };
@@ -154,6 +160,9 @@ export default function LogVisitModal({
         }
         if (prayer.trim() && chosen[0]) {
           input.prayerId = await addPrayerBurden(chosen[0].id, prayer.trim(), { uid: me, name: myName });
+          // Kept on the visit too, so the card reads the prayer back in its own
+          // words rather than only knowing there was one.
+          input.prayerBurden = prayer.trim();
         }
       }
 
@@ -204,6 +213,8 @@ export default function LogVisitModal({
   const label = 'block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2';
   const input =
     'w-full bg-surface-container-low border border-outline-variant rounded-2xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors';
+  const photoRemove =
+    'absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors';
 
   return (
     <AnimatePresence>
@@ -473,28 +484,32 @@ export default function LogVisitModal({
                 {photoCount > 0 && (
                   <ul className="mt-3 flex flex-wrap gap-2">
                     {existingPhotos.map((p) => (
-                      <li
-                        key={p.path}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container-low border border-outline-variant text-xs text-on-surface-variant"
-                      >
-                        {p.name || 'photo'}
+                      <li key={p.path} className="relative">
+                        <img
+                          src={p.url}
+                          alt={p.name || 'photo'}
+                          className="w-20 h-20 object-cover rounded-xl border border-outline-variant"
+                        />
                         <button
                           onClick={() => setExistingPhotos((x) => x.filter((y) => y.path !== p.path))}
                           aria-label={`Remove ${p.name || 'photo'}`}
+                          className={photoRemove}
                         >
                           <X className="w-3 h-3" />
                         </button>
                       </li>
                     ))}
                     {newPhotos.map((f, i) => (
-                      <li
-                        key={`${f.name}-${i}`}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs text-primary"
-                      >
-                        {f.name}
+                      <li key={`${f.name}-${i}`} className="relative">
+                        <img
+                          src={newPhotoUrls[i]}
+                          alt={f.name}
+                          className="w-20 h-20 object-cover rounded-xl border border-primary/30"
+                        />
                         <button
                           onClick={() => setNewPhotos((x) => x.filter((_, j) => j !== i))}
                           aria-label={`Remove ${f.name}`}
+                          className={photoRemove}
                         >
                           <X className="w-3 h-3" />
                         </button>
