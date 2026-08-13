@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc, collection, updateDoc } from 'firebase/firestore';
-import { addPrayerBurden, isTeamPrayer, updatePrayerStatus } from '../lib/prayers';
+import { addPrayerBurden, isTeamPrayer, reconcilePrayerOrder, updatePrayerStatus } from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
 vi.mock('firebase/firestore', () => ({
@@ -73,5 +73,27 @@ describe('isTeamPrayer', () => {
     expect(isTeamPrayer({})).toBe(true);
     expect(isTeamPrayer({ teamPrayer: true })).toBe(true);
     expect(isTeamPrayer({ teamPrayer: false })).toBe(false);
+  });
+});
+
+describe('reconcilePrayerOrder', () => {
+  it('keeps a card in place even when the needs-attention sort reorders under it', () => {
+    // Marking a last-week prayer flips "needs attention" off, which re-sorts
+    // the page; the remembered order must win so the card stays put (#268).
+    expect(reconcilePrayerOrder(['c1', 'c2'], ['c2', 'c1'])).toEqual(['c1', 'c2']);
+  });
+
+  it('inserts new people at the top and drops people who left the page', () => {
+    expect(reconcilePrayerOrder(['c1', 'c2'], ['c3', 'c1', 'c2'])).toEqual(['c3', 'c1', 'c2']);
+    expect(reconcilePrayerOrder(['c1', 'c2', 'c3'], ['c1', 'c3'])).toEqual(['c1', 'c3']);
+  });
+
+  it('seeds the order on first render', () => {
+    expect(reconcilePrayerOrder([], ['c2', 'c1'])).toEqual(['c2', 'c1']);
+  });
+
+  it('returns the same array reference when nothing changed', () => {
+    const prev = ['c1', 'c2'];
+    expect(reconcilePrayerOrder(prev, ['c1', 'c2'])).toBe(prev);
   });
 });

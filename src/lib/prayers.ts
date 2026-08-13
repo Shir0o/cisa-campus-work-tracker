@@ -70,3 +70,21 @@ export async function updatePrayerStatus(
 export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
   return p.teamPrayer !== false;
 }
+
+/**
+ * Keeps the prayer page's card order stable as prayers change underneath it.
+ *
+ * On load the page sorts "needs attention" cards to the top, but that same
+ * sort must not re-order a card the moment its last-week prayer is marked —
+ * the reader just marked it, so it must not jump to the bottom out from under
+ * them (#268). We remember the order cards first appeared in and only ever add
+ * new people (to the top) or drop people who leave the page.
+ */
+export function reconcilePrayerOrder(prevOrder: string[], currentIds: string[]): string[] {
+  const current = new Set(currentIds);
+  const kept = prevOrder.filter((id) => current.has(id));
+  const keptSet = new Set(kept);
+  const added = currentIds.filter((id) => !keptSet.has(id));
+  if (added.length === 0 && kept.length === prevOrder.length) return prevOrder;
+  return [...added, ...kept];
+}

@@ -13,7 +13,7 @@ import { Contact, PrayerRecord } from '../types';
 import { Search, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
-import { isTeamPrayer } from '../lib/prayers';
+import { isTeamPrayer, reconcilePrayerOrder } from '../lib/prayers';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -251,8 +251,10 @@ export default function PrayerList() {
   // before that toggle existed carry no flag and stay here (`isTeamPrayer`).
   const teamPrayers = useMemo(() => prayers.filter(isTeamPrayer), [prayers]);
 
-  // One entry per person we're holding (has a prayer, or we just started).
-  const entries = useMemo(() => {
+  // One entry per person we're holding (has a prayer, or we just started),
+  // sorted needs-attention-first. This is the source of truth for *who* is on
+  // the page; its order only seeds `displayOrder` below.
+  const sortedEntries = useMemo(() => {
     const ids = new Set<string>();
     teamPrayers.forEach((p) => {
       if (!hiddenIds.has(p.contactId)) ids.add(p.contactId);
@@ -279,6 +281,28 @@ export default function PrayerList() {
     });
     return list;
   }, [teamPrayers, contacts, startedIds, hiddenIds]);
+
+  // Freeze the display order once cards appear, so marking a prayer can't
+  // re-sort a card out from under the reader (#268). React's "adjust state when
+  // props change" pattern: only when the *set* of held people changes do we
+  // reconcile the remembered order (new people insert at the top, leavers
+  // drop) — a plain re-sort (e.g. a last-week prayer getting marked) is ignored.
+  const currentIds = sortedEntries.map((e) => e.contact.id);
+  const currentKey = [...currentIds].sort().join('\u0000');
+  const [orderKey, setOrderKey] = useState(currentKey);
+  const [displayOrder, setDisplayOrder] = useState<string[]>([]);
+  if (orderKey !== currentKey) {
+    setOrderKey(currentKey);
+    setDisplayOrder((prev) => reconcilePrayerOrder(prev, currentIds));
+  }
+
+  const entries = useMemo(() => {
+    const byId = new Map(sortedEntries.map((e) => [e.contact.id, e]));
+    const order = displayOrder.length ? displayOrder : sortedEntries.map((e) => e.contact.id);
+    return order
+      .map((id) => byId.get(id))
+      .filter((e): e is { contact: Contact; prayers: PrayerRecord[] } => !!e);
+  }, [displayOrder, sortedEntries]);
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -525,7 +549,6 @@ function PrayerThread({
 
   return (
     <motion.article
-      layout
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
@@ -612,7 +635,7 @@ function PrayerThread({
           >
             <span
               className={cn(
-                'text-on-surface-variant transition-transform text-xs',
+                'text-on-surface-variant transition-transform duration-[160ms] text-[9px] opacity-70',
                 showEarlier && 'rotate-90',
               )}
               aria-hidden
