@@ -120,6 +120,8 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         } catch {
           if (response.status === 404) {
             errorMsg = 'Smart Import endpoint not found (HTTP 404). Please ensure the backend server is deployed.';
+          } else if (response.status === 524 || response.status === 504) {
+            errorMsg = 'AI Smart Import request timed out (HTTP 524). Please try pasting a smaller chunk of text.';
           }
         }
         throw new Error(errorMsg);

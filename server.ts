@@ -1401,12 +1401,22 @@ The current local date is: ${currentDate}.`,
 
       const db = getAdminDb();
       const contactsSnapshot = await db.collection("contacts").get();
-      const contactsList = contactsSnapshot.docs.map((d) => ({
-        id: d.id,
-        name: d.data().name || "Unknown",
-        email: d.data().email || "",
-        phone: d.data().phone || "",
-      }));
+      const contactsList = contactsSnapshot.docs
+        .map((d) => {
+          const data = d.data();
+          const item: { id: string; name: string; email?: string; phone?: string } = {
+            id: d.id,
+            name: data.name || "Unknown",
+          };
+          if (data.email && typeof data.email === "string" && data.email.trim()) {
+            item.email = data.email.trim();
+          }
+          if (data.phone && typeof data.phone === "string" && data.phone.trim()) {
+            item.phone = data.phone.trim();
+          }
+          return item;
+        })
+        .filter((c) => c.name !== "Unknown");
 
       const currentDate = new Date().toISOString().split("T")[0];
 
