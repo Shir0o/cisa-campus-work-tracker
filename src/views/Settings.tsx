@@ -40,6 +40,7 @@ import {
   ChevronDown,
   KeyRound,
   Command,
+  LogOut,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -194,6 +195,56 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
         );
       })}
     </div>
+  );
+}
+
+// ── Account & Session ───────────────────────────────────────────────────
+
+function AccountSection() {
+  const { user, logOut, role, isApproved } = useAuth();
+  const myRole = (role as AppRole) ?? null;
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title="Account & Session"
+        sub="Manage your signed-in account and session state."
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+        <div className="flex items-center gap-4 min-w-0">
+          <Avatar name={user?.displayName || user?.email} photoURL={user?.photoURL} size="lg" />
+          <div className="min-w-0">
+            <h3 className="font-serif text-xl text-on-surface truncate">{user?.displayName || 'Campus user'}</h3>
+            <p className="text-sm text-on-surface-variant truncate">{user?.email}</p>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border',
+                  isApproved
+                    ? 'bg-success/10 text-success border-success/20'
+                    : 'bg-warning/10 text-warning border-warning/20',
+                )}
+              >
+                {isApproved ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                {isApproved ? 'Approved' : 'Pending approval'}
+              </span>
+              {myRole && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stage-accent-soft text-stage-accent border border-outline-variant/40">
+                  {ROLE_LABEL[myRole]}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={logOut}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-error/10 text-error hover:bg-error/20 font-medium text-sm transition-colors cursor-pointer shrink-0 min-h-[44px] w-full sm:w-auto"
+        >
+          <LogOut className="w-4 h-4" />
+          Log out
+        </button>
+      </div>
+    </section>
   );
 }
 
@@ -1374,31 +1425,7 @@ export default function Settings() {
           <p className="text-base text-on-surface-variant mt-2">Your account and preferences.</p>
         </header>
 
-        <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row items-center sm:items-start gap-6">
-          <Avatar name={currentUser?.displayName || currentUser?.email} photoURL={currentUser?.photoURL} size="lg" />
-          <div className="text-center sm:text-left flex-1 min-w-0">
-            <h2 className="font-serif text-2xl text-on-surface">{currentUser?.displayName || 'Campus user'}</h2>
-            <p className="text-on-surface-variant mb-4">{currentUser?.email}</p>
-            <div className="flex flex-wrap gap-2 justify-center sm:justify-start">
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[13px] font-medium border',
-                  isApproved
-                    ? 'bg-success/10 text-success border-success/20'
-                    : 'bg-warning/10 text-warning border-warning/20',
-                )}
-              >
-                {isApproved ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                {isApproved ? 'Approved' : 'Pending approval'}
-              </span>
-              {myRole && (
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-[13px] font-medium bg-stage-accent-soft text-stage-accent border border-outline-variant/40">
-                  {ROLE_LABEL[myRole]}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+        <AccountSection />
 
         <section className="mt-10">
           <SectionHeader
@@ -1432,6 +1459,7 @@ export default function Settings() {
         </p>
       </header>
 
+      <AccountSection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
       <OwnerViewSection />
 

@@ -861,5 +861,27 @@ describe('Settings', () => {
       expect(mockSetOwnerViewRole).toHaveBeenCalledWith(null);
     });
   });
+
+  describe('Account & Session Section', () => {
+    it('renders user details and triggers logOut when Log out button is clicked', () => {
+      const mockLogOut = vi.fn();
+      setupNonManagerAuth({
+        user: { displayName: 'Testing User', email: 'test@example.com' } as any,
+        logOut: mockLogOut,
+      });
+
+      render(<Settings />);
+
+      expect(screen.getByText('Account & Session')).toBeInTheDocument();
+      expect(screen.getByText('Testing User')).toBeInTheDocument();
+      expect(screen.getByText('test@example.com')).toBeInTheDocument();
+
+      const logOutButton = screen.getByRole('button', { name: /Log out/i });
+      expect(logOutButton).toBeInTheDocument();
+
+      fireEvent.click(logOutButton);
+      expect(mockLogOut).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
