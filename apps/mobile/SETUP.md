@@ -101,12 +101,14 @@ bucket, and Realtime Database are shared with prod.
 
 | Role      | Email                          | Password      |
 |-----------|--------------------------------|---------------|
+| Reviewer (admin)  | `reviewer.e2e@example.com`  | `password123` |
 | Full-timer (admin) | `fulltimer.e2e@example.com` | `password123` |
 | Trainee (manager)  | `trainee.e2e@example.com`  | `password123` |
 | Student (operator) | `student.e2e@example.com`  | `password123` |
 | Community (viewer) | `community.e2e@example.com`| `password123` |
 
-Reviewers can also sign in with their own Google account: `npm run seed:qa`
+Reviewers sign in with the pre-created `reviewer.e2e@example.com` account
+(admin). They can also sign in with their own Google account: `npm run seed:qa`
 approves `QA_REVIEWER_EMAILS` (comma-separated, default `yilongwang05@gmail.com`)
 as admin — add your email there (or just sign in once, then re-run the seed) so
 your account gets an approved admin doc in `qa-db`.
