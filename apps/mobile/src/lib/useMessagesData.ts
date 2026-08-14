@@ -35,9 +35,12 @@ export function useMessagesData() {
         setRooms(list);
         setLoading(false);
       },
-      (e) => onLoadError(e, 'chatRooms'),
+      () => {
+        setRooms([]);
+        setLoading(false);
+      },
     );
-    const unsubUsers = subscribeUsers(setUsers, (e) => onLoadError(e, 'users'));
+    const unsubUsers = subscribeUsers(setUsers, () => setUsers([]));
     return () => {
       unsubRooms();
       unsubUsers();

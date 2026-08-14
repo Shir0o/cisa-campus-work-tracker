@@ -269,7 +269,7 @@ function OutreachCard({
         <View style={{ alignItems: 'flex-end', gap: 8 }}>
           <View style={{ flexDirection: 'row' }}>
             {went.slice(0, 3).map((id, i) => (
-              <View key={id} style={{ marginLeft: i === 0 ? 0 : -7 }}>
+              <View key={`${id}-${i}`} style={{ marginLeft: i === 0 ? 0 : -7 }}>
                 <Face label={outreachInitials(userById(id)?.displayName || id)} />
               </View>
             ))}
@@ -320,8 +320,8 @@ function OutreachCard({
           <View style={{ flexDirection: 'row', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
             <View style={{ flex: 1, minWidth: 140 }}>
               <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Who went</Text>
-              {went.map((id) => (
-                <Text key={id} style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 4 }}>
+              {went.map((id, i) => (
+                <Text key={`${id}-${i}`} style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 4 }}>
                   {userById(id)?.displayName || id}
                 </Text>
               ))}
@@ -356,11 +356,11 @@ function OutreachCard({
               </Text>
             ) : (
               <View style={{ marginTop: 6, gap: 6 }}>
-                {names.map((n) => {
+                {names.map((n, i) => {
                   const done = outreachReached(item, n, touches);
                   return (
                     <Pressable
-                      key={n.id}
+                      key={n.id || `${n.name}-${i}`}
                       onPress={() => n.contactId && onOpen(n.contactId)}
                       style={({ pressed }) => ({
                         flexDirection: 'row',
@@ -534,9 +534,9 @@ function OutreachLogSheet({
             <View>
               <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Who went</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
-                {goers.map((u) => (
+                {goers.map((u, i) => (
                   <Chip
-                    key={u.uid}
+                    key={`${u.uid}-${i}`}
                     label={firstName(u.displayName || u.uid)}
                     on={went.includes(u.uid)}
                     onPress={() => setWent((w) => (w.includes(u.uid) ? w.filter((x) => x !== u.uid) : w.concat(u.uid)))}
@@ -602,9 +602,9 @@ function OutreachLogSheet({
                       <View>
                         <Text style={{ fontFamily: font.semi, fontSize: fs(10.5), color: c.card.ink3, marginBottom: 6 }}>spoke with them</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
-                          {goers.map((u) => (
+                          {goers.map((u, i) => (
                             <Chip
-                              key={u.uid}
+                              key={`${u.uid}-${i}`}
                               label={firstName(u.displayName || u.uid)}
                               on={r.spokeWith === u.uid}
                               onPress={() => setRow(r.key, { spokeWith: u.uid })}
@@ -771,8 +771,8 @@ function Outreach() {
           <>
             <Kicker label="People we met, not yet reached" sub="A number given is a door held open. It doesn't stay open long." />
             <View style={{ gap: 10 }}>
-              {pending.map((p) => (
-                <PendingRow key={p.name.id} item={p} me={me} isAdmin={isAdmin} onTake={take} onNudge={nudge} onOpen={openContact} userById={userById} />
+              {pending.map((p, i) => (
+                <PendingRow key={`${p.record.id}-${p.name.id || p.name.name}-${i}`} item={p} me={me} isAdmin={isAdmin} onTake={take} onNudge={nudge} onOpen={openContact} userById={userById} />
               ))}
             </View>
           </>

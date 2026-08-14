@@ -21,7 +21,7 @@ export async function addTodo(
   try {
     return await core.addTodo(db, input, me, (payload) => void sendNotification(payload));
   } catch (e) {
-    handleFirestoreError(e, OperationType.CREATE, 'tasks');
+    handleFirestoreError(e, OperationType.CREATE, 'tasks', { rethrow: false });
   }
 }
 
@@ -39,7 +39,7 @@ export async function updateTodo(
       (payload) => void sendNotification(payload),
     );
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, 'tasks');
+    handleFirestoreError(e, OperationType.UPDATE, 'tasks', { rethrow: false });
   }
 }
 
@@ -57,7 +57,7 @@ export async function setTodoDone(
       (payload) => void sendNotification(payload),
     );
   } catch (e) {
-    handleFirestoreError(e, OperationType.UPDATE, 'tasks');
+    handleFirestoreError(e, OperationType.UPDATE, 'tasks', { rethrow: false });
   }
 }
 
@@ -65,7 +65,7 @@ export async function deleteTodo(id: string): Promise<void> {
   try {
     await core.deleteTodo(db, id);
   } catch (e) {
-    handleFirestoreError(e, OperationType.DELETE, 'tasks');
+    handleFirestoreError(e, OperationType.DELETE, 'tasks', { rethrow: false });
   }
 }
 

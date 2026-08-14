@@ -233,7 +233,7 @@ export function newContactFromLog({
   metISO,
 }: LogSheetNewContact): NewContactInput {
   const trimmed = name.trim();
-  return {
+  const input: NewContactInput = {
     name: trimmed,
     // The sheet no longer asks for either of these; both stay on the shape so
     // the contact matches what every other addContact caller writes.
@@ -246,10 +246,13 @@ export function newContactFromLog({
     notes: note.trim(),
     spiritualBackground: "",
     initials: getUserInitials(trimmed),
-    year: (year ?? "").trim() || undefined,
-    major: (major ?? "").trim() || undefined,
-    createdAt: metISO || undefined,
   };
+  const trimmedYear = (year ?? "").trim();
+  if (trimmedYear) input.year = trimmedYear;
+  const trimmedMajor = (major ?? "").trim();
+  if (trimmedMajor) input.major = trimmedMajor;
+  if (metISO) input.createdAt = metISO;
+  return input;
 }
 
 // ── the saved step (the design's `M2LogSheet` mode "saved", Aug 2026) ───────

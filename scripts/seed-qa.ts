@@ -592,7 +592,7 @@ async function seed() {
       {
         title,
         assigneeId: staffUid(assignee),
-        dueDate: iso(-dueDays),
+        dueDate: isoDate(dueDays),
         status: done ? 'completed' : 'pending',
         contactId,
         contactName: contactId ? contactById(contactId)?.name ?? null : null,

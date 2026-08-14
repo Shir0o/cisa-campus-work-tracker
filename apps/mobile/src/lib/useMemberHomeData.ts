@@ -54,7 +54,7 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
       (e) => onLoadError(e, 'events'),
     );
     const unsubRsvps = subscribeMyRsvps(uid, setGoingIds, (e) => onLoadError(e, 'my RSVPs'));
-    const unsubRooms = subscribeChatRooms(uid, setRooms, (e) => onLoadError(e, 'messages'));
+    const unsubRooms = subscribeChatRooms(uid, setRooms, () => setRooms([]));
     // Both quiet on error, as useFtHomeData's threads read is: the roster only
     // names who wrote to you, and the offer only exists for Community — neither
     // is worth failing the whole screen over.
