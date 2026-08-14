@@ -19,10 +19,12 @@ vi.mock('firebase/firestore', () => ({
     callback({ docs: [], size: 0 });
     return vi.fn();
   }),
-  getDocs: vi.fn(() => Promise.resolve({
-    empty: false,
-    docs: [{ data: () => ({ label: 'Lead' }) }],
-  })),
+  getDocs: vi.fn(() =>
+    Promise.resolve({
+      empty: false,
+      docs: [{ data: () => ({ label: 'Lead' }) }],
+    }),
+  ),
   addDoc: vi.fn(() => Promise.resolve({ id: 'new-doc-id' })),
   doc: vi.fn((_db, path, id) => ({ path, id })),
   serverTimestamp: vi.fn(() => 'mock-timestamp'),
@@ -38,10 +40,23 @@ vi.mock('../lib/firebase', () => ({
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => ({
     user: { uid: 'ft-123', displayName: 'Staff Tester', email: 'staff@test.com' },
+    role: 'admin',
   }),
 }));
 
+const mockSetSeason = vi.fn();
+const mockResetSeason = vi.fn();
+const mockToggleClubRush = vi.fn();
+
 vi.mock('../lib/seasons', () => ({
+  SEASON_ORDER: ['spring', 'summer', 'fall', 'winter'],
+  SEASONS: {
+    spring: { id: 'spring', label: 'Spring', tone: 'sage', blurb: '' },
+    summer: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
+    fall: { id: 'fall', label: 'Fall', tone: 'accent', blurb: '' },
+    winter: { id: 'winter', label: 'Winter', tone: 'teal', blurb: '' },
+  },
+  seasonYear: () => '26',
   useSeason: () => ({
     autoId: 'summer',
     activeId: 'summer',
@@ -50,9 +65,9 @@ vi.mock('../lib/seasons', () => ({
     clubRush: false,
     label: "Summer '26",
     tags: ["Summer '26"],
-    setSeason: vi.fn(),
-    resetSeason: vi.fn(),
-    toggleClubRush: vi.fn(),
+    setSeason: mockSetSeason,
+    resetSeason: mockResetSeason,
+    toggleClubRush: mockToggleClubRush,
   }),
   getAutoSemesterAndSchoolYearTags: () => ['Summer 2026', '2026-27'],
 }));
@@ -62,147 +77,186 @@ describe('SignUp View', () => {
     vi.clearAllMocks();
   });
 
-  it('renders Step 1 with mandatory fields', () => {
+  it('renders Step 1 with primary inputs and progressive disclosure toggle', () => {
     render(<SignUp />);
 
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('e.g. Naomi Park')).toBeInTheDocument();
-    expect(screen.getByLabelText(/Gender/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Year/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Major/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Cell number/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Email/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('(___) ___-____')).toBeInTheDocument();
+    expect(screen.getByText("That's all we need. The rest is up to you.")).toBeInTheDocument();
+    expect(screen.getByText('Tell us a bit more')).toBeInTheDocument();
   });
 
-  it('navigates through steps after filling mandatory fields and submits', async () => {
+  it('renders staff preview strip when viewed by staff', () => {
+    render(<SignUp role="admin" />);
+    expect(
+      screen.getByText(
+        "You're previewing the sign-up form — how someone new asks to hear from us. It isn't an app account.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Tagging sign-ups for/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Club rush/i })).toBeInTheDocument();
+  });
+
+  it('hides staff preview strip for student or community roles', () => {
+    render(<SignUp role="student" />);
+    expect(
+      screen.queryByText(
+        "You're previewing the sign-up form — how someone new asks to hear from us. It isn't an app account.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it('navigates through steps, fills details in disclosure, and submits successfully', async () => {
     render(<SignUp />);
 
-    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
-    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
-    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
+    // Step 1: name + phone
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Jane Doe' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '123-456-7890' },
+    });
+
+    // Open progressive disclosure
+    fireEvent.click(screen.getByText('Tell us a bit more'));
+    expect(screen.getByText("That's plenty")).toBeInTheDocument();
+
+    // Fill disclosure fields
+    fireEvent.change(screen.getByPlaceholderText('she / her'), {
+      target: { value: 'she/her' },
+    });
+    fireEvent.change(screen.getByLabelText(/Year/i), {
+      target: { value: 'Freshman' },
+    });
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Computer Science' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'jane@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('@handle'), {
+      target: { value: '@janedoe' },
+    });
+    fireEvent.change(screen.getByLabelText(/Where do you live\?/i), {
+      target: { value: 'Whitman Hall' },
+    });
 
     const continueButton = screen.getByRole('button', { name: /Continue/i });
-    await waitFor(() => expect(continueButton).not.toBeDisabled());
+    expect(continueButton).not.toBeDisabled();
     fireEvent.click(continueButton);
 
-    // Should now be on Step 2
+    // Step 2
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
     expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
 
-    // Select interest (mandatory step 2)
-    const firstInterestChip = screen.getByText('Friday gathering');
-    fireEvent.click(firstInterestChip);
+    // Toggle how heard chip
+    const friendChip = screen.getByText('Friend');
+    fireEvent.click(friendChip);
 
+    // Toggle interest chip
+    const gatheringChip = screen.getByText('Friday gathering');
+    fireEvent.click(gatheringChip);
+
+    // Optional textareas
+    fireEvent.change(
+      screen.getByPlaceholderText(/Totally optional. We hold these confidentially./i),
+      { target: { value: 'Pray for exams' } },
+    );
+    fireEvent.change(
+      screen.getByPlaceholderText(/Allergies, schedule conflicts, questions…/i),
+      { target: { value: 'No allergies' } },
+    );
+
+    // Submit
     const submitBtn = screen.getByRole('button', { name: /Send it/i });
-    await waitFor(() => expect(submitBtn).not.toBeDisabled());
-    fireEvent.submit(submitBtn.closest('form')!);
+    fireEvent.click(submitBtn);
 
     await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
-    await waitFor(() => {
-      expect(screen.getByText(/Thanks, Jane\./i)).toBeInTheDocument();
-    });
+    // Step 3 (Confirmation)
+    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/We got it — you're part of our Summer '26 cohort now\./i),
+    ).toBeInTheDocument();
 
-    // Verify contact contains logged in actor and auto tags
+    // Verify submitted document payload
     const contactArg = (addDoc as any).mock.calls.find(
       (c: any[]) => c[1] && Array.isArray(c[1].tags),
     )?.[1];
-    expect(contactArg?.gender).toBe('Female');
+    expect(contactArg?.name).toBe('Jane Doe');
+    expect(contactArg?.year).toBe('Freshman');
+    expect(contactArg?.major).toBe('Computer Science');
+    expect(contactArg?.pronouns).toBe('she/her');
+    expect(contactArg?.hall).toBe('Whitman Hall');
+    expect(contactArg?.phone).toBe('123-456-7890');
+    expect(contactArg?.email).toBe('jane@example.com');
+    expect(contactArg?.instagram).toBe('@janedoe');
     expect(contactArg?.createdBy).toBe('ft-123');
     expect(contactArg?.createdByName).toBe('Staff Tester');
-    expect(contactArg?.tags).toEqual(expect.arrayContaining(['New Sign Up', "Summer '26"]));
+    expect(contactArg?.tags).toEqual(
+      expect.arrayContaining(['New Sign Up', "Summer '26"]),
+    );
   });
 
-  it('covers optional fields, chip toggles, back navigation, reset form, and spiritual background', async () => {
+  it('supports back navigation and reset form via "Add another"', async () => {
     render(<SignUp />);
 
-    // Fill step 1
-    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
-    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
-    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Where are you with faith/i), { target: { value: 'Christian' } });
-
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Alex Smith' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
-
-    // Toggle how heard chip
-    const friendChip = screen.getByText('Friend');
-    fireEvent.click(friendChip); // select
-    fireEvent.click(friendChip); // deselect
-
-    // Toggle interest chip
-    const interestChip = screen.getByText('Friday gathering');
-    fireEvent.click(interestChip); // select
-    fireEvent.click(interestChip); // deselect
-    fireEvent.click(interestChip); // select again
-
-    // Optional textareas
-    fireEvent.change(screen.getByPlaceholderText(/Confidentially/i), { target: { value: 'Pray for exams' } });
-    fireEvent.change(screen.getByPlaceholderText(/Allergies/i), { target: { value: 'No allergies' } });
 
     // Test back button
-    const backBtn = screen.getByRole('button', { name: 'Back' });
-    fireEvent.click(backBtn);
+    fireEvent.click(screen.getByRole('button', { name: '← Back' }));
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
 
-    // Continue again
+    // Continue again and submit
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    const submitBtn = screen.getByRole('button', { name: /Send it/i });
-    await waitFor(() => expect(submitBtn).not.toBeDisabled());
-    fireEvent.submit(submitBtn.closest('form')!);
+    expect(await screen.findByText(/Thanks, Alex\./i)).toBeInTheDocument();
 
-    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
-
-    // Add another resets form
+    // Click "Add another"
     fireEvent.click(screen.getByRole('button', { name: /Add another/i }));
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('First name is plenty')).toHaveValue('');
   });
 
-  it('handles cancel button on step 1 and honeypot check', async () => {
+  it('handles cancel button and triggers onBack or navigate', () => {
+    const onBack = vi.fn();
+    render(<SignUp onBack={onBack} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onBack).toHaveBeenCalled();
+  });
+
+  it('silently ignores honeypot submissions without Firestore write', async () => {
     render(<SignUp />);
 
-    const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
-    fireEvent.click(cancelBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/');
-
-    // Fill step 1
-    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), { target: { value: 'Jane Doe' } });
-    fireEvent.change(screen.getByLabelText(/Gender/i), { target: { value: 'Female' } });
-    fireEvent.change(screen.getByLabelText(/Year/i), { target: { value: 'Freshman' } });
-    fireEvent.change(screen.getByLabelText(/Major/i), { target: { value: 'Computer Science' } });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), { target: { value: '123-456-7890' } });
-    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), { target: { value: 'jane@example.com' } });
-
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Bot User' },
+    });
     fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
 
     expect(await screen.findByText('And a little more.')).toBeInTheDocument();
 
-    // Select interest so step 2 submit button is enabled
-    const firstInterestChip = screen.getByText('Friday gathering');
-    fireEvent.click(firstInterestChip);
-
-    // Trigger honeypot
+    // Fill botField
     const botInput = document.getElementById('botField') as HTMLInputElement;
-    fireEvent.change(botInput, { target: { value: 'I am a bot' } });
+    fireEvent.change(botInput, { target: { value: 'I am spam' } });
 
-    const submitBtn = screen.getByRole('button', { name: /Send it/i });
-    await waitFor(() => expect(submitBtn).not.toBeDisabled());
-    fireEvent.submit(submitBtn.closest('form')!);
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Thanks, Bot\./i)).toBeInTheDocument();
     expect(addDoc).not.toHaveBeenCalled();
   });
+
+  it('renders mobile layout branch without error', () => {
+    render(<SignUp isMobile={true} />);
+    expect(screen.getByText('Hey — we\'d love to know you.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+  });
 });
-
-
-
-
-

@@ -3858,3 +3858,185 @@ body.msgs-fullscreen .content { padding-bottom: 0 !important; }
   border-radius: 0.375rem;
 }
 
+/* ---------- Sign-up form affordance (topbar, every role, every screen) -------
+   The form is NOT an app login — it's how someone new asks to hear from us.
+   See SIGNUP.md. Entrance keyframe animates transform ONLY. */
+.sgi-wrap { position: relative; display: flex; align-items: center; }
+.sgi-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 9999px;
+  color: var(--on-surface-variant);
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+.sgi-btn:hover { background: var(--surface-container-high); color: var(--on-surface); }
+.sgi-btn.on { background: var(--surface-container-high); color: var(--primary); }
+.sgi-scrim { position: fixed; inset: 0; z-index: 79; }
+.sgi-pop {
+  position: absolute; top: calc(100% + 10px); right: 0; z-index: 80;
+  width: 316px; max-width: calc(100vw - 28px);
+  display: flex; flex-direction: column; gap: 2px; padding: 6px;
+  background: var(--surface-container-high); border: 1px solid var(--outline-variant);
+  border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  animation: sgiIn 160ms cubic-bezier(.2,.8,.2,1);
+}
+@keyframes sgiIn { from { transform: translateY(-6px) scale(.985); } to { transform: none; } }
+.sgi-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 2px; color: var(--on-surface-variant); }
+.sgi-head>b { font-family: var(--font-serif); font-size: 17px; font-weight: 500; letter-spacing: -0.01em; color: var(--on-surface); }
+.sgi-what { margin: 0; padding: 0 12px 10px; font-size: 12.5px; line-height: 1.5; color: var(--on-surface-variant); text-wrap: pretty; }
+.sgi-act {
+  display: block; width: 100%; text-align: left; cursor: pointer;
+  background: transparent; border: 0; border-radius: 10px;
+  padding: 10px 12px; color: var(--on-surface);
+  transition: background 120ms ease;
+}
+.sgi-act:hover { background: var(--surface-container-highest); }
+.sgi-act>b { display: block; font-size: 14px; font-weight: 600; color: var(--on-surface); }
+.sgi-act>span { display: block; font-size: 12px; color: var(--on-surface-variant); margin-top: 2px; line-height: 1.45; }
+.sidebar-hint { padding: 4px 12px 0; font-size: 11.5px; line-height: 1.45; color: var(--on-surface-variant); opacity: 0.8; text-wrap: pretty; }
+
+/* intake: name + phone; the rest lives behind a disclosure */
+.qa-enough { margin: -2px 0 14px; font-size: 12.5px; line-height: 1.5; color: var(--on-surface-variant); }
+.qa-disc {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  padding: 11px 13px; margin-bottom: 4px;
+  background: var(--surface-container); border: 1px solid var(--outline-variant);
+  border-radius: 12px; cursor: pointer; color: var(--on-surface); font: inherit;
+  transition: border-color 150ms ease;
+}
+.qa-disc:hover { border-color: var(--primary); }
+.qa-disc b { font-size: 13.5px; font-weight: 600; color: var(--on-surface); }
+.qa-disc span { font-size: 12.5px; color: var(--on-surface-variant); }
+.qa-disc s {
+  margin-left: auto; width: 8px; height: 8px; text-decoration: none;
+  border-right: 1.5px solid var(--on-surface-variant); border-bottom: 1.5px solid var(--on-surface-variant);
+  transform: rotate(45deg) translate(-2px, -2px); transition: transform .16s ease;
+}
+.qa-disc.open s { transform: rotate(-135deg) translate(-2px, -2px); }
+.qa-mored { padding-top: 12px; display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Signup — two-panel desktop + mobile-native flow ── */
+.signup {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: 1.04fr 1fr;
+  align-items: stretch;
+}
+.signup-hero {
+  position: relative;
+  background:
+    radial-gradient(135% 95% at 6% 4%, var(--stage-accent-soft), transparent 56%),
+    var(--surface-container-low);
+  border-right: 1px solid var(--outline-variant);
+  padding: clamp(24px, 5vw, 60px);
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  justify-content: center;
+}
+.su-brand { display: flex; align-items: center; gap: 13px; }
+.su-brand-name { font-weight: 600; font-size: 16px; letter-spacing: -0.01em; font-family: var(--font-serif); }
+.su-brand-sub { font-size: 13px; color: var(--on-surface-variant); margin-top: 1px; }
+
+.su-hero-title {
+  font-family: var(--font-serif);
+  font-size: 40px; font-weight: 500;
+  letter-spacing: -0.015em; line-height: 1.08;
+  margin: 0 0 16px;
+  color: var(--on-surface);
+}
+.su-hero-lead { color: var(--on-surface-variant); font-size: 16px; line-height: 1.6; max-width: 46ch; margin: 0; text-wrap: pretty; }
+
+.su-feats { display: flex; flex-direction: column; gap: 10px; }
+.su-feat {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.su-feat-ic {
+  width: 34px; height: 34px; border-radius: 9px;
+  background: var(--stage-accent-soft); color: var(--stage-accent);
+  display: grid; place-items: center; flex: none;
+}
+.su-feat-t { font-weight: 600; font-size: 14px; color: var(--on-surface); }
+.su-feat-b { font-size: 13px; color: var(--on-surface-variant); margin-top: 2px; line-height: 1.45; }
+.su-note { font-size: 13px; color: var(--on-surface-variant); line-height: 1.5; }
+
+.signup-form {
+  padding: clamp(24px, 5vw, 60px);
+  display: flex; flex-direction: column; gap: 20px;
+  justify-content: center; max-width: 580px; margin: 0 auto; width: 100%;
+}
+.signup-form h1 { font-size: 30px; margin: 0; font-weight: 500; letter-spacing: -0.015em; line-height: 1.12; font-family: var(--font-serif); color: var(--on-surface); }
+.signup-form .lead { color: var(--on-surface-variant); font-size: 15px; max-width: 46ch; line-height: 1.55; margin: 0; }
+
+.su-progress { display: flex; align-items: center; gap: 13px; margin-bottom: 4px; }
+.su-step { font-size: 13px; color: var(--on-surface-variant); white-space: nowrap; }
+
+.su-done { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; }
+.su-done-ic {
+  width: 58px; height: 58px; border-radius: 16px;
+  background: var(--success-container); color: var(--success);
+  display: grid; place-items: center;
+}
+.su-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+
+@media (max-width: 720px) {
+  .signup { grid-template-columns: 1fr; }
+  .sum-hero {
+    padding: 18px 18px 20px;
+    border-bottom: 1px solid var(--outline-variant);
+    display: flex; flex-direction: column; gap: 12px;
+    background: radial-gradient(135% 95% at 6% 4%, var(--stage-accent-soft), transparent 56%), var(--surface-container-low);
+  }
+  .sum-hero-top { display: flex; align-items: center; gap: 11px; }
+  .sum-brand { min-width: 0; flex: 1; }
+  .sum-back {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--surface-container-high); border: 1px solid var(--outline-variant);
+    color: var(--on-surface-variant); cursor: pointer;
+  }
+  .sum-hero-title {
+    font-family: var(--font-serif);
+    font-size: 26px; font-weight: 500; line-height: 1.12;
+    letter-spacing: -0.01em; margin: 0; text-wrap: balance;
+    color: var(--on-surface);
+  }
+  .sum-hero-lead { color: var(--on-surface-variant); font-size: 14.5px; line-height: 1.55; margin: 0; text-wrap: pretty; }
+  .sum-trust { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-top: 2px; }
+  .sum-trust-item {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; color: var(--on-surface-variant);
+  }
+  .sum-trust-item svg { color: var(--primary); }
+
+  .sum-body {
+    padding: 20px 18px 24px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sum-body .su-progress { margin-bottom: 8px; }
+  .sum-body h1 { font-size: 22px; margin: 0 0 4px; font-weight: 500; letter-spacing: -0.015em; line-height: 1.14; font-family: var(--font-serif); color: var(--on-surface); }
+  .sum-body .lead { color: var(--on-surface-variant); font-size: 14px; line-height: 1.5; margin: 0 0 14px; }
+
+  .sum-done-wrap { padding: 40px 20px 48px; }
+  .sum-done-wrap .su-done { gap: 14px; }
+  .sum-done-wrap h1 { font-size: 26px; }
+
+  .sum-bar {
+    position: sticky; bottom: 0;
+    margin-top: auto;
+    display: flex; gap: 10px; align-items: center;
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    border-top: 1px solid var(--outline-variant);
+    box-shadow: 0 -6px 20px -14px rgba(0,0,0,0.35);
+  }
+  .sum-bar button { min-height: 48px; border-radius: 12px; font-size: 15px; }
+  .sum-bar-pri { flex: 1; justify-content: center; gap: 8px; }
+  .sum-bar-sec { flex: none; padding: 0 18px; }
+}
+
