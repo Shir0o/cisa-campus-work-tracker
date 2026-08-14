@@ -282,12 +282,13 @@ describe('Visits', () => {
     const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;
     const original = onSnapshotMock.getMockImplementation();
     onSnapshotMock.mockImplementation(
-      (ref: { path?: string }, _cb: unknown, onError: (e: unknown) => void) => {
+      (ref: { path?: string }, _cb: (snap: unknown) => void, onError: (e: unknown) => void) => {
         if (ref?.path === 'contacts') {
           onError(new Error('contacts denied'));
           return vi.fn();
         }
-        return _cb && _cb({ docs: contactDocs(ref) }), vi.fn();
+        _cb({ docs: contactDocs(ref) });
+        return vi.fn();
       },
     );
     const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
