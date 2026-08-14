@@ -19,6 +19,7 @@
     },
     "qa": {
       "distribution": "internal",
+      "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID": "qa-db",
         "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker-qa.pages.dev"
@@ -41,6 +42,7 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {},
+    "qa": {}
   }
 }
