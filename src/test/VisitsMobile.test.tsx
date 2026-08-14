@@ -112,4 +112,26 @@ describe('VisitsMobile', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Log a visit' })[0]);
     expect(onLog).toHaveBeenCalledWith();
   });
+
+  it('opens the overdue contact profile from the Open button', () => {
+    const contact = { id: 'c1', name: 'Ama Osei', location: 'Whitman Hall' } as Contact;
+    const onOpenContact = vi.fn();
+    render(
+      <VisitsMobile
+        {...baseProps}
+        onOpenContact={onOpenContact}
+        overdue={[{ contact, visit: visit(), daysAgo: 12 }]}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(onOpenContact).toHaveBeenCalledWith('c1');
+  });
+
+  it('logs a visit from the empty-state action', () => {
+    const onLog = vi.fn();
+    render(<VisitsMobile {...baseProps} onLog={onLog} />);
+    // empty state renders two "Log a visit" buttons (header + empty card); use the last
+    fireEvent.click(screen.getAllByRole('button', { name: 'Log a visit' }).at(-1)!);
+    expect(onLog).toHaveBeenCalledWith();
+  });
 });

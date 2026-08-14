@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Visits from '../views/Visits';
 import { useAuth } from '../components/AuthProvider';
 import { deleteVisit, subscribeVisits } from '../lib/visits';
-import { logActivity } from '../lib/firebase';
+import { logActivity, handleFirestoreError } from '../lib/firebase';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import type { Visit } from '../types';
 
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }));
@@ -34,11 +35,25 @@ vi.mock('../lib/visits', async (importOriginal) => {
 });
 
 vi.mock('../components/modals/ContactDetailsModal', () => ({
-  default: ({ isOpen, contact }: any) => (isOpen ? <div>Contact: {contact?.name}</div> : null),
+  default: ({ isOpen, contact, onClose }: any) =>
+    isOpen ? (
+      <div>
+        Contact: {contact?.name}
+        <button onClick={onClose}>Close contact</button>
+      </div>
+    ) : null,
 }));
 vi.mock('../components/modals/LogVisitModal', () => ({
-  default: ({ isOpen, visit, initialContactId }: any) =>
-    isOpen ? <div>Log modal: {visit ? `editing ${visit.id}` : `seed ${initialContactId ?? 'none'}`}</div> : null,
+  default: ({ isOpen, visit, initialContactId, onClose }: any) =>
+    isOpen ? (
+      <div>
+        Log modal: {visit ? `editing ${visit.id}` : `seed ${initialContactId ?? 'none'}`}
+        <button onClick={onClose}>Close log</button>
+      </div>
+    ) : null,
+}));
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(() => false),
 }));
 
 const contactDocs = (ref: { path?: string }) => {
@@ -207,5 +222,90 @@ describe('Visits', () => {
     render(<Visits />);
     await waitFor(() => expect(screen.queryByText(/Gathering where we've been/)).not.toBeInTheDocument());
     expect(screen.queryByText(/Nothing here yet/)).not.toBeInTheDocument();
+  });
+
+  it('opens the log from the header action', async () => {
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: /Log a visit/ })[0]);
+    expect(screen.getByText('Log modal: seed none')).toBeInTheDocument();
+  });
+
+  it('closes the log and clears the seeded contact', async () => {
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: /Log a visit/ })[0]);
+    expect(screen.getByText('Log modal: seed none')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Close log'));
+    expect(screen.queryByText(/Log modal/)).not.toBeInTheDocument();
+  });
+
+  it('opens and closes a person from the overdue nudge', async () => {
+    emitVisits([visit({ date: daysAgo(40) })]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText("We haven't been round in a while")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByText('Contact: Ama Osei')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Close contact'));
+    expect(screen.queryByText(/Contact: Ama Osei/)).not.toBeInTheDocument();
+  });
+
+  it('closes the edit modal when cancelled', async () => {
+    emitVisits([visit()]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getByRole('button', { name: /Edit this visit/ }));
+    expect(screen.getByText('Log modal: editing v1')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Close log'));
+    expect(screen.queryByText(/Log modal/)).not.toBeInTheDocument();
+  });
+
+  it('surfaces a failed delete instead of swallowing it', async () => {
+    (deleteVisit as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('delete denied'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    emitVisits([visit()]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getByRole('button', { name: /Remove$/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'DELETE', 'visits/v1'),
+    );
+    errSpy.mockRestore();
+  });
+
+  it('surfaces a failed contacts read', async () => {
+    const firestore = await import('firebase/firestore');
+    const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;
+    const original = onSnapshotMock.getMockImplementation();
+    onSnapshotMock.mockImplementation(
+      (ref: { path?: string }, _cb: (snap: unknown) => void, onError: (e: unknown) => void) => {
+        if (ref?.path === 'contacts') {
+          onError(new Error('contacts denied'));
+          return vi.fn();
+        }
+        _cb({ docs: contactDocs(ref) });
+        return vi.fn();
+      },
+    );
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(<Visits />);
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'contacts'),
+    );
+    errSpy.mockRestore();
+    onSnapshotMock.mockImplementation(original!);
+  });
+
+  it('renders the mobile layout on small screens', async () => {
+    (useMediaQuery as unknown as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    emitVisits([visit()]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
+    expect(screen.getByText("Where we've been")).toBeInTheDocument();
+    expect(screen.getByText('This week')).toBeInTheDocument();
   });
 });

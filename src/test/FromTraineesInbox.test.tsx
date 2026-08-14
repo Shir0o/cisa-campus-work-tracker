@@ -132,4 +132,105 @@ describe("FromTraineesInbox", () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it("posts a canned encouragement when an emoji is picked in the mobile sheet", async () => {
+    render(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} mobile />);
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    fireEvent.click(screen.getByText(/Encourage Zion/));
+    fireEvent.click(screen.getByTitle("Praying for you both! Let me know if you need anything."));
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ kind: "encouragement", from: "ft1" }),
+      expect.objectContaining({ to: "t1" }),
+    );
+  });
+
+  it("opens the conversation and reminds the trainee from the mobile sheet", async () => {
+    const onOpen = vi.fn();
+    render(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={onOpen} mobile />);
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    fireEvent.click(screen.getByText(/Open the conversation/));
+    expect(onOpen).toHaveBeenCalledWith(contacts[0], expect.objectContaining({ tab: "thread" }));
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    fireEvent.click(screen.getByText(/Remind Zion/));
+    expect(addThreadMessage).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({ kind: "nudge", from: "ft1" }),
+      expect.objectContaining({ to: "t1" }),
+    );
+  });
+
+  it("marks a read item unscanned from the mobile sheet", async () => {
+    const { rerender } = render(
+      <FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} mobile />,
+    );
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
+    // mark all scanned first so rows read as scanned
+    fireEvent.click(screen.getByRole("button", { name: /Mark all scanned/ }));
+    await waitFor(() => expect(screen.queryByText("3 new")).not.toBeInTheDocument());
+
+    rerender(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} mobile />);
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    fireEvent.click(screen.getByText(/Mark unscanned/));
+    await waitFor(() => expect(screen.getByText("1 new")).toBeInTheDocument());
+  });
+
+  it("closes the mobile sheet from the scrim, X, and react cancel", async () => {
+    render(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} mobile />);
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    const dialog = () => screen.getByRole("dialog");
+    expect(dialog()).toBeInTheDocument();
+    fireEvent.click(document.querySelector(".scrim")!);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /Zion asked about Rio Tan/ })[0]);
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    fireEvent.click(document.querySelector(".modal-x")!);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("reveals and collapses earlier inbox items", async () => {
+    // Enough created contacts to push past the collapsed cap of 6.
+    const manyContacts = Array.from({ length: 8 }, (_, i) =>
+      contact({
+        id: `c${i}`,
+        name: `Person ${i}`,
+        createdBy: "t1",
+        createdByName: "Zion Park",
+        createdAt: `2026-02-0${(i % 9) + 1}T00:00:00.000Z`,
+      }),
+    );
+    render(<FromTraineesInbox meUid="ft1" contacts={manyContacts} onOpenContact={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText("From the team")).toBeInTheDocument());
+    // mark everything scanned so the collapsed cap (6) applies
+    fireEvent.click(screen.getByRole("button", { name: /Mark all scanned/ }));
+    await waitFor(() => expect(screen.getByText(/Show \d+ earlier/)).toBeInTheDocument());
+    fireEvent.click(screen.getByText(/Show \d+ earlier/));
+    expect(screen.getByText(/Show less/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Show less/));
+    expect(screen.getByText(/Show \d+ earlier/)).toBeInTheDocument();
+  });
+
+  it("surfaces a failed interactions read through handleFirestoreError", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    const firestore = await import("firebase/firestore");
+    (firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>).mockImplementation(
+      (_ref: unknown, _cb: unknown, onError: (e: unknown) => void) => {
+        onError(new Error("permission denied"));
+        return vi.fn();
+      },
+    );
+    render(<FromTraineesInbox meUid="ft1" contacts={contacts} onOpenContact={vi.fn()} />);
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(
+        expect.any(Error),
+        "LIST",
+        "interactions (collectionGroup)",
+      ),
+    );
+  });
 });
