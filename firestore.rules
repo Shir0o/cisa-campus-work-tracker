@@ -673,12 +673,12 @@ service cloud.firestore {
                         // leaving a tombstone — the author's or a Full-timer's
                         // act, and ONLY the `deleted` field may change
                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deleted']) &&
-                         resource.data.deleted == null && request.resource.data.deleted != null &&
+                         resource.data.get('deleted', null) == null && request.resource.data.get('deleted', null) != null &&
                          (request.auth.uid == resource.data.senderId || isAdmin())) ||
                         // a plain reaction / pin toggle on a live message —
                         // the message must stay undeleted and untouched
                         (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'pinned']) &&
-                         resource.data.deleted == null && request.resource.data.deleted == null)
+                         resource.data.get('deleted', null) == null && request.resource.data.get('deleted', null) == null)
                       );
         allow delete: if false; // A tombstone replaces deletion
       }
