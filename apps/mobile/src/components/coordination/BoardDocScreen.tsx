@@ -5,7 +5,7 @@
 // real Board renderer for the same reason — a page must read as the page), but
 // re-themed onto the v2 room instead of the Material palette.
 import { Fragment } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useMarkdown } from 'react-native-marked';
@@ -15,6 +15,7 @@ import { useBoardDocData } from '../../lib/useBoardDocData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
 import { AudiencePill } from './BoardScreen';
+import { DocSkeleton } from '../skeleton/DocSkeleton';
 
 export function BoardDocScreen({ docId }: { docId: string }) {
   const { role } = useAuth();
@@ -58,7 +59,7 @@ function BoardDoc({ docId }: { docId: string }) {
         ) : !data.allowed ? (
           <V2Empty>This page isn't open to your role.</V2Empty>
         ) : data.loading || !data.doc ? (
-          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+          <DocSkeleton />
         ) : (
           <>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 2 }}>

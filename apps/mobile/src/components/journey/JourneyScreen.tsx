@@ -5,7 +5,7 @@
 // Trainee-shaped, as the design specifies: read plus one care action. Adding
 // someone and editing the stage list itself stay off this screen.
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -23,6 +23,7 @@ import { moveContactStage } from '../../lib/data/contacts';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Empty, V2PersonRow, V2RowCard, V2Screen } from '../v2/Widget';
 import { MoveStepSheet } from './MoveStepSheet';
+import { SkeletonList } from '../skeleton/SkeletonList';
 
 export function JourneyScreen() {
   const { role } = useAuth();
@@ -149,7 +150,7 @@ function Journey() {
 
         <View style={{ marginTop: 16 }}>
           {data.loading ? (
-            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
+            <SkeletonList rows={4} style={{ marginTop: 20 }} />
           ) : data.error ? (
             <V2Empty>{data.error}</V2Empty>
           ) : data.items.length === 0 ? (

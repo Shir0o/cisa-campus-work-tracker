@@ -34,6 +34,7 @@ import {
 } from './data/prayerRequests';
 import { subscribeAllPrayers } from './data/prayers';
 import { useQueueState } from './queueState';
+import { useIdentityReset } from './useIdentityReset';
 
 /** The card id "I prayed just now" marks. Shares the trainee queue's per-day
  * `handled` map exactly as the full-timer home does — `prayedBy` doesn't exist
@@ -54,6 +55,17 @@ export function useMemberPrayerData(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const queueState = useQueueState(uid);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setPersonal([]);
+    setRequests([]);
+    setTeamPrayers([]);
+    setContacts([]);
+    setLoading(true);
+    setError(null);
+  });
 
   const meName = displayName || 'Someone';
   const isStudent = role === 'student';

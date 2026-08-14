@@ -10,7 +10,7 @@
 // (Today · People · Messages · More — see app/(tabs)/_layout.tsx); the widget
 // links route into the app's own screens.
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { format } from 'date-fns';
@@ -37,6 +37,7 @@ import { HomesOpen } from './HomesOpen';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
 import { FtTodoSheet } from './FtTodoSheet';
+import { FtHomeSkeleton } from '../skeleton/FtHomeSkeleton';
 
 /** The room provider has to sit ABOVE everything that reads useV2Theme() —
  * including the screen itself — so the home is two components, not one. */
@@ -149,8 +150,13 @@ function FtHome() {
 
   if (data.loading) {
     return (
-      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg, justifyContent: 'center' }}>
-        <ActivityIndicator color={c.room.ink2} />
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 10, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <FtHomeSkeleton />
+        </ScrollView>
       </SafeAreaView>
     );
   }

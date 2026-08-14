@@ -6,7 +6,7 @@
 // export. Adding or removing a gathering stays on the desktop site — the foot
 // of an open roster says so.
 import { useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { format, isValid } from 'date-fns';
@@ -17,6 +17,7 @@ import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker } from '../queue/atoms';
 import { V2DateBox } from '../v2/DateBox';
 import { Room, V2Empty, V2Hint, V2PersonRow, V2RowCard, V2Screen } from '../v2/Widget';
+import { SkeletonList } from '../skeleton/SkeletonList';
 
 /** How many sessions show before "Show earlier". The design's own number. */
 const FIRST_PAGE = 5;
@@ -202,7 +203,7 @@ function Gatherings() {
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen title="Gatherings" onBack={back}>
         {data.loading ? (
-          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+          <SkeletonList rows={5} style={{ marginTop: 20 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : (

@@ -5,12 +5,13 @@
 // palette here — every screen wraps itself in `Room room="queue"` and reads the
 // green one. What differs is the shape: a member scrolls, they don't queue.
 import React from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
 import { format } from 'date-fns';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
+import { MemberHomeSkeleton } from '../skeleton/MemberHomeSkeleton';
 
 /** Every member screen is two components — the provider has to sit ABOVE
  * anything calling useV2Theme(). See Room's own note. */
@@ -32,11 +33,17 @@ export function MemberScreen({
   const { c, font, fs } = useV2Theme();
   if (loading) {
     return (
-      <SafeAreaView
-        edges={['top']}
-        style={{ flex: 1, backgroundColor: c.room.bg, justifyContent: 'center' }}
-      >
-        <ActivityIndicator color={c.room.ink2} />
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingHorizontal: 18,
+            paddingTop: 10,
+            paddingBottom: 44,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <MemberHomeSkeleton />
+        </ScrollView>
       </SafeAreaView>
     );
   }

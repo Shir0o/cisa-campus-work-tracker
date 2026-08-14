@@ -5,7 +5,7 @@
 // No stage-filter pills: in v2 the stages belong to The Journey, and People is
 // a directory you look someone up in.
 import { useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -22,6 +22,7 @@ import { Kicker } from '../queue/atoms';
 import { Room, V2Empty, V2Hint, V2Input, V2PersonRow, V2Screen } from '../v2/Widget';
 import { Snackbar } from '../ui';
 import { LogSheet } from '../log/LogSheet';
+import { SkeletonList } from '../skeleton/SkeletonList';
 
 export function PeopleScreen() {
   const { role } = useAuth();
@@ -80,7 +81,7 @@ function People() {
         />
 
         {data.loading ? (
-          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+          <SkeletonList rows={7} style={{ marginTop: 20 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : nothing ? (

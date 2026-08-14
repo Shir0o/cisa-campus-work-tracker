@@ -16,6 +16,7 @@ import {
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
 import { subscribeUserPreferences } from './data/userPreferences';
+import { useIdentityReset } from './useIdentityReset';
 
 export interface JourneyStage {
   id: string;
@@ -36,6 +37,17 @@ export function useJourneyData(uid: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setContacts([]);
+    setStages([]);
+    setTouches([]);
+    setPrefContactIds(null);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;
