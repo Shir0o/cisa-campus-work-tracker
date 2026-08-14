@@ -19,7 +19,18 @@ cp .env.example .env   # then set EXPO_PUBLIC_FIREBASE_API_KEY
 npm run web      # fastest to eyeball in a browser (react-native-web)
 npm run ios      # iOS simulator (needs Xcode)
 npm run android  # Android emulator (needs Android Studio)
-# or: npx expo start  → press w / i / a, or scan the QR with Expo Go
+# or: npx expo start --dev-client  → press i / a, or scan the QR with a development build
+
+Native development uses **development builds**, not Expo Go (Expo Go cannot run
+this app and ignores most `app.json` fields, so behavior diverges from
+production). First install a development build on the simulator/device:
+
+```bash
+npx eas build --platform ios --profile development    # or --platform android
+```
+
+then `npm start` and press `i`/`a` (or scan the QR with the installed
+development build) to launch it.
 ```
 
 ## Production web build
