@@ -86,12 +86,12 @@ Use this URL to wire up your live third-party callback integrations exactly like
 
 ## 🛡️ Disaster Recovery (Firestore Backups)
 
-Automated daily backups are enabled on the production Firestore database (`ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897` in project `sac-campus-hub`), with a 30-day retention window. GCP takes the snapshot and expires old ones automatically — no app code or CI involvement needed.
+Automated daily backups are enabled on the production Firestore database (`prod` in project `sac-campus-hub`), with a 30-day retention window. GCP takes the snapshot and expires old ones automatically — no app code or CI involvement needed.
 
 Created with:
 ```bash
 gcloud firestore backups schedules create \
-  --database=ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897 \
+  --database=prod \
   --project=sac-campus-hub \
   --recurrence=daily \
   --retention=30d
@@ -99,7 +99,7 @@ gcloud firestore backups schedules create \
 
 Check status any time with:
 ```bash
-gcloud firestore backups schedules list --database=ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897 --project=sac-campus-hub
+gcloud firestore backups schedules list --database=prod --project=sac-campus-hub
 ```
 
 For restoring from a backup, see [Firebase's Firestore backup/restore docs](https://firebase.google.com/docs/firestore/backups).

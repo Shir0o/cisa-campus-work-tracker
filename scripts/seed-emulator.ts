@@ -17,7 +17,7 @@ process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '12
 process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub';
-const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897';
+const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'prod';
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId });

@@ -14,6 +14,7 @@ const {
   mockVerifyIdToken,
   mockCreateCustomToken,
   fetchMock,
+  getFirestoreDbIds,
 } = vi.hoisted(() => {
   type Doc = Record<string, any>;
 
@@ -88,6 +89,7 @@ const {
     mockVerifyIdToken: vi.fn(),
     mockCreateCustomToken: vi.fn(),
     fetchMock: vi.fn(),
+    getFirestoreDbIds: [] as (string | undefined)[],
   };
 });
 
@@ -106,7 +108,10 @@ vi.mock("firebase-admin", () => ({
 }));
 
 vi.mock("firebase-admin/firestore", () => ({
-  getFirestore: () => mockDb,
+  getFirestore: (_app: unknown, dbId?: string) => {
+    getFirestoreDbIds.push(dbId);
+    return mockDb;
+  },
 }));
 
 vi.mock("@google/genai", () => ({
@@ -141,6 +146,7 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", fetchMock);
 
   resetDb();
+  getFirestoreDbIds.length = 0;
   mockVerifyTwilio.mockReturnValue(true);
   mockVerifyIdToken.mockResolvedValue({ uid: "u-123", email: "u@example.com", name: "Unit Tester" });
   mockCreateCustomToken.mockResolvedValue("minted-token");
@@ -180,6 +186,19 @@ describe("GET /api/quick-add/status", () => {
     vi.stubEnv("GEMINI_API_KEY", "");
     const res = await request(app).get("/api/quick-add/status");
     expect(res.body.geminiConfigured).toBe(false);
+  });
+});
+
+describe("getAdminDb database id resolution", () => {
+  it("passes FIREBASE_FIRESTORE_DB_ID to getFirestore when set", async () => {
+    vi.stubEnv("FIREBASE_FIRESTORE_DB_ID", "qa-db");
+    await request(app).post("/api/feedback").send({ message: "QA smoke" });
+    expect(getFirestoreDbIds).toContain("qa-db");
+  });
+
+  it("falls back to firebase-applet-config.json's database id when unset", async () => {
+    await request(app).post("/api/feedback").send({ message: "prod smoke" });
+    expect(getFirestoreDbIds).toContain("prod");
   });
 });
 

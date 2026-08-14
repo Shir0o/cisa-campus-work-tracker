@@ -17,6 +17,7 @@
     "test:e2e:emulator": "npx firebase-tools emulators:exec --only auth,firestore \"npx tsx scripts/seed-emulator.ts && npx playwright test\"",
     "seed:emulator": "npx tsx scripts/seed-emulator.ts",
     "seed:e2e-users": "tsx scripts/seed-test-user-docs.ts",
+    "seed:qa": "npx tsx scripts/seed-qa.ts",
     "sync:issues": "tsx scripts/sync-github-issues.ts"
   },
   "dependencies": {

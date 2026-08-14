@@ -69,8 +69,13 @@ export async function createApp() {
           firebaseApp = admin.apps[0]!;
         }
 
-        // Properly get custom Firestore instance using getFirestore from subpath
-        adminDbInstance = getFirestore(firebaseApp, config.firestoreDatabaseId);
+        // Properly get custom Firestore instance using getFirestore from subpath.
+        // FIREBASE_FIRESTORE_DB_ID overrides the database id from
+        // firebase-applet-config.json so a QA/staging deployment can target a
+        // separate named database (e.g. qa-db) without a code change.
+        const firestoreDatabaseId =
+          process.env.FIREBASE_FIRESTORE_DB_ID || config.firestoreDatabaseId;
+        adminDbInstance = getFirestore(firebaseApp, firestoreDatabaseId);
       } catch (err: any) {
         console.error("Firebase Admin initialization failed lazily: ", err);
         throw new Error(`Firebase Admin failed to start: ${err.message}`);

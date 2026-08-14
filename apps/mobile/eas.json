@@ -17,6 +17,13 @@
         "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
       }
     },
+    "qa": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID": "qa-db",
+        "EXPO_PUBLIC_API_URL": "https://campus-hub-qa-914549253362.us-west2.run.app"
+      }
+    },
     "testflight": {
       "distribution": "store",
       "autoIncrement": true,
