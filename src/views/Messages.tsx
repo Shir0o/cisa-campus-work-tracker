@@ -169,10 +169,11 @@ export default function Messages() {
     if (!effectiveUid) return;
 
     setLoadingRooms(true);
-    // Admins see all chats; other users (and impersonated views) only see chats they are member of
-    const roomsQuery = isAdmin
-      ? query(collection(db, 'chatRooms'), orderBy('createdAt', 'desc'))
-      : query(collection(db, 'chatRooms'), where('memberIds', 'array-contains', effectiveUid));
+    // Only fetch chat rooms where the user is an explicit member
+    const roomsQuery = query(
+      collection(db, 'chatRooms'),
+      where('memberIds', 'array-contains', effectiveUid)
+    );
 
     const unsubscribe = onSnapshot(roomsQuery, (snapshot) => {
       const chatRooms: ChatRoom[] = [];
@@ -193,7 +194,17 @@ export default function Messages() {
     });
 
     return unsubscribe;
-  }, [effectiveUid, isAdmin]);
+  }, [effectiveUid]);
+
+  // Reset active room if the current user is no longer a member of it
+  useEffect(() => {
+    if (activeRoomId && rooms.length > 0 && !loadingRooms) {
+      const exists = rooms.some((r) => r.id === activeRoomId);
+      if (!exists) {
+        setActiveRoomId(null);
+      }
+    }
+  }, [rooms, activeRoomId, loadingRooms]);
 
   // 2. Fetch Active Room Messages
   useEffect(() => {

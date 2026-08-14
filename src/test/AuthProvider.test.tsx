@@ -476,5 +476,111 @@ describe('AuthProvider', () => {
       expect(screen.getByText('ownerViewRole: manager')).toBeInTheDocument();
     });
   });
+
+  it('guarantees effectiveUserId is user.uid and clears stale impersonation for unauthorized users', async () => {
+    localStorage.setItem('cisa.impersonate.v1', 'staff:cisa-admin');
+    localStorage.setItem('cisa_owner_view_role', 'admin');
+
+    const viewerUser = {
+      uid: 'reviewer-uid',
+      email: 'reviewer-appstore@campus.edu',
+      displayName: 'App Store Reviewer',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} })
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(viewerUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        role: 'viewer',
+        approved: true,
+      })
+    });
+
+    const ImpersonationTestComponent = () => {
+      const { user, effectiveUserId, isOwner, impersonateTarget } = useAuth();
+      return (
+        <div>
+          <div>userUid: {user?.uid}</div>
+          <div>effectiveUserId: {effectiveUserId}</div>
+          <div>isOwner: {isOwner.toString()}</div>
+          <div>hasTarget: {(!!impersonateTarget).toString()}</div>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <ImpersonationTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('userUid: reviewer-uid')).toBeInTheDocument();
+      expect(screen.getByText('effectiveUserId: reviewer-uid')).toBeInTheDocument();
+      expect(screen.getByText('isOwner: false')).toBeInTheDocument();
+      expect(screen.getByText('hasTarget: false')).toBeInTheDocument();
+    });
+
+    expect(localStorage.getItem('cisa.impersonate.v1')).toBeNull();
+    expect(localStorage.getItem('cisa_owner_view_role')).toBeNull();
+  });
+
+  it('clears impersonation and ownerViewRole from localStorage on logOut', async () => {
+    localStorage.setItem('cisa.impersonate.v1', 'persona:student');
+    localStorage.setItem('cisa_owner_view_role', 'operator');
+
+    const adminUser = {
+      uid: 'admin-uid',
+      email: 'admin@example.com',
+      displayName: 'Admin',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: { admin: true } })
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(adminUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        role: 'admin',
+        approved: true,
+      })
+    });
+
+    const LogoutTestComponent = () => {
+      const { logOut, effectiveUserId } = useAuth();
+      return (
+        <div>
+          <div>effectiveUserId: {effectiveUserId}</div>
+          <button onClick={() => logOut()}>Log Out</button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <LogoutTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Log Out' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Log Out' }));
+
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalled();
+      expect(localStorage.getItem('cisa.impersonate.v1')).toBeNull();
+      expect(localStorage.getItem('cisa_owner_view_role')).toBeNull();
+    });
+  });
 });
 

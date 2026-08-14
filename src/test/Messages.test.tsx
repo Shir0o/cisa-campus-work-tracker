@@ -321,7 +321,23 @@ describe('Messages View Component', () => {
     }, { timeout: 500 });
   });
 
-  it('handles non-admin users query (roles restriction)', async () => {
+  it('restricts room queries by membership for both admin and non-admin users', async () => {
+    (useAuth as any).mockReturnValue({
+      user: stableUser,
+      role: 'admin',
+    });
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <Messages />
+      </MemoryRouter>
+    );
+
+    expect(firestore.where).toHaveBeenCalledWith('memberIds', 'array-contains', 'u1');
+    unmount();
+
+    vi.clearAllMocks();
+
     (useAuth as any).mockReturnValue({
       user: stableUser,
       role: 'operator',
