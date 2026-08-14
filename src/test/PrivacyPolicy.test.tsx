@@ -14,11 +14,14 @@ describe("PrivacyPolicy", () => {
 
     expect(screen.getByText("Privacy Policy")).toBeInTheDocument();
     expect(screen.getByText("Enterprise Access & Data Protection Notice")).toBeInTheDocument();
-    expect(screen.getByText("1. Overview")).toBeInTheDocument();
-    expect(screen.getByText("4. Account Provisioning & Deletion")).toBeInTheDocument();
-    expect(screen.getByText("5. Security & Data Retention")).toBeInTheDocument();
-    expect(screen.queryByText(/directly within workspace settings/i)).toBeNull();
-    expect(screen.queryByText(/encrypted/i)).toBeNull();
+    expect(screen.getByText("1. Overview & Purpose")).toBeInTheDocument();
+    expect(screen.getByText("2. Data We Collect")).toBeInTheDocument();
+    expect(screen.getByText("3. How Data Is Used")).toBeInTheDocument();
+    expect(screen.getByText("4. Role-Based Access Control")).toBeInTheDocument();
+    expect(screen.getByText("5. Account Provisioning & Deletion")).toBeInTheDocument();
+    expect(screen.getByText("6. Security & Data Retention")).toBeInTheDocument();
+    expect(screen.getByText("7. Contact Information")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /help & support/i })).toHaveAttribute("href", "/support");
   });
 
   it("navigates back to home when Back to Application button is clicked", () => {

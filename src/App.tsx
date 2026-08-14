@@ -26,6 +26,7 @@ import AnsweredList from "./views/AnsweredList";
 import Settings from "./views/Settings";
 import SignUp from "./views/SignUp";
 import PrivacyPolicy from "./views/PrivacyPolicy";
+import Support from "./views/Support";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { Plus } from "lucide-react";
@@ -126,14 +127,23 @@ function EmailPasswordForm() {
       >
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
-      <div className="pt-2 text-center">
+      <div className="pt-2 text-center flex items-center justify-center gap-3 text-xs text-on-surface-variant">
         <a
           href="https://shir0o.github.io/cisa-campus-work-traker/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-xs text-on-surface-variant hover:text-primary transition-colors underline"
+          className="hover:text-primary transition-colors underline"
         >
           Privacy Policy
+        </a>
+        <span>&bull;</span>
+        <a
+          href="https://shir0o.github.io/cisa-campus-work-traker/support.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-primary transition-colors underline"
+        >
+          Support
         </a>
       </div>
     </form>
@@ -433,6 +443,7 @@ export default function App() {
               />
 
               <Route path="/privacy" element={<PrivacyPolicy />} />
+              <Route path="/support" element={<Support />} />
 
               <Route
                 path="/"

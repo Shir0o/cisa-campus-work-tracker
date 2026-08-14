@@ -5,10 +5,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Privacy Policy - CISA Campus Work Tracker</title>
   <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --text: #cbd5e1;
+      --text-muted: #94a3b8;
+      --heading: #f8fafc;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --badge-bg: rgba(56, 189, 248, 0.1);
+      --badge-border: rgba(56, 189, 248, 0.2);
+    }
+    * {
+      box-sizing: border-box;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #0f172a;
-      color: #cbd5e1;
+      background-color: var(--bg);
+      color: var(--text);
       line-height: 1.6;
       margin: 0;
       padding: 40px 20px;
@@ -16,77 +31,202 @@
     .container {
       max-width: 800px;
       margin: 0 auto;
-      background: #1e293b;
+      background: var(--card-bg);
       padding: 40px;
       border-radius: 16px;
       box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-      border: 1px solid #334155;
+      border: 1px solid var(--card-border);
+    }
+    .header {
+      border-bottom: 1px solid var(--card-border);
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: var(--badge-bg);
+      border: 1px solid var(--badge-border);
+      border-radius: 9999px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 12px;
     }
     h1 {
-      color: #f8fafc;
+      color: var(--heading);
       font-size: 28px;
-      margin-top: 0;
-      border-bottom: 1px solid #334155;
-      padding-bottom: 16px;
+      margin: 0 0 8px 0;
     }
     h2 {
-      color: #38bdf8;
+      color: var(--accent);
       font-size: 20px;
-      margin-top: 24px;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
+    h3 {
+      color: var(--heading);
+      font-size: 16px;
+      margin-top: 20px;
+      margin-bottom: 6px;
+    }
+    p {
+      margin: 0 0 12px 0;
     }
     ul {
       padding-left: 20px;
+      margin: 0 0 16px 0;
     }
     li {
-      margin-bottom: 8px;
+      margin-bottom: 6px;
+    }
+    .nav-links {
+      display: flex;
+      gap: 16px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--card-border);
     }
     .footer {
       margin-top: 40px;
       padding-top: 20px;
-      border-top: 1px solid #334155;
+      border-top: 1px solid var(--card-border);
       font-size: 13px;
-      color: #64748b;
+      color: var(--text-muted);
       text-align: center;
     }
     a {
-      color: #38bdf8;
+      color: var(--accent);
       text-decoration: none;
     }
     a:hover {
       text-decoration: underline;
     }
+    @media (max-width: 600px) {
+      body {
+        padding: 20px 12px;
+      }
+      .container {
+        padding: 24px 16px;
+      }
+      h1 {
+        font-size: 24px;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Privacy Policy</h1>
-    <p><strong>Enterprise Access & Data Protection Notice</strong></p>
+    <div class="header">
+      <span class="badge">Enterprise & Privacy Compliance</span>
+      <h1>Privacy Policy</h1>
+      <p>Enterprise Access & Data Protection Notice for CISA Campus Work Tracker</p>
+    </div>
 
-    <h2>1. Overview</h2>
-    <p>This application is an internal, access-gated enterprise software tool provided strictly for authorized workspace users. Access requires authentication via provisioned enterprise credentials.</p>
+    <h2>1. Overview & Purpose</h2>
+    <p>
+      CISA Campus Work Tracker is an internal, access-gated organization application developed to facilitate campus ministry coordination, student onboarding, pastoral care, prayer tracking, gathering attendance, and collaborative workflows. Access is restricted to authorized team members and registered community participants.
+    </p>
 
-    <h2>2. Data We Collect</h2>
-    <p>To provide secure authentication and internal functionality, the app collects:</p>
+    <h2>2. Information We Collect</h2>
+    <p>We collect only the information necessary to fulfill our campus fellowship and ministry coordination operations:</p>
+    
+    <h3>A. Account & Authentication Data</h3>
     <ul>
-      <li>Account Credentials (Email address and authentication tokens)</li>
-      <li>User Identity & Profile Information (Name, role, assigned workspace)</li>
-      <li>Usage Diagnostics & Log Events (App interactions, system error reports)</li>
+      <li><strong>Credentials:</strong> Corporate email address, authentication tokens, and password credentials (managed via Firebase Authentication).</li>
+      <li><strong>Federated Sign-In:</strong> Name, verified email address, and profile photo URL when signing in through Google Sign-In.</li>
+      <li><strong>User Preferences:</strong> Theme settings, custom view modes, and notification preferences.</li>
     </ul>
 
-    <h2>3. How Data Is Used</h2>
-    <p>Collected data is processed strictly for enterprise authentication, access control, audit logging, and core workflow operations within your workspace. We do not sell, track, or share your data with third-party advertisers.</p>
+    <h3>B. Contact & Community Directory Information</h3>
+    <ul>
+      <li><strong>Member & Student Profiles:</strong> Full name, email address, phone number, university major, expected graduation year, campus location, gender, pronouns, Instagram handle, spiritual background, journey stage, assigned stewards, and pastoral tags.</li>
+      <li><strong>Welcome / Intake Submissions:</strong> Contact details, interests, and prayer requests submitted voluntarily by new students and visitors on the welcome signup form.</li>
+    </ul>
 
-    <h2>4. Account Provisioning & Deletion</h2>
-    <p>Accounts are provisioned by enterprise system administrators. Users requiring account modification or account data removal may request account deactivation through their corporate system administrator.</p>
+    <h3>C. Pastoral Care & Activity Logs</h3>
+    <ul>
+      <li><strong>Interactions & Timelines:</strong> Records of pastoral conversations, fellowship check-ins, dates, duration, notes, and staff attendees.</li>
+      <li><strong>Pastoral Visits:</strong> Home and campus visit records including dates, attendees, visit objectives, follow-up tasks, and optional visit photos uploaded directly to secure cloud storage.</li>
+      <li><strong>Prayer Records:</strong> Prayer burdens, personal prayer lists, answered prayer testimonies, and optional answered prayer celebration photos.</li>
+    </ul>
 
-    <h2>5. Security & Data Retention</h2>
-    <p>Access to stored workspace data is restricted to authorized system administrators and authenticated enterprise users.</p>
+    <h3>D. Gatherings, Tasks & Collaboration</h3>
+    <ul>
+      <li><strong>Gatherings & Attendance:</strong> Campus event schedules, recurrence rules, check-in status (present, absent, late), and RSVP confirmations.</li>
+      <li><strong>Tasks & Follow-Ups:</strong> Action items, priorities, due dates, subtasks, and creator/assignee metadata.</li>
+      <li><strong>Team Messaging:</strong> Direct, group, and announcement channel messages, reactions, message pins, and record attachments.</li>
+      <li><strong>Coordination Notes:</strong> Collaborative planning documents and meeting notes.</li>
+    </ul>
 
-    <h2>6. Contact Information</h2>
-    <p>For privacy inquiries or technical support regarding this application, please contact your workspace administrator or support team.</p>
+    <h3>E. Diagnostics, Feedback & Device Information</h3>
+    <ul>
+      <li><strong>User Feedback:</strong> Bug reports, feature ideas, and feedback messages submitted intentionally through the in-app feedback tool.</li>
+      <li><strong>Diagnostic Metadata:</strong> Browser user-agent strings, viewport dimensions, system error logs, and user-initiated screenshot diagnostics.</li>
+      <li><strong>Push Tokens:</strong> Device push tokens (via Expo Push / Web Push) for delivering reminders, task assignments, and chat alerts.</li>
+    </ul>
+
+    <h2>3. How We Use Collected Data</h2>
+    <p>Data collected within the application is processed solely for:</p>
+    <ul>
+      <li>Authenticating users and enforcing role-based permissions.</li>
+      <li>Managing student outreach, pastoral care, and fellowship activities.</li>
+      <li>Coordinating gathering attendance, event reminders, and follow-up tasks.</li>
+      <li>Delivering real-time team messaging and push notifications.</li>
+      <li>Triaging reported technical issues and maintaining system stability.</li>
+      <li>Performing server-side intelligent text parsing (e.g. Smart Import parsing of notes and summaries via Google Gemini API). <em>Note: Text is processed strictly in real-time via API calls and is not used to train public machine learning models.</em></li>
+    </ul>
+    <p><strong>We do not sell, rent, monetize, or share your personal data with third-party advertisers or data brokers.</strong></p>
+
+    <h2>4. Role-Based Access Control & Data Sharing</h2>
+    <p>Access to data within the organization workspace is strictly segregated according to four role tiers:</p>
+    <ul>
+      <li><strong>Full-timer (Admin):</strong> Full administrative workspace access, pastoral visit logs with photo attachments, coordination note archives, user approval management, and season settings.</li>
+      <li><strong>Trainee (Manager):</strong> Personalized focus queue, contact journey tracking, attendance, and team messaging.</li>
+      <li><strong>Student (Operator):</strong> Member directory, assigned tasks, coordination notes, and messaging.</li>
+      <li><strong>Community (Viewer):</strong> Gathering schedules, attendance records, outreach logging, and shared prayer lists.</li>
+    </ul>
+
+    <h2>5. Third-Party Service Providers</h2>
+    <p>We rely on trusted enterprise service providers to operate our infrastructure:</p>
+    <ul>
+      <li><strong>Google Cloud Platform & Firebase:</strong> Encrypted database storage (Cloud Firestore), file storage (Firebase Storage), user authentication (Firebase Auth), and real-time state sync.</li>
+      <li><strong>Google Gemini API:</strong> Server-side AI text processing for internal note and transcript parsing.</li>
+      <li><strong>Expo / Apple APNs / Google FCM:</strong> Secure push notification dispatch.</li>
+      <li><strong>GitHub Pages:</strong> Public hosting for documentation, support, and privacy policies.</li>
+    </ul>
+
+    <h2>6. Data Security & Retention</h2>
+    <p>
+      All data transmitted between the client application and cloud services is encrypted using Transport Layer Security (TLS/HTTPS). Database and storage access is enforced via strict server-side security rules.
+    </p>
+    <p>
+      Data is retained as long as necessary to support active campus ministry operations or until an authorized account deletion request is made.
+    </p>
+
+    <h2>7. Account Provisioning, Deletion & Your Rights</h2>
+    <p>
+      Accounts are provisioned and approved by enterprise administrators. You have the right to request access, correction, export, or deletion of your personal data at any time.
+    </p>
+    <p>
+      To request account deletion or removal of your contact records, please email our administration team at <a href="mailto:yilongwang05@gmail.com">yilongwang05@gmail.com</a>. Requests are fulfilled within 30 days.
+    </p>
+
+    <h2>8. Contact & Privacy Inquiries</h2>
+    <p>
+      For privacy inquiries, data requests, or support regarding this application, please contact:
+    </p>
+    <p>
+      <strong>Email:</strong> <a href="mailto:yilongwang05@gmail.com">yilongwang05@gmail.com</a><br>
+      <strong>App:</strong> CISA Campus Work Tracker
+    </p>
+
+    <div class="nav-links">
+      <a href="support.html">Help & Support Page &rarr;</a>
+    </div>
 
     <div class="footer">
-      Last Updated: August 2026 &bull; CISA Campus Work Tracker Enterprise Privacy Policy
+      Last Updated: August 2026 &bull; CISA Campus Work Tracker Privacy Policy
     </div>
   </div>
 </body>

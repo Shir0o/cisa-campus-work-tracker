@@ -1,11 +1,11 @@
-name: Deploy Privacy Policy to GitHub Pages
+name: Deploy Privacy & Support Pages to GitHub Pages
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'docs/privacy.html'
+      - 'docs/**'
       - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
@@ -22,7 +22,7 @@ jobs:
   deploy:
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}privacy.html
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -31,10 +31,11 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
-      - name: Prepare Pages Artifact (Privacy Policy Only)
+      - name: Prepare Pages Artifact
         run: |
           mkdir -p _site
           cp docs/privacy.html _site/privacy.html
+          cp docs/support.html _site/support.html
           cp docs/privacy.html _site/index.html
 
       - name: Upload Pages Artifact
