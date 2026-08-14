@@ -74,6 +74,94 @@ An Apple Developer / Google Play account (and, for iOS, `eas build`'s
 interactive credential setup or an existing distribution certificate) is
 needed before a build can go to TestFlight or a Play internal track.
 
+## QA (staging) environment
+
+A reviewer can exercise the app against an isolated **`qa-db`** Firestore
+database in the same `sac-campus-hub` project — same frontend code, no risk to
+prod data. Firestore data is fully separate; Firebase Auth users, Cloud Storage
+bucket, and Realtime Database are shared with prod.
+
+- **Database:** `qa-db` (created with `gcloud firestore databases create`).
+  Rules + indexes are deployed alongside prod via `firebase deploy
+  --only firestore:rules,firestore:indexes` (also on merge to main).
+- **Backend:** QA Cloud Run service `campus-hub-qa`
+  (`https://campus-hub-qa-914549253362.us-west2.run.app`) with
+  `FIREBASE_FIRESTORE_DB_ID=qa-db`, so push/quick-add/AI run against QA data.
+- **Seed data:** `npm run seed:qa` (from the repo root) writes approved
+  `/users` docs for the four E2E accounts (looked up — or created — in shared
+  Auth) plus a full fake dataset to explore: the stages/gathering-types
+  taxonomies, ~8 contacts (with interactions, comments, and walking-together
+  threads), prayers + prayer requests, gathering events + RSVPs, chat rooms +
+  messages, to-dos, notifications, coordination-notes pages, an outreach
+  record, and activity entries.
+
+### Reviewer credentials
+
+| Role      | Email                          | Password      |
+|-----------|--------------------------------|---------------|
+| Full-timer (admin) | `fulltimer.e2e@example.com` | `password123` |
+| Trainee (manager)  | `trainee.e2e@example.com`  | `password123` |
+| Student (operator) | `student.e2e@example.com`  | `password123` |
+| Community (viewer) | `community.e2e@example.com`| `password123` |
+
+### Build & distribute the QA app
+
+```bash
+npx eas build --platform ios --profile qa      # and/or --platform android
+```
+
+The `qa` profile bakes in `EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db` and
+`EXPO_PUBLIC_API_URL` → the QA backend, then publishes an internal
+distribution link the reviewer installs directly (no local toolchain).
+
+### Local dev against QA
+
+```bash
+EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db \
+EXPO_PUBLIC_API_URL=https://campus-hub-qa-914549253362.us-west2.run.app \
+npm start
+```
+
+(Or set those two vars in `.env`.)
+
+### Limitations
+
+- **The Board collab editor** is a WebView served by the *web* SPA, so QA builds
+  don't exercise it; with `EXPO_PUBLIC_FIREBASE_DATABASE_URL` unset the Board
+  falls back to Firestore-only editing.
+- **Photos** land in the shared prod Storage bucket (rules-capped, low risk).
+- **Realtime Database** is shared — leave `EXPO_PUBLIC_FIREBASE_DATABASE_URL`
+  unset in QA to avoid writing to prod's live board.
+
+## Production DB rename cutover (`ai-studio-…` → `prod`)
+
+The production Firestore database id can't be renamed in place, so it was
+migrated to a new named database `prod` (data already copied, rules/indexes and
+the daily backup schedule recreated on `prod`). The old `ai-studio-…` database is
+left running until the switch is coordinated, because the database id is baked
+into already-built clients (web bundle + installed mobile apps).
+
+**Order matters — do the whole sequence in one window to avoid split-brain:**
+
+1. **Write-freeze** — stop user writes (or accept a small delta).
+2. **Final sync** — catch any writes made since the initial copy:
+   ```bash
+   SOURCE_DATABASE_ID=ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897 \
+   DEST_DATABASE_ID=prod npx tsx scripts/migrate-db.ts
+   ```
+3. **Cut over the backend** — set the prod Cloud Run service's DB id:
+   ```bash
+   gcloud run services update campus-hub-backend --region us-west2 \
+     --update-env-vars=FIREBASE_FIRESTORE_DB_ID=prod
+   ```
+4. **Redeploy the web app** (rebuilds `firebase-applet-config.json` = `prod`).
+5. **Release the mobile app** — `npx eas build --platform ios --profile production`
+   (and Android) so the new build points at `prod`.
+6. **Verify** writes land in `prod`, then delete the old database:
+   ```bash
+   gcloud firestore databases delete --database=ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897 --project=sac-campus-hub
+   ```
+
 ## What's in place (Phase 0)
 
 - Theme from the web app's Material tokens (`src/theme/`), light + dark, warm

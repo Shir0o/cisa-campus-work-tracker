@@ -31,7 +31,7 @@ Once your project has been imported and connected to Cloudflare Pages via GitHub
 | `GEMINI_API_KEY` | Your Google Gemini API Key | Encrypted Secret |
 | `FIREBASE_SERVICE_ACCOUNT` | The **entire raw content** of your downloaded Service Account `.json` file. | Encrypted Secret |
 | `FIREBASE_PROJECT_ID` | `sac-campus-hub` | Text |
-| `FIREBASE_DATABASE_ID` | `ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897` | Text |
+| `FIREBASE_DATABASE_ID` | `prod` | Text |
 
 ---
 

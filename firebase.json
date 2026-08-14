@@ -1,7 +1,12 @@
 {
   "firestore": [
     {
-      "database": "ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897",
+      "database": "prod",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    },
+    {
+      "database": "qa-db",
       "rules": "firestore.rules",
       "indexes": "firestore.indexes.json"
     }
