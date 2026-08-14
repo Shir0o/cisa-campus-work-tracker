@@ -92,13 +92,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = effectiveRole === 'admin';
   const isManager = effectiveRole === 'admin' || effectiveRole === 'manager';
 
-  const effectiveUserId = impersonateTarget
+  const effectiveUserId = (isOwner && impersonateTarget)
     ? meIdFor(impersonateTarget.persona)
     : (user?.uid || null);
 
-  const effectiveIdentityKey = impersonateTarget
+  const effectiveIdentityKey = (isOwner && impersonateTarget)
     ? identityKey(impersonateTarget.persona, impersonateTarget.role)
     : (effectiveRole || null);
+
+  useEffect(() => {
+    if (!isOwner && (impersonateTarget || ownerViewRole)) {
+      setImpersonateTargetState(null);
+      setOwnerViewRoleState(null);
+      Impersonation.set(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+      }
+    }
+  }, [isOwner, impersonateTarget, ownerViewRole]);
 
   useEffect(() => {
     let userDocUnsubscribe: (() => void) | null = null;
@@ -205,6 +216,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setActualRole(null);
         setIsApproved(false);
+        setImpersonateTargetState(null);
+        setOwnerViewRoleState(null);
+        Impersonation.set(null);
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+        }
       }
       
       setLoading(false);
@@ -244,6 +261,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logOut = async () => {
     await signOut(auth);
     setAccessToken(null);
+    setImpersonateTargetState(null);
+    setOwnerViewRoleState(null);
+    Impersonation.set(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+    }
   };
 
   return (

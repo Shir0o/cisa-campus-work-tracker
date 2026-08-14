@@ -782,6 +782,7 @@ describeRules('Firestore Security Rules', () => {
         await setDoc(doc(c.firestore(), 'users', 'community1'), { role: 'viewer', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'ft2'), { role: 'admin', approved: true });
       });
     };
 
@@ -1087,6 +1088,20 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1')));
     });
 
+    it('AN8: a non-member (even an Admin / Full-timer) cannot read another user\'s private chat room', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group'); // memberIds: ['ft1', 'student1']
+
+      // Non-member admin (ft2) cannot read
+      await assertFails(getDoc(doc(getFirestore({ uid: 'ft2' }), 'chatRooms', 'room1')));
+      // Non-member student (student2) cannot read
+      await assertFails(getDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms', 'room1')));
+
+      // Members (ft1 and student1) can read
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms', 'room1')));
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms', 'room1')));
+    });
+
     // ── message-level acts: react, pin, take back for everyone ──────────────
     // A sent message is immutable except for `reactions` / `pinned` / `deleted`
     // (the Field Notes design's desktop thread). Anyone in the room can react
@@ -1204,6 +1219,21 @@ describeRules('Firestore Security Rules', () => {
           reactions: [{ by: 'student2', emoji: '🙏' }],
         }),
       );
+    });
+
+    it('MSG6: a non-member (even an Admin / Full-timer) cannot read messages in another user\'s chat room', async () => {
+      await seedMemberUsers();
+      await seedRoom('room1', 'group'); // memberIds: ['ft1', 'student1']
+      await seedMsg('room1', 'm1', 'ft1');
+
+      // Non-member admin (ft2) cannot read message
+      await assertFails(getDoc(doc(getFirestore({ uid: 'ft2' }), 'chatRooms/room1/messages/m1')));
+      // Non-member student (student2) cannot read message
+      await assertFails(getDoc(doc(getFirestore({ uid: 'student2' }), 'chatRooms/room1/messages/m1')));
+
+      // Members (ft1 and student1) can read message
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'ft1' }), 'chatRooms/room1/messages/m1')));
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 'student1' }), 'chatRooms/room1/messages/m1')));
     });
   });
 

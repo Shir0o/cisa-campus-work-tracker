@@ -625,8 +625,8 @@ service cloud.firestore {
         return roomData.get('type', 'group') == 'announcement';
       }
 
-      // Admins (Full-timers) can view all chats. Other users must be members.
-      allow read: if isSignedIn() && (isRoomMember() || isAdmin());
+      // Only room members can view chats.
+      allow read: if isSignedIn() && isRoomMember();
 
       // Create room: creator must be in the memberIds array and matches auth
       // user. Only a Full-timer may open an announcement room.
@@ -644,16 +644,14 @@ service cloud.firestore {
 
       // Messages subcollection
       match /messages/{messageId} {
-        allow read: if isSignedIn() && (
-          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) ||
-          isAdmin()
-        );
+        allow read: if isSignedIn() &&
+          get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]);
 
         // In an announcement room only Full-timers post; everyone else reads.
         // The parent room is already fetched for the membership check, so the
         // type check costs no extra document read.
         allow create: if isSignedIn() &&
-                      (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) || isAdmin()) &&
+                      get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) &&
                       (isAdmin() || !isAnnouncementRoom(get(/databases/$(database)/documents/chatRooms/$(roomId)).data)) &&
                       request.resource.data.senderId == request.auth.uid;
 
@@ -670,7 +668,7 @@ service cloud.firestore {
         // `resource` is the message, so membership is looked up on the parent
         // room like the read/create rules do.
         allow update: if isSignedIn() &&
-                      (get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) || isAdmin()) &&
+                      get(/databases/$(database)/documents/chatRooms/$(roomId)).data.memberIds.hasAny([request.auth.uid]) &&
                       (
                         // leaving a tombstone — the author's or a Full-timer's
                         // act, and ONLY the `deleted` field may change
