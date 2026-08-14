@@ -70,19 +70,17 @@ function mapMessage(d: { id: string; data: () => Record<string, any> }): ChatMes
   };
 }
 
-/** Live subscription to a user's chat rooms — every room for an admin
- * (matches the `chatRooms` rules' admin read bypass), else only rooms they're
- * a member of. Newest-first by last activity. */
+/** Live subscription to a user's chat rooms — only rooms they're an explicit
+ * member of, newest-first by last activity. Every role (including admin) is
+ * scoped this way, matching the web app and the `chatRooms` rules, so a
+ * Full-timer never sees another user's private conversations. */
 export function subscribeChatRooms(
   db: Firestore,
   uid: string,
-  isAdmin: boolean,
   cb: (rooms: ChatRoom[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  const roomsQuery = isAdmin
-    ? query(collection(db, "chatRooms"), orderBy("createdAt", "desc"))
-    : query(collection(db, "chatRooms"), where("memberIds", "array-contains", uid));
+  const roomsQuery = query(collection(db, "chatRooms"), where("memberIds", "array-contains", uid));
   return onSnapshot(
     roomsQuery,
     (snap) => cb(sortRoomsByRecency(snap.docs.map(mapRoom))),
