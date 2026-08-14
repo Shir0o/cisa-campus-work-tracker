@@ -218,4 +218,87 @@ describe('SubmitFeedback (Dedicated Page Form)', () => {
     fireEvent.submit(form);
     expect(global.fetch).not.toHaveBeenCalled();
   });
+
+  it('downscales a screenshot that exceeds the max dimension before sending', async () => {
+    const html2canvas = vi.mocked((await import('html2canvas-pro')).default);
+    html2canvas.mockResolvedValueOnce({
+      width: 2000,
+      height: 2000,
+      toDataURL: () => 'data:image/jpeg;base64,' + 'a'.repeat(400),
+    } as any);
+    const drawImage = vi.fn();
+    const realCreateElement = document.createElement.bind(document);
+    (document.createElement as any) = vi.fn((tag: string) => {
+      if (tag === 'canvas') {
+        return {
+          width: 0,
+          height: 0,
+          getContext: () => ({ drawImage }),
+          toDataURL: () => 'data:image/jpeg;base64,resized',
+        };
+      }
+      return realCreateElement(tag);
+    });
+
+    const user = userEvent.setup();
+    render(<SubmitFeedback />);
+    const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
+    await user.type(textarea, 'Screenshot resize test');
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/feedback',
+        expect.objectContaining({
+          body: expect.stringContaining('resized'),
+        }),
+      );
+    });
+    expect(drawImage).toHaveBeenCalled();
+    document.createElement = realCreateElement;
+  });
+
+  it('drops the screenshot when capture still exceeds the payload limit', async () => {
+    const html2canvas = vi.mocked((await import('html2canvas-pro')).default);
+    html2canvas.mockResolvedValueOnce({
+      width: 800,
+      height: 800,
+      toDataURL: () => 'data:image/jpeg;base64,' + 'b'.repeat(700000),
+    } as any);
+
+    const user = userEvent.setup();
+    render(<SubmitFeedback />);
+    const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
+    await user.type(textarea, 'Screenshot too big test');
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/feedback',
+        expect.objectContaining({
+          body: expect.stringContaining('"screenshot":""'),
+        }),
+      );
+    });
+  });
+
+  it('continues without a screenshot when html2canvas capture fails', async () => {
+    const html2canvas = vi.mocked((await import('html2canvas-pro')).default);
+    html2canvas.mockRejectedValueOnce(new Error('canvas blocked'));
+
+    const user = userEvent.setup();
+    render(<SubmitFeedback />);
+    const textarea = screen.getByRole('textbox', { name: /Tell us more/i });
+    await user.type(textarea, 'Capture fails test');
+    await user.click(screen.getAllByRole('button', { name: /Send/i })[0]);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/feedback',
+        expect.objectContaining({
+          body: expect.stringContaining('"screenshot":""'),
+        }),
+      );
+    });
+  });
 });

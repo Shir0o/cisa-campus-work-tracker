@@ -1,15 +1,25 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook } from '@testing-library/react';
 
-const hoisted = vi.hoisted(() => ({ data: undefined as Record<string, unknown> | undefined }));
+const hoisted = vi.hoisted(() => ({
+  data: undefined as Record<string, unknown> | undefined,
+  onSnapshotError: null as unknown | null,
+  setDocReject: false as boolean,
+}));
 
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn(() => ({ path: 'settings/season' })),
-  onSnapshot: vi.fn((_ref: unknown, cb: (snap: { data: () => unknown }) => void) => {
-    cb({ data: () => hoisted.data });
+  onSnapshot: vi.fn((_ref: unknown, cb: (snap: { data: () => unknown }) => void, err?: (e: unknown) => void) => {
+    if (hoisted.onSnapshotError) {
+      err?.(hoisted.onSnapshotError);
+    } else {
+      cb({ data: () => hoisted.data });
+    }
     return () => {};
   }),
-  setDoc: vi.fn(() => Promise.resolve()),
+  setDoc: vi.fn(() =>
+    hoisted.setDocReject ? Promise.reject(new Error('write failed')) : Promise.resolve(),
+  ),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -23,7 +33,10 @@ import {
   seasonYear,
   seasonLabel,
   seasonTags,
+  getAutoSemesterAndSchoolYearTags,
   useSeason,
+  subscribeSeasonSettings,
+  saveSeasonSettings,
 } from '../lib/seasons';
 import { setDoc } from 'firebase/firestore';
 
@@ -34,6 +47,15 @@ describe('seasons — pure derivation', () => {
     expect([2, 3, 4].map(monthSeason)).toEqual(['spring', 'spring', 'spring']);
     expect([5, 6, 7].map(monthSeason)).toEqual(['summer', 'summer', 'summer']);
     expect([8, 9, 10].map(monthSeason)).toEqual(['fall', 'fall', 'fall']);
+  });
+
+  it('builds the semester + school-year cohort tags', () => {
+    // September (month 8) starts the fall semester → 2026-27 school year
+    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 8, 20))).toEqual(['Fall 2026', '2026-27']);
+    // December (month 11) is still in the fall school year → 2026-27
+    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 11, 5))).toEqual(['Winter 2026', '2026-27']);
+    // February (month 1) is in the school year that started the prior fall → 2025-26
+    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 1, 10))).toEqual(['Winter 2026', '2025-26']);
   });
 
   it('derives a two-digit year and a human cohort label', () => {
@@ -57,6 +79,8 @@ describe('useSeason — derived + override', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     hoisted.data = undefined;
+    hoisted.onSnapshotError = null;
+    hoisted.setDocReject = false;
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 9, 15)); // October → fall
   });
@@ -93,5 +117,49 @@ describe('useSeason — derived + override', () => {
     const { result } = renderHook(() => useSeason());
     result.current.toggleClubRush();
     expect(setDoc).toHaveBeenCalledWith(expect.anything(), { clubRush: true }, { merge: true });
+  });
+
+  it('resets an override back to the auto season', () => {
+    const { result } = renderHook(() => useSeason());
+    result.current.resetSeason();
+    expect(setDoc).toHaveBeenCalledWith(expect.anything(), { override: null }, { merge: true });
+  });
+});
+
+describe('seasons — subscription & save error handling', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    hoisted.data = undefined;
+    hoisted.onSnapshotError = null;
+    hoisted.setDocReject = false;
+  });
+
+  it('passes subscription errors to the caller-provided handler', () => {
+    const onError = vi.fn();
+    hoisted.onSnapshotError = new Error('permission denied');
+    const cb = vi.fn();
+    subscribeSeasonSettings(cb, onError);
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it('defaults to console.error for subscription errors when no handler is given', () => {
+    const err = new Error('boom');
+    hoisted.onSnapshotError = err;
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    subscribeSeasonSettings(vi.fn());
+    expect(spy).toHaveBeenCalledWith('season settings subscription error', err);
+    spy.mockRestore();
+  });
+
+  it('forwards save failures through handleFirestoreError', async () => {
+    const { handleFirestoreError, OperationType } = await import('../lib/firebase');
+    hoisted.setDocReject = true;
+    await saveSeasonSettings({ clubRush: true });
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      OperationType.WRITE,
+      'settings/season',
+    );
   });
 });

@@ -28,14 +28,15 @@ export default defineConfig({
         'src/lib/yjsRtdbProvider.ts',
         'src/constants.ts',
       ],
-      // Re-baselined & ratcheted thresholds after boosting unit test coverage across
-      // views, modals, server endpoints, and mobile components.
-      // Measured totals: ~87.9% lines, ~75.2% branches, ~81.4% functions, ~85.8% statements.
+      // Re-baselined & ratcheted thresholds after adding unit tests for the
+      // season settings lib, visits/threads libs, the mobile prayer list, the
+      // feedback capture paths, and the attach/chat detail modals.
+      // Measured totals: ~89.1% lines, ~76.5% branches, ~83.4% functions, ~87.0% statements.
       thresholds: {
-        lines: 87.5,
-        branches: 75.0,
-        functions: 81.0,
-        statements: 85.5,
+        lines: 88.5,
+        branches: 76.0,
+        functions: 83.0,
+        statements: 86.5,
       },
     },
   },

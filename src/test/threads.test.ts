@@ -152,6 +152,37 @@ describe("addThreadMessage notify", () => {
     );
     expect(sendNotification).not.toHaveBeenCalled();
   });
+
+  it("uses the correct bell title per kind", async () => {
+    const cases: [ThreadMessage["kind"], string][] = [
+      ["note", "Tony left a note on Rio"],
+      ["comment", "Tony commented on Rio"],
+      ["encouragement", "Tony encouraged you about Rio"],
+      ["nudge", "Tony nudged a follow-up about Rio"],
+    ];
+    for (const [kind, expected] of cases) {
+      vi.clearAllMocks();
+      await addThreadMessage(
+        "C-1",
+        { from: "u1", fromName: "Tony", kind, body: "hi" },
+        { to: "u3", contactName: "Rio" },
+      );
+      expect(sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ title: expected }),
+      );
+    }
+  });
+
+  it("funnels addThreadMessage failures through handleFirestoreError", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    vi.mocked(addDoc).mockRejectedValueOnce(new Error("write denied"));
+    await addThreadMessage("C-1", { from: "u1", fromName: "T", kind: "note", body: "hi" });
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "CREATE",
+      "contacts/C-1/threads",
+    );
+  });
 });
 
 describe("subscribeAllThreads", () => {
@@ -220,6 +251,28 @@ describe("toggleReaction", () => {
       reactions: [],
     });
   });
+
+  it("does nothing when the message does not exist", async () => {
+    const update = vi.fn();
+    vi.mocked(runTransaction).mockImplementation((async (_db: unknown, fn: any) =>
+      fn({
+        get: async () => ({ exists: () => false }),
+        update,
+      })) as any);
+    await toggleReaction("C-1", "M-1", "u1", "🙏");
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("funnels toggleReaction failures through handleFirestoreError", async () => {
+    const { handleFirestoreError } = await import("../lib/firebase");
+    vi.mocked(runTransaction).mockRejectedValueOnce(new Error("tx denied"));
+    await toggleReaction("C-1", "M-1", "u1", "🙏");
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      "UPDATE",
+      "contacts/C-1/threads/M-1",
+    );
+  });
 });
 
 describe("subscribeThreads", () => {
@@ -257,6 +310,28 @@ describe("subscribeThreads", () => {
     });
     // malformed doc gets safe defaults
     expect(messages[1]).toMatchObject({ id: "m2", kind: "comment", from: "", reactions: [] });
+  });
+
+  it("passes subscribeThreads errors to the caller handler", () => {
+    const err = new Error("permission denied");
+    vi.mocked(onSnapshot).mockImplementation((_q: unknown, _next: unknown, onErr: unknown) => {
+      (onErr as (e: unknown) => void)(err);
+      return () => {};
+    });
+    const onError = vi.fn();
+    subscribeThreads("C-1", vi.fn(), onError);
+    expect(onError).toHaveBeenCalledWith(err);
+  });
+
+  it("passes subscribeAllThreads errors to the caller handler", () => {
+    const err = new Error("permission denied");
+    vi.mocked(onSnapshot).mockImplementation((_q: unknown, _next: unknown, onErr: unknown) => {
+      (onErr as (e: unknown) => void)(err);
+      return () => {};
+    });
+    const onError = vi.fn();
+    subscribeAllThreads(vi.fn(), onError);
+    expect(onError).toHaveBeenCalledWith(err);
   });
 });
 describe("repliesOf helper", () => {

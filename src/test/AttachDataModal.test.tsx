@@ -314,4 +314,77 @@ describe('AttachDataModal Component', () => {
       priority: undefined
     });
   });
+
+  it('closes on Escape key when open', () => {
+    setupOnSnapshot([]);
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(mockOnClose).toHaveBeenCalled();
+  });
+
+  it('does not register the Escape listener when closed', () => {
+    const addSpy = vi.spyOn(window, 'addEventListener');
+    setupOnSnapshot([]);
+    render(
+      <AttachDataModal
+        isOpen={false}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    expect(addSpy).not.toHaveBeenCalledWith('keydown', expect.any(Function));
+    addSpy.mockRestore();
+  });
+
+  it('sets loading false and clears items when the snapshot errors', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((q: any, success: any, error: any) => {
+      error(new Error('permission denied'));
+      return vi.fn();
+    });
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    // error path clears loading so the empty message appears
+    expect(await screen.findByText(/No contacts found matching your query/i)).toBeInTheDocument();
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it('shows an empty message when a tab returns no items', async () => {
+    setupOnSnapshot([]);
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    expect(await screen.findByText(/No contacts found matching your query/i)).toBeInTheDocument();
+  });
+
+  it('renders a status chip for todo/feedback items with a status', async () => {
+    setupOnSnapshot([
+      { id: 't1', title: 'Booked flights', dueDate: '2026-06-30', status: 'completed', priority: 'high' },
+    ]);
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    fireEvent.click(screen.getByText('Todo'));
+    expect(await screen.findByText('completed')).toBeInTheDocument();
+  });
 });

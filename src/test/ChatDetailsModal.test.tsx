@@ -240,4 +240,100 @@ describe('ChatDetailsModal Component', () => {
     expect(screen.getByText('Alice Green')).toBeInTheDocument();
     expect(screen.queryByText('cisa-test-user')).not.toBeInTheDocument();
   });
+
+  it('stops loading and logs when fetching members errors', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((q: any, success: any, error: any) => {
+      error(new Error('permission denied'));
+      return vi.fn();
+    });
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+    await waitFor(() => expect(errSpy).toHaveBeenCalledWith('Error fetching chat members:', expect.any(Error)));
+    errSpy.mockRestore();
+  });
+
+  it('hides the conversation from the list for the current user', async () => {
+    setupOnSnapshot(mockUsers);
+    const hideSpy = vi.spyOn(await import('../lib/convHides').then(m => m.ConvHides), 'hide');
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+    fireEvent.click(screen.getByText('Hide from my list'));
+    expect(hideSpy).toHaveBeenCalledWith('u1', 'room-g1');
+    expect(mockOnLeftGroup).toHaveBeenCalled();
+    expect(mockOnClose).toHaveBeenCalled();
+    hideSpy.mockRestore();
+  });
+
+  it('deletes the room for everyone when confirmed', async () => {
+    setupOnSnapshot(mockUsers);
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(true);
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete for everyone/i }));
+    await waitFor(() => {
+      expect(chatService.deleteChatRoom).toHaveBeenCalledWith('room-g1');
+      expect(mockOnLeftGroup).toHaveBeenCalled();
+      expect(mockOnClose).toHaveBeenCalled();
+    });
+  });
+
+  it('does not delete when the user cancels the confirm dialog', async () => {
+    setupOnSnapshot(mockUsers);
+    vi.spyOn(window, 'confirm').mockReturnValueOnce(false);
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Delete for everyone/i }));
+    expect(chatService.deleteChatRoom).not.toHaveBeenCalled();
+  });
+
+  it('handles a failed invite gracefully', async () => {
+    setupOnSnapshot(mockUsers);
+    vi.mocked(chatService.inviteToGroup).mockRejectedValueOnce(new Error('invite failed'));
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    render(
+      <ChatDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        room={mockGroupRoom}
+        onLeftGroup={mockOnLeftGroup}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Invite new members/i }));
+    const bobCheckboxContainer = screen.getByText('Bob Brown').closest('div');
+    fireEvent.click(bobCheckboxContainer!);
+    fireEvent.click(screen.getByRole('button', { name: /Add Selected/i }));
+
+    await waitFor(() => {
+      expect(errSpy).toHaveBeenCalledWith('Failed to invite members:', expect.any(Error));
+    });
+    errSpy.mockRestore();
+  });
 });

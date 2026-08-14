@@ -169,4 +169,128 @@ describe('PrayerListMobile', () => {
 
     expect(onUpdateStatus).toHaveBeenCalledWith(p, 'answered', 'Updated testimony text', 'Aug 1');
   });
+
+  it('renders the contact photo when an avatar is present', () => {
+    renderWithRouter({
+      entries: [{ contact: contact({ avatar: 'https://example.com/a.jpg' }), prayers: [prayer()] }],
+    });
+    const img = document.querySelector('img[src="https://example.com/a.jpg"]');
+    expect(img).not.toBeNull();
+  });
+
+  it('filters by gender when the filter control is available', () => {
+    const setGenderFilter = vi.fn();
+    renderWithRouter({ setGenderFilter });
+    fireEvent.click(screen.getByText('Brothers'));
+    expect(setGenderFilter).toHaveBeenCalledWith('brothers');
+    fireEvent.click(screen.getByText('Sisters'));
+    expect(setGenderFilter).toHaveBeenCalledWith('sisters');
+  });
+
+  it('opens the contact profile from the thread card', () => {
+    const onOpenContact = vi.fn();
+    renderWithRouter({
+      entries: [{ contact: contact(), prayers: [prayer()] }],
+      onOpenContact,
+    });
+    fireEvent.click(screen.getByText('Alice Smith'));
+    expect(onOpenContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }));
+  });
+
+  it('closes the picker via the scrim and via the close button', () => {
+    renderWithRouter({ contacts: [contact()] });
+    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(document.querySelector('.scrim')!);
+    expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByText(/Anyone from the roster/)).not.toBeInTheDocument();
+  });
+
+  it('keeps a contact after cancelling the remove confirmation', () => {
+    const onStopHolding = vi.fn();
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [prayer()] }], onStopHolding });
+    fireEvent.click(screen.getByTitle('Remove Alice from prayer list'));
+    fireEvent.click(screen.getByText('Keep'));
+    expect(onStopHolding).not.toHaveBeenCalled();
+    expect(screen.getByTitle('Remove Alice from prayer list')).toBeInTheDocument();
+  });
+
+  it('shows a read-only line when there is no prayer recorded this week for a non-operator', () => {
+    renderWithRouter({
+      entries: [{ contact: contact(), prayers: [prayer({ date: '2020-01-01' })] }],
+      isOperator: false,
+    });
+    expect(screen.getByText(/No prayer recorded for this week/)).toBeInTheDocument();
+  });
+
+  it('expands the earlier prayers fold and caps the count', () => {
+    const many = Array.from({ length: 6 }, (_, i) => prayer({ id: `p${i}`, date: `2020-01-0${i + 1}` }));
+    renderWithRouter({
+      entries: [{ contact: contact(), prayers: [prayer(), ...many] }],
+    });
+    // newest earlier prayer shows as "Last week"; the fold covers the remaining 5
+    expect(screen.getByText(/Earlier — 5 prayers/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/Earlier — 5 prayers/));
+    // 4 shown inline (EARLIER_CAP), the last older one noted
+    expect(screen.getByText(/1 older prayer/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText(/1 older prayer/).querySelector('button')!);
+  });
+
+  it('cancels an in-progress burden edit without saving', () => {
+    const onUpdateBurden = vi.fn();
+    renderWithRouter({
+      entries: [{ contact: contact(), prayers: [prayer()] }],
+      onUpdateBurden,
+    });
+    fireEvent.click(screen.getByText('Edit'));
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Changed' } });
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(onUpdateBurden).not.toHaveBeenCalled();
+    expect(screen.getByText('Praying for peace')).toBeInTheDocument();
+  });
+
+  it('resets an answered prayer back to pending from the mark select', () => {
+    const onUpdateStatus = vi.fn();
+    const p = prayer({ status: 'answered', answer: 'yes' });
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [p] }], onUpdateStatus });
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: '' } });
+    expect(onUpdateStatus).toHaveBeenCalledWith(p, 'pending');
+  });
+
+  it('adds a burden for this week through the composer', async () => {
+    const onAddBurden = vi.fn().mockResolvedValue(true);
+    const setComposeFor = vi.fn();
+    renderWithRouter({
+      entries: [{ contact: contact(), prayers: [] }],
+      onAddBurden,
+      setComposeFor,
+    });
+    fireEvent.click(screen.getByText(/Write what we're holding for Alice this week/));
+    fireEvent.change(
+      screen.getByPlaceholderText('What are we praying for Alice this week?'),
+      { target: { value: 'Peace for exams' } },
+    );
+    fireEvent.click(screen.getByText('Add prayer'));
+    expect(onAddBurden).toHaveBeenCalledWith('c1', 'Peace for exams');
+  });
+
+  it('cancels the add-composer and keeps the empty card', () => {
+    renderWithRouter({ entries: [{ contact: contact(), prayers: [] }] });
+    fireEvent.click(screen.getByText(/Write what we're holding for Alice this week/));
+    fireEvent.change(
+      screen.getByPlaceholderText('What are we praying for Alice this week?'),
+      { target: { value: 'Draft' } },
+    );
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText(/Write what we're holding for Alice this week/)).toBeInTheDocument();
+  });
+
+  it('shows "Everyone is already here" when no addable contacts remain', () => {
+    renderWithRouter({ contacts: [], entries: [{ contact: contact(), prayers: [] }] });
+    fireEvent.click(screen.getByText('Hold someone in prayer'));
+    expect(screen.getByText(/Everyone's already here/)).toBeInTheDocument();
+  });
 });
