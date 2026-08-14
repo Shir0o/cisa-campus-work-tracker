@@ -32,6 +32,7 @@ import {
 import { addThreadMessage, subscribeThreads, toggleReaction as toggleReactionApi } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useContactDetailData(contactId: string) {
   const { uid, user } = useAuth();
@@ -121,10 +122,12 @@ export function useContactDetailData(contactId: string) {
     [prefContactIds, contact, uid],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contact,
     stages,
-    loading,
+    loading: shownLoading,
     error,
     interactions,
     interactionsLoading,

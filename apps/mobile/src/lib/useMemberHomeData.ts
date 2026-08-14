@@ -28,6 +28,7 @@ import {
 } from './data/hospitality';
 import { useChatReads } from './data/chatReads';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useMemberHomeData(uid: string | null, displayName: string | null) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -96,8 +97,10 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
     [rooms, uid, reads],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
     fullTimers,
 

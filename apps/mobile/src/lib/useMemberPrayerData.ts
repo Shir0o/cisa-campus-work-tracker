@@ -35,6 +35,7 @@ import {
 import { subscribeAllPrayers } from './data/prayers';
 import { useQueueState } from './queueState';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 /** The card id "I prayed just now" marks. Shares the trainee queue's per-day
  * `handled` map exactly as the full-timer home does — `prayedBy` doesn't exist
@@ -117,8 +118,10 @@ export function useMemberPrayerData(
   const asks = useMemo(() => memberAsks(requests), [requests]);
   const holding = useMemo(() => teamHolding(teamPrayers, contacts), [teamPrayers, contacts]);
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
 
     // widgets

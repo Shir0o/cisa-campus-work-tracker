@@ -17,6 +17,7 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export interface JourneyStage {
   id: string;
@@ -108,6 +109,8 @@ export function useJourneyData(uid: string | null) {
   const activeIdx = Math.min(activeIndex, Math.max(mobileStages.length - 1, 0));
   const activeStage = mobileStages[activeIdx] ?? UNASSIGNED;
 
+  const shownLoading = useMinLoading(loading);
+
   const touchMap = useMemo(() => lastTouchByContact(touches), [touches]);
 
   const items: Leader[] = useMemo(() => {
@@ -136,7 +139,7 @@ export function useJourneyData(uid: string | null) {
     items,
     personalContactIds,
     totalCount: contacts.length,
-    loading,
+    loading: shownLoading,
     error,
   };
 }

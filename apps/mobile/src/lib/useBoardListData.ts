@@ -8,6 +8,7 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeBoardDocs } from './data/board';
 import { useFullTimerNames } from './useFullTimerNames';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 /** Who's leading a page, for the design's "…· Ana leading" row line.
  * `facilitatorId` is written on create but was rendered nowhere until v2, so
@@ -54,5 +55,7 @@ export function useBoardListData() {
     return DOC_GROUPS.map((title) => ({ title, data: byGroup[title] })).filter((s) => s.data.length > 0);
   }, [docs]);
 
-  return { sections, total: docs.length, names, loading, error };
+  const shownLoading = useMinLoading(loading);
+
+  return { sections, total: docs.length, names, loading: shownLoading, error };
 }

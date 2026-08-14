@@ -17,6 +17,7 @@ import { subscribeContacts } from './data/contacts';
 import { subscribeEvents } from './data/events';
 import { cycleAttendance as cycleAttendanceDoc } from './data/attendance';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useAttendanceData(uid: string | null, displayName: string | null, role: AppRole | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -65,10 +66,12 @@ export function useAttendanceData(uid: string | null, displayName: string | null
   // fail. Gate the interaction client-side instead of reproducing that gap.
   const canTakeAttendance = hasMinRole(role, 'operator');
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contacts,
     events,
-    loading,
+    loading: shownLoading,
     error,
     sessions,
     missed,

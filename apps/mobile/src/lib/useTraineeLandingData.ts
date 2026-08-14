@@ -35,6 +35,7 @@ import { useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 import { useQueuePrefs } from './queuePrefs';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 // Same path-segment convention as useMyDayData's collection-group ingestion:
 // contacts/{contactId}/interactions/{id} → segment 1 is the contactId.
@@ -204,8 +205,10 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
   const dates = useMemo(() => queueDates(events), [events]);
   const week = useMemo(() => (uid ? queueWeek(interactions, uid) : []), [interactions, uid]);
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
     contacts,
     stages,

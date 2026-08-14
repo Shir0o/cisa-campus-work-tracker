@@ -15,6 +15,7 @@ import { subscribeChatRooms } from './data/chat';
 import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useMessagesData() {
   const { uid } = useAuth();
@@ -72,5 +73,7 @@ export function useMessagesData() {
   // (`filterRooms` strips it) must not keep lighting the tab-bar badge.
   const unreadCount = useMemo(() => visibleRooms.filter(isUnread).length, [visibleRooms, uid, reads]);
 
-  return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading, error };
+  const shownLoading = useMinLoading(loading);
+
+  return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading: shownLoading, error };
 }

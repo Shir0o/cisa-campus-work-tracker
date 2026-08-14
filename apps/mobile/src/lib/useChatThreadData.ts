@@ -22,6 +22,7 @@ import { subscribeContacts } from './data/contacts';
 import { subscribeUsers } from './data/users';
 import { ChatReads } from './data/chatReads';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useChatThreadData(roomId: string) {
   const { uid, user } = useAuth();
@@ -99,12 +100,14 @@ export function useChatThreadData(roomId: string) {
     [contacts, partnerEmail],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     room,
     usersCache,
     dayGroups,
     partnerContactId,
-    loading,
+    loading: shownLoading,
     error,
 
     send: async (text: string) => {
