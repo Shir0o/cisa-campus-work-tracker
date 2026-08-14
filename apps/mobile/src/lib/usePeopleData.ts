@@ -13,6 +13,7 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
 import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function usePeopleData(uid: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -72,13 +73,15 @@ export function usePeopleData(uid: string | null) {
     [contacts, touches, personalContactIds, search],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contacts,
     stages,
     mine,
     rest,
     totalCount: contacts.length,
-    loading,
+    loading: shownLoading,
     error,
     search,
     setSearch,

@@ -59,9 +59,14 @@ const message = (id: string) => ({
 
 describe('useChatThreadData', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     authState.uid = 'user1';
     delete cbs.room;
     delete cbs.messages;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('clears stale messages and returns to loading when the uid changes', () => {
@@ -71,6 +76,11 @@ describe('useChatThreadData', () => {
 
     act(() => {
       emitMessages([message('m1')]);
+    });
+    // Data has landed, but the skeleton's minimum duration keeps it up...
+    expect(result.current.loading).toBe(true);
+    act(() => {
+      jest.advanceTimersByTime(500);
     });
     expect(result.current.loading).toBe(false);
     expect(result.current.dayGroups[0].messages).toHaveLength(1);
@@ -90,6 +100,9 @@ describe('useChatThreadData', () => {
 
     act(() => {
       emitMessages([message('m1')]);
+    });
+    act(() => {
+      jest.advanceTimersByTime(500);
     });
     expect(result.current.dayGroups[0].messages).toHaveLength(1);
 

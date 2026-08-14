@@ -12,7 +12,7 @@
 // own chrome row (☰ and the "Today · N to look after" counter, both of which
 // start ~10px below the same inset) and buried them.
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { View } from 'react-native';
+import { InteractionManager, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   impGroups,
@@ -101,16 +101,25 @@ export function ImpersonateLayer({ children }: { children: React.ReactNode }) {
   // commit: the change re-keys the tab navigator in the same render, so a
   // replace dispatched synchronously is queued against the OLD key and
   // expo-router logs "The action 'REPLACE' ... was not handled by any
-  // navigator" (and skips the move entirely). Running after the commit builds
-  // the action against the current navigators. Prefer popping back to the
-  // existing tabs when there is one to pop — replace('/') from a pushed root
-  // screen would stack a SECOND (tabs) instance on the root stack, leaving the
-  // old shell mounted underneath (a stale back button).
+  // navigator" (and skips the move entirely). But a bare setTimeout(0) is not
+  // enough either: on a device the navigation can still run before the
+  // identity-change frame (the loading skeleton) has been flushed and
+  // PRESENTED, so the back/pop transition animates the previously drawn frame
+  // — the previous viewer's content, the "See it as they do" flash.
+  // runAfterInteractions waits out the JS interaction queue (and the picker
+  // sheet's dismiss animation); the inner frame callback then runs after the
+  // next frame has been presented, so the transition reveals the skeleton,
+  // not the previous user's screen. Prefer popping back to the existing tabs
+  // when there is one to pop — replace('/') from a pushed root screen would
+  // stack a SECOND (tabs) instance on the root stack, leaving the old shell
+  // mounted underneath (a stale back button).
   const goHome = () => {
-    setTimeout(() => {
-      if (router.canGoBack()) router.back();
-      else router.replace('/');
-    }, 0);
+    InteractionManager.runAfterInteractions(() => {
+      requestAnimationFrame(() => {
+        if (router.canGoBack()) router.back();
+        else router.replace('/');
+      });
+    });
   };
 
   const showPill = isOwner && isSimulating;

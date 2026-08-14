@@ -48,6 +48,7 @@ import {
 } from '@cisa/core';
 import { db, handleFirestoreError, OperationType } from './firebase';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 import { setTodoDone, addTodo } from './data/todos';
 import { addThreadMessage, subscribeAllThreads } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
@@ -286,8 +287,10 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   // The team roster a to-do can be handed to: approved staff, me first.
   const assignees = useMemo(() => ftAssignees(team, uid), [team, uid]);
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
     contacts,
     stages,

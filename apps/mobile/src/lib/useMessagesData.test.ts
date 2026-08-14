@@ -45,9 +45,14 @@ const room = (id: string) => ({
 
 describe('useMessagesData', () => {
   beforeEach(() => {
+    jest.useFakeTimers();
     authState.uid = 'user1';
     delete cbs.user1;
     delete cbs.user2;
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('clears stale rooms and returns to loading when the uid changes', () => {
@@ -57,6 +62,11 @@ describe('useMessagesData', () => {
 
     act(() => {
       (cbs.user1 as (rooms: unknown[]) => void)([room('r1')]);
+    });
+    // Data has landed, but the skeleton's minimum duration keeps it up...
+    expect(result.current.loading).toBe(true);
+    act(() => {
+      jest.advanceTimersByTime(500);
     });
     expect(result.current.loading).toBe(false);
     expect(result.current.rooms).toHaveLength(1);

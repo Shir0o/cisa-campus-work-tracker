@@ -9,6 +9,7 @@ import { subscribeBoardDoc } from './data/board';
 import { boardLeaderName } from './useBoardListData';
 import { useFullTimerNames } from './useFullTimerNames';
 import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useBoardDocData(docId: string) {
   const { uid, role } = useAuth();
@@ -48,5 +49,7 @@ export function useBoardDocData(docId: string) {
   const names = useFullTimerNames();
   const keeperName = doc ? boardLeaderName(doc, names) : null;
 
-  return { doc, loading, error, allowed, keeperName };
+  const shownLoading = useMinLoading(loading);
+
+  return { doc, loading: shownLoading, error, allowed, keeperName };
 }
