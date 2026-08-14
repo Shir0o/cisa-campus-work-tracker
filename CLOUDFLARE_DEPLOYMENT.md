@@ -80,6 +80,10 @@ Leave `VITE_FIREBASE_DATABASE_URL` unset so The Board stays Firestore-only
 (already set on `campus-hub-qa` for push; add `GEMINI_API_KEY` there only if
 QA should exercise AI quick-add).
 
+Finally, allow Firebase Auth on the QA host: Firebase Console → **Authentication →
+Settings → Authorized domains** → add `cisa-campus-work-traker-qa.pages.dev`
+(otherwise sign-in fails with `auth/unauthorized-domain`).
+
 The mobile app's QA build uses the same site as its `EXPO_PUBLIC_API_URL`
 (`apps/mobile/eas.json` → `qa` profile), so push/quick-add/AI go through the
 Cloudflare edge to the QA backend.
