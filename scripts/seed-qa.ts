@@ -92,6 +92,36 @@ async function seed() {
   }
   console.log('  ✓ 4 approved users');
 
+  // Extra reviewer accounts (QA_REVIEWER_EMAILS=comma-separated, default the
+  // project owner) get an approved ADMIN doc so they can explore everything
+  // with their own Google account. Idempotent — never demotes an existing doc.
+  const reviewerEmails = (
+    process.env.QA_REVIEWER_EMAILS || 'yilongwang05@gmail.com'
+  )
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+  for (const email of reviewerEmails) {
+    try {
+      const user = await auth.getUserByEmail(email);
+      await db.collection('users').doc(user.uid).set(
+        {
+          email,
+          displayName: user.displayName || email.split('@')[0],
+          photoURL: user.photoURL || '',
+          role: 'admin',
+          approved: true,
+          createdAt: ts,
+          updatedAt: ts,
+        },
+        { merge: true },
+      );
+      console.log(`  ✓ reviewer admin ${email} (uid=${user.uid})`);
+    } catch {
+      console.log(`  – reviewer ${email} has no Auth account yet (skipped)`);
+    }
+  }
+
   const ft = uids.fulltimer;
   const tr = uids.trainee;
   const st = uids.student;
