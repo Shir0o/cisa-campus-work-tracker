@@ -16,6 +16,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 - **Native Push Notifications for New Messages (#270)** — Wired OS-level push for new chat messages. The web `sendMessage` (`src/services/chat.ts`) and the mobile `sendMessage` (`apps/mobile/src/lib/data/chat.ts`) now call new `sendPushNotification` helpers (`src/lib/push.ts`, `apps/mobile/src/lib/push.ts`) that POST to the server's `/api/send-push`, which resolves the recipient's registered Expo push token and forwards to Expo. `/api/send-push` now authenticates with `EXPO_ACCESS_TOKEN` (returns `pushSent:false` when unset).
 
 ### Changed
+- **Privacy Policy Text Updates (`PrivacyPolicy.tsx`, `docs/privacy.html`)** — Updated public privacy policy documents and web view to remove reference to in-app workspace settings deactivation (clarifying deactivation is handled through enterprise administrators) and removed encryption statements in data collection and security sections to align with app configuration.
 - **GitHub Issues Sync Auto Commit & Push** — Updated `scripts/sync-github-issues.ts` and `src/test/syncGithubIssues.test.ts` so that `npm run sync:issues` automatically stages, commits, and pushes updated `docs/issues.json` to `main` branch when changes are present.
 
 ### Refactored

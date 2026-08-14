@@ -38,7 +38,7 @@ export default function PrivacyPolicy() {
             <h2 className="text-lg font-semibold text-slate-100">2. Data We Collect</h2>
             <p>To provide secure authentication and internal functionality, the app collects:</p>
             <ul className="list-disc pl-5 space-y-1 text-slate-400">
-              <li>Account Credentials (Email address and encrypted authentication tokens)</li>
+              <li>Account Credentials (Email address and authentication tokens)</li>
               <li>User Identity & Profile Information (Name, role, assigned workspace)</li>
               <li>Usage Diagnostics & Log Events (App interactions, system error reports)</li>
             </ul>
@@ -54,14 +54,14 @@ export default function PrivacyPolicy() {
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-slate-100">4. Account Provisioning & Deletion</h2>
             <p>
-              Accounts are provisioned by enterprise system administrators. Users requiring account modification or account data removal may request account deactivation through their corporate system administrator or directly within workspace settings.
+              Accounts are provisioned by enterprise system administrators. Users requiring account modification or account data removal may request account deactivation through their corporate system administrator.
             </p>
           </section>
 
           <section className="space-y-2">
             <h2 className="text-lg font-semibold text-slate-100">5. Security & Data Retention</h2>
             <p>
-              All data transmitted between the mobile application and application servers is encrypted in transit using SSL/TLS protocols and encrypted at rest in Firestore database storage.
+              Access to stored workspace data is restricted to authorized system administrators and authenticated enterprise users.
             </p>
           </section>
 

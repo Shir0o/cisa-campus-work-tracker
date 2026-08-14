@@ -16,6 +16,9 @@ describe("PrivacyPolicy", () => {
     expect(screen.getByText("Enterprise Access & Data Protection Notice")).toBeInTheDocument();
     expect(screen.getByText("1. Overview")).toBeInTheDocument();
     expect(screen.getByText("4. Account Provisioning & Deletion")).toBeInTheDocument();
+    expect(screen.getByText("5. Security & Data Retention")).toBeInTheDocument();
+    expect(screen.queryByText(/directly within workspace settings/i)).toBeNull();
+    expect(screen.queryByText(/encrypted/i)).toBeNull();
   });
 
   it("navigates back to home when Back to Application button is clicked", () => {
