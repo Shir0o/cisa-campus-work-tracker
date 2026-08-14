@@ -44,7 +44,7 @@ const auth = admin.auth();
 const db = getFirestore(admin.app(), firestoreDatabaseId);
 const ts = admin.firestore.FieldValue.serverTimestamp();
 
-const KEYS = ['fulltimer', 'trainee', 'student', 'community'] as const;
+const KEYS = ['fulltimer', 'trainee', 'student', 'community', 'reviewer'] as const;
 
 /** ISO timestamp `daysAgo` days and `hoursAgo` hours in the past. */
 const iso = (daysAgo: number, hoursAgo = 0) => {
@@ -90,7 +90,7 @@ async function seed() {
       { merge: true },
     );
   }
-  console.log('  ✓ 4 approved users');
+  console.log(`  ✓ ${KEYS.length} approved users (incl. reviewer admin)`);
 
   // Extra reviewer accounts (QA_REVIEWER_EMAILS=comma-separated, default the
   // project owner) get an approved ADMIN doc so they can explore everything
@@ -427,6 +427,7 @@ async function seed() {
   console.log(`  ✓ ${activities.length} activity entries`);
 
   console.log('\nQA seeding complete. Reviewer accounts:');
+  console.log(`  reviewer.e2e@example.com / password123  (admin)  uid=${uids.reviewer}`);
   console.log(`  fulltimer.e2e@example.com / password123  (admin)  uid=${ft}`);
   console.log(`  trainee.e2e@example.com  / password123  (manager) uid=${tr}`);
   console.log(`  student.e2e@example.com  / password123  (operator) uid=${st}`);
