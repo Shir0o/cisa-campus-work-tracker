@@ -106,6 +106,11 @@ bucket, and Realtime Database are shared with prod.
 | Student (operator) | `student.e2e@example.com`  | `password123` |
 | Community (viewer) | `community.e2e@example.com`| `password123` |
 
+Reviewers can also sign in with their own Google account: `npm run seed:qa`
+approves `QA_REVIEWER_EMAILS` (comma-separated, default `yilongwang05@gmail.com`)
+as admin — add your email there (or just sign in once, then re-run the seed) so
+your account gets an approved admin doc in `qa-db`.
+
 ### Build & distribute the QA app
 
 ```bash
