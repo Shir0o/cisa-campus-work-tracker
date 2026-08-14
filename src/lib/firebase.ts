@@ -12,6 +12,9 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 if (import.meta.env.VITE_FIREBASE_PROJECT_ID) {
   finalConfig.projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
 }
+if (import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID) {
+  (finalConfig as any).firestoreDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID;
+}
 
 const app = initializeApp(finalConfig);
 export const db = getFirestore(app, (finalConfig as any).firestoreDatabaseId);

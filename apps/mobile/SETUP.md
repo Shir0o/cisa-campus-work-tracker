@@ -84,9 +84,11 @@ bucket, and Realtime Database are shared with prod.
 - **Database:** `qa-db` (created with `gcloud firestore databases create`).
   Rules + indexes are deployed alongside prod via `firebase deploy
   --only firestore:rules,firestore:indexes` (also on merge to main).
-- **Backend:** QA Cloud Run service `campus-hub-qa`
-  (`https://campus-hub-qa-914549253362.us-west2.run.app`) with
+- **Backend:** QA Cloud Run service `campus-hub-qa` with
   `FIREBASE_FIRESTORE_DB_ID=qa-db`, so push/quick-add/AI run against QA data.
+  Fronted by a Cloudflare Pages QA site
+  (`https://cisa-campus-work-traker-qa.pages.dev`) whose `/api/*` proxy targets
+  the QA backend — see `CLOUDFLARE_DEPLOYMENT.md` for the QA project setup.
 - **Seed data:** `npm run seed:qa` (from the repo root) writes approved
   `/users` docs for the four E2E accounts (looked up — or created — in shared
   Auth) plus a full fake dataset to explore: the stages/gathering-types
@@ -111,18 +113,31 @@ npx eas build --platform ios --profile qa      # and/or --platform android
 ```
 
 The `qa` profile bakes in `EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db` and
-`EXPO_PUBLIC_API_URL` → the QA backend, then publishes an internal
+`EXPO_PUBLIC_API_URL` → the Cloudflare QA URL, then publishes an internal
 distribution link the reviewer installs directly (no local toolchain).
 
 ### Local dev against QA
 
 ```bash
 EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db \
-EXPO_PUBLIC_API_URL=https://campus-hub-qa-914549253362.us-west2.run.app \
+EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker-qa.pages.dev \
 npm start
 ```
 
 (Or set those two vars in `.env`.)
+
+### Web app against QA
+
+The web SPA can also target QA by building with the `qa-db` override; only the
+Cloudflare proxy handles `/api/*`, so the client bundle must be pointed at QA too:
+
+```bash
+VITE_FIREBASE_FIRESTORE_DB_ID=qa-db npm run build
+```
+
+For the deployed QA site, set both `BACKEND_API_URL` (runtime `/api/*` proxy)
+and `VITE_FIREBASE_FIRESTORE_DB_ID=qa-db` (build-time Firestore target) on the
+Cloudflare Pages QA project — see `CLOUDFLARE_DEPLOYMENT.md`.
 
 ### Limitations
 
