@@ -9,13 +9,13 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ActivityIndicator } from 'react-native';
 import { SafeAreaView } from '../ui/SafeArea';
 import type { FtCarryRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
 import { Room, V2PersonRow, V2Screen } from '../v2/Widget';
+import { SkeletonList } from '../skeleton/SkeletonList';
 
 export function FtPrayerLogScreen() {
   return (
@@ -62,11 +62,10 @@ function FtPrayerLog() {
 
   if (data.loading) {
     return (
-      <SafeAreaView
-        edges={['top']}
-        style={{ flex: 1, backgroundColor: c.room.bg, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <ActivityIndicator color={c.room.ink2} />
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+        <View style={{ paddingHorizontal: 18, paddingTop: 14 }}>
+          <SkeletonList rows={7} />
+        </View>
       </SafeAreaView>
     );
   }

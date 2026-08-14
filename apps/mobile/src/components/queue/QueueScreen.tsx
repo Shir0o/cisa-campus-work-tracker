@@ -7,7 +7,7 @@
 // trainee): the chrome is ☰ · the meta line · the ＋ log button, and everything
 // that isn't the queue lives behind the drawer.
 import React from 'react';
-import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
@@ -37,6 +37,7 @@ import { AllTodayList } from './AllTodayList';
 import { WeekLookBack } from './WeekLookBack';
 import { DrawerButton, QueueDrawer } from './QueueDrawer';
 import { ReplySheet } from './ReplySheet';
+import { QueueSkeleton } from '../skeleton/QueueSkeleton';
 
 const tomorrowISO = () => {
   const d = new Date();
@@ -177,8 +178,8 @@ export function QueueScreen() {
   // ── loading / error ──────────────────────────────────────────────────────
   if (data.loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: c.room.bg, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={c.room.ink2} />
+      <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
+        <QueueSkeleton />
       </SafeAreaView>
     );
   }

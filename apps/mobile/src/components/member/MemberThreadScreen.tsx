@@ -22,6 +22,7 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useV2Theme } from '../../theme/v2';
 import { MemberRoom } from './MemberScreen';
+import { ThreadSkeleton } from '../messages/ThreadSkeleton';
 
 export function MemberThreadScreen({ roomId }: { roomId: string }) {
   return (
@@ -98,7 +99,9 @@ function MemberThread({ roomId }: { roomId: string }) {
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>
               {data.error}
             </Text>
-          ) : data.dayGroups.length === 0 && !data.loading ? (
+          ) : data.loading ? (
+            <ThreadSkeleton />
+          ) : data.dayGroups.length === 0 ? (
             <Text
               style={{
                 fontFamily: font.medium,

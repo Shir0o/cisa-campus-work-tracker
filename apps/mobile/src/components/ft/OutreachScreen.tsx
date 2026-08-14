@@ -4,7 +4,7 @@
 // route guard (app/outreach.tsx) and the firestore rules keep everyone else
 // out, where the design let trainees and community members in.
 import React, { useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { Sheet } from '../ui';
@@ -28,6 +28,7 @@ import {
 import { useAuth } from '../../lib/AuthProvider';
 import { roomForRole, useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room, V2Empty, V2Input, V2Screen, V2TextArea } from '../v2/Widget';
+import { SkeletonList } from '../skeleton/SkeletonList';
 import { useOutreachData } from '../../lib/useOutreachData';
 import { addOutreach, removeOutreach, takeOutreachName, updateOutreach } from '../../lib/data/outreach';
 import { addThreadMessage } from '../../lib/data/threads';
@@ -779,9 +780,7 @@ function Outreach() {
         )}
 
         {loading ? (
-          <View style={{ alignItems: 'center', marginTop: 48 }}>
-            <ActivityIndicator color={c.room.ink2} />
-          </View>
+          <SkeletonList rows={3} style={{ marginTop: 48 }} />
         ) : (
           <>
             {thisMonth.length > 0 && (

@@ -7,6 +7,7 @@ import { useAuth } from './AuthProvider';
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeBoardDocs } from './data/board';
 import { useFullTimerNames } from './useFullTimerNames';
+import { useIdentityReset } from './useIdentityReset';
 
 /** Who's leading a page, for the design's "…· Ana leading" row line.
  * `facilitatorId` is written on create but was rendered nowhere until v2, so
@@ -22,6 +23,14 @@ export function useBoardListData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const names = useFullTimerNames();
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setDocs([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;

@@ -14,6 +14,7 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeChatRooms } from './data/chat';
 import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
+import { useIdentityReset } from './useIdentityReset';
 
 export function useMessagesData() {
   const { uid } = useAuth();
@@ -22,6 +23,14 @@ export function useMessagesData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const reads = useChatReads();
+
+  // Same impersonation guard as useChatThreadData: drop the previous identity's
+  // room list synchronously instead of flashing it until the new snapshot.
+  useIdentityReset(uid, () => {
+    setRooms([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;

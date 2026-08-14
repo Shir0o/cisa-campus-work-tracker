@@ -4,7 +4,7 @@
 //
 // No create affordance and no search — the design's list is what you're part
 // of, not a place you go looking. Starting a conversation is desktop work.
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -23,6 +23,7 @@ import { useMessagesData } from '../../lib/useMessagesData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
+import { MessagesListSkeleton } from './MessagesListSkeleton';
 import { SwipeToDelete } from './SwipeToDelete';
 
 export function MessagesScreen() {
@@ -147,7 +148,7 @@ function Messages() {
         </Text>
 
         {data.loading ? (
-          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+          <MessagesListSkeleton />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : data.rooms.length === 0 ? (
