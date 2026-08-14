@@ -53,3 +53,33 @@ Once deployed, Cloudflare will provide a production preview domain (e.g., `https
 - **Twilio SMS Webhook (POST)**: `https://my-app.pages.dev/api/webhook/sms`
 - **GroupMe Callback (POST)**: `https://my-app.pages.dev/api/webhook/groupme`
 - **Manual POST Trigger**: `https://my-app.pages.dev/api/quick-add` (Headers: `Content-Type: application/json` Body: `{ "text": "Met John Doe at Miller Hall..." }`)
+
+---
+
+## 🧪 QA environment (Cloudflare Pages)
+
+For a QA/staging URL that runs against the isolated `qa-db` Firestore database
+and the `campus-hub-qa` Cloud Run backend, create a second Pages project
+(`cisa-campus-work-traker-qa`, serving `https://cisa-campus-work-traker-qa.pages.dev`)
+connected to the same repo, with identical build settings (`npm run build`, output `dist`).
+
+Two variables are needed because the edge proxy (`functions/api/[[path]].ts`) only
+forwards `/api/*` — client-side Firestore reads bypass it entirely:
+
+| Variable Name | Value | Where |
+| :--- | :--- | :--- |
+| `BACKEND_API_URL` | `https://campus-hub-qa-914549253362.us-west2.run.app` | Runtime env (the `/api/*` proxy target) |
+| `VITE_FIREBASE_API_KEY` | same web API key as prod (`AIzaSyDRfV-…`, shared — one key per project) | Build env (baked into the web bundle; `firebase-applet-config.json` ships an empty apiKey) |
+| `VITE_FIREBASE_FIRESTORE_DB_ID` | `qa-db` | Build env (baked into the web bundle at `vite build`) |
+
+The build env vars point the client Firestore SDK at `qa-db` and supply the
+auth API key; the runtime var points API/webhook calls at the QA backend.
+Leave `VITE_FIREBASE_DATABASE_URL` unset so The Board stays Firestore-only
+(avoids writing to prod's live Realtime Database). `EXPO_ACCESS_TOKEN` and
+`GEMINI_API_KEY` are NOT needed here — those are Cloud Run server-side env
+(already set on `campus-hub-qa` for push; add `GEMINI_API_KEY` there only if
+QA should exercise AI quick-add).
+
+The mobile app's QA build uses the same site as its `EXPO_PUBLIC_API_URL`
+(`apps/mobile/eas.json` → `qa` profile), so push/quick-add/AI go through the
+Cloudflare edge to the QA backend.
