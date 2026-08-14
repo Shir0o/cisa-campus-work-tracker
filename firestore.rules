@@ -427,7 +427,7 @@ service cloud.firestore {
     match /tasks/{taskId} {
       function isValidTask(data) {
         return data.title is string && data.title.size() <= 500 &&
-               (data.get('dueDate', null) == null || (data.get('dueDate', null) is string && data.get('dueDate', null).size() <= 20)) &&
+               (data.get('dueDate', null) == null || (data.get('dueDate', null) is string && data.get('dueDate', null).size() <= 40)) &&
                data.status in ['pending', 'completed', 'canceled'] &&
                data.priority in ['low', 'medium', 'high'] &&
                (data.get('contactId', null) == null || (data.get('contactId', null) is string && data.get('contactId', null).size() <= 128)) &&

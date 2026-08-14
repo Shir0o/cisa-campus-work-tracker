@@ -160,7 +160,7 @@ export async function addContact(
   by: { uid?: string | null; name?: string | null },
   notify?: (payload: ContactNotifyPayload) => void,
 ): Promise<string> {
-  const docRef = await addDoc(collection(db, "contacts"), {
+  const data: Record<string, any> = {
     ...input,
     lastSeen: "Just now",
     createdAt: input.createdAt || new Date().toISOString(),
@@ -169,7 +169,13 @@ export async function addContact(
     createdByName: by.name ?? null,
     hasNewActivity: true,
     attendance: {},
-  });
+  };
+  for (const key of Object.keys(data)) {
+    if (data[key] === undefined) {
+      delete data[key];
+    }
+  }
+  const docRef = await addDoc(collection(db, "contacts"), data);
 
   if (notify && by.uid) {
     notify({
