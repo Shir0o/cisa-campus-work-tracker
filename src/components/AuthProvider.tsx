@@ -158,10 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // rules require displayName to be a non-null string, so fall back to
           // the local part of the email (or a default) when the provider has none.
           const fallbackName = authUser.email?.split('@')[0] || 'Member';
+          const resolvedDisplayName = authUser.displayName || fallbackName;
+          const resolvedPhotoURL = authUser.photoURL || '';
           const initialData = {
             email: authUser.email,
-            displayName: authUser.displayName || fallbackName,
-            photoURL: authUser.photoURL || '',
+            displayName: resolvedDisplayName,
+            photoURL: resolvedPhotoURL,
             approved: initialApproved,
             role: initialRole,
             createdAt: serverTimestamp(),
@@ -180,6 +182,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
           setIsApproved(initialApproved);
           setActualRole(initialRole);
+          if (!authUser.displayName) {
+            setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
+          }
         } else {
           // Document exists, set initial state before listener starts
           const data = userDoc.data();
@@ -200,6 +205,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setIsApproved(data.approved || isAdminClaim);
           const effective = isAdminClaim ? 'admin' : currentRole;
           setActualRole(effective);
+
+          const resolvedDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0] || 'Member';
+          const resolvedPhotoURL = authUser.photoURL || data?.photoURL || '';
+          if (!authUser.displayName || (data?.displayName && authUser.displayName !== data.displayName)) {
+            setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
+          }
         }
 
         // Listen for real-time changes to the user's record
@@ -210,6 +221,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const currentRole = data.role as string;
             const effective = isAdminClaim ? 'admin' : currentRole;
             setActualRole(effective);
+            if (data?.displayName) {
+              setUser((prev) => (prev && prev.displayName !== data.displayName ? ({ ...prev, displayName: data.displayName, photoURL: data.photoURL || prev.photoURL } as User) : prev));
+            }
           }
         });
 

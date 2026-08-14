@@ -141,14 +141,24 @@ describe('TopBar Component', () => {
     expect(screen.getAllByText('The Journey').length).toBeGreaterThan(0);
   });
 
-  it('shows "User" fallback when displayName is null', () => {
+  it('shows email prefix fallback when displayName is null and "User" when email is also absent', () => {
     (useAuth as any).mockReturnValue({
       user: { displayName: null, photoURL: null, email: 'test@test.com' },
       logOut: mockLogOut,
     });
-    renderTopBar('/');
+    const { unmount } = renderTopBar('/');
     const profileBtn = screen.getByRole('button', { name: /Profile/i });
     fireEvent.click(profileBtn);
+    expect(screen.getByText('test')).toBeInTheDocument();
+    unmount();
+
+    (useAuth as any).mockReturnValue({
+      user: { displayName: null, photoURL: null, email: null },
+      logOut: mockLogOut,
+    });
+    renderTopBar('/');
+    const profileBtn2 = screen.getByRole('button', { name: /Profile/i });
+    fireEvent.click(profileBtn2);
     expect(screen.getByText('User')).toBeInTheDocument();
   });
 
@@ -190,6 +200,20 @@ describe('TopBar Component', () => {
   it('renders SignupInvite sign-up form button', () => {
     renderTopBar('/');
     expect(screen.getByRole('button', { name: 'Sign-up form' })).toBeInTheDocument();
+  });
+
+  it('falls back to email prefix for avatar and dropdown name when displayName is missing', () => {
+    (useAuth as any).mockReturnValue({
+      user: { email: 'reviewer-appstore@yourdomain.com', displayName: null, photoURL: null },
+      logOut: mockLogOut,
+    });
+    renderTopBar('/');
+    const profileBtn = screen.getByRole('button', { name: /Profile/i });
+    expect(screen.getByText('R')).toBeInTheDocument();
+
+    fireEvent.click(profileBtn);
+    expect(screen.getByText('reviewer-appstore')).toBeInTheDocument();
+    expect(screen.getByText('reviewer-appstore@yourdomain.com')).toBeInTheDocument();
   });
 });
 

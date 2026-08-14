@@ -47,6 +47,7 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
   const pageTitle = pageTitleFor(pathname);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const profileName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -147,7 +148,7 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
             className="w-10 h-10 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
           >
             <UserAvatar
-              name={user?.displayName}
+              name={profileName}
               photoURL={user?.photoURL}
               className="w-full h-full"
             />
@@ -163,7 +164,7 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
                 className="absolute right-0 mt-2 w-56 bg-surface-container-high rounded-2xl shadow-xl border border-outline-variant py-2 z-50"
               >
                 <div className="px-4 py-3 border-b border-outline-variant mb-1">
-                  <p className="text-sm font-bold text-on-surface truncate">{user?.displayName || 'User'}</p>
+                  <p className="text-sm font-bold text-on-surface truncate">{profileName}</p>
                   <p className="text-xs text-on-surface-variant truncate">{user?.email}</p>
                 </div>
 

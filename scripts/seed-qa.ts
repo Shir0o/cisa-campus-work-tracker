@@ -134,6 +134,14 @@ async function seed() {
     try {
       const user = await auth.getUserByEmail(entry.email);
       uids[key] = user.uid;
+      const targetDisplayName = PERSONA_NAMES[key] || entry.label || user.displayName || entry.email.split('@')[0];
+      if (!user.displayName && targetDisplayName) {
+        try {
+          await auth.updateUser(user.uid, { displayName: targetDisplayName });
+        } catch (e) {
+          console.warn(`  Could not update Auth user displayName for ${entry.email}:`, e);
+        }
+      }
       await db.collection('users').doc(user.uid).set(
         {
           email: entry.email,
@@ -166,6 +174,14 @@ async function seed() {
     try {
       const user = await auth.getUserByEmail(email);
       if (!uids.reviewer) uids.reviewer = user.uid;
+      const targetDisplayName = PERSONA_NAMES.reviewer || user.displayName || email.split('@')[0];
+      if (!user.displayName && targetDisplayName) {
+        try {
+          await auth.updateUser(user.uid, { displayName: targetDisplayName });
+        } catch (e) {
+          console.warn(`  Could not update Auth user displayName for ${email}:`, e);
+        }
+      }
       await db.collection('users').doc(user.uid).set(
         {
           email,

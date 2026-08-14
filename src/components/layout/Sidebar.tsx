@@ -306,29 +306,34 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
         {/* Footer Nav */}
         <div className="mt-auto shrink-0 border-t border-outline-variant pt-3 space-y-1 overflow-hidden">
           {/* Signed-in user — avatar + name + role */}
-          <div className={cn(
-            "flex items-center mb-1 pb-2",
-            effectiveIsCollapsed ? "justify-center px-0" : "px-2"
-          )}>
-            <UserAvatar
-              name={impersonateTarget ? impersonateTarget.name : user?.displayName}
-              photoURL={impersonateTarget ? null : user?.photoURL}
-              className="w-9 h-9 min-w-[36px] border border-outline-variant"
-            />
-            <motion.div
-              initial={false}
-              animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 10 }}
-              transition={{ duration: 0.2 }}
-              className="whitespace-nowrap overflow-hidden min-w-0"
-            >
-              <div className="text-sm font-medium text-on-surface leading-tight truncate">
-                {impersonateTarget ? impersonateTarget.name : (user?.displayName || 'Signed in')}
+          {(() => {
+            const userName = impersonateTarget ? impersonateTarget.name : (user?.displayName || user?.email?.split('@')[0] || 'User');
+            return (
+              <div className={cn(
+                "flex items-center mb-1 pb-2",
+                effectiveIsCollapsed ? "justify-center px-0" : "px-2"
+              )}>
+                <UserAvatar
+                  name={userName}
+                  photoURL={impersonateTarget ? null : user?.photoURL}
+                  className="w-9 h-9 min-w-[36px] border border-outline-variant"
+                />
+                <motion.div
+                  initial={false}
+                  animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 10 }}
+                  transition={{ duration: 0.2 }}
+                  className="whitespace-nowrap overflow-hidden min-w-0"
+                >
+                  <div className="text-sm font-medium text-on-surface leading-tight truncate">
+                    {userName}
+                  </div>
+                  <div className="text-xs text-on-surface-variant mt-0.5 truncate">
+                    {impersonateTarget ? impersonateTarget.sub : getRoleLabel(role)}
+                  </div>
+                </motion.div>
               </div>
-              <div className="text-xs text-on-surface-variant mt-0.5 truncate">
-                {impersonateTarget ? impersonateTarget.sub : getRoleLabel(role)}
-              </div>
-            </motion.div>
-          </div>
+            );
+          })()}
 
           {/* Log Out button */}
           <button

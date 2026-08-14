@@ -582,5 +582,51 @@ describe('AuthProvider', () => {
       expect(localStorage.getItem('cisa_owner_view_role')).toBeNull();
     });
   });
+
+  it('populates user displayName from firestore doc when authUser displayName is missing', async () => {
+    const emailUser = {
+      uid: 'reviewer-uid-2',
+      email: 'reviewer-appstore@yourdomain.com',
+      displayName: null,
+      photoURL: null,
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(emailUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        displayName: 'App Store Reviewer',
+        photoURL: 'https://example.com/rev.png',
+        role: 'admin',
+        approved: true,
+      }),
+    });
+
+    const ProfileTestComponent = () => {
+      const { user } = useAuth();
+      return (
+        <div>
+          <div>displayName: {user?.displayName}</div>
+          <div>photoURL: {user?.photoURL}</div>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <ProfileTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('displayName: App Store Reviewer')).toBeInTheDocument();
+      expect(screen.getByText('photoURL: https://example.com/rev.png')).toBeInTheDocument();
+    });
+  });
 });
 

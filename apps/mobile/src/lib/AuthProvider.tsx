@@ -153,9 +153,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubUserDoc = onSnapshot(
         doc(db, 'users', authUser.uid),
         (snap) => {
-          const data = snap.data() as { role?: AppRole; approved?: boolean } | undefined;
+          const data = snap.data() as { role?: AppRole; approved?: boolean; displayName?: string; photoURL?: string } | undefined;
           setActualRole(data?.role ?? null);
           setIsApproved(!!data?.approved);
+          const profileDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0];
+          const profilePhoto = authUser.photoURL || data?.photoURL;
+          if (profileDisplayName && (authUser.displayName !== profileDisplayName || authUser.photoURL !== profilePhoto)) {
+            setUser((prev) => (prev ? ({ ...prev, displayName: profileDisplayName, photoURL: profilePhoto ?? prev.photoURL } as User) : prev));
+          }
           setLoading(false);
         },
         () => setLoading(false),
