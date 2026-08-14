@@ -4,7 +4,8 @@
  * Populates a realistic, self-contained dataset so a reviewer can exercise the
  * mobile app end-to-end without touching production data. Seeds:
  *
- *   • approved /users docs for the four E2E role accounts
+ *   • approved /users docs for the real role accounts (cisa-* + the reviewer,
+ *     read from the gitignored e2e/.test-credentials.json — never created here)
  *   • the stages + gatheringTypes taxonomies + season settings
  *   • ~10 contacts (with interactions, comments, and walking-together threads)
  *   • prayers + member prayer requests
@@ -14,23 +15,25 @@
  *   • coordination-notes board pages + notes archive
  *   • an outreach record
  *
- * The QA database shares Firebase Auth with production, so the test accounts are
- * looked up (or created, if missing) in the shared Auth; their Firestore docs
- * live in `qa-db`, fully separate from prod data.
+ * The QA database shares Firebase Auth with production, so the role accounts are
+ * looked up BY EMAIL in the shared Auth (they must already exist — this script
+ * never creates Auth users); their Firestore docs live in `qa-db`, fully
+ * separate from prod data.
  *
  * Usage (any admin credential works: gcloud ADC or a service-account key):
  *
  *   gcloud auth application-default login
  *   npm run seed:qa
  *
- * Override the target database with FIRESTORE_DATABASE_ID=… (default `qa-db`).
- * Idempotent — deterministic doc ids, safe to re-run.
+ * Requires `e2e/.test-credentials.json` (gitignored — see
+ * e2e/.test-credentials.example.json). Override the target database with
+ * FIRESTORE_DATABASE_ID=… (default `qa-db`). Idempotent — deterministic doc
+ * ids, safe to re-run.
  */
 
 import admin from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
-import { readFileSync } from 'node:fs';
-import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
+import { readFileSync, existsSync } from 'node:fs';
 
 const cfg = JSON.parse(readFileSync('firebase-applet-config.json', 'utf8'));
 const projectId = process.env.FIREBASE_PROJECT_ID || cfg.projectId;
@@ -44,7 +47,8 @@ const auth = admin.auth();
 const db = getFirestore(admin.app(), firestoreDatabaseId);
 const ts = admin.firestore.FieldValue.serverTimestamp();
 
-const KEYS = ['fulltimer', 'trainee', 'student', 'community', 'reviewer'] as const;
+const ACCOUNT_KEYS = ['fulltimer', 'trainee', 'student', 'community', 'reviewer'] as const;
+const CREDS_PATH = 'e2e/.test-credentials.json';
 
 /** ISO timestamp `daysAgo` days and `hoursAgo` hours in the past. */
 const iso = (daysAgo: number, hoursAgo = 0) => {
@@ -64,33 +68,44 @@ const isoDate = (daysFromNow: number) => {
 async function seed() {
   console.log(`Seeding QA Firestore (project=${projectId}, database=${firestoreDatabaseId})…`);
 
-  // Resolve (or create) the four role accounts in shared Auth.
-  const uids: Record<(typeof KEYS)[number], string> = {} as never;
-  for (const key of KEYS) {
-    const { email, password, role, label } = DEFAULT_CREDENTIALS[key];
-    let uid: string;
-    try {
-      const existingUser = await auth.getUserByEmail(email);
-      uid = existingUser.uid;
-    } catch {
-      const newUser = await auth.createUser({ email, password, displayName: label });
-      uid = newUser.uid;
-    }
-    uids[key] = uid;
-    await db.collection('users').doc(uid).set(
-      {
-        email,
-        displayName: label,
-        photoURL: '',
-        role,
-        approved: true,
-        createdAt: ts,
-        updatedAt: ts,
-      },
-      { merge: true },
-    );
+  // Resolve the real role accounts (cisa-* + reviewer) from the gitignored
+  // credentials file. Lookup-only — these Auth users already exist; the seed
+  // never creates Auth accounts.
+  const credsFile = existsSync(CREDS_PATH)
+    ? (JSON.parse(readFileSync(CREDS_PATH, 'utf8')) as Record<string, { email?: string; role?: string; label?: string } | undefined>)
+    : null;
+  if (!credsFile) {
+    console.error(`ERROR: ${CREDS_PATH} not found — copy e2e/.test-credentials.example.json and fill in the real accounts.`);
+    process.exit(1);
   }
-  console.log(`  ✓ ${KEYS.length} approved users (incl. reviewer admin)`);
+
+  const uids: Record<(typeof ACCOUNT_KEYS)[number], string> = {} as never;
+  for (const key of ACCOUNT_KEYS) {
+    const entry = credsFile[key];
+    if (!entry?.email) {
+      console.log(`  – ${key}: missing from ${CREDS_PATH} (skipped)`);
+      continue;
+    }
+    try {
+      const user = await auth.getUserByEmail(entry.email);
+      uids[key] = user.uid;
+      await db.collection('users').doc(user.uid).set(
+        {
+          email: entry.email,
+          displayName: entry.label || user.displayName || entry.email.split('@')[0],
+          photoURL: user.photoURL || '',
+          role: entry.role,
+          approved: true,
+          createdAt: ts,
+          updatedAt: ts,
+        },
+        { merge: true },
+      );
+      console.log(`  ✓ ${key.padEnd(10)} ${entry.email} (${entry.role})`);
+    } catch {
+      console.log(`  – ${key}: ${entry.email} has no Auth account yet (skipped — create it first, then re-run)`);
+    }
+  }
 
   // Extra reviewer accounts (QA_REVIEWER_EMAILS=comma-separated, default the
   // project owner) get an approved ADMIN doc so they can explore everything
@@ -126,8 +141,10 @@ async function seed() {
   const tr = uids.trainee;
   const st = uids.student;
   const cm = uids.community;
-  const ftName = DEFAULT_CREDENTIALS.fulltimer.label;
-  const trName = DEFAULT_CREDENTIALS.trainee.label;
+  const ftName = credsFile?.fulltimer?.label || 'Full-timer';
+  const trName = credsFile?.trainee?.label || 'Trainee';
+  const stName = credsFile?.student?.label || 'Student';
+  const cmName = credsFile?.community?.label || 'Community';
 
   // --- Stages taxonomy (People → Journey pipeline) ---
   const stages = [
@@ -165,10 +182,10 @@ async function seed() {
     { id: 'qa-c-rio', name: 'Rio Marchetti', email: 'rio.marchetti@umail.edu', role: 'Student', stage: 'First Contact', tags: ['outreach-fair'], gender: 'Male', year: 'Freshman', major: 'Engineering', spiritualBackground: 'Grew up church-adjacent', notes: 'Coffee Thursday 3pm.', by: tr, byName: trName, daysAgo: 6, reviewed: false },
     { id: 'qa-c-kofi', name: 'Kofi Boateng', email: 'kofi.boateng@umail.edu', role: 'Student', stage: 'Lead', tags: ['roommate'], gender: 'Male', year: 'Junior', major: 'Economics', spiritualBackground: 'Open, hasn’t read the Bible', notes: 'His roommate keeps asking him about God.', by: tr, byName: trName, daysAgo: 4, reviewed: false },
     { id: 'qa-c-naomi', name: 'Naomi Park', email: 'naomi.park@umail.edu', role: 'Student', stage: 'Follow-up', tags: ['prayer'], gender: 'Female', year: 'Senior', major: 'Nursing', spiritualBackground: 'Believer, new to campus', notes: 'Looking for a small group.', by: ft, byName: ftName, daysAgo: 12, reviewed: true },
-    { id: 'qa-c-tomoko', name: 'Tomoko Sato', email: 'tomoko.sato@umail.edu', role: 'Student', stage: 'First Contact', tags: ['org-fair'], gender: 'Female', year: 'Freshman', major: 'Art', spiritualBackground: 'Buddhist family', notes: 'Re-invite before Friday.', by: st, byName: 'Student Test User', daysAgo: 3, reviewed: false },
+    { id: 'qa-c-tomoko', name: 'Tomoko Sato', email: 'tomoko.sato@umail.edu', role: 'Student', stage: 'First Contact', tags: ['org-fair'], gender: 'Female', year: 'Freshman', major: 'Art', spiritualBackground: 'Buddhist family', notes: 'Re-invite before Friday.', by: st, byName: stName, daysAgo: 3, reviewed: false },
     { id: 'qa-c-caleb', name: 'Caleb Mensah', email: 'caleb.mensah@umail.edu', role: 'Student', stage: 'In Community', tags: ['leader'], gender: 'Male', year: 'Senior', major: 'Theology', spiritualBackground: 'Strong believer', notes: 'Helping with worship team.', by: ft, byName: ftName, daysAgo: 40, reviewed: true },
     { id: 'qa-c-mira', name: 'Mira Iqbal', email: 'mira.iqbal@umail.edu', role: 'Student', stage: 'Growing', tags: ['coffee', 'seeking'], gender: 'Female', year: 'Sophomore', major: 'Political Science', spiritualBackground: 'Honest questions', notes: 'Keep meeting for coffee.', by: ft, byName: ftName, daysAgo: 21, reviewed: true },
-    { id: 'qa-c-jamal', name: 'Jamal Carter', email: 'jamal.carter@umail.edu', role: 'Student', stage: 'Lead', tags: ['basketball'], gender: 'Male', year: 'Junior', major: 'Kinesiology', spiritualBackground: 'Unknown', notes: 'Met at open gym.', by: st, byName: 'Student Test User', daysAgo: 2, reviewed: false },
+    { id: 'qa-c-jamal', name: 'Jamal Carter', email: 'jamal.carter@umail.edu', role: 'Student', stage: 'Lead', tags: ['basketball'], gender: 'Male', year: 'Junior', major: 'Kinesiology', spiritualBackground: 'Unknown', notes: 'Met at open gym.', by: st, byName: stName, daysAgo: 2, reviewed: false },
   ];
   for (const c of contacts) {
     const { id, name, email, role, stage, tags, gender, year, major, spiritualBackground, notes, by, byName, daysAgo, reviewed } = c;
@@ -268,8 +285,8 @@ async function seed() {
   }
 
   const prayerRequests = [
-    { id: 'qa-pr-1', uid: st, name: 'Student Test User', body: 'Midterms this week — pray for focus and rest.', status: 'open', daysAgo: 1 },
-    { id: 'qa-pr-2', uid: cm, name: 'Community Test User', body: 'My mom is having surgery Friday — please pray.', status: 'open', daysAgo: 2 },
+    { id: 'qa-pr-1', uid: st, name: stName, body: 'Midterms this week — pray for focus and rest.', status: 'open', daysAgo: 1 },
+    { id: 'qa-pr-2', uid: cm, name: cmName, body: 'My mom is having surgery Friday — please pray.', status: 'open', daysAgo: 2 },
   ];
   for (const r of prayerRequests) {
     const { id, uid, name, body, status, daysAgo } = r;
@@ -291,8 +308,8 @@ async function seed() {
     await db.collection('events').doc(id).set({ ...data, createdAt: iso(1) }, { merge: true });
   }
   for (const [eventId, uid, name] of [
-    ['qa-ev-fri', st, 'Student Test User'],
-    ['qa-ev-fri', cm, 'Community Test User'],
+    ['qa-ev-fri', st, stName],
+    ['qa-ev-fri', cm, cmName],
     ['qa-ev-small', ft, ftName],
   ] as const) {
     await db.collection('events').doc(eventId).collection('rsvps').doc(uid).set(
@@ -326,7 +343,7 @@ async function seed() {
     { roomId: groupId, id: 'qa-msg-g2', senderId: tr, senderName: trName, text: 'Works for me — I’ll bring the follow-up list.', daysAgo: 2 },
     { roomId: directFtTr, id: 'qa-msg-d1', senderId: tr, senderName: trName, text: 'Coffee with Rio is confirmed for Thursday 3pm.', daysAgo: 2 },
     { roomId: directFtTr, id: 'qa-msg-d2', senderId: ft, senderName: ftName, text: 'Great — I can join if you want backup.', daysAgo: 1 },
-    { roomId: directFtSt, id: 'qa-msg-e1', senderId: st, senderName: 'Student Test User', text: 'Met Jamal at open gym — got his number.', daysAgo: 1 },
+    { roomId: directFtSt, id: 'qa-msg-e1', senderId: st, senderName: stName, text: 'Met Jamal at open gym — got his number.', daysAgo: 1 },
   ];
   for (const m of messages) {
     const { roomId, id, senderId, senderName, text, daysAgo } = m;
@@ -357,7 +374,7 @@ async function seed() {
   const notifications = [
     { id: 'qa-notif-1', userId: tr, title: 'Contact Created', message: 'Successfully added Rio Marchetti to your directory.', type: 'success' },
     { id: 'qa-notif-2', userId: tr, title: 'New assignment', message: 'Your full-timer assigned you: Ring Tomoko.', type: 'assignment' },
-    { id: 'qa-notif-3', userId: ft, title: 'New trainee activity', message: 'Trainee Test User added Kofi Boateng.', type: 'info' },
+    { id: 'qa-notif-3', userId: ft, title: 'New trainee activity', message: `${trName} added Kofi Boateng.`, type: 'info' },
   ];
   for (const n of notifications) {
     const { id, ...data } = n;
@@ -426,12 +443,12 @@ async function seed() {
   }
   console.log(`  ✓ ${activities.length} activity entries`);
 
-  console.log('\nQA seeding complete. Reviewer accounts:');
-  console.log(`  reviewer.e2e@example.com / password123  (admin)  uid=${uids.reviewer}`);
-  console.log(`  fulltimer.e2e@example.com / password123  (admin)  uid=${ft}`);
-  console.log(`  trainee.e2e@example.com  / password123  (manager) uid=${tr}`);
-  console.log(`  student.e2e@example.com  / password123  (operator) uid=${st}`);
-  console.log(`  community.e2e@example.com/ password123  (viewer) uid=${cm}`);
+  console.log('\nQA seeding complete. Accounts (from e2e/.test-credentials.json):');
+  console.log(`  reviewer  ${credsFile?.reviewer?.email ?? '—'} (${credsFile?.reviewer?.role ?? 'admin'})  uid=${uids.reviewer ?? '—'}`);
+  console.log(`  fulltimer ${credsFile?.fulltimer?.email ?? '—'} (${credsFile?.fulltimer?.role ?? 'admin'})  uid=${ft ?? '—'}`);
+  console.log(`  trainee   ${credsFile?.trainee?.email ?? '—'} (${credsFile?.trainee?.role ?? 'manager'})  uid=${tr ?? '—'}`);
+  console.log(`  student   ${credsFile?.student?.email ?? '—'} (${credsFile?.student?.role ?? 'operator'})  uid=${st ?? '—'}`);
+  console.log(`  community ${credsFile?.community?.email ?? '—'} (${credsFile?.community?.role ?? 'viewer'})  uid=${cm ?? '—'}`);
 }
 
 seed()

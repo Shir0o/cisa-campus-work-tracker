@@ -90,8 +90,10 @@ bucket, and Realtime Database are shared with prod.
   (`https://cisa-campus-work-traker-qa.pages.dev`) whose `/api/*` proxy targets
   the QA backend — see `CLOUDFLARE_DEPLOYMENT.md` for the QA project setup.
 - **Seed data:** `npm run seed:qa` (from the repo root) writes approved
-  `/users` docs for the four E2E accounts (looked up — or created — in shared
-  Auth) plus a full fake dataset to explore: the stages/gathering-types
+  `/users` docs for the real role accounts — the cisa-* accounts plus the
+  reviewer (`reviewer-appstore@…`), read from the gitignored
+  `e2e/.test-credentials.json` (looked up by email in shared Auth, never
+  created) — plus a full fake dataset to explore: the stages/gathering-types
   taxonomies, ~8 contacts (with interactions, comments, and walking-together
   threads), prayers + prayer requests, gathering events + RSVPs, chat rooms +
   messages, to-dos, notifications, coordination-notes pages, an outreach
@@ -99,16 +101,13 @@ bucket, and Realtime Database are shared with prod.
 
 ### Reviewer credentials
 
-| Role      | Email                          | Password      |
-|-----------|--------------------------------|---------------|
-| Reviewer (admin)  | `reviewer.e2e@example.com`  | `password123` |
-| Full-timer (admin) | `fulltimer.e2e@example.com` | `password123` |
-| Trainee (manager)  | `trainee.e2e@example.com`  | `password123` |
-| Student (operator) | `student.e2e@example.com`  | `password123` |
-| Community (viewer) | `community.e2e@example.com`| `password123` |
+Emails/passwords live in the gitignored `e2e/.test-credentials.json` (see
+`e2e/.test-credentials.example.json`). The reviewer signs in with the
+pre-created reviewer account (`reviewer-appstore@…`, role **admin**); the four
+role accounts (Full-timer / Trainee / Student / Community) are approved with
+their usual roles.
 
-Reviewers sign in with the pre-created `reviewer.e2e@example.com` account
-(admin). They can also sign in with their own Google account: `npm run seed:qa`
+Reviewers can also sign in with their own Google account: `npm run seed:qa`
 approves `QA_REVIEWER_EMAILS` (comma-separated, default `yilongwang05@gmail.com`)
 as admin — add your email there (or just sign in once, then re-run the seed) so
 your account gets an approved admin doc in `qa-db`.
