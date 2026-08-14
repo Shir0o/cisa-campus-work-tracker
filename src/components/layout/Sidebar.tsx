@@ -26,8 +26,9 @@ import { UserAvatar } from '../ui/UserAvatar';
 
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
-import { NAV_ITEMS, canAccessRoute, roleLabel, AppRole } from '../../lib/permissions';
+import { NAV_ITEMS, canAccessRoute, roleLabel, AppRole, navExternalFor } from '../../lib/permissions';
 import SeasonChip from './SeasonChip';
+import { SIGNUP_TITLE, SIGNUP_WHAT_SHORT } from './SignupInvite';
 
 interface SidebarProps {
   isCollapsed?: boolean;
@@ -38,6 +39,8 @@ interface SidebarProps {
 export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteraction }: SidebarProps) {
   const { logOut, isAdmin, role, user, impersonateTarget } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen } = useLayout();
+  const isStaff = role === 'admin' || role === 'manager';
+  const externalLinks = navExternalFor(role);
   const [viewportWidth, setViewportWidth] = React.useState(
     typeof window !== 'undefined' ? window.innerWidth : 1280,
   );
@@ -181,65 +184,123 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
             effectiveIsCollapsed ? "no-scrollbar" : (isScrolling ? "custom-scrollbar" : "no-scrollbar")
           )}
         >
+          {/* Workspace / Your space Section */}
+          <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+            {isStaff ? "Workspace" : "Your space"}
+          </div>
+
           {navItems.map((item) => (
-            item.isExternal ? (
-              <a
-                key={item.href}
-                href={item.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={cn(
-                  "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11 text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface",
-                  effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3"
-                )}
-                title={effectiveIsCollapsed ? item.label : undefined}
-              >
-                <item.icon className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
-                <motion.span
-                  initial={false}
-                  animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
-                  transition={{ duration: 0.2 }}
-                  className="whitespace-nowrap overflow-hidden flex items-center gap-1.5"
-                >
-                  <span>{item.label}</span>
-                  <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                </motion.span>
-              </a>
-            ) : (
-              <NavLink
-                key={item.href}
-                to={item.href}
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={({ isActive }) => cn(
-                  "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
-                  effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
-                  isActive
-                    ? "bg-stage-accent-soft text-on-surface font-medium"
-                    : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
-                )}
-                title={effectiveIsCollapsed ? item.label : undefined}
-              >
-                {({ isActive }) => (
-                  <>
-                    {/* Accent left-rail on the active item */}
-                    {isActive && !effectiveIsCollapsed && (
-                      <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
-                    )}
-                    <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
-                    <motion.span
-                      initial={false}
-                      animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
-                      transition={{ duration: 0.2 }}
-                      className="whitespace-nowrap overflow-hidden"
-                    >
-                      {item.label}
-                    </motion.span>
-                  </>
-                )}
-              </NavLink>
-            )
+            <NavLink
+              key={item.href}
+              to={item.href}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) => cn(
+                "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
+                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
+                isActive
+                  ? "bg-stage-accent-soft text-on-surface font-medium"
+                  : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
+              )}
+              title={effectiveIsCollapsed ? item.label : undefined}
+            >
+              {({ isActive }) => (
+                <>
+                  {/* Accent left-rail on the active item */}
+                  {isActive && !effectiveIsCollapsed && (
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
+                  )}
+                  <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                  <motion.span
+                    initial={false}
+                    animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                    transition={{ duration: 0.2 }}
+                    className="whitespace-nowrap overflow-hidden"
+                  >
+                    {item.label}
+                  </motion.span>
+                </>
+              )}
+            </NavLink>
           ))}
+
+          {/* For someone new Section */}
+          <div className="mt-4">
+            <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+              For someone new
+            </div>
+            <NavLink
+              to="/signup"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={({ isActive }) => cn(
+                "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
+                effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
+                isActive
+                  ? "bg-stage-accent-soft text-on-surface font-medium"
+                  : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
+              )}
+              title={effectiveIsCollapsed ? `${SIGNUP_TITLE} — ${SIGNUP_WHAT_SHORT}` : undefined}
+            >
+              {({ isActive }) => (
+                <>
+                  {isActive && !effectiveIsCollapsed && (
+                    <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
+                  )}
+                  <FileText className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                  <motion.span
+                    initial={false}
+                    animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                    transition={{ duration: 0.2 }}
+                    className="whitespace-nowrap overflow-hidden flex items-center justify-between flex-1 pr-1"
+                  >
+                    <span>Sign-up form</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-1.5" />
+                  </motion.span>
+                </>
+              )}
+            </NavLink>
+            <motion.div
+              initial={false}
+              animate={{ opacity: effectiveIsCollapsed ? 0 : 1, height: effectiveIsCollapsed ? 0 : 'auto' }}
+              transition={{ duration: 0.2 }}
+              className="overflow-hidden"
+            >
+              <div className="sidebar-hint">So someone new can ask to hear from us.</div>
+            </motion.div>
+          </div>
+
+          {/* Elsewhere Section */}
+          {externalLinks.length > 0 && (
+            <div className="mt-4">
+              <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+                Elsewhere
+              </div>
+              {externalLinks.map((item) => (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={cn(
+                    "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11 text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface",
+                    effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3"
+                  )}
+                  title={effectiveIsCollapsed ? item.label : undefined}
+                >
+                  <CalendarDays className="w-[18px] h-[18px] min-w-[18px] shrink-0" />
+                  <motion.span
+                    initial={false}
+                    animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
+                    transition={{ duration: 0.2 }}
+                    className="whitespace-nowrap overflow-hidden flex items-center justify-between flex-1 pr-1"
+                  >
+                    <span>{item.label}</span>
+                    <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-1.5" />
+                  </motion.span>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Footer Nav */}

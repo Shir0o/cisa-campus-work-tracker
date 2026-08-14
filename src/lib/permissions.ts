@@ -67,13 +67,33 @@ export interface NavItem {
   isExternal?: boolean;
 }
 
+export interface ExternalNavItem {
+  id: string;
+  label: string;
+  href: string;
+  roles: AppRole[];
+}
+
+export const NAV_EXTERNAL: ExternalNavItem[] = [
+  {
+    id: 'calendar',
+    label: 'Shared Calendar',
+    href: 'https://shared-calendar-6u6.pages.dev/',
+    roles: ['admin'],
+  },
+];
+
+export function navExternalFor(role: AppRole | string | null): ExternalNavItem[] {
+  if (!role) return [];
+  return NAV_EXTERNAL.filter((item) => item.roles.includes(role as AppRole));
+}
+
 // Field Notes (#10) — warm, human nav labels. Route hrefs are unchanged; only
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
-  { href: 'https://shared-calendar-6u6.pages.dev/', label: 'Shared Calendar', minRole: 'admin', isExternal: true },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
   { href: '/outreach', label: 'Outreach', minRole: 'viewer' },

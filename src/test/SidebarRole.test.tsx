@@ -209,5 +209,29 @@ describe('Sidebar Role Label & Interactions', () => {
     fireEvent.click(closeBtn);
     expect(mockSetIsMobileMenuOpen).toHaveBeenCalledWith(false);
   });
+
+  it('renders "For someone new" section with Sign-up form across all roles', () => {
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'viewer' });
+    renderSidebar();
+
+    expect(screen.getByText('For someone new')).toBeInTheDocument();
+    expect(screen.getByText('Sign-up form')).toBeInTheDocument();
+    expect(screen.getByText('So someone new can ask to hear from us.')).toBeInTheDocument();
+  });
+
+  it('renders "Elsewhere" section with Shared Calendar for admin role and hides for non-admin', () => {
+    // Admin role
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'admin', isAdmin: true });
+    const { unmount } = renderSidebar();
+    expect(screen.getByText('Elsewhere')).toBeInTheDocument();
+    expect(screen.getByText('Shared Calendar')).toBeInTheDocument();
+    unmount();
+
+    // Viewer role
+    mockUseAuth.mockReturnValue({ ...baseAuth, role: 'viewer' });
+    renderSidebar();
+    expect(screen.queryByText('Elsewhere')).not.toBeInTheDocument();
+    expect(screen.queryByText('Shared Calendar')).not.toBeInTheDocument();
+  });
 });
 

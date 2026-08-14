@@ -244,8 +244,8 @@ export default function GlobalSearch() {
     },
     {
       key: 'qa-signup',
-      label: 'Open sign-up form',
-      sub: 'Welcome someone new',
+      label: 'Sign-up form (for someone new)',
+      sub: 'So someone new can ask to hear from us.',
       icon: Globe,
       tone: 'teal' as Tone,
       show: true,

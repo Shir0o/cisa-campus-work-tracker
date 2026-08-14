@@ -147,7 +147,7 @@ describe('GlobalSearch', () => {
     expect(screen.getAllByText('Quick actions').length).toBeGreaterThan(0);
     // recency proxy: most-recently-updated contact first
     expect(screen.getAllByText('Alice Wong').length).toBeGreaterThan(0);
-    for (const label of ['New contact', 'Log a visit', 'Open sign-up form', 'The Journey']) {
+    for (const label of ['New contact', 'Log a visit', 'Sign-up form (for someone new)', 'The Journey']) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
   });

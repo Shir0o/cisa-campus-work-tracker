@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor } from '../lib/permissions';
 import Sidebar from '../components/layout/Sidebar';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -70,7 +70,7 @@ vi.mock('motion/react', () => ({
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback']);
+const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback', 'https://shared-calendar-6u6.pages.dev/']);
 
 function renderSidebar() {
   return render(
@@ -246,12 +246,18 @@ describe('Sidebar nav items', () => {
   it('admin: sees all nav items with the home labeled "My Day"', () => {
     currentUser = TEST_USERS.admin;
     renderSidebar();
-    const labels = ['My Day', 'The Journey', 'People', 'Shared Calendar', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'];
+    const labels = ['My Day', 'The Journey', 'People', 'Shared Calendar', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings', 'Sign-up form'];
     for (const label of labels) {
       expect(screen.getByText(label), label).toBeInTheDocument();
     }
     expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('Home')).not.toBeInTheDocument();
+  });
+
+  it('navExternalFor returns external items according to role', () => {
+    expect(navExternalFor('admin').map((i) => i.id)).toContain('calendar');
+    expect(navExternalFor('viewer')).toEqual([]);
+    expect(navExternalFor(null)).toEqual([]);
   });
 });
 

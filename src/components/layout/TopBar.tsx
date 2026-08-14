@@ -8,6 +8,7 @@ import { UserAvatar } from '../ui/UserAvatar';
 import { useLayout } from '../../App';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
+import SignupInvite from './SignupInvite';
 
 /**
  * Warm, human page titles shown in the topbar crumbs. Route hrefs are unchanged;
@@ -108,6 +109,8 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
         >
           <Search className="w-5 h-5" />
         </button>
+
+        <SignupInvite />
 
         <NotificationCenter />
 

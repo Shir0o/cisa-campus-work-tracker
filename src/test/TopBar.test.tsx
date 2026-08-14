@@ -186,5 +186,10 @@ describe('TopBar Component', () => {
     fireEvent.click(eyeBtn);
     expect(onOpenImpersonateModal).toHaveBeenCalledTimes(1);
   });
+
+  it('renders SignupInvite sign-up form button', () => {
+    renderTopBar('/');
+    expect(screen.getByRole('button', { name: 'Sign-up form' })).toBeInTheDocument();
+  });
 });
 
