@@ -110,6 +110,19 @@ describe('Sidebar Role Label & Interactions', () => {
     expect(screen.getByText('Student')).toBeInTheDocument();
   });
 
+  it('falls back to email username or "User" instead of "Signed in" when displayName is missing', () => {
+    mockUseAuth.mockReturnValue({
+      ...baseAuth,
+      user: { email: 'reviewer-appstore@yourdomain.com', displayName: null, photoURL: null },
+      role: 'admin',
+      isAdmin: true,
+    });
+    renderSidebar();
+    expect(screen.queryByText('Signed in')).not.toBeInTheDocument();
+    expect(screen.getByText('reviewer-appstore')).toBeInTheDocument();
+    expect(screen.getByText('Full-timer')).toBeInTheDocument();
+  });
+
   it('shows only permitted nav items for viewer role', () => {
     mockUseAuth.mockReturnValue({ ...baseAuth, role: 'viewer' });
     renderSidebar();
