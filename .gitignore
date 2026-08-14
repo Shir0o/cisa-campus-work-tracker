@@ -19,3 +19,9 @@ test-results/
 .aider*
 repomix-output.xml
 design-spec.xml
+
+# Google service account keys (contain private keys) & EAS credentials dump — never commit
+sac-*.json
+*service-account*.json
+*service_account*.json
+credentials.json
