@@ -22,6 +22,10 @@
     "build:qa:android:local": "eas build --local --platform android --profile qa",
     "build:prod:ios:local": "eas build --local --platform ios --profile production",
     "build:prod:android:local": "eas build --local --platform android --profile production",
+    "run:qa:android": "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker-qa.pages.dev expo run:android",
+    "run:qa:ios": "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker-qa.pages.dev expo run:ios",
+    "run:prod:android": "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=prod EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker.pages.dev expo run:android",
+    "run:prod:ios": "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=prod EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker.pages.dev expo run:ios",
     "postinstall": "patch-package"
   },
   "dependencies": {

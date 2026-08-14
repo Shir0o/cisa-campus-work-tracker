@@ -27,6 +27,10 @@ Build profiles live in [`eas.json`](./eas.json): `development`, `preview`,
 | `build:qa:android:local`      | `eas build --local --platform android --profile qa` |
 | `build:prod:ios:local`        | `eas build --local --platform ios --profile production` |
 | `build:prod:android:local`    | `eas build --local --platform android --profile production` |
+| `run:qa:ios`                  | `expo run:ios` with QA env vars (live logs)        |
+| `run:qa:android`              | `expo run:android` with QA env vars (live logs)    |
+| `run:prod:ios`                | `expo run:ios` with prod env vars (live logs)      |
+| `run:prod:android`            | `expo run:android` with prod env vars (live logs)  |
 
 ## Prerequisites
 
@@ -54,6 +58,22 @@ npx eas init                      # links the EAS project (already done: app.jso
 > **Note:** `eas.json`'s `submit` block now includes a `qa` profile (empty —
 > fine with a single App Store app), so `--auto-submit` / `eas submit
 > --profile qa` works out of the box.
+
+## Local runs (live logs)
+
+`npm run android` / `npm run ios` are plain dev runs (`expo run:android` /
+`expo run:ios`): they compile a debug build, install it on the simulator/
+emulator, and attach Metro for live logs/reload. They are **not** pinned to an
+environment — they pick up whatever `apps/mobile/.env` says (currently QA).
+For an explicitly-pinned run against a given environment, use the `run:*`
+scripts, which override the env vars on the command line:
+
+```bash
+npm run run:qa:android      # QA backend + qa-db, live logs
+npm run run:qa:ios
+npm run run:prod:android    # prod backend + prod db, live logs
+npm run run:prod:ios
+```
 
 ## QA environment
 
@@ -125,6 +145,8 @@ npm run submit:prod:android
 
 Local builds compile on your machine instead of EAS's cloud. `--auto-submit`
 is **not** supported for local builds; submit with `eas submit` afterwards.
+These produce artifacts (`.ipa`/`.apk`/`.aab`) — if you want to develop
+against an environment with live logs instead, use the `run:*` scripts above.
 
 - **iOS:** macOS with Xcode required; signing uses the same EAS credentials
   (downloaded onto your machine).
