@@ -8,11 +8,10 @@ import { sendPushNotification } from '../push';
 
 export function subscribeChatRooms(
   uid: string,
-  isAdmin: boolean,
   cb: (rooms: ChatRoom[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return core.subscribeChatRooms(db, uid, isAdmin, cb, onError);
+  return core.subscribeChatRooms(db, uid, cb, onError);
 }
 
 export function subscribeChatRoom(

@@ -16,14 +16,12 @@ import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
 
 export function useMessagesData() {
-  const { uid, role } = useAuth();
+  const { uid } = useAuth();
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const reads = useChatReads();
-
-  const isAdmin = role === 'admin';
 
   useEffect(() => {
     if (!uid) return;
@@ -33,7 +31,6 @@ export function useMessagesData() {
     };
     const unsubRooms = subscribeChatRooms(
       uid,
-      isAdmin,
       (list) => {
         setRooms(list);
         setLoading(false);
@@ -45,7 +42,7 @@ export function useMessagesData() {
       unsubRooms();
       unsubUsers();
     };
-  }, [uid, isAdmin]);
+  }, [uid]);
 
   const usersCache = useMemo(() => {
     const map: Record<string, { displayName: string; photoURL?: string }> = {};
