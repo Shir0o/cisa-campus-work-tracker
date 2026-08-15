@@ -11,7 +11,24 @@ jest.requireActual('react-native-gesture-handler/jestSetup');
 // import time, so both get their official jest mocks (which also initialize the
 // animation frame environment — no extra setUpTests call needed). Worklets'
 // mock is only shipped compiled, at lib/module/mock.
-jest.mock('react-native-worklets', () => jest.requireActual('react-native-worklets/lib/module/mock'));
+jest.mock('react-native-worklets', () => ({
+  createSerializable: (v: any) => v,
+  isSerializableRef: () => false,
+  makeShareable: (v: any) => v,
+  makeShareableCloneRecursive: (v: any) => v,
+  makeShareableCloneOnUIRecursive: (v: any) => v,
+  runOnJS: (fn: any) => fn,
+  runOnUI: (fn: any) => fn,
+  createWorkletRuntime: () => ({}),
+  runOnRuntime: () => ({}),
+  serializableMappingCache: new Map(),
+  RuntimeKind: {
+    ReactNative: 'ReactNative',
+    UI: 'UI',
+    Worklet: 'Worklet',
+  },
+  isWorkletFunction: () => false,
+}));
 jest.mock('react-native-reanimated', () => jest.requireActual('react-native-reanimated/mock'));
 
 // Safe-area insets are a native measurement; the library ships a jest mock.
