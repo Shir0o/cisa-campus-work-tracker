@@ -33,14 +33,21 @@ export default defineConfig({
       // AttachDataModal tab error/role-change paths, LogInteractionModal
       // (reset/error/trainee/batch paths), NotificationCenter (tones, web
       // push, error paths, navigation), server.ts (GitHub sync branches,
-      // auth acceptance, prompt composition, static serving), and PrayerList
-      // (avatar, search/suggestions, burden error paths).
-      // Measured totals: ~90.7% lines, ~78.0% branches, ~84.3% functions, ~88.6% statements.
+      // auth acceptance, prompt composition, static serving), PrayerList
+      // (avatar, search/suggestions, burden error paths), GlobalSearch
+      // (quick actions, result rows, keyboard nav, click-away, listener
+      // errors, mobile focus), AddEventModal (monthly recurrence, type
+      // fallback, Nth-weekday fallback, end-date bounds), CreateChatModal
+      // (Esc, fetch error, chip deselect, group fallback name, error
+      // paths, tab reset), MyDay (mobile shell, picker close, task-editor
+      // keyboard paths, modal close, task ordering), and SmartImportModal
+      // (commit failure paths, item toggles).
+      // Measured totals: ~91.3% lines, ~78.5% branches, ~85.4% functions, ~89.4% statements.
       thresholds: {
-        lines: 90.0,
-        branches: 77.0,
-        functions: 83.5,
-        statements: 87.5,
+        lines: 91.0,
+        branches: 78.0,
+        functions: 85.0,
+        statements: 89.0,
       },
     },
   },

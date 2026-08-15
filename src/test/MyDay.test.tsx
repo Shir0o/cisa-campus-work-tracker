@@ -1,7 +1,8 @@
 import "./useMediaQuery.mock";
 import "../lib/useMediaQuery";
+import { useMediaQuery } from '../lib/useMediaQuery';
 import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { onSnapshot, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import MyDay from '../views/MyDay';
 import { useAuth } from '../components/AuthProvider';
@@ -142,6 +143,10 @@ describe('MyDay', () => {
     (useAuth as any).mockReturnValue({
       user: { displayName: 'Test User', uid: 'u-test' },
     });
+  });
+
+  afterEach(() => {
+    vi.mocked(useMediaQuery).mockReturnValue(false);
   });
 
   it('renders the loading skeleton until data resolves', () => {
@@ -679,5 +684,160 @@ describe('MyDay', () => {
 
     expect(screen.queryByText('Personal prayer archived')).not.toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  // ── Mobile shell ──────────────────────────────────────────────────────
+  it('renders the mobile variant on small screens', async () => {
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getAllByText(/Mara Vale/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  // ── Your-contacts picker close paths ──────────────────────────────────
+  it('closes the contact picker via the X button or the backdrop', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Backdrop Friend', initials: 'BF', stage: 'Regular', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Backdrop Friend')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    await screen.findByText('Your personal contacts');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByText('Your personal contacts')).not.toBeInTheDocument();
+
+    // Reopen and close by clicking the backdrop (the fixed full-screen layer).
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    await screen.findByText('Your personal contacts');
+    const backdrop = screen.getByText('Your personal contacts').closest('.fixed.inset-0')!;
+    fireEvent.click(backdrop);
+    expect(screen.queryByText('Your personal contacts')).not.toBeInTheDocument();
+  });
+
+  // ── Keyboard paths in the task editors ────────────────────────────────
+  it('closes the assigned-task editor with its Done button', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-src', {
+            title: 'Sourced task',
+            status: 'pending',
+            assigneeId: 'u-test',
+            sourceDocId: 'BD-1',
+            sourceDocTitle: 'Board doc',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Sourced task')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Sourced task'));
+    await screen.findByText('open it on The Board');
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
+    expect(screen.queryByText('open it on The Board')).not.toBeInTheDocument();
+  });
+
+  it('saves a personal task with Enter and cancels with Escape', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-edit', { title: 'Editable task', status: 'pending', assigneeId: 'u-test', createdById: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Editable task')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Editable task'));
+    const input = await screen.findByDisplayValue('Editable task');
+
+    fireEvent.change(input, { target: { value: 'Renamed via Enter' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(updateDoc).toHaveBeenCalled();
+
+    // Reopen and cancel with Escape — no write, editor collapses. (The mocked
+    // update doesn't mutate data, so the row shows its original title again.)
+    fireEvent.click(screen.getByText('Editable task'));
+    const reopened = await screen.findByDisplayValue('Editable task');
+    fireEvent.keyDown(reopened, { key: 'Escape' });
+    expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
+  });
+
+  it('ignores an empty-text save in the personal task editor', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-edit', { title: 'Whitespace task', status: 'pending', assigneeId: 'u-test', createdById: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Whitespace task')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Whitespace task'));
+    const input = await screen.findByDisplayValue('Whitespace task');
+    fireEvent.change(input, { target: { value: '   ' } });
+    // Enter calls save() directly (bypassing the disabled button).
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('commits a new task with Enter and cancels the composer with Escape', async () => {
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Add a task')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Add a task'));
+    const input = await screen.findByPlaceholderText('What needs doing?');
+
+    fireEvent.change(input, { target: { value: 'Entered task' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(addDoc).toHaveBeenCalled();
+
+    // Reopen the composer and bail out with Escape.
+    fireEvent.click(screen.getByText('Add a task'));
+    const composer = await screen.findByPlaceholderText('What needs doing?');
+    fireEvent.keyDown(composer, { key: 'Escape' });
+    expect(screen.queryByPlaceholderText('What needs doing?')).not.toBeInTheDocument();
+  });
+
+  it('closes the contact details modal', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Closable Friend', initials: 'CF', stage: 'Regular', createdBy: 'u-test' })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Closable Friend')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Closable Friend'));
+    const heading = await screen.findByRole('heading', { name: 'Closable Friend', level: 2 });
+    expect(heading).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Close/i }));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Closable Friend', level: 2 })).not.toBeInTheDocument());
+  });
+
+  it('sorts completed tasks after pending ones', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('t-done', { title: 'Zeta done', status: 'completed', assigneeId: 'u-test', createdById: 'u-test' }),
+          taskDoc('t-pend', { title: 'Alpha pending', status: 'pending', assigneeId: 'u-test', createdById: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Zeta done')).toBeInTheDocument());
+    const pending = screen.getByText('Alpha pending').closest('.py-4')!;
+    const done = screen.getByText('Zeta done').closest('.py-4')!;
+    expect(pending.compareDocumentPosition(done)).toBe(4);
   });
 });
