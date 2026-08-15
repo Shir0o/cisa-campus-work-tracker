@@ -28,15 +28,19 @@ export default defineConfig({
         'src/lib/yjsRtdbProvider.ts',
         'src/constants.ts',
       ],
-      // Re-baselined & ratcheted thresholds after adding unit tests for the
-      // season settings lib, visits/threads libs, the mobile prayer list, the
-      // feedback capture paths, and the attach/chat detail modals.
-      // Measured totals: ~89.1% lines, ~76.5% branches, ~83.4% functions, ~87.0% statements.
+      // Re-baselined & ratcheted thresholds after extending coverage in the
+      // firebase lib (env-dependent init paths), TodoRow subtasks, the
+      // AttachDataModal tab error/role-change paths, LogInteractionModal
+      // (reset/error/trainee/batch paths), NotificationCenter (tones, web
+      // push, error paths, navigation), server.ts (GitHub sync branches,
+      // auth acceptance, prompt composition, static serving), and PrayerList
+      // (avatar, search/suggestions, burden error paths).
+      // Measured totals: ~90.7% lines, ~78.0% branches, ~84.3% functions, ~88.6% statements.
       thresholds: {
-        lines: 88.5,
-        branches: 76.0,
-        functions: 83.0,
-        statements: 86.5,
+        lines: 90.0,
+        branches: 77.0,
+        functions: 83.5,
+        statements: 87.5,
       },
     },
   },

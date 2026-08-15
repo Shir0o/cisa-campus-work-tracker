@@ -4,7 +4,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import NotificationCenter from '../components/layout/NotificationCenter';
 import * as firestore from 'firebase/firestore';
-import { auth } from '../lib/firebase';
+import { auth, handleFirestoreError } from '../lib/firebase';
 
 // Mock Auth
 const mockUseAuth = vi.fn().mockReturnValue({ role: 'admin' });
@@ -63,10 +63,18 @@ vi.mock('motion/react', () => ({
   AnimatePresence: ({ children }: any) => <>{children}</>,
 }));
 
+// Mock web push
+vi.mock('../lib/webPush', () => ({
+  showWebPushNotification: vi.fn(),
+}));
+
+import { showWebPushNotification } from '../lib/webPush';
+
 describe('NotificationCenter Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({ role: 'admin' });
+    (auth as any).currentUser = { uid: 'mock-user-id' };
   });
 
   const triggerOnSnapshotCallbacks = (notificationsData: any[]) => {
@@ -506,5 +514,251 @@ describe('NotificationCenter Component', () => {
     const footerBtn = screen.getByRole('button', { name: /Open Prayer/i });
     fireEvent.click(footerBtn);
     expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+  });
+
+  // ── Type/tonal icon coverage ───────────────────────────────────────
+
+  it('renders tonal icons for assignment, warning, error, and custom tones', () => {
+    const mockNotifs = [
+      { id: 'a1', userId: 'mock-user-id', title: 'Assignment', type: 'assignment', read: true, createdAt: { toDate: () => new Date() } },
+      { id: 'w1', userId: 'mock-user-id', title: 'Warning', type: 'warning', read: true, createdAt: { toDate: () => new Date() } },
+      { id: 'e1', userId: 'mock-user-id', title: 'Error', type: 'error', read: true, createdAt: { toDate: () => new Date() } },
+      { id: 'i1', userId: 'mock-user-id', title: 'Info', type: 'info', read: true, createdAt: { toDate: () => new Date() } },
+      { id: 'v1', userId: 'mock-user-id', title: 'Violet', type: 'info', tone: 'violet', read: true, createdAt: { toDate: () => new Date() } },
+    ];
+    triggerOnSnapshotCallbacks(mockNotifs);
+    const { container } = render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    expect(container.querySelector('.lucide-users')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-circle-alert')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-heart')).toBeInTheDocument();
+    expect(container.querySelector('.lucide-sparkles')).toBeInTheDocument();
+  });
+
+  // ── Web push on newly added notification ───────────────────────────
+
+  it('fires a web push notification for a newly added unread personal notification', async () => {
+    let personalCb: any;
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
+      if (!personalCb) personalCb = cb;
+      cb({ docs: [], docChanges: () => [] });
+      return vi.fn();
+    });
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    personalCb({
+      docs: [],
+      docChanges: () => [
+        {
+          type: 'added',
+          doc: {
+            id: 'new1',
+            data: () => ({
+              userId: 'mock-user-id',
+              title: 'Brand new',
+              message: 'fresh off the wire',
+              link: '/myday',
+              targetId: 't1',
+              readBy: [],
+            }),
+          },
+        },
+      ],
+    });
+
+    await waitFor(() => {
+      expect(showWebPushNotification).toHaveBeenCalledWith('Brand new', {
+        body: 'fresh off the wire',
+        data: { link: '/myday', targetId: 't1' },
+      });
+    });
+  });
+
+  // ── Snapshot error paths ───────────────────────────────────────────
+
+  it('reports personal snapshot errors via handleFirestoreError', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any, err: any) => {
+      err(new Error('denied'));
+      return vi.fn();
+    });
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'notifications');
+    });
+    errSpy.mockRestore();
+  });
+
+  it('reports global snapshot errors via handleFirestoreError', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let callCount = 0;
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any, err: any) => {
+      callCount++;
+      if (callCount === 2) err(new Error('denied'));
+      return vi.fn();
+    });
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledTimes(1);
+    });
+    errSpy.mockRestore();
+  });
+
+  // ── No signed-in user: all mutations become no-ops ─────────────────
+
+  it('skips markAsRead, markAllAsRead, and setAside when there is no current user', async () => {
+    (auth as any).currentUser = null;
+    mockUseAuth.mockReturnValue({ role: 'admin', effectiveUserId: 'uid-1' });
+
+    let calls = 0;
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
+      calls++;
+      if (calls === 1) {
+        cb({
+          docs: [
+            {
+              id: 'n1',
+              data: () => ({
+                userId: 'uid-1',
+                title: 'Solo',
+                body: 'b',
+                type: 'success',
+                read: false,
+                createdAt: { toDate: () => new Date() },
+              }),
+            },
+          ],
+        });
+      } else {
+        cb({ docs: [] });
+      }
+      return vi.fn();
+    });
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    await screen.findByText('Solo');
+    fireEvent.click(screen.getByRole('button', { name: /Mark all read/i }));
+    fireEvent.click(screen.getByLabelText('Set aside'));
+    fireEvent.click(screen.getByText('Solo'));
+
+    expect(firestore.updateDoc).not.toHaveBeenCalled();
+    expect(firestore.writeBatch).not.toHaveBeenCalled();
+    expect(firestore.deleteDoc).not.toHaveBeenCalled();
+  });
+
+  // ── Failure handling on markAsRead / setAside ──────────────────────
+
+  it('logs when marking a notification read fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('write fail'));
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'Doomed', body: 'b', type: 'success', read: false, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('Doomed'));
+
+    await waitFor(() => {
+      expect(errSpy).toHaveBeenCalledWith('Error marking as read:', expect.any(Error));
+    });
+    errSpy.mockRestore();
+  });
+
+  it('logs when setting aside a global notification fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('write fail'));
+    triggerOnSnapshotCallbacks([
+      { id: 'n-global', userId: 'ALL_ADMINS', title: 'Global', body: 'b', type: 'event', readBy: [], createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByLabelText('Set aside'));
+
+    await waitFor(() => {
+      expect(errSpy).toHaveBeenCalledWith('Error setting aside:', expect.any(Error));
+    });
+    errSpy.mockRestore();
+  });
+
+  // ── targetId navigation ────────────────────────────────────────────
+
+  it('navigates to /coordination for an assignment without a link', () => {
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'New buddy', body: 'b', type: 'assignment', targetId: 'c1', read: true, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('New buddy'));
+    expect(mockNavigate).toHaveBeenCalledWith('/coordination');
+  });
+
+  it('navigates to the message thread for a targetId without a link', () => {
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'New note', body: 'b', type: 'info', targetId: 'room_9', read: true, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('New note'));
+    expect(mockNavigate).toHaveBeenCalledWith('/messages/room_9');
+  });
+
+  // ── Enter key opens a notification ─────────────────────────────────
+
+  it('selects a notification when Enter is pressed', () => {
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'Key item', body: 'b', type: 'success', link: '/myday', read: true, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    const item = screen.getByText('Key item').closest('[role="button"]')!;
+    fireEvent.keyDown(item, { key: 'Enter' });
+    expect(mockNavigate).toHaveBeenCalledWith('/myday');
   });
 });

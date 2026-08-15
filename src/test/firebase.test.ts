@@ -1,4 +1,6 @@
 import { vi, describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
+import { signInWithEmailAndPassword, connectAuthEmulator } from 'firebase/auth';
+import { connectFirestoreEmulator } from 'firebase/firestore';
 
 // 1. Mock firebase configuration files
 vi.mock('../../firebase-applet-config.json', () => ({
@@ -36,6 +38,7 @@ vi.mock('firebase/app', () => ({
 vi.mock('firebase/auth', () => ({
   getAuth: vi.fn(() => mockAuth),
   signInWithEmailAndPassword: vi.fn(),
+  connectAuthEmulator: vi.fn(),
 }));
 
 const mockAddDoc = vi.fn();
@@ -44,6 +47,7 @@ const mockGetDocFromServer = vi.fn();
 
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
+  connectFirestoreEmulator: vi.fn(),
   doc: vi.fn((parent, ...paths) => {
     if (parent && typeof parent === 'object' && 'name' in parent) {
       return { path: parent.name + '/' + (paths[0] || 'auto-id') };
@@ -228,6 +232,42 @@ describe('Firebase Service Helpers', () => {
       })).resolves.toBeUndefined();
 
       expect(console.error).toHaveBeenCalledWith('Failed to send notification:', expect.any(Error));
+    });
+  });
+
+  describe('module initialization (env-dependent)', () => {
+    beforeEach(() => {
+      vi.resetModules();
+    });
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    });
+
+    it('applies env overrides and wires emulator, e2e sign-in, rtdb, and offline testConnection', async () => {
+      vi.stubEnv('VITE_FIREBASE_API_KEY', 'env-api-key');
+      vi.stubEnv('VITE_FIREBASE_PROJECT_ID', 'env-project-id');
+      vi.stubEnv('VITE_FIREBASE_FIRESTORE_DB_ID', 'env-db-id');
+      vi.stubEnv('VITE_FIREBASE_DATABASE_URL', 'https://env-rtdb.firebaseio.com');
+      vi.stubEnv('VITE_USE_FIREBASE_EMULATOR', 'true');
+      vi.stubEnv('VITE_FIREBASE_EMULATOR_HOST', '10.0.0.5');
+      vi.stubEnv('VITE_E2E_MODE', 'true');
+
+      mockGetDocFromServer.mockRejectedValue(new Error('the client is offline'));
+
+      const mod = await import('../lib/firebase');
+
+      expect(mod.rtdb).not.toBeNull();
+      expect(connectAuthEmulator).toHaveBeenCalledWith(mockAuth, 'http://10.0.0.5:9099', { disableWarnings: true });
+      expect(connectFirestoreEmulator).toHaveBeenCalledWith({}, '10.0.0.5', 8080);
+      expect(console.error).toHaveBeenCalledWith(
+        'Please check your Firebase configuration. Firestore might be offline or project settings misconfigured.'
+      );
+
+      expect((window as any).__e2eSignIn).toBeTypeOf('function');
+      await (window as any).__e2eSignIn('test@example.com', 'secret');
+      expect(signInWithEmailAndPassword).toHaveBeenCalledWith(mockAuth, 'test@example.com', 'secret');
     });
   });
 });

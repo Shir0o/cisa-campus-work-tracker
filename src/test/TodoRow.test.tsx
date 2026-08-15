@@ -9,6 +9,16 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { CREATE: 'create', UPDATE: 'update', DELETE: 'delete', LIST: 'list' },
 }));
 
+// toggleSubtask writes to Firestore — stub it so subtask interactions are unit-testable.
+vi.mock('../lib/todos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/todos')>();
+  return { ...actual, toggleSubtask: vi.fn().mockResolvedValue(undefined) };
+});
+
+import { toggleSubtask } from '../lib/todos';
+
+const mockedToggleSubtask = vi.mocked(toggleSubtask);
+
 const baseTodo: TodoItem = {
   id: 't1',
   title: 'Confirm the Friday setlist',
@@ -108,6 +118,53 @@ describe('TodoRow', () => {
     render(<TodoRow todo={todoWithContact} onToggle={vi.fn()} onContactClick={onContactClick} />);
     fireEvent.click(screen.getByText('Jane Doe'));
     expect(onContactClick).toHaveBeenCalledWith('c1');
+  });
+
+  it('renders the subtask checklist and its completion count', () => {
+    const todoWithSubtasks: TodoItem = {
+      ...baseTodo,
+      createdByName: null,
+      sourceDocId: null,
+      sourceDocTitle: null,
+      subtasks: [
+        { id: 's1', title: 'Book the van', done: false },
+        { id: 's2', title: 'Send the invite', done: true },
+      ],
+    };
+    render(<TodoRow todo={todoWithSubtasks} onToggle={vi.fn()} />);
+    expect(screen.getByText('1/2')).toBeInTheDocument();
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(2);
+    expect(checkboxes[0]).not.toBeChecked();
+    expect(checkboxes[1]).toBeChecked();
+    expect(screen.getByText('Book the van')).toBeInTheDocument();
+    expect(screen.getByText('Send the invite')).toBeInTheDocument();
+  });
+
+  it('toggles a subtask via toggleSubtask', () => {
+    const todoWithSubtasks: TodoItem = {
+      ...baseTodo,
+      createdByName: null,
+      sourceDocId: null,
+      sourceDocTitle: null,
+      subtasks: [{ id: 's1', title: 'Book the van', done: false }],
+    };
+    render(<TodoRow todo={todoWithSubtasks} onToggle={vi.fn()} />);
+    fireEvent.click(screen.getByRole('checkbox'));
+    expect(mockedToggleSubtask).toHaveBeenCalledWith('t1', todoWithSubtasks.subtasks, 's1', true);
+  });
+
+  it('swallows toggleSubtask failures', () => {
+    mockedToggleSubtask.mockRejectedValueOnce(new Error('boom'));
+    const todoWithSubtasks: TodoItem = {
+      ...baseTodo,
+      createdByName: null,
+      sourceDocId: null,
+      sourceDocTitle: null,
+      subtasks: [{ id: 's1', title: 'Book the van', done: false }],
+    };
+    render(<TodoRow todo={todoWithSubtasks} onToggle={vi.fn()} />);
+    expect(() => fireEvent.click(screen.getByRole('checkbox'))).not.toThrow();
   });
 });
 
