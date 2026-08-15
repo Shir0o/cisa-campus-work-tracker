@@ -40,14 +40,28 @@ export default defineConfig({
       // fallback, Nth-weekday fallback, end-date bounds), CreateChatModal
       // (Esc, fetch error, chip deselect, group fallback name, error
       // paths, tab reset), MyDay (mobile shell, picker close, task-editor
-      // keyboard paths, modal close, task ordering), and SmartImportModal
-      // (commit failure paths, item toggles).
-      // Measured totals: ~91.3% lines, ~78.5% branches, ~85.4% functions, ~89.4% statements.
+      // keyboard paths, modal close, task ordering), SmartImportModal
+      // (commit failure paths, item toggles), ContactDetailsModal (all
+      // snapshot/stages/update/delete/prayer/tag error paths, phone blur
+      // edges, single-name split, comma tags, spiritual background, journey
+      // & held-days, share-cancel, skeletons, mobile layout, audit hover),
+      // Messages (taken-back label matrix, @mention highlighting, pinned
+      // jump, take-back-for-everyone, conv-menu keep/away, send guards &
+      // failures, rail filters & search, unread pill, member-fetch errors,
+      // attachment/todo failures, mobile back + popstate), EditEventModal
+      // (type fallback, pills, date/location, Esc, guards, failures),
+      // SignUp (viewport switch, navigate-home, interest deselect,
+      // honeypot/onSubmitted, notification broadcast failure, submit
+      // failure, season override/reset/club-rush), MyDayMobile (prop
+      // fallbacks, due presets, editor keys, empty commits, personal
+      // checkbox, prayers-section picker), HistoryMobile (who-chip, sheet
+      // close/scrim/apply) and CoordinationNotesMobile (new-page editor).
+      // Measured totals: ~92.6% lines, ~79.7% branches, ~88.1% functions, ~90.8% statements.
       thresholds: {
-        lines: 91.0,
-        branches: 78.0,
-        functions: 85.0,
-        statements: 89.0,
+        lines: 92.0,
+        branches: 79.0,
+        functions: 87.5,
+        statements: 90.5,
       },
     },
   },
