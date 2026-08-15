@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CreateChatModal from '../components/modals/CreateChatModal';
 import * as firestore from 'firebase/firestore';
@@ -226,5 +226,127 @@ describe('CreateChatModal Component', () => {
 
     expect(screen.getByText('Alice Green')).toBeInTheDocument();
     expect(screen.queryByText('cisa-test-user')).not.toBeInTheDocument();
+  });
+
+  it('closes on Escape while open, and not while closed', () => {
+    setupOnSnapshot(mockUsers);
+    const { unmount } = render(
+      <CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />
+    );
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+    unmount();
+
+    render(<CreateChatModal isOpen={false} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs and stops loading when the user fetch fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((_q: any, _cb: any, errorCallback: any) => {
+      errorCallback(new Error('users boom'));
+      return vi.fn();
+    });
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error fetching users:', expect.any(Error));
+    expect(screen.queryByText(/Fetching people/i)).not.toBeInTheDocument();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('deselects a picked person from the chip and starts over', async () => {
+    setupOnSnapshot(mockUsers);
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByText('Alice Green'));
+    // The chip shows the picked person with an X to remove them (the same name
+    // also appears in the user list row, so scan for the chip container).
+    const chip = screen.getAllByText('Alice Green')
+      .map((el) => el.closest('.inline-flex'))
+      .find((el): el is HTMLElement => el instanceof HTMLElement);
+    expect(chip).toBeTruthy();
+    fireEvent.click(within(chip!).getByRole('button'));
+
+    expect(chatService.getOrCreateDirectChat).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
+  });
+
+  it('falls back to first names for the group name when none is given', async () => {
+    setupOnSnapshot(mockUsers);
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByText('Bob Brown'));
+    fireEvent.click(screen.getByRole('button', { name: /Start group \(2\)/i }));
+
+    await waitFor(() => {
+      expect(chatService.createGroupChat).toHaveBeenCalledWith(
+        'Alice, Bob',
+        ['u2', 'u3'],
+        { uid: 'u1', displayName: 'Current User' }
+      );
+    });
+  });
+
+  it('logs and keeps the modal open when starting a conversation fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    setupOnSnapshot(mockUsers);
+    (chatService.getOrCreateDirectChat as any).mockRejectedValueOnce(new Error('boom'));
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByRole('button', { name: /Start conversation/i }));
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to start conversation:', expect.any(Error));
+    });
+    expect(mockOnClose).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('logs and keeps the modal open when creating an announcement room fails', async () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'u1', displayName: 'Current User' },
+      role: 'admin',
+    });
+    setupOnSnapshot(mockUsers);
+    (chatService.createAnnouncementRoom as any).mockRejectedValueOnce(new Error('boom'));
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    fireEvent.change(screen.getByPlaceholderText(/Weekly notes/i), {
+      target: { value: 'Weekly notes' },
+    });
+    fireEvent.click(screen.getByText('Alice Green'));
+    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
+
+    await waitFor(() => {
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to create announcement room:', expect.any(Error));
+    });
+    expect(mockOnClose).not.toHaveBeenCalled();
+    consoleErrorSpy.mockRestore();
+  });
+
+  it('switching tabs clears the selection and search', async () => {
+    setupOnSnapshot(mockUsers);
+    asFullTimer();
+    render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
+
+    fireEvent.change(screen.getByPlaceholderText(/Find someone by name/i), {
+      target: { value: 'Alice' },
+    });
+    fireEvent.click(screen.getByText('Alice Green'));
+
+    // Move to the announcement tab — the picked person and search reset.
+    fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
+    expect((screen.getByPlaceholderText(/Find someone by name/i) as HTMLInputElement).value).toBe('');
+    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
+    expect(chatService.createAnnouncementRoom).not.toHaveBeenCalled();
+
+    // And back to Message — still empty.
+    fireEvent.click(screen.getByRole('button', { name: /^Message$/i }));
+    expect(screen.getByRole('button', { name: /Start conversation/i })).toBeDisabled();
   });
 });

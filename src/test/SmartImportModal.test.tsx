@@ -508,5 +508,114 @@ describe('SmartImportModal', () => {
 
     expect(screen.getByDisplayValue('Updated Discussion Title')).toBeInTheDocument();
   });
+
+  it('disables Parse until text is entered', async () => {
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    expect(screen.getByRole('button', { name: /Parse with Gemini AI/i })).toBeDisabled();
+  });
+
+  it('toggles individual items and disables confirm with none selected', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          contacts: [
+            { tempId: 'c1', name: 'Solo Contact', stage: 'lead', matchedContactId: null },
+            { tempId: 'c2', name: 'Other Contact', stage: 'lead', matchedContactId: null },
+          ],
+          interactions: [],
+          discussions: [],
+        },
+      }),
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Two contacts');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Solo Contact')[0]).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Contacts \(2\)/i }));
+
+    // Individual toggle: uncheck just "Solo Contact" (first button in its row).
+    const soloRow = screen.getAllByText('Solo Contact')[0].closest('.p-4')!;
+    await userEvent.click(soloRow.querySelectorAll('button')[0]);
+    expect(screen.getByRole('button', { name: /Confirm & Import \(1 Selected\)/i })).not.toBeDisabled();
+
+    // Uncheck the last one too — confirm is disabled and cannot be submitted.
+    const otherRow = screen.getAllByText('Other Contact')[0].closest('.p-4')!;
+    await userEvent.click(otherRow.querySelectorAll('button')[0]);
+    const confirmBtn = screen.getByRole('button', { name: /Confirm & Import \(0 Selected\)/i });
+    expect(confirmBtn).toBeDisabled();
+  });
+
+  it('shows the server error message when the commit request fails', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          contacts: [{ tempId: 'c1', name: 'Failing Commit', stage: 'lead' }],
+          interactions: [],
+          discussions: [],
+        },
+      }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Commit rejected by server' }),
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Failing commit');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Failing Commit')[0]).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Confirm & Import/i }));
+    await waitFor(() => {
+      expect(screen.getByText('Commit rejected by server')).toBeInTheDocument();
+    });
+    // Back on the preview step, not success.
+    expect(screen.getByRole('button', { name: /Confirm & Import/i })).toBeInTheDocument();
+  });
+
+  it('shows the API error when commit returns success:false', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        data: {
+          contacts: [{ tempId: 'c1', name: 'Unsuccessful Commit', stage: 'lead' }],
+          interactions: [],
+          discussions: [],
+        },
+      }),
+    });
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: false, error: 'dry-run mismatch' }),
+    });
+
+    render(<SmartImportModal isOpen={true} onClose={vi.fn()} />);
+    await userEvent.type(screen.getByPlaceholderText(/Paste roster lists/i), 'Unsuccessful');
+    await userEvent.click(screen.getByRole('button', { name: /Parse with Gemini AI/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Unsuccessful Commit')[0]).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByRole('button', { name: /Confirm & Import/i }));
+    await waitFor(() => {
+      expect(screen.getByText('dry-run mismatch')).toBeInTheDocument();
+    });
+    expect(screen.queryByText('Import Completed!')).not.toBeInTheDocument();
+  });
 });
 

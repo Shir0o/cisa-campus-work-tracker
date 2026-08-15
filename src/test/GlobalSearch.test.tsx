@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as firestore from 'firebase/firestore';
 import { TEST_USERS } from './fixtures/users';
 import GlobalSearch from '../components/layout/GlobalSearch';
 import MobileNav from '../components/layout/MobileNav';
@@ -59,11 +60,11 @@ vi.mock('firebase/firestore', () => ({
   query: (ref: any) => ref,
   orderBy: () => ({}),
   limit: () => ({}),
-  onSnapshot: (ref: any, cb: any) => {
+  onSnapshot: vi.fn((ref: any, cb: any) => {
     const docs = h.mockData[ref?.__c] || [];
     cb({ docs, size: docs.length });
     return () => {};
-  },
+  }),
 }));
 
 const docOf = (id: string, data: Record<string, any>, extra: Record<string, any> = {}) => ({
@@ -276,5 +277,139 @@ describe('GlobalSearch', () => {
     const cancelBtn = screen.getByRole('button', { name: 'Cancel' });
     fireEvent.click(cancelBtn);
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('quick action "Log a visit" opens the log-interaction modal', () => {
+    render(<GlobalSearch />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Log a visit/i })[0]);
+    expect(h.mockLayout.openLogInteraction).toHaveBeenCalled();
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('quick action "Sign-up form" navigates to /signup', () => {
+    render(<GlobalSearch />);
+    fireEvent.click(screen.getAllByRole('button', { name: /Sign-up form/i })[0]);
+    expect(h.mockNavigate).toHaveBeenCalledWith('/signup', undefined);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('quick action "The Journey" navigates to /board', () => {
+    render(<GlobalSearch />);
+    fireEvent.click(screen.getAllByRole('button', { name: /The Journey/i })[0]);
+    expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('clicking a recent person in the empty state opens the contact', () => {
+    render(<GlobalSearch />);
+    const row = screen.getAllByText('Alice Wong')[0].closest('button')!;
+    fireEvent.click(row);
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+  });
+
+  it('clicking a People result row opens the contact', () => {
+    render(<GlobalSearch />);
+    typeDesktop('alice');
+    const row = screen.getAllByText('Alice Wong')[0].closest('button')!;
+    fireEvent.click(row);
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+  });
+
+  it('clicking a Conversation result row opens the contact it belongs to', () => {
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    const row = screen.getAllByText('Conversations')[0]
+      .closest('div')!.parentElement!.querySelector('button')!;
+    fireEvent.click(row);
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+  });
+
+  it('clicking a Coordination Note result navigates to /coordination', () => {
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    const row = screen.getAllByText('Semester plan')[0].closest('button')!;
+    fireEvent.click(row);
+    expect(h.mockNavigate).toHaveBeenCalledWith('/coordination', undefined);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('toggling history on and clicking a History result navigates to /history', () => {
+    render(<GlobalSearch />);
+    typeDesktop('plan');
+    fireEvent.click(screen.getAllByRole('button', { name: /search history too/i })[0]);
+    const row = screen.getAllByText(/changed the plan/i)[0].closest('button')!;
+    fireEvent.click(row);
+    expect(h.mockNavigate).toHaveBeenCalledWith('/history', undefined);
+  });
+
+  it('keyboard ArrowUp clamps the cursor at -1 from the first result', () => {
+    render(<GlobalSearch />);
+    typeDesktop('alice');
+    const input = screen.getByPlaceholderText('Search people, notes…');
+    fireEvent.keyDown(input, { key: 'ArrowUp' });
+    // Cursor -1 means Enter does nothing — the contact stays unopened.
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(h.mockLayout.setSelectedContact).not.toHaveBeenCalled();
+    // And ArrowDown then Enter still opens the first result.
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+  });
+
+  it('keyboard nav runs the quick-action at the cursor from the empty state', () => {
+    render(<GlobalSearch />);
+    const input = screen.getByPlaceholderText('Search people, notes…');
+    // Empty-state order: recent people (c1, c2), then quick actions.
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(h.mockLayout.openNewContact).toHaveBeenCalled();
+  });
+
+  it('mouse-over (mouseEnter) a result row moves the keyboard cursor to it', () => {
+    render(<GlobalSearch />);
+    typeDesktop('alice');
+    const row = screen.getAllByText('Alice Wong')[0].closest('button')!;
+    fireEvent.mouseEnter(row);
+    fireEvent.keyDown(screen.getByPlaceholderText('Search people, notes…'), { key: 'Enter' });
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+  });
+
+  it('clicking outside the search closes it', () => {
+    render(<GlobalSearch />);
+    fireEvent.mouseDown(document.body);
+    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('focuses the mobile input when matchMedia reports a narrow viewport', async () => {
+    const matchMediaMock = vi.fn().mockReturnValue({ matches: false });
+    window.matchMedia = matchMediaMock;
+    render(<GlobalSearch />);
+    await new Promise((r) => setTimeout(r, 80));
+    expect(matchMediaMock).toHaveBeenCalledWith('(min-width: 1024px)');
+    expect(screen.getByPlaceholderText('Search people, conversations, notes…')).toHaveFocus();
+    delete (window as any).matchMedia;
+  });
+
+  it('logs listener errors without crashing', () => {
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(firestore.onSnapshot).mockImplementationOnce((_ref: any, _cb: any, errCb: any) => {
+      errCb(new Error('contacts boom'));
+      return () => {};
+    });
+    render(<GlobalSearch />);
+    expect(consoleErrorSpy).toHaveBeenCalledWith('GlobalSearch contacts listener:', expect.any(Error));
+    consoleErrorSpy.mockRestore();
   });
 });
