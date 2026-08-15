@@ -6,9 +6,13 @@ import { useAuth } from '../components/AuthProvider';
 
 // Mock all views to keep tests isolated and fast. The role-dispatched home (`/`)
 // renders <Landing/>; we mock it as a stand-in "home" view that also exercises
-// the layout context (used by the modal tests below).
+// the layout context (used by the modal tests below). It counts its mounts so
+// the identity-switch test can assert the routed view remounts (the
+// "See it as they do" stale-content fix).
+const landingState = vi.hoisted(() => ({ mounts: 0 }));
 vi.mock('../views/landings/Landing', () => ({
   default: () => {
+    landingState.mounts += 1;
     try {
       const { openNewContact, setSelectedContact } = useLayout();
       return (
@@ -84,6 +88,7 @@ const mockAuthValue = {
   isApproved: false,
   loading: false,
   role: 'viewer' as any,
+  effectiveIdentityKey: 'viewer' as string | null,
   signIn: mockSignIn,
   logOut: mockLogOut,
   signInWithEmail: mockSignInWithEmail,
@@ -116,10 +121,12 @@ vi.mock('../lib/firebase', () => ({
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    landingState.mounts = 0;
     mockAuthValue.user = null;
     mockAuthValue.isApproved = false;
     mockAuthValue.loading = false;
     mockAuthValue.role = 'viewer';
+    mockAuthValue.effectiveIdentityKey = 'viewer';
     window.location.hash = '';
     window.history.replaceState(null, '', '/');
   });
@@ -371,5 +378,67 @@ describe('App Component', () => {
       expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
       expect(screen.getByTestId('directory-view')).toBeInTheDocument();
     });
+  });
+
+  it('remounts the routed view when the identity changes (impersonation switch)', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    mockAuthValue.effectiveIdentityKey = 'admin';
+    window.history.replaceState(null, '', '/');
+
+    const { rerender } = render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+    expect(landingState.mounts).toBe(1);
+
+    // Step into a student's view: the same route must not keep the previous
+    // viewer's content mounted — the "See it as they do" stale-content flash.
+    act(() => {
+      mockAuthValue.effectiveIdentityKey = 'student';
+      rerender(<App />);
+    });
+    await waitFor(() => {
+      expect(landingState.mounts).toBe(2);
+    });
+    expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+
+    // And switching back remounts again.
+    act(() => {
+      mockAuthValue.effectiveIdentityKey = 'admin';
+      rerender(<App />);
+    });
+    await waitFor(() => {
+      expect(landingState.mounts).toBe(3);
+    });
+  });
+
+  it('closes the open person detail when the identity changes', async () => {
+    mockAuthValue.user = { uid: '123', email: 'admin@example.com' };
+    mockAuthValue.isApproved = true;
+    mockAuthValue.role = 'admin';
+    mockAuthValue.effectiveIdentityKey = 'admin';
+    window.history.replaceState(null, '', '/');
+
+    const { rerender } = render(<App />);
+    await waitFor(() => {
+      expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('dashboard-select-contact-btn'));
+    expect(screen.getByTestId('mock-contact-details-modal')).toBeInTheDocument();
+
+    // The open person reads the previous viewer's scope — an identity switch
+    // must drop it rather than leave it on screen.
+    act(() => {
+      mockAuthValue.effectiveIdentityKey = 'student';
+      rerender(<App />);
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('mock-contact-details-modal')).not.toBeInTheDocument();
+    });
+    expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
   });
 });

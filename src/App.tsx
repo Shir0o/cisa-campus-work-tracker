@@ -294,7 +294,7 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isMessagesPage = location.pathname === "/messages";
-  const { setImpersonateTarget, impersonateTarget } = useAuth();
+  const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
   const [newContactStage, setNewContactStage] = React.useState<
@@ -329,10 +329,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   // Navigating to another page leaves the open person detail behind (#257): the
   // detail replaces `children` in <main>, and DashboardLayout is reused across
   // routes, so an uncleared selection would keep the person on screen even after
-  // the sidebar/topbar navigates elsewhere.
+  // the sidebar/topbar navigates elsewhere. The same goes for an identity
+  // change ("See it as they do"): the detail reads the previous viewer's scope.
   React.useEffect(() => {
     setSelectedContact(null);
-  }, [location.pathname]);
+  }, [location.pathname, effectiveIdentityKey]);
 
   return (
     <LayoutContext.Provider
@@ -384,7 +385,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 contact={selectedContact}
               />
             ) : (
-              children
+              // Keyed by the effective identity: switching "See it as they do"
+              // (or back) remounts the routed view in the SAME commit, so the
+              // first frame after the switch is the new viewer's loading
+              // skeleton instead of the previous viewer's content — the flash
+              // every identity-keyed view would otherwise show until its
+              // effects re-subscribed and its stale state cleared.
+              <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
             )}
           </main>
         </div>

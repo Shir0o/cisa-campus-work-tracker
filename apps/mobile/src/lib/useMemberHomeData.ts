@@ -27,6 +27,8 @@ import {
   subscribeMyHospitalityOffer,
 } from './data/hospitality';
 import { useChatReads } from './data/chatReads';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useMemberHomeData(uid: string | null, displayName: string | null) {
   const [events, setEvents] = useState<Event[]>([]);
@@ -37,6 +39,18 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const reads = useChatReads();
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setEvents([]);
+    setGoingIds(new Set());
+    setRooms([]);
+    setFullTimers([]);
+    setOffer(null);
+    setLoading(true);
+    setError(null);
+  });
 
   const meName = displayName || 'Someone';
 
@@ -83,8 +97,10 @@ export function useMemberHomeData(uid: string | null, displayName: string | null
     [rooms, uid, reads],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
     fullTimers,
 

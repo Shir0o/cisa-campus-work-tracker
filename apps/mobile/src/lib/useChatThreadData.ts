@@ -21,6 +21,8 @@ import { sendMessage as sendMessageApi, subscribeChatRoom, subscribeRoomMessages
 import { subscribeContacts } from './data/contacts';
 import { subscribeUsers } from './data/users';
 import { ChatReads } from './data/chatReads';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useChatThreadData(roomId: string) {
   const { uid, user } = useAuth();
@@ -30,6 +32,18 @@ export function useChatThreadData(roomId: string) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // When the identity changes — impersonation's "See it as they do" most
+  // loudly — the previous viewer's content must not stay rendered until the
+  // new subscription's first snapshot lands, or it flashes and then vanishes.
+  // Reset synchronously (a render-phase adjustment) so the first frame after
+  // the change is already the loading skeleton.
+  useIdentityReset(`${uid}:${roomId}`, () => {
+    setRoom(null);
+    setMessages([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid || !roomId) return;
@@ -86,12 +100,14 @@ export function useChatThreadData(roomId: string) {
     [contacts, partnerEmail],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     room,
     usersCache,
     dayGroups,
     partnerContactId,
-    loading,
+    loading: shownLoading,
     error,
 
     send: async (text: string) => {

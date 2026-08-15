@@ -12,6 +12,8 @@ import {
 import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts, subscribeStages, subscribeTouches } from './data/contacts';
 import { subscribeUserPreferences } from './data/userPreferences';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function usePeopleData(uid: string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -21,6 +23,17 @@ export function usePeopleData(uid: string | null) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setContacts([]);
+    setStages([]);
+    setTouches([]);
+    setPrefContactIds(null);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;
@@ -60,13 +73,15 @@ export function usePeopleData(uid: string | null) {
     [contacts, touches, personalContactIds, search],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contacts,
     stages,
     mine,
     rest,
     totalCount: contacts.length,
-    loading,
+    loading: shownLoading,
     error,
     search,
     setSearch,

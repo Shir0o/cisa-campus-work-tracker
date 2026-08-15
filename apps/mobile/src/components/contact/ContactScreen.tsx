@@ -8,7 +8,7 @@
 // and are desktop work now — see MIGRATION.md. Contact details survive as
 // Story's "Details, notes, how to reach them" disclosure, read-only.
 import { useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -40,6 +40,8 @@ import { openCall, openEmail, openMessage } from '../../lib/messaging';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton } from '../queue/atoms';
 import { Room, V2Empty, V2Seg } from '../v2/Widget';
+import { ContactSkeleton } from '../skeleton/ContactSkeleton';
+import { SkeletonList } from '../skeleton/SkeletonList';
 import { Snackbar } from '../ui';
 import { LogSheet } from '../log/LogSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
@@ -115,7 +117,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
     return (
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <BackRow onBack={back} note="" />
-        <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+        <ContactSkeleton />
       </SafeAreaView>
     );
   }
@@ -192,7 +194,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         {tab === 'story' && (
           <View style={{ gap: 10 }}>
             {data.interactionsLoading ? (
-              <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
+              <SkeletonList rows={3} avatar={false} style={{ marginTop: 20 }} />
             ) : story.length === 0 ? (
               <V2Empty>{`Nothing logged with ${first} yet. Even a text counts.`}</V2Empty>
             ) : (
@@ -244,7 +246,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             {canWrite && <PrimaryButton title={`Pray for ${first}`} tone="deep" onPress={() => setSheet('pray')} />}
 
             {data.prayersLoading ? (
-              <ActivityIndicator color={c.room.ink2} style={{ marginTop: 20 }} />
+              <SkeletonList rows={3} style={{ marginTop: 20 }} />
             ) : data.prayers.length === 0 ? (
               <V2Empty>Nothing written down yet.</V2Empty>
             ) : null}

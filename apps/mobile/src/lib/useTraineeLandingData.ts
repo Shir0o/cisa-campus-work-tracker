@@ -34,6 +34,8 @@ import { subscribeAllThreads } from './data/threads';
 import { useInboxReads } from './data/inboxReads';
 import { useQueueState } from './queueState';
 import { useQueuePrefs } from './queuePrefs';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 // Same path-segment convention as useMyDayData's collection-group ingestion:
 // contacts/{contactId}/interactions/{id} → segment 1 is the contactId.
@@ -53,6 +55,21 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
   const inbox = useInboxReads();
   const queueState = useQueueState(uid);
   const queuePrefs = useQueuePrefs(uid);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setContacts([]);
+    setStages([]);
+    setPrayers([]);
+    setPersonalPrayers([]);
+    setThreads([]);
+    setTasks([]);
+    setInteractions([]);
+    setEvents([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;
@@ -188,8 +205,10 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
   const dates = useMemo(() => queueDates(events), [events]);
   const week = useMemo(() => (uid ? queueWeek(interactions, uid) : []), [interactions, uid]);
 
+  const shownLoading = useMinLoading(loading);
+
   return {
-    loading,
+    loading: shownLoading,
     error,
     contacts,
     stages,

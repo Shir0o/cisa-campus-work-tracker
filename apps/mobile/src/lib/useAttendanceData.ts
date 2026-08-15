@@ -16,12 +16,23 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeContacts } from './data/contacts';
 import { subscribeEvents } from './data/events';
 import { cycleAttendance as cycleAttendanceDoc } from './data/attendance';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useAttendanceData(uid: string | null, displayName: string | null, role: AppRole | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setContacts([]);
+    setEvents([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     const onLoadError = (e: unknown, path: string) => {
@@ -55,10 +66,12 @@ export function useAttendanceData(uid: string | null, displayName: string | null
   // fail. Gate the interaction client-side instead of reproducing that gap.
   const canTakeAttendance = hasMinRole(role, 'operator');
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contacts,
     events,
-    loading,
+    loading: shownLoading,
     error,
     sessions,
     missed,

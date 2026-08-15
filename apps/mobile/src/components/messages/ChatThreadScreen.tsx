@@ -11,7 +11,6 @@
 // can read `message.reactions`/`message.pinned` off the same docs.
 import React, { useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -29,6 +28,7 @@ import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
+import { ThreadSkeleton } from './ThreadSkeleton';
 
 export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {}) {
   const params = useLocalSearchParams<{ id?: string; roomId?: string }>();
@@ -115,7 +115,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
           {data.error ? (
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.tones.follow.text }}>{data.error}</Text>
           ) : data.loading ? (
-            <ActivityIndicator color={c.room.ink2} style={{ marginTop: 24 }} />
+            <ThreadSkeleton />
           ) : data.dayGroups.length === 0 ? (
             <Text
               style={{

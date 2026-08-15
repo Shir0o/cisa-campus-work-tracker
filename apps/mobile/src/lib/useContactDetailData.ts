@@ -31,6 +31,8 @@ import {
 } from './data/prayers';
 import { addThreadMessage, subscribeThreads, toggleReaction as toggleReactionApi } from './data/threads';
 import { subscribeUserPreferences } from './data/userPreferences';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useContactDetailData(contactId: string) {
   const { uid, user } = useAuth();
@@ -47,6 +49,21 @@ export function useContactDetailData(contactId: string) {
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [threadMessages, setThreadMessages] = useState<ThreadMessage[]>([]);
   const [prefContactIds, setPrefContactIds] = useState<string[] | null>(null);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setContact(null);
+    setStages([]);
+    setInteractions([]);
+    setPrayers([]);
+    setThreadMessages([]);
+    setPrefContactIds(null);
+    setLoading(true);
+    setInteractionsLoading(true);
+    setPrayersLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid || !contactId) return;
@@ -105,10 +122,12 @@ export function useContactDetailData(contactId: string) {
     [prefContactIds, contact, uid],
   );
 
+  const shownLoading = useMinLoading(loading);
+
   return {
     contact,
     stages,
-    loading,
+    loading: shownLoading,
     error,
     interactions,
     interactionsLoading,

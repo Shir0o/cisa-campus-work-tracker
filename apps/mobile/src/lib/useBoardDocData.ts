@@ -8,12 +8,22 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeBoardDoc } from './data/board';
 import { boardLeaderName } from './useBoardListData';
 import { useFullTimerNames } from './useFullTimerNames';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useBoardDocData(docId: string) {
   const { uid, role } = useAuth();
   const [doc, setDoc] = useState<BoardDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Drop the previous identity's content the moment it changes (impersonation)
+  // instead of flashing it until the new snapshot lands.
+  useIdentityReset(uid, () => {
+    setDoc(null);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid || !docId) return;
@@ -39,5 +49,7 @@ export function useBoardDocData(docId: string) {
   const names = useFullTimerNames();
   const keeperName = doc ? boardLeaderName(doc, names) : null;
 
-  return { doc, loading, error, allowed, keeperName };
+  const shownLoading = useMinLoading(loading);
+
+  return { doc, loading: shownLoading, error, allowed, keeperName };
 }

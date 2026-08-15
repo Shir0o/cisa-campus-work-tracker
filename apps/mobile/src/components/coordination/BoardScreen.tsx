@@ -6,7 +6,7 @@
 // all — writing a page (and pinning, and Trash) is desktop work, which is what
 // the foot line says out loud. That retires the admin WebView fork this screen
 // used to route into.
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -24,6 +24,7 @@ import { boardLeaderName, useBoardListData } from '../../lib/useBoardListData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker } from '../queue/atoms';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
+import { SkeletonList } from '../skeleton/SkeletonList';
 
 export function BoardScreen() {
   const { role } = useAuth();
@@ -123,7 +124,7 @@ function Board() {
         </Text>
 
         {data.loading ? (
-          <ActivityIndicator color={c.room.ink2} style={{ marginTop: 28 }} />
+          <SkeletonList rows={6} style={{ marginTop: 20 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : data.sections.length === 0 ? (

@@ -14,6 +14,8 @@ import { handleFirestoreError, OperationType } from './firebase';
 import { subscribeChatRooms } from './data/chat';
 import { subscribeUsers } from './data/users';
 import { useChatReads } from './data/chatReads';
+import { useIdentityReset } from './useIdentityReset';
+import { useMinLoading } from './useMinLoading';
 
 export function useMessagesData() {
   const { uid } = useAuth();
@@ -22,6 +24,14 @@ export function useMessagesData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const reads = useChatReads();
+
+  // Same impersonation guard as useChatThreadData: drop the previous identity's
+  // room list synchronously instead of flashing it until the new snapshot.
+  useIdentityReset(uid, () => {
+    setRooms([]);
+    setLoading(true);
+    setError(null);
+  });
 
   useEffect(() => {
     if (!uid) return;
@@ -63,5 +73,7 @@ export function useMessagesData() {
   // (`filterRooms` strips it) must not keep lighting the tab-bar badge.
   const unreadCount = useMemo(() => visibleRooms.filter(isUnread).length, [visibleRooms, uid, reads]);
 
-  return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading, error };
+  const shownLoading = useMinLoading(loading);
+
+  return { rooms: visibleRooms, usersCache, unreadCount, isUnread, loading: shownLoading, error };
 }

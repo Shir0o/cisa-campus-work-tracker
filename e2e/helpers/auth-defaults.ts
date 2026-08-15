@@ -1,4 +1,4 @@
-export type Role = 'fulltimer' | 'trainee' | 'student' | 'community';
+export type Role = 'fulltimer' | 'trainee' | 'student' | 'community' | 'reviewer';
 
 export interface CredentialInfo {
   email: string;
@@ -13,6 +13,12 @@ export const DEFAULT_CREDENTIALS: Record<Role, CredentialInfo> = {
     password: 'password123',
     role: 'admin',
     label: 'Full-timer Test User',
+  },
+  reviewer: {
+    email: 'reviewer-appstore@yourdomain.com',
+    password: 'TestReviewer2026!',
+    role: 'admin',
+    label: 'App Store Reviewer',
   },
   trainee: {
     email: 'trainee.e2e@example.com',
