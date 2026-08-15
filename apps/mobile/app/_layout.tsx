@@ -60,9 +60,17 @@ function RootNavigator() {
 
   useEffect(() => {
     if (!loading && (fontsLoaded || fontError)) {
-      SplashScreen.hideAsync();
+      SplashScreen.hideAsync().catch(() => {});
     }
   }, [loading, fontsLoaded, fontError]);
+
+  useEffect(() => {
+    // Safety fallback: ensure splash screen always hides even if network/auth stalls
+    const timeout = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 5000);
+    return () => clearTimeout(timeout);
+  }, []);
 
   if (loading || (!fontsLoaded && !fontError)) {
     return (

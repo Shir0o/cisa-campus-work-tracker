@@ -23,8 +23,10 @@ Build profiles live in [`eas.json`](./eas.json): `development`, `preview`,
 | `build:prod:ios`              | `eas build --platform ios --profile production --auto-submit` |
 | `build:prod:android`          | `eas build --platform android --profile production` |
 | `submit:prod:android`         | `eas submit --platform android --profile production` |
+| `build:preview:ios:local`     | `eas build --local --platform ios --profile preview` |
+| `build:preview:android:local` | `eas build --local --platform android --profile preview` (outputs standalone `.apk`) |
 | `build:qa:ios:local`          | `eas build --local --platform ios --profile qa`    |
-| `build:qa:android:local`      | `eas build --local --platform android --profile qa` |
+| `build:qa:android:local`      | `eas build --local --platform android --profile qa` (outputs `.aab`) |
 | `build:prod:ios:local`        | `eas build --local --platform ios --profile production` |
 | `build:prod:android:local`    | `eas build --local --platform android --profile production` |
 | `run:qa:ios`                  | `expo run:ios` with QA env vars (live logs)        |
@@ -151,6 +153,15 @@ against an environment with live logs instead, use the `run:*` scripts above.
 - **iOS:** macOS with Xcode required; signing uses the same EAS credentials
   (downloaded onto your machine).
 - **Android:** JDK 17 + Android SDK required.
+
+### Preview / Standalone APK (for instant device/emulator testing)
+
+The `preview` profile builds an installable `.apk` directly (no Play Console or bundletool needed):
+
+```bash
+npm run build:preview:android:local
+# npx eas build --local --platform android --profile preview
+```
 
 ### QA, local
 
