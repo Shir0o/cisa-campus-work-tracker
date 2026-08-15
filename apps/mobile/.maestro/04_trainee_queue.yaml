@@ -1,0 +1,21 @@
+appId: com.cisa.campus
+---
+- launchApp:
+    clearState: true
+- tapOn: "Email"
+- inputText: "cisa-trainee@hub.com"
+- tapOn: "Password"
+- inputText: "cisatrainee2!"
+- tapOn: "Sign in"
+
+# Trainee Focus Queue
+- assertVisible: "Mark it done"
+- assertVisible: "Push to tomorrow"
+
+# Drawer Navigation
+- tapOn:
+    point: "50,2250"
+- assertVisible: "The queue is the app"
+- assertVisible: "People"
+- assertVisible: "The Journey"
+- assertVisible: "Messages"

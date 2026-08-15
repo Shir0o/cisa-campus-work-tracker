@@ -1,0 +1,31 @@
+appId: com.cisa.campus
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Sign in"
+- tapOn: "Email"
+- inputText: "reviewer-appstore@yourdomain.com"
+- tapOn: "Password"
+- inputText: "TestReviewer2026!"
+- tapOn: "Sign in"
+
+# Full-timer Home / My Day
+- assertVisible: "Log a moment"
+- assertVisible: "Hand something over"
+- assertVisible: "CARRYING"
+
+# People Tab
+- tapOn: "People"
+- assertVisible: "Find a person..."
+
+# Messages Tab
+- tapOn: "Messages"
+
+# More Tab
+- tapOn: "More"
+- assertVisible: "The Journey"
+- assertVisible: "The Board"
+- assertVisible: "Outreach"
+- assertVisible: "Sign-up form"
+- assertVisible: "Settings"
+- assertVisible: "See it as they do"
