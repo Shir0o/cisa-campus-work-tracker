@@ -29,7 +29,7 @@ const PUBLIC_ROUTES = ['/signup', '/login'];
 
 // Keep the native splash on-screen through auth/font loading instead of an
 // instant auto-hide followed by the spinner below flashing separately.
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
   const { mode, colors } = useTheme();

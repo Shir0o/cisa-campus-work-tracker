@@ -24,6 +24,7 @@ import { auth, db, signIn } from './firebase';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
+  iosClientId: '914549253362-hhbk7nk5o8g4qken9kbap3bl8jqkcdo5.apps.googleusercontent.com',
 });
 
 export type { AppRole, ImpersonateTarget };
