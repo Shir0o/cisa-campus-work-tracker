@@ -386,5 +386,173 @@ describe('MyDayMobile', () => {
       />
     );
   });
+
+  it('derives week/prayers from props when curated lists are absent', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    const contact = { id: 'c1', name: 'Sam Green', stage: 'new' } as any;
+    const prayers = [
+      { id: 'p1', contactId: 'c1', burden: 'Team prayer burden', status: 'pending' } as any,
+      { id: 'p2', title: 'Personal prayer burden', status: 'pending' } as any,
+    ];
+
+    render(
+      <MyDayMobile
+        contacts={[contact]}
+        events={[{ id: 'e1', name: 'Fall Kickoff', date: new Date().toISOString() } as any]}
+        prayers={prayers}
+        stages={[]}
+      />
+    );
+
+    expect(screen.getByText('Fall Kickoff')).toBeInTheDocument();
+    expect(screen.getByText('Team prayer burden')).toBeInTheDocument();
+    expect(screen.getByText('Personal prayer burden')).toBeInTheDocument();
+  });
+
+  it('picks due presets in the composer and in the edit editor', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onAddPersonalTask = vi.fn();
+    const onUpdatePersonalTask = vi.fn();
+    const personalTasks = [{ id: 't1', title: 'Todo item', status: 'pending' as const }];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalTasks={personalTasks}
+        onAddPersonalTask={onAddPersonalTask}
+        onUpdatePersonalTask={onUpdatePersonalTask}
+      />
+    );
+
+    // Composer preset pill
+    fireEvent.click(screen.getByText('Add a task'));
+    fireEvent.change(screen.getByPlaceholderText('What needs doing?'), {
+      target: { value: 'With preset' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /This week/i }));
+    fireEvent.click(screen.getByText('Add'));
+    expect(onAddPersonalTask).toHaveBeenCalledWith('With preset', expect.any(String));
+
+    // Edit-mode preset pill
+    fireEvent.click(screen.getByText('Todo item'));
+    fireEvent.click(screen.getByRole('button', { name: /Tomorrow/i }));
+    fireEvent.click(screen.getByText('Save'));
+    expect(onUpdatePersonalTask).toHaveBeenCalledWith(
+      't1',
+      expect.objectContaining({ title: 'Todo item', dueDate: expect.any(String) }),
+    );
+  });
+
+  it('supports Enter save and Escape cancel in task edit mode', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onUpdatePersonalTask = vi.fn();
+    const personalTasks = [{ id: 't1', title: 'Editable task', status: 'pending' as const }];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalTasks={personalTasks}
+        onUpdatePersonalTask={onUpdatePersonalTask}
+      />
+    );
+
+    // Enter commits the edit
+    fireEvent.click(screen.getByText('Editable task'));
+    const editInput = screen.getByDisplayValue('Editable task');
+    fireEvent.change(editInput, { target: { value: 'Edited via Enter' } });
+    fireEvent.keyDown(editInput, { key: 'Enter' });
+    expect(onUpdatePersonalTask).toHaveBeenCalledWith('t1', expect.objectContaining({ title: 'Edited via Enter' }));
+
+    // Escape cancels the edit without saving
+    fireEvent.click(screen.getByText('Editable task'));
+    const editInput2 = screen.getByDisplayValue('Editable task');
+    fireEvent.change(editInput2, { target: { value: 'Should not save' } });
+    fireEvent.keyDown(editInput2, { key: 'Escape' });
+    expect(screen.getByText('Editable task')).toBeInTheDocument();
+    expect(onUpdatePersonalTask).toHaveBeenCalledTimes(1);
+
+    // Cancel button exits edit mode too
+    fireEvent.click(screen.getByText('Editable task'));
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.getByText('Editable task')).toBeInTheDocument();
+  });
+
+  it('ignores empty task commits in composer and editor', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onAddPersonalTask = vi.fn();
+    const onUpdatePersonalTask = vi.fn();
+    const personalTasks = [{ id: 't1', title: 'Keep me', status: 'pending' as const }];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalTasks={personalTasks}
+        onAddPersonalTask={onAddPersonalTask}
+        onUpdatePersonalTask={onUpdatePersonalTask}
+      />
+    );
+
+    // Empty composer commit
+    fireEvent.click(screen.getByText('Add a task'));
+    fireEvent.click(screen.getByText('Add'));
+    expect(onAddPersonalTask).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText('Cancel'));
+    expect(screen.queryByPlaceholderText('What needs doing?')).not.toBeInTheDocument();
+
+    // Empty editor commit
+    fireEvent.click(screen.getByText('Keep me'));
+    const editInput = screen.getByDisplayValue('Keep me');
+    fireEvent.change(editInput, { target: { value: '   ' } });
+    fireEvent.click(screen.getByText('Save'));
+    expect(onUpdatePersonalTask).not.toHaveBeenCalled();
+  });
+
+  it('toggles a personal task via its checkbox', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onToggleTask = vi.fn();
+    const personalTasks = [{ id: 't1', title: 'Personal todo', status: 'pending' as const }];
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalTasks={personalTasks}
+        onToggleTask={onToggleTask}
+      />
+    );
+
+    const check = screen.getByText('Personal todo').parentElement!.parentElement!.querySelector('.bd-check')!;
+    fireEvent.click(check);
+    expect(onToggleTask).toHaveBeenCalledWith(personalTasks[0]);
+  });
+
+  it('opens the contacts picker from the prayers section', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    render(
+      <MyDayMobile
+        contacts={[{ id: 'c1', name: 'David Lee', stage: 'new' } as any]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+      />
+    );
+
+    const pickerButtons = screen.getAllByText('Your contacts');
+    fireEvent.click(pickerButtons[pickerButtons.length - 1]);
+    expect(screen.getByText('Your personal contacts')).toBeInTheDocument();
+  });
 });
 

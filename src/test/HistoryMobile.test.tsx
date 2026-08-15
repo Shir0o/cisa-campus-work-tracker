@@ -125,4 +125,25 @@ describe('HistoryMobile', () => {
     fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Tom Lee' } });
     expect(setWho).toHaveBeenCalledWith('Tom Lee');
   });
+
+  it('clears the who-chip and closes the sheet from the close button, scrim, and Apply filters', () => {
+    const setWho = vi.fn();
+    render(<HistoryMobile {...baseProps} who="Sarah Chen" setWho={setWho} />);
+
+    fireEvent.click(screen.getAllByText('Sarah')[0]);
+    expect(setWho).toHaveBeenCalledWith('all');
+
+    fireEvent.click(screen.getByText('Filter history'));
+    fireEvent.click(screen.getByLabelText('Close'));
+    expect(screen.queryByText('Team member')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Filter history'));
+    const scrim = document.querySelector('.scrim')!;
+    fireEvent.click(scrim);
+    expect(screen.queryByText('Team member')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Filter history'));
+    fireEvent.click(screen.getByText('Apply filters'));
+    expect(screen.queryByText('Team member')).not.toBeInTheDocument();
+  });
 });

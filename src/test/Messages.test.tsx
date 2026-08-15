@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Messages from '../views/Messages';
 import * as firestore from 'firebase/firestore';
@@ -52,6 +52,8 @@ vi.mock('firebase/firestore', () => {
       exists: () => true,
       data: () => ({ displayName: 'Alice', photoURL: '' }),
     }),
+    updateDoc: vi.fn().mockResolvedValue(true),
+    serverTimestamp: vi.fn(() => 'mock-server-time'),
   };
 });
 
@@ -1275,6 +1277,327 @@ describe('Messages View Component', () => {
       await waitFor(() => {
         expect(chatService.deleteChatRoom).toHaveBeenCalledWith('room-delete-test');
       });
+    });
+  });
+
+  // ── Removed messages, mentions, pinned jumps, send guards, rail filters ──
+  describe('removed messages, mention highlighting and pinned jumps', () => {
+    const renderWith = (msgs: any[], rooms: any[] = mockRooms) => {
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? msgs : rooms;
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({
+                id: item.id,
+                data: () => {
+                  const { id, ...rest } = item;
+                  return rest;
+                },
+              });
+            });
+          },
+        });
+        return vi.fn();
+      });
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText(rooms[0].name).closest('.msgs-item')!);
+      return container;
+    };
+
+    it('renders every taken-back label variant', async () => {
+      const deletedMsgs = [
+        { id: 'd1', roomId: 'room1', senderId: 'u1', senderName: 'Current User', text: 'x', type: 'text', deleted: { by: 'u1' } },
+        { id: 'd2', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: 'x', type: 'text', deleted: { by: 'u1' } },
+        { id: 'd3', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: 'x', type: 'text', deleted: { by: 'u2' } },
+        { id: 'd4', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: 'x', type: 'text', deleted: { by: 'u3' } },
+      ];
+      renderWith(deletedMsgs);
+
+      expect(await screen.findByText('You took this message back.')).toBeInTheDocument();
+      expect(screen.getByText('You removed this message.')).toBeInTheDocument();
+      expect(screen.getByText('Alice took this message back.')).toBeInTheDocument();
+      expect(screen.getByText('Removed by u3.')).toBeInTheDocument();
+    });
+
+    it('highlights @mentions of room members in message text', async () => {
+      const mentionMsgs = [
+        { id: 'm2', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: '@Alice please call me', type: 'text' },
+      ];
+      const container = renderWith(mentionMsgs);
+
+      await waitFor(() => {
+        const hit = container.querySelector('.msgb-bubble .text-primary');
+        expect(hit).toBeTruthy();
+        expect(hit!.textContent).toBe('@Alice');
+      });
+    });
+
+    it('jumps to a pinned message from the pinned strip', async () => {
+      const pinnedMsgs = [
+        { id: 'm1', roomId: 'room1', senderId: 'u2', senderName: 'Alice', text: 'Pinned note', type: 'text', pinned: true },
+      ];
+      const container = renderWith(pinnedMsgs);
+
+      fireEvent.click(container.querySelector('button[title="Pinned messages"]')!);
+      await waitFor(() => expect(container.querySelector('.msgs-pinned-strip')).toBeTruthy());
+
+      fireEvent.click(container.querySelector('.msgs-pinned-row')!);
+      await waitFor(() => expect(container.querySelector('.msgs-pinned-strip')).toBeNull());
+    });
+
+    it('takes the last message back for everyone and freshens the rail preview', async () => {
+      const removeMsgs = [
+        { id: 'm1', roomId: 'room1', senderId: 'u1', senderName: 'Current User', text: 'oops', type: 'text' },
+      ];
+      const container = renderWith(removeMsgs);
+
+      await waitFor(() =>
+        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('oops')).not.toBeNull(),
+      );
+
+      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
+      fireEvent.click(screen.getByText('Take back for everyone'));
+      fireEvent.click(screen.getByText('Yes, remove it'));
+
+      await waitFor(() => {
+        expect(chatService.removeMessageForEveryone).toHaveBeenCalledWith('room1', 'm1', 'u1');
+      });
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'chatRooms/room1' }),
+        expect.objectContaining({ lastMessage: expect.objectContaining({ text: 'Message removed' }) }),
+      );
+      expect(screen.queryByText('Take back for everyone')).not.toBeInTheDocument();
+    });
+
+    it('keeps the conversation when deletion is declined and closes the menu via the away click', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      const moreBtn = screen.getByTitle('More options');
+      fireEvent.click(moreBtn);
+
+      fireEvent.click(screen.getByText('Delete for everyone'));
+      expect(screen.getByText(/Delete this conversation for everyone\?/i)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Keep it'));
+      expect(screen.queryByText(/Delete this conversation for everyone\?/i)).not.toBeInTheDocument();
+      expect(chatService.deleteChatRoom).not.toHaveBeenCalled();
+
+      fireEvent.click(container.querySelector('.msgb-menu-away')!);
+      expect(screen.queryByText('Hide from my list')).not.toBeInTheDocument();
+    });
+
+    it('guards empty sends via Cmd+Enter and reports send failures', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const container = renderWith([...mockMessages]);
+
+      await waitFor(() =>
+        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
+      );
+
+      // Cmd+Enter with an empty composer hits the send guard.
+      const textarea = screen.getByPlaceholderText(/Write a message/i);
+      fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true });
+      expect(chatService.sendMessage).not.toHaveBeenCalled();
+
+      // A rejected send is reported.
+      (chatService.sendMessage as any).mockRejectedValueOnce(new Error('network down'));
+      fireEvent.change(textarea, { target: { value: 'will fail' } });
+      fireEvent.click(container.querySelector('.msgs-send')!);
+      await waitFor(() =>
+        expect(consoleSpy).toHaveBeenCalledWith('Failed to send message:', expect.any(Error)),
+      );
+      consoleSpy.mockRestore();
+    });
+
+    it('filters the rail by kind and search', async () => {
+      localStorage.clear();
+      const rooms = [
+        {
+          id: 'room1',
+          type: 'group' as const,
+          name: 'Trainees Chat',
+          memberIds: ['u1', 'u2'],
+          createdById: 'u2',
+          createdByName: 'Alice',
+          createdAt: { seconds: 100000 },
+          lastMessage: { text: 'Hello', senderId: 'u2', senderName: 'Alice', timestamp: { seconds: 100005 } },
+        },
+        {
+          id: 'room-ann',
+          type: 'announcement' as const,
+          name: 'Weekly notes',
+          memberIds: ['u1', 'u2'],
+          createdById: 'u2',
+          createdByName: 'Mei',
+          createdAt: { seconds: 100000 },
+          lastMessage: { text: 'Notes', senderId: 'u2', senderName: 'Mei', timestamp: { seconds: 100006 } },
+        },
+      ];
+
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        const dataList = isMessages ? mockMessages : rooms;
+        successCallback({
+          forEach: (fn: any) => {
+            dataList.forEach((item) => {
+              fn({ id: item.id, data: () => { const { id, ...rest } = item; return rest; } });
+            });
+          },
+        });
+        return vi.fn();
+      });
+
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      await waitFor(() => expect(screen.getByText('Weekly notes')).toBeInTheDocument());
+
+      // Groups pill.
+      fireEvent.click(screen.getByRole('button', { name: 'Groups' }));
+      expect(screen.getByText('Trainees Chat')).toBeInTheDocument();
+      expect(screen.queryByText('Weekly notes')).not.toBeInTheDocument();
+
+      // Announcements pill.
+      fireEvent.click(screen.getByRole('button', { name: 'Announcements' }));
+      expect(screen.getByText('Weekly notes')).toBeInTheDocument();
+      expect(screen.queryByText('Trainees Chat')).not.toBeInTheDocument();
+
+      // Back to All, then search narrows the rail.
+      fireEvent.click(screen.getByRole('button', { name: 'All' }));
+      fireEvent.change(screen.getByPlaceholderText('Search messages…'), { target: { value: 'weekly' } });
+      expect(screen.getByText('Weekly notes')).toBeInTheDocument();
+      expect(screen.queryByText('Trainees Chat')).not.toBeInTheDocument();
+      fireEvent.change(screen.getByPlaceholderText('Search messages…'), { target: { value: '' } });
+
+      // Unread pill respects localStorage read markers.
+      localStorage.setItem('chat_read_u1_room1', '99999999999999');
+      fireEvent.click(screen.getByRole('button', { name: 'Unread' }));
+      expect(screen.getByText('Weekly notes')).toBeInTheDocument();
+      expect(screen.queryByText('Trainees Chat')).not.toBeInTheDocument();
+    });
+
+    it('reports member-details fetch failures', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      (firestore.getDoc as any).mockRejectedValueOnce(new Error('no user doc'));
+
+      const container = renderWith([...mockMessages]);
+      await waitFor(() =>
+        expect(within(container.querySelector('.msgs-stream') as HTMLElement).queryByText('Hello trainees')).not.toBeNull(),
+      );
+
+      await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error)));
+      consoleSpy.mockRestore();
+    });
+
+    it('clears the active room when the user is no longer a member', async () => {
+      let roomsCallback: any;
+      (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
+        const isMessages = q && q.path && q.path.includes('messages');
+        if (isMessages) {
+          successCallback({ forEach: (fn: any) => mockMessages.forEach((m) => fn({ id: m.id, data: () => { const { id, ...rest } = m; return rest; } })) });
+        } else {
+          roomsCallback = successCallback;
+          successCallback({ forEach: (fn: any) => mockRooms.forEach((r) => fn({ id: r.id, data: () => { const { id, ...rest } = r; return rest; } })) });
+        }
+        return vi.fn();
+      });
+
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
+
+      // The room list updates and no longer contains the active room.
+      act(() => roomsCallback({ forEach: (fn: any) => {} }));
+      await waitFor(() => expect(screen.getByText('Pick a conversation')).toBeInTheDocument());
+    });
+
+    it('reports attachment and todo failures and renders unknown attachment icons', async () => {
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const attachMsgs = [
+        {
+          id: 'm-att-fail',
+          roomId: 'room1',
+          senderId: 'u2',
+          senderName: 'Alice',
+          text: 'Look at this',
+          type: 'text',
+          attachments: [
+            { id: 'c1', type: 'contact', name: 'Missing Contact' },
+            { id: 't1', type: 'todo', name: 'Todo item', status: 'pending' },
+            { id: 'x1', type: 'weird', name: 'Odd link' },
+          ],
+        },
+      ];
+      const container = renderWith(attachMsgs);
+      await waitFor(() => expect(container.querySelector('.msgs-stream')).toBeTruthy());
+
+      // Unknown attachment type renders the Paperclip fallback without crashing.
+      expect(screen.getByText('Odd link')).toBeInTheDocument();
+
+      // Contact attachment read failure is reported.
+      (firestore.getDoc as any).mockRejectedValueOnce(new Error('no contact'));
+      fireEvent.click(screen.getByText('Missing Contact'));
+      await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error)));
+
+      // Todo toggle failure is reported.
+      (setTodoDone as any).mockRejectedValueOnce(new Error('no todo'));
+      fireEvent.click(screen.getByText('Todo item').closest('div')!.parentElement!.querySelector('input[type="checkbox"]')!);
+      await waitFor(() => expect(consoleSpy).toHaveBeenCalledWith(expect.any(Error)));
+      consoleSpy.mockRestore();
+    });
+
+    it('backs out of a chat room via the mobile back button and the browser popstate', async () => {
+      const original = window.matchMedia;
+      Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation(() => ({
+          matches: true,
+          media: '',
+          onchange: null,
+          addListener: vi.fn(),
+          removeListener: vi.fn(),
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+          dispatchEvent: vi.fn(),
+        })),
+      });
+
+      try {
+        const { container } = render(
+          <MemoryRouter>
+            <Messages />
+          </MemoryRouter>
+        );
+        fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+        await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
+
+        // The mobile back button closes the room.
+        fireEvent.click(container.querySelector('.msgs-thread-head .icon-btn')!);
+        await waitFor(() => expect(screen.getByText('Pick a conversation')).toBeInTheDocument());
+
+        // Re-open and pop the browser history entry.
+        fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+        await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
+        window.dispatchEvent(new PopStateEvent('popstate'));
+        await waitFor(() => expect(screen.getByText('Pick a conversation')).toBeInTheDocument());
+      } finally {
+        Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+      }
     });
   });
 });

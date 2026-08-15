@@ -85,4 +85,79 @@ describe('EditEventModal', () => {
     );
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('falls back to the first gathering type when the stored type was renamed/removed', async () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={{ ...EVENT, type: 'Gone Type' }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() =>
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ type: 'Weekly' }),
+      ),
+    );
+  });
+
+  it('updates the type from a type pill', async () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Small Group/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() =>
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ type: 'Small Group' }),
+      ),
+    );
+  });
+
+  it('updates date via the DatePicker and location via the text input', async () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
+
+    fireEvent.change(screen.getByLabelText('Date'), { target: { value: '2026-06-19' } });
+    fireEvent.change(screen.getByDisplayValue('Lower Common Room'), {
+      target: { value: 'The Lodge' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() =>
+      expect(updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ date: '2026-06-19', location: 'The Lodge' }),
+      ),
+    );
+  });
+
+  it('closes on Escape key press', () => {
+    const onClose = vi.fn();
+    render(<EditEventModal isOpen onClose={onClose} event={EVENT} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('does not submit when the form is empty', async () => {
+    render(<EditEventModal isOpen onClose={vi.fn()} event={{ ...EVENT, name: '' }} />);
+
+    const form = screen.getByPlaceholderText(/Friday Night Gathering/).closest('form')!;
+    fireEvent.submit(form);
+
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('reports update failures through handleFirestoreError', async () => {
+    const { handleFirestoreError } = await import('../lib/firebase');
+    vi.mocked(updateDoc as any).mockRejectedValueOnce(new Error('boom'));
+    render(<EditEventModal isOpen onClose={vi.fn()} event={EVENT} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+
+    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      'UPDATE',
+      'events/e1',
+    );
+  });
 });

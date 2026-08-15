@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc } from 'firebase/firestore';
 import SignUp from '../views/SignUp';
@@ -48,6 +48,8 @@ const mockSetSeason = vi.fn();
 const mockResetSeason = vi.fn();
 const mockToggleClubRush = vi.fn();
 
+const seasonState = vi.hoisted(() => ({ isAuto: true, clubRush: false }));
+
 vi.mock('../lib/seasons', () => ({
   SEASON_ORDER: ['spring', 'summer', 'fall', 'winter'],
   SEASONS: {
@@ -61,8 +63,8 @@ vi.mock('../lib/seasons', () => ({
     autoId: 'summer',
     activeId: 'summer',
     active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
-    isAuto: true,
-    clubRush: false,
+    isAuto: seasonState.isAuto,
+    clubRush: seasonState.clubRush,
     label: "Summer '26",
     tags: ["Summer '26"],
     setSeason: mockSetSeason,
@@ -258,5 +260,150 @@ describe('SignUp View', () => {
     render(<SignUp isMobile={true} />);
     expect(screen.getByText('Hey — we\'d love to know you.')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+  });
+
+  it('switches to the mobile layout when the viewport shrinks', () => {
+    const originalWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 600, configurable: true });
+    render(<SignUp />);
+
+    fireEvent(window, new Event('resize'));
+    expect(screen.getByText('Hey — we\'d love to know you.')).toBeInTheDocument();
+
+    Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
+  });
+
+  it('navigates home when back is pressed without an onBack handler', () => {
+    render(<SignUp />);
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(mockNavigate).toHaveBeenCalledWith('/');
+  });
+
+  it('deselects an interest chip when clicked twice', async () => {
+    render(<SignUp />);
+
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Chip Tester' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+
+    const chip = screen.getByRole('button', { name: /^Friday gathering$/ });
+    fireEvent.click(chip);
+    fireEvent.click(chip);
+
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+
+    const contactArg = (addDoc as any).mock.calls.find(
+      (c: any[]) => c[1] && Array.isArray(c[1].interests),
+    )?.[1];
+    expect(contactArg?.interests).toEqual([]);
+  });
+
+  it('calls onSubmitted for honeypot submissions and keeps them off Firestore', async () => {
+    const onSubmitted = vi.fn();
+    render(<SignUp onSubmitted={onSubmitted} />);
+
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Honey Bot' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+
+    fireEvent.change(document.getElementById('botField') as HTMLInputElement, {
+      target: { value: 'spam' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+
+    expect(await screen.findByText(/Thanks, Honey\./i)).toBeInTheDocument();
+    expect(addDoc).not.toHaveBeenCalled();
+    expect(onSubmitted).toHaveBeenCalledWith('Honey Bot');
+  });
+
+  it('calls onSubmitted after the confirmation delay on a real submit', async () => {
+    vi.useFakeTimers();
+    try {
+      const onSubmitted = vi.fn();
+      render(<SignUp onSubmitted={onSubmitted} />);
+
+      fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+        target: { value: 'Timed Jane' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+
+      await act(async () => {});
+      expect(screen.getByText(/Thanks, Timed\./i)).toBeInTheDocument();
+      expect(onSubmitted).not.toHaveBeenCalled();
+      act(() => vi.advanceTimersByTime(1800));
+      expect(onSubmitted).toHaveBeenCalledWith('Timed Jane');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('continues to the confirmation screen when the admin broadcast fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (addDoc as any)
+      .mockResolvedValueOnce({ id: 'contact-id' })
+      .mockRejectedValueOnce(new Error('notify down'));
+
+    render(<SignUp />);
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'No Notify' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+
+    expect(await screen.findByText(/Thanks, No\./i)).toBeInTheDocument();
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to broadcast admin notification:', expect.any(Error));
+    consoleSpy.mockRestore();
+  });
+
+  it('reports contact creation failures through handleFirestoreError', async () => {
+    const { handleFirestoreError } = await import('../lib/firebase');
+    (addDoc as any).mockRejectedValueOnce(new Error('write blocked'));
+
+    render(<SignUp />);
+    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      target: { value: 'Failing Fred' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
+
+    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());
+    expect(handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      'CREATE',
+      'contacts',
+    );
+  });
+
+  it('lets staff override the season, reset it, and toggle club rush', () => {
+    const { container } = render(<SignUp role="admin" />);
+
+    const seasonSelect = container.querySelector('.su-admin-sel')!;
+    fireEvent.change(seasonSelect, { target: { value: 'fall' } });
+    expect(mockSetSeason).toHaveBeenCalledWith('fall');
+
+    fireEvent.click(screen.getByRole('button', { name: /Club rush/i }));
+    expect(mockToggleClubRush).toHaveBeenCalled();
+  });
+
+  it('shows the season reset button and the club-rush strip when those modes are active', () => {
+    seasonState.isAuto = false;
+    seasonState.clubRush = true;
+
+    const { container } = render(<SignUp role="admin" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /reset/i }));
+    expect(mockResetSeason).toHaveBeenCalled();
+
+    expect(screen.getByText(/intake · club rush/i)).toBeInTheDocument();
+    expect(container.querySelector('.su-admin-toggle.on')).toBeTruthy();
+
+    seasonState.isAuto = true;
+    seasonState.clubRush = false;
   });
 });

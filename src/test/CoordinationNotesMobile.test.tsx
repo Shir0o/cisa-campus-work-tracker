@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import CoordinationNotesMobile from '../views/CoordinationNotesMobile';
 
@@ -35,16 +35,23 @@ const doc = (over: any = {}) => ({
 
 function Harness({ docs, canEdit = true, onNewDoc = vi.fn(), onDelete = vi.fn(), onPromote = vi.fn() }: any) {
   const [activeId, setActiveId] = useState<string | null>(null);
-  const active = docs.find((d: any) => d.id === activeId) ?? null;
+  const [extraDocs, setExtraDocs] = useState<any[]>([]);
+  const allDocs = [...docs, ...extraDocs];
+  const active = allDocs.find((d: any) => d.id === activeId) ?? null;
+  const handleNewDoc = () => {
+    onNewDoc();
+    setExtraDocs((e) => [...e, { ...doc(), id: 'd-new', title: 'New Page Draft' }]);
+    setActiveId('d-new');
+  };
   return (
     <CoordinationNotesMobile
       canEdit={canEdit}
       canSeeNotes
-      docs={docs}
+      docs={allDocs}
       active={active}
       activeId={activeId}
       setActiveId={setActiveId}
-      newDoc={onNewDoc}
+      newDoc={handleNewDoc}
       promoteDoc={onPromote}
       heading="The Board"
       intro="A shared coordination space."
@@ -124,5 +131,17 @@ describe('CoordinationNotesMobile', () => {
     render(<Harness docs={[doc({ pinned: true, audience: 'trainees' })]} />);
     expect(screen.getByText('Pinned')).toBeInTheDocument();
     expect(screen.getByText('Trainees')).toBeInTheDocument();
+  });
+
+  it('opens the editor shortly after creating a new page', () => {
+    vi.useFakeTimers();
+    try {
+      render(<Harness docs={[]} />);
+      fireEvent.click(screen.getByText('New page'));
+      act(() => vi.advanceTimersByTime(100));
+      expect(screen.getByTestId('doc-editor')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

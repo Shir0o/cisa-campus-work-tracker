@@ -6,6 +6,7 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import * as firestore from 'firebase/firestore';
 import { addThreadMessage } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
+import { handleFirestoreError, logActivity } from '../lib/firebase';
 
 const hoisted = vi.hoisted(() => ({ messages: [] as any[] }));
 vi.mock('../lib/threads', () => ({
@@ -110,6 +111,20 @@ describe('ContactDetailsModal Component', () => {
       isAdmin: true,
       role: 'admin',
     });
+    // Restore sane default Firestore behaviours so per-test overrides never leak.
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (typeof s === 'function') {
+        try {
+          s({ docs: [] });
+        } catch {
+          // ignore
+        }
+      }
+      return () => {};
+    });
+    (firestore.getDocs as any).mockResolvedValue({ size: 0, docs: [] });
+    (firestore.addDoc as any).mockResolvedValue({ id: 'mock-new-id' });
+    (firestore.updateDoc as any).mockResolvedValue(true);
   });
 
   const setupOnSnapshotMocks = (dataMap: Record<string, any[]>) => {
@@ -910,6 +925,485 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.click(cancelBtn);
 
     expect(screen.queryByRole('button', { name: 'Save Changes' })).not.toBeInTheDocument();
+  });
+
+  // ── Error paths ───────────────────────────────────────────────────
+
+  it('reports stages fetch failures through handleFirestoreError', async () => {
+    (firestore.getDocs as any).mockRejectedValueOnce(new Error('no stages'));
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'stages'),
+    );
+  });
+
+  it('reports snapshot failures for interactions, comments, activities and prayers', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any, e: any) => {
+      if (typeof e === 'function') e(new Error('snapshot boom'));
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    await waitFor(() => {
+      expect(handleFirestoreError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'LIST',
+        'contacts/contact-abc/interactions',
+      );
+      expect(handleFirestoreError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'LIST',
+        'contacts/contact-abc/comments',
+      );
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'activities');
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'prayers');
+    });
+  });
+
+  // ── Overview: prayers, held days, journey ─────────────────────────
+
+  it('renders open prayers with held-day counts and the aside journey', async () => {
+    (firestore.getDocs as any).mockResolvedValue({
+      size: 2,
+      docs: [
+        { id: 's1', data: () => ({ label: 'First', order: 0 }) },
+        { id: 's2', data: () => ({ label: 'Regular', order: 1 }) },
+      ],
+    });
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'prayers') {
+        s({
+          docs: [
+            { id: 'p1', data: () => ({ contactId: 'contact-abc', burden: 'Pray for finals', status: 'pending', date: new Date().toISOString() }) },
+            { id: 'p2', data: () => ({ contactId: 'contact-abc', burden: 'Bad date prayer', status: 'pending', date: 'not-a-date' }) },
+          ],
+        });
+      } else if (q?.path === 'users') {
+        s({ docs: [{ id: 'owner-1', data: () => ({ name: 'Owner Jane', role: 'admin' }) }] });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    expect(screen.getAllByText('Pray for finals').length).toBeGreaterThan(0);
+    expect(screen.getByText(/Held \d+ (day|days)/)).toBeInTheDocument();
+    // The invalid-date prayer shows no held count.
+    expect(screen.getByText('Bad date prayer')).toBeInTheDocument();
+    // The aside journey marks the current stage as "here now".
+    expect(await screen.findByText('here now')).toBeInTheDocument();
+    expect(screen.getByText('First')).toBeInTheDocument();
+  });
+
+  // ── Edit form edge cases ──────────────────────────────────────────
+
+  it('splits a single-word name and applies capitalize on the last name', async () => {
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={{ ...mockContact, name: 'Prince' }} />,
+    );
+    await screen.findByText('Prince');
+
+    fireEvent.click(screen.getByTitle('Edit details'));
+    const lastInput = screen.getByPlaceholderText('e.g. Johnson');
+    fireEvent.change(lastInput, { target: { value: 'davies' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() =>
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ name: 'Prince Davies' }),
+      ),
+    );
+  });
+
+  it('records email, residence-hall location, stage and spiritual background changes', async () => {
+    (firestore.getDocs as any).mockResolvedValue({
+      size: 2,
+      docs: [
+        { id: 's1', data: () => ({ label: 'First', order: 0 }) },
+        { id: 's2', data: () => ({ label: 'Regular', order: 1 }) },
+      ],
+    });
+
+    const contactWithHall = {
+      ...mockContact,
+      tags: ['New Sign Up'],
+      spiritualBackground: '',
+    };
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithHall} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByTitle('Edit details'));
+
+    // RESIDENCE HALL label reflects the New Sign Up tag.
+    expect(screen.getByText('RESIDENCE HALL')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('alex@campus.edu'), {
+      target: { value: 'john.new@example.com' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('e.g. Campus Coffee'), {
+      target: { value: 'West Hall' },
+    });
+    const stageSelect = screen.getByDisplayValue('Regular');
+    fireEvent.change(stageSelect, { target: { value: 'First' } });
+    fireEvent.change(screen.getByDisplayValue('Select background...'), {
+      target: { value: 'Exploring' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() =>
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          email: 'john.new@example.com',
+          location: 'West Hall',
+          stage: 'First',
+          spiritualBackground: 'Exploring',
+        }),
+      ),
+    );
+    expect(logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining('residence hall'),
+      }),
+    );
+  });
+
+  it('parses comma-separated tags from the edit form', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByTitle('Edit details'));
+    const tagsInput = screen.getByPlaceholderText('e.g. Lead, Fall2023');
+    fireEvent.change(tagsInput, { target: { value: 'alpha, beta ,  gamma' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
+
+    await waitFor(() =>
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ tags: ['alpha', 'beta', 'gamma'] }),
+      ),
+    );
+  });
+
+  it('clears the phone error when the phone field is emptied', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByTitle('Edit details'));
+    const phoneInput = screen.getByPlaceholderText('(555) 000-0000');
+
+    fireEvent.change(phoneInput, { target: { value: '123' } });
+    fireEvent.blur(phoneInput);
+    await screen.findByText('Phone number too short (need 10 digits)');
+
+    fireEvent.change(phoneInput, { target: { value: '' } });
+    fireEvent.blur(phoneInput);
+    expect(screen.queryByText(/Phone number too/)).not.toBeInTheDocument();
+  });
+
+  it('aborts deletion when the confirmation dialog is dismissed', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false);
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Delete Contact/i })[0]);
+
+    expect(window.confirm).toHaveBeenCalledWith('Are you sure you want to delete this contact?');
+    expect(firestore.deleteDoc).not.toHaveBeenCalled();
+    expect(mockOnClose).not.toHaveBeenCalled();
+  });
+
+  // ── Interaction form ──────────────────────────────────────────────
+
+  it('ignores empty interaction submissions and toggles the inline form off', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
+    const getForm = () =>
+      screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
+
+    // Type content but clear the date: the submit guard (empty dateTime) blocks it.
+    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
+      target: { value: 'No date log' },
+    });
+    fireEvent.change(getForm().querySelector('input[type="datetime-local"]')!, {
+      target: { value: '' },
+    });
+    fireEvent.click(getForm().querySelector('button[type="submit"]')!);
+    expect(firestore.addDoc).not.toHaveBeenCalled();
+
+    // With a date restored, the same submit works and closes the form.
+    fireEvent.change(getForm().querySelector('input[type="datetime-local"]')!, {
+      target: { value: '2026-06-16T10:00' },
+    });
+    fireEvent.click(getForm().querySelector('button[type="submit"]')!);
+    await waitFor(() =>
+      expect(firestore.addDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ content: 'No date log' }),
+      ),
+    );
+    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+
+    // The section header toggles the form back on and off.
+    fireEvent.click(screen.getAllByRole('button', { name: /^Log interaction$/ })[1]);
+    expect(screen.getByPlaceholderText(/Describe the interaction\.\.\./i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+  });
+
+  it('reports interaction creation failures through handleFirestoreError', async () => {
+    (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Log interaction$/ }));
+    fireEvent.change(screen.getByPlaceholderText(/Describe the interaction\.\.\./i), {
+      target: { value: 'A doomed log' },
+    });
+    const form = screen.getByPlaceholderText(/Describe the interaction\.\.\./i).closest('form')!;
+    fireEvent.submit(form);
+
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(
+        expect.any(Error),
+        'CREATE',
+        'contacts/contact-abc/interactions',
+      ),
+    );
+  });
+
+  it('guards and cancels the interaction edit form', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path?.includes('interactions')) {
+        s({
+          docs: [
+            {
+              id: 'inter-1',
+              data: () => ({
+                userId: 'user-123',
+                userName: 'Admin Tony',
+                content: 'Old content',
+                dateTime: '2026-06-15T08:00',
+                type: 'interaction',
+              }),
+            },
+          ],
+        });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
+    await screen.findByText('Old content');
+
+    fireEvent.click(screen.getByRole('button', { name: /^Edit$/ }));
+
+    // Change dateTime and type fields.
+    const dateInput = screen.getByDisplayValue('2026-06-15T08:00');
+    fireEvent.change(dateInput, { target: { value: '2026-06-16T09:30' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'meeting' } });
+
+    // Empty content guard: Save does nothing.
+    const textareas = screen.getAllByRole('textbox');
+    const textarea = textareas.find((ta) => (ta as any).value === 'Old content') || textareas[0];
+    fireEvent.change(textarea, { target: { value: '   ' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(firestore.updateDoc).not.toHaveBeenCalled();
+
+    // Cancel closes the edit form.
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByDisplayValue('2026-06-16T09:30')).not.toBeInTheDocument();
+  });
+
+  // ── Prayer form ───────────────────────────────────────────────────
+
+  it('guards, reports and cancels prayer creation', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Add prayer$/ }));
+
+    // Failure path with context filled.
+    (firestore.addDoc as any).mockRejectedValueOnce(new Error('denied'));
+    fireEvent.change(screen.getByPlaceholderText(/John's family back home/i), {
+      target: { value: 'Finals week' },
+    });
+    fireEvent.change(screen.getByPlaceholderText(/Any background worth knowing/i), {
+      target: { value: 'Three exams' },
+    });
+    await waitFor(() => {
+      const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+      expect(form.querySelector('button[type="submit"]')!).not.toBeDisabled();
+    });
+    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+    fireEvent.click(form.querySelector('button[type="submit"]')!);
+
+    await waitFor(() =>
+      expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'CREATE', 'prayers'),
+    );
+
+    // Toggle the form off.
+    fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+    expect(screen.queryByPlaceholderText(/John's family back home/i)).not.toBeInTheDocument();
+  });
+
+  // ── Tag persistence failure ───────────────────────────────────────
+
+  it('reverts the tag input when the tag write fails', async () => {
+    (firestore.updateDoc as any).mockRejectedValueOnce(new Error('denied'));
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }));
+    fireEvent.change(screen.getByPlaceholderText(/new tag/i), {
+      target: { value: 'bad-tag' },
+    });
+    fireEvent.keyDown(screen.getByPlaceholderText(/new tag/i), { key: 'Enter', code: 'Enter' });
+
+    await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());
+    expect(screen.queryByText('bad-tag')).not.toBeInTheDocument();
+  });
+
+  // ── Aside metadata ────────────────────────────────────────────────
+
+  it('derives the added-by name from the users snapshot when createdByName is missing', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'users') {
+        s({ docs: [{ id: 'adder-1', data: () => ({ name: 'Grace Hopper', role: 'admin' }) }] });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    const contactWithAddedBy = {
+      ...mockContact,
+      addedBy: 'adder-1',
+      createdBy: undefined,
+      createdByName: undefined,
+    };
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactWithAddedBy} />);
+
+    expect(await screen.findAllByText(/Grace Hopper/)).toHaveLength(2);
+  });
+
+  it('closes the share sheet with its Cancel button', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'users') {
+        s({ docs: [{ id: 'user-789', data: () => ({ name: 'Other User', role: 'Trainee' }) }] });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    await screen.findByText('John Doe');
+
+    fireEvent.click(screen.getByRole('button', { name: /add someone/i }));
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  // ── Skeleton loading states ───────────────────────────────────────
+
+  it('shows skeletons while interactions, prayers and activities are loading', async () => {
+    (firestore.onSnapshot as any).mockImplementation(() => vi.fn());
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
+    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
+    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    expect(document.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+  });
+
+  // ── Mobile layout ─────────────────────────────────────────────────
+
+  it('renders the mobile layout with dropdown switcher, edit header and tag chips', async () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    try {
+      render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+      // Mobile hero chips + Edit button.
+      expect(screen.getAllByText('leadership').length).toBeGreaterThan(0);
+      fireEvent.click(screen.getByRole('button', { name: /^Edit$/ }));
+      expect(screen.getByText('Edit details')).toBeInTheDocument();
+      fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0]);
+
+      // Dropdown tab switcher.
+      const select = document.querySelector('.cdm-select') as HTMLSelectElement;
+      expect(select).toBeTruthy();
+      fireEvent.change(select, { target: { value: 'interactions' } });
+      expect(screen.getByText('Every conversation')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    }
+  });
+
+  // ── Audit hover ───────────────────────────────────────────────────
+
+  it('toggles hover state on audit items', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'activities') {
+        s({
+          docs: [
+            {
+              id: 'act-1',
+              data: () => ({
+                action: 'created contact',
+                targetId: 'contact-abc',
+                targetName: 'John Doe',
+                targetType: 'contact',
+                type: 'create',
+                userName: 'Admin Tony',
+                createdAt: new Date().toISOString(),
+              }),
+            },
+          ],
+        });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /History/i }));
+    await screen.findByText('created contact');
+
+    const item = screen.getByText('created contact').closest('.group')!;
+    fireEvent.mouseEnter(item);
+    fireEvent.mouseLeave(item);
+    expect(item).toBeInTheDocument();
   });
 });
 
