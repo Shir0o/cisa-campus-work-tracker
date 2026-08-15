@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import crypto from "crypto";
+import fs from "fs";
 import type { Express } from "express";
 
 // ── Hoisted test doubles (created before the vi.mock factories) ─────────────
@@ -822,6 +823,320 @@ describe("authorizeAdmin role enforcement", () => {
 
     expect(res.status).toBe(403);
     expect(res.body.error).toContain("not an administrator");
+  });
+
+  it("allows the founder email without a users doc", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "founder-1", email: "yilongwang05@gmail.com" });
+    seedDoc("feedback", "f-2", { status: "new" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-2", status: "resolved" });
+    expect(res.status).toBe(200);
+  });
+
+  it("allows a user whose users doc has role admin", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "admin-1", email: "admin@example.com" });
+    seedDoc("users", "admin-1", { role: "admin" });
+    seedDoc("feedback", "f-3", { status: "new" });
+    const res = await request(app)
+      .post("/api/feedback/update")
+      .set("Authorization", "Bearer tok")
+      .send({ id: "f-3", status: "resolved" });
+    expect(res.status).toBe(200);
+  });
+
+  it("forbids non-admin access to webhook logs", async () => {
+    mockVerifyIdToken.mockResolvedValue({ uid: "trainee-2", email: "t2@example.com" });
+    seedDoc("users", "trainee-2", { role: "trainee" });
+    const res = await request(app).get("/api/webhook/logs").set("Authorization", "Bearer tok");
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("POST /api/feedback — GitHub failure and auth paths", () => {
+  it("logs and continues when the GitHub issue creation API fails", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockResolvedValue(new Response("rate limited", { status: 429 }));
+
+    const res = await request(app).post("/api/feedback").send({ message: "Bug", kind: "bug" });
+    expect(res.status).toBe(200);
+    expect(res.body.githubIssueUrl).toBe("");
+    expect(res.body.status).toBe("new");
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub API error creating issue"));
+    errSpy.mockRestore();
+  });
+
+  it("logs when the GitHub issue creation fetch throws", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockRejectedValue(new Error("network down"));
+
+    const res = await request(app).post("/api/feedback").send({ message: "Bug", kind: "bug" });
+    expect(res.status).toBe(200);
+    expect(res.body.githubIssueUrl).toBe("");
+    expect(errSpy).toHaveBeenCalledWith("Failed to auto-create GitHub issue:", expect.any(Error));
+    errSpy.mockRestore();
+  });
+
+  it("returns 500 when Firebase Admin cannot initialize", async () => {
+    const fsSpy = vi.spyOn(fs, "existsSync").mockReturnValue(false);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await request(app).post("/api/feedback").send({ message: "Boom" });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("Firebase Admin failed to start");
+    fsSpy.mockRestore();
+    errSpy.mockRestore();
+  });
+
+  it("returns 401 without an Authorization header outside test mode", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    const res = await request(app).post("/api/feedback").send({ message: "hello" });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toContain("Authorization header is required");
+    process.env.NODE_ENV = originalEnv;
+  });
+});
+
+describe("POST /api/feedback/update — GitHub sync branches", () => {
+  it("closes the GitHub issue as not_planned when archived without resolved status", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    seedDoc("feedback", "fb-arch", { status: "new", archived: false, githubIssueUrl: "https://github.com/a/b/issues/10" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-arch", archived: true });
+    expect(res.status).toBe(200);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.github.com/repos/a/b/issues/10");
+    expect(JSON.parse((init as RequestInit).body as string)).toMatchObject({ state: "closed", state_reason: "not_planned" });
+  });
+
+  it("reopens the GitHub issue when status moves back from resolved", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    seedDoc("feedback", "fb-re", { status: "resolved", archived: false, githubIssueUrl: "https://github.com/a/b/issues/11" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-re", status: "in_progress" });
+    expect(res.status).toBe(200);
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ state: "open" });
+  });
+
+  it("reopens the GitHub issue when feedback is unarchived", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    seedDoc("feedback", "fb-un", { status: "new", archived: true, githubIssueUrl: "https://github.com/a/b/issues/12" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-un", archived: false });
+    expect(res.status).toBe(200);
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toMatchObject({ state: "open" });
+  });
+
+  it("warns and skips GitHub sync when GITHUB_TOKEN is not configured", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    seedDoc("feedback", "fb-nt", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/13" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-nt", status: "resolved" });
+    expect(res.status).toBe(200);
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("GITHUB_TOKEN not configured"));
+    expect(fetchMock).not.toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("logs GitHub API errors during issue state sync", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockResolvedValue(new Response("bad", { status: 500 }));
+    seedDoc("feedback", "fb-err", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/14" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-err", status: "resolved" });
+    expect(res.status).toBe(200);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("GitHub API error updating issue"));
+    errSpy.mockRestore();
+  });
+
+  it("logs when the GitHub sync fetch throws", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockRejectedValue(new Error("network"));
+    seedDoc("feedback", "fb-fetch", { status: "new", githubIssueUrl: "https://github.com/a/b/issues/15" });
+    const res = await request(app).post("/api/feedback/update").send({ id: "fb-fetch", status: "resolved" });
+    expect(res.status).toBe(200);
+    expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to update GitHub issue state for"), expect.any(Error));
+    errSpy.mockRestore();
+  });
+});
+
+describe("POST /api/webhook/github — payload edge cases", () => {
+  const issueUrl = "https://github.com/a/b/issues/7";
+
+  it("returns 500 when the raw body is unavailable for signature verification", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-hub-signature-256", "sha256=abc")
+      .set("content-type", "text/plain")
+      .send("not json");
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("Raw body not available");
+  });
+
+  it("returns 400 when the issues payload has no html_url", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    const payload = { action: "closed", issue: { state_reason: "completed" } };
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(payload, "sekret"))
+      .send(payload);
+    expect(res.status).toBe(400);
+  });
+
+  it("ignores unrecognized issue actions", async () => {
+    vi.stubEnv("GITHUB_WEBHOOK_SECRET", "sekret");
+    seedDoc("feedback", "fb-labeled", { status: "new", githubIssueUrl: issueUrl });
+    const payload = { action: "labeled", issue: { html_url: issueUrl } };
+    const res = await request(app)
+      .post("/api/webhook/github")
+      .set("x-github-event", "issues")
+      .set("x-hub-signature-256", sign(payload, "sekret"))
+      .send(payload);
+    expect(res.status).toBe(200);
+    expect(res.body.message).toContain("Ignored action: labeled");
+  });
+});
+
+describe("POST /api/quick-add — merge and subcommand paths", () => {
+  it("merges missing contact fields and upgrades the role on quick-add", async () => {
+    seedDoc("contacts", "c-merge", { name: "Kim Lee", email: "", phone: "", location: "", role: "Student", tags: [] });
+    mockGenerateContent.mockResolvedValue({
+      text: JSON.stringify({
+        name: "Kim Lee",
+        email: "kim@example.com",
+        phone: "+1 (555) 010-2222",
+        location: "Library",
+        role: "Trainee",
+        spiritualBackground: "Christian family",
+        tags: ["New"],
+      }),
+    });
+    const res = await request(app).post("/api/quick-add").send({ text: "Met Kim Lee" });
+    expect(res.status).toBe(200);
+    expect(res.body.contact.isExisting).toBe(true);
+    const updated = getCollection("contacts")["c-merge"];
+    expect(updated.email).toBe("kim@example.com");
+    expect(updated.phone).toBe("+1 (555) 010-2222");
+    expect(updated.location).toBe("Library");
+    expect(updated.spiritualBackground).toBe("Christian family");
+    expect(updated.role).toBe("Trainee");
+    expect(updated.tags).toEqual(["New"]);
+  });
+
+  it("returns 500 when Gemini returns no text for interaction parsing", async () => {
+    mockGenerateContent.mockResolvedValue({ text: "" });
+    const res = await request(app).post("/api/quick-add").send({ text: "!add interaction Coffee with Bob" });
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+  });
+
+  it("returns 401 when token verification fails on quick-add", async () => {
+    mockVerifyIdToken.mockRejectedValue(new Error("bad token"));
+    const res = await request(app)
+      .post("/api/quick-add")
+      .set("Authorization", "Bearer nope")
+      .send({ text: "Met someone" });
+    expect(res.status).toBe(401);
+    expect(res.body.error).toContain("Unauthorized");
+  });
+});
+
+describe("POST /api/webhook/groupme — prefix and error paths", () => {
+  it("handles the add: prefix trigger", async () => {
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Nia Cole", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "add: Nia Cole", name: "Sam" });
+    expect(res.status).toBe(200);
+    expect(res.body.contact.name).toBe("Nia Cole");
+  });
+
+  it("returns 400 when the message has no text", async () => {
+    const res = await request(app).post("/api/webhook/groupme").send({ name: "Sam", group_id: "g1" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("No message text provided");
+  });
+
+  it("returns 500 when quick-add fails inside groupme", async () => {
+    mockGenerateContent.mockResolvedValue({ text: "not json" });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add bad data", name: "Sam" });
+    expect(res.status).toBe(500);
+    expect(res.body.error).toBeTruthy();
+  });
+});
+
+describe("POST /api/analyze-notes — prompt composition", () => {
+  it("includes the contact directory and user roster in the Gemini prompt", async () => {
+    seedDoc("contacts", "c-a", { name: "Zoe Pratt" });
+    seedDoc("users", "u-a", { displayName: "Alex Admin" });
+    seedDoc("users", "u-b", { email: "pending@example.com", approved: false });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ updatedMarkdown: "", suggestedTasks: [] }) });
+
+    const res = await request(app).post("/api/analyze-notes").send({ text: "Notes" });
+    expect(res.status).toBe(200);
+    const contents = mockGenerateContent.mock.calls[0][0].contents as string;
+    expect(contents).toContain("Zoe Pratt");
+    expect(contents).toContain("Alex Admin");
+    expect(contents).not.toContain("pending@example.com");
+  });
+});
+
+describe("POST /api/smart-import/parse — prompt composition", () => {
+  it("includes contact emails and phones in the parse prompt and skips unnamed contacts", async () => {
+    seedDoc("contacts", "c-x", { name: "Wren Hall", email: "wren@example.com", phone: "555-0101" });
+    seedDoc("contacts", "c-y", { email: "no@name.example" });
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ contacts: [], interactions: [], discussions: [] }) });
+
+    const res = await request(app).post("/api/smart-import/parse").send({ text: "Met Wren" });
+    expect(res.status).toBe(200);
+    const contents = mockGenerateContent.mock.calls[0][0].contents as string;
+    expect(contents).toContain("wren@example.com");
+    expect(contents).toContain("555-0101");
+    expect(contents).not.toContain("no@name.example");
+  });
+});
+
+describe("POST /api/smart-import/commit — matching paths", () => {
+  it("maps matched contacts and links interactions by contact name", async () => {
+    const res = await request(app).post("/api/smart-import/commit").send({
+      contacts: [{ tempId: "c1", name: "Amy", matchedContactId: "existing-1", matchedContactName: "Amy" }],
+      interactions: [{ tempId: "i1", contactName: "Amy", content: "Chat", type: "coffee" }],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.summary.contactsCount).toBe(0);
+    expect(res.body.summary.interactionsCount).toBe(1);
+    expect(Object.values(getCollection("contacts/existing-1/interactions"))).toHaveLength(1);
+    const storedContact = getCollection("contacts")["existing-1"];
+    expect(storedContact.name).toBeUndefined();
+    expect(storedContact.lastSeen).toBeTruthy();
+  });
+});
+
+describe("POST /api/send-push — failure path", () => {
+  it("returns 500 when the Expo push fetch fails", async () => {
+    seedDoc("users", "u-4", { pushToken: "ExponentPushToken[abc]" });
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    fetchMock.mockRejectedValue(new Error("expo down"));
+    const res = await request(app).post("/api/send-push").send({ userId: "u-4", title: "Hi" });
+    expect(res.status).toBe(500);
+    expect(res.body.success).toBe(false);
+    errSpy.mockRestore();
+  });
+});
+
+describe("production static serving", () => {
+  it("serves the SPA index.html for unknown client routes", async () => {
+    const originalEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    const prodApp = await createApp();
+    process.env.NODE_ENV = originalEnv;
+
+    const res = await request(prodApp).get("/some/client/route");
+    expect(res.status).toBe(200);
+    expect(res.headers["content-type"]).toContain("text/html");
   });
 });
 

@@ -387,4 +387,54 @@ describe('AttachDataModal Component', () => {
     fireEvent.click(screen.getByText('Todo'));
     expect(await screen.findByText('completed')).toBeInTheDocument();
   });
+
+  it.each([
+    ['Todo', 'todos'],
+    ['Event', 'events'],
+    ['Interaction', 'interactions'],
+    ['Prayer', 'prayers'],
+    ['Note', 'notes'],
+    ['Feedback', 'feedbacks'],
+  ] as const)('clears loading and logs when the %s snapshot errors', async (tabLabel, plural) => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((q: any, success: any, error: any) => {
+      error(new Error('boom'));
+      return vi.fn();
+    });
+    render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    fireEvent.click(screen.getByText(tabLabel));
+    expect(await screen.findByText(new RegExp(`No ${plural} found matching your query`, 'i'))).toBeInTheDocument();
+    expect(errSpy).toHaveBeenCalled();
+    errSpy.mockRestore();
+  });
+
+  it('clears items when an admin-only tab becomes unavailable after a role change', async () => {
+    setupOnSnapshot([{ id: 'n1', title: 'Notes doc', series: 'A', date: '2026-06-22' }]);
+    const { rerender } = render(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    fireEvent.click(screen.getByText('Note'));
+    expect(await screen.findByText('Notes doc')).toBeInTheDocument();
+
+    (useAuth as any).mockReturnValue({ role: 'operator' });
+    rerender(
+      <AttachDataModal
+        isOpen={true}
+        onClose={mockOnClose}
+        onAttach={mockOnAttach}
+      />
+    );
+    expect(await screen.findByText(/No notes found matching your query/i)).toBeInTheDocument();
+    expect(screen.queryByText('Notes doc')).not.toBeInTheDocument();
+  });
 });

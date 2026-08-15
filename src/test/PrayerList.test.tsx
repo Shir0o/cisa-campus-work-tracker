@@ -528,5 +528,135 @@ describe('PrayerList', () => {
       { path: 'prayers/x/0.jpg', url: 'https://storage.example/0.jpg', name: 'answer.jpg' },
     ]);
   });
+
+  it('renders a photo avatar when the contact has one', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [{ id: 'c1', data: () => ({ name: 'Alice Johnson', avatar: 'https://example.com/alice.jpg' }) }],
+          size: 1,
+        });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: mockPrayers, size: 1 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    const img = await screen.findByAltText('Alice Johnson');
+    expect(img).toHaveAttribute('src', 'https://example.com/alice.jpg');
+  });
+
+  it('does not add a prayer when the composer submits empty text', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
+    expect(addDoc).not.toHaveBeenCalled();
+  });
+
+  it('logs and swallows failures when adding a burden fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(addDoc).mockRejectedValueOnce(new Error('write failed'));
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText(/Write what we’re holding for Alice this week/i));
+    fireEvent.change(screen.getByPlaceholderText(/What are we praying for Alice this week/i), {
+      target: { value: 'Pray for rest' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
+
+    await waitFor(() => expect(errSpy).toHaveBeenCalledWith('Error adding burden:', expect.any(Error)));
+    errSpy.mockRestore();
+  });
+
+  it('logs failures when marking a prayer status fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(updateDoc).mockRejectedValueOnce(new Error('write failed'));
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    const answerButton = screen.getAllByRole('button', { name: 'Answered' }).find((btn) => !btn.className.includes('ans-toggle-opt'))!;
+    fireEvent.click(answerButton);
+
+    await waitFor(() => expect(errSpy).toHaveBeenCalledWith('Error updating status:', expect.any(Error)));
+    errSpy.mockRestore();
+  });
+
+  it('skips the Firestore write when an edit saves the same burden text', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    await screen.findByDisplayValue('Strength for finals');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(updateDoc).not.toHaveBeenCalled();
+  });
+
+  it('logs failures when saving an edited burden fails', async () => {
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    vi.mocked(updateDoc).mockRejectedValueOnce(new Error('write failed'));
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Strength for finals')).toBeInTheDocument());
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+    const textarea = await screen.findByDisplayValue('Strength for finals');
+    fireEvent.change(textarea, { target: { value: 'Edited text' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(errSpy).toHaveBeenCalledWith('Error editing burden:', expect.any(Error)));
+    errSpy.mockRestore();
+  });
+
+  it('filters entries by search text across name, role, and tags', async () => {
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText('Find someone…');
+    fireEvent.change(searchInput, { target: { value: 'Bob' } });
+    await waitFor(() => expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument());
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: 'Leader' } });
+    await waitFor(() => expect(screen.getByText('Bob Smith')).toBeInTheDocument());
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: 'Year 2' } });
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument());
+
+    fireEvent.change(searchInput, { target: { value: 'Nope' } });
+    expect(await screen.findByText('No one matches that just yet')).toBeInTheDocument();
+  });
+
+  it('offers to start holding a searched-but-unheld contact', async () => {
+    const contacts = [
+      ...mockContacts,
+      { id: 'c3', data: () => ({ name: 'Carol Lee', email: 'carol@example.com', role: 'Student', stage: 'New' }) },
+    ];
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') callback({ docs: contacts, size: 3 });
+      else if (ref?.path === 'prayers') callback({ docs: mockPrayers, size: 2 });
+      else callback({ docs: [], size: 0 });
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    const searchInput = screen.getByPlaceholderText('Find someone…');
+    fireEvent.change(searchInput, { target: { value: 'Carol' } });
+
+    const startBtn = await screen.findByRole('button', { name: /Start holding Carol/i });
+    fireEvent.click(startBtn);
+
+    expect(await screen.findByPlaceholderText(/What are we praying for Carol this week/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Find someone…')).toHaveValue('');
+  });
 });
 
