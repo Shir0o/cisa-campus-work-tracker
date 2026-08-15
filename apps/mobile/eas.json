@@ -18,7 +18,7 @@
       }
     },
     "qa": {
-      "distribution": "internal",
+      "distribution": "store",
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID": "qa-db",
