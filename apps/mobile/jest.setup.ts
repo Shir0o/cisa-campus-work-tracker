@@ -77,3 +77,24 @@ jest.mock('expo-router', () => ({
   usePathname: () => '/',
   useSegments: () => [],
 }));
+
+// @react-native-google-signin/google-signin native module mock
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn().mockResolvedValue(true),
+    signIn: jest.fn(),
+    signOut: jest.fn(),
+    revokeAccess: jest.fn(),
+    hasPreviousSignIn: jest.fn().mockReturnValue(false),
+    getCurrentUser: jest.fn().mockReturnValue(null),
+    getTokens: jest.fn(),
+  },
+  statusCodes: {
+    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+    SIGN_IN_REQUIRED: 'SIGN_IN_REQUIRED',
+  },
+}));
+
