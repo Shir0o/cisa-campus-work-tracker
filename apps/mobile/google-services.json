@@ -23,11 +23,35 @@
           }
         },
         {
+          "client_id": "914549253362-cksijvh4p400rl537kn2hcp5ajg08ssm.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cisa.campus",
+            "certificate_hash": "975e90fdb45f132e325dbf465b932fb81f96ecfa"
+          }
+        },
+        {
+          "client_id": "914549253362-cqro6b37qb9rc9fi6fq479uusi8ld1d9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cisa.campus",
+            "certificate_hash": "4787e74fa43b0c8ea2502545d348a29fd8f95fc4"
+          }
+        },
+        {
           "client_id": "914549253362-kdkm42dahv3i20j2amb3p10fbpq3oqa4.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.cisa.campus",
             "certificate_hash": "078cfdc3fe4810fc4c18da03929a0ab3adf2ed43"
+          }
+        },
+        {
+          "client_id": "914549253362-t3n5fqc73q9nsje27kni96arc4ia21l2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cisa.campus",
+            "certificate_hash": "28c17510afa2bdc1313521a1625540d27d057bf3"
           }
         },
         {
