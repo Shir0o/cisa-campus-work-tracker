@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import request from "supertest";
 import crypto from "crypto";
 import fs from "fs";
+import path from "path";
 import type { Express } from "express";
 
 // ── Hoisted test doubles (created before the vi.mock factories) ─────────────
@@ -1131,12 +1132,30 @@ describe("production static serving", () => {
   it("serves the SPA index.html for unknown client routes", async () => {
     const originalEnv = process.env.NODE_ENV;
     process.env.NODE_ENV = "production";
-    const prodApp = await createApp();
-    process.env.NODE_ENV = originalEnv;
-
-    const res = await request(prodApp).get("/some/client/route");
-    expect(res.status).toBe(200);
-    expect(res.headers["content-type"]).toContain("text/html");
+    // CI checkouts have no `dist/` build artifact — drop a placeholder so the
+    // static-serve branch is exercised regardless of build state.
+    const indexPath = path.join(process.cwd(), "dist", "index.html");
+    const hadIndex = fs.existsSync(indexPath);
+    if (!hadIndex) {
+      fs.mkdirSync(path.dirname(indexPath), { recursive: true });
+      fs.writeFileSync(indexPath, "<!doctype html><html><body>ci placeholder</body></html>");
+    }
+    try {
+      const prodApp = await createApp();
+      const res = await request(prodApp).get("/some/client/route");
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("text/html");
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (!hadIndex) {
+        fs.rmSync(indexPath, { force: true });
+        try {
+          fs.rmdirSync(path.dirname(indexPath));
+        } catch {
+          // dist/ still contains other artifacts — leave them.
+        }
+      }
+    }
   });
 });
 
