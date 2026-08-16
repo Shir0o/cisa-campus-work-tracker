@@ -332,6 +332,54 @@ describe('MyDay', () => {
     });
   });
 
+  it('hides completed tasks via the toggle and restores them on show', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('done-1', {
+            title: 'Finished task',
+            status: 'completed',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+          taskDoc('todo-1', {
+            title: 'Open task',
+            status: 'pending',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Finished task')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByText('Hide completed'));
+    await waitFor(() => expect(screen.queryByText('Finished task')).not.toBeInTheDocument());
+    expect(screen.getByText('Open task')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Show completed'));
+    await waitFor(() => expect(screen.getByText('Finished task')).toBeInTheDocument());
+  });
+
+  it('omits the hide-completed toggle when nothing is completed', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        tasks: [
+          taskDoc('todo-1', {
+            title: 'Only open task',
+            status: 'pending',
+            assigneeId: 'u-test',
+            createdById: 'u-test',
+          }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Only open task')).toBeInTheDocument());
+    expect(screen.queryByText('Hide completed')).not.toBeInTheDocument();
+  });
+
   it('handles toggle errors gracefully via handleFirestoreError', async () => {
     const { handleFirestoreError } = await import('../lib/firebase');
     // setTodoDone wraps its own try/catch; force the firestore call to reject.

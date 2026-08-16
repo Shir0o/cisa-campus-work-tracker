@@ -11,6 +11,8 @@ import {
   FileText,
   Trash2,
   X,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
@@ -468,6 +470,7 @@ export default function MyDay() {
   const [initialInteractionId, setInitialInteractionId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(false);
 
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 
@@ -638,15 +641,24 @@ export default function MyDay() {
   );
 
   // On the horizon — two tiers. Team todos have a source (or were assigned by
-  // someone else); personal tasks are your own, sourceless.
+  // someone else); personal tasks are your own, sourceless. Completed tasks can
+  // be hidden from both tiers via the "Hide completed" toggle.
   const activeTasks = useMemo(() => tasks.filter((t) => t.status !== "canceled"), [tasks]);
+  const completedCount = useMemo(
+    () => activeTasks.filter((t) => t.status === "completed").length,
+    [activeTasks],
+  );
+  const visibleTasks = useMemo(
+    () => activeTasks.filter((t) => !hideCompleted || t.status !== "completed"),
+    [activeTasks, hideCompleted],
+  );
   const assignedTasks = useMemo(
-    () => activeTasks.filter((t) => t.sourceDocId || t.createdById !== uid).sort(taskSort),
-    [activeTasks, uid],
+    () => visibleTasks.filter((t) => t.sourceDocId || t.createdById !== uid).sort(taskSort),
+    [visibleTasks, uid],
   );
   const personalTasks = useMemo(
-    () => activeTasks.filter((t) => !t.sourceDocId && t.createdById === uid).sort(taskSort),
-    [activeTasks, uid],
+    () => visibleTasks.filter((t) => !t.sourceDocId && t.createdById === uid).sort(taskSort),
+    [visibleTasks, uid],
   );
   const leftToDo = useMemo(
     () => activeTasks.filter((t) => t.status === "pending").length,
@@ -732,6 +744,9 @@ export default function MyDay() {
           onUpdateTaskDue={(todo, days) => updateTodo(todo.id, { dueDate: duePresetToISO(days) })}
           onUpdatePersonalTask={(id, patch) => updateTodo(id, patch)}
           onDeletePersonalTask={(id) => deleteTodo(id)}
+          hideCompleted={hideCompleted}
+          onToggleHideCompleted={() => setHideCompleted((h) => !h)}
+          hasCompleted={completedCount > 0}
           onAddPersonalTask={(title, dueDate) =>
             uid &&
             addTodo(
@@ -838,6 +853,23 @@ export default function MyDay() {
               leftToDo > 0
                 ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"} this week.`
                 : "All clear — nothing waiting on you."
+            }
+            action={
+              completedCount > 0 ? (
+                <button
+                  onClick={() => setHideCompleted((h) => !h)}
+                  title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                  aria-pressed={hideCompleted}
+                  className="text-sm font-medium text-on-surface-variant hover:text-primary inline-flex items-center gap-1 cursor-pointer"
+                >
+                  {hideCompleted ? (
+                    <EyeOff className="w-3.5 h-3.5" />
+                  ) : (
+                    <Eye className="w-3.5 h-3.5" />
+                  )}
+                  {hideCompleted ? "Show completed" : "Hide completed"}
+                </button>
+              ) : undefined
             }
           />
           <div className={cardClass}>

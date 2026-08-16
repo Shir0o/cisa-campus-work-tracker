@@ -2425,7 +2425,7 @@ body.bdoc-fs-on main { overflow: hidden; }
    Contact detail's desktop block) — the messages page maps them onto this
    app's own tokens, scoped to `.page.msgs` so no other page changes. */
 .page.msgs {
-  display: grid; grid-template-columns: 328px 1fr;
+  display: grid; grid-template-columns: 328px 1fr; grid-template-rows: minmax(0, 1fr);
   padding: 0; max-width: none; height: 100%; overflow: hidden;
   --panel: var(--surface);
   --panel-2: var(--surface-variant);
@@ -3306,6 +3306,7 @@ body.bdoc-fs-on main { overflow: hidden; }
    class (set in messages.jsx while a thread is open on mobile). */
 body.msgs-fullscreen .bottom-nav { display: none; }
 body.msgs-fullscreen .content { padding-bottom: 0 !important; }
+body.msgs-fullscreen .msgs-rail { display: none; }
 @media (max-width: 720px) {
   body.msgs-fullscreen .page.msgs { padding-bottom: 0; }
   body.msgs-fullscreen .msgs-composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }

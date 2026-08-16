@@ -221,6 +221,47 @@ describe('MyDayMobile', () => {
     expect(onAddPersonalTask).toHaveBeenCalledWith('New task item', expect.any(String));
   });
 
+  it('renders the hide/show completed toggle and calls back', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+    const onToggleHideCompleted = vi.fn();
+
+    const { rerender } = render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        assignedTasks={[
+          { id: 'a1', title: 'Done task', status: 'completed', assigneeId: 'u1', sourceDocId: 'd', createdById: 'other' },
+        ]}
+        personalTasks={[]}
+        hasCompleted
+        onToggleHideCompleted={onToggleHideCompleted}
+      />
+    );
+    fireEvent.click(screen.getByText('Hide done'));
+    expect(onToggleHideCompleted).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        assignedTasks={[]}
+        personalTasks={[]}
+        hasCompleted
+        hideCompleted
+        onToggleHideCompleted={onToggleHideCompleted}
+      />
+    );
+    expect(screen.getByText('Show done')).toBeInTheDocument();
+
+    rerender(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
+    expect(screen.queryByText('Hide done')).not.toBeInTheDocument();
+    expect(screen.queryByText('Show done')).not.toBeInTheDocument();
+  });
+
   it('supports keyboard actions (Enter & Escape) in task composer and edit mode', () => {
     (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
     const onAddPersonalTask = vi.fn();
