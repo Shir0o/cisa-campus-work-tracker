@@ -117,7 +117,7 @@ export function SectionHead({
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
       <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
       {sub && <span className="text-sm text-on-surface-variant flex-1 min-w-0">{sub}</span>}
-      {action}
+      {action && <div className="ml-auto self-center inline-flex items-center">{action}</div>}
       {linkLabel && (
         <button
           onClick={onLink}

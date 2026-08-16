@@ -15,7 +15,9 @@ import {
   Trash2,
   X,
   Heart,
-  Bell
+  Bell,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/primitives';
@@ -57,6 +59,9 @@ interface MyDayMobileProps {
   onUpdatePersonalTask?: (id: string, patch: any) => void;
   onDeletePersonalTask?: (id: string) => void;
   onAddPersonalTask?: (title: string, dueDate: string | null) => void;
+  hideCompleted?: boolean;
+  onToggleHideCompleted?: () => void;
+  hasCompleted?: boolean;
   onUpdatePrayerStatus?: (id: string, status: string, answer?: string, answeredAt?: string | null) => void;
   onUpdatePersonalPrayer?: (id: string, patch: any) => void;
   onDeletePersonalPrayer?: (id: string) => void;
@@ -118,6 +123,9 @@ export default function MyDayMobile({
   onUpdatePersonalTask = () => {},
   onDeletePersonalTask = () => {},
   onAddPersonalTask = () => {},
+  hideCompleted = false,
+  onToggleHideCompleted = () => {},
+  hasCompleted = false,
   onUpdatePrayerStatus = () => {},
   onUpdatePersonalPrayer = () => {},
   onDeletePersonalPrayer = () => {},
@@ -250,11 +258,24 @@ export default function MyDayMobile({
 
       {/* ── On the horizon checklist ── */}
       <section className="mt-8 px-5 dash-sec">
-        <div className="flex items-center justify-between mb-3 dash-sec-head">
+        <div className="flex items-center justify-between gap-2 mb-3 dash-sec-head">
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">On the horizon</h2>
-          <span className="text-xs text-on-surface-variant dash-sec-sub">
-            {leftToDo > 0 ? `${leftToDo} small things this week.` : "All clear."}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-on-surface-variant dash-sec-sub">
+              {leftToDo > 0 ? `${leftToDo} small things this week.` : "All clear."}
+            </span>
+            {hasCompleted && (
+              <button
+                onClick={onToggleHideCompleted}
+                title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                aria-pressed={hideCompleted}
+                className="text-xs font-semibold text-on-surface-variant inline-flex items-center gap-1 dash-sec-link"
+              >
+                {hideCompleted ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                {hideCompleted ? "Show done" : "Hide done"}
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4 shadow-sm flex flex-col divide-y divide-outline-variant/30">
