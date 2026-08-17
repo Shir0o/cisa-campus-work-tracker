@@ -15,7 +15,7 @@ export const SIGNUP_HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flye
 export const SIGNUP_INTERESTS = [
   'Home fellowship',
   'Bible study',
-  'Outreach',
+  'Gospel',
   'Prayer group',
   '1:1 mentorship',
 ];
