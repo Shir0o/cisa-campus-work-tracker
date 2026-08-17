@@ -1149,7 +1149,9 @@ describe('ContactDetailsModal Component', () => {
         expect.objectContaining({ content: 'No date log' }),
       ),
     );
-    expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByPlaceholderText(/Describe the interaction\.\.\./i)).not.toBeInTheDocument(),
+    );
 
     // The section header toggles the form back on and off.
     fireEvent.click(screen.getAllByRole('button', { name: /^Log interaction$/ })[1]);

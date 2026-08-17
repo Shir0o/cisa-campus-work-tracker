@@ -12,7 +12,13 @@ export const SIGNUP_MAJORS = [
 export const SIGNUP_YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
 export const SIGNUP_GENDERS = ['Male', 'Female', 'Other'];
 export const SIGNUP_HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flyer', 'Instagram', 'Other'];
-export const SIGNUP_INTERESTS = ['Friday gathering', 'Small group', 'Worship team', 'Outreach', 'Prayer group', '1:1 mentorship'];
+export const SIGNUP_INTERESTS = [
+  'Home fellowship',
+  'Bible study',
+  'Outreach',
+  'Prayer group',
+  '1:1 mentorship',
+];
 export const SIGNUP_SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = [
   { value: 'Exploring', label: 'Exploring faith' },
   { value: 'Christian', label: 'Christian' },
@@ -29,7 +35,7 @@ export interface SignUpFormState {
   phone: string;
   email: string;
   spiritualBackground: string;
-  howHeard: string;
+  howHeard?: string;
   interests: string[];
   prayerRequest: string;
   notes: string;
@@ -43,13 +49,12 @@ export const emptySignUpForm: SignUpFormState = {
   phone: '',
   email: '',
   spiritualBackground: '',
-  howHeard: '',
   interests: [],
   prayerRequest: '',
   notes: '',
 };
 
-/** Step-1 required-field checks: name, gender, year, major, email, phone (cell number) are mandatory. */
+/** Required-field checks: name, gender, year, major, email, phone (cell number) are mandatory. */
 export function validateSignUpBasics(form: SignUpFormState): string | null {
   if (!form.name.trim()) return 'Please enter your full name.';
   if (!form.gender) return 'Please select your gender.';
@@ -60,7 +65,7 @@ export function validateSignUpBasics(form: SignUpFormState): string | null {
   return null;
 }
 
-/** Step-2 required-field checks: interested in (interests) is mandatory. */
+/** Required-field checks: interested in (interests) is mandatory. */
 export function validateSignUpInterests(form: SignUpFormState): string | null {
   if (!form.interests || form.interests.length === 0) {
     return 'Please select at least one area you are interested in.';
@@ -68,8 +73,14 @@ export function validateSignUpInterests(form: SignUpFormState): string | null {
   return null;
 }
 
+/** Full-form validation check combining basics and interests. */
+export function validateSignUp(form: SignUpFormState): string | null {
+  return validateSignUpBasics(form) || validateSignUpInterests(form);
+}
+
 /** Anti-abuse math challenge check — retained for backward compatibility. */
 export function checkMathAnswer(challenge: { a: number; b: number }, answer: string): boolean {
   return parseInt(answer, 10) === challenge.a + challenge.b;
 }
+
 
