@@ -25,34 +25,36 @@ export const MAJORS = [
   'Linguistics', 'Civil Eng.', 'Sociology',
 ];
 
-export const HALLS = [
-  'Whitman Hall', 'Ridgewood House', 'Oak Commons', 'Eastfield Apts',
-  'Briarcliff', 'Stratton Tower', 'off-campus',
+export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
+
+export const GENDERS = ['Male', 'Female', 'Other'];
+
+export const SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = [
+  { value: 'Exploring', label: 'Exploring faith' },
+  { value: 'Christian', label: 'Christian' },
+  { value: 'Catholic', label: 'Catholic' },
+  { value: 'Other', label: 'Other religion / background' },
+  { value: 'None', label: 'Prefer not to say' },
 ];
 
 export const INTERESTS = [
-  'Friday gathering', 'Small group', 'Worship team',
-  'Outreach', 'Prayer group', 'Getting discipled',
+  'Home fellowship',
+  'Bible study',
+  'Outreach',
+  'Prayer group',
+  '1:1 mentorship',
 ];
-
-export const HOW_HEARD = [
-  'Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flyer', 'Instagram', 'Other',
-];
-
-export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate'];
 
 const emptyForm = {
   name: '',
-  pronouns: '',
+  gender: '',
   year: '',
   major: '',
   phone: '',
   email: '',
-  instagram: '',
-  hall: '',
-  howHeard: '',
-  openToPrayer: '',
+  spiritualBackground: '',
   interests: [] as string[],
+  prayerRequest: '',
   notes: '',
   botField: '',
 };
@@ -79,9 +81,8 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   const role = roleProp || auth?.role;
   const isStaffView = role !== 'operator' && role !== 'viewer' && role !== 'student' && role !== 'community';
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptyForm);
-  const [suMore, setSuMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,9 +117,19 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
   const resetForm = () => {
     setForm(emptyForm);
-    setSuMore(false);
     setError(null);
-    setStep(1);
+    setIsSubmitted(false);
+  };
+
+  const validate = () => {
+    if (!form.name.trim()) return 'Please enter your full name.';
+    if (!form.gender) return 'Please select your gender.';
+    if (!form.year) return 'Please select your year.';
+    if (!form.major) return 'Please select your major.';
+    if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
+    if (!form.phone.trim()) return 'Please enter your phone number.';
+    if (!form.interests || form.interests.length === 0) return 'Please select at least one area you are interested in.';
+    return null;
   };
 
   const submit = async () => {
@@ -126,14 +137,14 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
     // Anti-abuse honeypot check
     if (form.botField) {
-      setStep(3);
+      setIsSubmitted(true);
       if (onSubmitted) onSubmitted(form.name);
       return;
     }
 
-    if (!form.name.trim()) {
-      setError('Please provide your name.');
-      setStep(1);
+    const err = validate();
+    if (err) {
+      setError(err);
       return;
     }
 
@@ -153,23 +164,19 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       const now = new Date();
       const contactData: Record<string, any> = {
         name: form.name.trim(),
+        gender: form.gender || null,
         year: form.year || null,
         major: form.major || null,
-        pronouns: form.pronouns.trim() || null,
-        hall: form.hall || null,
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
-        instagram: form.instagram.trim() || null,
-        location: form.hall || 'Online Form',
+        spiritualBackground: form.spiritualBackground || null,
+        interests: form.interests,
+        prayerRequest: form.prayerRequest.trim() || null,
+        notes: form.notes.trim() || null,
+        location: 'Online Form',
         role: 'Student',
         stage: firstStage,
         initials: getUserInitials(form.name),
-        notes: [form.notes.trim(), form.openToPrayer.trim() && ('Open to prayer: ' + form.openToPrayer.trim())]
-          .filter(Boolean)
-          .join(' · '),
-        prayerRequest: form.openToPrayer.trim() || null,
-        howHeard: form.howHeard || null,
-        interests: form.interests,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         createdTime: now.toISOString(),
@@ -200,7 +207,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         console.error('Failed to broadcast admin notification:', notifyError);
       }
 
-      setStep(3);
+      setIsSubmitted(true);
       if (onSubmitted) {
         setTimeout(() => onSubmitted(form.name), 1800);
       }
@@ -212,23 +219,103 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   };
 
   const firstName = form.name.trim().split(' ')[0] || 'friend';
+  const isFormValid =
+    form.name.trim() &&
+    form.gender &&
+    form.year &&
+    form.major &&
+    form.phone.trim() &&
+    form.email.trim() &&
+    form.interests.length > 0;
 
-  // ── Step 1 Form Body (Shared between Desktop & Mobile) ──────────
-  const step1Body = (
+  // ── Form Body (Shared between Desktop & Mobile) ──────────
+  const formBody = (
     <div>
       <div className="flex flex-col gap-1.5 mb-3.5">
-        <label htmlFor="signup-name" className="text-[13px] font-medium text-on-surface-variant">Your name</label>
+        <label htmlFor="signup-name" className="text-[13px] font-medium text-on-surface-variant">
+          Full name <span className="text-error">*</span>
+        </label>
         <input
           id="signup-name"
           className={inputCls}
           value={form.name}
           onChange={(e) => set('name', e.target.value)}
-          placeholder="First name is plenty"
+          placeholder="e.g. Naomi Park"
         />
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
-        <label htmlFor="signup-phone" className="text-[13px] font-medium text-on-surface-variant">Phone</label>
+        <label className="text-[13px] font-medium text-on-surface-variant">
+          Gender <span className="text-error">*</span>
+        </label>
+        <div className="su-chips">
+          {GENDERS.map((g) => (
+            <button
+              type="button"
+              key={g}
+              onClick={() => set('gender', form.gender === g ? '' : g)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                form.gender === g
+                  ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
+                  : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
+              )}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 mb-3.5">
+        <label className="text-[13px] font-medium text-on-surface-variant">
+          Year <span className="text-error">*</span>
+        </label>
+        <div className="su-chips">
+          {YEARS.map((y) => (
+            <button
+              type="button"
+              key={y}
+              onClick={() => set('year', form.year === y ? '' : y)}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                form.year === y
+                  ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
+                  : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
+              )}
+            >
+              {y}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-1.5 mb-3.5">
+        <label htmlFor="signup-major" className="text-[13px] font-medium text-on-surface-variant">
+          Major <span className="text-error">*</span>
+        </label>
+        <select
+          id="signup-major"
+          className={cn(inputCls, 'cursor-pointer', !form.major && 'text-on-surface-variant/60')}
+          value={form.major}
+          onChange={(e) => set('major', e.target.value)}
+        >
+          <option value="">Choose…</option>
+          {MAJORS.map((m) => (
+            <option key={m} value={m} className="text-on-surface">
+              {m}
+            </option>
+          ))}
+          <option value="Other / undecided" className="text-on-surface">
+            Other / undecided
+          </option>
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1.5 mb-3.5">
+        <label htmlFor="signup-phone" className="text-[13px] font-medium text-on-surface-variant">
+          Cell number <span className="text-error">*</span>
+        </label>
         <input
           id="signup-phone"
           className={inputCls}
@@ -240,141 +327,51 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         />
       </div>
 
-      <p className="qa-enough">That's all we need. The rest is up to you.</p>
+      <div className="flex flex-col gap-1.5 mb-3.5">
+        <label htmlFor="signup-email" className="text-[13px] font-medium text-on-surface-variant">
+          Email <span className="text-error">*</span>
+        </label>
+        <input
+          id="signup-email"
+          className={inputCls}
+          type="email"
+          inputMode="email"
+          value={form.email}
+          onChange={(e) => set('email', e.target.value)}
+          placeholder="you@umail.edu"
+        />
+      </div>
 
-      <button
-        type="button"
-        className={cn('qa-disc', suMore && 'open')}
-        onClick={() => setSuMore(!suMore)}
-      >
-        <b>{suMore ? "That's plenty" : 'Tell us a bit more'}</b>
-        <span>{suMore ? '' : 'All optional'}</span>
-        <s aria-hidden="true" />
-      </button>
-
-      {suMore && (
-        <div className="qa-mored">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="signup-pronouns" className="text-[13px] font-medium text-on-surface-variant">Pronouns (optional)</label>
-              <input
-                id="signup-pronouns"
-                className={inputCls}
-                value={form.pronouns}
-                onChange={(e) => set('pronouns', e.target.value)}
-                placeholder="she / her"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="signup-year" className="text-[13px] font-medium text-on-surface-variant">Year</label>
-              <select
-                id="signup-year"
-                className={cn(inputCls, 'cursor-pointer', !form.year && 'text-on-surface-variant/60')}
-                value={form.year}
-                onChange={(e) => set('year', e.target.value)}
-              >
-                <option value="">Choose…</option>
-                {YEARS.map((y) => (
-                  <option key={y} value={y} className="text-on-surface">
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="signup-major" className="text-[13px] font-medium text-on-surface-variant">Major</label>
-            <select
-              id="signup-major"
-              className={cn(inputCls, 'cursor-pointer', !form.major && 'text-on-surface-variant/60')}
-              value={form.major}
-              onChange={(e) => set('major', e.target.value)}
-            >
-              <option value="">Choose…</option>
-              {MAJORS.map((m) => (
-                <option key={m} value={m} className="text-on-surface">
-                  {m}
-                </option>
-              ))}
-              <option value="Other / undecided" className="text-on-surface">
-                Other / undecided
-              </option>
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="signup-email" className="text-[13px] font-medium text-on-surface-variant">Email</label>
-            <input
-              id="signup-email"
-              className={inputCls}
-              type="email"
-              inputMode="email"
-              value={form.email}
-              onChange={(e) => set('email', e.target.value)}
-              placeholder="you@umail.edu"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="signup-instagram" className="text-[13px] font-medium text-on-surface-variant">Instagram (optional)</label>
-              <input
-                id="signup-instagram"
-                className={inputCls}
-                value={form.instagram}
-                onChange={(e) => set('instagram', e.target.value)}
-                placeholder="@handle"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="signup-hall" className="text-[13px] font-medium text-on-surface-variant">Where do you live?</label>
-              <select
-                id="signup-hall"
-                className={cn(inputCls, 'cursor-pointer', !form.hall && 'text-on-surface-variant/60')}
-                value={form.hall}
-                onChange={(e) => set('hall', e.target.value)}
-              >
-                <option value="">Choose…</option>
-                {HALLS.map((h) => (
-                  <option key={h} value={h} className="text-on-surface">
-                    {h}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // ── Step 2 Form Body (Shared between Desktop & Mobile) ──────────
-  const step2Body = (
-    <div>
-      <div className="flex flex-col gap-2 mb-4">
-        <label className="text-[13px] font-medium text-on-surface-variant">How did you hear about us?</label>
+      <div className="flex flex-col gap-1.5 mb-3.5">
+        <label className="text-[13px] font-medium text-on-surface-variant">
+          Where are you with faith right now? (optional)
+        </label>
         <div className="su-chips">
-          {HOW_HEARD.map((o) => (
-            <button
-              type="button"
-              key={o}
-              onClick={() => set('howHeard', form.howHeard === o ? '' : o)}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
-                form.howHeard === o
-                  ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
-                  : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
-              )}
-            >
-              {o}
-            </button>
-          ))}
+          {SPIRITUAL_BACKGROUNDS.map((s) => {
+            const active = form.spiritualBackground === s.value;
+            return (
+              <button
+                type="button"
+                key={s.value}
+                onClick={() => set('spiritualBackground', active ? '' : s.value)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm transition-colors cursor-pointer',
+                  active
+                    ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40 font-medium'
+                    : 'border-outline-variant text-on-surface-variant hover:border-outline hover:text-on-surface',
+                )}
+              >
+                {s.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
       <div className="flex flex-col gap-2 mb-4">
-        <label className="text-[13px] font-medium text-on-surface-variant">What are you drawn to?</label>
+        <label className="text-[13px] font-medium text-on-surface-variant">
+          What are you drawn to? <span className="text-error">*</span>
+        </label>
         <div className="su-chips">
           {INTERESTS.map((i) => {
             const active = form.interests.includes(i);
@@ -399,19 +396,25 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
-        <label className="text-[13px] font-medium text-on-surface-variant">Anything we can pray for?</label>
+        <label htmlFor="signup-prayer" className="text-[13px] font-medium text-on-surface-variant">
+          Anything we can pray for? (optional)
+        </label>
         <textarea
+          id="signup-prayer"
           rows={3}
           className={textareaCls}
-          value={form.openToPrayer}
-          onChange={(e) => set('openToPrayer', e.target.value)}
+          value={form.prayerRequest}
+          onChange={(e) => set('prayerRequest', e.target.value)}
           placeholder="Totally optional. We hold these confidentially."
         />
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
-        <label className="text-[13px] font-medium text-on-surface-variant">Anything else?</label>
+        <label htmlFor="signup-notes" className="text-[13px] font-medium text-on-surface-variant">
+          Anything else? (optional)
+        </label>
         <textarea
+          id="signup-notes"
           rows={2}
           className={textareaCls}
           value={form.notes}
@@ -436,24 +439,13 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
     </div>
   );
 
-  const stepHead = (
+  const formHead = (
     <div>
-      <div className="su-progress">
-        <span className="su-step">Step {step} of 2</span>
-        <div className="h-1 w-full max-w-[180px] rounded-full bg-surface-container-high overflow-hidden">
-          <div
-            className="h-full rounded-full bg-primary transition-all duration-300"
-            style={{ width: step === 1 ? '50%' : '100%' }}
-          />
-        </div>
-      </div>
       <h1 className="font-serif text-2xl lg:text-3xl font-medium tracking-tight text-on-surface mt-1 mb-1">
-        {step === 1 ? 'Tell us about you.' : 'And a little more.'}
+        Tell us about you.
       </h1>
       <p className="text-sm text-on-surface-variant leading-relaxed mb-4">
-        {step === 1
-          ? "Just the basics. We'll cover the rest in person."
-          : "All optional — skip anything you'd rather not answer."}
+        Just the basics. Fields marked with * are required.
       </p>
     </div>
   );
@@ -542,7 +534,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       <div className="signup-wrap sum min-h-screen bg-surface flex flex-col">
         {isStaffView && adminStrip}
 
-        {step === 3 ? (
+        {isSubmitted ? (
           <div className="sum-body sum-done-wrap flex-1 flex flex-col justify-center">{successBody}</div>
         ) : (
           <>
@@ -597,7 +589,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
             {/* The form */}
             <div className="sum-body flex-1">
-              {stepHead}
+              {formHead}
               <AnimatePresence>
                 {error && (
                   <motion.div
@@ -611,67 +603,35 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
                 )}
               </AnimatePresence>
 
-              {step === 1 ? step1Body : step2Body}
+              {formBody}
               <div className="su-note mt-3">We hold your details with care, and never share them.</div>
             </div>
 
             {/* Sticky, thumb-reachable action bar */}
             <div className="sum-bar">
-              {step === 1 ? (
-                <>
-                  <button
-                    type="button"
-                    className="sum-bar-sec px-4 text-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                    onClick={handleBack}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="sum-bar-pri inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
-                    onClick={() => {
-                      if (!form.name.trim()) {
-                        setError('Please provide your name.');
-                        return;
-                      }
-                      setError(null);
-                      setStep(2);
-                    }}
-                    disabled={!form.name.trim()}
-                  >
-                    Continue <ArrowRight className="w-4 h-4" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="sum-bar-sec px-4 text-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
-                    onClick={() => {
-                      setError(null);
-                      setStep(1);
-                    }}
-                  >
-                    &larr; Back
-                  </button>
-                  <button
-                    type="button"
-                    className="sum-bar-pri inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
-                    onClick={submit}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" /> Sending…
-                      </>
-                    ) : (
-                      <>
-                        Send it <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="sum-bar-sec px-4 text-sm text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+                onClick={handleBack}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="sum-bar-pri inline-flex items-center gap-2 px-5 h-12 rounded-xl bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                onClick={submit}
+                disabled={loading || !isFormValid}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Sending…
+                  </>
+                ) : (
+                  <>
+                    Send it <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
             </div>
           </>
         )}
@@ -761,11 +721,11 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
         {/* ── Right: The form ── */}
         <div className="signup-form">
-          {step === 3 ? (
+          {isSubmitted ? (
             successBody
           ) : (
             <>
-              {stepHead}
+              {formHead}
 
               <AnimatePresence>
                 {error && (
@@ -780,69 +740,34 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
                 )}
               </AnimatePresence>
 
-              {step === 1 && (
-                <div>
-                  {step1Body}
-                  <div className="flex items-center justify-between mt-6 pt-2">
-                    <button
-                      type="button"
-                      className="text-sm text-on-surface-variant hover:text-on-surface transition-colors px-3 py-2 cursor-pointer"
-                      onClick={handleBack}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
-                      onClick={() => {
-                        if (!form.name.trim()) {
-                          setError('Please provide your name.');
-                          return;
-                        }
-                        setError(null);
-                        setStep(2);
-                      }}
-                      disabled={!form.name.trim()}
-                    >
-                      Continue <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </div>
+              <div>
+                {formBody}
+                <div className="flex items-center justify-between mt-6 pt-2">
+                  <button
+                    type="button"
+                    className="text-sm text-on-surface-variant hover:text-on-surface transition-colors px-3 py-2 cursor-pointer"
+                    onClick={handleBack}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
+                    onClick={submit}
+                    disabled={loading || !isFormValid}
+                  >
+                    {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" /> Sending…
+                      </>
+                    ) : (
+                      <>
+                        Send it <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-
-              {step === 2 && (
-                <div>
-                  {step2Body}
-                  <div className="flex items-center justify-between mt-6 pt-2">
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors px-3 py-2 cursor-pointer"
-                      onClick={() => {
-                        setError(null);
-                        setStep(1);
-                      }}
-                    >
-                      &larr; Back
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-primary text-on-primary text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 cursor-pointer"
-                      onClick={submit}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" /> Sending…
-                        </>
-                      ) : (
-                        <>
-                          Send it <ArrowRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              )}
+              </div>
             </>
           )}
         </div>

@@ -49,7 +49,7 @@ export async function submitSignUp(
     gender: form.gender,
     year: form.year,
     major: form.major,
-    howHeard: form.howHeard,
+    howHeard: form.howHeard || null,
     interests: form.interests,
     prayerRequest: form.prayerRequest.trim(),
     createdAt: serverTimestamp(),

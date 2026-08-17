@@ -48,18 +48,29 @@ test.describe('Outreach & Sign-Up Intake Flow', () => {
     const majorField = page.getByPlaceholder(/major/i).first();
     if (await majorField.isVisible()) {
       await majorField.fill('Computer Science');
+    } else {
+      const majorSelect = page.locator('#signup-major');
+      if (await majorSelect.isVisible()) {
+        await majorSelect.selectOption('Computer Science');
+      }
     }
 
     // Select gender chip if present
-    const genderChip = page.getByRole('button', { name: /male|female|other/i }).first();
+    const genderChip = page.getByRole('button', { name: /^female$|^male$/i }).first();
     if (await genderChip.isVisible()) {
       await genderChip.click();
     }
 
     // Select year chip if present
-    const yearChip = page.getByRole('button', { name: /freshman|sophomore|junior|senior|other/i }).first();
+    const yearChip = page.getByRole('button', { name: /^freshman$|^sophomore$|^junior$|^senior$/i }).first();
     if (await yearChip.isVisible()) {
       await yearChip.click();
+    }
+
+    // Select interest chip if present
+    const interestChip = page.getByRole('button', { name: /bible study|home fellowship|outreach/i }).first();
+    if (await interestChip.isVisible()) {
+      await interestChip.click();
     }
 
     // Proceed to Step 2 if multi-step Next button exists
@@ -69,7 +80,7 @@ test.describe('Outreach & Sign-Up Intake Flow', () => {
     }
 
     // Submit form if submit button exists
-    const submitBtn = page.getByRole('button', { name: /submit|sign up|finish|done/i }).first();
+    const submitBtn = page.getByRole('button', { name: /send it|submit|sign up|finish|done/i }).first();
     if (await submitBtn.isVisible()) {
       await submitBtn.click();
     }
