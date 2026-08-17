@@ -10,6 +10,25 @@ import {
 import { getAutoSemesterAndSchoolYearTags } from '../src/seasons';
 import { submitSignUp } from '../src/data/signup';
 
+const h = vi.hoisted(() => ({
+  mockAddDoc: vi.fn(),
+  mockCollection: vi.fn((_db: unknown, path: string) => ({ path })),
+  mockGetDocs: vi.fn(),
+}));
+
+vi.mock('firebase/firestore', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    addDoc: (...args: any[]) => h.mockAddDoc(...args),
+    getDocs: (...args: any[]) => h.mockGetDocs(...args),
+    collection: (...args: any[]) => h.mockCollection(...args),
+    query: vi.fn(),
+    limit: vi.fn(),
+    serverTimestamp: () => 'SERVER_TIMESTAMP',
+  };
+});
+
 const form = (overrides: Partial<SignUpFormState> = {}): SignUpFormState => ({
   ...emptySignUpForm,
   name: 'Naomi Park',
@@ -87,33 +106,20 @@ describe('getAutoSemesterAndSchoolYearTags', () => {
 
 describe('submitSignUp with actor logging and auto tagging', () => {
   it('writes contact record with logged actor and auto tags', async () => {
-    const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
-    const mockCollection = vi.fn((_db, path) => ({ path }));
-    const mockGetDocs = vi.fn().mockResolvedValue({ empty: false, docs: [{ data: () => ({ label: 'Lead' }) }] });
+    h.mockAddDoc.mockResolvedValue({ id: 'test-doc-id' });
+    h.mockCollection.mockImplementation((_db: unknown, path: string) => ({ path }));
+    h.mockGetDocs.mockResolvedValue({ empty: false, docs: [{ data: () => ({ label: 'Lead' }) }] });
 
     const mockDb: any = {};
     const testForm = form();
     const seasonTags = ['Club Rush'];
     const byActor = { uid: 'user123', name: 'Full Timer John' };
 
-    vi.mock('firebase/firestore', async (importOriginal) => {
-      const actual: any = await importOriginal();
-      return {
-        ...actual,
-        addDoc: (...args: any[]) => mockAddDoc(...args),
-        getDocs: (...args: any[]) => mockGetDocs(...args),
-        collection: (...args: any[]) => mockCollection(...args),
-        query: vi.fn(),
-        limit: vi.fn(),
-        serverTimestamp: () => 'SERVER_TIMESTAMP',
-      };
-    });
-
     const docId = await submitSignUp(mockDb, testForm, seasonTags, byActor);
     expect(docId).toBe('test-doc-id');
 
-    expect(mockAddDoc).toHaveBeenCalled();
-    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(h.mockAddDoc).toHaveBeenCalled();
+    const contactCall = h.mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
     expect(contactCall).toBeDefined();
     const data = contactCall[1];
 

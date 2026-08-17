@@ -14,6 +14,7 @@ import {
 import { getUserInitials } from "../utils";
 import type { SignUpFormState } from "../signup";
 import { getAutoSemesterAndSchoolYearTags } from "../seasons";
+import { normalizeTagList } from "../tags";
 
 /**
  * Writes the new lead to `contacts` (stage defaults to the first `stages`
@@ -32,7 +33,7 @@ export async function submitSignUp(
   const firstStage = stagesSnapshot.empty ? "Lead" : (stagesSnapshot.docs[0].data().label as string);
 
   const autoTags = getAutoSemesterAndSchoolYearTags();
-  const allTags = Array.from(new Set(["New Sign Up", ...autoTags, ...seasonTags]));
+  const allTags = normalizeTagList(["New Sign Up", ...autoTags, ...seasonTags]);
 
   const now = new Date();
   const contactData: Record<string, any> = {

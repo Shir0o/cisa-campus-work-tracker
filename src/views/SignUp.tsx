@@ -16,6 +16,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { collection, addDoc, serverTimestamp, query, getDocs, limit } from 'firebase/firestore';
 import { useSeason, getAutoSemesterAndSchoolYearTags, SEASON_ORDER, SEASONS, seasonYear, SeasonId } from '../lib/seasons';
+import { normalizeTagList } from '../lib/tags';
 import { useAuth } from '../components/AuthProvider';
 
 export const MAJORS = [
@@ -142,14 +143,12 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       const firstStage = stagesSnapshot.empty ? 'Lead' : stagesSnapshot.docs[0].data().label;
 
       const autoTags = getAutoSemesterAndSchoolYearTags();
-      const allTags = Array.from(
-        new Set([
-          'New Sign Up',
-          ...autoTags,
-          ...season.tags,
-          ...(season.clubRush ? ['club-rush'] : []),
-        ]),
-      );
+      const allTags = normalizeTagList([
+        'New Sign Up',
+        ...autoTags,
+        ...season.tags,
+        ...(season.clubRush ? ['club-rush'] : []),
+      ]);
 
       const now = new Date();
       const contactData: Record<string, any> = {

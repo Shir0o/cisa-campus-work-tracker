@@ -11,8 +11,9 @@ describe('seasons', () => {
     expect(seasonForDate(new Date(2026, 0, 15))).toBe('winter'); // Jan
     expect(seasonForDate(new Date(2026, 3, 15))).toBe('spring'); // Apr
     expect(seasonForDate(new Date(2026, 6, 15))).toBe('summer'); // Jul
+    expect(seasonForDate(new Date(2026, 7, 15))).toBe('fall'); // Aug
     expect(seasonForDate(new Date(2026, 9, 15))).toBe('fall'); // Oct
-    expect(seasonForDate(new Date(2026, 11, 15))).toBe('winter'); // Dec
+    expect(seasonForDate(new Date(2026, 11, 15))).toBe('fall'); // Dec
   });
 
   it('formats a two-digit cohort year', () => {
@@ -21,7 +22,8 @@ describe('seasons', () => {
   });
 
   it('builds cohort tags, adding Club Rush when active', () => {
-    expect(seasonTags('fall', false)).toEqual(["Fall '" + seasonYear() + '']);
-    expect(seasonTags('fall', true)).toContain('Club Rush');
+    const d = new Date(2026, 8, 1);
+    expect(seasonTags('fall', false, d)).toEqual(['Fall 2026']);
+    expect(seasonTags('fall', true, d)).toEqual(['Fall 2026', 'Club Rush']);
   });
 });
