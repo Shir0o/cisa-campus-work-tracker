@@ -123,7 +123,7 @@ function EmailPasswordForm() {
       <button
         type="submit"
         disabled={busy}
-        className="w-full py-3 bg-primary text-on-primary rounded-full font-bold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
+        className="w-full py-3 bg-primary text-on-primary rounded-full font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-60"
       >
         {busy ? "Signing in…" : "Sign in with email"}
       </button>
@@ -132,7 +132,7 @@ function EmailPasswordForm() {
           href="https://shir0o.github.io/cisa-campus-work-traker/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:text-primary transition-colors underline"
+          className="hover:text-accent transition-colors underline"
         >
           Privacy Policy
         </a>
@@ -141,7 +141,7 @@ function EmailPasswordForm() {
           href="https://shir0o.github.io/cisa-campus-work-traker/support.html"
           target="_blank"
           rel="noopener noreferrer"
-          className="hover:text-primary transition-colors underline"
+          className="hover:text-accent transition-colors underline"
         >
           Support
         </a>
@@ -215,14 +215,14 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
-        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant shadow-lg">
+        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 text-center border border-outline-variant">
           <h2 className="text-3xl font-regular mb-4">Welcome to CISA Campus Work Tracker</h2>
           <p className="text-on-surface-variant mb-8">
             Please sign in with your Google account to continue.
           </p>
           <button
             onClick={signIn}
-            className="w-full py-4 bg-primary text-on-primary rounded-full font-bold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all"
+            className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all"
           >
             <img
               src="https://www.google.com/favicon.ico"
@@ -234,7 +234,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
           <div className="flex items-center gap-3 my-6">
             <div className="flex-1 h-px bg-outline-variant" />
-            <span className="text-xs text-on-surface-variant uppercase tracking-wider">or</span>
+            <span className="text-xs text-on-surface-variant">or</span>
             <div className="flex-1 h-px bg-outline-variant" />
           </div>
 
@@ -247,7 +247,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   if (!isApproved) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 border border-outline-variant shadow-lg">
+        <div className="max-w-md w-full bg-surface-container rounded-3xl p-8 border border-outline-variant">
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
               className="w-8 h-8"
@@ -263,7 +263,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
               />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold mb-2">Access Restricted</h2>
+          <h2 className="text-2xl font-semibold mb-2">Access Restricted</h2>
           <p className="text-on-surface-variant mb-8">
             Your account is pending approval. Please contact the administrator
             to gain access to the dashboard.
@@ -434,7 +434,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light" storageKey="campus-hub-theme">
+      <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
         <Router>
           <AuthProvider>
             <Routes>

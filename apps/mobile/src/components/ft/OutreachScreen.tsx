@@ -251,7 +251,7 @@ function OutreachCard({
       <Pressable onPress={onToggle} style={({ pressed }) => ({ flexDirection: 'row', gap: 12, padding: 15, opacity: pressed ? 0.8 : 1 })}>
         <View style={{ alignItems: 'center', width: 46 }}>
           <Text style={{ fontFamily: font.extra, fontSize: fs(24), lineHeight: fs(26), color: c.card.ink }}>{outreachDayNum(item.date)}</Text>
-          <Text style={{ fontFamily: font.bold, fontSize: fs(10), letterSpacing: 0.6, textTransform: 'uppercase', color: c.card.ink3 }}>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(10), color: c.card.ink3 }}>
             {outreachMonthShort(item.date)}
           </Text>
         </View>
@@ -304,7 +304,7 @@ function OutreachCard({
       {open && (
         <View style={{ paddingHorizontal: 15, paddingBottom: 16, borderTopWidth: 1, borderTopColor: c.card.line }}>
           <View style={{ marginTop: 14 }}>
-            <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>How it went</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>How it went</Text>
             {item.how ? (
               item.how.split('\n').filter(Boolean).map((p, i) => (
                 <Text key={i} style={{ fontFamily: font.semi, fontSize: fs(13.5), lineHeight: fs(20), color: c.card.ink, marginTop: 6 }}>
@@ -320,7 +320,7 @@ function OutreachCard({
 
           <View style={{ flexDirection: 'row', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
             <View style={{ flex: 1, minWidth: 140 }}>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Who went</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>Who went</Text>
               {went.map((id, i) => (
                 <Text key={`${id}-${i}`} style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 4 }}>
                   {userById(id)?.displayName || id}
@@ -333,7 +333,7 @@ function OutreachCard({
               )}
             </View>
             <View style={{ flex: 1, minWidth: 140 }}>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>What we handed out</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>What we handed out</Text>
               {[
                 ['bibles', 'Bibles'],
                 ['tracts', 'tracts'],
@@ -350,7 +350,7 @@ function OutreachCard({
           </View>
 
           <View style={{ marginTop: 14 }}>
-            <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Who left us their number</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>Who left us their number</Text>
             {names.length === 0 ? (
               <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), fontStyle: 'italic', color: c.card.ink3, marginTop: 6 }}>
                 Nobody, this time. It still counted.
@@ -517,7 +517,7 @@ function OutreachLogSheet({
 
           <View style={{ marginTop: 18, gap: 14 }}>
             <View>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>When</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>When</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 {WHEN_PRESETS.map((p) => (
                   <Chip key={p.key} label={p.label} on={date === p.date} onPress={() => setDate(p.date)} />
@@ -526,14 +526,14 @@ function OutreachLogSheet({
             </View>
 
             <View>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Where</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>Where</Text>
               <View style={{ marginTop: 8 }}>
                 <V2Input value={where} onChangeText={setWhere} placeholder="e.g. Cedar Park — the north lawn" />
               </View>
             </View>
 
             <View>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>Who went</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>Who went</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, marginTop: 8 }}>
                 {goers.map((u, i) => (
                   <Chip
@@ -554,7 +554,7 @@ function OutreachLogSheet({
             </View>
 
             <View>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>What we handed out</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>What we handed out</Text>
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                 {(
                   [
@@ -572,7 +572,7 @@ function OutreachLogSheet({
             </View>
 
             <View>
-              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>How it went</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>How it went</Text>
               <View style={{ marginTop: 8 }}>
                 <V2TextArea
                   value={how}
@@ -585,7 +585,7 @@ function OutreachLogSheet({
 
             {!editing && (
               <View>
-                <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.7, textTransform: 'uppercase', color: c.card.ink3 }}>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: c.card.ink3 }}>
                   Who left us their number
                 </Text>
                 <View style={{ marginTop: 8, gap: 10 }}>

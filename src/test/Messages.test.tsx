@@ -1332,7 +1332,7 @@ describe('Messages View Component', () => {
       const container = renderWith(mentionMsgs);
 
       await waitFor(() => {
-        const hit = container.querySelector('.msgb-bubble .text-primary');
+        const hit = container.querySelector('.msgb-bubble .text-accent');
         expect(hit).toBeTruthy();
         expect(hit!.textContent).toBe('@Alice');
       });

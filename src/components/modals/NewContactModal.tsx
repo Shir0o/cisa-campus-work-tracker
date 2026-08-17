@@ -216,12 +216,12 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
             {/* Header */}
             <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between shrink-0">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-bold text-xl">
+                <div className="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center font-semibold text-xl">
                   <User className="w-6 h-6" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-bold text-on-surface">New Contact</h2>
+                    <h2 className="text-xl font-semibold text-on-surface">New Contact</h2>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent text-[11px] font-semibold">
                       <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" />
                       {season.label}{season.clubRush ? ' · club rush' : ''}
@@ -244,7 +244,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {/* First Name */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                       <User className="w-3.5 h-3.5" /> THEIR NAME
                     </label>
                     <input
@@ -260,7 +260,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                   {/* Phone */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                       <Phone className="w-3.5 h-3.5" /> PHONE
                     </label>
                     <input
@@ -283,7 +283,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
-                          className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
+                          className="text-[10px] font-semibold text-error px-1  "
                         >
                           {phoneError}
                         </motion.p>
@@ -301,7 +301,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                   <button
                     type="button"
                     onClick={() => setShowMore(prev => !prev)}
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline cursor-pointer"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent hover:underline cursor-pointer"
                   >
                     {showMore ? '− Show less' : '+ Add the rest (optional details)'}
                   </button>
@@ -316,7 +316,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                   >
                     {/* Last Name */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <User className="w-3.5 h-3.5" /> LAST NAME
                       </label>
                       <input
@@ -330,7 +330,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                     {/* Status (role) */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                       </label>
                       <input
@@ -343,7 +343,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
                       </label>
                       <input
@@ -357,7 +357,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                     {/* Email */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Mail className="w-3.5 h-3.5" /> EMAIL
                       </label>
                       <input
@@ -371,7 +371,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                     {/* Stage selector */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Calendar className="w-3.5 h-3.5" /> WHERE THEY'RE AT
                       </label>
                       <select
@@ -388,7 +388,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                 {/* Tags */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                     <Tag className="w-3.5 h-3.5" /> TAGS (COMMA SEPARATED)
                   </label>
                   <input
@@ -405,7 +405,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                 {/* Spiritual Background Field */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                     <Sparkles className="w-3.5 h-3.5" /> SPIRITUAL BACKGROUND
                   </label>
                   <select
@@ -425,7 +425,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                 {/* Notes */}
                 <div className="space-y-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                  <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                     <MessageSquare className="w-3.5 h-3.5" /> NOTES
                   </label>
                   <textarea
@@ -445,7 +445,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm cursor-pointer"
+              className="flex-1 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
             >
               Cancel
             </button>
@@ -453,7 +453,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
               form="new-contact-form"
               disabled={loading}
               type="submit"
-              className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-sm"
+              className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-sm"
             >
               {loading ? (
                 <span className="animate-pulse">Adding Contact...</span>

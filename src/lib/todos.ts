@@ -72,7 +72,7 @@ export type DueTone = "overdue" | "soon" | "normal";
 
 export const dueToneClass: Record<DueTone, string> = {
   overdue: "text-error",
-  soon: "text-primary",
+  soon: "text-accent",
   normal: "text-on-surface-variant",
 };
 

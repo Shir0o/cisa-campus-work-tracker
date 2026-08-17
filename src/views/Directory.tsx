@@ -503,9 +503,9 @@ export default function Directory() {
           </button>
           <button
             onClick={() => openSmartImport()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-line bg-primary/10 text-accent text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
           >
-            <Sparkles className="w-4 h-4 text-primary" /> Smart Import
+            <Sparkles className="w-4 h-4 text-accent" /> Smart Import
           </button>
           <button
             onClick={() => openNewContact()}
@@ -534,7 +534,7 @@ export default function Directory() {
             className={cn(
               "h-11 px-4 rounded-full border text-sm font-medium transition-colors inline-flex items-center gap-2",
               hasActiveFilters
-                ? "border-primary text-primary bg-primary/5"
+                ? "border-primary text-accent bg-primary/5"
                 : "border-outline-variant text-on-surface-variant hover:bg-surface-variant"
             )}
           >
@@ -561,7 +561,7 @@ export default function Directory() {
                     {hasActiveFilters && (
                       <button
                         onClick={clearFilters}
-                        className="text-xs font-medium text-primary hover:underline"
+                        className="text-xs font-medium text-accent hover:underline"
                       >
                         Clear all
                       </button>
@@ -717,7 +717,7 @@ export default function Directory() {
                 onClick={() => setSelectedContact(contact)}
                 style={tStyle}
                 className={cn(
-                  "group relative bg-surface rounded-2xl border border-outline-variant/60 p-5 transition-colors cursor-pointer hover:border-[var(--tone)]",
+                  "group relative bg-surface rounded-3xl border border-outline-variant/60 p-5 transition-colors cursor-pointer hover:border-[var(--tone)]",
                   selected && "border-primary bg-primary/5"
                 )}
               >

@@ -162,7 +162,7 @@ export default function FeedbackFAB() {
       <button
         id="feedback-fab-btn"
         onClick={() => (isOpen ? close() : setIsOpen(true))}
-        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg hover:shadow-xl active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg  active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
           isMessagesPage ? 'bottom-20 lg:bottom-20 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
         } ${
           isOpen
@@ -205,7 +205,7 @@ export default function FeedbackFAB() {
               {phase === 'done' ? (
                 /* Success */
                 <div className="flex flex-col items-center text-center gap-2 py-6">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 text-primary grid place-items-center text-xl mb-1">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 text-accent grid place-items-center text-xl mb-1">
                     ✦
                   </div>
                   <p className="font-serif text-lg text-on-surface">We got your note.</p>

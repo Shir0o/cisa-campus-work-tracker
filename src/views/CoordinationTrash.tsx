@@ -88,7 +88,7 @@ export default function CoordinationTrash() {
             >
               <div className="flex flex-col items-center justify-center w-11 shrink-0 py-1.5 rounded-lg bg-surface-variant">
                 <span className="text-[11px] font-semibold text-on-surface-variant">{weekdayShort(d.date)}</span>
-                <span className="text-lg font-bold text-on-surface">{dayNum(d.date)}</span>
+                <span className="text-lg font-semibold text-on-surface">{dayNum(d.date)}</span>
               </div>
               <div className="min-w-0 flex-1">
                 <p className="font-semibold text-on-surface truncate">{d.title}</p>
@@ -96,11 +96,11 @@ export default function CoordinationTrash() {
               <div className="flex items-center gap-4 shrink-0">
                 <button
                   onClick={() => restoreBoardDoc(d).catch((e) => handleFirestoreError(e, OperationType.UPDATE, 'board_docs'))}
-                  className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:opacity-80"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:opacity-80"
                 >
                   <RotateCcw className="w-3.5 h-3.5" /> Restore
                 </button>
-                <button onClick={() => confirmPurge(d)} className="text-sm font-bold text-error hover:opacity-80">
+                <button onClick={() => confirmPurge(d)} className="text-sm font-semibold text-error hover:opacity-80">
                   Delete Forever
                 </button>
               </div>

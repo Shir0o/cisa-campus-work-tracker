@@ -451,7 +451,7 @@ const renderWithAssigneeBadges = (content: React.ReactNode): React.ReactNode => 
     if (part.startsWith('(@') && part.endsWith(')')) {
       const name = part.slice(2, -1);
       return (
-        <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary border border-primary/20 ml-1.5 font-sans not-italic">
+        <span key={i} className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-accent border border-accent-line ml-1.5 font-sans not-italic">
           @{name}
         </span>
       );
@@ -1381,7 +1381,7 @@ export default function CoordinationNotes() {
                 {m.name.split(' ')[0]}
                 {m.uid === uid ? ' (you)' : ''}
                 {n > 0 && (
-                  <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-primary text-[10px] font-bold inline-flex items-center justify-center">
+                  <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-accent text-[10px] font-semibold inline-flex items-center justify-center">
                     {n}
                   </span>
                 )}
@@ -1498,7 +1498,7 @@ export default function CoordinationNotes() {
                 onClick={() => setNoteTab(t)}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                  noteTab === t ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                  noteTab === t ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
                 {t === 'trash' ? 'Trash' : t === 'archived' ? 'Archive' : 'Active'}
@@ -1512,7 +1512,7 @@ export default function CoordinationNotes() {
                 onClick={() => setKind(k)}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                  kind === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                  kind === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
                 {k}
@@ -1601,7 +1601,7 @@ export default function CoordinationNotes() {
           }}
           onFocus={() => setIsBoardSearchFocused(true)}
           placeholder="Search pages, headings, notes & tasks… (press / or ⌘K)"
-          className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-24 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-all shadow-xs"
+          className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-24 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-all "
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
           {boardSearchQ ? (
@@ -1644,7 +1644,7 @@ export default function CoordinationNotes() {
                 className={cn(
                   'px-3 py-1 rounded-lg text-xs font-medium transition-colors flex items-center gap-1.5',
                   boardSearchTab === tab.id
-                    ? 'bg-surface text-on-surface shadow-xs font-semibold'
+                    ? 'bg-surface text-on-surface  font-semibold'
                     : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
@@ -1804,7 +1804,7 @@ export default function CoordinationNotes() {
           <div
             data-testid="coordination-notes-workspace"
             className={cn(
-              'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant shadow-sm overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)] transition-all',
+              'grid lg:grid-rows-1 bg-surface rounded-2xl border border-outline-variant  overflow-hidden min-h-[560px] lg:min-h-0 lg:h-[calc(100vh-6rem)] transition-all',
               pagesCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[300px_1fr]',
             )}
           >
@@ -1854,7 +1854,7 @@ export default function CoordinationNotes() {
                   const isPinnedGroup = g === 'Pinned';
                   return (
                     <div key={g} className="lg:mt-1.5 shrink-0 lg:shrink">
-                      <div className="hidden lg:block text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 px-2 pt-3 pb-1.5">
+                      <div className="hidden lg:block text-[11px] font-semibold   text-on-surface-variant/70 px-2 pt-3 pb-1.5">
                         {g}
                       </div>
                       {isPinnedGroup ? (
@@ -2014,7 +2014,7 @@ export default function CoordinationNotes() {
                   {m.name.split(' ')[0]}
                   {m.uid === uid ? ' (you)' : ''}
                   {n > 0 && (
-                    <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-primary text-[10px] font-bold inline-flex items-center justify-center">
+                    <span className="ml-0.5 min-w-[1.1rem] h-[1.1rem] px-1 rounded-full bg-primary/15 text-accent text-[10px] font-semibold inline-flex items-center justify-center">
                       {n}
                     </span>
                   )}
@@ -2186,7 +2186,7 @@ function DocRow({
     >
       <button onClick={onClick} className="w-full grid grid-cols-[42px_1fr] gap-3 items-start text-left p-2.5">
         <span className="flex flex-col items-center pt-0.5">
-          <span className={cn('text-[10.5px] font-bold tracking-wider uppercase', active ? 'text-stage-accent' : 'text-on-surface-variant/70')}>
+          <span className={cn('text-[10.5px] font-semibold  ', active ? 'text-stage-accent' : 'text-on-surface-variant/70')}>
             {weekdayShort(d.date)}
           </span>
           <span className={cn('font-serif text-[22px] leading-none', active || isToday ? 'text-stage-accent' : 'text-on-surface-variant')}>
@@ -2198,7 +2198,7 @@ function DocRow({
           <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{d.summary || mdSummary(md)}</span>
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
-              <span className="text-[10.5px] font-bold tracking-wide uppercase text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
+              <span className="text-[10.5px] font-semibold   text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
                 Today
               </span>
             )}
@@ -2332,7 +2332,7 @@ function NoteComposer({
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
         style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
-        className="bg-surface rounded-2xl border border-outline-variant p-4 shadow-xl flex flex-col space-y-3"
+        className="bg-surface rounded-2xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-sm font-semibold text-on-surface">Make note/learning</h3>
@@ -2349,7 +2349,7 @@ function NoteComposer({
                 onClick={() => setType(k)}
                 className={cn(
                   'px-2 py-1 rounded-lg text-[11px] font-medium capitalize transition-colors',
-                  type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                  type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
                 {k}
@@ -2447,7 +2447,7 @@ function LinkComposer({
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
         style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
-        className="bg-surface rounded-2xl border border-outline-variant p-4 shadow-xl flex flex-col space-y-3"
+        className="bg-surface rounded-2xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-sm font-semibold text-on-surface">Insert link</h3>
@@ -3504,7 +3504,7 @@ function NoteCard({
           <Tag className="w-3 h-3" /> {n.series}
         </span>
         {n.archivedAt != null && (
-          <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold uppercase tracking-wider">
+          <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold  ">
             Archived
           </span>
         )}
@@ -3520,7 +3520,7 @@ function NoteCard({
             {onToggleDisplayMode && (
               <button
                 onClick={() => onToggleDisplayMode(n)}
-                className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
                 title={isListMode ? 'Switch to text mode' : 'Switch to checklist mode'}
               >
                 {isListMode ? <Type className="w-3.5 h-3.5" /> : <ListChecks className="w-3.5 h-3.5" />}
@@ -3529,7 +3529,7 @@ function NoteCard({
             {onEdit && noteTab !== 'trash' && (
               <button
                 onClick={() => onEdit(n)}
-                className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
                 title="Edit note"
               >
                 <Edit3 className="w-3.5 h-3.5" />
@@ -3538,7 +3538,7 @@ function NoteCard({
             {onToggleArchive && noteTab !== 'trash' && (
               <button
                 onClick={() => onToggleArchive(n)}
-                className={cn('p-1 transition-colors', n.archivedAt ? 'text-primary' : 'text-on-surface-variant/50 hover:text-primary')}
+                className={cn('p-1 transition-colors', n.archivedAt ? 'text-accent' : 'text-on-surface-variant/50 hover:text-accent')}
                 title={n.archivedAt ? 'Unarchive note' : 'Archive note'}
               >
                 <Archive className="w-3.5 h-3.5" />
@@ -3549,7 +3549,7 @@ function NoteCard({
                 {onRestore && (
                   <button
                     onClick={() => onRestore(n)}
-                    className="p-1 text-on-surface-variant/50 hover:text-primary transition-colors"
+                    className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
                     title="Restore note"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
@@ -3595,7 +3595,7 @@ function NoteCard({
                     checked={isChecked}
                     onChange={(e) => onToggleChecklistItem?.(n, idx, e.target.checked)}
                     disabled={!canEdit}
-                    className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary"
+                    className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
                   />
                   <span className={cn('leading-normal', isChecked && 'line-through opacity-60')}>
                     {cleanText}
@@ -3673,7 +3673,7 @@ export function NoteForm({
                 onClick={() => setType(k)}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                  type === k ? 'bg-surface text-on-surface shadow-sm' : 'text-on-surface-variant hover:text-on-surface',
+                  type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
                 {k}
@@ -3801,7 +3801,7 @@ export function SuggestedTaskCard({
   }
 
   return (
-    <div className="bg-surface border border-outline-variant rounded-xl p-3.5 space-y-3 shadow-xs">
+    <div className="bg-surface border border-outline-variant rounded-xl p-3.5 space-y-3 ">
       <textarea
         value={title}
         onChange={(e) => setTitle(e.target.value)}
@@ -3813,7 +3813,7 @@ export function SuggestedTaskCard({
       <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
         {/* Assignee */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Who</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Who</label>
           <select
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
@@ -3830,7 +3830,7 @@ export function SuggestedTaskCard({
 
         {/* Due Date */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">When</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">When</label>
           <input
             type="date"
             value={dueDate}
@@ -3841,7 +3841,7 @@ export function SuggestedTaskCard({
 
         {/* Contact */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Contact</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Contact</label>
           <select
             value={contactId}
             onChange={(e) => setContactId(e.target.value)}
@@ -3858,7 +3858,7 @@ export function SuggestedTaskCard({
 
         {/* Priority */}
         <div className="space-y-1">
-          <label className="text-[10px] uppercase font-bold text-on-surface-variant/60 block">Priority</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Priority</label>
           <div className="flex bg-surface-container border border-outline-variant rounded-lg p-0.5">
             {(['low', 'medium', 'high'] as const).map((p) => (
               <button
@@ -3866,7 +3866,7 @@ export function SuggestedTaskCard({
                 type="button"
                 onClick={() => setPriority(p)}
                 className={cn(
-                  'flex-1 text-[9.5px] font-bold uppercase rounded py-0.5 transition-colors',
+                  'flex-1 text-[9.5px] font-semibold  rounded py-0.5 transition-colors',
                   priority === p
                     ? p === 'high'
                       ? 'bg-error text-white'

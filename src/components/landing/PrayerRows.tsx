@@ -66,7 +66,7 @@ export function TeamPrayerRow({
             <button
               type="button"
               onClick={() => onOpenContact(contact)}
-              className="text-sm text-primary hover:underline mt-0.5"
+              className="text-sm text-accent hover:underline mt-0.5"
             >
               for {contact.name}
             </button>
@@ -75,7 +75,7 @@ export function TeamPrayerRow({
           {!answering && prayer.status === "answered" && (prayer.answer || prayer.answeredAt) && (
             <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+                <span className="text-xs font-medium text-success">
                   Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
                 </span>
                 {!prayer.prayerPage && (
@@ -85,7 +85,7 @@ export function TeamPrayerRow({
                       setHowDraft(prayer.answer || "");
                       setAnswering(true);
                     }}
-                    className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                    className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
                   >
                     Edit Testimony
                   </button>
@@ -101,7 +101,7 @@ export function TeamPrayerRow({
 
           {answering && (
             <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
-              <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-medium text-on-surface-variant mb-1">
                 How was it answered?
               </label>
               <textarea
@@ -145,7 +145,7 @@ export function TeamPrayerRow({
           <button
             type="button"
             onClick={onOpenPrayerLog}
-            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-primary transition-colors"
+            className="inline-flex items-center gap-1 text-[11.5px] text-on-surface-variant hover:text-accent transition-colors"
           >
             <ArrowRight className="w-3 h-3" /> Prayer Log
           </button>
@@ -245,7 +245,7 @@ export function PersonalPrayerRow({
                 e.stopPropagation();
                 onOpenContact(linked);
               }}
-              className="text-sm text-primary hover:underline mt-0.5"
+              className="text-sm text-accent hover:underline mt-0.5"
             >
               for {linked.name}
             </button>
@@ -256,7 +256,7 @@ export function PersonalPrayerRow({
           {!open && !answering && prayer.status === "answered" && (prayer.answeredAt || prayer.answeredBody) && (
             <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+                <span className="text-xs font-medium text-success">
                   Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
                 </span>
                 <button
@@ -265,7 +265,7 @@ export function PersonalPrayerRow({
                     setHowDraft(prayer.answeredBody || "");
                     setAnswering(true);
                   }}
-                  className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                  className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
                 >
                   Edit Testimony
                 </button>
@@ -280,7 +280,7 @@ export function PersonalPrayerRow({
 
           {answering && (
             <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl" onClick={(e) => e.stopPropagation()}>
-              <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+              <label className="block text-xs font-medium text-on-surface-variant mb-1">
                 How was it answered?
               </label>
               <textarea
@@ -416,7 +416,7 @@ export function AddPersonalPrayer({
     return (
       <button
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary transition-colors py-3"
+        className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-accent transition-colors py-3"
       >
         <Plus className="w-3.5 h-3.5" /> {addLabel}
       </button>

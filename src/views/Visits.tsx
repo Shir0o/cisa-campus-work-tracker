@@ -178,7 +178,7 @@ export default function Visits() {
     <PageContainer variant="wide">
       <header className="flex items-start gap-6 flex-wrap mb-2">
         <div className="min-w-0">
-          <div className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant mb-2">
+          <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
             Where we've been
           </div>
           <h1 className="font-serif page-title text-on-surface">Visits</h1>
@@ -228,10 +228,10 @@ export default function Visits() {
                 {overdue.map(({ contact, visit, daysAgo }) => (
                   <div
                     key={contact.id}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant shadow-sm transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px hover:shadow-lg"
+                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant  transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px "
                   >
                     <div className="flex items-start gap-4 min-w-0">
-                      <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
+                      <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
                         {initialsOf(contact.name)}
                       </span>
                       <div className="min-w-0">

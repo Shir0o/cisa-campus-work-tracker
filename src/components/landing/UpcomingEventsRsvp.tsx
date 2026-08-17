@@ -88,7 +88,7 @@ export function UpcomingEventsRsvp({
                   <div className="font-serif text-2xl text-on-surface leading-none">
                     {isValid(d) ? format(d, "d") : "–"}
                   </div>
-                  <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                  <div className="text-xs text-on-surface-variant mt-1">
                     {isValid(d) ? format(d, "MMM") : ""}
                   </div>
                 </div>

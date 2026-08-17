@@ -264,8 +264,8 @@ export function QueueScreen() {
             style={{
               fontFamily: font.extra,
               fontSize: fs(10.5),
-              letterSpacing: 1.47,
-              textTransform: 'uppercase',
+              
+              
               color: c.room.ink2,
               flexShrink: 1,
             }}

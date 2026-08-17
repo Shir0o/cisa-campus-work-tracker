@@ -70,25 +70,25 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
         <Menu className="w-5 h-5" />
       </button>
 
-      {/* Page title / breadcrumbs — serif, warm (desktop) */}
+      {/* Page title / breadcrumbs (desktop) */}
       <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-2 min-w-0">
         <Link to="/" className="text-sm text-on-surface-variant hover:text-on-surface transition-colors shrink-0">
           Workspace
         </Link>
         <span className="text-on-surface-variant/50 select-none" aria-hidden="true">/</span>
-        <h1 className="font-serif text-lg font-medium text-on-surface leading-none truncate">{pageTitle}</h1>
+        <h1 className="text-lg font-semibold text-on-surface leading-none truncate">{pageTitle}</h1>
         {selectedContact && (
           <>
             <span className="text-on-surface-variant/50 select-none" aria-hidden="true">/</span>
-            <span className="font-serif text-lg font-medium text-on-surface leading-none truncate shrink-0">
+            <span className="text-lg font-semibold text-on-surface leading-none truncate shrink-0">
               {selectedContact.name}
             </span>
           </>
         )}
       </nav>
 
-      {/* Mobile page title — serif */}
-      <h1 className="lg:hidden font-serif text-lg font-medium text-on-surface leading-none truncate min-w-0">
+      {/* Mobile page title */}
+      <h1 className="lg:hidden text-lg font-semibold text-on-surface leading-none truncate min-w-0">
         {selectedContact ? selectedContact.name : pageTitle}
       </h1>
 
@@ -164,7 +164,7 @@ export default function TopBar({ onOpenImpersonateModal }: TopBarProps) {
                 className="absolute right-0 mt-2 w-56 bg-surface-container-high rounded-2xl shadow-xl border border-outline-variant py-2 z-50"
               >
                 <div className="px-4 py-3 border-b border-outline-variant mb-1">
-                  <p className="text-sm font-bold text-on-surface truncate">{profileName}</p>
+                  <p className="text-sm font-semibold text-on-surface truncate">{profileName}</p>
                   <p className="text-xs text-on-surface-variant truncate">{user?.email}</p>
                 </div>
 

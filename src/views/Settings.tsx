@@ -162,7 +162,7 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
             <div
               className={cn(
                 'flex-none w-11 h-11 rounded-full flex items-center justify-center text-xs font-semibold shrink-0',
-                isActive ? 'bg-primary/15 text-primary' : 'bg-stage-accent-soft text-stage-accent',
+                isActive ? 'bg-primary/15 text-accent' : 'bg-accent-soft text-stage-accent',
               )}
             >
               {card.initials}
@@ -171,7 +171,7 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
               <div className="flex items-center gap-2.5 flex-wrap">
                 <span className="font-serif text-[17px] text-on-surface leading-tight">{card.label}</span>
                 {isActive && (
-                  <span className="text-[11px] font-medium text-primary border border-primary/30 bg-surface rounded-full px-2 py-0.5 leading-none">
+                  <span className="text-[11px] font-medium text-accent border border-accent-line bg-surface rounded-full px-2 py-0.5 leading-none">
                     your role
                   </span>
                 )}
@@ -281,7 +281,7 @@ function AppearanceSection({
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
               )}
             >
-              <Icon className={cn('w-5 h-5', active ? 'text-primary' : 'text-on-surface-variant')} />
+              <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-on-surface-variant')} />
               <span className="font-serif text-base text-on-surface leading-none">{label}</span>
               <span className="text-xs text-on-surface-variant">{note}</span>
             </button>
@@ -317,7 +317,7 @@ function OwnerViewSection() {
           </div>
           <button
             onClick={() => setImpersonateTarget(null)}
-            className="px-3.5 py-1.5 bg-amber-500 text-white font-medium text-xs rounded-full hover:bg-amber-600 transition-colors shadow-sm"
+            className="px-3.5 py-1.5 bg-amber-500 text-white font-medium text-xs rounded-full hover:bg-amber-600 transition-colors "
           >
             Back to my view
           </button>
@@ -389,7 +389,7 @@ function CodeBlock({ code, label }: { code: string; label?: string }) {
   };
   return (
     <div className="rounded-xl border border-outline-variant/50 bg-surface-container-low overflow-hidden">
-      {label && <div className="px-3 pt-2.5 text-[11px] uppercase tracking-wide text-on-surface-variant">{label}</div>}
+      {label && <div className="px-3 pt-2.5 text-[11px]   text-on-surface-variant">{label}</div>}
       <div className="relative">
         <pre className="font-code text-[11.5px] leading-relaxed text-on-surface-variant whitespace-pre-wrap break-words px-3 py-2.5 pr-14 select-all">
           {code}
@@ -592,7 +592,7 @@ function IntegrationsSection({
                   </div>
                   <div>
                     <span className="text-on-surface-variant block text-[11px]">Stage</span>
-                    <span className="font-medium text-primary">{result.stage}</span>
+                    <span className="font-medium text-accent">{result.stage}</span>
                   </div>
                 </div>
                 {result.notes && (
@@ -793,7 +793,7 @@ function WebhookConsoleSection() {
       <div className="rounded-2xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
         {loadingLogs ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
-            <Loader2 className="w-7 h-7 animate-spin text-primary" />
+            <Loader2 className="w-7 h-7 animate-spin text-accent" />
             <p className="text-xs">Listening for incoming requests…</p>
           </div>
         ) : logs.length === 0 ? (
@@ -859,7 +859,7 @@ function WebhookConsoleSection() {
                             </div>
                           )}
                           <div>
-                            <span className="text-[11px] uppercase tracking-wide text-on-surface-variant block mb-1">
+                            <span className="text-[11px]   text-on-surface-variant block mb-1">
                               Raw payload (POST body)
                             </span>
                             <pre className="bg-surface border border-outline-variant/40 p-3 rounded-lg overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
@@ -873,7 +873,7 @@ function WebhookConsoleSection() {
                             </pre>
                           </div>
                           <div>
-                            <span className="text-[11px] uppercase tracking-wide text-on-surface-variant block mb-1">
+                            <span className="text-[11px]   text-on-surface-variant block mb-1">
                               Request headers
                             </span>
                             <pre className="bg-surface border border-outline-variant/40 p-3 rounded-lg overflow-x-auto font-code text-[11px] text-on-surface-variant whitespace-pre-wrap select-all">
@@ -943,7 +943,7 @@ function MemberCard({
         <div className="flex items-center gap-2">
           <span className="font-medium text-on-surface truncate">{user.displayName || 'Unnamed'}</span>
           {isYou && (
-            <span className="text-[10px] text-primary border border-primary/30 bg-surface rounded-full px-1.5 py-0.5 leading-none shrink-0">
+            <span className="text-[10px] text-accent border border-accent-line bg-surface rounded-full px-1.5 py-0.5 leading-none shrink-0">
               you
             </span>
           )}
@@ -1500,7 +1500,7 @@ export default function Settings() {
         {/* Asking to join */}
         {!loading && pendingUsers.length > 0 && (
           <div className="mb-5 rounded-2xl border border-primary/25 bg-primary/5 p-4">
-            <div className="flex items-center gap-2 mb-3 text-primary">
+            <div className="flex items-center gap-2 mb-3 text-accent">
               <KeyRound className="w-4 h-4" />
               <span className="text-sm font-medium">
                 {pendingUsers.length} {pendingUsers.length === 1 ? 'person is' : 'people are'} asking to join

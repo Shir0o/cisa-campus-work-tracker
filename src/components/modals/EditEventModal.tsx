@@ -116,7 +116,7 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
             <form onSubmit={handleSubmit} className="p-5 space-y-4">
               {/* Name */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                   <Tag className="w-3 h-3" /> Name
                 </label>
                 <input
@@ -132,7 +132,7 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
 
               {/* Type pills */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-on-surface-variant px-1 uppercase tracking-wider">Type</label>
+                <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">Type</label>
                 <div className="flex flex-wrap gap-2">
                   {gatheringTypes.map((t) => (
                     <button
@@ -162,8 +162,8 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
 
               {/* Location */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                  <MapPin className="w-3 h-3" /> Location <span className="font-bold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
+                <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                  <MapPin className="w-3 h-3" /> Location <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
                 </label>
                 <input
                   type="text"
@@ -179,14 +179,14 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 h-10 rounded-xl font-bold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                  className="flex-1 h-10 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={loading || !formData.name.trim() || !formData.date}
                   type="submit"
-                  className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-md shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
+                  className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
                 >
                   {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save changes'}
                 </button>

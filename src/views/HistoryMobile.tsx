@@ -83,7 +83,7 @@ export default function HistoryMobile({
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page history history--m" data-role="ft">
       {/* ── Header ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 hism-hero">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1">
           {format(new Date(), 'EEEE, MMMM d')}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">Looking back</h1>
@@ -98,13 +98,13 @@ export default function HistoryMobile({
           onClick={() => setFilterOpen(true)}
           className={cn(
             "inline-flex items-center justify-center gap-2 h-11 border rounded-xl text-sm font-semibold active:brightness-95 transition-all bg-surface border-outline-variant/65 text-on-surface w-full hism-filterbtn",
-            activeCount > 0 && "bg-stage-accent-soft border-primary/20 text-primary on"
+            activeCount > 0 && "bg-accent-soft border-accent-line text-accent on"
           )}
         >
           <Filter className="w-4 h-4" />
           <span>Filter history</span>
           {activeCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-on-primary font-bold shadow-sm hism-count animate-in zoom-in duration-200">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-on-primary font-semibold  hism-count animate-in zoom-in duration-200">
               {activeCount}
             </span>
           )}
@@ -115,7 +115,7 @@ export default function HistoryMobile({
             {kind !== 'all' && (
               <button
                 onClick={() => setKind('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stage-accent-soft text-primary text-xs font-semibold rounded-full border border-primary/20 hism-chip"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft text-accent text-xs font-semibold rounded-full border border-accent-line hism-chip"
               >
                 {kindLabel}
                 <X className="w-3.5 h-3.5" />
@@ -124,7 +124,7 @@ export default function HistoryMobile({
             {who !== 'all' && (
               <button
                 onClick={() => setWho('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stage-accent-soft text-primary text-xs font-semibold rounded-full border border-primary/20 hism-chip"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft text-accent text-xs font-semibold rounded-full border border-accent-line hism-chip"
               >
                 {whoLabel}
                 <X className="w-3.5 h-3.5" />
@@ -182,7 +182,7 @@ export default function HistoryMobile({
                       {h.showTarget && (
                         <span className={cn(
                           "font-semibold text-on-surface",
-                          a.contactId && "underline decoration-outline-variant/60 underline-offset-2 cursor-pointer hover:text-primary hover:decoration-primary transition-all"
+                          a.contactId && "underline decoration-outline-variant/60 underline-offset-2 cursor-pointer hover:text-accent hover:decoration-primary transition-all"
                         )}>
                           {a.target}
                         </span>
@@ -237,7 +237,7 @@ export default function HistoryMobile({
             <div className="overflow-y-auto px-5 pb-8 pt-4 space-y-6 mds-body">
               {/* Kind category */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2.5">
+                <label className="block text-xs font-semibold   text-on-surface-variant mb-2.5">
                   Kind of moment
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -248,7 +248,7 @@ export default function HistoryMobile({
                       className={cn(
                         "px-4 py-2 rounded-full text-xs font-semibold border transition-all",
                         kind === k.id
-                          ? "bg-primary text-on-primary border-primary shadow-sm"
+                          ? "bg-primary text-on-primary border-primary "
                           : "bg-surface border-outline-variant/60 text-on-surface-variant hover:bg-surface-variant"
                       )}
                     >
@@ -260,7 +260,7 @@ export default function HistoryMobile({
 
               {/* Staff category */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-on-surface-variant mb-2">
+                <label className="block text-xs font-semibold   text-on-surface-variant mb-2">
                   Team member
                 </label>
                 <div className="relative border border-outline-variant/80 rounded-xl bg-surface-container-low">

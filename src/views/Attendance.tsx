@@ -425,7 +425,7 @@ export default function Attendance() {
                         <span className="font-semibold text-on-surface">{contact.name}</span>
                         <StageChip stage={contact.stage} />
                       </div>
-                      <div className="text-sm text-primary font-medium mt-0.5">
+                      <div className="text-sm text-accent font-medium mt-0.5">
                         Last with us at {lastSeen.name} · {formatEventDate(lastSeen.date)} — {since} gatherings ago
                       </div>
                       {(contact.role || contact.location) && (
@@ -509,13 +509,13 @@ export default function Attendance() {
                       className="w-full flex items-center gap-3 sm:gap-4 p-4 sm:p-5 text-left hover:bg-surface-variant/40 transition-colors group/header"
                     >
                       <div className="text-center w-12 shrink-0">
-                        <div className="text-[11px] uppercase tracking-wide text-on-surface-variant">
+                        <div className="text-[11px]   text-on-surface-variant">
                           {d ? format(d, 'EEE') : ''}
                         </div>
                         <div className="font-serif text-2xl text-on-surface leading-none">
                           {d ? format(d, 'd') : '–'}
                         </div>
-                        <div className="text-[11px] uppercase tracking-wide text-on-surface-variant">
+                        <div className="text-[11px]   text-on-surface-variant">
                           {d ? format(d, 'MMM') : ''}
                         </div>
                       </div>
@@ -584,7 +584,7 @@ export default function Attendance() {
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                           <div>
-                            <div className="text-xs font-semibold text-on-surface uppercase tracking-wide mb-2">
+                            <div className="text-xs font-semibold text-on-surface   mb-2">
                               Attended <span className="text-on-surface-variant">{present.length}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -604,7 +604,7 @@ export default function Attendance() {
                             </div>
                           </div>
                           <div>
-                            <div className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide mb-2">
+                            <div className="text-xs font-semibold text-on-surface-variant   mb-2">
                               We missed <span>{absent.length}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
@@ -661,7 +661,7 @@ export default function Attendance() {
                       <div className="font-serif text-2xl text-on-surface leading-none">
                         {isValid(d) ? format(d, 'd') : '–'}
                       </div>
-                      <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                      <div className="text-[11px]   text-on-surface-variant mt-1">
                         {isValid(d) ? format(d, 'MMM') : ''}
                       </div>
                     </div>

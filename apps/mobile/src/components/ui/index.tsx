@@ -69,7 +69,7 @@ export function AppText({
   const base: TextStyle = {
     fontFamily: serif ? typography.fontSerif : variant === 'label' ? typography.fontSansSemiBold : typography.fontSans,
     fontSize: size[variant],
-    fontWeight: serif ? '500' : variant === 'label' ? '600' : '400',
+    fontWeight: serif || variant === 'label' ? '600' : '400',
     color: color ?? (variant === 'caption' || variant === 'label' ? colors.onSurfaceVariant : colors.onSurface),
   };
   return (

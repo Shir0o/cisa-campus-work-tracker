@@ -45,7 +45,7 @@ export function V2DateBox({ label, dates }: { label: string; dates: QueueDate[] 
                 {day.num}
               </Text>
               <Text
-                style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.95, color: c.room.ink3, marginTop: 5 }}
+                style={{ fontFamily: font.bold, fontSize: fs(9.5), color: c.room.ink3, marginTop: 5 }}
               >
                 {day.mon}
               </Text>

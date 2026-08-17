@@ -419,7 +419,7 @@ export default function GlobalSearch() {
   };
 
   const GroupLabel = ({ children }: { children: React.ReactNode }) => (
-    <div className="px-2.5 pt-3 pb-1 text-[10.5px] font-bold uppercase tracking-[0.08em] text-on-surface-variant/70">
+    <div className="px-2.5 pt-3 pb-1 text-xs font-medium text-on-surface-variant/70">
       {children}
     </div>
   );
@@ -538,7 +538,7 @@ export default function GlobalSearch() {
                 className={cn(
                   'inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors',
                   inclHistory
-                    ? 'border-primary/40 bg-stage-accent-soft text-primary'
+                    ? 'border-accent-line bg-accent-soft text-accent'
                     : 'border-outline-variant text-on-surface-variant hover:text-on-surface',
                 )}
               >
@@ -608,7 +608,7 @@ export default function GlobalSearch() {
             aria-label="Search"
           />
           {!searchOpen ? (
-            <div className="absolute right-3 hidden xl:flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-bold text-on-surface-variant pointer-events-none">
+            <div className="absolute right-3 hidden xl:flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-medium text-on-surface-variant pointer-events-none">
               <Command className="w-3 h-3" />
               <span>K</span>
             </div>
@@ -687,7 +687,7 @@ export default function GlobalSearch() {
                 <button
                   type="button"
                   onClick={close}
-                  className="text-sm font-medium text-primary px-1 shrink-0"
+                  className="text-sm font-medium text-accent px-1 shrink-0"
                 >
                   Cancel
                 </button>

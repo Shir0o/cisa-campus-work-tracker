@@ -209,14 +209,14 @@ export default function NotificationCenter() {
           className={cn(
             'relative w-[38px] h-[38px] grid place-items-center rounded-[10px] border transition-all duration-120',
             isOpen
-              ? 'bg-stage-accent-soft text-primary border-primary/30'
+              ? 'bg-accent-soft text-accent border-accent-line'
               : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
           )}
           aria-label={unreadCount ? `${unreadCount} new notifications` : 'Notifications'}
         >
           <Bell className={cn('w-[17px] h-[17px] transition-transform duration-300', isOpen && 'rotate-[15deg]')} />
           {unreadCount > 0 && (
-            <span className="absolute top-[-3px] right-[-3px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-primary text-white text-[10.5px] font-bold leading-[16px] text-center border-2 border-surface-container box-content">
+            <span className="absolute top-[-3px] right-[-3px] min-w-[16px] h-[16px] px-[4px] rounded-full bg-primary text-white text-[10.5px] font-semibold leading-[16px] text-center border-2 border-surface-container box-content">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           )}
@@ -257,7 +257,7 @@ export default function NotificationCenter() {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="flex-none whitespace-nowrap text-primary text-[12.5px] font-semibold px-1.5 py-1 rounded-[7px] hover:bg-stage-accent-soft transition-colors"
+                    className="flex-none whitespace-nowrap text-accent text-[12.5px] font-semibold px-1.5 py-1 rounded-[7px] hover:bg-accent-soft transition-colors"
                   >
                     Mark all read
                   </button>
@@ -268,7 +268,7 @@ export default function NotificationCenter() {
               <div className="overflow-y-auto flex-1 min-h-0">
                 {notifications.length === 0 ? (
                   <div className="py-11 px-8 text-center">
-                    <div className="w-[46px] h-[46px] rounded-full bg-stage-accent-soft text-primary grid place-items-center mx-auto mb-3.5">
+                    <div className="w-[46px] h-[46px] rounded-full bg-accent-soft text-accent grid place-items-center mx-auto mb-3.5">
                       <Heart className="w-5 h-5" />
                     </div>
                     <div className="font-serif text-[17px] font-medium text-on-surface">
@@ -300,7 +300,7 @@ export default function NotificationCenter() {
               {notifications.length > 0 && (
                 <button
                   onClick={() => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); }}
-                  className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-primary text-[13px] font-semibold hover:bg-stage-accent-soft transition-colors"
+                  className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-accent text-[13px] font-semibold hover:bg-accent-soft transition-colors"
                 >
                   {isStaff ? 'See the whole record in History' : 'Open Prayer'}
                   <ArrowRight className="w-[14px] h-[14px]" />
@@ -328,7 +328,7 @@ export default function NotificationCenter() {
   }) {
     return (
       <div className={cn('py-1.5', bordered && 'border-t border-outline-variant')}>
-        <div className="text-[11px] font-semibold tracking-[0.06em] uppercase text-outline px-[18px] pt-2.5 pb-1.5">
+        <div className="text-xs font-medium text-outline px-[18px] pt-2.5 pb-1.5">
           {label}
         </div>
         {items.map(n => <NtfItem key={n.id} notif={n} onSelect={onSelect} onSetAside={onSetAside} />)}

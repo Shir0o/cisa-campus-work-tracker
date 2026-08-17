@@ -41,7 +41,7 @@ export default function VisitsMobile({
       data-role="ft"
     >
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1">
           Where we've been
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">Visits</h1>
@@ -81,7 +81,7 @@ export default function VisitsMobile({
             {overdue.map(({ contact, visit, daysAgo }) => (
               <div key={contact.id} className="p-4 rounded-2xl bg-surface border border-outline-variant">
                 <div className="flex items-start gap-3">
-                  <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
+                  <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
                     {initialsOf(contact.name)}
                   </span>
                   <div className="min-w-0">

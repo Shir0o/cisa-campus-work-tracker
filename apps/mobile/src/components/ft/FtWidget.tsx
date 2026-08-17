@@ -49,8 +49,8 @@ export function FtSech({
         style={{
           fontFamily: font.bold,
           fontSize: fs(10.5),
-          letterSpacing: 1.26,
-          textTransform: 'uppercase',
+          
+          
           color: c.room.ink3,
         }}
       >

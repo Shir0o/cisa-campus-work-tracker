@@ -55,8 +55,8 @@ export function ThreadMessageRow({
           style={{
             fontFamily: font.bold,
             fontSize: fs(10),
-            letterSpacing: 1,
-            textTransform: 'uppercase',
+            
+            
             color: c.card.ink3,
           }}
         >

@@ -22,8 +22,8 @@ function DateBlock({ date }: { date: string }) {
         style={{
           fontFamily: font.bold,
           fontSize: fs(10.5),
-          letterSpacing: 0.8,
-          textTransform: 'uppercase',
+          
+          
           color: c.card.ink3,
           marginTop: 1,
         }}

@@ -39,7 +39,7 @@ export function statusPillClass(active: boolean, tone: PillTone) {
     return "text-on-surface-variant border-outline-variant hover:text-on-surface hover:bg-surface-variant";
   switch (tone) {
     case "ongoing":
-      return "text-primary bg-stage-accent-soft border-primary/30";
+      return "text-accent bg-accent-soft border-accent-line";
     case "answered":
       return "text-on-tertiary-container bg-tertiary-container border-tertiary/40";
     case "archived":
@@ -121,7 +121,7 @@ export function SectionHead({
       {linkLabel && (
         <button
           onClick={onLink}
-          className="ml-auto text-sm font-medium text-primary hover:underline inline-flex items-center gap-1"
+          className="ml-auto text-sm font-medium text-accent hover:underline inline-flex items-center gap-1"
         >
           {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
         </button>

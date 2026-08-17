@@ -648,7 +648,7 @@ export default function OutreachBoard() {
         <div className="flex-1 overflow-x-auto p-6 lg:p-8">
           <div className="flex gap-6 h-full">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="w-80 bg-surface-container rounded-2xl border-t-2 border border-outline-variant/20 flex flex-col">
+              <div key={i} className="w-80 bg-surface-container rounded-3xl border-t-2 border border-outline-variant/20 flex flex-col">
                 <div className="p-4 space-y-2">
                   <Skeleton className="h-5 w-28" />
                   <Skeleton className="h-3 w-40 opacity-70" />
@@ -752,7 +752,7 @@ export default function OutreachBoard() {
                 onClick={() => setShowFilterMenu(!showFilterMenu)}
                 className={cn(
                   "p-2.5 rounded-full hover:bg-surface-variant text-on-surface-variant shrink-0 transition-colors",
-                  filterRole !== 'All' && "text-primary bg-primary/10"
+                  filterRole !== 'All' && "text-accent bg-primary/10"
                 )}
               >
                 <Filter className="w-5 h-5" />
@@ -768,7 +768,7 @@ export default function OutreachBoard() {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-3 min-w-[180px] space-y-2"
                     >
-                      <p className="text-[11px] font-medium uppercase tracking-wide text-on-surface-variant px-2">Filter by role</p>
+                      <p className="text-[11px] font-medium   text-on-surface-variant px-2">Filter by role</p>
                       <div className="space-y-1">
                         {filterRoles.map(role => (
                           <button
@@ -931,7 +931,7 @@ export default function OutreachBoard() {
                     <button
                       type="submit"
                       disabled={!newStageName.trim()}
-                      className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium shadow-lg shadow-primary/20 hover:shadow-xl hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
+                      className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium    hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
                     >
                       {editingStage ? 'Save changes' : 'Add this step'}
                     </button>
@@ -976,7 +976,7 @@ export default function OutreachBoard() {
                   </p>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-on-surface-variant px-1 uppercase tracking-wide">
+                    <label className="text-xs font-medium text-on-surface-variant px-1  ">
                       Destination step
                     </label>
                     <select
@@ -1007,7 +1007,7 @@ export default function OutreachBoard() {
                     <button
                       type="submit"
                       disabled={!stageToDeleteModal.targetStage}
-                      className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium shadow-lg hover:shadow-xl disabled:opacity-50 transition-all"
+                      className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium   disabled:opacity-50 transition-all"
                     >
                       Reassign & remove step
                     </button>
@@ -1020,7 +1020,7 @@ export default function OutreachBoard() {
 
         <DragOverlay dropAnimation={dropAnimation}>
           {activeStageId ? (
-            <div className="w-[220px] rounded-2xl bg-surface-container-high border border-outline-variant/40 shadow-lg px-4 py-3 pointer-events-none">
+            <div className="w-[220px] rounded-3xl bg-surface-container-high border border-outline-variant/40 shadow-lg px-4 py-3 pointer-events-none">
               <p className="font-serif text-[17px] text-on-surface truncate">
                 {stages.find((s) => s.id === activeStageId)?.label}
               </p>
@@ -1091,7 +1091,7 @@ function KanbanColumn({
     <div
       style={toneStyle(stageInfo.color)}
       className={cn(
-        "flex flex-col w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] shrink-0 bg-surface-container rounded-2xl border border-t-2 border-t-[var(--tone)] max-h-full transition-all",
+        "flex flex-col w-[88vw] max-w-[320px] sm:w-[320px] sm:max-w-none xl:w-[360px] shrink-0 bg-surface-container rounded-3xl border border-t-2 border-t-[var(--tone)] max-h-full transition-all",
         isOver ? "border-outline ring-2 ring-primary/30" : "border-outline-variant/30",
       )}
     >
@@ -1148,7 +1148,7 @@ function KanbanColumn({
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-surface-variant text-on-surface transition-colors"
                     >
-                      <Edit3 className="w-3.5 h-3.5 text-primary" />
+                      <Edit3 className="w-3.5 h-3.5 text-accent" />
                       Rename step
                     </button>
                     <button
@@ -1274,7 +1274,7 @@ function InternalKanbanCard({
       onClick={() => !isOverlay && onEditContact(contact)}
       style={toneStyle(stageColor)}
       className={cn(
-        "bg-surface-container-lowest p-3.5 rounded-xl shadow-sm cursor-grab hover:shadow-md transition-all border border-outline-variant/40 hover:border-[var(--tone)] flex flex-col gap-2.5 group active:cursor-grabbing",
+        "bg-surface-container-lowest p-3.5 rounded-xl  cursor-grab  transition-all border border-outline-variant/40 hover:border-[var(--tone)] flex flex-col gap-2.5 group active:cursor-grabbing",
         isOverlay && "shadow-2xl",
       )}
       {...dragListeners}

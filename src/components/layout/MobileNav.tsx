@@ -27,7 +27,7 @@ export default function MobileNav() {
           to="/"
           className={({ isActive }) => cn(
             "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive && window.location.pathname === '/' ? "text-primary" : "text-on-surface-variant"
+            isActive && window.location.pathname === '/' ? "text-accent" : "text-on-surface-variant"
           )}
         >
           {({ isActive }) => (
@@ -38,7 +38,7 @@ export default function MobileNav() {
               )}>
                 <LayoutDashboard className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
+              <span className="text-[11px] font-medium">Home</span>
             </>
           )}
         </NavLink>
@@ -47,7 +47,7 @@ export default function MobileNav() {
           to="/attendance"
           className={({ isActive }) => cn(
             "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive ? "text-primary" : "text-on-surface-variant"
+            isActive ? "text-accent" : "text-on-surface-variant"
           )}
         >
           {({ isActive }) => (
@@ -58,7 +58,7 @@ export default function MobileNav() {
               )}>
                 <CalendarCheck className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Gatherings</span>
+              <span className="text-[11px] font-medium">Gatherings</span>
             </>
           )}
         </NavLink>
@@ -70,7 +70,7 @@ export default function MobileNav() {
       {isOperator && (
         <button
           onClick={() => setSearchOpen(true)}
-          className="relative -top-5 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-lg shadow-primary/25 flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all outline-none"
+          className="relative -top-5 w-14 h-14 bg-primary text-on-primary rounded-2xl  flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all outline-none"
           aria-label="Search"
         >
           <Search className="w-6 h-6" />
@@ -82,7 +82,7 @@ export default function MobileNav() {
           to="/directory"
           className={({ isActive }) => cn(
             "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive && window.location.pathname === '/directory' ? "text-primary" : "text-on-surface-variant"
+            isActive && window.location.pathname === '/directory' ? "text-accent" : "text-on-surface-variant"
           )}
         >
           {({ isActive }) => (
@@ -93,7 +93,7 @@ export default function MobileNav() {
               )}>
                 <Contact className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Contacts</span>
+              <span className="text-[11px] font-medium">Contacts</span>
             </>
           )}
         </NavLink>
@@ -102,7 +102,7 @@ export default function MobileNav() {
           to="/prayer"
           className={({ isActive }) => cn(
             "flex flex-col items-center gap-1 min-w-[64px] transition-all py-1",
-            isActive ? "text-primary" : "text-on-surface-variant"
+            isActive ? "text-accent" : "text-on-surface-variant"
           )}
         >
           {({ isActive }) => (
@@ -113,7 +113,7 @@ export default function MobileNav() {
               )}>
                 <HeartHandshake className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider">Prayer</span>
+              <span className="text-[11px] font-medium">Prayer</span>
             </>
           )}
         </NavLink>

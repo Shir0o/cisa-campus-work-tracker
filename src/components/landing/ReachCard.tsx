@@ -38,7 +38,7 @@ export function ReachCard({
             <span className="font-semibold text-on-surface">{contact.name}</span>
             <StageChip stage={contact.stage} stages={stages} />
           </div>
-          <div className="text-sm text-primary font-medium mt-0.5">
+          <div className="text-sm text-accent font-medium mt-0.5">
             {Number.isFinite(days) ? connectedLabel(days) : "Not connected yet"}
           </div>
           {statusNode && <div className="mt-1.5">{statusNode}</div>}

@@ -384,7 +384,7 @@ export default function History() {
     <PageContainer variant="wide">
       {/* Header */}
       <header className="mb-8">
-        <div className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant mb-2">
+        <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
           {todayLong}
         </div>
         <h1 className="font-serif page-title text-on-surface">Looking back</h1>
@@ -406,7 +406,7 @@ export default function History() {
               className={cn(
                 "text-[13px] px-3 py-1.5 rounded-full transition-colors",
                 kind === k.id
-                  ? "bg-surface text-on-surface shadow-sm"
+                  ? "bg-surface text-on-surface "
                   : "text-on-surface-variant hover:text-on-surface",
               )}
             >
@@ -498,7 +498,7 @@ export default function History() {
                           {a.contactId ? (
                             <button
                               onClick={() => openContact(a.contactId)}
-                              className="font-medium text-on-surface hover:text-primary hover:underline transition-colors"
+                              className="font-medium text-on-surface hover:text-accent hover:underline transition-colors"
                             >
                               {a.target}
                             </button>

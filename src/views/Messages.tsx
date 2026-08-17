@@ -76,7 +76,7 @@ function renderBody(text: string, memberFirstNames: string[]): React.ReactNode[]
   return parts.map((part, i) => {
     if (/^@[A-Za-z]+$/.test(part)) {
       const hit = memberFirstNames.some((n) => n.toLowerCase() === part.slice(1).toLowerCase());
-      if (hit) return <span key={i} className="text-primary font-semibold">{part}</span>;
+      if (hit) return <span key={i} className="text-accent font-semibold">{part}</span>;
     }
     return <React.Fragment key={i}>{part}</React.Fragment>;
   });
@@ -593,7 +593,7 @@ export default function Messages() {
                       {room.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
                     </span>
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-sm shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-sm shrink-0">
                       {photo ? (
                         <img src={photo} alt={name} className="w-full h-full object-cover rounded-full" />
                       ) : (
@@ -737,7 +737,7 @@ export default function Messages() {
         {!activeRoom ? (
           /* Empty Chat Area Placeholder */
           <div className="msgs-empty">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-1">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-accent flex items-center justify-center mb-1">
               <MessageSquare className="w-6 h-6" />
             </div>
             <div className="ntf-empty-title">Pick a conversation</div>
@@ -753,7 +753,7 @@ export default function Messages() {
                 </button>
               )}
               {activeRoom.type === 'direct' ? (
-                <div className="avatar w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
+                <div className="avatar w-9 h-9 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
                   {getRoomPhoto(activeRoom) ? (
                     <img src={getRoomPhoto(activeRoom) || ''} alt={getRoomName(activeRoom)} className="w-full h-full object-cover rounded-full" />
                   ) : (
@@ -850,7 +850,7 @@ export default function Messages() {
                   return (
                     <div key={msg.id} id={`msgb-${msg.id}`} className={cn("msgb", isMe && "mine")}>
                       {!isMe && (
-                        <div className="w-7 h-7 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
+                        <div className="w-7 h-7 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
                           {msg.senderPhoto ? (
                             <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
                           ) : (
@@ -894,7 +894,7 @@ export default function Messages() {
                                             type="checkbox"
                                             checked={isTodoChecked}
                                             onChange={(e) => handleToggleTodo(attach, e.target.checked)}
-                                            className="w-4 h-4 rounded text-primary border-outline accent-primary cursor-pointer shrink-0 mt-0.5"
+                                            className="w-4 h-4 rounded text-accent border-outline accent-primary cursor-pointer shrink-0 mt-0.5"
                                           />
                                         ) : (
                                           <div className={cn(
@@ -906,7 +906,7 @@ export default function Messages() {
                                         )}
                                         <div className="min-w-0 flex-1">
                                           <h5 className={cn(
-                                            "text-xs font-bold leading-normal",
+                                            "text-xs font-semibold leading-normal",
                                             isTodo && isTodoChecked && "line-through opacity-70"
                                           )}>
                                             {attach.name}

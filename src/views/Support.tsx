@@ -30,7 +30,7 @@ export default function Support() {
             <LifeBuoy className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">App Support & Help Center</h1>
+            <h1 className="text-2xl font-semibold text-slate-100">App Support & Help Center</h1>
             <p className="text-sm text-slate-400">CISA Campus Work Tracker Support & Documentation</p>
           </div>
         </div>

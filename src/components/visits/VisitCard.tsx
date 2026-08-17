@@ -78,8 +78,8 @@ const Face = ({ name, className }: { name: string; className?: string }) => (
   <span
     title={name}
     className={cn(
-      'w-7 h-7 rounded-full grid place-items-center text-[10px] font-bold shrink-0',
-      'bg-primary/10 text-primary',
+      'w-7 h-7 rounded-full grid place-items-center text-[10px] font-semibold shrink-0',
+      'bg-primary/10 text-accent',
       className,
     )}
   >
@@ -89,7 +89,7 @@ const Face = ({ name, className }: { name: string; className?: string }) => (
 
 const Block = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div>
-    <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1.5">{label}</div>
+    <div className="text-[10px] font-semibold text-on-surface-variant   mb-1.5">{label}</div>
     {children}
   </div>
 );
@@ -122,7 +122,7 @@ export default function VisitCard({
       >
         <div className="w-12 shrink-0 text-center">
           <div className="font-serif text-2xl leading-none text-on-surface">{visitDayNum(visit.date)}</div>
-          <div className="text-[10px] uppercase tracking-widest text-on-surface-variant mt-1">
+          <div className="text-[10px]   text-on-surface-variant mt-1">
             {visitMonth(visit.date)}
           </div>
         </div>
@@ -206,7 +206,7 @@ export default function VisitCard({
                   <button
                     key={`${n}-${i}`}
                     onClick={() => onOpenContact(visit.contactIds[i])}
-                    className="inline-flex items-center gap-2 text-sm text-on-surface hover:text-primary transition-colors"
+                    className="inline-flex items-center gap-2 text-sm text-on-surface hover:text-accent transition-colors"
                   >
                     <Face name={n} />
                     {n}

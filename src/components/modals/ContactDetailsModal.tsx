@@ -94,7 +94,7 @@ function AuditActivityItem({
       {/* Icon Bubble */}
       <div
         className={cn(
-          "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 shadow-sm",
+          "absolute left-0 top-0.5 w-8 h-8 rounded-full border-2 border-surface-container flex items-center justify-center z-10 transition-transform group-hover:scale-110 ",
           activity.type === "edit"
             ? "bg-tertiary-container text-on-tertiary-container"
             : activity.type === "create"
@@ -117,7 +117,7 @@ function AuditActivityItem({
 
       <div className="flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-          <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+          <span className="text-xs font-semibold text-on-surface  tracking-tight">
             {activity.userName}
           </span>
           <span className="text-xs text-on-surface-variant">
@@ -149,7 +149,7 @@ function AuditActivityItem({
                     .join(", ")} for`
                 : activity.action}
           </span>
-          <span className="text-[10px] font-bold text-on-surface-variant/40 ml-auto uppercase tracking-widest whitespace-nowrap">
+          <span className="text-[10px] font-semibold text-on-surface-variant/40 ml-auto   whitespace-nowrap">
             {new Date(activity.createdAt).toLocaleDateString()} at{" "}
             {new Date(activity.createdAt).toLocaleTimeString([], {
               hour: "2-digit",
@@ -484,7 +484,7 @@ export default function ContactDetailsModal({
           <div className="flex justify-end">
             <button
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 transition-opacity"
+              className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
             >
               Close
             </button>
@@ -1048,7 +1048,7 @@ export default function ContactDetailsModal({
                           {contact.tags?.map((t) => (
                             <span
                               key={t}
-                              className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant"
+                              className="text-[10px]  font-semibold  px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant"
                             >
                               {t}
                             </span>
@@ -1253,7 +1253,7 @@ export default function ContactDetailsModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* First Name */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <User className="w-3.5 h-3.5" /> FIRST NAME
                       </label>
                       <input
@@ -1272,7 +1272,7 @@ export default function ContactDetailsModal({
                     </div>
                     {/* Last Name */}
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <User className="w-3.5 h-3.5" /> LAST NAME
                       </label>
                       <input
@@ -1290,7 +1290,7 @@ export default function ContactDetailsModal({
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider text-primary">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
                         <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                       </label>
                       <input
@@ -1305,7 +1305,7 @@ export default function ContactDetailsModal({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <MapPin className="w-3.5 h-3.5" /> {formData.tags?.includes('New Sign Up') ? 'RESIDENCE HALL' : 'FIRST MET'}
                       </label>
                       <input
@@ -1324,7 +1324,7 @@ export default function ContactDetailsModal({
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Mail className="w-3.5 h-3.5" /> EMAIL
                       </label>
                       <input
@@ -1339,7 +1339,7 @@ export default function ContactDetailsModal({
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Phone className="w-3.5 h-3.5" /> PHONE
                       </label>
                       <input
@@ -1364,7 +1364,7 @@ export default function ContactDetailsModal({
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="text-[10px] font-bold text-error px-1 uppercase tracking-wider"
+                            className="text-[10px] font-semibold text-error px-1  "
                           >
                             {phoneError}
                           </motion.p>
@@ -1372,7 +1372,7 @@ export default function ContactDetailsModal({
                       </AnimatePresence>
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider text-primary">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
                         <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
                       </label>
                       <select
@@ -1392,7 +1392,7 @@ export default function ContactDetailsModal({
                     </div>
 
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         TAGS (COMMA SEPARATED)
                       </label>
                       <input
@@ -1413,7 +1413,7 @@ export default function ContactDetailsModal({
                     </div>
                     {/* Spiritual Background Field */}
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Sparkles className="w-3.5 h-3.5" /> SPIRITUAL BACKGROUND
                       </label>
                       <select
@@ -1433,7 +1433,7 @@ export default function ContactDetailsModal({
                     </div>
                     {/* Notes Field */}
                     <div className="space-y-1.5 md:col-span-2">
-                      <label className="text-xs font-bold text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <MessageSquare className="w-3.5 h-3.5" /> NOTES
                       </label>
                       <textarea
@@ -1452,7 +1452,7 @@ export default function ContactDetailsModal({
                           type="button"
                           onClick={handleDelete}
                           disabled={loading}
-                          className="w-full flex items-center justify-center gap-2 px-4 h-11 rounded-xl text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-2 px-4 h-11 rounded-xl text-error font-semibold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
                         >
                           <Trash2 className="w-4 h-4" />
                           {loading ? (
@@ -1592,11 +1592,11 @@ export default function ContactDetailsModal({
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
                             onSubmit={handleAddInteraction}
-                            className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
+                            className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
                           >
                             <div className="grid grid-cols-2 gap-3 pb-3">
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
                                   <Calendar className="w-3 h-3" /> Date & Time
                                 </label>
                                 <input
@@ -1613,7 +1613,7 @@ export default function ContactDetailsModal({
                                 />
                               </div>
                               <div className="space-y-1">
-                                <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                                <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
                                   <MessageSquare className="w-3 h-3" /> Type
                                 </label>
                                 <select
@@ -1634,7 +1634,7 @@ export default function ContactDetailsModal({
                               </div>
                             </div>
                             <div className="space-y-1">
-                              <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest flex items-center gap-1.5 px-1">
+                              <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
                                 <MessageSquare className="w-3 h-3" /> Content
                               </label>
                               <textarea
@@ -1657,7 +1657,7 @@ export default function ContactDetailsModal({
                                   submittingInteraction ||
                                   !newInteraction.content.trim()
                                 }
-                                className="px-4 h-9 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
+                                className="px-4 h-9 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-95 transition-all disabled:opacity-50 flex items-center gap-2 text-xs"
                               >
                                 {submittingInteraction ? (
                                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1687,7 +1687,7 @@ export default function ContactDetailsModal({
                         ) : interactions.length === 0 ? (
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <MessageSquare className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-xs font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                            <p className="text-xs font-semibold text-on-surface-variant/40  ">
                               No interactions logged yet.
                             </p>
                           </div>
@@ -1715,11 +1715,11 @@ export default function ContactDetailsModal({
                                 {editingInteractionId === interaction.id ? (
                                   <form
                                     onSubmit={handleUpdateInteraction}
-                                    className="space-y-3 p-3 rounded-2xl bg-surface-container-high border border-primary/20"
+                                    className="space-y-3 p-3 rounded-3xl bg-surface-container-high border border-primary/20"
                                   >
                                     <div className="grid grid-cols-2 gap-3">
                                       <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                        <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
                                           Date
                                         </label>
                                         <input
@@ -1736,7 +1736,7 @@ export default function ContactDetailsModal({
                                         />
                                       </div>
                                       <div className="space-y-1">
-                                        <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                        <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
                                           Type
                                         </label>
                                         <select
@@ -1766,7 +1766,7 @@ export default function ContactDetailsModal({
                                       </div>
                                     </div>
                                     <div className="space-y-1">
-                                      <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest px-1">
+                                      <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
                                         Content
                                       </label>
                                       <textarea
@@ -1787,7 +1787,7 @@ export default function ContactDetailsModal({
                                         onClick={() =>
                                           setEditingInteractionId(null)
                                         }
-                                        className="h-7 px-3 text-[11px] font-bold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+                                        className="h-7 px-3 text-[11px] font-semibold text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
                                       >
                                         Cancel
                                       </button>
@@ -1797,7 +1797,7 @@ export default function ContactDetailsModal({
                                           isUpdatingInteraction ||
                                           !editInteractionData.content.trim()
                                         }
-                                        className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-bold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
+                                        className="h-7 px-3 bg-primary text-on-primary rounded text-[11px] font-semibold disabled:opacity-50 transition-colors flex items-center gap-1.5 focus:outline-none"
                                       >
                                         {isUpdatingInteraction ? (
                                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -1811,10 +1811,10 @@ export default function ContactDetailsModal({
                                   <>
                                     <div className="flex items-center justify-between mb-1">
                                       <div className="flex items-center gap-2">
-                                        <span className="text-xs font-black text-on-surface uppercase tracking-tight">
+                                        <span className="text-xs font-semibold text-on-surface  tracking-tight">
                                           {interaction.userName}
                                         </span>
-                                        <span className="text-[10px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                        <span className="text-[10px] font-semibold text-accent bg-primary/10 px-2 py-0.5 rounded-full  ">
                                           {new Date(
                                             interaction.dateTime,
                                           ).toLocaleDateString()}
@@ -1835,7 +1835,7 @@ export default function ContactDetailsModal({
                                                   "interaction",
                                               });
                                             }}
-                                            className="text-[10px] font-bold text-primary hover:text-primary-variant uppercase tracking-widest focus:outline-none"
+                                            className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
                                           >
                                             Edit
                                           </button>
@@ -1846,14 +1846,14 @@ export default function ContactDetailsModal({
                                       {interaction.content}
                                     </div>
                                     <div className="mt-1 flex items-center justify-between gap-2">
-                                      <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest">
+                                      <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
                                         {interaction.createdAt
                                           ? `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                                           : "Logging..."}
                                       </span>
                                       {(interaction.duration ||
                                         interaction.type) && (
-                                        <span className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-widest flex items-center gap-1">
+                                        <span className="text-[10px] font-semibold text-on-surface-variant/40   flex items-center gap-1">
                                           {interaction.type && (
                                             <span className="px-1.5 py-0.5 rounded bg-surface-container-high">
                                               {interaction.type}
@@ -1878,7 +1878,7 @@ export default function ContactDetailsModal({
                                               : interaction.id,
                                           )
                                         }
-                                        className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/60 hover:text-primary transition-colors"
+                                        className="inline-flex items-center gap-1.5 text-[11px] font-semibold   text-on-surface-variant/60 hover:text-accent transition-colors"
                                       >
                                         <Footprints className="w-3.5 h-3.5" />
                                         {countFor(threadMessages, interaction.id) > 0
@@ -1953,7 +1953,7 @@ export default function ContactDetailsModal({
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
                             onSubmit={handleAddPrayer}
-                            className="space-y-3 p-4 rounded-2xl bg-surface-container-high border border-primary/20 overflow-hidden"
+                            className="space-y-3 p-4 rounded-3xl bg-surface-container-high border border-primary/20 overflow-hidden"
                           >
                             <div className="space-y-1">
                               <label className="text-xs font-medium text-on-surface-variant px-1">
@@ -2030,7 +2030,7 @@ export default function ContactDetailsModal({
                             return (
                               <div
                                 key={p.id}
-                                className="p-4 rounded-2xl bg-surface-container-high border border-outline-variant/40"
+                                className="p-4 rounded-3xl bg-surface-container-high border border-outline-variant/40"
                               >
                                 <div className="flex items-center justify-between gap-2 mb-1.5">
                                   <span
@@ -2119,7 +2119,7 @@ export default function ContactDetailsModal({
                         ) : activities.length === 0 ? (
                           <div className="text-center py-12 px-4 rounded-[20px] bg-surface-container-low/50 border border-dashed border-outline-variant">
                             <Clock className="w-10 h-10 text-on-surface-variant/20 mx-auto mb-2" />
-                            <p className="text-[10px] font-bold text-on-surface-variant/40 uppercase tracking-wider">
+                            <p className="text-[10px] font-semibold text-on-surface-variant/40  ">
                               No audit history found for this contact.
                             </p>
                           </div>
@@ -2145,7 +2145,7 @@ export default function ContactDetailsModal({
                 <button
                   onClick={handleDelete}
                   disabled={loading}
-                  className="flex items-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm hover:bg-error/10 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm hover:bg-error/10 transition-colors disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
                   {loading ? (
@@ -2162,7 +2162,7 @@ export default function ContactDetailsModal({
                     <button
                       type="button"
                       onClick={() => setIsEditing(false)}
-                      className="flex-1 sm:flex-none px-6 h-10 rounded-full font-bold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
+                      className="flex-1 sm:flex-none px-6 h-10 rounded-full font-semibold text-on-surface-variant hover:bg-surface-variant text-sm transition-colors"
                     >
                       Cancel
                     </button>
@@ -2170,7 +2170,7 @@ export default function ContactDetailsModal({
                       form="edit-contact-form"
                       type="submit"
                       disabled={loading}
-                      className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
+                      className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                     >
                       {loading ? (
                         <span className="animate-pulse">Saving...</span>
@@ -2182,7 +2182,7 @@ export default function ContactDetailsModal({
                 ) : (
                   <button
                     onClick={onClose}
-                    className="w-full sm:w-auto px-8 h-10 rounded-full bg-secondary-container text-on-secondary-container font-bold hover:shadow-md transition-all text-sm"
+                    className="w-full sm:w-auto px-8 h-10 rounded-full bg-secondary-container text-on-secondary-container font-semibold  transition-all text-sm"
                   >
                     Done
                   </button>
@@ -2195,7 +2195,7 @@ export default function ContactDetailsModal({
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-bold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-4 h-10 rounded-full text-error font-semibold text-sm border border-error/20 hover:bg-error/10 transition-colors disabled:opacity-50"
               >
                 <Trash2 className="w-4 h-4" />
                 {loading ? (
@@ -2275,7 +2275,7 @@ export default function ContactDetailsModal({
               <div className="cd-aside-sec">
                 <h3 className="cd-aside-title">Cared for by</h3>
                 <div className="cd-owner">
-                  <div className="w-10 h-10 rounded-full bg-primary/15 text-primary text-sm font-bold grid place-items-center shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
                     {ownerInfo?.initials || "?"}
                   </div>
                   <div>
@@ -2287,7 +2287,7 @@ export default function ContactDetailsModal({
                   <div className="cd-whowho">
                     {addedByName && (
                       <div className="cd-lastby">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold grid place-items-center shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
                         <span>Added by <b>{addedByName}</b>{contact.createdAt ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
@@ -2295,7 +2295,7 @@ export default function ContactDetailsModal({
                     )}
                     {sinceBy && (
                       <div className="cd-lastby">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] font-bold grid place-items-center shrink-0">
+                        <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
                         <span>Last contacted by <b>{sinceBy}</b>{contact.lastContactedDate ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
@@ -2315,7 +2315,7 @@ export default function ContactDetailsModal({
                   )}
                   {sharedWith.map((s) => (
                     <div key={s.id} className="cd-share-row">
-                      <div className="w-7 h-7 rounded-full bg-primary/15 text-primary text-xs font-bold grid place-items-center shrink-0">{s.initials}</div>
+                      <div className="w-7 h-7 rounded-full bg-primary/15 text-accent text-xs font-semibold grid place-items-center shrink-0">{s.initials}</div>
                       <span className="cd-share-name">{s.name}</span>
                       <span className="cd-share-role">{s.role}</span>
                       {canShare && (
@@ -2347,7 +2347,7 @@ export default function ContactDetailsModal({
                     ) : (
                       <button
                         onClick={() => setSharing(true)}
-                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors self-start"
+                        className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
                       >
                         <Plus className="w-3 h-3" /> add someone
                       </button>
@@ -2386,7 +2386,7 @@ export default function ContactDetailsModal({
                   ) : (
                     <button
                       onClick={() => setAddingTag(true)}
-                      className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-primary transition-colors"
+                      className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
                     >
                       <Plus className="w-3 h-3" /> add
                     </button>
