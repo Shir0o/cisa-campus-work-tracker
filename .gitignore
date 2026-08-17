@@ -25,3 +25,6 @@ sac-*.json
 *service-account*.json
 *service_account*.json
 credentials.json
+
+# local scratch / capture harnesses — never commit
+tmp/

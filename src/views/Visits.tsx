@@ -284,14 +284,14 @@ export default function Visits() {
             </div>
           )}
 
-          <footer className="mt-12 pt-6 border-t border-outline-variant flex items-end gap-10 flex-wrap">
+          <footer className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex items-end gap-10 flex-wrap">
             {[
               { n: stats.visits, l: 'visits' },
               { n: stats.peopleSeen, l: "people we've sat with" },
               { n: stats.wentOut, l: 'of us have gone out' },
             ].map((f) => (
               <div key={f.l} className="flex flex-col gap-1">
-                <span className="font-serif text-2xl leading-none text-on-surface">{f.n}</span>
+                <span className="text-2xl leading-none text-on-surface">{f.n}</span>
                 <span className="text-xs text-on-surface-variant">{f.l}</span>
               </div>
             ))}

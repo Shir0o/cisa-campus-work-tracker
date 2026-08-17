@@ -522,19 +522,19 @@ export default function History() {
         </div>
       )}
 
-      {/* Quiet figures footer */}
+      {/* Quiet figures card */}
       {!loading && activities.length > 0 && (
-        <div className="mt-12 pt-6 border-t border-outline-variant flex flex-wrap items-baseline gap-x-8 gap-y-2">
+        <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{activities.length}</span>
+            <span className="text-xl text-on-surface">{activities.length}</span>
             <span className="text-[13px] text-on-surface-variant">moments noted</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{peopleRemembered}</span>
+            <span className="text-xl text-on-surface">{peopleRemembered}</span>
             <span className="text-[13px] text-on-surface-variant">people remembered</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{staff.length}</span>
+            <span className="text-xl text-on-surface">{staff.length}</span>
             <span className="text-[13px] text-on-surface-variant">hands at work</span>
           </div>
           <span className="text-[13px] text-on-surface-variant/70 italic ml-auto">

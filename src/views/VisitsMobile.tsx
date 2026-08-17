@@ -134,14 +134,14 @@ export default function VisitsMobile({
         </div>
       )}
 
-      <footer className="mx-5 mt-10 pt-5 border-t border-outline-variant flex flex-wrap gap-x-8 gap-y-4">
+      <footer className="mx-5 mt-10 bg-surface rounded-3xl border border-outline-variant/60 px-5 py-4 flex flex-wrap gap-x-8 gap-y-4">
         {[
           { n: stats.visits, l: 'visits' },
           { n: stats.peopleSeen, l: "people we've sat with" },
           { n: stats.wentOut, l: 'of us have gone out' },
         ].map((f) => (
           <div key={f.l} className="flex flex-col gap-0.5">
-            <span className="font-serif text-2xl leading-none text-on-surface">{f.n}</span>
+            <span className="text-2xl leading-none text-on-surface">{f.n}</span>
             <span className="text-xs text-on-surface-variant">{f.l}</span>
           </div>
         ))}

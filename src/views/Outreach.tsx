@@ -947,7 +947,7 @@ export default function Outreach() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
+          <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
             {(
               [
                 [stats.months, 'months out'],
@@ -956,7 +956,7 @@ export default function Outreach() {
               ] as const
             ).map(([n, l]) => (
               <div key={l} className="flex items-baseline gap-2">
-                <span className="font-serif text-2xl font-medium text-on-surface">{n}</span>
+                <span className="text-2xl font-medium text-on-surface">{n}</span>
                 <span className="text-sm text-on-surface-variant">{l}</span>
               </div>
             ))}
