@@ -7,7 +7,8 @@ import {
   Trash2,
   Check,
   Plus,
-  Sparkles
+  Sparkles,
+  Combine
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -29,6 +30,7 @@ import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
+import CombineTagsModal from '../components/modals/CombineTagsModal';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -233,6 +235,7 @@ export default function Directory() {
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
@@ -240,14 +243,15 @@ export default function Directory() {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsTagModalOpen(false);
+        setIsCombineTagsOpen(false);
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || showFilterMenu) {
+    if (isTagModalOpen || isCombineTagsOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen, showFilterMenu]);
+  }, [isTagModalOpen, isCombineTagsOpen, showFilterMenu]);
 
   // Days since last connected (interaction/comment, else createdAt) for a contact.
   const daysFor = (c: Contact): number | null => {
@@ -490,6 +494,13 @@ export default function Directory() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => setIsCombineTagsOpen(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0"
+            title="Combine duplicate/season tag variants with a dry-run preview"
+          >
+            <Combine className="w-4 h-4" /> Combine tags
+          </button>
           <button
             onClick={() => openSmartImport()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
@@ -791,6 +802,14 @@ export default function Directory() {
             );
           })}
         </div>
+      )}
+
+      {/* ── Combine Tags Modal (dry-run) ── */}
+      {isCombineTagsOpen && (
+        <CombineTagsModal
+          contacts={userContacts}
+          onClose={() => setIsCombineTagsOpen(false)}
+        />
       )}
 
       {/* ── Tag Modal ── */}

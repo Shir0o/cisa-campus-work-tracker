@@ -20,11 +20,14 @@ import {
   hourLabel,
   onCampusNowLine,
   onCampusSummary,
+  SEASON_ORDER,
+  SEASONS,
   settingsCareLine,
   settingsFoot,
   shellForRole,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
 import { usePeopleData } from '../../lib/usePeopleData';
 import { useQueuePrefs, type QueueSettings } from '../../lib/queuePrefs';
@@ -158,12 +161,15 @@ function Settings() {
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role, logOut } = useAuth();
+  const season = useActiveSeason();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
   const people = usePeopleData(uid);
   const names = useFullTimerNames();
   const [toast, setToast] = React.useState<string | null>(null);
+
+  const isManager = role === 'admin' || role === 'manager';
 
   // The queue is the trainee's home; a full-timer has no queue to tune, so the
   // three blocks that only feed `buildQueue` don't render for them. Same
@@ -230,6 +236,121 @@ function Settings() {
         >
           {settingsCareLine(people.mine.length, hasQueue ? queueState.handledCount : null)}
         </Text>
+
+        {isManager && (
+          <Section title="Tagging sign-ups">
+            <View style={{ gap: 10 }}>
+              <View>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>
+                  New sign-ups get
+                </Text>
+                <Text
+                  style={{
+                    fontFamily: font.medium,
+                    fontSize: fs(13),
+                    lineHeight: fs(18),
+                    color: c.card.ink3,
+                    marginTop: 3,
+                  }}
+                >
+                  {season.label}
+                  {season.clubRush ? ' · Club rush' : ''}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                {SEASON_ORDER.map((id) => {
+                  const on = season.activeId === id;
+                  return (
+                    <Pressable
+                      key={id}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: on }}
+                      onPress={() => season.setSeason(id)}
+                      style={{
+                        minWidth: 64,
+                        height: 44,
+                        paddingHorizontal: 14,
+                        borderRadius: radius.chip,
+                        borderWidth: 1.5,
+                        borderColor: on ? c.card.ink : c.card.border,
+                        backgroundColor: on ? c.card.ink : c.card.react,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontFamily: font.bold,
+                          fontSize: fs(13.5),
+                          color: on ? c.card.bg : c.card.ink2,
+                        }}
+                      >
+                        {SEASONS[id].label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {!season.isAuto && (
+                <Pressable
+                  onPress={season.resetSeason}
+                  style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
+                >
+                  <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3 }}>
+                    Back to current term
+                  </Text>
+                </Pressable>
+              )}
+
+              <Pressable
+                accessibilityRole="switch"
+                accessibilityState={{ checked: season.clubRush }}
+                onPress={season.toggleClubRush}
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                  borderRadius: radius.chip,
+                  borderWidth: 1.5,
+                  borderColor: c.card.border,
+                  backgroundColor: c.card.react,
+                  paddingVertical: 12,
+                  paddingHorizontal: 14,
+                }}
+              >
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
+                    Club rush
+                  </Text>
+                  <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3 }}>
+                    New sign-ups also get a “Club Rush” tag.
+                  </Text>
+                </View>
+                <View
+                  style={{
+                    width: 44,
+                    height: 26,
+                    borderRadius: 13,
+                    backgroundColor: season.clubRush ? c.card.ink : c.card.border,
+                    padding: 3,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      backgroundColor: season.clubRush ? c.card.bg : c.card.bg,
+                      transform: [{ translateX: season.clubRush ? 18 : 0 }],
+                    }}
+                  />
+                </View>
+              </Pressable>
+            </View>
+          </Section>
+        )}
 
         {hasQueue && (
           <Section title="When you're on campus">

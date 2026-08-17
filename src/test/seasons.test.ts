@@ -43,17 +43,17 @@ import { setDoc } from 'firebase/firestore';
 describe('seasons — pure derivation', () => {
   it('maps each month to its season', () => {
     const monthSeason = (m: number) => seasonForDate(new Date(2026, m, 15));
-    expect([0, 1, 11].map(monthSeason)).toEqual(['winter', 'winter', 'winter']);
+    expect([0, 1].map(monthSeason)).toEqual(['winter', 'winter']);
     expect([2, 3, 4].map(monthSeason)).toEqual(['spring', 'spring', 'spring']);
-    expect([5, 6, 7].map(monthSeason)).toEqual(['summer', 'summer', 'summer']);
-    expect([8, 9, 10].map(monthSeason)).toEqual(['fall', 'fall', 'fall']);
+    expect([5, 6].map(monthSeason)).toEqual(['summer', 'summer']);
+    expect([7, 8, 9, 10, 11].map(monthSeason)).toEqual(['fall', 'fall', 'fall', 'fall', 'fall']);
   });
 
   it('builds the semester + school-year cohort tags', () => {
-    // September (month 8) starts the fall semester → 2026-27 school year
-    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 8, 20))).toEqual(['Fall 2026', '2026-27']);
-    // December (month 11) is still in the fall school year → 2026-27
-    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 11, 5))).toEqual(['Winter 2026', '2026-27']);
+    // August (month 7) starts the fall semester → 2026-27 school year
+    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 7, 20))).toEqual(['Fall 2026', '2026-27']);
+    // December (month 11) is still fall → 2026-27 school year
+    expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 11, 5))).toEqual(['Fall 2026', '2026-27']);
     // February (month 1) is in the school year that started the prior fall → 2025-26
     expect(getAutoSemesterAndSchoolYearTags(new Date(2026, 1, 10))).toEqual(['Winter 2026', '2025-26']);
   });
@@ -66,12 +66,8 @@ describe('seasons — pure derivation', () => {
 
   it('builds cohort tags, adding Club Rush only when intake is on', () => {
     const d = new Date(2026, 9, 1);
-    // seasonTags uses the current year via seasonLabel(now); pin the clock so it's stable.
-    vi.useFakeTimers();
-    vi.setSystemTime(d);
-    expect(seasonTags('fall', false)).toEqual(["Fall '26"]);
-    expect(seasonTags('fall', true)).toEqual(["Fall '26", 'Club Rush']);
-    vi.useRealTimers();
+    expect(seasonTags('fall', false, d)).toEqual(['Fall 2026']);
+    expect(seasonTags('fall', true, d)).toEqual(['Fall 2026', 'Club Rush']);
   });
 });
 
@@ -93,7 +89,7 @@ describe('useSeason — derived + override', () => {
     expect(result.current.isAuto).toBe(true);
     expect(result.current.clubRush).toBe(false);
     expect(result.current.label).toBe("Fall '26");
-    expect(result.current.tags).toEqual(["Fall '26"]);
+    expect(result.current.tags).toEqual(['Fall 2026']);
   });
 
   it('honors an override + club-rush flag from the settings doc', () => {
@@ -102,7 +98,7 @@ describe('useSeason — derived + override', () => {
     expect(result.current.activeId).toBe('spring');
     expect(result.current.isAuto).toBe(false);
     expect(result.current.clubRush).toBe(true);
-    expect(result.current.tags).toEqual(["Spring '26", 'Club Rush']);
+    expect(result.current.tags).toEqual(['Spring 2026', 'Club Rush']);
   });
 
   it('writes null override when set back to the auto season', () => {

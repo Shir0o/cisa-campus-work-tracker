@@ -1,7 +1,7 @@
-// Season-settings read — shared Firestore logic behind an injected `db`.
-// Mirrors the web app's src/lib/seasons.ts's subscribeSeasonSettings (read-only
-// subset; override/club-rush writes aren't needed by any mobile screen yet).
-import { doc, onSnapshot, type Firestore } from "firebase/firestore";
+// Season-settings read/write — shared Firestore logic behind an injected `db`.
+// Mirrors the web app's src/lib/seasons.ts's subscribeSeasonSettings and
+// saveSeasonSettings.
+import { doc, onSnapshot, setDoc, type Firestore } from "firebase/firestore";
 import type { SeasonSettings } from "../types";
 
 /** Live subscription to the team-wide season settings (settings/season). */
@@ -15,4 +15,12 @@ export function subscribeSeasonSettings(
     (snap) => cb((snap.data() as SeasonSettings | undefined) ?? {}),
     (e) => (onError ? onError(e) : console.error("season settings subscription error", e)),
   );
+}
+
+/** Merge-write the season settings (create-or-update). */
+export async function saveSeasonSettings(
+  db: Firestore,
+  patch: Partial<SeasonSettings>,
+): Promise<void> {
+  await setDoc(doc(db, "settings", "season"), patch, { merge: true });
 }

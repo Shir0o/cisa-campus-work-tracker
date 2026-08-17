@@ -28,10 +28,10 @@ export const SEASONS: Record<SeasonId, SeasonMeta> = {
 
 export const SEASON_ORDER: SeasonId[] = ["spring", "summer", "fall", "winter"];
 
-// 0-indexed month → season. Dec–Feb winter, Mar–May spring, Jun–Aug summer, Sep–Nov fall.
+// 0-indexed month → season. Jan–Feb winter, Mar–May spring, Jun–Jul summer, Aug–Dec fall.
 const SEASON_BY_MONTH: SeasonId[] = [
   "winter", "winter", "spring", "spring", "spring", "summer",
-  "summer", "summer", "fall", "fall", "fall", "winter",
+  "summer", "fall", "fall", "fall", "fall", "fall",
 ];
 
 export function seasonForDate(d: Date = new Date()): SeasonId {
@@ -47,9 +47,9 @@ export function seasonLabel(id: SeasonId, d: Date = new Date()): string {
   return `${SEASONS[id].label} '${seasonYear(d)}`;
 }
 
-/** Cohort tags for a new contact — readable, matching the existing tag style. */
-export function seasonTags(activeId: SeasonId, clubRush: boolean): string[] {
-  const tags = [seasonLabel(activeId)];
+/** Cohort tags for a new contact — canonical full-year tags (e.g. "Fall 2026"). */
+export function seasonTags(activeId: SeasonId, clubRush: boolean, d: Date = new Date()): string[] {
+  const tags = [`${SEASONS[activeId].label} ${d.getFullYear()}`];
   if (clubRush) tags.push("Club Rush");
   return tags;
 }

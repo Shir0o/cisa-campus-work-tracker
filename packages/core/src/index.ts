@@ -26,6 +26,7 @@ export * from './notifications';
 export * from './signup';
 export * from './feedback';
 export * from './settings';
+export * from './tags';
 export * from './search';
 export * from './chat';
 export * from './contactDetail';

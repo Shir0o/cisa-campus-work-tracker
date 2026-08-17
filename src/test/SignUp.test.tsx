@@ -211,7 +211,7 @@ describe('SignUp View', () => {
     expect(contactArg?.createdBy).toBe('ft-123');
     expect(contactArg?.createdByName).toBe('Staff Tester');
     expect(contactArg?.tags).toEqual(
-      expect.arrayContaining(['New Sign Up', "Summer '26"]),
+      expect.arrayContaining(['New Sign Up', 'Summer 2026']),
     );
   });
 
