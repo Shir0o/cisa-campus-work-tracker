@@ -11,11 +11,13 @@ import {
   SIGNUP_MAJORS,
   SIGNUP_SPIRITUAL_BACKGROUNDS,
   SIGNUP_YEARS,
+  SEASON_ORDER,
+  SEASONS,
   type SignUpFormState,
 } from '@cisa/core';
 import { Screen, AppText, Button } from '../src/components/ui';
 import { useTheme } from '../src/theme/ThemeProvider';
-import { useActiveSeason } from '../src/lib/useActiveSeason';
+import { useActiveSeason, type ActiveSeason } from '../src/lib/useActiveSeason';
 import { useAuth } from '../src/lib/AuthProvider';
 import { submitSignUp } from '../src/lib/data/signup';
 
@@ -24,7 +26,8 @@ export default function SignUp() {
   const paper = mode === 'dark' ? colors.background : '#eceae6';
   const router = useRouter();
   const season = useActiveSeason();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const isManager = role === 'admin' || role === 'manager';
 
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptySignUpForm);
@@ -116,8 +119,7 @@ export default function SignUp() {
             color={colors.onSurfaceVariant}
             style={{ marginTop: spacing.sm, textAlign: 'center', maxWidth: 320 }}
           >
-            We got it. Someone from the team will reach out within two days. If you'd like, you're always welcome at
-            our Friday gathering this week (7pm, Lower Common Room).
+            Thank you for signing up, we will be in contact!
           </AppText>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: spacing.xl }}>
             <Button title="Back to app" variant="ghost" onPress={() => router.replace('/')} />
@@ -144,6 +146,15 @@ export default function SignUp() {
         <AppText variant="body" color={colors.onSurfaceVariant}>
           Just the basics. Fields marked with * are required.
         </AppText>
+
+        {!isManager && (
+          <AppText variant="body" color={colors.onSurfaceVariant}>
+            Christian Fellowship · {season.label}
+            {season.clubRush ? ' · Club rush' : ''}
+          </AppText>
+        )}
+
+        {isManager && <SeasonManagerCard season={season} />}
 
         {error && (
           <View style={{ backgroundColor: colors.errorContainer, borderRadius: radius.md, padding: 12 }}>
@@ -326,3 +337,118 @@ function MultiPillRow({
   );
 }
 
+function SeasonManagerCard({ season }: { season: ActiveSeason }) {
+  const { colors, spacing, radius } = useTheme();
+  return (
+    <View
+      style={{
+        backgroundColor: colors.surfaceContainerLow,
+        borderRadius: radius.md,
+        borderWidth: 1,
+        borderColor: colors.outlineVariant,
+        padding: spacing.md,
+        gap: spacing.sm,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Ionicons name="eye-outline" size={15} color={colors.onSurfaceVariant} />
+        <AppText variant="caption" color={colors.onSurfaceVariant} style={{ flex: 1 }}>
+          You're previewing the sign-up form — how someone new asks to hear from us.
+        </AppText>
+      </View>
+
+      <View style={{ gap: 6 }}>
+        <AppText variant="label" color={colors.onSurfaceVariant}>
+          Tagging sign-ups for
+        </AppText>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+          {SEASON_ORDER.map((id) => {
+            const on = season.activeId === id;
+            return (
+              <Pressable
+                key={id}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: on }}
+                onPress={() => season.setSeason(id)}
+                style={{
+                  minWidth: 58,
+                  height: 40,
+                  paddingHorizontal: 14,
+                  borderRadius: radius.full,
+                  borderWidth: 1.5,
+                  borderColor: on ? colors.primary : colors.outlineVariant,
+                  backgroundColor: on ? colors.primary : 'transparent',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: '600',
+                    color: on ? colors.onPrimary : colors.onSurface,
+                  }}
+                >
+                  {SEASONS[id].label}
+                  {id === season.autoId ? ' · now' : ''}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {!season.isAuto && (
+          <Pressable onPress={season.resetSeason} style={{ alignSelf: 'flex-start', paddingVertical: 2 }}>
+            <AppText variant="caption" color={colors.primary}>
+              Back to the current term
+            </AppText>
+          </Pressable>
+        )}
+      </View>
+
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: season.clubRush }}
+        onPress={season.toggleClubRush}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          borderRadius: radius.md,
+          borderWidth: 1.5,
+          borderColor: colors.outlineVariant,
+          backgroundColor: colors.surfaceContainer,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+        }}
+      >
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={{ fontSize: 14, fontWeight: '600', color: colors.onSurface }}>
+            Club rush
+          </Text>
+          <Text style={{ fontSize: 12, color: colors.onSurfaceVariant }}>
+            New sign-ups also get a “Club Rush” tag.
+          </Text>
+        </View>
+        <View
+          style={{
+            width: 44,
+            height: 26,
+            borderRadius: 13,
+            backgroundColor: season.clubRush ? colors.primary : colors.outline,
+            padding: 3,
+          }}
+        >
+          <View
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: 10,
+              backgroundColor: colors.surface,
+              transform: [{ translateX: season.clubRush ? 18 : 0 }],
+            }}
+          />
+        </View>
+      </Pressable>
+    </View>
+  );
+}

@@ -197,7 +197,7 @@ describe('SignUp View', () => {
     // Confirmation Screen
     expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(/We got it — you're part of our Summer '26 cohort now\./i),
+      screen.getByText(/Thank you for signing up, we will be in contact!/i),
     ).toBeInTheDocument();
 
     // Verify submitted document payload

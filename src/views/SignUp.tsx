@@ -460,9 +460,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         {`Thanks, ${firstName}.`}
       </h1>
       <p className="text-[15px] leading-relaxed text-on-surface-variant max-w-[46ch]">
-        We got it — you're part of our {season.label} cohort now. Someone from the team — probably Jordan or Ana —
-        will reach out within two days. If you'd like, you're always welcome at our Friday gathering this week (7pm,
-        Lower Common Room).
+        Thank you for signing up, we will be in contact!
       </p>
       <div className="flex items-center gap-3 mt-2">
         <button
