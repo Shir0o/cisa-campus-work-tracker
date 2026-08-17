@@ -40,9 +40,10 @@ export const SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = [
 export const INTERESTS = [
   'Home fellowship',
   'Bible study',
-  'Outreach',
+  'Outreach/Gospel',
   'Prayer group',
   '1:1 mentorship',
+  'Group activities/outings',
 ];
 
 const emptyForm = {

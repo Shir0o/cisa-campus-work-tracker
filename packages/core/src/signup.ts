@@ -15,9 +15,10 @@ export const SIGNUP_HOW_HEARD = ['Friend', 'Org Fair', 'Welcome BBQ', 'Dorm flye
 export const SIGNUP_INTERESTS = [
   'Home fellowship',
   'Bible study',
-  'Outreach',
+  'Outreach/Gospel',
   'Prayer group',
   '1:1 mentorship',
+  'Group activities/outings',
 ];
 export const SIGNUP_SPIRITUAL_BACKGROUNDS: { value: string; label: string }[] = [
   { value: 'Exploring', label: 'Exploring faith' },

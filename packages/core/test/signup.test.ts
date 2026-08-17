@@ -55,6 +55,10 @@ describe('SIGNUP_YEARS, SIGNUP_GENDERS, and SIGNUP_INTERESTS', () => {
   it('includes Home fellowship and Bible study in interests options, and excludes removed options', () => {
     expect(SIGNUP_INTERESTS).toContain('Home fellowship');
     expect(SIGNUP_INTERESTS).toContain('Bible study');
+    expect(SIGNUP_INTERESTS).toContain('Outreach/Gospel');
+    expect(SIGNUP_INTERESTS).toContain('Group activities/outings');
+    expect(SIGNUP_INTERESTS).not.toContain('Outreach');
+    expect(SIGNUP_INTERESTS).not.toContain('Gospel');
     expect(SIGNUP_INTERESTS).not.toContain('Friday gathering');
     expect(SIGNUP_INTERESTS).not.toContain('Small group');
     expect(SIGNUP_INTERESTS).not.toContain('Worship team');
