@@ -253,7 +253,7 @@ export default function TodoComposer({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         className={cn(
-          "bg-surface rounded-2xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
+          "bg-surface rounded-3xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
           !anchorRect && "w-full max-w-[min(92vw,360px)]",
         )}
       >

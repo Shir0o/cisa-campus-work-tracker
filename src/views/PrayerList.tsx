@@ -631,7 +631,7 @@ function PrayerThread({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="bg-surface border border-outline-variant rounded-2xl p-5 sm:p-6   transition-shadow"
+      className="bg-surface border border-outline-variant rounded-3xl p-5 sm:p-6   transition-shadow"
     >
       {/* Header: person + a quiet count of what's still open */}
       <div className="flex items-start gap-4">

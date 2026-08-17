@@ -82,7 +82,7 @@ export function UpcomingEventsRsvp({
             return (
               <div
                 key={ev.id}
-                className="flex items-center gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5"
+                className="flex items-center gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5"
               >
                 <div className="text-center w-12 shrink-0">
                   <div className="font-serif text-2xl text-on-surface leading-none">

@@ -27,7 +27,7 @@ export function ActivityItem({
 
   return (
     <div
-      className="flex gap-4 p-4 rounded-2xl border border-outline-variant/30 bg-surface hover:bg-surface-container-lowest transition-colors group relative"
+      className="flex gap-4 p-4 rounded-3xl border border-outline-variant/30 bg-surface hover:bg-surface-container-lowest transition-colors group relative"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

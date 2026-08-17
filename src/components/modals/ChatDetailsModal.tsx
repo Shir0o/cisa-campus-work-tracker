@@ -233,7 +233,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                 /* GROUP CHAT VIEW */
                 <div className="space-y-4">
                   {/* Group Name Card */}
-                  <div className="p-4 rounded-2xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
+                  <div className="p-4 rounded-3xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
                     <span className="text-[10px] font-semibold text-on-surface-variant  ">Group Name</span>
                     <span className="font-serif text-lg text-on-surface">{room.name}</span>
                     <span className="text-[11px] text-on-surface-variant">Created by {room.createdByName}</span>

@@ -417,7 +417,7 @@ export default function Attendance() {
                 <div
                   key={contact.id}
                   onClick={() => openContact(contact)}
-                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+                  className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
                 >
                   <div className="flex gap-4 min-w-0">
                     <Avatar contact={contact} />
@@ -643,7 +643,7 @@ export default function Attendance() {
               })}
             </div>
           ) : (
-            <div className="bg-surface rounded-2xl border border-outline-variant/60 p-10 text-center">
+            <div className="bg-surface rounded-3xl border border-outline-variant/60 p-10 text-center">
               <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
               <p className="text-sm text-on-surface-variant">
                 {events.length === 0

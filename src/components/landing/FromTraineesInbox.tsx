@@ -173,7 +173,7 @@ function InboxRow({
   return (
     <div
       className={cn(
-        "bg-surface rounded-2xl border p-5 transition-colors",
+        "bg-surface rounded-3xl border p-5 transition-colors",
         read ? "border-outline-variant/40" : "border-primary/30",
       )}
     >

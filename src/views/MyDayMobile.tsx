@@ -278,7 +278,7 @@ export default function MyDayMobile({
           </div>
         </div>
 
-        <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
           {/* Assigned tasks */}
           {assignedTasks.map((todo) => {
             const done = todo.status === "completed";
@@ -452,7 +452,7 @@ export default function MyDayMobile({
                 <div
                   key={contact.id}
                   onClick={() => onOpenContact(contact)}
-                  className="flex items-center justify-between p-3.5 bg-surface rounded-2xl border border-outline-variant/40 active:bg-surface-variant/40 transition-colors mdm-person"
+                  className="flex items-center justify-between p-3.5 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/40 transition-colors mdm-person"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1 mdm-person-main">
                     <Avatar contact={contact} size="md" />
@@ -504,7 +504,7 @@ export default function MyDayMobile({
         {featuredEvent ? (
           <div className="space-y-3">
             {/* Featured Event Card */}
-            <div className="bg-stage-accent-soft rounded-2xl border border-primary/20 p-5  md-huddle">
+            <div className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5  md-huddle">
               <div className="text-[11px] font-semibold   text-accent md-huddle-eyebrow">
                 {isValid(new Date(featuredEvent.ev.date))
                   ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
@@ -528,7 +528,7 @@ export default function MyDayMobile({
 
             {/* Rest of week */}
             {restOfWeekEvents.length > 0 && (
-              <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30">
+              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30">
                 {restOfWeekEvents.map(({ ev }) => {
                   const d = new Date(ev.date);
                   return (
@@ -572,7 +572,7 @@ export default function MyDayMobile({
           </button>
         </div>
 
-        <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
           {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
             <p className="text-sm text-on-surface-variant py-4 text-center">
               No prayers held currently.

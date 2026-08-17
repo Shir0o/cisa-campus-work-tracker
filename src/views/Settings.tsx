@@ -155,7 +155,7 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
           <div
             key={card.key}
             className={cn(
-              'flex gap-4 items-start p-4 rounded-2xl border transition-colors',
+              'flex gap-4 items-start p-4 rounded-3xl border transition-colors',
               isActive ? 'border-primary/40 bg-primary/5' : 'bg-surface-container border-outline-variant/40',
             )}
           >
@@ -275,7 +275,7 @@ function AppearanceSection({
               onClick={() => setTheme(key)}
               aria-pressed={active}
               className={cn(
-                'flex flex-col items-start gap-2 p-4 rounded-2xl border text-left transition-colors',
+                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
                 active
                   ? 'border-primary/40 bg-primary/5'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
@@ -306,7 +306,7 @@ function OwnerViewSection() {
 
       {/* Active Impersonation Banner Card */}
       {impersonateTarget && (
-        <div className="p-4 rounded-2xl border border-amber-500/40 bg-amber-500/15 flex flex-wrap items-center justify-between gap-3">
+        <div className="p-4 rounded-3xl border border-amber-500/40 bg-amber-500/15 flex flex-wrap items-center justify-between gap-3">
           <div>
             <div className="font-semibold text-sm text-on-surface">
               Currently seeing CISA as {impersonateTarget.name}
@@ -337,7 +337,7 @@ function OwnerViewSection() {
               }}
               aria-pressed={isActive}
               className={cn(
-                'flex flex-col items-start gap-1.5 p-3.5 rounded-2xl border text-left transition-colors',
+                'flex flex-col items-start gap-1.5 p-3.5 rounded-3xl border text-left transition-colors',
                 isActive
                   ? 'border-amber-500 bg-amber-500/15 text-amber-900 dark:text-amber-100 font-medium'
                   : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
@@ -790,7 +790,7 @@ function WebhookConsoleSection() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5 space-y-3 max-w-2xl">
         {loadingLogs ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-on-surface-variant">
             <Loader2 className="w-7 h-7 animate-spin text-accent" />
@@ -934,7 +934,7 @@ function MemberCard({
   return (
     <div
       className={cn(
-        'flex items-center gap-3 p-3.5 rounded-2xl border transition-colors',
+        'flex items-center gap-3 p-3.5 rounded-3xl border transition-colors',
         isYou ? 'border-primary/30 bg-primary/5' : 'bg-surface-container border-outline-variant/40',
       )}
     >
@@ -1540,7 +1540,7 @@ export default function Settings() {
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}
-                className="flex items-center gap-3 p-3.5 rounded-2xl border border-outline-variant/40 bg-surface-container"
+                className="flex items-center gap-3 p-3.5 rounded-3xl border border-outline-variant/40 bg-surface-container"
               >
                 <Skeleton className="w-10 h-10 rounded-full" />
                 <div className="space-y-2 flex-1">
@@ -1580,7 +1580,7 @@ export default function Settings() {
       {sharedTail}
 
       {/* Admin note */}
-      <div className="mt-10 rounded-2xl border border-outline-variant/40 bg-surface-container-low p-5 flex items-start gap-3">
+      <div className="mt-10 rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5 flex items-start gap-3">
         <span className="w-9 h-9 rounded-full bg-stage-accent-soft text-stage-accent flex items-center justify-center shrink-0">
           <Shield className="w-4 h-4" />
         </span>

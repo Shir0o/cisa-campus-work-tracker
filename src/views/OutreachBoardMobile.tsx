@@ -236,7 +236,7 @@ export default function OutreachBoardMobile({
 
               return (
                 <article
-                  className="flex items-start gap-3.5 p-4 bg-surface rounded-2xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person  cursor-pointer"
+                  className="flex items-start gap-3.5 p-4 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person  cursor-pointer"
                   key={c.id}
                   onClick={() => onOpenContact(c)}
                 >

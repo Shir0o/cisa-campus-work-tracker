@@ -2332,7 +2332,7 @@ function NoteComposer({
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
         style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
-        className="bg-surface rounded-2xl border border-outline-variant p-4 flex flex-col space-y-3"
+        className="bg-surface rounded-3xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-sm font-semibold text-on-surface">Make note/learning</h3>
@@ -2447,7 +2447,7 @@ function LinkComposer({
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
         style={pos ? { position: 'fixed', left: pos.left, top: pos.top, width: 320 } : { display: 'none' }}
-        className="bg-surface rounded-2xl border border-outline-variant p-4 flex flex-col space-y-3"
+        className="bg-surface rounded-3xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
           <h3 className="font-serif text-sm font-semibold text-on-surface">Insert link</h3>
@@ -3487,7 +3487,7 @@ function NoteCard({
     <article
       id={`note-${n.id}`}
       className={cn(
-        'group bg-surface rounded-2xl border p-5 flex flex-col',
+        'group bg-surface rounded-3xl border p-5 flex flex-col',
         isLearning ? 'border-stage-amber/30' : 'border-outline-variant',
       )}
     >
@@ -3663,7 +3663,7 @@ export function NoteForm({
     'w-full bg-surface border border-outline-variant rounded-xl px-3.5 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors';
 
   return (
-    <div className="mb-4 p-4 rounded-2xl bg-surface border border-outline-variant space-y-3">
+    <div className="mb-4 p-4 rounded-3xl bg-surface border border-outline-variant space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2.5">
         <div className="flex flex-wrap items-center gap-2.5">
           <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">

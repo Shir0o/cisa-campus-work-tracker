@@ -173,7 +173,7 @@ export default function SubmitFeedback() {
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => setKind(k.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+                        className={`flex items-center gap-3 p-3.5 rounded-3xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                           on
                             ? `${tone.softBg} border-transparent ${tone.text} `
                             : 'bg-surface border-outline-variant text-on-surface hover:bg-surface-container-high'

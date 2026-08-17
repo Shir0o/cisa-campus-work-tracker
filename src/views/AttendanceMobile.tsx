@@ -91,7 +91,7 @@ export default function AttendanceMobile({
               <div
                 key={contact.id}
                 onClick={() => onOpenContact(contact)}
-                className="flex items-center justify-between p-3.5 bg-surface rounded-2xl border border-outline-variant/40 active:bg-surface-variant/30 transition-colors mdm-person"
+                className="flex items-center justify-between p-3.5 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-colors mdm-person"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <Avatar contact={contact} size="md" />
@@ -203,7 +203,7 @@ export default function AttendanceMobile({
       {/* ── Coming up (Calendar) ── */}
       <section className="mt-8 px-5 gthm-sec">
         <h2 className="font-serif text-lg text-on-surface mb-3">Coming up</h2>
-        <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30 gthm-up">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30 gthm-up">
           {upcoming.length === 0 ? (
             <p className="text-sm text-on-surface-variant py-4 text-center">
               Nothing on the calendar this week.

@@ -29,7 +29,7 @@ export function ReachCard({
   return (
     <div
       onClick={onOpen}
-      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
     >
       <div className="flex gap-4 min-w-0">
         <Avatar contact={contact} />

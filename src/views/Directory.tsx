@@ -554,7 +554,7 @@ export default function Directory() {
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-4 min-w-[240px] max-w-[calc(100vw-2rem)] space-y-4"
+                  className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-3xl shadow-xl p-4 min-w-[240px] max-w-[calc(100vw-2rem)] space-y-4"
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium text-on-surface">Narrow it down</span>

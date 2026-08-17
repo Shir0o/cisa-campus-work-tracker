@@ -269,7 +269,7 @@ export default function Visits() {
           <VisitGroup title="Earlier" list={groups.earlier} {...groupProps} />
 
           {visits.length === 0 && (
-            <div className="mt-10 p-8 rounded-2xl bg-surface border border-outline-variant text-center">
+            <div className="mt-10 p-8 rounded-3xl bg-surface border border-outline-variant text-center">
               <House className="w-7 h-7 text-on-surface-variant mx-auto mb-4" />
               <p className="text-base text-on-surface-variant leading-relaxed max-w-lg mx-auto">
                 Nothing here yet. A visit gets written down after you've been — who you saw, where, and what you'd want

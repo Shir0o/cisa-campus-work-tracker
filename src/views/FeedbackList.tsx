@@ -578,7 +578,7 @@ export default function FeedbackList() {
                 </div>
 
                 {/* Feedback Message Content */}
-                <div className="bg-surface/50 border border-outline-variant/40 rounded-2xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
+                <div className="bg-surface/50 border border-outline-variant/40 rounded-3xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
                   {item.message}
                 </div>
 

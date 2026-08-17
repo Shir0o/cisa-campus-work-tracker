@@ -332,7 +332,7 @@ function PrayerThreadCard({
     : { label: 'At rest', tone: 'rest' };
 
   return (
-    <article className="bg-surface border border-outline-variant/45 rounded-2xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
+    <article className="bg-surface border border-outline-variant/45 rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 prt-head prt-head--m">
         <button onClick={onOpenProfile} className="flex items-center gap-3 text-left min-w-0 flex-1 prt-person">

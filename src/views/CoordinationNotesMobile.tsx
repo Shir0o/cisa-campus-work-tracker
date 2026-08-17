@@ -222,7 +222,7 @@ export default function CoordinationNotesMobile({
                 key={d.id}
                 onClick={() => openMobileDoc(d.id)}
                 className={cn(
-                  "flex items-center justify-between p-4 bg-surface border border-outline-variant/40 rounded-2xl text-left active:brightness-95 transition-all bdm-card",
+                  "flex items-center justify-between p-4 bg-surface border border-outline-variant/40 rounded-3xl text-left active:brightness-95 transition-all bdm-card",
                   isToday && "border-primary/20 bg-stage-accent-soft/30 today"
                 )}
               >

@@ -79,7 +79,7 @@ export default function VisitsMobile({
           </p>
           <div className="flex flex-col gap-3 mt-3">
             {overdue.map(({ contact, visit, daysAgo }) => (
-              <div key={contact.id} className="p-4 rounded-2xl bg-surface border border-outline-variant">
+              <div key={contact.id} className="p-4 rounded-3xl bg-surface border border-outline-variant">
                 <div className="flex items-start gap-3">
                   <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
                     {initialsOf(contact.name)}
@@ -119,7 +119,7 @@ export default function VisitsMobile({
       <VisitGroup title="Earlier" list={groups.earlier} {...groupProps} />
 
       {visits.length === 0 && (
-        <div className="mx-5 mt-8 p-6 rounded-2xl bg-surface border border-outline-variant text-center">
+        <div className="mx-5 mt-8 p-6 rounded-3xl bg-surface border border-outline-variant text-center">
           <House className="w-6 h-6 text-on-surface-variant mx-auto mb-3" />
           <p className="text-sm text-on-surface-variant leading-relaxed">
             Nothing here yet. A visit gets written down after you've been — who you saw, where, and what you'd want to

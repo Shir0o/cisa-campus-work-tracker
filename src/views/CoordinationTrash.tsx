@@ -84,7 +84,7 @@ export default function CoordinationTrash() {
           {docs.map((d) => (
             <div
               key={d.id}
-              className="flex items-center gap-4 p-4 rounded-2xl border border-outline-variant bg-surface-container"
+              className="flex items-center gap-4 p-4 rounded-3xl border border-outline-variant bg-surface-container"
             >
               <div className="flex flex-col items-center justify-center w-11 shrink-0 py-1.5 rounded-lg bg-surface-variant">
                 <span className="text-[11px] font-semibold text-on-surface-variant">{weekdayShort(d.date)}</span>
