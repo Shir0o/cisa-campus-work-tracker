@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc } from 'firebase/firestore';
-import SignUp from '../views/SignUp';
+import SignUp, { INTERESTS, YEARS, GENDERS, SPIRITUAL_BACKGROUNDS, MAJORS } from '../views/SignUp';
 import React from 'react';
 
 // Mock dependencies
@@ -74,19 +74,47 @@ vi.mock('../lib/seasons', () => ({
   getAutoSemesterAndSchoolYearTags: () => ['Summer 2026', '2026-27'],
 }));
 
+describe('SignUp View Constants', () => {
+  it('includes Home fellowship and Bible study in INTERESTS, and excludes removed options', () => {
+    expect(INTERESTS).toContain('Home fellowship');
+    expect(INTERESTS).toContain('Bible study');
+    expect(INTERESTS).not.toContain('Friday gathering');
+    expect(INTERESTS).not.toContain('Small group');
+    expect(INTERESTS).not.toContain('Worship team');
+  });
+
+  it('includes Other in YEARS', () => {
+    expect(YEARS).toContain('Other');
+  });
+
+  it('provides GENDERS options', () => {
+    expect(GENDERS).toEqual(['Male', 'Female', 'Other']);
+  });
+
+  it('provides SPIRITUAL_BACKGROUNDS options', () => {
+    expect(SPIRITUAL_BACKGROUNDS.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
 describe('SignUp View', () => {
   beforeEach(() => {
+    vi.useRealTimers();
     vi.clearAllMocks();
   });
 
-  it('renders Step 1 with primary inputs and progressive disclosure toggle', () => {
+  it('renders single-step form with all primary inputs and chips', () => {
     render(<SignUp />);
 
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+    expect(screen.getByText('Just the basics. Fields marked with * are required.')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('e.g. Naomi Park')).toBeInTheDocument();
     expect(screen.getByPlaceholderText('(___) ___-____')).toBeInTheDocument();
-    expect(screen.getByText("That's all we need. The rest is up to you.")).toBeInTheDocument();
-    expect(screen.getByText('Tell us a bit more')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('you@umail.edu')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Male' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Freshman' })).toBeInTheDocument();
+    expect(screen.getByLabelText(/Major/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Home fellowship' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bible study' })).toBeInTheDocument();
   });
 
   it('renders staff preview strip when viewed by staff', () => {
@@ -109,56 +137,39 @@ describe('SignUp View', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('navigates through steps, fills details in disclosure, and submits successfully', async () => {
+  it('fills all fields and submits successfully in one step', async () => {
     render(<SignUp />);
 
-    // Step 1: name + phone
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    // Name
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'Jane Doe' },
     });
-    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
-      target: { value: '123-456-7890' },
-    });
 
-    // Open progressive disclosure
-    fireEvent.click(screen.getByText('Tell us a bit more'));
-    expect(screen.getByText("That's plenty")).toBeInTheDocument();
+    // Gender chip
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
 
-    // Fill disclosure fields
-    fireEvent.change(screen.getByPlaceholderText('she / her'), {
-      target: { value: 'she/her' },
-    });
-    fireEvent.change(screen.getByLabelText(/Year/i), {
-      target: { value: 'Freshman' },
-    });
+    // Year chip
+    fireEvent.click(screen.getByRole('button', { name: 'Freshman' }));
+
+    // Major select
     fireEvent.change(screen.getByLabelText(/Major/i), {
       target: { value: 'Computer Science' },
+    });
+
+    // Phone & Email
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '123-456-7890' },
     });
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
       target: { value: 'jane@example.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText('@handle'), {
-      target: { value: '@janedoe' },
-    });
-    fireEvent.change(screen.getByLabelText(/Where do you live\?/i), {
-      target: { value: 'Whitman Hall' },
-    });
 
-    const continueButton = screen.getByRole('button', { name: /Continue/i });
-    expect(continueButton).not.toBeDisabled();
-    fireEvent.click(continueButton);
+    // Faith background chip
+    fireEvent.click(screen.getByRole('button', { name: 'Exploring faith' }));
 
-    // Step 2
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
-    expect(screen.getByText('Step 2 of 2')).toBeInTheDocument();
-
-    // Toggle how heard chip
-    const friendChip = screen.getByText('Friend');
-    fireEvent.click(friendChip);
-
-    // Toggle interest chip
-    const gatheringChip = screen.getByText('Friday gathering');
-    fireEvent.click(gatheringChip);
+    // Interests chips (including Home fellowship and Bible study)
+    fireEvent.click(screen.getByRole('button', { name: 'Home fellowship' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Bible study' }));
 
     // Optional textareas
     fireEvent.change(
@@ -172,11 +183,12 @@ describe('SignUp View', () => {
 
     // Submit
     const submitBtn = screen.getByRole('button', { name: /Send it/i });
+    expect(submitBtn).not.toBeDisabled();
     fireEvent.click(submitBtn);
 
     await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
-    // Step 3 (Confirmation)
+    // Confirmation Screen
     expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
     expect(
       screen.getByText(/We got it — you're part of our Summer '26 cohort now\./i),
@@ -187,13 +199,15 @@ describe('SignUp View', () => {
       (c: any[]) => c[1] && Array.isArray(c[1].tags),
     )?.[1];
     expect(contactArg?.name).toBe('Jane Doe');
+    expect(contactArg?.gender).toBe('Female');
     expect(contactArg?.year).toBe('Freshman');
     expect(contactArg?.major).toBe('Computer Science');
-    expect(contactArg?.pronouns).toBe('she/her');
-    expect(contactArg?.hall).toBe('Whitman Hall');
     expect(contactArg?.phone).toBe('123-456-7890');
     expect(contactArg?.email).toBe('jane@example.com');
-    expect(contactArg?.instagram).toBe('@janedoe');
+    expect(contactArg?.spiritualBackground).toBe('Exploring');
+    expect(contactArg?.interests).toEqual(['Home fellowship', 'Bible study']);
+    expect(contactArg?.prayerRequest).toBe('Pray for exams');
+    expect(contactArg?.notes).toBe('No allergies');
     expect(contactArg?.createdBy).toBe('ft-123');
     expect(contactArg?.createdByName).toBe('Staff Tester');
     expect(contactArg?.tags).toEqual(
@@ -201,23 +215,38 @@ describe('SignUp View', () => {
     );
   });
 
-  it('supports back navigation and reset form via "Add another"', async () => {
+  it('validates required fields on submission attempt if button is clicked', async () => {
     render(<SignUp />);
 
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    const submitBtn = screen.getByRole('button', { name: /Send it/i });
+    expect(submitBtn).toBeDisabled();
+
+    // Fill name only
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
+      target: { value: 'Incomplete User' },
+    });
+    expect(submitBtn).toBeDisabled();
+  });
+
+  it('supports reset form via "Add another"', async () => {
+    render(<SignUp />);
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'Alex Smith' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Junior' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Biology' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-1234' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'alex@umail.edu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Home fellowship' }));
 
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
-
-    // Test back button
-    fireEvent.click(screen.getByRole('button', { name: '← Back' }));
-    expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
-
-    // Continue again and submit
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
     expect(await screen.findByText(/Thanks, Alex\./i)).toBeInTheDocument();
@@ -225,7 +254,7 @@ describe('SignUp View', () => {
     // Click "Add another"
     fireEvent.click(screen.getByRole('button', { name: /Add another/i }));
     expect(screen.getByText('Tell us about you.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('First name is plenty')).toHaveValue('');
+    expect(screen.getByPlaceholderText('e.g. Naomi Park')).toHaveValue('');
   });
 
   it('handles cancel button and triggers onBack or navigate', () => {
@@ -239,12 +268,21 @@ describe('SignUp View', () => {
   it('silently ignores honeypot submissions without Firestore write', async () => {
     render(<SignUp />);
 
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'Bot User' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Senior' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Music' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-0000' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'bot@spam.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Home fellowship' }));
 
     // Fill botField
     const botInput = document.getElementById('botField') as HTMLInputElement;
@@ -258,8 +296,8 @@ describe('SignUp View', () => {
 
   it('renders mobile layout branch without error', () => {
     render(<SignUp isMobile={true} />);
-    expect(screen.getByText('Hey — we\'d love to know you.')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('First name is plenty')).toBeInTheDocument();
+    expect(screen.getByText("Hey — we'd love to know you.")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('e.g. Naomi Park')).toBeInTheDocument();
   });
 
   it('switches to the mobile layout when the viewport shrinks', () => {
@@ -268,7 +306,7 @@ describe('SignUp View', () => {
     render(<SignUp />);
 
     fireEvent(window, new Event('resize'));
-    expect(screen.getByText('Hey — we\'d love to know you.')).toBeInTheDocument();
+    expect(screen.getByText("Hey — we'd love to know you.")).toBeInTheDocument();
 
     Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
   });
@@ -279,37 +317,51 @@ describe('SignUp View', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/');
   });
 
-  it('deselects an interest chip when clicked twice', async () => {
+  it('deselects chips when clicked twice', async () => {
     render(<SignUp />);
 
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
-      target: { value: 'Chip Tester' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+    // Toggle gender chip on then off
+    const maleChip = screen.getByRole('button', { name: 'Male' });
+    fireEvent.click(maleChip);
+    fireEvent.click(maleChip);
 
-    const chip = screen.getByRole('button', { name: /^Friday gathering$/ });
-    fireEvent.click(chip);
-    fireEvent.click(chip);
+    // Toggle year chip on then off
+    const gradChip = screen.getByRole('button', { name: 'Graduate' });
+    fireEvent.click(gradChip);
+    fireEvent.click(gradChip);
 
-    fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
-    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    // Toggle faith background on then off
+    const catholicChip = screen.getByRole('button', { name: 'Catholic' });
+    fireEvent.click(catholicChip);
+    fireEvent.click(catholicChip);
 
-    const contactArg = (addDoc as any).mock.calls.find(
-      (c: any[]) => c[1] && Array.isArray(c[1].interests),
-    )?.[1];
-    expect(contactArg?.interests).toEqual([]);
+    // Toggle interest chip on then off
+    const prayerGroupChip = screen.getByRole('button', { name: 'Prayer group' });
+    fireEvent.click(prayerGroupChip);
+    fireEvent.click(prayerGroupChip);
+
+    expect(screen.getByRole('button', { name: /Send it/i })).toBeDisabled();
   });
 
   it('calls onSubmitted for honeypot submissions and keeps them off Firestore', async () => {
     const onSubmitted = vi.fn();
     render(<SignUp onSubmitted={onSubmitted} />);
 
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'Honey Bot' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
-    expect(await screen.findByText('And a little more.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Junior' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Biology' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-4321' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'honey@spam.com' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Home fellowship' }));
 
     fireEvent.change(document.getElementById('botField') as HTMLInputElement, {
       target: { value: 'spam' },
@@ -322,21 +374,38 @@ describe('SignUp View', () => {
   });
 
   it('calls onSubmitted after the confirmation delay on a real submit', async () => {
-    vi.useFakeTimers();
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     try {
       const onSubmitted = vi.fn();
       render(<SignUp onSubmitted={onSubmitted} />);
 
-      fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+      fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
         target: { value: 'Timed Jane' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+      fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Freshman' }));
+      fireEvent.change(screen.getByLabelText(/Major/i), {
+        target: { value: 'Economics' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+        target: { value: '555-9999' },
+      });
+      fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+        target: { value: 'timed@umail.edu' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: 'Bible study' }));
+
       fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-      await act(async () => {});
+      await act(async () => {
+        await Promise.resolve();
+      });
+
       expect(screen.getByText(/Thanks, Timed\./i)).toBeInTheDocument();
       expect(onSubmitted).not.toHaveBeenCalled();
-      act(() => vi.advanceTimersByTime(1800));
+      act(() => {
+        vi.advanceTimersByTime(1800);
+      });
       expect(onSubmitted).toHaveBeenCalledWith('Timed Jane');
     } finally {
       vi.useRealTimers();
@@ -350,10 +419,22 @@ describe('SignUp View', () => {
       .mockRejectedValueOnce(new Error('notify down'));
 
     render(<SignUp />);
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'No Notify' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sophomore' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Economics' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-8888' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'nonotify@umail.edu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Outreach' }));
+
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
     expect(await screen.findByText(/Thanks, No\./i)).toBeInTheDocument();
@@ -366,10 +447,22 @@ describe('SignUp View', () => {
     (addDoc as any).mockRejectedValueOnce(new Error('write blocked'));
 
     render(<SignUp />);
-    fireEvent.change(screen.getByPlaceholderText('First name is plenty'), {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
       target: { value: 'Failing Fred' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Continue/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'Male' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Junior' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Math' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-7777' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'fred@umail.edu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '1:1 mentorship' }));
+
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
     await waitFor(() => expect(handleFirestoreError).toHaveBeenCalled());

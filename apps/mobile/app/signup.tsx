@@ -7,7 +7,6 @@ import {
   validateSignUpBasics,
   validateSignUpInterests,
   SIGNUP_GENDERS,
-  SIGNUP_HOW_HEARD,
   SIGNUP_INTERESTS,
   SIGNUP_MAJORS,
   SIGNUP_SPIRITUAL_BACKGROUNDS,
@@ -27,7 +26,7 @@ export default function SignUp() {
   const season = useActiveSeason();
   const { user } = useAuth();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState<SignUpFormState>(emptySignUpForm);
   const [botField, setBotField] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,21 +40,11 @@ export default function SignUp() {
       interests: prev.interests.includes(i) ? prev.interests.filter((x) => x !== i) : [...prev.interests, i],
     }));
 
-  const goNext = () => {
-    const err = validateSignUpBasics(form);
-    if (err) {
-      setError(err);
-      return;
-    }
-    setError(null);
-    setStep(2);
-  };
-
   const resetForm = () => {
     setForm(emptySignUpForm);
     setBotField('');
     setError(null);
-    setStep(1);
+    setSubmitted(false);
   };
 
   const handleSubmit = async () => {
@@ -63,14 +52,13 @@ export default function SignUp() {
 
     // Anti-abuse: honeypot — silently "succeed" with no write.
     if (botField) {
-      setStep(3);
+      setSubmitted(true);
       return;
     }
 
     const errBasics = validateSignUpBasics(form);
     if (errBasics) {
       setError(errBasics);
-      setStep(1);
       return;
     }
 
@@ -84,7 +72,7 @@ export default function SignUp() {
     try {
       const byActor = user ? { uid: user.uid, name: user.displayName || user.email } : undefined;
       await submitSignUp(form, season.tags, byActor);
-      setStep(3);
+      setSubmitted(true);
     } catch {
       setError('Something went wrong sending that — mind trying again?');
     } finally {
@@ -105,7 +93,7 @@ export default function SignUp() {
     backgroundColor: colors.surfaceContainer,
   };
 
-  if (step === 3) {
+  if (submitted) {
     return (
       <Screen style={{ backgroundColor: paper }}>
         <ScrollView contentContainerStyle={{ flexGrow: 1, padding: spacing.xl, justifyContent: 'center', alignItems: 'center' }}>
@@ -140,21 +128,21 @@ export default function SignUp() {
     );
   }
 
+  const isFormValid =
+    form.name.trim() &&
+    form.gender &&
+    form.year &&
+    form.major &&
+    form.phone.trim() &&
+    form.email.trim() &&
+    form.interests.length > 0;
+
   return (
     <Screen style={{ backgroundColor: paper }}>
       <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md }} keyboardShouldPersistTaps="handled">
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
-          <AppText variant="caption" color={colors.onSurfaceVariant}>
-            STEP {step} OF 2
-          </AppText>
-          <View style={{ flex: 1, height: 4, borderRadius: 2, backgroundColor: colors.surfaceVariant, overflow: 'hidden' }}>
-            <View style={{ width: step === 1 ? '50%' : '100%', height: '100%', backgroundColor: colors.primary }} />
-          </View>
-        </View>
-
-        <AppText variant="title">{step === 1 ? 'Tell us about you.' : 'And a little more.'}</AppText>
+        <AppText variant="title">Tell us about you.</AppText>
         <AppText variant="body" color={colors.onSurfaceVariant}>
-          {step === 1 ? "Just the basics. Fields marked with * are required." : "Fields marked with * are required."}
+          Just the basics. Fields marked with * are required.
         </AppText>
 
         {error && (
@@ -165,104 +153,95 @@ export default function SignUp() {
           </View>
         )}
 
-        {step === 1 ? (
-          <>
-            <Field label="Full name" required>
-              <TextInput style={inputStyle} value={form.name} onChangeText={(v) => set('name', v)} placeholder="e.g. Naomi Park" placeholderTextColor={colors.onSurfaceVariant} />
-            </Field>
-            <Field label="Gender" required>
-              <PillRow options={SIGNUP_GENDERS} value={form.gender} onChange={(v) => set('gender', v)} />
-            </Field>
-            <Field label="Year" required>
-              <PillRow options={SIGNUP_YEARS} value={form.year} onChange={(v) => set('year', v)} />
-            </Field>
-            <Field label="Major" required>
-              <PillRow options={[...SIGNUP_MAJORS, 'Other / undecided']} value={form.major} onChange={(v) => set('major', v)} />
-            </Field>
-            <Field label="Cell number" required>
-              <TextInput
-                style={inputStyle}
-                value={form.phone}
-                onChangeText={(v) => set('phone', v)}
-                placeholder="(___) ___-____"
-                keyboardType="phone-pad"
-                placeholderTextColor={colors.onSurfaceVariant}
-              />
-            </Field>
-            <Field label="Email" required>
-              <TextInput
-                style={inputStyle}
-                value={form.email}
-                onChangeText={(v) => set('email', v)}
-                placeholder="you@umail.edu"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                placeholderTextColor={colors.onSurfaceVariant}
-              />
-            </Field>
-            <Field label="Where are you with faith right now? (optional)">
-              <PillRow
-                options={SIGNUP_SPIRITUAL_BACKGROUNDS.map((o) => o.label)}
-                value={SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.value === form.spiritualBackground)?.label ?? ''}
-                onChange={(label) => set('spiritualBackground', SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.label === label)?.value ?? '')}
-              />
-            </Field>
+        <Field label="Full name" required>
+          <TextInput
+            style={inputStyle}
+            value={form.name}
+            onChangeText={(v) => set('name', v)}
+            placeholder="e.g. Naomi Park"
+            placeholderTextColor={colors.onSurfaceVariant}
+          />
+        </Field>
+        <Field label="Gender" required>
+          <PillRow options={SIGNUP_GENDERS} value={form.gender} onChange={(v) => set('gender', v)} />
+        </Field>
+        <Field label="Year" required>
+          <PillRow options={SIGNUP_YEARS} value={form.year} onChange={(v) => set('year', v)} />
+        </Field>
+        <Field label="Major" required>
+          <PillRow options={[...SIGNUP_MAJORS, 'Other / undecided']} value={form.major} onChange={(v) => set('major', v)} />
+        </Field>
+        <Field label="Cell number" required>
+          <TextInput
+            style={inputStyle}
+            value={form.phone}
+            onChangeText={(v) => set('phone', v)}
+            placeholder="(___) ___-____"
+            keyboardType="phone-pad"
+            placeholderTextColor={colors.onSurfaceVariant}
+          />
+        </Field>
+        <Field label="Email" required>
+          <TextInput
+            style={inputStyle}
+            value={form.email}
+            onChangeText={(v) => set('email', v)}
+            placeholder="you@umail.edu"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            placeholderTextColor={colors.onSurfaceVariant}
+          />
+        </Field>
+        <Field label="Where are you with faith right now? (optional)">
+          <PillRow
+            options={SIGNUP_SPIRITUAL_BACKGROUNDS.map((o) => o.label)}
+            value={SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.value === form.spiritualBackground)?.label ?? ''}
+            onChange={(label) =>
+              set('spiritualBackground', SIGNUP_SPIRITUAL_BACKGROUNDS.find((o) => o.label === label)?.value ?? '')
+            }
+          />
+        </Field>
+        <Field label="What are you drawn to?" required>
+          <MultiPillRow options={SIGNUP_INTERESTS} value={form.interests} onToggle={toggleInterest} />
+        </Field>
+        <Field label="Anything we can pray for? (optional)">
+          <TextInput
+            style={[inputStyle, { minHeight: 72, textAlignVertical: 'top' }]}
+            value={form.prayerRequest}
+            onChangeText={(v) => set('prayerRequest', v)}
+            placeholder="Totally optional. We hold these confidentially."
+            placeholderTextColor={colors.onSurfaceVariant}
+            multiline
+          />
+        </Field>
+        <Field label="Anything else? (optional)">
+          <TextInput
+            style={[inputStyle, { minHeight: 56, textAlignVertical: 'top' }]}
+            value={form.notes}
+            onChangeText={(v) => set('notes', v)}
+            placeholder="Allergies, schedule conflicts, questions…"
+            placeholderTextColor={colors.onSurfaceVariant}
+            multiline
+          />
+        </Field>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
-              <Button title="Cancel" variant="ghost" onPress={() => router.replace('/')} />
-              <Button title="Continue" onPress={goNext} disabled={!form.name.trim() || !form.gender || !form.year || !form.major || !form.phone.trim() || !form.email.trim()} />
-            </View>
-          </>
-        ) : (
-          <>
-            <Field label="How did you hear about us? (optional)">
-              <PillRow options={SIGNUP_HOW_HEARD} value={form.howHeard} onChange={(v) => set('howHeard', form.howHeard === v ? '' : v)} />
-            </Field>
-            <Field label="What are you drawn to?" required>
-              <MultiPillRow options={SIGNUP_INTERESTS} value={form.interests} onToggle={toggleInterest} />
-            </Field>
-            <Field label="Anything we can pray for? (optional)">
-              <TextInput
-                style={[inputStyle, { minHeight: 72, textAlignVertical: 'top' }]}
-                value={form.prayerRequest}
-                onChangeText={(v) => set('prayerRequest', v)}
-                placeholder="Totally optional. We hold these confidentially."
-                placeholderTextColor={colors.onSurfaceVariant}
-                multiline
-              />
-            </Field>
-            <Field label="Anything else? (optional)">
-              <TextInput
-                style={[inputStyle, { minHeight: 56, textAlignVertical: 'top' }]}
-                value={form.notes}
-                onChangeText={(v) => set('notes', v)}
-                placeholder="Allergies, schedule conflicts, questions…"
-                placeholderTextColor={colors.onSurfaceVariant}
-                multiline
-              />
-            </Field>
-            {/* Anti-abuse honeypot: off-screen, still reachable by scripted bots */}
-            <View
-              style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
-              accessibilityElementsHidden
-              importantForAccessibility="no-hide-descendants"
-            >
-              <TextInput value={botField} onChangeText={setBotField} />
-            </View>
+        {/* Anti-abuse honeypot: off-screen, still reachable by scripted bots */}
+        <View
+          style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <TextInput value={botField} onChangeText={setBotField} />
+        </View>
 
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
-              <Button
-                title="Back"
-                variant="ghost"
-                onPress={() => {
-                  setError(null);
-                  setStep(1);
-                }}
-              />
-              <Button title={loading ? 'Sending…' : 'Send it'} onPress={handleSubmit} disabled={loading || form.interests.length === 0} />
-            </View>
-          </>
-        )}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.sm }}>
+          <Button title="Cancel" variant="ghost" onPress={() => router.replace('/')} />
+          <Button
+            title={loading ? 'Sending…' : 'Send it'}
+            onPress={handleSubmit}
+            disabled={loading || !isFormValid}
+          />
+        </View>
       </ScrollView>
     </Screen>
   );

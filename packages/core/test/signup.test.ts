@@ -3,12 +3,33 @@ import {
   emptySignUpForm,
   validateSignUpBasics,
   validateSignUpInterests,
+  validateSignUp,
   SIGNUP_YEARS,
   SIGNUP_GENDERS,
+  SIGNUP_INTERESTS,
   type SignUpFormState,
 } from '../src/signup';
 import { getAutoSemesterAndSchoolYearTags } from '../src/seasons';
 import { submitSignUp } from '../src/data/signup';
+
+const { mockAddDoc, mockCollection, mockGetDocs } = vi.hoisted(() => ({
+  mockAddDoc: vi.fn().mockResolvedValue({ id: 'test-doc-id' }),
+  mockCollection: vi.fn((_db, path) => ({ path })),
+  mockGetDocs: vi.fn().mockResolvedValue({ empty: false, docs: [{ data: () => ({ label: 'Lead' }) }] }),
+}));
+
+vi.mock('firebase/firestore', async (importOriginal) => {
+  const actual: any = await importOriginal();
+  return {
+    ...actual,
+    addDoc: (...args: any[]) => mockAddDoc(...args),
+    getDocs: (...args: any[]) => mockGetDocs(...args),
+    collection: (...args: any[]) => mockCollection(...args),
+    query: vi.fn(),
+    limit: vi.fn(),
+    serverTimestamp: () => 'SERVER_TIMESTAMP',
+  };
+});
 
 const form = (overrides: Partial<SignUpFormState> = {}): SignUpFormState => ({
   ...emptySignUpForm,
@@ -18,17 +39,25 @@ const form = (overrides: Partial<SignUpFormState> = {}): SignUpFormState => ({
   major: 'Computer Science',
   email: 'naomi@umail.edu',
   phone: '555-0100',
-  interests: ['Friday gathering'],
+  interests: ['Home fellowship'],
   ...overrides,
 });
 
-describe('SIGNUP_YEARS and SIGNUP_GENDERS', () => {
+describe('SIGNUP_YEARS, SIGNUP_GENDERS, and SIGNUP_INTERESTS', () => {
   it('includes Other in year options', () => {
     expect(SIGNUP_YEARS).toContain('Other');
   });
 
   it('provides Male, Female, Other in gender options', () => {
     expect(SIGNUP_GENDERS).toEqual(['Male', 'Female', 'Other']);
+  });
+
+  it('includes Home fellowship and Bible study in interests options, and excludes removed options', () => {
+    expect(SIGNUP_INTERESTS).toContain('Home fellowship');
+    expect(SIGNUP_INTERESTS).toContain('Bible study');
+    expect(SIGNUP_INTERESTS).not.toContain('Friday gathering');
+    expect(SIGNUP_INTERESTS).not.toContain('Small group');
+    expect(SIGNUP_INTERESTS).not.toContain('Worship team');
   });
 });
 
@@ -65,11 +94,25 @@ describe('validateSignUpBasics', () => {
 
 describe('validateSignUpInterests', () => {
   it('passes when at least one interest is selected', () => {
-    expect(validateSignUpInterests(form({ interests: ['Friday gathering'] }))).toBeNull();
+    expect(validateSignUpInterests(form({ interests: ['Home fellowship'] }))).toBeNull();
   });
 
   it('fails when interests array is empty', () => {
     expect(validateSignUpInterests(form({ interests: [] }))).toBe('Please select at least one area you are interested in.');
+  });
+});
+
+describe('validateSignUp', () => {
+  it('passes when both basics and interests are valid', () => {
+    expect(validateSignUp(form())).toBeNull();
+  });
+
+  it('fails with basics error if a basic field is missing', () => {
+    expect(validateSignUp(form({ name: '' }))).toBe('Please enter your full name.');
+  });
+
+  it('fails with interests error if interests is empty', () => {
+    expect(validateSignUp(form({ interests: [] }))).toBe('Please select at least one area you are interested in.');
   });
 });
 
@@ -87,27 +130,10 @@ describe('getAutoSemesterAndSchoolYearTags', () => {
 
 describe('submitSignUp with actor logging and auto tagging', () => {
   it('writes contact record with logged actor and auto tags', async () => {
-    const mockAddDoc = vi.fn().mockResolvedValue({ id: 'test-doc-id' });
-    const mockCollection = vi.fn((_db, path) => ({ path }));
-    const mockGetDocs = vi.fn().mockResolvedValue({ empty: false, docs: [{ data: () => ({ label: 'Lead' }) }] });
-
     const mockDb: any = {};
     const testForm = form();
     const seasonTags = ['Club Rush'];
     const byActor = { uid: 'user123', name: 'Full Timer John' };
-
-    vi.mock('firebase/firestore', async (importOriginal) => {
-      const actual: any = await importOriginal();
-      return {
-        ...actual,
-        addDoc: (...args: any[]) => mockAddDoc(...args),
-        getDocs: (...args: any[]) => mockGetDocs(...args),
-        collection: (...args: any[]) => mockCollection(...args),
-        query: vi.fn(),
-        limit: vi.fn(),
-        serverTimestamp: () => 'SERVER_TIMESTAMP',
-      };
-    });
 
     const docId = await submitSignUp(mockDb, testForm, seasonTags, byActor);
     expect(docId).toBe('test-doc-id');
@@ -126,4 +152,5 @@ describe('submitSignUp with actor logging and auto tagging', () => {
     expect(data.tags).toEqual(expect.arrayContaining(['New Sign Up', 'Club Rush', '2026-27']));
   });
 });
+
 
