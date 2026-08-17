@@ -119,8 +119,7 @@ export default function SignUp() {
             color={colors.onSurfaceVariant}
             style={{ marginTop: spacing.sm, textAlign: 'center', maxWidth: 320 }}
           >
-            We got it. Someone from the team will reach out within two days. If you'd like, you're always welcome at
-            our Friday gathering this week (7pm, Lower Common Room).
+            Thank you for signing up, we will be in contact!
           </AppText>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: spacing.xl }}>
             <Button title="Back to app" variant="ghost" onPress={() => router.replace('/')} />

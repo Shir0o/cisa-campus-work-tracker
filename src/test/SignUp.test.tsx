@@ -78,6 +78,8 @@ describe('SignUp View Constants', () => {
   it('includes Home fellowship and Bible study in INTERESTS, and excludes removed options', () => {
     expect(INTERESTS).toContain('Home fellowship');
     expect(INTERESTS).toContain('Bible study');
+    expect(INTERESTS).toContain('Gospel');
+    expect(INTERESTS).not.toContain('Outreach');
     expect(INTERESTS).not.toContain('Friday gathering');
     expect(INTERESTS).not.toContain('Small group');
     expect(INTERESTS).not.toContain('Worship team');
@@ -191,7 +193,7 @@ describe('SignUp View', () => {
     // Confirmation Screen
     expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(/We got it — you're part of our Summer '26 cohort now\./i),
+      screen.getByText(/Thank you for signing up, we will be in contact!/i),
     ).toBeInTheDocument();
 
     // Verify submitted document payload
@@ -433,7 +435,7 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
       target: { value: 'nonotify@umail.edu' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Outreach' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Gospel' }));
 
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
