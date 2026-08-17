@@ -112,6 +112,11 @@
     --shadow-pop: 0 16px 32px rgba(0, 0, 0, 0.16);
     --shadow-card: none;
 
+    /* Bento shape: 16px interactive, 24px containers, 8px small marks. */
+    --radius: 16px;
+    --radius-sm: 8px;
+    --radius-lg: 24px;
+
     /* stage tones — Bento's data-viz hue angles (red/orange/yellow/green/jade/
        blue/indigo/violet). */
     --tone-l: 0.50;
@@ -605,7 +610,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 
 /* ── Answered page keepsake styles ── */
 .ans-head { border-bottom: 1px solid var(--outline-variant); padding-bottom: 24px; margin-bottom: 30px; }
-.ans-eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: var(--on-surface-variant); display: flex; align-items: center; gap: 8px; }
+.ans-eyebrow { font-size: 11.5px; font-weight: 600;   color: var(--on-surface-variant); display: flex; align-items: center; gap: 8px; }
 .ans-lit { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px rgba(93, 128, 113, 0.14); }
 .ans-head-row { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-top: 12px; flex-wrap: wrap; }
 .ans-h1 { font-family: var(--font-serif); font-size: 32px; font-weight: 500; letter-spacing: -0.015em; margin: 0; line-height: 1; color: var(--on-surface); }
@@ -629,7 +634,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .ans-featured-body { padding: 30px 34px; display: flex; flex-direction: column; justify-content: center; }
 .ans-featured-how { font-family: var(--font-serif); font-size: clamp(22px, 2vw, 30px); line-height: 1.28; letter-spacing: -0.01em; color: var(--on-surface); margin: 0; text-wrap: pretty; }
 .ans-featured-arc { display: flex; align-items: center; gap: 10px; margin-top: 20px; font-size: 12.5px; color: var(--on-surface-variant); flex-wrap: wrap; }
-.ans-featured-who { font-weight: 700; color: var(--on-surface); font-size: 14px; }
+.ans-featured-who { font-weight: 600; color: var(--on-surface); font-size: 14px; }
 .ans-featured-item { font-family: var(--font-serif); font-style: italic; font-size: 15px; color: var(--on-surface-variant); }
 
 .ans-group { margin-bottom: 34px; }
@@ -647,7 +652,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .ans-card.is-clickable:hover { box-shadow: 0 12px 30px rgba(32, 45, 72, 0.1); transform: translateY(-2px); }
 .ans-card .ans-photo { aspect-ratio: 1 / 1; }
 .ans-card-body { padding: 16px 17px 17px; }
-.ans-who { font-size: 13px; font-weight: 700; color: var(--on-surface-variant); }
+.ans-who { font-size: 13px; font-weight: 600; color: var(--on-surface-variant); }
 .ans-how { font-family: var(--font-serif); font-size: 19px; line-height: 1.34; letter-spacing: -0.005em; color: var(--on-surface); margin: 5px 0 0; text-wrap: pretty; }
 .ans-arc { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--outline-variant); font-size: 12px; color: var(--on-surface-variant); opacity: 0.8; }
 .ans-arc .ans-item { display: block; font-family: var(--font-serif); font-style: italic; font-size: 13px; color: var(--on-surface-variant); margin-bottom: 6px; }
@@ -751,7 +756,7 @@ body.bdoc-fs-on main { overflow: hidden; }
      relational nudge, compact section heads (verbose subs dropped), and contact
      rows where the whole row opens the person + a trailing Message tap-target. */
   .md-mobile .mdm-hero { margin-bottom: 18px; }
-  .mdm-eyebrow { font-size: 12.5px; color: var(--text-mute); letter-spacing: 0.01em; margin-bottom: 8px; }
+  .mdm-eyebrow { font-size: 12.5px; color: var(--text-mute);  margin-bottom: 8px; }
   .mdm-greet {
     font-family: var(--font-serif); font-size: 29px; font-weight: 500;
     letter-spacing: -0.018em; line-height: 1.1; margin: 0 0 10px;
@@ -844,7 +849,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .bd-switch-mark {
   display: inline-flex; align-items: center; height: 16px; margin-bottom: 1px;
-  font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 700;
+  font-size: 10px;   font-weight: 600;
   color: var(--text-mute);
 }
 .bd-switch-now { color: var(--accent); }
@@ -970,7 +975,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .bd-pick.right { right: 0; }
 .bd-pick.left { left: 0; }
 .bd-pick-head {
-  font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase;
+  font-size: 11.5px;  
   color: var(--text-mute); padding: 7px 9px 6px;
 }
 .bd-pick-row {
@@ -1101,7 +1106,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .bd-note-body { padding: 18px 20px; }
 .bd-note-top { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .bd-note-kind {
-  font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700;
+  font-size: 10.5px;   font-weight: 600;
   padding: 2px 9px; border-radius: 999px;
 }
 .bd-note-kind.record { color: var(--accent); background: var(--accent-soft); }
@@ -1109,7 +1114,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .bd-note-series { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-dim); }
 .bd-note-date { margin-left: auto; font-size: 12px; color: var(--text-mute); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
 .bd-yr {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-mute);
+  font-size: 10px; font-weight: 600;  color: var(--text-mute);
   background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 6px;
 }
 .bd-note-title { font-family: var(--font-serif); font-size: 18px; font-weight: 500; line-height: 1.28; margin: 0 0 9px; letter-spacing: -0.01em; }
@@ -1175,7 +1180,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 
 .bdoc-group + .bdoc-group { margin-top: 6px; }
 .bdoc-group-label {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;  
   color: var(--text-mute); padding: 12px 8px 6px;
 }
 
@@ -1192,7 +1197,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   display: flex; flex-direction: column; align-items: center; flex: none;
   padding-top: 1px; color: var(--text-mute);
 }
-.bdoc-row-wd { font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.bdoc-row-wd { font-size: 10.5px; font-weight: 600;   }
 .bdoc-row-day { font-family: var(--font-serif); font-size: 22px; font-weight: 500; line-height: 1; color: var(--text-dim); }
 .bdoc-row.is-active .bdoc-row-day, .bdoc-row.is-active .bdoc-row-wd { color: var(--accent); }
 .bdoc-row.today .bdoc-row-day { color: var(--accent); }
@@ -1207,7 +1212,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .bdoc-row-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
 .bdoc-row-today {
-  font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-size: 10.5px; font-weight: 600;  
   color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px;
 }
 .bdoc-row-todo {
@@ -1215,7 +1220,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 8px;
 }
 .bdoc-row-aud {
-  font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;  
   border-radius: 999px; padding: 1px 7px;
 }
 .bdoc-row-aud.aud-team     { color: var(--violet);  background: var(--violet-soft); }
@@ -1376,7 +1381,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   .bdm-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
   .bdm-card-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 2px; }
   .bdm-today {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+    font-size: 11px; font-weight: 600;  
     color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
   }
   .bdm-card.today .bdm-today { background: var(--panel); }
@@ -1441,7 +1446,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px;
   padding: 0 4px; border-radius: 999px;
   background: var(--accent); color: #fff;
-  font-size: 10.5px; font-weight: 700; line-height: 16px; text-align: center;
+  font-size: 10.5px; font-weight: 600; line-height: 16px; text-align: center;
   border: 2px solid var(--bg-elev); box-sizing: content-box;
 }
 
@@ -1474,7 +1479,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .ntf-group { padding: 6px 0; }
 .ntf-group + .ntf-group { border-top: 1px solid var(--border-soft); }
 .ntf-group-label {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;  
   color: var(--text-mute); padding: 10px 18px 6px;
 }
 
@@ -1709,8 +1714,8 @@ body.bdoc-fs-on main { overflow: hidden; }
 .gs-label {
   font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  
+  
   color: var(--text-mute);
   padding: 4px 8px 3px;
 }
@@ -1803,7 +1808,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   color: var(--text-mute);
   border-top: 1px solid var(--border-soft);
   text-align: center;
-  letter-spacing: 0.01em;
+  
 }
 
 /* Empty state */
@@ -1950,7 +1955,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 @keyframes ttPop2 { from { transform: translateY(-5px); opacity: 0; } }
 .bdoc-mmenu-label {
-  font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  font-size: 10.5px; font-weight: 600;  
   color: var(--text-mute); padding: 5px 8px 7px;
 }
 .bdoc-mitem {
@@ -1973,7 +1978,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .todoc-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
 .todoc-eyebrow {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent);
+  font-size: 11px; font-weight: 600;   color: var(--accent);
 }
 .todoc-x {
   width: 26px; height: 26px; display: grid; place-items: center;
@@ -1988,7 +1993,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .todoc-text:focus { border-color: var(--accent-line); }
 .todoc-label {
-  font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;  
   color: var(--text-mute); margin: 12px 0 7px;
 }
 .todoc-people { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2035,7 +2040,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .tt-pill.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 .tt-pill-n {
   min-width: 17px; height: 17px; padding: 0 5px; border-radius: 999px;
-  background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 700;
+  background: var(--accent); color: #fff; font-size: 10.5px; font-weight: 600;
   display: inline-grid; place-items: center;
 }
 .tt-pill.on .tt-pill-n { background: var(--accent); }
@@ -2072,7 +2077,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .md-group + .md-group { border-top: 1px solid var(--border-soft); margin-top: 6px; padding-top: 8px; }
 .md-group-label {
   display: inline-flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+  font-size: 11px; font-weight: 600;  
   color: var(--text-mute); padding: 8px 4px 4px;
 }
 
@@ -2112,8 +2117,8 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .pray-edit-input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .pray-edit-label {
-  font-size: 11px; font-weight: 600; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-mute);
+  font-size: 11px; font-weight: 600; 
+   color: var(--text-mute);
 }
 .pray-edit-select {
   width: 100%; padding: 8px 11px; border: 1px solid var(--border);
@@ -2197,13 +2202,13 @@ body.bdoc-fs-on main { overflow: hidden; }
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
 }
 .md-task-edit-cap {
-  font-size: 11px; font-weight: 600; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-mute);
+  font-size: 11px; font-weight: 600; 
+   color: var(--text-mute);
 }
 .md-task-edit-date { font-size: 14px; color: var(--text-dim); font-weight: 500; }
 .md-task-edit-due-label {
-  font-size: 11px; font-weight: 600; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-mute);
+  font-size: 11px; font-weight: 600; 
+   color: var(--text-mute);
 }
 .md-task-edit-due { display: flex; flex-wrap: wrap; gap: 6px; }
 .md-task-edit-input {
@@ -2255,8 +2260,8 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .md-task-add-input:focus { border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
 .md-task-add-due-label {
-  font-size: 11px; font-weight: 600; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--text-mute);
+  font-size: 11px; font-weight: 600; 
+   color: var(--text-mute);
 }
 .md-task-add-due { display: flex; flex-wrap: wrap; gap: 6px; }
 .md-task-add-foot { display: flex; gap: 8px; justify-content: flex-end; }
@@ -2272,7 +2277,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .ibx-more:hover { background: var(--accent-soft); border-color: var(--accent); }
 .ibx-count {
-  font-size: 11.5px; font-weight: 700; letter-spacing: .02em;
+  font-size: 11.5px; font-weight: 600; 
   color: var(--accent); background: var(--accent-soft);
   padding: 2px 9px; border-radius: 999px;
 }
@@ -2515,8 +2520,8 @@ body.bdoc-fs-on main { overflow: hidden; }
   --danger-soft: var(--error-container);
   --amber: var(--warning);
   --amber-soft: var(--warning-container);
-  --radius: 10px;
-  --radius-lg: 16px;
+  --radius: 16px;
+  --radius-lg: 24px;
   --page-pad-top: clamp(18px, 3vw, 32px);
   --shadow-pop: 0 1px 0 rgba(255,255,255,0.6) inset, 0 18px 40px -14px rgba(32,45,72,0.20), 0 4px 10px rgba(32,45,72,0.07);
 }
@@ -2591,7 +2596,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .msgs-item-main { min-width: 0; }
 .msgs-item-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .msgs-item-name { font-size: 14.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.msgs-item.unread .msgs-item-name { font-weight: 700; }
+.msgs-item.unread .msgs-item-name { font-weight: 600; }
 .msgs-item-time { font-size: 11.5px; color: var(--text-mute); flex: none; }
 .msgs-item-bot { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
 .msgs-item-preview {
@@ -2609,6 +2614,14 @@ body.bdoc-fs-on main { overflow: hidden; }
 .msgs-cluster.broadcast { background: var(--amber-soft); color: var(--amber); }
 
 .msgs-thread { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+
+/* Bento — rail + open conversation as two compartments (desktop only; the
+   phone keeps its full-screen rail/thread). */
+@media (min-width: 768px) {
+  .page.msgs { gap: 16px; padding: 16px; background: var(--bg); }
+  .msgs-rail { border: 1px solid var(--border-soft); border-radius: 24px; overflow: hidden; }
+  .msgs-thread { border: 1px solid var(--border-soft); border-radius: 24px; overflow: hidden; }
+}
 .msgs-empty {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 8px; text-align: center; padding: 40px;
@@ -2649,7 +2662,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .msgb-row { display: flex; align-items: center; gap: 6px; position: relative; }
 .msgb.mine .msgb-row { flex-direction: row-reverse; }
 .msgb-bubble {
-  padding: 10px 13px; border-radius: 14px;
+  padding: 10px 13px; border-radius: 16px;
   background: var(--panel); border: 1px solid var(--border-soft);
   font-size: 14.5px; line-height: 1.55; color: var(--text-dim); text-wrap: pretty;
   overflow-wrap: break-word; word-break: break-word; max-width: 100%;
@@ -2882,8 +2895,8 @@ body.bdoc-fs-on main { overflow: hidden; }
 /* list */
 .qc-list { overflow-y: auto; padding: 4px 8px 12px; -webkit-overflow-scrolling: touch; }
 .qc-list-label {
-  font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
-  text-transform: uppercase; color: var(--text-mute);
+  font-size: 12px; font-weight: 600; 
+   color: var(--text-mute);
   padding: 12px 10px 6px;
 }
 .qc-person {
@@ -2947,7 +2960,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .qc-whopill > span:not(.qc-newtag) { overflow: hidden; text-overflow: ellipsis; }
 .qc-whopill:hover { border-color: var(--border); }
 .qc-newtag {
-  font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  font-size: 11px; font-weight: 600; 
   color: var(--accent); background: var(--accent-soft);
   padding: 1px 7px; border-radius: 99px;
 }
@@ -3174,7 +3187,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 /* — masthead — */
 .ans-head { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 30px; }
 .ans-eyebrow {
-  font-size: 11.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  font-size: 11.5px; font-weight: 600;  
   color: var(--text-mute); display: flex; align-items: center; gap: 8px;
 }
 .ans-lit { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 4px var(--success-soft); }
@@ -3229,7 +3242,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .ans-featured-body { padding: 30px 34px 30px 0; }
 .ans-featured-how { font-family: var(--font-serif); font-size: clamp(22px, 2vw, 30px); line-height: 1.28; letter-spacing: -0.01em; color: var(--text); margin: 0; text-wrap: pretty; }
 .ans-featured-arc { display: flex; align-items: center; gap: 10px; margin-top: 20px; font-size: 12.5px; color: var(--text-mute); flex-wrap: wrap; }
-.ans-featured-who { font-weight: 700; color: var(--text-dim); font-size: 14px; }
+.ans-featured-who { font-weight: 600; color: var(--text-dim); font-size: 14px; }
 .ans-featured-item { font-family: var(--font-serif); font-style: italic; font-size: 15px; color: var(--text-dim); }
 
 /* — the wall — */
@@ -3252,7 +3265,7 @@ body.bdoc-fs-on main { overflow: hidden; }
 .ans-card.is-clickable:hover { box-shadow: var(--shadow-pop); transform: translateY(-2px); }
 .ans-card .ans-photo { aspect-ratio: 1 / 1; }
 .ans-card-body { padding: 16px 17px 17px; }
-.ans-who { font-size: 13px; font-weight: 700; color: var(--text-dim); }
+.ans-who { font-size: 13px; font-weight: 600; color: var(--text-dim); }
 .ans-how { font-family: var(--font-serif); font-size: 19px; line-height: 1.34; letter-spacing: -0.005em; color: var(--text); margin: 5px 0 0; text-wrap: pretty; }
 .ans-arc { margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--border-soft); }
 .ans-item { display: block; font-family: var(--font-serif); font-style: italic; font-size: 13.5px; color: var(--text-mute); }
@@ -3276,7 +3289,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   border-radius: 0 8px 8px 0;
 }
 .prt-answered-tag, .pray-answered-tag {
-  font-size: 11.5px; font-weight: 700; letter-spacing: 0.02em; color: var(--success);
+  font-size: 11.5px; font-weight: 600;  color: var(--success);
 }
 .prt-answered-head, .pray-answered-head {
   display: flex; align-items: center; gap: 8px;
@@ -3456,7 +3469,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 
   .prm-hero { padding: 4px 0 20px; margin-bottom: 4px; }
   .prm-eyebrow {
-    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    font-size: 11px;  
     color: var(--accent); font-weight: 600; display: block;
   }
   .prm-title {
@@ -3528,7 +3541,7 @@ body.msgs-fullscreen .msgs-rail { display: none; }
     min-width: 0;
   }
   .prm .prt-statuspill {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.01em;
+    font-size: 11px; font-weight: 600; 
     padding: 2px 9px; border-radius: 999px; white-space: nowrap; flex: none;
     background: var(--accent-soft); color: var(--accent);
   }

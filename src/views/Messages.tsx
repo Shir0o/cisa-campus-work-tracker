@@ -731,7 +731,7 @@ export default function Messages() {
 
       {/* 2. Right — the thread (the design's msgs-thread) */}
       <div className={cn(
-        "flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
+        "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
         activeRoomId ? "flex" : "hidden md:flex"
       )}>
         {!activeRoom ? (
