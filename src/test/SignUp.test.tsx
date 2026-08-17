@@ -78,8 +78,10 @@ describe('SignUp View Constants', () => {
   it('includes Home fellowship and Bible study in INTERESTS, and excludes removed options', () => {
     expect(INTERESTS).toContain('Home fellowship');
     expect(INTERESTS).toContain('Bible study');
-    expect(INTERESTS).toContain('Gospel');
+    expect(INTERESTS).toContain('Outreach/Gospel');
+    expect(INTERESTS).toContain('Group activities/outings');
     expect(INTERESTS).not.toContain('Outreach');
+    expect(INTERESTS).not.toContain('Gospel');
     expect(INTERESTS).not.toContain('Friday gathering');
     expect(INTERESTS).not.toContain('Small group');
     expect(INTERESTS).not.toContain('Worship team');
@@ -117,6 +119,8 @@ describe('SignUp View', () => {
     expect(screen.getByLabelText(/Major/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Home fellowship' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Bible study' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Outreach/Gospel' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Group activities/outings' })).toBeInTheDocument();
   });
 
   it('renders staff preview strip when viewed by staff', () => {
@@ -435,7 +439,7 @@ describe('SignUp View', () => {
     fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
       target: { value: 'nonotify@umail.edu' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Gospel' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Outreach/Gospel' }));
 
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
