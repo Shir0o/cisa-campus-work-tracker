@@ -13,6 +13,7 @@ import {
   X,
   Eye,
   EyeOff,
+  MessageSquare,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useNavigate } from "react-router-dom";
@@ -90,6 +91,8 @@ interface MyTask {
   createdByName?: string | null;
   sourceDocId?: string | null;
   sourceDocTitle?: string | null;
+  sourceInteractionId?: string | null;
+  sourceInteractionTitle?: string | null;
 }
 
 // done first? then due ascending — the shared ordering for both task groups.
@@ -203,6 +206,13 @@ function AssignedTaskRow({
               <FileText className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">From {todo.sourceDocTitle}</span>
             </button>
+          )}
+
+          {!open && !todo.sourceDocId && todo.sourceInteractionId && todo.sourceInteractionTitle && (
+            <span className="inline-flex items-center gap-1 mt-1 text-sm text-accent font-medium max-w-[18rem]">
+              <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">From {todo.sourceInteractionTitle}</span>
+            </span>
           )}
 
           {open && (

@@ -199,4 +199,21 @@ describe('AttendanceMobile', () => {
     fireEvent.click(screen.getByText('Alice Smith'));
     expect(cycleAttendance).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), 's1');
   });
+
+  it('offers a make-a-to-do for an absent person in the roster sheet (issue #336)', () => {
+    const onOpenTodo = vi.fn();
+    const absentContact = contact({ attendance: { s1: 'absent' } });
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        sessions={[session()]}
+        contacts={[absentContact]}
+        here={vi.fn(() => false)}
+        onOpenTodo={onOpenTodo}
+      />
+    );
+    fireEvent.click(screen.getByText('Bible Study'));
+    fireEvent.click(screen.getByTitle('Make a to-do to check on Alice Smith'));
+    expect(onOpenTodo).toHaveBeenCalledWith(expect.objectContaining({ id: 'c1' }), expect.objectContaining({ id: 's1' }));
+  });
 });

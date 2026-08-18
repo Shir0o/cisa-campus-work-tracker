@@ -10,6 +10,7 @@ import {
   Users,
   Pencil,
   Settings2,
+  CheckSquare,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -26,6 +27,8 @@ import EditEventModal from '../components/modals/EditEventModal';
 import ManageGatheringTypesModal from '../components/modals/ManageGatheringTypesModal';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import SyncSheetModal from '../components/modals/SyncSheetModal';
+import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
+import type { TodoPerson } from '../lib/todos';
 import PageContainer from '../components/layout/PageContainer';
 import { format, parseISO, isValid } from 'date-fns';
 import { useMediaQuery } from '../lib/useMediaQuery';
@@ -107,6 +110,8 @@ export default function Attendance() {
   const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
   const [typeFilter, setTypeFilter] = useState<string>('All');
   const [openId, setOpenId] = useState<string | null>(null);
+  const [team, setTeam] = useState<TodoPerson[]>([]);
+  const [todoFor, setTodoFor] = useState<{ contact: Contact; event: Event } | null>(null);
 
   // Seed the default kinds the first time an admin opens Gatherings (mirrors how
   // OutreachBoard seeds the default stages). One-shot; no-op once any kind exists.
@@ -145,9 +150,24 @@ export default function Attendance() {
       (e) => onLoadError(e, 'events'),
     );
 
+    // Team for the "make a to-do" affordance — who can be assigned the check-in.
+    const unsubscribeUsers = onSnapshot(
+      query(collection(db, 'users')),
+      (snapshot) =>
+        setTeam(
+          snapshot.docs
+            .map((d) => ({ uid: d.id, ...(d.data() as { approved?: boolean; displayName?: string; photoURL?: string; role?: string }) }))
+            .filter((u) => u.approved !== false && !!u.displayName)
+            .map((u) => ({ uid: u.uid, name: u.displayName as string, photoURL: u.photoURL, role: u.role }) as TodoPerson)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      (e) => onLoadError(e, 'users'),
+    );
+
     return () => {
       unsubscribeContacts();
       unsubscribeEvents();
+      unsubscribeUsers();
     };
   }, []);
 
@@ -288,6 +308,8 @@ export default function Attendance() {
 
   const openContact = (c: Contact) => setSelectedContact(c);
 
+  const openTodoFor = (contact: Contact, event: Event) => setTodoFor({ contact, event });
+
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!selectedContact);
   if (selectedContact) {
@@ -323,26 +345,42 @@ export default function Attendance() {
 
   if (isMobile && !loading && !error) {
     return (
-      <AttendanceMobile
-        contacts={contacts}
-        events={events}
-        sessions={sessions}
-        upcoming={upcoming}
-        missed={missed}
-        avgPer={avgPer}
-        activeFilter={activeFilter}
-        setTypeFilter={setTypeFilter}
-        gatheringTypes={gatheringTypes}
-        isAdmin={isAdmin}
-        onOpenContact={openContact}
-        onLogGathering={() => setIsAddEventModalOpen(true)}
-        onManageTypes={() => setIsManageTypesOpen(true)}
-        onEditSession={(session) => setEditingEvent(session)}
-        onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
-        cycleAttendance={cycleAttendance}
-        here={here}
-        RsvpCountComponent={RsvpCount}
-      />
+      <>
+        <AttendanceMobile
+          contacts={contacts}
+          events={events}
+          sessions={sessions}
+          upcoming={upcoming}
+          missed={missed}
+          avgPer={avgPer}
+          activeFilter={activeFilter}
+          setTypeFilter={setTypeFilter}
+          gatheringTypes={gatheringTypes}
+          isAdmin={isAdmin}
+          onOpenContact={openContact}
+          onLogGathering={() => setIsAddEventModalOpen(true)}
+          onManageTypes={() => setIsManageTypesOpen(true)}
+          onEditSession={(session) => setEditingEvent(session)}
+          onDeleteSession={async (id, name) => { await handleDeleteEvent(id, name); }}
+          cycleAttendance={cycleAttendance}
+          here={here}
+          RsvpCountComponent={RsvpCount}
+          team={team}
+          onOpenTodo={openTodoFor}
+        />
+        {todoFor && (
+          <FromEntryTodoComposer
+            text={`Check on ${todoFor.contact.name.split(' ')[0]}`}
+            contactId={todoFor.contact.id}
+            contactName={todoFor.contact.name}
+            source={{ interactionId: todoFor.event.id, interactionTitle: todoFor.event.name }}
+            team={team}
+            meUid={user?.uid ?? ''}
+            meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+            onClose={() => setTodoFor(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -624,14 +662,27 @@ export default function Attendance() {
                                 <span className="text-sm text-on-surface-variant italic">Everyone came.</span>
                               )}
                               {absent.map((c) => (
-                                <button
+                                <span
                                   key={c.id}
-                                  onClick={() => cycleAttendance(c, s.id)}
-                                  className="inline-flex items-center gap-2 pl-1 pr-3 py-1 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary/40 transition-colors"
+                                  className="inline-flex items-center gap-1 pl-1 pr-1.5 py-1 rounded-full border border-outline-variant text-on-surface-variant"
                                 >
-                                  <Avatar contact={c} size="sm" />
-                                  <span className="text-sm">{c.name}</span>
-                                </button>
+                                  <button
+                                    onClick={() => cycleAttendance(c, s.id)}
+                                    className="inline-flex items-center gap-2"
+                                    title="Tap to mark present"
+                                  >
+                                    <Avatar contact={c} size="sm" />
+                                    <span className="text-sm">{c.name}</span>
+                                  </button>
+                                  <button
+                                    onClick={() => openTodoFor(c, s)}
+                                    title={`Make a to-do to check on ${c.name}`}
+                                    aria-label={`Make a to-do for ${c.name}`}
+                                    className="p-1.5 rounded-full hover:bg-surface-variant hover:text-accent transition-colors"
+                                  >
+                                    <CheckSquare className="w-3.5 h-3.5" />
+                                  </button>
+                                </span>
                               ))}
                             </div>
                           </div>
@@ -721,6 +772,19 @@ export default function Attendance() {
         onClose={() => setIsManageTypesOpen(false)}
         types={gatheringTypes}
       />
+
+      {todoFor && (
+        <FromEntryTodoComposer
+          text={`Check on ${todoFor.contact.name.split(' ')[0]}`}
+          contactId={todoFor.contact.id}
+          contactName={todoFor.contact.name}
+          source={{ interactionId: todoFor.event.id, interactionTitle: todoFor.event.name }}
+          team={team}
+          meUid={user?.uid ?? ''}
+          meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+          onClose={() => setTodoFor(null)}
+        />
+      )}
     </>
   );
 

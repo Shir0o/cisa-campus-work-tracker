@@ -25,9 +25,13 @@ vi.mock('../lib/firebase', () => ({
 }));
 
 // Mock Todos
-vi.mock('../lib/todos', () => ({
-  setTodoDone: vi.fn().mockResolvedValue(undefined),
-}));
+vi.mock('../lib/todos', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/todos')>();
+  return {
+    ...actual,
+    setTodoDone: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -1059,6 +1063,23 @@ describe('Messages View Component', () => {
       await waitFor(() => {
         expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull();
       });
+    });
+
+    it('turns a message into a to-do via the ⋯ menu (issue #336)', async () => {
+      const { container } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(within(streamOf(container)).queryByText('Hello trainees')).not.toBeNull());
+
+      fireEvent.click(container.querySelector('.msgb-menu-wrap button[title="More"]')!);
+      fireEvent.click(screen.getByText('Make a to-do'));
+
+      // The composer opens pre-filled with the message and the message as source.
+      expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Hello trainees');
+      expect(screen.getByText('Message from Alice')).toBeInTheDocument();
     });
 
     it('triggers mention autocomplete when @ is typed and inserts selected user', async () => {

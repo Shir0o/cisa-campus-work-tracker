@@ -89,6 +89,7 @@ export interface Task {
   contactName?: string | null;
   assigneeId?: string | null;
   sourceInteractionId?: string | null;
+  sourceInteractionTitle?: string | null;
   // Who created/assigned the to-do — surfaces as the "from {name}" line.
   createdById?: string | null;
   createdByName?: string | null;

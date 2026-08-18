@@ -21,6 +21,8 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import PageContainer from '../components/layout/PageContainer';
+import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
+import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import PrayerListMobile from './PrayerListMobile';
@@ -114,6 +116,10 @@ export default function PrayerList() {
     return new Set();
   });
 
+  // Team for the "make a to-do" affordance — who can be assigned the follow-up.
+  const [team, setTeam] = useState<TodoPerson[]>([]);
+  const [todoFor, setTodoFor] = useState<{ prayer: PrayerRecord; contact: Contact } | null>(null);
+
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
   const onLoadError = (e: unknown, path: string) => {
@@ -138,6 +144,24 @@ export default function PrayerList() {
       const contactData = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Contact[];
       setContacts(contactData);
     }, (e) => onLoadError(e, 'contacts'));
+    return () => unsubscribe();
+  }, []);
+
+  // Load team for the "make a to-do" affordance.
+  useEffect(() => {
+    const q = query(collection(db, 'users'));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) =>
+        setTeam(
+          snapshot.docs
+            .map((d) => ({ uid: d.id, ...(d.data() as { approved?: boolean; displayName?: string; photoURL?: string; role?: string }) }))
+            .filter((u) => u.approved !== false && !!u.displayName)
+            .map((u) => ({ uid: u.uid, name: u.displayName as string, photoURL: u.photoURL, role: u.role }) as TodoPerson)
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      (e) => onLoadError(e, 'users'),
+    );
     return () => unsubscribe();
   }, []);
 
@@ -229,6 +253,11 @@ export default function PrayerList() {
     } catch (error) {
       console.error('Error updating status:', error);
     }
+  };
+
+  const openTodoFor = (prayer: PrayerRecord) => {
+    const contact = contacts.find((c) => c.id === prayer.contactId);
+    if (contact) setTodoFor({ prayer, contact });
   };
 
   const handleUpdateBurden = async (prayer: PrayerRecord, burden: string): Promise<boolean> => {
@@ -420,27 +449,42 @@ export default function PrayerList() {
 
   if (isMobile && !loading && !error) {
     return (
-      <PrayerListMobile
-        contacts={contacts}
-        prayers={teamPrayers}
-        entries={filteredEntries}
-        suggestions={suggestions}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        genderFilter={genderFilter}
-        setGenderFilter={setGenderFilter}
-        startHolding={startHolding}
-        onAddBurden={handleAddBurden}
-        onUpdateStatus={handleUpdateStatus}
-        onUpdateBurden={handleUpdateBurden}
-        onOpenContact={setProfileContact}
-        answeredThisYear={answeredThisYear}
-        awaiting={awaiting}
-        composeFor={composeFor}
-        setComposeFor={setComposeFor}
-        onStopHolding={stopHolding}
-        isOperator={isOperator}
-      />
+      <>
+        <PrayerListMobile
+          contacts={contacts}
+          prayers={teamPrayers}
+          entries={filteredEntries}
+          suggestions={suggestions}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          genderFilter={genderFilter}
+          setGenderFilter={setGenderFilter}
+          startHolding={startHolding}
+          onAddBurden={handleAddBurden}
+          onUpdateStatus={handleUpdateStatus}
+          onUpdateBurden={handleUpdateBurden}
+          onOpenContact={setProfileContact}
+          answeredThisYear={answeredThisYear}
+          awaiting={awaiting}
+          composeFor={composeFor}
+          setComposeFor={setComposeFor}
+          onStopHolding={stopHolding}
+          isOperator={isOperator}
+          onMakeTodo={openTodoFor}
+        />
+        {todoFor && (
+          <FromEntryTodoComposer
+            text={todoFor.prayer.burden}
+            contactId={todoFor.contact.id}
+            contactName={todoFor.contact.name}
+            source={{ interactionId: todoFor.prayer.id, interactionTitle: `Prayer for ${todoFor.contact.name.split(' ')[0]}` }}
+            team={team}
+            meUid={user?.uid ?? ''}
+            meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+            onClose={() => setTodoFor(null)}
+          />
+        )}
+      </>
     );
   }
 
@@ -568,6 +612,7 @@ export default function PrayerList() {
                 onUpdateBurden={handleUpdateBurden}
                 onOpenProfile={() => setProfileContact(e.contact)}
                 isOperator={isOperator}
+                onMakeTodo={openTodoFor}
               />
             ))}
           </AnimatePresence>
@@ -588,6 +633,19 @@ export default function PrayerList() {
           onApply={applyPick}
         />
       )}
+
+      {todoFor && (
+        <FromEntryTodoComposer
+          text={todoFor.prayer.burden}
+          contactId={todoFor.contact.id}
+          contactName={todoFor.contact.name}
+          source={{ interactionId: todoFor.prayer.id, interactionTitle: `Prayer for ${todoFor.contact.name.split(' ')[0]}` }}
+          team={team}
+          meUid={user?.uid ?? ''}
+          meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+          onClose={() => setTodoFor(null)}
+        />
+      )}
     </PageContainer>
   );
 }
@@ -604,6 +662,7 @@ function PrayerThread({
   onUpdateBurden,
   onOpenProfile,
   isOperator,
+  onMakeTodo,
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
@@ -613,6 +672,7 @@ function PrayerThread({
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
   isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
 }) {
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -676,6 +736,7 @@ function PrayerThread({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
+            onMakeTodo={onMakeTodo}
           />
         ) : isOperator ? (
           <AddThisWeek
@@ -701,6 +762,7 @@ function PrayerThread({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
+            onMakeTodo={onMakeTodo}
           />
         </div>
       )}
@@ -736,6 +798,7 @@ function PrayerThread({
                   onUpdateStatus={onUpdateStatus}
                   onUpdateBurden={onUpdateBurden}
                   isOperator={isOperator}
+                  onMakeTodo={onMakeTodo}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
@@ -775,6 +838,7 @@ function PrayerItem({
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
+  onMakeTodo,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
@@ -782,6 +846,7 @@ function PrayerItem({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -865,6 +930,15 @@ function PrayerItem({
         {!editing && isOperator && (
           <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-accent transition-colors ml-auto">
             Edit
+          </button>
+        )}
+        {!editing && onMakeTodo && (
+          <button
+            onClick={() => onMakeTodo(prayer)}
+            title="Make a to-do from this prayer"
+            className="text-[13px] text-on-surface-variant hover:text-accent transition-colors"
+          >
+            Make a to-do
           </button>
         )}
       </div>

@@ -31,6 +31,8 @@ import {
   setTodoDone,
   deleteTodo,
   toggleSubtask,
+  docSource,
+  interactionSource,
 } from '../lib/todos';
 import { handleFirestoreError } from '../lib/firebase';
 
@@ -139,6 +141,20 @@ describe('todos.ts', () => {
     });
   });
 
+  // ── Source builders (issue #336) ─────────────────────────────────────────
+  describe('source builders', () => {
+    it('docSource links a Board page', () => {
+      expect(docSource('bd1', 'Friday Night')).toEqual({ docId: 'bd1', docTitle: 'Friday Night' });
+    });
+
+    it('interactionSource links a live item (message, prayer, absence)', () => {
+      expect(interactionSource('msg-1', 'Message from Mei')).toEqual({
+        interactionId: 'msg-1',
+        interactionTitle: 'Message from Mei',
+      });
+    });
+  });
+
   // ── Firestore writes ─────────────────────────────────────────────────────
   describe('addTodo', () => {
     it('writes to the tasks collection with all fields including subtasks', async () => {
@@ -156,8 +172,30 @@ describe('todos.ts', () => {
         createdByName: 'Tony',
         sourceDocId: 'bd1',
         sourceDocTitle: 'Page',
+        sourceInteractionId: null,
+        sourceInteractionTitle: null,
         createdAt: 'SERVER_TS',
         subtasks: [{ id: 'st1', title: 'Sub 1', done: false }],
+      }));
+    });
+
+    it('writes interaction source fields when the todo was born from a live item', async () => {
+      await addTodo(
+        {
+          title: 'Follow up with Mei',
+          assigneeId: 'u2',
+          dueDate: null,
+          source: { interactionId: 'msg-123', interactionTitle: 'Message from Mei' },
+          contactId: 'c1',
+          contactName: 'Mei Tanaka',
+        },
+        { uid: 'u1', name: 'Tony' },
+      );
+      expect(mockAddDoc).toHaveBeenCalledWith('col:tasks', expect.objectContaining({
+        sourceInteractionId: 'msg-123',
+        sourceInteractionTitle: 'Message from Mei',
+        sourceDocId: null,
+        sourceDocTitle: null,
       }));
     });
 
@@ -195,6 +233,16 @@ describe('todos.ts', () => {
     it('only includes defined fields in the patch', async () => {
       await updateTodo('t2', { assigneeId: 'u3' });
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:tasks/t2', { assigneeId: 'u3' });
+    });
+
+    it('links a source onto an existing task (visit follow-up wiring)', async () => {
+      await updateTodo('t1', { source: { interactionId: 'v1', interactionTitle: 'Visit to Ama' } });
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:tasks/t1', {
+        sourceDocId: null,
+        sourceDocTitle: null,
+        sourceInteractionId: 'v1',
+        sourceInteractionTitle: 'Visit to Ama',
+      });
     });
 
     it('handles errors through handleFirestoreError', async () => {

@@ -1,4 +1,4 @@
-import { Check, FileText, Trash2, ListChecks } from "lucide-react";
+import { Check, FileText, Trash2, ListChecks, MessageSquare } from "lucide-react";
 import { cn, getUserInitials } from "../../lib/utils";
 import { dueChip, dueToneClass, toggleSubtask, type TodoPerson, type SubtaskItem } from "../../lib/todos";
 
@@ -37,6 +37,8 @@ export interface TodoItem {
   createdByName?: string | null;
   sourceDocId?: string | null;
   sourceDocTitle?: string | null;
+  sourceInteractionId?: string | null;
+  sourceInteractionTitle?: string | null;
   assigneeId?: string | null;
   contactId?: string | null;
   contactName?: string | null;
@@ -78,6 +80,7 @@ export default function TodoRow({
     (showAssignee && assignee) ||
     todo.createdByName ||
     (todo.sourceDocId && todo.sourceDocTitle) ||
+    (todo.sourceInteractionId && todo.sourceInteractionTitle) ||
     (todo.contactId && todo.contactName) ||
     hasSubtasks;
 
@@ -176,6 +179,12 @@ export default function TodoRow({
                 <FileText className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">{todo.sourceDocTitle}</span>
               </button>
+            )}
+            {todo.sourceInteractionId && todo.sourceInteractionTitle && (
+              <span className="inline-flex items-center gap-1 text-accent font-medium max-w-[16rem] truncate">
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{todo.sourceInteractionTitle}</span>
+              </span>
             )}
             {todo.contactId && todo.contactName && (
               <button

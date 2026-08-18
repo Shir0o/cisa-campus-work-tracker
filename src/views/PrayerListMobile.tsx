@@ -27,6 +27,7 @@ interface PrayerListMobileProps {
   setComposeFor: (id: string | null) => void;
   onStopHolding: (contactId: string) => void;
   isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
 }
 
 const THIS_WEEK_START = (() => {
@@ -101,6 +102,7 @@ export default function PrayerListMobile({
   setComposeFor,
   onStopHolding,
   isOperator,
+  onMakeTodo,
 }: PrayerListMobileProps) {
   const navigate = useNavigate();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -210,6 +212,7 @@ export default function PrayerListMobile({
             onRemove={() => onStopHolding(e.contact.id)}
             setComposeFor={setComposeFor}
             isOperator={isOperator}
+            onMakeTodo={onMakeTodo}
           />
         ))}
       </div>
@@ -297,6 +300,7 @@ interface PrayerThreadCardProps {
   onRemove: () => void;
   setComposeFor: (id: string | null) => void;
   isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
 }
 
 function PrayerThreadCard({
@@ -310,6 +314,7 @@ function PrayerThreadCard({
   onRemove,
   setComposeFor,
   isOperator,
+  onMakeTodo,
 }: PrayerThreadCardProps) {
   const [showEarlier, setShowEarlier] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -394,6 +399,7 @@ function PrayerThreadCard({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
+            onMakeTodo={onMakeTodo}
           />
         ) : isOperator ? (
           <AddThisWeekMobile
@@ -423,6 +429,7 @@ function PrayerThreadCard({
             onUpdateStatus={onUpdateStatus}
             onUpdateBurden={onUpdateBurden}
             isOperator={isOperator}
+            onMakeTodo={onMakeTodo}
           />
         </div>
       )}
@@ -458,6 +465,7 @@ function PrayerThreadCard({
                   onUpdateStatus={onUpdateStatus}
                   onUpdateBurden={onUpdateBurden}
                   isOperator={isOperator}
+                  onMakeTodo={onMakeTodo}
                 />
               ))}
               {earlier.length > EARLIER_CAP && (
@@ -497,6 +505,7 @@ function PrayerItemMobile({
   onUpdateStatus,
   onUpdateBurden,
   isOperator,
+  onMakeTodo,
 }: {
   prayer: PrayerRecord;
   variant: 'week' | 'last' | 'earlier';
@@ -504,6 +513,7 @@ function PrayerItemMobile({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   isOperator: boolean;
+  onMakeTodo?: (prayer: PrayerRecord) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -554,6 +564,15 @@ function PrayerItemMobile({
             className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
           >
             Edit
+          </button>
+        )}
+        {!editing && onMakeTodo && (
+          <button
+            onClick={() => onMakeTodo(prayer)}
+            title="Make a to-do from this prayer"
+            className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
+          >
+            Make a to-do
           </button>
         )}
       </div>

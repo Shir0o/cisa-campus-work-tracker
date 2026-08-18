@@ -123,6 +123,8 @@ describe('PrayerList', () => {
         callback({ docs: mockContacts, size: 2 });
       } else if (ref?.path === 'prayers') {
         callback({ docs: mockPrayers, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) }], size: 1 });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -169,6 +171,20 @@ describe('PrayerList', () => {
       expect(screen.getByText('Health and recovery')).toBeInTheDocument();
       expect(screen.getAllByText('Archived').length).toBeGreaterThan(0);
     });
+  });
+
+  it('turns a prayer burden into a to-do linked to the prayer (issue #336)', async () => {
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
+
+    // The composer opens pre-filled with the burden, tied to the person.
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Strength for finals');
+    expect(screen.getByText('Prayer for Alice')).toBeInTheDocument();
   });
 
   it('filters the roster by gender (Brothers/Sisters)', async () => {

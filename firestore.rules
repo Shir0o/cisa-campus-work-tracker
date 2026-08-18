@@ -434,6 +434,7 @@ service cloud.firestore {
                (data.get('contactName', null) == null || (data.get('contactName', null) is string && data.get('contactName', null).size() <= 128)) &&
                (data.get('assigneeId', null) == null || (data.get('assigneeId', null) is string && data.get('assigneeId', null).size() <= 128)) &&
                (data.get('sourceInteractionId', null) == null || (data.get('sourceInteractionId', null) is string && data.get('sourceInteractionId', null).size() <= 128)) &&
+               (data.get('sourceInteractionTitle', null) == null || (data.get('sourceInteractionTitle', null) is string && data.get('sourceInteractionTitle', null).size() <= 256)) &&
                (data.get('createdById', null) == null || (data.get('createdById', null) is string && data.get('createdById', null).size() <= 128)) &&
                (data.get('createdByName', null) == null || (data.get('createdByName', null) is string && data.get('createdByName', null).size() <= 128)) &&
                (data.get('sourceDocId', null) == null || (data.get('sourceDocId', null) is string && data.get('sourceDocId', null).size() <= 128)) &&

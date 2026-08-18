@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   collection,
@@ -41,6 +41,8 @@ import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
 import { sendMessage, reactToMessage, togglePinMessage, removeMessageForEveryone, deleteChatRoom, canRemoveConvForEveryone } from '../services/chat';
 import { setTodoDone } from '../lib/todos';
+import type { TodoPerson } from '../lib/todos';
+import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import { MessageHides } from '../lib/messageHides';
 import { ConvHides } from '../lib/convHides';
 
@@ -113,6 +115,9 @@ export default function Messages() {
   // Message ⋯ menu (which message, and whether the confirm step is showing)
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [menuConfirm, setMenuConfirm] = useState(false);
+
+  // "Make a to-do" — the message being turned into a follow-up task.
+  const [todoFor, setTodoFor] = useState<ChatMessage | null>(null);
 
   // User details cache (to show correct names for direct chats)
   const [usersCache, setUsersCache] = useState<Record<string, { displayName: string; photoURL?: string }>>({});
@@ -521,6 +526,15 @@ export default function Messages() {
   };
 
   const activeRoomIsGroupish = !!activeRoom && activeRoom.type !== 'direct';
+
+  // Team for the "make a to-do" composer: the room's members plus the viewer.
+  const todoTeam: TodoPerson[] = useMemo(() => {
+    const people: TodoPerson[] = roomMembers.map((m) => ({ uid: m.uid, name: m.displayName }));
+    if (currentUser?.displayName) {
+      people.push({ uid: currentUser.uid, name: currentUser.displayName, photoURL: currentUser.photoURL || undefined });
+    }
+    return people;
+  }, [roomMembers, currentUser]);
 
   return (
     <div className="page msgs flex flex-1 h-full min-h-0 w-full overflow-hidden bg-background">
@@ -965,6 +979,9 @@ export default function Messages() {
                                           <button onClick={() => { setMenuFor(null); setMenuConfirm(false); effectiveUid && MessageHides.hide(effectiveUid, msg.id); }}>
                                             Hide from my view
                                           </button>
+                                          <button onClick={() => { setMenuFor(null); setMenuConfirm(false); setTodoFor(msg); }}>
+                                            Make a to-do
+                                          </button>
                                           {canAll && (
                                             <button className="msgb-menu-danger" onClick={() => setMenuConfirm(true)}>
                                               {isMe ? "Take back for everyone" : "Remove for everyone"}
@@ -1123,6 +1140,17 @@ export default function Messages() {
         onClose={() => setAttachDataOpen(false)}
         onAttach={(item) => setAttachments(prev => [...prev, item])}
       />
+
+      {todoFor && !todoFor.deleted && (
+        <FromEntryTodoComposer
+          text={todoFor.text || 'Follow up on this message'}
+          source={{ interactionId: todoFor.id, interactionTitle: `Message from ${firstName(todoFor.senderName) || 'the team'}` }}
+          team={todoTeam}
+          meUid={effectiveUid || currentUser?.uid || ''}
+          meName={currentUser?.displayName || 'Someone'}
+          onClose={() => setTodoFor(null)}
+        />
+      )}
     </div>
   );
 }

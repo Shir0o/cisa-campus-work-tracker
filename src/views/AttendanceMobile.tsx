@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { format, isValid } from 'date-fns';
-import { Plus, Settings2, X, MessageSquare, ChevronRight, Check, Users, Pencil } from 'lucide-react';
+import { Plus, Settings2, X, MessageSquare, ChevronRight, Check, Users, Pencil, CheckSquare } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Event } from '../types';
 import { Avatar } from '../components/landing/primitives';
 import { openMessage } from '../lib/messaging';
+import type { TodoPerson } from '../lib/todos';
 
 interface AttendanceMobileProps {
   contacts: Contact[];
@@ -25,6 +26,8 @@ interface AttendanceMobileProps {
   cycleAttendance: (contact: Contact, eventId: string) => Promise<void>;
   here: (contact: Contact, eventId: string) => boolean;
   RsvpCountComponent: React.ComponentType<{ eventId: string }>;
+  team?: TodoPerson[];
+  onOpenTodo?: (contact: Contact, event: Event) => void;
 }
 
 export default function AttendanceMobile({
@@ -46,6 +49,8 @@ export default function AttendanceMobile({
   cycleAttendance,
   here,
   RsvpCountComponent,
+  team,
+  onOpenTodo,
 }: AttendanceMobileProps) {
   const [openSessionId, setOpenSessionId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -256,6 +261,7 @@ export default function AttendanceMobile({
           onDeleteSession={onDeleteSession}
           confirmDeleteId={confirmDeleteId}
           setConfirmDeleteId={setConfirmDeleteId}
+          onOpenTodo={onOpenTodo}
           onClose={() => {
             setOpenSessionId(null);
             setConfirmDeleteId(null);
@@ -275,6 +281,7 @@ interface RosterSheetProps {
   onDeleteSession: (id: string, name: string) => Promise<void>;
   confirmDeleteId: string | null;
   setConfirmDeleteId: (id: string | null) => void;
+  onOpenTodo?: (contact: Contact, event: Event) => void;
   onClose: () => void;
 }
 
@@ -287,6 +294,7 @@ function RosterSheet({
   onDeleteSession,
   confirmDeleteId,
   setConfirmDeleteId,
+  onOpenTodo,
   onClose,
 }: RosterSheetProps) {
   const present = contacts.filter((c) => here(c, session.id));
@@ -360,14 +368,28 @@ function RosterSheet({
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {absent.map((c) => (
-                  <button
+                  <div
                     key={c.id}
-                    onClick={() => cycleAttendance(c, session.id)}
-                    className="flex items-center gap-2.5 p-2 rounded-xl border text-left bg-surface border-outline-variant hover:bg-surface-variant transition-colors gthm-person gone"
+                    className="flex items-center gap-1 p-2 rounded-xl border bg-surface border-outline-variant"
                   >
-                    <Avatar contact={c} size="sm" />
-                    <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
-                  </button>
+                    <button
+                      onClick={() => cycleAttendance(c, session.id)}
+                      className="flex items-center gap-2.5 text-left flex-1 min-w-0"
+                    >
+                      <Avatar contact={c} size="sm" />
+                      <span className="text-sm text-on-surface truncate flex-1 gthm-person-name">{c.name}</span>
+                    </button>
+                    {onOpenTodo && (
+                      <button
+                        onClick={() => onOpenTodo(c, session)}
+                        title={`Make a to-do to check on ${c.name}`}
+                        aria-label={`Make a to-do for ${c.name}`}
+                        className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant hover:text-accent transition-colors shrink-0"
+                      >
+                        <CheckSquare className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

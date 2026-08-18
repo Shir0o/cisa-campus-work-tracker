@@ -35,6 +35,8 @@ interface MyTask {
   createdByName?: string | null;
   sourceDocId?: string | null;
   sourceDocTitle?: string | null;
+  sourceInteractionId?: string | null;
+  sourceInteractionTitle?: string | null;
 }
 
 interface MyDayMobileProps {
@@ -300,6 +302,11 @@ export default function MyDayMobile({
                   {todo.sourceDocTitle && (
                     <div className="text-xs text-on-surface-variant mt-1">
                       From {todo.sourceDocTitle}
+                    </div>
+                  )}
+                  {!todo.sourceDocTitle && todo.sourceInteractionId && todo.sourceInteractionTitle && (
+                    <div className="text-xs text-on-surface-variant mt-1">
+                      From {todo.sourceInteractionTitle}
                     </div>
                   )}
                 </div>

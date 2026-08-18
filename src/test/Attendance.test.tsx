@@ -140,6 +140,8 @@ describe('Attendance', () => {
         callback({ docs: mockContacts, size: 2 });
       } else if (ref?.path === 'events') {
         callback({ docs: mockEvents, size: 3 });
+      } else if (ref?.path === 'users') {
+        callback({ docs: [{ id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) }], size: 1 });
       } else {
         callback({ docs: [], size: 0 });
       }
@@ -303,10 +305,28 @@ describe('Attendance', () => {
     fireEvent.click(screen.getByText('Friday Gathering 1'));
 
     // Alice is in "We missed" section for e1
-    const aliceBtn = screen.getByRole('button', { name: /Alice Johnson/ });
+    const aliceBtn = screen.getByTitle('Tap to mark present');
     fireEvent.click(aliceBtn);
 
     expect(updateDoc).toHaveBeenCalled();
+  });
+
+  it('offers a make-a-to-do for an absent person (issue #336)', async () => {
+    render(<Attendance />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Friday Gathering 1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Friday Gathering 1'));
+
+    // Alice is absent from e1 — a make-a-to-do affordance sits beside her.
+    const makeTodo = screen.getByTitle('Make a to-do to check on Alice Johnson');
+    fireEvent.click(makeTodo);
+
+    // The composer opens pre-filled to check on her, and can be committed.
+    expect(screen.getByPlaceholderText('What needs doing?')).toHaveValue('Check on Alice');
+    fireEvent.click(screen.getByRole('button', { name: /add to-do/i }));
   });
 
   it('opens manage gathering types modal when gear button is clicked', async () => {

@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { addVisit, attachVisitPhotos, initialsOf, updateVisit, type VisitInput } from '../../lib/visits';
 import { handleFirestoreError, logActivity, OperationType } from '../../lib/firebase';
 import { addPrayerBurden } from '../../lib/prayers';
-import { addTodo } from '../../lib/todos';
+import { addTodo, updateTodo } from '../../lib/todos';
 import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
 import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
 import { cn } from '../../lib/utils';
@@ -173,6 +173,14 @@ export default function LogVisitModal({
         visitId = visit!.id;
       } else {
         visitId = await addVisit(input, by);
+        // Link the follow-up to-do back to the visit it came from, now that the
+        // visit has an id to point at — "make the follow-up part of writing the
+        // visit up" (issue #336).
+        if (input.followUpTaskId) {
+          await updateTodo(input.followUpTaskId, {
+            source: { interactionId: visitId, interactionTitle: `Visit to ${chosen[0]?.name ?? 'someone'}` },
+          });
+        }
       }
 
       if (newPhotos.length) {

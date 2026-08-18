@@ -128,15 +128,36 @@ export interface SubtaskItem {
   done: boolean;
 }
 
+// Where a to-do came from. A to-do can be born out of a Board page
+// (`docId`/`docTitle`) or out of a live item — a chat message, a prayer, a
+// gathering absence (`interactionId`/`interactionTitle`). The distinction is
+// kept so a row can render the source without pretending an interaction is a
+// page to open.
+export interface TodoSource {
+  docId?: string | null;
+  docTitle?: string | null;
+  interactionId?: string | null;
+  interactionTitle?: string | null;
+}
+
 export interface NewTodo {
   title: string;
   assigneeId: string | null;
   dueDate: string | null;
-  source?: { docId: string; docTitle: string } | null;
+  source?: TodoSource | null;
   contactId?: string | null;
   contactName?: string | null;
   subtasks?: SubtaskItem[];
 }
+
+// Shared source builders — each site links the to-do back to wherever it was
+// born (a Board page, or a live item like a message, prayer or gathering).
+export const docSource = (docId: string, docTitle: string): TodoSource => ({ docId, docTitle });
+
+export const interactionSource = (interactionId: string, interactionTitle: string): TodoSource => ({
+  interactionId,
+  interactionTitle,
+});
 
 export async function addTodo(input: NewTodo, me: { uid: string; name: string }): Promise<string> {
   try {
@@ -148,7 +169,8 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
       assigneeId: input.assigneeId ?? null,
       contactId: input.contactId ?? null,
       contactName: input.contactName ?? null,
-      sourceInteractionId: null,
+      sourceInteractionId: input.source?.interactionId ?? null,
+      sourceInteractionTitle: input.source?.interactionTitle ?? null,
       createdById: me.uid || null,
       createdByName: me.name || null,
       sourceDocId: input.source?.docId ?? null,
@@ -176,7 +198,13 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
 
 export async function updateTodo(
   id: string,
-  patch: { title?: string; assigneeId?: string | null; dueDate?: string | null; subtasks?: SubtaskItem[] },
+  patch: {
+    title?: string;
+    assigneeId?: string | null;
+    dueDate?: string | null;
+    subtasks?: SubtaskItem[];
+    source?: TodoSource | null;
+  },
   context?: { oldAssigneeId?: string | null; title?: string; meName?: string; meUid?: string },
 ): Promise<void> {
   try {
@@ -185,6 +213,12 @@ export async function updateTodo(
     if (patch.assigneeId !== undefined) clean.assigneeId = patch.assigneeId;
     if (patch.dueDate !== undefined) clean.dueDate = patch.dueDate;
     if (patch.subtasks !== undefined) clean.subtasks = patch.subtasks;
+    if (patch.source !== undefined) {
+      clean.sourceDocId = patch.source?.docId ?? null;
+      clean.sourceDocTitle = patch.source?.docTitle ?? null;
+      clean.sourceInteractionId = patch.source?.interactionId ?? null;
+      clean.sourceInteractionTitle = patch.source?.interactionTitle ?? null;
+    }
     await updateDoc(doc(db, "tasks", id), clean);
 
     if (

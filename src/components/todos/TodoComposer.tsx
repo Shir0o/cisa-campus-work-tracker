@@ -13,6 +13,7 @@ import {
   type DuePresetKey,
   type TodoPerson,
   type SubtaskItem,
+  type TodoSource,
 } from "../../lib/todos";
 import { PersonAvatar } from "./TodoRow";
 import { useCommand } from "../../lib/commands";
@@ -27,6 +28,8 @@ export interface TodoComposerInitial {
   assigneeId?: string | null;
   dueDate?: string | null;
   subtasks?: SubtaskItem[];
+  contactId?: string | null;
+  contactName?: string | null;
 }
 
 // The shared add/edit step for a to-do: write the task, pick who carries it, set a
@@ -49,7 +52,7 @@ export default function TodoComposer({
   anchorRect?: { top: number; left: number } | null;
   initial?: TodoComposerInitial;
   initialTexts?: string[];
-  source?: { docId: string; docTitle: string } | null;
+  source?: TodoSource | null;
   team: TodoPerson[];
   meUid: string;
   meName: string;
@@ -158,7 +161,7 @@ export default function TodoComposer({
             const parsed = parseSmartDate(valText);
             if (parsed.isoDate) taskDue = parsed.isoDate;
           }
-          const newId = await addTodo({ title: valText, assigneeId, dueDate: taskDue, source: source ?? null, subtasks: i === 0 ? validSubtasks : [] }, { uid: meUid, name: meName });
+          const newId = await addTodo({ title: valText, assigneeId, dueDate: taskDue, source: source ?? null, contactId: initial?.contactId ?? null, contactName: initial?.contactName ?? null, subtasks: i === 0 ? validSubtasks : [] }, { uid: meUid, name: meName });
           createdList.push({ id: newId, title: valText, assigneeId, assigneeName: who?.name || null });
           if (typeof logActivity === "function") {
             logActivity({
@@ -406,7 +409,7 @@ export default function TodoComposer({
           {source ? (
             <span className="inline-flex items-center gap-1 text-[11px] text-on-surface-variant/70 min-w-0">
               <CheckSquare className="w-3 h-3 shrink-0" />
-              <span className="truncate">{source.docTitle}</span>
+              <span className="truncate">{source.docTitle ?? source.interactionTitle}</span>
             </span>
           ) : (
             <span />

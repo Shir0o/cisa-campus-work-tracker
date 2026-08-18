@@ -120,6 +120,19 @@ describe('TodoRow', () => {
     expect(onContactClick).toHaveBeenCalledWith('c1');
   });
 
+  it('shows the source when a to-do was born from a live item (message, prayer, absence)', () => {
+    const todoFromInteraction: TodoItem = {
+      ...baseTodo,
+      sourceDocId: null,
+      sourceDocTitle: null,
+      sourceInteractionId: 'msg-1',
+      sourceInteractionTitle: 'Message from Mei',
+    };
+    render(<TodoRow todo={todoFromInteraction} onToggle={vi.fn()} />);
+    expect(screen.getByText('Message from Mei')).toBeInTheDocument();
+    expect(screen.getByText('from Priya')).toBeInTheDocument();
+  });
+
   it('renders the subtask checklist and its completion count', () => {
     const todoWithSubtasks: TodoItem = {
       ...baseTodo,

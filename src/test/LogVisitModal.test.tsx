@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import LogVisitModal from '../components/modals/LogVisitModal';
 import { useAuth } from '../components/AuthProvider';
 import { addVisit, attachVisitPhotos, updateVisit } from '../lib/visits';
-import { addTodo } from '../lib/todos';
+import { addTodo, updateTodo } from '../lib/todos';
 import { addPrayerBurden } from '../lib/prayers';
 import { uploadVisitPhotos } from '../lib/visitPhotos';
 import { logActivity } from '../lib/firebase';
@@ -25,7 +25,7 @@ vi.mock('../lib/visits', () => ({
   initialsOf: (name: string) => name.slice(0, 2).toUpperCase(),
 }));
 
-vi.mock('../lib/todos', () => ({ addTodo: vi.fn(() => Promise.resolve('task-1')) }));
+vi.mock('../lib/todos', () => ({ addTodo: vi.fn(() => Promise.resolve('task-1')), updateTodo: vi.fn(() => Promise.resolve()) }));
 vi.mock('../lib/prayers', () => ({ addPrayerBurden: vi.fn(() => Promise.resolve('prayer-1')) }));
 vi.mock('../lib/visitPhotos', () => ({
   MAX_PHOTOS_PER_VISIT: 12,
@@ -125,6 +125,8 @@ describe('LogVisitModal', () => {
     expect(todo).toMatchObject({ title: 'Ask after her mum on Friday', assigneeId: 'u1', contactId: 'c1' });
     expect(todo.dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     expect((addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0].followUpTaskId).toBe('task-1');
+    // The follow-up links back to the visit it came from (issue #336).
+    await waitFor(() => expect(updateTodo).toHaveBeenCalledWith('task-1', expect.objectContaining({ source: expect.objectContaining({ interactionId: 'new-visit-id' }) })));
   });
 
   it('starts a prayer for the first person seen and links it to the visit', async () => {

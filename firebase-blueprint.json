@@ -186,7 +186,8 @@
         "assigneeId": { "type": "string" },
         "status": { "type": "string", "enum": ["pending", "completed"] },
         "createdAt": { "type": "string", "format": "date-time" },
-        "sourceInteractionId": { "type": "string" }
+        "sourceInteractionId": { "type": "string" },
+        "sourceInteractionTitle": { "type": "string" }
       },
       "required": ["title", "priority", "contactId", "status", "createdAt"]
     },

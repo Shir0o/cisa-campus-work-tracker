@@ -20,7 +20,7 @@ export interface NewTodo {
   title: string;
   assigneeId: string | null;
   dueDate: string | null;
-  source?: { docId: string; docTitle: string } | null;
+  source?: { docId?: string | null; docTitle?: string | null; interactionId?: string | null; interactionTitle?: string | null } | null;
   contactId?: string | null;
   contactName?: string | null;
 }
@@ -39,7 +39,8 @@ export async function addTodo(
     assigneeId: input.assigneeId ?? null,
     contactId: input.contactId ?? null,
     contactName: input.contactName ?? null,
-    sourceInteractionId: null,
+    sourceInteractionId: input.source?.interactionId ?? null,
+    sourceInteractionTitle: input.source?.interactionTitle ?? null,
     createdById: me.uid || null,
     createdByName: me.name || null,
     sourceDocId: input.source?.docId ?? null,
