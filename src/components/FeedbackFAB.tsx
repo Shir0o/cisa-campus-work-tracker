@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Pencil, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
+import { useCommand } from '../lib/commands';
 import { useAuth } from './AuthProvider';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -151,6 +152,17 @@ export default function FeedbackFAB() {
     }
   };
 
+  useCommand({
+    id: 'feedback.send',
+    scope: 'compose',
+    description: 'Send your note',
+    shortcut: { key: 'Enter', mod: true },
+    minRole: 'viewer',
+    when: (e) => e.target === areaRef.current,
+    available: () => isOpen,
+    handler: () => submit(),
+  });
+
   if (!user) return null;
 
   const firstName = (user.displayName || '').trim().split(/\s+/)[0] || 'friend';
@@ -247,9 +259,6 @@ export default function FeedbackFAB() {
                     value={message}
                     disabled={phase === 'busy'}
                     onChange={(e) => setMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
-                    }}
                     rows={4}
                     maxLength={600}
                     placeholder={activeMeta.placeholder}

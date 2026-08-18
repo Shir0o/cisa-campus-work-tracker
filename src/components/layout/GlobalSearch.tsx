@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Search,
@@ -12,6 +12,7 @@ import {
   MessageSquare,
   FileText,
   Clock,
+  Keyboard,
   type LucideIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -26,6 +27,7 @@ import {
 import { db, auth } from '../../lib/firebase';
 import { Contact, Interaction, SystemActivity } from '../../types';
 import { cn, relTime } from '../../lib/utils';
+import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../../lib/commands';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
 import { hasMinRole, AppRole } from '../../lib/permissions';
@@ -262,11 +264,22 @@ export default function GlobalSearch() {
     },
   ].filter((a) => a.show);
 
+  // Registry-backed shortcuts the user can actually take right now, filtered
+  // by role — the same commands that own the key bindings (#337).
+  const registeredCommands = useSyncExternalStore(subscribeCommands, getCommands);
+  const shortcutCommands = registeredCommands.filter(
+    (c) =>
+      !c.hidden &&
+      (!c.minRole || hasMinRole(role as AppRole, c.minRole)) &&
+      (!c.available || c.available()),
+  );
+
   // ── flat list for keyboard nav (recomputed each render; small) ────────────
   const navItems: NavItem[] = [];
   if (!hasQ) {
     recentPeople.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     quickActions.forEach((a) => navItems.push({ key: a.key, run: a.run }));
+    shortcutCommands.forEach((c) => navItems.push({ key: `cmd:${c.id}`, run: c.handler }));
   } else {
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
@@ -289,17 +302,15 @@ export default function GlobalSearch() {
   const navRef = useRef<{ items: NavItem[]; cursor: number }>({ items: navItems, cursor });
   navRef.current = { items: navItems, cursor };
 
-  // ── keyboard: ⌘K opens (always on) ────────────────────────────────────────
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [setSearchOpen]);
+  // ── keyboard: ⌘K opens (always on) — via the central shortcut registry ──
+  useCommand({
+    id: 'search.open',
+    scope: 'global',
+    description: 'Open search',
+    shortcut: { key: 'k', mod: true },
+    hidden: true,
+    handler: () => setSearchOpen(true),
+  });
 
   // ── keyboard: ↑↓ navigate · ↵ open · Esc close (only while open) ──────────
   useEffect(() => {
@@ -466,6 +477,26 @@ export default function GlobalSearch() {
               />
             ))}
           </div>
+          {shortcutCommands.length > 0 && (
+            <div>
+              <GroupLabel>Shortcuts</GroupLabel>
+              {shortcutCommands.map((c) => (
+                <Row
+                  key={c.id}
+                  navKey={`cmd:${c.id}`}
+                  tone="neutral"
+                  icon={Keyboard}
+                  title={c.description}
+                  onClick={c.handler}
+                  badge={
+                    <kbd className="text-[11px] font-sans px-1.5 py-0.5 rounded-md border border-outline-variant text-on-surface-variant">
+                      {shortcutLabel(c.shortcut)}
+                    </kbd>
+                  }
+                />
+              ))}
+            </div>
+          )}
         </>
       ) : !hasResults ? (
         <div className="px-3 py-10 text-center text-[13.5px] text-on-surface-variant italic">

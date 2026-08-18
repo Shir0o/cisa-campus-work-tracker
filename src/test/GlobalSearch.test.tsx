@@ -6,6 +6,7 @@ import * as firestore from 'firebase/firestore';
 import { TEST_USERS } from './fixtures/users';
 import GlobalSearch from '../components/layout/GlobalSearch';
 import MobileNav from '../components/layout/MobileNav';
+import { registerCommand } from '../lib/commands';
 
 // Hoisted shared spies + mutable dataset so the firestore/auth/layout mocks and
 // the tests reference the same instances.
@@ -140,6 +141,42 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     fireEvent.keyDown(document, { key: 'k', metaKey: true });
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
+  });
+
+  it('lists registry commands in Shortcuts, filtered by role', () => {
+    h.mockLayout.searchOpen = true;
+    const unOperator = registerCommand({
+      id: 'test.shortcut.operator',
+      scope: 'global',
+      description: 'Operator-only shortcut',
+      shortcut: { key: 'o', mod: true },
+      minRole: 'operator',
+      handler: vi.fn(),
+    });
+    const unAdmin = registerCommand({
+      id: 'test.shortcut.admin',
+      scope: 'global',
+      description: 'Admin-only shortcut',
+      shortcut: { key: 'a', mod: true },
+      minRole: 'admin',
+      handler: vi.fn(),
+    });
+
+    h.mockAuth.value = TEST_USERS.admin;
+    const { unmount } = render(<GlobalSearch />);
+    expect(screen.getAllByText('Shortcuts').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Operator-only shortcut').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Admin-only shortcut').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('⌘O').length).toBeGreaterThan(0);
+    unmount();
+
+    h.mockAuth.value = TEST_USERS.viewer;
+    render(<GlobalSearch />);
+    expect(screen.queryByText('Operator-only shortcut')).not.toBeInTheDocument();
+    expect(screen.queryByText('Admin-only shortcut')).not.toBeInTheDocument();
+
+    unOperator();
+    unAdmin();
   });
 
   it('empty state shows recent people + role-aware quick actions', () => {
