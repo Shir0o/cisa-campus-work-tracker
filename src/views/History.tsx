@@ -26,6 +26,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
+import { bucketFor, bucketLabel } from "../components/landing/dateBuckets";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import PageContainer from "../components/layout/PageContainer";
@@ -217,15 +218,19 @@ const humanize = (a: Hist): Humanized => {
 };
 
 // ── time helpers ──────────────────────────────────────────────────────
+// Day markers use the shared date-bucket cut-offs for the Today/Yesterday
+// boundary, then fall back to finer per-day labels so the stream keeps its
+// per-day rhythm instead of collapsing into week buckets.
 const dayInfo = (iso: string) => {
   const d = new Date(iso);
-  const now = new Date();
-  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = Math.round((startOf(now) - startOf(d)) / 86_400_000);
   const md = d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
-  if (diff === 0) return { label: "Today", sub: md };
-  if (diff === 1) return { label: "Yesterday", sub: md };
-  if (diff > 1 && diff < 7) return { label: d.toLocaleDateString(undefined, { weekday: "long" }), sub: md };
+  const bucket = bucketFor(iso);
+  if (bucket === "today" || bucket === "yesterday") {
+    return { label: bucketLabel(bucket), sub: md };
+  }
+  if (bucket === "thisWeek") {
+    return { label: d.toLocaleDateString(undefined, { weekday: "long" }), sub: md };
+  }
   return { label: md, sub: d.toLocaleDateString(undefined, { weekday: "long" }) };
 };
 
