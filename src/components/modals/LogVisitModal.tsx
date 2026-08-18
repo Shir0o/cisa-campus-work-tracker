@@ -16,6 +16,7 @@ import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
 import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { useCommand } from '../../lib/commands';
 
 interface LogVisitModalProps {
   isOpen: boolean;
@@ -199,15 +200,25 @@ export default function LogVisitModal({
     }
   };
 
-  // ⌘↵ saves, Esc closes — the same shortcuts the design gives the modal.
+  // Esc closes — the same shortcut the design gives the modal. ⌘↵ save lives
+  // in the central shortcut registry (#337) so it both binds and teaches itself.
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
-      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') void submit();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
+  });
+
+  useCommand({
+    id: 'logvisit.save',
+    scope: 'overlay',
+    description: 'Save the visit',
+    shortcut: { key: 'Enter', mod: true },
+    minRole: 'admin',
+    available: () => isOpen,
+    handler: () => void submit(),
   });
 
   const label = 'block text-[10px] font-semibold text-on-surface-variant   mb-2';

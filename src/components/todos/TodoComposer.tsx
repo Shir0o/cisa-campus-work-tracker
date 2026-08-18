@@ -15,6 +15,7 @@ import {
   type SubtaskItem,
 } from "../../lib/todos";
 import { PersonAvatar } from "./TodoRow";
+import { useCommand } from "../../lib/commands";
 
 import { parseSmartDate } from "../../lib/dateParser";
 
@@ -199,11 +200,16 @@ export default function TodoComposer({
       e.preventDefault();
       onClose();
     }
-    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
-      e.preventDefault();
-      void commit();
-    }
   };
+
+  useCommand({
+    id: "todo.create",
+    scope: "overlay",
+    description: "Create the to-do",
+    shortcut: { key: "Enter", mod: true },
+    minRole: "operator",
+    handler: () => void commit(),
+  });
 
   const cardStyle = anchorRect
     ? pos

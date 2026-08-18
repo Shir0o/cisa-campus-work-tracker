@@ -1,6 +1,7 @@
 import React, { useRef, useState } from "react";
 import { MessageSquare, Send } from "lucide-react";
 import { cn, relTime } from "../lib/utils";
+import { useCommand } from "../lib/commands";
 import { useAuth } from "./AuthProvider";
 import {
   THREAD_REACTIONS,
@@ -128,6 +129,7 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
   const replies = repliesOf(allMessages, m.id);
   const [replying, setReplying] = useState(false);
   const [draft, setDraft] = useState("");
+  const replyRef = useRef<HTMLTextAreaElement>(null);
 
   const sendReply = () => {
     const body = draft.trim();
@@ -148,6 +150,17 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
     setDraft("");
     setReplying(false);
   };
+
+  useCommand({
+    id: `thread.reply:${m.id}`,
+    scope: "compose",
+    description: "Reply in thread",
+    shortcut: { key: "Enter", mod: true },
+    minRole: "operator",
+    when: (e) => e.target === replyRef.current,
+    available: () => replying,
+    handler: sendReply,
+  });
 
   return (
     <div className="space-y-2">
@@ -170,17 +183,12 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
           {replying && (
             <div className="pt-2">
               <textarea
+                ref={replyRef}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Write a reply…"
                 rows={2}
                 autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    sendReply();
-                  }
-                }}
                 className="w-full p-2.5 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
               />
               <div className="mt-1.5 flex items-center justify-between gap-2">
@@ -238,6 +246,16 @@ export default function Thread({
     setDraft("");
   };
 
+  useCommand({
+    id: "thread.post",
+    scope: "compose",
+    description: "Post a comment",
+    shortcut: { key: "Enter", mod: true },
+    minRole: "operator",
+    when: (e) => e.target === taRef.current,
+    handler: post,
+  });
+
   const placeholder =
     scope === "team"
       ? "Add to the team's discussion…"
@@ -278,12 +296,6 @@ export default function Thread({
           onChange={(e) => setDraft(e.target.value)}
           placeholder={placeholder}
           rows={compact ? 2 : 3}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-              e.preventDefault();
-              post();
-            }
-          }}
           className="w-full p-3 rounded-xl bg-surface-container-high border border-outline-variant/40 text-sm text-on-surface placeholder:text-on-surface-variant/50 resize-none focus:outline-none focus:border-primary/40 transition-colors"
         />
 
