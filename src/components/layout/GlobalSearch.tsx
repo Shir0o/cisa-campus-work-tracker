@@ -152,7 +152,21 @@ export default function GlobalSearch() {
 
   // ── results ───────────────────────────────────────────────────────────────
   const recentPeople = useMemo(() => {
-    const key = (c: Contact) => c.updatedAt || c.createdAt || c.lastSeen || '';
+    // serverTimestamp() stamps arrive as Timestamp objects even though the
+    // Contact type types them as strings — normalize before localeCompare,
+    // which throws "x.localeCompare is not a function" on a non-string (#354).
+    const stampKey = (v: unknown): string => {
+      if (typeof v === 'string' && v) return v;
+      if (
+        v &&
+        typeof v === 'object' &&
+        typeof (v as { toDate?: unknown }).toDate === 'function'
+      ) {
+        return (v as { toDate: () => Date }).toDate().toISOString();
+      }
+      return '';
+    };
+    const key = (c: Contact) => stampKey(c.updatedAt || c.createdAt || c.lastSeen);
     return contacts
       .slice()
       .sort((a, b) => key(b).localeCompare(key(a)))

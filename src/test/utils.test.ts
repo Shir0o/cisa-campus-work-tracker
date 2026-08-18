@@ -7,6 +7,7 @@ import {
   getUserInitials,
   relTime,
   ntfWhen,
+  isServiceAccountName,
 } from '../lib/utils';
 
 describe('cn', () => {
@@ -114,5 +115,21 @@ describe('ntfWhen', () => {
 
   it('falls back to relTime for past dates', () => {
     expect(ntfWhen(pastIso(5 * 60_000))).toBe('5m ago');
+  });
+});
+
+describe('isServiceAccountName', () => {
+  it('flags seed/service accounts that must not be to-do assignees (issues #348/#349)', () => {
+    expect(isServiceAccountName('cisa-ft')).toBe(true);
+    expect(isServiceAccountName('cisa-trainee')).toBe(true);
+    expect(isServiceAccountName('reviewer-appstore')).toBe(true);
+    expect(isServiceAccountName('  CISA-Admin  ')).toBe(true);
+  });
+
+  it('keeps real teammates and blank names', () => {
+    expect(isServiceAccountName('Tony Wang')).toBe(false);
+    expect(isServiceAccountName('reviewer2')).toBe(false);
+    expect(isServiceAccountName(null)).toBe(false);
+    expect(isServiceAccountName('')).toBe(false);
   });
 });

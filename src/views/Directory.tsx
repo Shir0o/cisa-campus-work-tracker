@@ -348,7 +348,9 @@ export default function Directory() {
   };
 
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
-  const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role))], [userContacts]);
+  // Contacts without a group (blank/missing role) would otherwise render a
+  // blank option in the dropdown — drop them (#359).
+  const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role).filter(Boolean))], [userContacts]);
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
   const allTags = useMemo(() => [...new Set(userContacts.flatMap(c => c.tags || []))], [userContacts]);
 

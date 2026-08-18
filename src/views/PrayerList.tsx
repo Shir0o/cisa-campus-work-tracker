@@ -15,7 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import { isTeamPrayer, reconcilePrayerOrder } from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
-import { cn, getUserInitials } from '../lib/utils';
+import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -156,7 +156,7 @@ export default function PrayerList() {
         setTeam(
           snapshot.docs
             .map((d) => ({ uid: d.id, ...(d.data() as { approved?: boolean; displayName?: string; photoURL?: string; role?: string }) }))
-            .filter((u) => u.approved !== false && !!u.displayName)
+            .filter((u) => u.approved !== false && !!u.displayName && !isServiceAccountName(u.displayName))
             .map((u) => ({ uid: u.uid, name: u.displayName as string, photoURL: u.photoURL, role: u.role }) as TodoPerson)
             .sort((a, b) => a.name.localeCompare(b.name)),
         ),

@@ -59,6 +59,15 @@ beforeEach(() => {
 });
 
 describe('CombineTagsModal', () => {
+  it('lays over the app shell — z-index above the sidebar (issue #357)', () => {
+    const { container } = render(<CombineTagsModal contacts={cleanContacts} onClose={vi.fn()} />);
+    // The sidebar sits at z-[70]; the modal must stack above it so it isn't
+    // covered on the wide screen.
+    const dialog = container.querySelector('div[class*="z-[100]"]');
+    expect(dialog).not.toBeNull();
+    expect(container.querySelector('div[class*="z-50"]')).toBeNull();
+  });
+
   it('shows an empty state when there are no tags to combine', () => {
     render(<CombineTagsModal contacts={cleanContacts} onClose={vi.fn()} />);
 

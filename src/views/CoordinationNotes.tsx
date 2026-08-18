@@ -26,7 +26,7 @@ import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../components/AuthProvider';
-import { cn, getUserInitials } from '../lib/utils';
+import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import CoordinationNotesMobile from './CoordinationNotesMobile';
@@ -848,8 +848,7 @@ export default function CoordinationNotes() {
             })
             .filter((u) => {
               if (u.approved === false) return false;
-              const name = (u.member.name || '').toLowerCase();
-              return !name.startsWith('cisa-');
+              return !isServiceAccountName(u.member.name);
             })
             .map((u) => u.member)
             .sort((a, b) => a.name.localeCompare(b.name)),
