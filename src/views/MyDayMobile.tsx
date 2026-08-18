@@ -125,7 +125,7 @@ export default function MyDayMobile({
   onUpdatePersonalTask = () => {},
   onDeletePersonalTask = () => {},
   onAddPersonalTask = () => {},
-  hideCompleted = false,
+  hideCompleted = true,
   onToggleHideCompleted = () => {},
   hasCompleted = false,
   onUpdatePrayerStatus = () => {},

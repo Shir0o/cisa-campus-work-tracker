@@ -239,7 +239,8 @@ describe('MyDayMobile', () => {
         onToggleHideCompleted={onToggleHideCompleted}
       />
     );
-    fireEvent.click(screen.getByText('Hide done'));
+    expect(screen.getByText('Show done')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Show done'));
     expect(onToggleHideCompleted).toHaveBeenCalledTimes(1);
 
     rerender(
@@ -251,11 +252,11 @@ describe('MyDayMobile', () => {
         assignedTasks={[]}
         personalTasks={[]}
         hasCompleted
-        hideCompleted
+        hideCompleted={false}
         onToggleHideCompleted={onToggleHideCompleted}
       />
     );
-    expect(screen.getByText('Show done')).toBeInTheDocument();
+    expect(screen.getByText('Hide done')).toBeInTheDocument();
 
     rerender(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
     expect(screen.queryByText('Hide done')).not.toBeInTheDocument();

@@ -480,7 +480,7 @@ export default function MyDay() {
   const [initialInteractionId, setInitialInteractionId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [addingTask, setAddingTask] = useState(false);
-  const [hideCompleted, setHideCompleted] = useState(false);
+  const [hideCompleted, setHideCompleted] = useState(true);
 
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
 

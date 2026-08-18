@@ -327,6 +327,8 @@ describe('MyDay', () => {
       }),
     );
     render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Show completed')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Show completed'));
     await waitFor(() => {
       expect(screen.getByText('Already finished task').className).toContain('line-through');
     });
@@ -352,14 +354,14 @@ describe('MyDay', () => {
       }),
     );
     render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Open task')).toBeInTheDocument());
+    expect(screen.queryByText('Finished task')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Show completed'));
     await waitFor(() => expect(screen.getByText('Finished task')).toBeInTheDocument());
 
     fireEvent.click(screen.getByText('Hide completed'));
     await waitFor(() => expect(screen.queryByText('Finished task')).not.toBeInTheDocument());
-    expect(screen.getByText('Open task')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByText('Show completed'));
-    await waitFor(() => expect(screen.getByText('Finished task')).toBeInTheDocument());
   });
 
   it('omits the hide-completed toggle when nothing is completed', async () => {
@@ -883,6 +885,8 @@ describe('MyDay', () => {
       }),
     );
     render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Show completed')).toBeInTheDocument());
+    fireEvent.click(screen.getByText('Show completed'));
     await waitFor(() => expect(screen.getByText('Zeta done')).toBeInTheDocument());
     const pending = screen.getByText('Alpha pending').closest('.py-4')!;
     const done = screen.getByText('Zeta done').closest('.py-4')!;
