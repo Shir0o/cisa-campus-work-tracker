@@ -201,6 +201,40 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 
+  it('omits blank roles from the Group filter dropdown (issue #359)', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            ...mockContacts,
+            { id: 'c4', data: () => ({ name: 'No Role Yet', email: 'none@example.com', phone: '', role: '', stage: 'Lead', location: '', spiritualBackground: '', tags: [], createdAt: '2026-03-01T00:00:00.000Z' }) },
+          ],
+          size: 4,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No Role Yet')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Filters'));
+
+    const groupSelect = screen.getByText('Group').nextElementSibling as HTMLSelectElement;
+    const optionValues = Array.from(groupSelect.options).map((o) => o.value);
+    expect(optionValues).toContain('All');
+    expect(optionValues).toContain('Student');
+    // No blank/whitespace option for contacts without a group.
+    expect(optionValues.every((v) => v.trim() !== '')).toBe(true);
+  });
+
   it('filters contacts by tag chips', async () => {
     render(<Directory />);
     await waitFor(() => {

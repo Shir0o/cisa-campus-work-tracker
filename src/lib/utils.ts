@@ -74,3 +74,11 @@ export function ntfWhen(iso: string): string {
   }
   return relTime(iso);
 }
+
+/** Whether a users-collection member is a seed/service account (cisa-*,
+ *  reviewer-*) rather than a real teammate. These log in for QA or app-store
+ *  review and must not surface as to-do assignees or chat participants. */
+export function isServiceAccountName(name: string | null | undefined): boolean {
+  const n = (name || '').trim().toLowerCase();
+  return n.startsWith('cisa-') || n.startsWith('reviewer-');
+}

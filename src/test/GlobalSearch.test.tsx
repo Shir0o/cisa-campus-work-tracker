@@ -179,6 +179,22 @@ describe('GlobalSearch', () => {
     unAdmin();
   });
 
+  it('renders recent people when a contact has a Firestore Timestamp stamp (issue #354)', () => {
+    // `serverTimestamp()` fields arrive as Timestamp objects, not strings; the
+    // recency sort must normalize them instead of calling `.localeCompare` on
+    // them (which throws "x.localeCompare is not a function").
+    h.mockData.contacts = [
+      docOf('c-ts', {
+        name: 'Tim Latency',
+        role: 'Student',
+        updatedAt: { toDate: () => new Date('2026-06-13T10:00:00Z') },
+      }),
+      ...h.mockData.contacts,
+    ];
+    expect(() => render(<GlobalSearch />)).not.toThrow();
+    expect(screen.getAllByText('Tim Latency').length).toBeGreaterThan(0);
+  });
+
   it('empty state shows recent people + role-aware quick actions', () => {
     render(<GlobalSearch />);
     expect(screen.getAllByText('Recent people').length).toBeGreaterThan(0);

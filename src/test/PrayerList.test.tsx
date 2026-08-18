@@ -187,6 +187,40 @@ describe('PrayerList', () => {
     expect(screen.getByText('Prayer for Alice')).toBeInTheDocument();
   });
 
+  it('excludes service accounts (cisa-*, reviewer-*) from the to-do assignees (issues #348/#349)', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: mockContacts, size: 2 });
+      } else if (ref?.path === 'prayers') {
+        callback({ docs: mockPrayers, size: 2 });
+      } else if (ref?.path === 'users') {
+        callback({
+          docs: [
+            { id: 'u-test', data: () => ({ displayName: 'Test User', approved: true, role: 'admin' }) },
+            { id: 'u-cisa', data: () => ({ displayName: 'cisa-trainee', approved: true, role: 'manager' }) },
+            { id: 'u-reviewer', data: () => ({ displayName: 'reviewer-appstore', approved: true, role: 'admin' }) },
+          ],
+          size: 3,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Strength for finals')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getAllByTitle('Make a to-do from this prayer')[0]);
+
+    expect(screen.getAllByTitle('Test User').length).toBeGreaterThan(0);
+    expect(screen.queryByTitle('cisa-trainee')).not.toBeInTheDocument();
+    expect(screen.queryByTitle('reviewer-appstore')).not.toBeInTheDocument();
+  });
+
   it('filters the roster by gender (Brothers/Sisters)', async () => {
     render(<PrayerList />);
 

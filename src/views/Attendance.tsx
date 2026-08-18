@@ -17,7 +17,7 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } fro
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { useGatheringTypes, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
-import { cn, getUserInitials } from '../lib/utils';
+import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -157,7 +157,7 @@ export default function Attendance() {
         setTeam(
           snapshot.docs
             .map((d) => ({ uid: d.id, ...(d.data() as { approved?: boolean; displayName?: string; photoURL?: string; role?: string }) }))
-            .filter((u) => u.approved !== false && !!u.displayName)
+            .filter((u) => u.approved !== false && !!u.displayName && !isServiceAccountName(u.displayName))
             .map((u) => ({ uid: u.uid, name: u.displayName as string, photoURL: u.photoURL, role: u.role }) as TodoPerson)
             .sort((a, b) => a.name.localeCompare(b.name)),
         ),
