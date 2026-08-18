@@ -550,7 +550,7 @@ export function V2PersonRow({
           backgroundColor: personColor(colorSeed),
         }}
       >
-        <Text style={{ fontFamily: font.extra, fontSize: fs(12.5), color: '#fff' }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(12.5), color: '#1A212B' }}>
           {getUserInitials(name)}
         </Text>
       </View>

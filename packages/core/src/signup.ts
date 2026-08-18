@@ -32,6 +32,7 @@ export interface SignUpFormState {
   name: string;
   gender: string;
   year: string;
+  yearOther?: string;
   major: string;
   phone: string;
   email: string;
@@ -46,6 +47,7 @@ export const emptySignUpForm: SignUpFormState = {
   name: '',
   gender: '',
   year: '',
+  yearOther: '',
   major: '',
   phone: '',
   email: '',
@@ -55,12 +57,18 @@ export const emptySignUpForm: SignUpFormState = {
   notes: '',
 };
 
+/** The year that gets saved: "Other" resolves to the typed text, trimmed. */
+export function signUpYearValue(form: Pick<SignUpFormState, 'year' | 'yearOther'>): string {
+  return form.year === 'Other' ? (form.yearOther || '').trim() : form.year;
+}
+
 /** Required-field checks: name, gender, year, major, email, phone (cell number) are mandatory. */
 export function validateSignUpBasics(form: SignUpFormState): string | null {
   if (!form.name.trim()) return 'Please enter your full name.';
   if (!form.gender) return 'Please select your gender.';
   if (!form.year) return 'Please select your year.';
-  if (!form.major) return 'Please select your major.';
+  if (form.year === 'Other' && !signUpYearValue(form)) return 'Please tell us your year.';
+  if (!form.major.trim()) return 'Please enter your major.';
   if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
   if (!form.phone.trim()) return 'Please enter your phone number.';
   return null;

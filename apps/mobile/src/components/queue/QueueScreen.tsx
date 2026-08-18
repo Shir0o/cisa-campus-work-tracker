@@ -338,7 +338,7 @@ export function QueueScreen() {
                   : c.card.tones[card.tone].dot,
               }}
             >
-              <Text style={{ fontFamily: font.extra, fontSize: fs(10.5), color: '#fff' }}>
+              <Text style={{ fontFamily: font.extra, fontSize: fs(10.5), color: card.contact ? '#1A212B' : '#fff' }}>
                 {card.contact ? getUserInitials(card.contact.name) : '·'}
               </Text>
             </View>

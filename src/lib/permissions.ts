@@ -96,7 +96,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
-  { href: '/outreach', label: 'Outreach', minRole: 'viewer' },
+  { href: '/outreach', label: 'Gospel', minRole: 'viewer' },
   { href: '/visits', label: 'Visits', minRole: 'admin' },
   { href: '/prayer', label: 'On our hearts', minRole: 'viewer' },
   { href: '/answered', label: 'Answered', minRole: 'viewer' },

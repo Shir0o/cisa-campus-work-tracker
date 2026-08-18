@@ -333,7 +333,7 @@ describe('queue helpers', () => {
 
   it('gives a person the same colour every time', () => {
     expect(personColor('c1')).toBe(personColor('c1'));
-    expect(personColor('')).toMatch(/^#[0-9a-f]{6}$/);
+    expect(personColor('')).toMatch(/^#[0-9a-f]{6}$/i);
   });
 
   it('keeps recurring gatherings out of the end-of-queue dates', () => {

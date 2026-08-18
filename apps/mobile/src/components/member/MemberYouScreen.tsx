@@ -137,7 +137,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
 
         {role === 'community' && (
           <View>
-            <Sech label="Outreach" />
+            <Sech label="Gospel" />
             <Pressable
               onPress={() => router.push('/outreach')}
               style={({ pressed }) => ({
