@@ -1294,7 +1294,6 @@ export default function ContactDetailsModal({
                         <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
                       </label>
                       <input
-                        required
                         type="text"
                         value={formData.role}
                         onChange={(e) =>
@@ -1309,7 +1308,6 @@ export default function ContactDetailsModal({
                         <MapPin className="w-3.5 h-3.5" /> {formData.tags?.includes('New Sign Up') ? 'RESIDENCE HALL' : 'FIRST MET'}
                       </label>
                       <input
-                        required
                         type="text"
                         value={formData.location}
                         onChange={(e) =>
@@ -1328,7 +1326,6 @@ export default function ContactDetailsModal({
                         <Mail className="w-3.5 h-3.5" /> EMAIL
                       </label>
                       <input
-                        required
                         type="email"
                         value={formData.email}
                         onChange={(e) =>
@@ -1437,7 +1434,6 @@ export default function ContactDetailsModal({
                         <MessageSquare className="w-3.5 h-3.5" /> NOTES
                       </label>
                       <textarea
-                        required
                         value={formData.notes}
                         onChange={(e) =>
                           setFormData((f) => ({ ...f, notes: e.target.value }))

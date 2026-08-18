@@ -403,6 +403,20 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('edit form required fields conform to the add-contact form (only first name required)', async () => {
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    // Click edit details
+    const editBtn = screen.getByTitle('Edit details');
+    fireEvent.click(editBtn);
+
+    expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
+    expect(screen.getByPlaceholderText('alex@campus.edu')).not.toBeRequired();
+    expect(screen.getByPlaceholderText('e.g. Student, Faculty')).not.toBeRequired();
+    expect(screen.getByPlaceholderText('e.g. Campus Coffee')).not.toBeRequired();
+    expect(screen.getByPlaceholderText('Add some context about this contact...')).not.toBeRequired();
+  });
+
   it('allows deleting a contact', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
