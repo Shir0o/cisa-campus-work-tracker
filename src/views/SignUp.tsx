@@ -19,12 +19,6 @@ import { useSeason, getAutoSemesterAndSchoolYearTags, SEASON_ORDER, SEASONS, sea
 import { normalizeTagList } from '../lib/tags';
 import { useAuth } from '../components/AuthProvider';
 
-export const MAJORS = [
-  'Computer Science', 'Biology', 'Economics', 'Mech. Engineering', 'Psychology',
-  'English Lit', 'Business', 'Architecture', 'Music', 'Math', 'Nursing',
-  'Linguistics', 'Civil Eng.', 'Sociology',
-];
-
 export const YEARS = ['Freshman', 'Sophomore', 'Junior', 'Senior', 'Graduate', 'Other'];
 
 export const GENDERS = ['Male', 'Female', 'Other'];
@@ -50,6 +44,7 @@ const emptyForm = {
   name: '',
   gender: '',
   year: '',
+  yearOther: '',
   major: '',
   phone: '',
   email: '',
@@ -116,6 +111,8 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       interests: prev.interests.includes(i) ? prev.interests.filter((x) => x !== i) : [...prev.interests, i],
     }));
 
+  const yearValue = form.year === 'Other' ? form.yearOther.trim() : form.year;
+
   const resetForm = () => {
     setForm(emptyForm);
     setError(null);
@@ -126,7 +123,8 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
     if (!form.name.trim()) return 'Please enter your full name.';
     if (!form.gender) return 'Please select your gender.';
     if (!form.year) return 'Please select your year.';
-    if (!form.major) return 'Please select your major.';
+    if (form.year === 'Other' && !yearValue) return 'Please tell us your year.';
+    if (!form.major.trim()) return 'Please enter your major.';
     if (!form.email.trim() || !/^\S+@\S+\.\S+$/.test(form.email)) return 'Please enter a valid email address.';
     if (!form.phone.trim()) return 'Please enter your phone number.';
     if (!form.interests || form.interests.length === 0) return 'Please select at least one area you are interested in.';
@@ -166,7 +164,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
       const contactData: Record<string, any> = {
         name: form.name.trim(),
         gender: form.gender || null,
-        year: form.year || null,
+        year: yearValue || null,
         major: form.major || null,
         phone: form.phone.trim() || null,
         email: form.email.trim() || null,
@@ -223,8 +221,8 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   const isFormValid =
     form.name.trim() &&
     form.gender &&
-    form.year &&
-    form.major &&
+    yearValue &&
+    form.major.trim() &&
     form.phone.trim() &&
     form.email.trim() &&
     form.interests.length > 0;
@@ -289,28 +287,28 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
             </button>
           ))}
         </div>
+        {form.year === 'Other' && (
+          <input
+            className={cn(inputCls, 'mt-2')}
+            value={form.yearOther}
+            onChange={(e) => set('yearOther', e.target.value)}
+            placeholder="Tell us where you're at — gap year, post-grad…"
+            autoFocus
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
         <label htmlFor="signup-major" className="text-[13px] font-medium text-on-surface-variant">
           Major <span className="text-error">*</span>
         </label>
-        <select
+        <input
           id="signup-major"
-          className={cn(inputCls, 'cursor-pointer', !form.major && 'text-on-surface-variant/60')}
+          className={inputCls}
           value={form.major}
           onChange={(e) => set('major', e.target.value)}
-        >
-          <option value="">Choose…</option>
-          {MAJORS.map((m) => (
-            <option key={m} value={m} className="text-on-surface">
-              {m}
-            </option>
-          ))}
-          <option value="Other / undecided" className="text-on-surface">
-            Other / undecided
-          </option>
-        </select>
+          placeholder="Computer Science"
+        />
       </div>
 
       <div className="flex flex-col gap-1.5 mb-3.5">
@@ -457,10 +455,10 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         <CheckCircle2 className="w-8 h-8" />
       </div>
       <h1 className="font-serif text-2xl lg:text-3xl font-medium tracking-tight text-on-surface">
-        {`Thanks, ${firstName}.`}
+        {`Thank you for signing up, ${firstName}.`}
       </h1>
       <p className="text-[15px] leading-relaxed text-on-surface-variant max-w-[46ch]">
-        Thank you for signing up, we will be in contact!
+        We will be in contact!
       </p>
       <div className="flex items-center gap-3 mt-2">
         <button

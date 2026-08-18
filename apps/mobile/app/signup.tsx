@@ -4,11 +4,11 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
   emptySignUpForm,
+  signUpYearValue,
   validateSignUpBasics,
   validateSignUpInterests,
   SIGNUP_GENDERS,
   SIGNUP_INTERESTS,
-  SIGNUP_MAJORS,
   SIGNUP_SPIRITUAL_BACKGROUNDS,
   SIGNUP_YEARS,
   SEASON_ORDER,
@@ -84,6 +84,7 @@ export default function SignUp() {
   };
 
   const firstName = form.name.trim().split(' ')[0] || 'friend';
+  const yearValue = signUpYearValue(form);
 
   const inputStyle = {
     borderWidth: 1,
@@ -113,13 +114,13 @@ export default function SignUp() {
           >
             <Ionicons name="checkmark-circle" size={30} color={colors.primary} />
           </View>
-          <AppText variant="title">Thanks, {firstName}.</AppText>
+          <AppText variant="title">Thank you for signing up, {firstName}.</AppText>
           <AppText
             variant="body"
             color={colors.onSurfaceVariant}
             style={{ marginTop: spacing.sm, textAlign: 'center', maxWidth: 320 }}
           >
-            Thank you for signing up, we will be in contact!
+            We will be in contact!
           </AppText>
           <View style={{ flexDirection: 'row', gap: 12, marginTop: spacing.xl }}>
             <Button title="Back to app" variant="ghost" onPress={() => router.replace('/')} />
@@ -133,8 +134,8 @@ export default function SignUp() {
   const isFormValid =
     form.name.trim() &&
     form.gender &&
-    form.year &&
-    form.major &&
+    yearValue &&
+    form.major.trim() &&
     form.phone.trim() &&
     form.email.trim() &&
     form.interests.length > 0;
@@ -178,9 +179,25 @@ export default function SignUp() {
         </Field>
         <Field label="Year" required>
           <PillRow options={SIGNUP_YEARS} value={form.year} onChange={(v) => set('year', v)} />
+          {form.year === 'Other' && (
+            <TextInput
+              style={[inputStyle, { marginTop: spacing.sm }]}
+              value={form.yearOther}
+              onChangeText={(v) => set('yearOther', v)}
+              placeholder="Tell us where you're at — gap year, post-grad…"
+              placeholderTextColor={colors.onSurfaceVariant}
+              autoFocus
+            />
+          )}
         </Field>
         <Field label="Major" required>
-          <PillRow options={[...SIGNUP_MAJORS, 'Other / undecided']} value={form.major} onChange={(v) => set('major', v)} />
+          <TextInput
+            style={inputStyle}
+            value={form.major}
+            onChangeText={(v) => set('major', v)}
+            placeholder="Computer Science"
+            placeholderTextColor={colors.onSurfaceVariant}
+          />
         </Field>
         <Field label="Cell number" required>
           <TextInput

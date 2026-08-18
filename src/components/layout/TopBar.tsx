@@ -19,6 +19,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/board': 'The Journey',
   '/directory': 'People',
   '/attendance': 'Gatherings',
+  '/outreach': 'Gospel',
   '/prayer': 'On our hearts',
   '/answered': 'Answered',
   '/history': 'Looking back',

@@ -90,7 +90,7 @@ export function PersonMark({
       {/* `size` and `fontSize` arrive as DRAWN units, so the type scale is
           applied here, once — never again at the call sites. The mark keeps its
           drawn diameter: the design's scale moves type, not geometry. */}
-      <Text style={{ fontFamily: font.extra, fontSize: fs(fontSize ?? size * 0.31), color: '#fff' }}>
+      <Text style={{ fontFamily: font.extra, fontSize: fs(fontSize ?? size * 0.31), color: '#1A212B' }}>
         {getUserInitials(name)}
       </Text>
     </View>

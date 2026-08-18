@@ -12,7 +12,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { getUserInitials } from "../utils";
-import type { SignUpFormState } from "../signup";
+import { signUpYearValue, type SignUpFormState } from "../signup";
 import { getAutoSemesterAndSchoolYearTags } from "../seasons";
 import { normalizeTagList } from "../tags";
 
@@ -47,7 +47,7 @@ export async function submitSignUp(
     notes: form.notes.trim(),
     spiritualBackground: form.spiritualBackground,
     gender: form.gender,
-    year: form.year,
+    year: signUpYearValue(form),
     major: form.major,
     howHeard: form.howHeard || null,
     interests: form.interests,

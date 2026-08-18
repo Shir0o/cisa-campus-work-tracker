@@ -107,9 +107,11 @@ const MSG_LABEL: Record<string, (name: string) => string> = {
 
 // ── small text helpers (ported verbatim in spirit from queue.jsx) ───────────
 
-// A stable warm colour per person, from the v2 palette. Same hash as the
-// prototype's m2Color so a person keeps their colour across the port.
-const PERSON_TONES = ["#c9622f", "#2b4a6e", "#8d7aa8", "#6c8f6f", "#a8763a", "#7a6a5c"];
+// A stable Bento soft data-viz colour per person. Same hash as the prototype's
+// m2Color so a person keeps their colour across the port. These are the pale
+// `--soft-*` fills, so initials render in dark ink (see the PersonMark / row
+// components) — a pale avatar never carries white text.
+const PERSON_TONES = ["#FFD4BC", "#C0D3F9", "#DABEEA", "#B7F6D7", "#FFF4B2", "#F8B0DA"];
 
 export function personColor(id?: string | null): string {
   let h = 0;

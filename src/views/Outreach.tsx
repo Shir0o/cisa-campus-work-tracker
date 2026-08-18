@@ -653,7 +653,7 @@ function LogOutreachModal({
               <BookOpen className="w-4 h-4" />
             </span>
             <div>
-              <div className="text-lg font-semibold text-on-surface">{editing ? 'Edit an outreach' : 'Log an outreach'}</div>
+              <div className="text-lg font-semibold text-on-surface">{editing ? 'Edit a gospel outing' : 'Log a gospel outing'}</div>
               <div className="text-sm text-on-surface-variant">{editing ? 'Fix the record — nothing here notifies anyone.' : 'Write it down tonight, while the names still have faces.'}</div>
             </div>
           </div>
@@ -770,7 +770,7 @@ function LogOutreachModal({
             Cancel
           </button>
           <button className={BTN_PRIMARY} disabled={!where.trim() || saving} onClick={submit}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the outreach'}
+            {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the outing'}
           </button>
         </div>
       </div>
@@ -882,7 +882,7 @@ export default function Outreach() {
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-xs font-medium   text-on-surface-variant">Once a month, out in the open</div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-on-surface mt-1">Outreach</h1>
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-on-surface mt-1">Gospel</h1>
           <p className="text-on-surface-variant mt-2 max-w-2xl">
             {last ? (
               <>
@@ -905,7 +905,7 @@ export default function Outreach() {
         </div>
         {canLog && (
           <button className={BTN_PRIMARY} onClick={() => setLogOpen(true)}>
-            <Plus className="w-4 h-4" /> Log an outreach
+            <Plus className="w-4 h-4" /> Log a gospel outing
           </button>
         )}
       </div>
@@ -937,11 +937,11 @@ export default function Outreach() {
           {thisMonth.length === 0 && earlier.length === 0 && (
             <div className="mt-8 rounded-2xl border border-outline-variant bg-surface-container p-6">
               <p className="text-on-surface-variant">
-                Nothing here yet. An outreach gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
+                Nothing here yet. A gospel outing gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
               </p>
               {canLog && (
                 <button className={cn(BTN_PRIMARY, 'mt-4')} onClick={() => setLogOpen(true)}>
-                  <Plus className="w-4 h-4" /> Log an outreach
+                  <Plus className="w-4 h-4" /> Log a gospel outing
                 </button>
               )}
             </div>

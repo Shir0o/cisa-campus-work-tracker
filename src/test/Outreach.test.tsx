@@ -107,7 +107,7 @@ describe('Outreach', () => {
 
   it('renders the header, pending queue and figures', async () => {
     render(<Outreach />);
-    expect(screen.getByText('Outreach')).toBeTruthy();
+    expect(screen.getByText('Gospel')).toBeTruthy();
     // Chloe has no touch since the outing → still waiting, in the queue.
     expect(await screen.findByText('Chloe Baptiste')).toBeTruthy();
     expect(screen.getByText(/5 days waiting/)).toBeTruthy();
@@ -146,11 +146,11 @@ describe('Outreach', () => {
 
   it('logs an outreach: every filled name becomes a contact + a ring-todo', async () => {
     render(<Outreach />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Log an outreach' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
     fireEvent.change(await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn'), { target: { value: 'Boardwalk' } });
     fireEvent.change(screen.getByPlaceholderText('Their name'), { target: { value: 'Nadia Halim' } });
     fireEvent.change(screen.getByPlaceholderText('Number or email'), { target: { value: '+1 (555) 0109' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Log the outreach' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log the outing' }));
 
     await waitFor(() => expect(addDoc).toHaveBeenCalledTimes(2)); // the contact, then the outreach
     const contactDoc = vi.mocked(addDoc).mock.calls[0][1] as Record<string, unknown>;
@@ -168,10 +168,10 @@ describe('Outreach', () => {
   it('a community logger creates the contact but not the auto-todo', async () => {
     asRole('viewer', 'v9');
     render(<Outreach />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Log an outreach' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Log a gospel outing' }));
     fireEvent.change(await screen.findByPlaceholderText('e.g. Cedar Park — the north lawn'), { target: { value: 'Riverside' } });
     fireEvent.change(screen.getByPlaceholderText('Their name'), { target: { value: 'Sam Ortiz' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Log the outreach' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Log the outing' }));
     await waitFor(() => expect(addDoc).toHaveBeenCalled());
     expect(addTodo).not.toHaveBeenCalled();
   });
@@ -227,7 +227,7 @@ describe('Outreach', () => {
     render(<Outreach />);
     expect(await screen.findByText(/Nothing here yet/)).toBeTruthy();
     // Both the header and the empty-state card carry a Log button.
-    expect(screen.getAllByRole('button', { name: 'Log an outreach' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Log a gospel outing' }).length).toBeGreaterThan(0);
   });
 
   it('is full-timer + community — trainees and students are locked out', () => {

@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   emptySignUpForm,
+  signUpYearValue,
   validateSignUpBasics,
   validateSignUpInterests,
   validateSignUp,
@@ -65,6 +66,22 @@ describe('SIGNUP_YEARS, SIGNUP_GENDERS, and SIGNUP_INTERESTS', () => {
   });
 });
 
+describe('signUpYearValue', () => {
+  it('resolves a normal year to itself', () => {
+    expect(signUpYearValue(form({ year: 'Freshman' }))).toBe('Freshman');
+  });
+
+  it('resolves the "Other" year to the typed text', () => {
+    expect(signUpYearValue(form({ year: 'Other', yearOther: 'Gap year' }))).toBe('Gap year');
+    expect(signUpYearValue(form({ year: 'Other', yearOther: '  Post-grad  ' }))).toBe('Post-grad');
+  });
+
+  it('falls back to an empty string when "Other" has no text', () => {
+    expect(signUpYearValue(form({ year: 'Other' }))).toBe('');
+    expect(signUpYearValue(form({ year: 'Other', yearOther: '   ' }))).toBe('');
+  });
+});
+
 describe('validateSignUpBasics', () => {
   it('passes with all mandatory basic fields present', () => {
     expect(validateSignUpBasics(form())).toBeNull();
@@ -82,8 +99,15 @@ describe('validateSignUpBasics', () => {
     expect(validateSignUpBasics(form({ year: '' }))).toBe('Please select your year.');
   });
 
-  it('requires a major selection', () => {
-    expect(validateSignUpBasics(form({ major: '' }))).toBe('Please select your major.');
+  it('requires the "Other" year to be filled in', () => {
+    expect(validateSignUpBasics(form({ year: 'Other', yearOther: '' }))).toBe('Please tell us your year.');
+    expect(validateSignUpBasics(form({ year: 'Other', yearOther: '  ' }))).toBe('Please tell us your year.');
+    expect(validateSignUpBasics(form({ year: 'Other', yearOther: 'Gap year' }))).toBeNull();
+  });
+
+  it('requires a major', () => {
+    expect(validateSignUpBasics(form({ major: '' }))).toBe('Please enter your major.');
+    expect(validateSignUpBasics(form({ major: '   ' }))).toBe('Please enter your major.');
   });
 
   it('requires a valid email', () => {
@@ -133,6 +157,22 @@ describe('getAutoSemesterAndSchoolYearTags', () => {
 });
 
 describe('submitSignUp with actor logging and auto tagging', () => {
+  beforeEach(() => {
+    mockAddDoc.mockClear();
+    mockGetDocs.mockClear();
+  });
+
+  it('saves the resolved "Other" year text as the contact year', async () => {
+    const mockDb: any = {};
+    const testForm = form({ year: 'Other', yearOther: 'Gap year' });
+
+    await submitSignUp(mockDb, testForm, []);
+
+    const contactCall = mockAddDoc.mock.calls.find((c) => c[0].path === 'contacts');
+    expect(contactCall).toBeDefined();
+    expect(contactCall![1].year).toBe('Gap year');
+  });
+
   it('writes contact record with logged actor and auto tags', async () => {
     const mockDb: any = {};
     const testForm = form();

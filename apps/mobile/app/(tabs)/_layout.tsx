@@ -30,28 +30,25 @@ import { useMessagesData } from '../../src/lib/useMessagesData';
 // shell — so the bar is drawn here instead.
 
 /** One button in the design's `.mbr-tabs`: a full-width pill behind the word,
- *  with a terracotta unread dot beside Messages. */
+ *  with a violet unread dot beside Messages. */
 function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTabBarProps & { tabNames: string[] }) {
-  const { c, font, fs, mode, room } = useV2Theme();
+  const { c, font, fs, mode } = useV2Theme();
   const onHeightChange = useContext(BottomTabBarHeightCallbackContext);
 
-  const isFt = room === 'ft';
   const night = mode === 'dark';
 
-  // `.mbr-tabs button.on` — the active tab is a soft PILL behind the word. The
-  // full-timer's paper room re-inks it navy (`.m2.mem.ft.blue:not(.night)`:
-  // rgba(43,74,110,.09) on #2b4a6e); every other room keeps the base rule
-  // (rgba(238,241,233,.10) on the room ink).
-  const pill = isFt && !night ? 'rgba(43,74,110,0.09)' : 'rgba(238,241,233,0.10)';
-  const activeInk = isFt && !night ? '#2b4a6e' : c.room.ink;
+  // `.mbr-tabs button.on` — the active tab is a soft VIOLET wash pill behind
+  // the word (`--accent-soft`), and the resting ink is `room.ink3` by day, the
+  // night floor (`room.faint`) after dark. Under Bento every role shares one
+  // room, so there are no per-role (navy/paper) variants.
+  const pill = c.card.reactOnBg;
+  const activeInk = c.card.ask;
   // Resting ink is `--mb-ink4` — `room.ink3` by day, the night floor
   // (`--n-ink4`, `room.faint`) after dark.
   const idleInk = night ? c.room.faint : c.room.ink3;
-  // `.m2.mem.ft.blue:not(.night) .mbr-tabs` — the FT bar floats as a near-white
-  // strip over the paper room; everyone else wears the room itself.
-  const bar = isFt && !night
-    ? { backgroundColor: 'rgba(255,255,255,0.94)', borderTopColor: '#e0ddd8' }
-    : { backgroundColor: c.room.bg, borderTopColor: c.room.dateboxLine };
+  // `.mbr-tabs` — the bar wears the room itself, split from the canvas by the
+  // datebox hairline.
+  const bar = { backgroundColor: c.room.bg, borderTopColor: c.room.dateboxLine };
 
   // Only the routes this role actually tabs render; the rest stay reachable by
   // push and deep link (`href: null` on the screens below).
@@ -102,9 +99,9 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
               {label}
             </Text>
             {unread && (
-              // `.mbr-tabs em` — the unread marker is a 6px terracotta DOT,
-              // not a counted pill: "Messages" is too long a word for a number
-              // to sit beside. The exact count lives on the Messages screen.
+              // `.mbr-tabs em` — the unread marker is a 6px violet DOT, not a
+              // counted pill: "Messages" is too long a word for a number to sit
+              // beside. The exact count lives on the Messages screen.
               <View
                 accessible={false}
                 style={{
@@ -114,7 +111,7 @@ function V2TabBar({ state, descriptors, navigation, insets, tabNames }: BottomTa
                   width: 6,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: '#c9622f',
+                  backgroundColor: c.room.mark,
                 }}
               />
             )}

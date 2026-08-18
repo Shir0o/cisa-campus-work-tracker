@@ -509,7 +509,7 @@ function OutreachLogSheet({
       <Room room="ft">
         <View style={{ paddingHorizontal: 18, paddingTop: 4, paddingBottom: 24 }}>
           <Text style={{ fontFamily: font.extra, fontSize: fs(20), letterSpacing: -0.5, color: c.card.ink }}>
-            {editing ? 'Edit an outreach' : 'Log an outreach'}
+            {editing ? 'Edit a gospel outing' : 'Log a gospel outing'}
           </Text>
           <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), lineHeight: fs(18), color: c.card.ink3, marginTop: 4 }}>
             {editing ? 'Fix the record — nothing here notifies anyone.' : 'Write it down tonight, while the names still have faces.'}
@@ -667,7 +667,7 @@ function OutreachLogSheet({
               })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.room.onMark }}>
-                {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the outreach'}
+                {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the outing'}
               </Text>
             </Pressable>
           </View>
@@ -744,9 +744,9 @@ function Outreach() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
-        title="Outreach"
+        title="Gospel"
         note={last ? `Last out: ${outreachWhen(last.date)}` : 'Nothing written down yet'}
-        action={canLog ? { label: 'Log an outreach', onPress: () => setSheet({ mode: 'log' }) } : undefined}
+        action={canLog ? { label: 'Log a gospel outing', onPress: () => setSheet({ mode: 'log' }) } : undefined}
         onBack={back}
       >
         <View style={{ marginTop: 10 }}>
@@ -830,7 +830,7 @@ function Outreach() {
             {thisMonth.length === 0 && earlier.length === 0 && (
               <View style={{ marginTop: 26 }}>
                 <V2Empty>
-                  Nothing here yet. An outreach gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
+                  Nothing here yet. A gospel outing gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
                 </V2Empty>
               </View>
             )}

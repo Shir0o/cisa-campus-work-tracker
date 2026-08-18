@@ -25,7 +25,7 @@ appId: com.cisa.campus
 - tapOn: "More"
 - assertVisible: "The Journey"
 - assertVisible: "The Board"
-- assertVisible: "Outreach"
+- assertVisible: "Gospel"
 - assertVisible: "Sign-up form"
 - assertVisible: "Settings"
 - assertVisible: "See it as they do"

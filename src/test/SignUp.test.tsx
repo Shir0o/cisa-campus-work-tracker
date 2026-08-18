@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc } from 'firebase/firestore';
-import SignUp, { INTERESTS, YEARS, GENDERS, SPIRITUAL_BACKGROUNDS, MAJORS } from '../views/SignUp';
+import SignUp, { INTERESTS, YEARS, GENDERS, SPIRITUAL_BACKGROUNDS } from '../views/SignUp';
 import React from 'react';
 
 // Mock dependencies
@@ -195,10 +195,8 @@ describe('SignUp View', () => {
     await waitFor(() => expect(addDoc).toHaveBeenCalled());
 
     // Confirmation Screen
-    expect(await screen.findByText(/Thanks, Jane\./i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Thank you for signing up, we will be in contact!/i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Thank you for signing up, Jane\./i)).toBeInTheDocument();
+    expect(screen.getByText(/We will be in contact!/i)).toBeInTheDocument();
 
     // Verify submitted document payload
     const contactArg = (addDoc as any).mock.calls.find(
@@ -255,7 +253,7 @@ describe('SignUp View', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    expect(await screen.findByText(/Thanks, Alex\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Thank you for signing up, Alex\./i)).toBeInTheDocument();
 
     // Click "Add another"
     fireEvent.click(screen.getByRole('button', { name: /Add another/i }));
@@ -296,7 +294,7 @@ describe('SignUp View', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    expect(await screen.findByText(/Thanks, Bot\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Thank you for signing up, Bot\./i)).toBeInTheDocument();
     expect(addDoc).not.toHaveBeenCalled();
   });
 
@@ -349,6 +347,49 @@ describe('SignUp View', () => {
     expect(screen.getByRole('button', { name: /Send it/i })).toBeDisabled();
   });
 
+  it('shows an inline "Other" year input, requires its text, and saves the typed year', async () => {
+    render(<SignUp />);
+
+    expect(screen.queryByPlaceholderText(/gap year, post-grad/i)).not.toBeInTheDocument();
+
+    // Gender and Year each have an "Other" chip; the year one comes second in DOM order.
+    const otherChips = screen.getAllByRole('button', { name: 'Other' });
+    fireEvent.click(otherChips[1]);
+
+    const otherInput = screen.getByPlaceholderText(/gap year, post-grad/i);
+    expect(otherInput).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Naomi Park'), {
+      target: { value: 'Gap Gaby' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Female' }));
+    fireEvent.change(screen.getByLabelText(/Major/i), {
+      target: { value: 'Film Studies' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('(___) ___-____'), {
+      target: { value: '555-7777' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('you@umail.edu'), {
+      target: { value: 'gaby@umail.edu' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Home fellowship' }));
+
+    const submitBtn = screen.getByRole('button', { name: /Send it/i });
+    expect(submitBtn).toBeDisabled();
+
+    fireEvent.change(otherInput, { target: { value: 'Gap year' } });
+    expect(submitBtn).not.toBeDisabled();
+
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    const contactArg = (addDoc as any).mock.calls.find(
+      (c: any[]) => c[1] && Array.isArray(c[1].tags),
+    )?.[1];
+    expect(contactArg?.year).toBe('Gap year');
+    expect(contactArg?.major).toBe('Film Studies');
+  });
+
   it('calls onSubmitted for honeypot submissions and keeps them off Firestore', async () => {
     const onSubmitted = vi.fn();
     render(<SignUp onSubmitted={onSubmitted} />);
@@ -374,7 +415,7 @@ describe('SignUp View', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    expect(await screen.findByText(/Thanks, Honey\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Thank you for signing up, Honey\./i)).toBeInTheDocument();
     expect(addDoc).not.toHaveBeenCalled();
     expect(onSubmitted).toHaveBeenCalledWith('Honey Bot');
   });
@@ -407,7 +448,7 @@ describe('SignUp View', () => {
         await Promise.resolve();
       });
 
-      expect(screen.getByText(/Thanks, Timed\./i)).toBeInTheDocument();
+      expect(screen.getByText(/Thank you for signing up, Timed\./i)).toBeInTheDocument();
       expect(onSubmitted).not.toHaveBeenCalled();
       act(() => {
         vi.advanceTimersByTime(1800);
@@ -443,7 +484,7 @@ describe('SignUp View', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Send it/i }));
 
-    expect(await screen.findByText(/Thanks, No\./i)).toBeInTheDocument();
+    expect(await screen.findByText(/Thank you for signing up, No\./i)).toBeInTheDocument();
     expect(consoleSpy).toHaveBeenCalledWith('Failed to broadcast admin notification:', expect.any(Error));
     consoleSpy.mockRestore();
   });
