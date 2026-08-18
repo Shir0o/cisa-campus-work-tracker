@@ -91,7 +91,7 @@ export default function LandingCommunity() {
       <section className="mt-12">
         <SectionHead title="Reach out" sub="The team would love to hear from you — anytime." />
         {lead ? (
-          <div className="bg-surface rounded-2xl border border-outline-variant/60 p-6 flex flex-col sm:flex-row sm:items-center gap-5">
+          <div className="bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col sm:flex-row sm:items-center gap-5">
             <div className="flex shrink-0">
               {fts.slice(0, 4).map((ft, i) => (
                 <div key={ft.uid} className={cn("rounded-full ring-2 ring-surface", i > 0 && "-ml-3")}>

@@ -45,8 +45,8 @@ function Tile({
           style={{
             fontFamily: font.bold,
             fontSize: fs(10.5),
-            letterSpacing: 1.26,
-            textTransform: 'uppercase',
+            
+            
             color: c.widget.ink3,
           }}
         >

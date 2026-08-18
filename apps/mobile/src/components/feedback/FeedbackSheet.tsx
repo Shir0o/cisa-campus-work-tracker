@@ -127,7 +127,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
             <Pressable
               onPress={handleClose}
               style={{
-                backgroundColor: '#17293f',
+                backgroundColor: '#5C17E5',
                 paddingVertical: 10,
                 paddingHorizontal: 20,
                 borderRadius: 20,
@@ -152,8 +152,8 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                         paddingHorizontal: 12,
                         borderRadius: 12,
                         borderWidth: 1,
-                        borderColor: selected ? '#17293f' : '#ccc',
-                        backgroundColor: selected ? '#17293f' : '#fff',
+                        borderColor: selected ? '#5C17E5' : '#ccc',
+                        backgroundColor: selected ? '#5C17E5' : '#fff',
                       }}
                     >
                       <Text style={{ color: selected ? '#fff' : '#333', fontSize: 13, fontWeight: '600' }}>
@@ -202,7 +202,7 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
                 onPress={handleSubmit}
                 disabled={submitting || !message.trim()}
                 style={{
-                  backgroundColor: submitting || !message.trim() ? '#999' : '#17293f',
+                  backgroundColor: submitting || !message.trim() ? '#999' : '#5C17E5',
                   paddingVertical: 10,
                   paddingHorizontal: 20,
                   borderRadius: 20,

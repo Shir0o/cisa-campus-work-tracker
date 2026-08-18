@@ -135,7 +135,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           effectiveIsCollapsed ? "justify-center md:px-0" : "justify-between"
         )}>
           <NavLink to="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3 overflow-hidden hover:opacity-80 transition-opacity">
-            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center shadow-sm overflow-hidden shrink-0">
+            <div className="w-10 h-10 min-w-[40px] rounded-xl bg-primary flex items-center justify-center  overflow-hidden shrink-0">
               <img
                 src="/logo.svg"
                 alt="CISA Campus Work Tracker"
@@ -185,7 +185,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           )}
         >
           {/* Workspace / Your space Section */}
-          <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+          <div className={cn("text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
             {isStaff ? "Workspace" : "Your space"}
           </div>
 
@@ -198,7 +198,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
                 "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
                 effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
                 isActive
-                  ? "bg-stage-accent-soft text-on-surface font-medium"
+                  ? "bg-accent-soft text-accent font-medium"
                   : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
               )}
               title={effectiveIsCollapsed ? item.label : undefined}
@@ -209,7 +209,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
                   {isActive && !effectiveIsCollapsed && (
                     <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
                   )}
-                  <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                  <item.icon className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-accent" : "")} />
                   <motion.span
                     initial={false}
                     animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
@@ -225,7 +225,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
 
           {/* For someone new Section */}
           <div className="mt-4">
-            <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+            <div className={cn("text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
               For someone new
             </div>
             <NavLink
@@ -235,7 +235,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
                 "relative flex items-center rounded-xl transition-all duration-200 ease-in-out h-11",
                 effectiveIsCollapsed ? "justify-center px-0 w-12 mx-auto" : "px-3",
                 isActive
-                  ? "bg-stage-accent-soft text-on-surface font-medium"
+                  ? "bg-accent-soft text-accent font-medium"
                   : "text-on-surface-variant font-normal hover:bg-surface-container-high hover:text-on-surface"
               )}
               title={effectiveIsCollapsed ? `${SIGNUP_TITLE} — ${SIGNUP_WHAT_SHORT}` : undefined}
@@ -245,7 +245,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
                   {isActive && !effectiveIsCollapsed && (
                     <span className="absolute left-0 top-2 bottom-2 w-[3px] rounded-full bg-primary" />
                   )}
-                  <FileText className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-primary" : "")} />
+                  <FileText className={cn("w-[18px] h-[18px] min-w-[18px] shrink-0", isActive ? "text-accent" : "")} />
                   <motion.span
                     initial={false}
                     animate={{ opacity: effectiveIsCollapsed ? 0 : 1, width: effectiveIsCollapsed ? 0 : 'auto', marginLeft: effectiveIsCollapsed ? 0 : 12 }}
@@ -271,7 +271,7 @@ export default function Sidebar({ isCollapsed, onToggleCollapse, onLogInteractio
           {/* Elsewhere Section */}
           {externalLinks.length > 0 && (
             <div className="mt-4">
-              <div className={cn("text-[11px] font-bold uppercase tracking-wider text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
+              <div className={cn("text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5", effectiveIsCollapsed ? "hidden" : "block")}>
                 Elsewhere
               </div>
               {externalLinks.map((item) => (

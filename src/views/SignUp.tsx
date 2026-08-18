@@ -647,7 +647,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         {/* ── Left: A warm welcome ── */}
         <div className="signup-hero">
           <div className="su-brand">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-serif text-lg font-semibold text-on-primary shadow-sm shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center font-serif text-lg font-semibold text-on-primary  shrink-0">
               C
             </div>
             <div>

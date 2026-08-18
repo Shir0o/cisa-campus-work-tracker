@@ -150,7 +150,7 @@ export default function OutreachBoardMobile({
   return (
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page jrn jrnm">
       <header className="px-5 pt-8 pb-4 bg-surface jrnm-hero">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1 jrn-eyebrow">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 jrn-eyebrow">
           the journey
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface jrn-h1">Stages</h1>
@@ -183,14 +183,14 @@ export default function OutreachBoardMobile({
               className={cn(
                 "inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[14px] font-semibold border transition-all jrnm-seg shrink-0",
                 activeTab
-                  ? "bg-[var(--tone-soft)] border-[var(--tone)]/40 text-[var(--tone)] is-on font-bold shadow-sm"
+                  ? "bg-[var(--tone-soft)] border-[var(--tone)]/40 text-[var(--tone)] is-on font-semibold "
                   : "bg-surface border-outline-variant/50 text-on-surface-variant hover:bg-surface-variant/55"
               )}
               onClick={() => setActive(i)}
             >
               <span className="w-1.5 h-1.5 rounded-full jrnm-seg-dot bg-[var(--tone)]" aria-hidden />
               <span className="jrnm-seg-name">{s.label}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant/80 font-medium jrnm-seg-count", activeTab && "bg-surface/80 text-[var(--tone)] font-bold")}>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant/80 font-medium jrnm-seg-count", activeTab && "bg-surface/80 text-[var(--tone)] font-semibold")}>
                 {count}
               </span>
             </button>
@@ -207,7 +207,7 @@ export default function OutreachBoardMobile({
         onTouchEnd={onTouchEnd}
       >
         <div className="mb-4 flex flex-col gap-0.5 jrnm-panel-head">
-          <span className="text-[13px] font-bold uppercase tracking-wider text-on-surface-variant/80 jrnm-panel-count">
+          <span className="text-[13px] font-semibold   text-on-surface-variant/80 jrnm-panel-count">
             {items.length === 0 ? "no one here yet" : items.length === 1 ? "1 person" : `${items.length} people`}
           </span>
           {stage.id !== 'uncategorized' && stage.label && (
@@ -236,7 +236,7 @@ export default function OutreachBoardMobile({
 
               return (
                 <article
-                  className="flex items-start gap-3.5 p-4 bg-surface rounded-2xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person shadow-sm cursor-pointer"
+                  className="flex items-start gap-3.5 p-4 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person  cursor-pointer"
                   key={c.id}
                   onClick={() => onOpenContact(c)}
                 >
@@ -278,7 +278,7 @@ export default function OutreachBoardMobile({
 
         <button
           onClick={() => onAddContact(stage.label)}
-          className="mt-4 w-full py-3.5 text-center text-sm bg-surface border border-outline-variant/70 text-primary font-semibold rounded-2xl active:brightness-95 transition-all shadow-sm jrnm-add"
+          className="mt-4 w-full py-3.5 text-center text-sm bg-surface border border-outline-variant/70 text-accent font-semibold rounded-2xl active:brightness-95 transition-all  jrnm-add"
         >
           {stage.id === 'uncategorized' || (stages[0] && stage.label === stages[0].label)
             ? "Welcome someone new"
@@ -339,7 +339,7 @@ export default function OutreachBoardMobile({
                         <div className="font-medium text-[15px] jrnm-move-name">{s.label}</div>
                       </div>
                       {here ? (
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--tone)] jrnm-move-here">here now</span>
+                        <span className="text-xs font-semibold   text-[var(--tone)] jrnm-move-here">here now</span>
                       ) : (
                         <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
                       )}

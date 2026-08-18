@@ -41,7 +41,7 @@ export default function VisitsMobile({
       data-role="ft"
     >
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1">
           Where we've been
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface">Visits</h1>
@@ -79,9 +79,9 @@ export default function VisitsMobile({
           </p>
           <div className="flex flex-col gap-3 mt-3">
             {overdue.map(({ contact, visit, daysAgo }) => (
-              <div key={contact.id} className="p-4 rounded-2xl bg-surface border border-outline-variant">
+              <div key={contact.id} className="p-4 rounded-3xl bg-surface border border-outline-variant">
                 <div className="flex items-start gap-3">
-                  <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
+                  <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
                     {initialsOf(contact.name)}
                   </span>
                   <div className="min-w-0">
@@ -119,7 +119,7 @@ export default function VisitsMobile({
       <VisitGroup title="Earlier" list={groups.earlier} {...groupProps} />
 
       {visits.length === 0 && (
-        <div className="mx-5 mt-8 p-6 rounded-2xl bg-surface border border-outline-variant text-center">
+        <div className="mx-5 mt-8 p-6 rounded-3xl bg-surface border border-outline-variant text-center">
           <House className="w-6 h-6 text-on-surface-variant mx-auto mb-3" />
           <p className="text-sm text-on-surface-variant leading-relaxed">
             Nothing here yet. A visit gets written down after you've been — who you saw, where, and what you'd want to
@@ -134,14 +134,14 @@ export default function VisitsMobile({
         </div>
       )}
 
-      <footer className="mx-5 mt-10 pt-5 border-t border-outline-variant flex flex-wrap gap-x-8 gap-y-4">
+      <footer className="mx-5 mt-10 bg-surface rounded-3xl border border-outline-variant/60 px-5 py-4 flex flex-wrap gap-x-8 gap-y-4">
         {[
           { n: stats.visits, l: 'visits' },
           { n: stats.peopleSeen, l: "people we've sat with" },
           { n: stats.wentOut, l: 'of us have gone out' },
         ].map((f) => (
           <div key={f.l} className="flex flex-col gap-0.5">
-            <span className="font-serif text-2xl leading-none text-on-surface">{f.n}</span>
+            <span className="text-2xl leading-none text-on-surface">{f.n}</span>
             <span className="text-xs text-on-surface-variant">{f.l}</span>
           </div>
         ))}

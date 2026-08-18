@@ -197,7 +197,7 @@ function AssignedTaskRow({
                 e.stopPropagation();
                 onJumpToSource(todo.sourceDocId as string);
               }}
-              className="inline-flex items-center gap-1 mt-1 text-sm text-primary font-medium max-w-[18rem] hover:underline"
+              className="inline-flex items-center gap-1 mt-1 text-sm text-accent font-medium max-w-[18rem] hover:underline"
               title={todo.sourceDocTitle}
             >
               <FileText className="w-3.5 h-3.5 shrink-0" />
@@ -213,7 +213,7 @@ function AssignedTaskRow({
                   <span>To change the text,</span>
                   <button
                     type="button"
-                    className="text-primary hover:underline"
+                    className="text-accent hover:underline"
                     onClick={() => {
                       onJumpToSource(todo.sourceDocId as string);
                       setOpen(false);
@@ -860,7 +860,7 @@ export default function MyDay() {
                   onClick={() => setHideCompleted((h) => !h)}
                   title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
                   aria-pressed={hideCompleted}
-                  className="text-sm font-medium text-on-surface-variant hover:text-primary inline-flex items-center gap-1 cursor-pointer"
+                  className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1 cursor-pointer"
                 >
                   {hideCompleted ? (
                     <EyeOff className="w-3.5 h-3.5" />
@@ -875,7 +875,7 @@ export default function MyDay() {
           <div className={cardClass}>
             {assignedTasks.length > 0 && (
               <div className="pt-2">
-                <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant py-2">
+                <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
                   <CheckSquare className="w-3 h-3" /> Assigned to you
                 </div>
                 {assignedTasks.map((t, i) => (
@@ -900,7 +900,7 @@ export default function MyDay() {
                 )}
               >
                 {assignedTasks.length > 0 && (
-                  <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-on-surface-variant py-2">
+                  <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
                     <Pencil className="w-3 h-3" /> Your tasks
                   </div>
                 )}
@@ -935,7 +935,7 @@ export default function MyDay() {
             ) : (
               <button
                 onClick={() => setAddingTask(true)}
-                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary transition-colors py-3"
+                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-accent transition-colors py-3"
               >
                 <Plus className="w-3.5 h-3.5" /> Add a task
               </button>
@@ -951,7 +951,7 @@ export default function MyDay() {
             action={
               <button
                 onClick={() => setPickerOpen(true)}
-                className="text-sm font-medium text-on-surface-variant hover:text-primary inline-flex items-center gap-1"
+                className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1"
               >
                 <Pencil className="w-3.5 h-3.5" /> Your contacts
               </button>
@@ -996,13 +996,13 @@ export default function MyDay() {
                 const facts = [lead.type, lead.location].filter(Boolean) as string[];
                 return (
                   <>
-                    <div className="bg-stage-accent-soft rounded-2xl border border-primary/20 p-6">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-primary">
-                        {isValid(d) ? format(d, "EEEE, MMM d") : "This week"}
+                    <div className="bg-accent-strong rounded-3xl p-6 text-white">
+                      <div className="text-xs font-medium text-white/75">
+                        Next up · {isValid(d) ? format(d, "EEEE, MMM d") : "This week"}
                         {lead.location ? ` · ${lead.location}` : ""}
                       </div>
-                      <h3 className="font-serif text-2xl text-on-surface mt-2">{lead.name}</h3>
-                      <p className="text-sm text-on-surface-variant leading-relaxed mt-1.5 max-w-2xl">
+                      <h3 className="text-2xl font-semibold text-white mt-2">{lead.name}</h3>
+                      <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
                         A good chance to be present with the people in your care.
                       </p>
                       {facts.length > 0 && (
@@ -1010,7 +1010,7 @@ export default function MyDay() {
                           {facts.map((f) => (
                             <span
                               key={f}
-                              className="text-xs text-on-surface-variant bg-surface border border-outline-variant/60 rounded-full px-3 py-1"
+                              className="text-xs text-white/85 bg-white/15 border border-white/20 rounded-full px-3 py-1"
                             >
                               {f}
                             </span>
@@ -1035,7 +1035,7 @@ export default function MyDay() {
                                 <div className="font-serif text-2xl text-on-surface leading-none">
                                   {isValid(rd) ? format(rd, "d") : "–"}
                                 </div>
-                                <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                                <div className="text-xs text-on-surface-variant mt-1">
                                   {isValid(rd) ? format(rd, "MMM") : ""}
                                 </div>
                               </div>
@@ -1071,7 +1071,7 @@ export default function MyDay() {
                 Prayers for the people you're personally caring for.{" "}
                 <button
                   onClick={() => navigate("/prayer")}
-                  className="text-primary hover:underline"
+                  className="text-accent hover:underline"
                 >
                   Team prayers →
                 </button>
@@ -1114,7 +1114,7 @@ export default function MyDay() {
         </section>
 
         {/* ── Quiet figures: present, but never the headline ── */}
-        <div className="mt-14 pt-6 border-t border-outline-variant/50 flex flex-wrap items-end gap-x-10 gap-y-4">
+        <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-10 gap-y-4">
           <Figure n={myLeaders.length} label="contacts to care for" />
           <Figure n={prayersCount} label="prayers to hold" />
           <Figure n={leftToDo} label="tasks to hold" />
@@ -1156,7 +1156,7 @@ export default function MyDay() {
                       key={c.id}
                       className={cn(
                         "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
-                        checked ? "bg-stage-accent-soft" : "hover:bg-surface-variant",
+                        checked ? "bg-accent-soft" : "hover:bg-surface-variant",
                       )}
                     >
                       <input

@@ -4,15 +4,11 @@ import { Redirect, Stack, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
-import { Newsreader_500Medium } from '@expo-google-fonts/newsreader';
-import { HankenGrotesk_400Regular, HankenGrotesk_600SemiBold } from '@expo-google-fonts/hanken-grotesk';
 import {
-  Manrope_500Medium,
-  Manrope_600SemiBold,
-  Manrope_700Bold,
-  Manrope_800ExtraBold,
-} from '@expo-google-fonts/manrope';
-import { InstrumentSerif_400Regular } from '@expo-google-fonts/instrument-serif';
+  Lexend_400Regular,
+  Lexend_500Medium,
+  Lexend_600SemiBold,
+} from '@expo-google-fonts/lexend';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -38,16 +34,10 @@ function RootNavigator() {
   const pathname = usePathname();
   usePushRegistration();
   const [fontsLoaded, fontError] = useFonts({
-    Newsreader_500Medium,
-    HankenGrotesk_400Regular,
-    HankenGrotesk_600SemiBold,
-    // Mobile v2 ("the trainee app") has its own type: Manrope 500–800 for
-    // everything, Instrument Serif for the single end-of-queue headline.
-    Manrope_500Medium,
-    Manrope_600SemiBold,
-    Manrope_700Bold,
-    Manrope_800ExtraBold,
-    InstrumentSerif_400Regular,
+    // Bento — Lexend only: 400 body / 500 label / 600 structural.
+    Lexend_400Regular,
+    Lexend_500Medium,
+    Lexend_600SemiBold,
   });
 
   useEffect(() => {

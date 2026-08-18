@@ -210,7 +210,7 @@ export default function LogVisitModal({
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  const label = 'block text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-2';
+  const label = 'block text-[10px] font-semibold text-on-surface-variant   mb-2';
   const input =
     'w-full bg-surface-container-low border border-outline-variant rounded-2xl px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-primary transition-colors';
   const photoRemove =
@@ -237,7 +237,7 @@ export default function LogVisitModal({
             className="relative w-full max-w-2xl max-h-[90vh] bg-surface-container rounded-[2rem] shadow-2xl overflow-hidden border border-outline-variant flex flex-col"
           >
             <div className="p-6 border-b border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
-              <div className="w-12 h-12 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
+              <div className="w-12 h-12 bg-primary/10 text-accent rounded-2xl flex items-center justify-center shrink-0">
                 <House className="w-6 h-6" />
               </div>
               <div className="min-w-0">
@@ -267,9 +267,9 @@ export default function LogVisitModal({
                   {chosen.map((c) => (
                     <span
                       key={c.id}
-                      className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"
+                      className="inline-flex items-center gap-2 pl-1.5 pr-2 py-1 bg-primary/10 text-accent rounded-full text-xs font-medium"
                     >
-                      <span className="w-5 h-5 rounded-full bg-primary/15 grid place-items-center text-[9px] font-bold">
+                      <span className="w-5 h-5 rounded-full bg-primary/15 grid place-items-center text-[9px] font-semibold">
                         {initialsOf(c.name)}
                       </span>
                       {c.name}
@@ -297,7 +297,7 @@ export default function LogVisitModal({
                         }}
                         className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-variant transition-colors"
                       >
-                        <span className="w-7 h-7 rounded-full bg-primary/10 text-primary grid place-items-center text-[10px] font-bold">
+                        <span className="w-7 h-7 rounded-full bg-primary/10 text-accent grid place-items-center text-[10px] font-semibold">
                           {initialsOf(c.name)}
                         </span>
                         <span className="text-sm text-on-surface">{c.name}</span>
@@ -353,7 +353,7 @@ export default function LogVisitModal({
                       className={cn(
                         'px-3 py-1.5 rounded-full text-[13px] border transition-colors',
                         went.includes(s.uid)
-                          ? 'bg-primary/10 border-primary/30 text-primary'
+                          ? 'bg-primary/10 border-accent-line text-accent'
                           : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
                       )}
                     >
@@ -404,7 +404,7 @@ export default function LogVisitModal({
                   className={cn(
                     'px-3 py-1.5 rounded-full text-[13px] border transition-colors',
                     followUpOn
-                      ? 'bg-primary/10 border-primary/30 text-primary'
+                      ? 'bg-primary/10 border-accent-line text-accent'
                       : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
                   )}
                 >

@@ -275,7 +275,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
               <div className="space-y-4">
                 {/* Name */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+                  <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                     <Tag className="w-3 h-3" /> Name
                   </label>
                   <input
@@ -291,7 +291,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
 
                 {/* Type pills */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-on-surface-variant px-1 uppercase tracking-wider">Type</label>
+                  <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">Type</label>
                   <div className="flex flex-wrap gap-2">
                     {gatheringTypes.map(t => (
                       <button
@@ -321,8 +321,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
 
                 {/* Location (optional) */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
-                    <MapPin className="w-3 h-3" /> Location <span className="font-bold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
+                  <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                    <MapPin className="w-3 h-3" /> Location <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
                   </label>
                   <input
                     type="text"
@@ -334,16 +334,16 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 </div>
 
                 {/* Recurrence Toggle */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container-high border border-outline/30">
+                <div className="flex items-center justify-between p-3 rounded-3xl bg-surface-container-high border border-outline/30">
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
-                      formData.isRecurring ? "bg-primary/10 text-primary" : "bg-on-surface/5 text-on-surface-variant"
+                      formData.isRecurring ? "bg-primary/10 text-accent" : "bg-on-surface/5 text-on-surface-variant"
                     )}>
                       <RefreshCw className={cn("w-4 h-4", formData.isRecurring && "animate-spin-slow")} />
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-on-surface">Recurring Event</p>
+                      <p className="text-xs font-semibold text-on-surface">Recurring Event</p>
                       <p className="text-[10px] text-on-surface-variant">Repeat this event</p>
                     </div>
                   </div>
@@ -373,7 +373,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                     >
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Frequency</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Frequency</label>
                           <select
                             value={formData.recurrenceType}
                             onChange={e => {
@@ -404,7 +404,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                       {/* Weekly Day Selection */}
                       {formData.recurrenceType === 'weekly' && (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Repeat on</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Repeat on</label>
                           <div className="flex justify-between gap-1">
                             {DAYS.map(day => (
                               <button
@@ -420,7 +420,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                                   });
                                 }}
                                 className={cn(
-                                  "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-bold transition-all",
+                                  "w-8 h-8 rounded-lg flex items-center justify-center text-[10px] font-semibold transition-all",
                                   formData.recurrenceDays.includes(day.value)
                                     ? "bg-primary text-on-primary"
                                     : "bg-surface-container-high text-on-surface-variant border border-outline/30 hover:border-outline"
@@ -436,7 +436,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                       {/* Monthly Options */}
                       {formData.recurrenceType === 'monthly' && (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-on-surface-variant uppercase px-1 tracking-wider">Repeat on</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Repeat on</label>
                           <div className="grid grid-cols-1 gap-2">
                             <button
                               type="button"
@@ -444,7 +444,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                               className={cn(
                                 "w-full h-10 px-4 rounded-xl flex items-center justify-between text-xs transition-all border text-left",
                                 formData.monthlyType === 'same-day'
-                                  ? "bg-primary/10 border-primary text-primary font-bold"
+                                  ? "bg-primary/10 border-primary text-accent font-semibold"
                                   : "bg-surface-container-high border-outline/30 text-on-surface-variant hover:border-outline"
                               )}
                             >
@@ -457,7 +457,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                               className={cn(
                                 "w-full h-10 px-4 rounded-xl flex items-center justify-between text-xs transition-all border text-left",
                                 formData.monthlyType === 'relative-day'
-                                  ? "bg-primary/10 border-primary text-primary font-bold"
+                                  ? "bg-primary/10 border-primary text-accent font-semibold"
                                   : "bg-surface-container-high border-outline/30 text-on-surface-variant hover:border-outline"
                               )}
                             >
@@ -472,8 +472,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                           
                           {/* Summary Badge */}
                           <div className="mt-2 p-2 px-3 rounded-lg bg-primary/5 border border-primary/10 flex items-start gap-2">
-                            <Calendar className="w-3 h-3 text-primary mt-0.5" />
-                            <p className="text-[10px] font-medium text-primary leading-tight">
+                            <Calendar className="w-3 h-3 text-accent mt-0.5" />
+                            <p className="text-[10px] font-medium text-accent leading-tight">
                               {getRecurrenceSummary()}
                             </p>
                           </div>
@@ -489,14 +489,14 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 h-10 rounded-xl font-bold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                  className="flex-1 h-10 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   disabled={loading || !formData.name || !formData.date}
                   type="submit"
-                  className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-md shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
+                  className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
                 >
                   {loading ? (
                     <Loader2 className="w-3 h-3 animate-spin" />

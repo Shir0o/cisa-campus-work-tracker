@@ -36,9 +36,9 @@ export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string
           fontFamily: font.extra,
           fontSize: fs(10.5),
           lineHeight: fs(14),
-          letterSpacing: 1.26,
+          
           color: t.text,
-          textTransform: 'uppercase',
+          
         }}
       >
         {label}
@@ -49,7 +49,7 @@ export function ToneBadge({ tone, label, ago }: { tone: V2ToneKey; label: string
             fontFamily: font.semi,
             fontSize: fs(11),
             lineHeight: fs(14),
-            letterSpacing: 0.22,
+            
             color: t.text,
             opacity: 0.78,
           }}
@@ -135,9 +135,9 @@ export function NoteBlock({ label, children }: { label: string; children: string
         style={{
           fontFamily: font.bold,
           fontSize: fs(10.5),
-          letterSpacing: 1.26,
+          
           color: c.card.noteLabel,
-          textTransform: 'uppercase',
+          
           marginBottom: 7,
         }}
       >
@@ -360,8 +360,8 @@ export function Kicker({ children, onRoom, style }: { children: string; onRoom?:
         style={{
           fontFamily: font.bold,
           fontSize: fs(10.5),
-          letterSpacing: 1.26,
-          textTransform: 'uppercase',
+          
+          
           color: onRoom ? c.room.ink3 : c.card.ink3,
         }}
       >

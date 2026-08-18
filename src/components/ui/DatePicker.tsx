@@ -148,7 +148,7 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
 
   return (
     <div className="relative space-y-1.5" ref={containerRef}>
-      <label className="text-[10px] font-black text-on-surface-variant flex items-center gap-2 px-1 uppercase tracking-wider">
+      <label className="text-xs font-medium text-on-surface-variant flex items-center gap-2 px-1">
         <CalendarIcon className="w-3 h-3" /> {label}
       </label>
       
@@ -198,7 +198,7 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
       </div>
 
       {parseHint && (
-        <div className="text-[11.5px] text-primary/90 font-medium px-1 flex items-center gap-1 mt-1 transition-all">
+        <div className="text-[11.5px] text-accent/90 font-medium px-1 flex items-center gap-1 mt-1 transition-all">
           {parseHint}
         </div>
       )}
@@ -216,8 +216,8 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
           >
             {/* M3 Header */}
             <div className="bg-surface-container px-6 py-4 border-b border-outline-variant">
-              <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest mb-1">Select date</p>
-              <h3 className="text-xl font-bold text-on-surface">
+              <p className="text-xs font-medium text-on-surface-variant mb-1">Select date</p>
+              <h3 className="text-xl font-semibold text-on-surface">
                 {selectedDate && isValid(selectedDate) ? format(selectedDate, 'EEE, MMM d') : format(viewDate, 'EEE, MMM d')}
               </h3>
             </div>
@@ -270,7 +270,7 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
                     className="grid grid-cols-7 gap-1"
                   >
                     {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
-                      <div key={`${day}-${idx}`} className="h-10 flex items-center justify-center text-[10px] font-bold text-on-surface-variant uppercase">
+                      <div key={`${day}-${idx}`} className="h-10 flex items-center justify-center text-[10px] font-medium text-on-surface-variant">
                         {day}
                       </div>
                     ))}
@@ -284,7 +284,7 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
                           !isSameMonth(day, monthStart) && "text-on-surface-variant/30",
                           isSameMonth(day, monthStart) && "text-on-surface hover:bg-primary/10",
                           selectedDate && isSameDay(day, selectedDate) && "bg-primary text-on-primary hover:bg-primary",
-                          isSameDay(day, startOfToday()) && !isSameDay(day, selectedDate || 0) && "border border-primary text-primary"
+                          isSameDay(day, startOfToday()) && !isSameDay(day, selectedDate || 0) && "border border-primary text-accent"
                         )}
                       >
                         {format(day, 'd')}
@@ -353,7 +353,7 @@ export default function DatePicker({ label, value, onChange, required }: DatePic
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="px-4 py-2 rounded-full text-primary text-xs font-bold hover:bg-primary/5 transition-colors"
+                className="px-4 py-2 rounded-full text-accent text-xs font-medium hover:bg-primary/5 transition-colors"
               >
                 Cancel
               </button>

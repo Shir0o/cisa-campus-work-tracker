@@ -82,13 +82,13 @@ export function UpcomingEventsRsvp({
             return (
               <div
                 key={ev.id}
-                className="flex items-center gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5"
+                className="flex items-center gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5"
               >
                 <div className="text-center w-12 shrink-0">
                   <div className="font-serif text-2xl text-on-surface leading-none">
                     {isValid(d) ? format(d, "d") : "–"}
                   </div>
-                  <div className="text-[11px] uppercase tracking-wide text-on-surface-variant mt-1">
+                  <div className="text-xs text-on-surface-variant mt-1">
                     {isValid(d) ? format(d, "MMM") : ""}
                   </div>
                 </div>

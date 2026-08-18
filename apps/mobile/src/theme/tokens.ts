@@ -1,10 +1,7 @@
-// RN theme tokens — ported verbatim from the web app's Material token set in
-// src/index.css (:root = light, .dark = dark). This is the authoritative palette
-// (NOT the orphaned "Field Notes" --panel/--text alias set, which is undefined in
-// tracked source; those aliases resolve to the Material tokens below).
-//
-// "Field notes" visual language: Newsreader serif for headings, Hanken Grotesk
-// for body, warm paper (light) / warm slate (dark).
+// RN theme tokens — the authoritative palette for the non-v2 screens (login,
+// signup, attendance, coordination, settings, …). Ported from the web app's
+// Bento token set (`src/index.css`), itself the design's Bento design system:
+// violet #5C17E5 on cool blue-leaning neutrals, Lexend only (400/500/600).
 
 export type ThemeMode = 'light' | 'dark';
 
@@ -51,7 +48,8 @@ export interface ThemeColors {
   warning: string;
   warningContainer: string;
 
-  // Stage tones (accent = slate-blue, amber = terracotta, teal = sage, violet = plum)
+  // Stage tones (accent = slate/blue, amber = clay/orange, teal = sage/green,
+  // violet = plum). Concrete hex approximations of Bento's oklch data-viz hues.
   stageAccent: string;
   stageAccentSoft: string;
   stageAmber: string;
@@ -63,117 +61,116 @@ export interface ThemeColors {
 }
 
 export const lightColors: ThemeColors = {
-  primary: '#3a5a82',
-  onPrimary: '#ffffff',
-  primaryContainer: '#dbe3ee',
-  onPrimaryContainer: '#233a55',
+  primary: '#5C17E5',
+  onPrimary: '#FFFFFF',
+  primaryContainer: 'rgba(92, 23, 229, 0.08)',
+  onPrimaryContainer: '#5C17E5',
 
-  secondary: '#5c6675',
-  onSecondary: '#ffffff',
-  secondaryContainer: '#e1e7f0',
-  onSecondaryContainer: '#3b424d',
+  secondary: '#525E6F',
+  onSecondary: '#FFFFFF',
+  secondaryContainer: 'rgba(92, 23, 229, 0.08)',
+  onSecondaryContainer: '#5C17E5',
 
-  tertiary: '#5d8071',
-  onTertiary: '#ffffff',
-  tertiaryContainer: '#dde7e1',
-  onTertiaryContainer: '#36473f',
+  tertiary: '#2F7A8A',
+  onTertiary: '#FFFFFF',
+  tertiaryContainer: 'rgba(47, 122, 138, 0.14)',
+  onTertiaryContainer: '#1A212B',
 
-  error: '#b5503f',
-  onError: '#ffffff',
-  errorContainer: '#f4ddd8',
-  onErrorContainer: '#6e2c20',
+  error: '#B1000F',
+  onError: '#FFFFFF',
+  errorContainer: '#FFD4D8',
+  onErrorContainer: '#B1000F',
 
-  background: '#eaeef4',
-  onBackground: '#232b38',
+  background: '#F6F8FB',
+  onBackground: '#1A212B',
 
-  surface: '#ffffff',
-  onSurface: '#232b38',
-  surfaceVariant: '#e7ebf3',
-  onSurfaceVariant: '#5c6675',
+  surface: '#FFFFFF',
+  onSurface: '#1A212B',
+  surfaceVariant: '#F6F8FB',
+  onSurfaceVariant: '#525E6F',
 
-  outline: '#8f98a8',
-  outlineVariant: '#d6dde9',
+  outline: '#DEE4ED',
+  outlineVariant: '#ECEFF4',
 
-  surfaceContainerLowest: '#ffffff',
-  surfaceContainerLow: '#f4f6fb',
-  surfaceContainer: '#f4f6fb',
-  surfaceContainerHigh: '#e1e7f0',
-  surfaceContainerHighest: '#e1e7f0',
+  surfaceContainerLowest: '#FFFFFF',
+  surfaceContainerLow: '#FFFFFF',
+  surfaceContainer: '#F6F8FB',
+  surfaceContainerHigh: '#F6F8FB',
+  surfaceContainerHighest: '#F6F8FB',
 
-  success: '#5d8071',
-  successContainer: '#dde7e1',
-  warning: '#b0833a',
-  warningContainer: '#f0e3cd',
+  success: '#016A1C',
+  successContainer: '#E1FCDE',
+  warning: '#BA5900',
+  warningContainer: '#FFF2D2',
 
-  stageAccent: '#3a5a82',
-  stageAccentSoft: 'rgba(58, 90, 130, 0.09)',
-  stageAmber: '#c0823f',
-  stageAmberSoft: 'rgba(192, 130, 63, 0.11)',
-  stageTeal: '#5d8071',
-  stageTealSoft: 'rgba(93, 128, 113, 0.11)',
-  stageViolet: '#7d5a86',
-  stageVioletSoft: 'rgba(125, 90, 134, 0.10)',
+  stageAccent: '#4A5A8C',
+  stageAccentSoft: 'rgba(74, 90, 140, 0.12)',
+  stageAmber: '#B25A22',
+  stageAmberSoft: 'rgba(178, 90, 34, 0.12)',
+  stageTeal: '#3F7A5C',
+  stageTealSoft: 'rgba(63, 122, 92, 0.12)',
+  stageViolet: '#8A4F8C',
+  stageVioletSoft: 'rgba(138, 79, 140, 0.12)',
 };
 
 export const darkColors: ThemeColors = {
-  primary: '#7aa0cc',
-  onPrimary: '#15191f',
-  primaryContainer: '#2b3a4d',
-  onPrimaryContainer: '#cdddef',
+  primary: '#5C17E5',
+  onPrimary: '#FFFFFF',
+  primaryContainer: 'rgba(154, 143, 255, 0.18)',
+  onPrimaryContainer: '#9A8FFF',
 
-  secondary: '#a6afbe',
-  onSecondary: '#15191f',
-  secondaryContainer: '#2b333f',
-  onSecondaryContainer: '#d7dde6',
+  secondary: '#B6C2D3',
+  onSecondary: '#FFFFFF',
+  secondaryContainer: 'rgba(154, 143, 255, 0.18)',
+  onSecondaryContainer: '#9A8FFF',
 
-  tertiary: '#8bae9d',
-  onTertiary: '#15191f',
-  tertiaryContainer: '#2f3d37',
-  onTertiaryContainer: '#d2e0d8',
+  tertiary: '#7FC6D4',
+  onTertiary: '#1A212B',
+  tertiaryContainer: 'rgba(127, 198, 212, 0.18)',
+  onTertiaryContainer: '#1A212B',
 
-  error: '#d77c64',
-  onError: '#15191f',
-  errorContainer: '#46261f',
-  onErrorContainer: '#f2ccc1',
+  error: '#F14A58',
+  onError: '#1A212B',
+  errorContainer: 'rgba(241, 74, 88, 0.16)',
+  onErrorContainer: '#FFD4D8',
 
-  background: '#15191f',
-  onBackground: '#e7ebf2',
+  background: '#1A212B',
+  onBackground: '#F6F8FB',
 
-  surface: '#1f252e',
-  onSurface: '#e7ebf2',
-  surfaceVariant: '#262d37',
-  onSurfaceVariant: '#a6afbe',
+  surface: '#27313F',
+  onSurface: '#F6F8FB',
+  surfaceVariant: '#202936',
+  onSurfaceVariant: '#B6C2D3',
 
-  outline: '#717c8d',
-  outlineVariant: '#364150',
+  outline: '#3C4959',
+  outlineVariant: '#333E4C',
 
-  surfaceContainerLowest: '#1f252e',
-  surfaceContainerLow: '#1b2027',
-  surfaceContainer: '#1b2027',
-  surfaceContainerHigh: '#2b333f',
-  surfaceContainerHighest: '#2b333f',
+  surfaceContainerLowest: '#27313F',
+  surfaceContainerLow: '#202936',
+  surfaceContainer: '#202936',
+  surfaceContainerHigh: '#27313F',
+  surfaceContainerHighest: '#27313F',
 
-  success: '#8fae9d',
-  successContainer: '#2f3d37',
-  warning: '#d6ac63',
-  warningContainer: '#443615',
+  success: '#51E098',
+  successContainer: 'rgba(81, 224, 152, 0.16)',
+  warning: '#F2930D',
+  warningContainer: 'rgba(242, 147, 13, 0.16)',
 
-  stageAccent: '#7aa0cc',
-  stageAccentSoft: 'rgba(122, 160, 204, 0.16)',
-  stageAmber: '#d39e68',
-  stageAmberSoft: 'rgba(211, 158, 104, 0.16)',
-  stageTeal: '#8bae9d',
-  stageTealSoft: 'rgba(139, 174, 157, 0.16)',
-  stageViolet: '#b58cc4',
-  stageVioletSoft: 'rgba(181, 140, 196, 0.16)',
+  stageAccent: '#9AB0E0',
+  stageAccentSoft: 'rgba(154, 176, 224, 0.18)',
+  stageAmber: '#E2A87C',
+  stageAmberSoft: 'rgba(226, 168, 124, 0.18)',
+  stageTeal: '#A5C5A8',
+  stageTealSoft: 'rgba(165, 197, 168, 0.18)',
+  stageViolet: '#C2ABDD',
+  stageVioletSoft: 'rgba(194, 171, 221, 0.18)',
 };
 
-// Body 15px / 1.6 line-height in the web app; headings use the serif at weight
-// 500. Formalized here into a small scale for RN.
+// Lexend only — 400 body / 500 label / 600 structural. No serif.
 export const typography = {
-  fontSerif: 'Newsreader_500Medium', // headings
-  fontSans: 'HankenGrotesk_400Regular', // body
-  fontSansSemiBold: 'HankenGrotesk_600SemiBold', // AppText's "label" variant
+  fontSerif: 'Lexend_600SemiBold', // structural headings (no serif under Bento)
+  fontSans: 'Lexend_400Regular', // body
+  fontSansSemiBold: 'Lexend_600SemiBold', // AppText's "label" / emphasis variant
   size: { xs: 11, sm: 13, base: 15, md: 17, lg: 21, xl: 27, xxl: 32 },
   lineHeight: 1.6,
 };

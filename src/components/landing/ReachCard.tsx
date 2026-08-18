@@ -29,7 +29,7 @@ export function ReachCard({
   return (
     <div
       onClick={onOpen}
-      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-2xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
+      className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 bg-surface rounded-3xl border border-outline-variant/60 p-5 hover:border-primary/40 transition-colors cursor-pointer"
     >
       <div className="flex gap-4 min-w-0">
         <Avatar contact={contact} />
@@ -38,7 +38,7 @@ export function ReachCard({
             <span className="font-semibold text-on-surface">{contact.name}</span>
             <StageChip stage={contact.stage} stages={stages} />
           </div>
-          <div className="text-sm text-primary font-medium mt-0.5">
+          <div className="text-sm text-accent font-medium mt-0.5">
             {Number.isFinite(days) ? connectedLabel(days) : "Not connected yet"}
           </div>
           {statusNode && <div className="mt-1.5">{statusNode}</div>}

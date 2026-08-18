@@ -45,7 +45,7 @@ export function ImpRow({
         active && 'bg-primary/10 border-primary/40 ring-1 ring-primary/30',
       )}
     >
-      <div className="w-10 h-10 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+      <div className="w-10 h-10 rounded-full bg-primary/15 text-accent flex items-center justify-center font-semibold text-xs shrink-0">
         {target.initials}
       </div>
       <div className="flex-1 min-w-0">
@@ -64,7 +64,7 @@ export function ImpRow({
             <Check className="w-3 h-3" /> You're here
           </span>
         ) : (
-          <span className="text-primary group-hover:underline">See their view</span>
+          <span className="text-accent group-hover:underline">See their view</span>
         )}
       </div>
     </button>
@@ -241,7 +241,7 @@ export default function ImpersonatePicker({
           {g.shown.length < g.items.length && (
             <button
               onClick={() => setOpenAllRoster(true)}
-              className="text-xs font-medium text-primary hover:underline pt-1"
+              className="text-xs font-medium text-accent hover:underline pt-1"
             >
               Show the rest of the roster ({g.items.length - g.shown.length} more)
             </button>

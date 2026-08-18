@@ -154,7 +154,7 @@ export default function SubmitFeedback() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.2 }}
-            className="bg-surface-container border border-outline-variant p-6 rounded-3xl shadow-sm"
+            className="bg-surface-container border border-outline-variant p-6 rounded-3xl "
           >
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Kind selection */}
@@ -173,9 +173,9 @@ export default function SubmitFeedback() {
                         type="button"
                         disabled={isSubmitting}
                         onClick={() => setKind(k.id)}
-                        className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
+                        className={`flex items-center gap-3 p-3.5 rounded-3xl border transition-all text-left cursor-pointer disabled:opacity-50 disabled:cursor-default ${
                           on
-                            ? `${tone.softBg} border-transparent ${tone.text} shadow-xs`
+                            ? `${tone.softBg} border-transparent ${tone.text} `
                             : 'bg-surface border-outline-variant text-on-surface hover:bg-surface-container-high'
                         }`}
                       >
@@ -250,7 +250,7 @@ export default function SubmitFeedback() {
             exit={{ opacity: 0, scale: 0.95 }}
             className="bg-surface-container border border-outline-variant p-10 rounded-3xl text-center space-y-6 flex flex-col items-center"
           >
-            <div className="w-16 h-16 bg-primary/10 text-primary rounded-full flex items-center justify-center text-3xl">
+            <div className="w-16 h-16 bg-primary/10 text-accent rounded-full flex items-center justify-center text-3xl">
               ✦
             </div>
             <div className="space-y-2">

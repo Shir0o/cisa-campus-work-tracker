@@ -176,7 +176,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                 onClick={() => { setTab('message'); setSearch(''); setSelectedUids([]); setGroupName(''); setAnnounceName(''); }}
                 className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                   tab === 'message'
-                    ? 'bg-primary text-on-primary shadow-sm'
+                    ? 'bg-primary text-on-primary '
                     : 'text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
@@ -187,7 +187,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   onClick={() => { setTab('announcement'); setSearch(''); setSelectedUids([]); setGroupName(''); setAnnounceName(''); }}
                   className={`flex-1 py-2 px-3 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
                     tab === 'announcement'
-                      ? 'bg-primary text-on-primary shadow-sm'
+                      ? 'bg-primary text-on-primary '
                       : 'text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                 >
@@ -212,7 +212,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
             <div className="flex-1 overflow-y-auto p-4 bg-surface-container-lowest">
               {fetching ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <span className="text-xs">Fetching people…</span>
                 </div>
               ) : (
@@ -225,7 +225,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                         return (
                           <span
                             key={uid}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-primary/10 text-accent text-xs font-semibold"
                           >
                             {p?.displayName || uid}
                             <button
@@ -268,7 +268,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                                   : 'border-outline-variant/60 bg-surface text-on-surface hover:bg-surface-container-high'
                               }`}
                             >
-                              <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                              <div className="w-9 h-9 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-xs shrink-0">
                                 {u.photoURL ? (
                                   <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover rounded-full" />
                                 ) : (
@@ -284,7 +284,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                                 </p>
                               </div>
                               {isSelected && (
-                                <User className="w-4 h-4 text-primary shrink-0" />
+                                <User className="w-4 h-4 text-accent shrink-0" />
                               )}
                             </div>
                           );
@@ -324,7 +324,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                                     : 'border-outline-variant/60 bg-surface text-on-surface hover:bg-surface-container-high'
                                 }`}
                               >
-                                <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold flex items-center justify-center text-xs shrink-0">
+                                <div className="w-8 h-8 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-xs shrink-0">
                                   {u.photoURL ? (
                                     <img src={u.photoURL} alt={u.displayName} className="w-full h-full object-cover rounded-full" />
                                   ) : (
@@ -355,7 +355,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 h-11 rounded-full font-bold text-primary hover:bg-primary/5 transition-all text-sm cursor-pointer"
+                className="flex-1 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
               >
                 Cancel
               </button>
@@ -364,7 +364,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   type="button"
                   onClick={() => void startMessage()}
                   disabled={loading || selectedUids.length === 0}
-                  className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
                     <span className="animate-pulse">Starting…</span>
@@ -379,7 +379,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   form="create-announcement-form"
                   type="submit"
                   disabled={loading || !announceName.trim() || selectedUids.length === 0}
-                  className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
                     <span className="animate-pulse">Sending…</span>

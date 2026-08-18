@@ -189,7 +189,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
             <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-surface-container-lowest">
               {loadingMembers ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <Loader2 className="w-8 h-8 animate-spin text-accent" />
                   <span className="text-xs">Loading info...</span>
                 </div>
               ) : room.type === 'direct' && otherMember ? (
@@ -212,7 +212,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                       <Mail className="w-4 h-4 text-on-surface-variant/75" />
                       {otherMember.email}
                     </p>
-                    <span className="inline-block text-[11px] font-bold uppercase tracking-wider bg-stage-accent-soft text-stage-accent rounded-full px-2.5 py-0.5 mt-2">
+                    <span className="inline-block text-[11px] font-semibold   bg-stage-accent-soft text-stage-accent rounded-full px-2.5 py-0.5 mt-2">
                       Role: {otherMember.role}
                     </span>
                   </div>
@@ -221,7 +221,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                     <div className="pt-4 border-t border-outline-variant/60">
                       <button
                         onClick={handleOpenContactProfile}
-                        className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-bold text-sm shadow-md hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                        className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-sm  hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <User className="w-4 h-4" />
                         View Directory Contact Profile
@@ -233,15 +233,15 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                 /* GROUP CHAT VIEW */
                 <div className="space-y-4">
                   {/* Group Name Card */}
-                  <div className="p-4 rounded-2xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
-                    <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Group Name</span>
+                  <div className="p-4 rounded-3xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
+                    <span className="text-[10px] font-semibold text-on-surface-variant  ">Group Name</span>
                     <span className="font-serif text-lg text-on-surface">{room.name}</span>
                     <span className="text-[11px] text-on-surface-variant">Created by {room.createdByName}</span>
                   </div>
 
                   {/* Members Section */}
                   <div className="space-y-2.5">
-                    <h4 className="text-xs font-bold text-on-surface-variant px-1 uppercase tracking-wider">
+                    <h4 className="text-xs font-semibold text-on-surface-variant px-1  ">
                       Members List ({members.length})
                     </h4>
                     <div className="space-y-2 max-h-[220px] overflow-y-auto p-0.5">
@@ -262,7 +262,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                             <h5 className="font-semibold text-xs text-on-surface truncate">{m.displayName}</h5>
                             <p className="text-[10px] text-on-surface-variant truncate">{m.email}</p>
                           </div>
-                          <span className="text-[9px] font-bold uppercase bg-surface-container-high text-on-surface-variant rounded px-1.5 py-0.5 shrink-0">
+                          <span className="text-[9px] font-semibold  bg-surface-container-high text-on-surface-variant rounded px-1.5 py-0.5 shrink-0">
                             {m.role}
                           </span>
                         </div>
@@ -275,15 +275,15 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                     {!showInviteSection ? (
                       <button
                         onClick={() => setShowInviteSection(true)}
-                        className="w-full py-2.5 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-high font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors text-on-surface"
+                        className="w-full py-2.5 rounded-xl border border-outline-variant bg-surface hover:bg-surface-container-high font-semibold text-sm flex items-center justify-center gap-2 cursor-pointer transition-colors text-on-surface"
                       >
-                        <UserPlus className="w-4 h-4 text-primary" />
+                        <UserPlus className="w-4 h-4 text-accent" />
                         Invite new members
                       </button>
                     ) : (
-                      <div className="space-y-3 p-3 rounded-2xl bg-surface-container-low border border-outline-variant/50">
+                      <div className="space-y-3 p-3 rounded-3xl bg-surface-container-low border border-outline-variant/50">
                         <div className="flex justify-between items-center px-1">
-                          <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">
+                          <span className="text-xs font-semibold text-on-surface-variant  ">
                             Select Members to Add ({selectedInviteUids.length})
                           </span>
                           <button
@@ -291,7 +291,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                               setShowInviteSection(false);
                               setSelectedInviteUids([]);
                             }}
-                            className="text-xs text-primary font-bold hover:underline"
+                            className="text-xs text-accent font-semibold hover:underline"
                           >
                             Cancel
                           </button>
@@ -319,7 +319,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                                     type="checkbox"
                                     checked={isChecked}
                                     onChange={() => {}} // toggled on container click
-                                    className="w-3.5 h-3.5 rounded text-primary border-outline accent-primary cursor-pointer shrink-0"
+                                    className="w-3.5 h-3.5 rounded text-accent border-outline accent-primary cursor-pointer shrink-0"
                                   />
                                   <div className="w-6 h-6 rounded-full bg-stage-accent-soft text-stage-accent font-semibold flex items-center justify-center text-[10px] shrink-0">
                                     {u.photoURL ? (
@@ -347,7 +347,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                           <button
                             onClick={handleInviteMembers}
                             disabled={loading || selectedInviteUids.length === 0}
-                            className="w-full py-2 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-md hover:bg-primary/95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs  hover:bg-primary/95 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {loading ? 'Adding...' : `Add Selected`}
                           </button>
@@ -365,7 +365,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                 <button
                   onClick={handleLeaveGroup}
                   disabled={loading}
-                  className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                  className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
                 >
                   <LogOut className="w-4 h-4" />
                   Leave Group
@@ -380,7 +380,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                     onClose();
                   }
                 }}
-                className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
+                className="w-full h-10 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all"
               >
                 Hide from my list
               </button>
@@ -402,7 +402,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                     }
                   }}
                   disabled={loading}
-                  className="w-full h-10 rounded-full border border-error/45 text-error hover:bg-error/5 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                  className="w-full h-10 rounded-full border border-error/45 text-error hover:bg-error/5 font-semibold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all disabled:opacity-50"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete for everyone

@@ -530,7 +530,7 @@ export default function PrayerList() {
 
       {/* People we're holding */}
       <div className="flex items-center gap-3 mb-4">
-        <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant">
+        <span className="font-sans text-[11px]   text-on-surface-variant">
           People we&rsquo;re holding
         </span>
         <span className="font-serif text-sm text-on-surface-variant">{filteredEntries.length}</span>
@@ -631,7 +631,7 @@ function PrayerThread({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
-      className="bg-surface border border-outline-variant rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-shadow"
+      className="bg-surface border border-outline-variant rounded-3xl p-5 sm:p-6   transition-shadow"
     >
       {/* Header: person + a quiet count of what's still open */}
       <div className="flex items-start gap-4">
@@ -642,7 +642,7 @@ function PrayerThread({
         >
           <Avatar contact={contact} size="lg" />
           <div className="min-w-0">
-            <div className="font-serif text-lg text-on-surface leading-tight group-hover:text-primary transition-colors truncate">
+            <div className="font-serif text-lg text-on-surface leading-tight group-hover:text-accent transition-colors truncate">
               {contact.name}
             </div>
             <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
@@ -721,7 +721,7 @@ function PrayerThread({
             >
               ▶
             </span>
-            <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant group-hover:text-on-surface transition-colors">
+            <span className="font-sans text-[11px]   text-on-surface-variant group-hover:text-on-surface transition-colors">
               {showEarlier ? 'Hide' : 'Earlier'} — {earlier.length} {earlier.length === 1 ? 'prayer' : 'prayers'}
             </span>
             <span className="flex-1 h-px bg-outline-variant" />
@@ -742,7 +742,7 @@ function PrayerThread({
                 <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
                   {earlier.length - EARLIER_CAP} older{' '}
                   {earlier.length - EARLIER_CAP === 1 ? 'prayer' : 'prayers'} —{' '}
-                  <button onClick={onOpenProfile} className="text-primary hover:underline">
+                  <button onClick={onOpenProfile} className="text-accent hover:underline">
                     see {firstName}&rsquo;s full history
                   </button>
                 </div>
@@ -758,9 +758,9 @@ function PrayerThread({
 function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
   return (
     <div className="flex items-center gap-3 mb-2">
-      <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant">{label}</span>
+      <span className="font-sans text-[11px]   text-on-surface-variant">{label}</span>
       {nudge && (
-        <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-error">{nudge}</span>
+        <span className="font-sans text-[11px]   text-error">{nudge}</span>
       )}
       <span className="flex-1 h-px bg-outline-variant" />
     </div>
@@ -854,16 +854,16 @@ function PrayerItem({
       <div className="flex items-baseline gap-3 flex-wrap">
         <span className="text-[13px] text-on-surface-variant">{formatDate(prayer.date)}</span>
         {prayer.status !== 'pending' ? (
-          <span className={cn('text-[10.5px] uppercase tracking-[0.1em] font-semibold', STATUS_TONE[prayer.status])}>
+          <span className={cn('text-[10.5px]   font-semibold', STATUS_TONE[prayer.status])}>
             {STATUS_LABEL[prayer.status]}
           </span>
         ) : variant !== 'week' ? (
-          <span className="text-[10.5px] uppercase tracking-[0.1em] font-semibold text-on-surface-variant/70">
+          <span className="text-[10.5px]   font-semibold text-on-surface-variant/70">
             Unmarked
           </span>
         ) : null}
         {!editing && isOperator && (
-          <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-primary transition-colors ml-auto">
+          <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-accent transition-colors ml-auto">
             Edit
           </button>
         )}
@@ -907,13 +907,13 @@ function PrayerItem({
       {!editing && !answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
         <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-success uppercase tracking-wider">
+            <span className="text-[11px] font-semibold text-success  ">
               Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
             {isOperator && (
               <button
                 onClick={openAnswerComposer}
-                className="text-[11px] text-on-surface-variant hover:text-primary font-medium"
+                className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
               >
                 Edit Testimony
               </button>
@@ -952,7 +952,7 @@ function PrayerItem({
       {/* Testimony compose box */}
       {answering && (
         <div className="mt-3 p-3 bg-surface-variant/30 rounded-2xl border border-outline-variant max-w-xl">
-          <label className="block text-[11px] uppercase tracking-wider font-semibold text-on-surface-variant mb-1">
+          <label className="block text-[11px]   font-semibold text-on-surface-variant mb-1">
             How was it answered?
           </label>
           <textarea
@@ -1271,7 +1271,7 @@ function PickHeldModal({
           <span className="text-xs text-on-surface-variant">
             {sel.length} {sel.length === 1 ? 'person' : 'people'} on our hearts
             {changed > 0 && (
-              <span className="text-primary font-medium">
+              <span className="text-accent font-medium">
                 {added.length > 0 ? ` · +${added.length}` : ''}
                 {removed.length > 0 ? ` · −${removed.length}` : ''}
               </span>

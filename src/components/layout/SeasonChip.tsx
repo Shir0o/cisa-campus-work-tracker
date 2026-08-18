@@ -33,7 +33,7 @@ export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
     <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
       <span className="w-1.5 h-1.5 rounded-full bg-primary" />
       {season.label}
-      {season.clubRush && <span className="text-primary font-medium">· Club rush</span>}
+      {season.clubRush && <span className="text-accent font-medium">· Club rush</span>}
     </span>
   );
 
@@ -54,7 +54,7 @@ export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
       {open && (
         <div className="absolute left-3 top-full mt-2 z-50 w-56 bg-surface-container rounded-2xl shadow-xl border border-outline-variant p-3 space-y-3">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-wider text-on-surface-variant px-1 mb-1.5">
+            <div className="text-xs font-medium text-on-surface-variant px-1 mb-1.5">
               Tagging sign-ups for
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -88,7 +88,7 @@ export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
             onClick={() => season.toggleClubRush()}
             className="w-full flex items-center justify-between rounded-xl bg-surface-container-high border border-outline/30 px-3 py-2 cursor-pointer"
           >
-            <span className="inline-flex items-center gap-2 text-xs font-bold text-on-surface">
+            <span className="inline-flex items-center gap-2 text-xs font-medium text-on-surface">
               <Sparkles className="w-3.5 h-3.5" /> Club rush
             </span>
             <span

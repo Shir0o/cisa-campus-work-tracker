@@ -173,7 +173,7 @@ function InboxRow({
   return (
     <div
       className={cn(
-        "bg-surface rounded-2xl border p-5 transition-colors",
+        "bg-surface rounded-3xl border p-5 transition-colors",
         read ? "border-outline-variant/40" : "border-primary/30",
       )}
     >
@@ -220,7 +220,7 @@ function InboxRow({
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ml-auto",
                 read
-                  ? "border-primary/30 bg-primary/10 text-primary"
+                  ? "border-accent-line bg-primary/10 text-accent"
                   : "border-outline-variant text-on-surface-variant hover:bg-surface-variant",
               )}
             >
@@ -330,7 +330,7 @@ export default function FromTraineesInbox({
         sub={mobile ? undefined : "New people and conversations across the team, as they happen — scan, encourage, or nudge a next step."}
         action={
           unreadCount > 0 ? (
-            <span className="text-xs font-semibold text-primary bg-stage-accent-soft rounded-full px-2.5 py-1">
+            <span className="text-xs font-semibold text-accent bg-accent-soft rounded-full px-2.5 py-1">
               {unreadCount} new
             </span>
           ) : undefined
@@ -387,7 +387,7 @@ export default function FromTraineesInbox({
       {hidden > 0 && !showAll && (
         <button
           onClick={() => setShowAll(true)}
-          className={mobile ? "ibx-more w-full py-3 text-center text-sm font-medium text-primary hover:underline border-t border-outline-variant/20 mt-1" : "mt-3 text-sm font-medium text-primary hover:underline"}
+          className={mobile ? "ibx-more w-full py-3 text-center text-sm font-medium text-accent hover:underline border-t border-outline-variant/20 mt-1" : "mt-3 text-sm font-medium text-accent hover:underline"}
         >
           Show {hidden} earlier
         </button>

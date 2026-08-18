@@ -118,7 +118,7 @@ export default function PrayerListMobile({
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile page page-prayer prm" data-role="ft">
       {/* ── Mobile Hero ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 prm-hero">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1 prm-eyebrow">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 prm-eyebrow">
           Prayer
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface prm-title">
@@ -143,13 +143,13 @@ export default function PrayerListMobile({
               setSearchQuery("");
               setPickerOpen(true);
             }}
-            className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-stage-accent-soft border border-primary/20 text-primary rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
+            className="mt-4 w-full min-h-[48px] display flex items-center justify-between bg-accent-soft border border-accent-line text-accent rounded-2xl px-4 text-sm font-semibold active:brightness-95 transition-all prm-choose"
           >
             <div className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
               <span>Hold someone in prayer</span>
             </div>
-            <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-primary font-bold shadow-sm prm-choose-n">
+            <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-accent font-semibold  prm-choose-n">
               {entries.length}
             </span>
           </button>
@@ -158,7 +158,7 @@ export default function PrayerListMobile({
 
       {/* ── Toggle buttons ── */}
       <div className="px-5 mt-4 flex border-b border-outline-variant/35 ans-toggle">
-        <button className="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-primary text-primary ans-toggle-opt on">
+        <button className="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-primary text-accent ans-toggle-opt on">
           On our hearts
         </button>
         <button
@@ -274,7 +274,7 @@ export default function PrayerListMobile({
                       <div className="text-sm font-semibold text-on-surface truncate pr-picker-name">{c.name}</div>
                       <div className="text-xs text-on-surface-variant truncate pr-picker-meta mt-0.5">{[c.role, c.location].filter(Boolean).join(' · ')}</div>
                     </div>
-                    <Plus className="w-4 h-4 text-primary shrink-0 ml-2 pr-picker-add" />
+                    <Plus className="w-4 h-4 text-accent shrink-0 ml-2 pr-picker-add" />
                   </button>
                 ))}
               </div>
@@ -332,7 +332,7 @@ function PrayerThreadCard({
     : { label: 'At rest', tone: 'rest' };
 
   return (
-    <article className="bg-surface border border-outline-variant/45 rounded-2xl p-4 shadow-sm flex flex-col gap-3 prt-card prt-card--m relative">
+    <article className="bg-surface border border-outline-variant/45 rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 prt-head prt-head--m">
         <button onClick={onOpenProfile} className="flex items-center gap-3 text-left min-w-0 flex-1 prt-person">
@@ -344,7 +344,7 @@ function PrayerThreadCard({
             </div>
             <div className="flex items-center gap-2 mt-2 prt-substatus">
               <span className={cn(
-                "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full prt-statuspill",
+                "text-[10px] font-semibold   px-2 py-0.5 rounded-full prt-statuspill",
                 carry.tone === 'accent' && "bg-stage-accent-soft text-stage-accent",
                 carry.tone === 'rest' && "bg-success/15 text-success",
                 carry.tone === 'muted' && "bg-surface-variant text-on-surface-variant"
@@ -443,7 +443,7 @@ function PrayerThreadCard({
             >
               ▶
             </span>
-            <span className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant group-hover:text-on-surface transition-colors">
+            <span className="font-sans text-[11px]   text-on-surface-variant group-hover:text-on-surface transition-colors">
               {showEarlier ? 'Hide' : 'Earlier'} — {earlier.length} {earlier.length === 1 ? 'prayer' : 'prayers'}
             </span>
             <span className="flex-1 h-px bg-outline-variant" />
@@ -464,7 +464,7 @@ function PrayerThreadCard({
                 <div className="text-[12px] text-on-surface-variant pt-2 pl-1">
                   {earlier.length - EARLIER_CAP} older{' '}
                   {earlier.length - EARLIER_CAP === 1 ? 'prayer' : 'prayers'} —{' '}
-                  <button onClick={onOpenProfile} className="text-primary font-semibold hover:underline">
+                  <button onClick={onOpenProfile} className="text-accent font-semibold hover:underline">
                     see {firstName}&rsquo;s full history
                   </button>
                 </div>
@@ -480,9 +480,9 @@ function PrayerThreadCard({
 function SectionEyebrow({ label, nudge }: { label: string; nudge?: string }) {
   return (
     <div className="flex items-center gap-2.5 mb-1.5">
-      <span className="font-sans text-[10px] uppercase tracking-[0.08em] text-on-surface-variant">{label}</span>
+      <span className="font-sans text-[10px]   text-on-surface-variant">{label}</span>
       {nudge && (
-        <span className="font-sans text-[10px] uppercase tracking-[0.08em] text-error font-semibold">{nudge}</span>
+        <span className="font-sans text-[10px]   text-error font-semibold">{nudge}</span>
       )}
       <span className="flex-1 h-px bg-outline-variant/60" />
     </div>
@@ -540,18 +540,18 @@ function PrayerItemMobile({
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className="text-[12px] text-on-surface-variant/80">{formatDate(prayer.date)}</span>
         {prayer.status !== 'pending' ? (
-          <span className={cn('text-[10px] uppercase tracking-[0.08em] font-bold', STATUS_TONE[prayer.status])}>
+          <span className={cn('text-[10px]   font-semibold', STATUS_TONE[prayer.status])}>
             {STATUS_LABEL[prayer.status]}
           </span>
         ) : variant !== 'week' ? (
-          <span className="text-[10px] uppercase tracking-[0.08em] font-bold text-on-surface-variant/70">
+          <span className="text-[10px]   font-semibold text-on-surface-variant/70">
             Unmarked
           </span>
         ) : null}
         {!editing && isOperator && (
           <button
             onClick={startEdit}
-            className="text-xs text-on-surface-variant/80 hover:text-primary transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
+            className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
           >
             Edit
           </button>
@@ -596,7 +596,7 @@ function PrayerItemMobile({
       {!editing && !answering && prayer.status === 'answered' && (prayer.answer || prayer.answeredAt) && (
         <div className="mt-2.5 text-xs bg-success/5 border border-success/15 rounded-xl p-3 max-w-full">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-bold text-success uppercase tracking-wider">
+            <span className="text-[10px] font-semibold text-success  ">
               Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
             {isOperator && (
@@ -605,7 +605,7 @@ function PrayerItemMobile({
                   setHowDraft(prayer.answer || "");
                   setAnswering(true);
                 }}
-                className="text-[10px] text-on-surface-variant/80 hover:text-primary font-semibold"
+                className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
               >
                 Edit Testimony
               </button>
@@ -622,7 +622,7 @@ function PrayerItemMobile({
       {/* Testimony compose box */}
       {answering && (
         <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-xl border border-outline-variant/60">
-          <label className="block text-[10px] uppercase tracking-wider font-bold text-on-surface-variant mb-1">
+          <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
             How was it answered?
           </label>
           <textarea
@@ -658,7 +658,7 @@ function PrayerItemMobile({
       {/* Marks status dropdown */}
       {isOperator && (
         <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
-          <span className="text-[10.5px] uppercase tracking-wider text-on-surface-variant/75 prt-mark-label">
+          <span className="text-[10.5px]   text-on-surface-variant/75 prt-mark-label">
             {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark status'}
           </span>
           <div className={cn(

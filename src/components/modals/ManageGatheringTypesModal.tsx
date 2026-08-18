@@ -155,7 +155,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                   type="button"
                   onClick={addRow}
                   disabled={!newName.trim()}
-                  className="inline-flex items-center gap-1 px-3 h-10 rounded-xl bg-surface-container-high border border-outline/40 text-on-surface text-xs font-bold hover:border-outline transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
+                  className="inline-flex items-center gap-1 px-3 h-10 rounded-xl bg-surface-container-high border border-outline/40 text-on-surface text-xs font-semibold hover:border-outline transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
                 >
                   <Plus className="w-3 h-3" /> Add
                 </button>
@@ -168,7 +168,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
               <button
                 type="button"
                 onClick={onClose}
-                className="h-10 px-4 rounded-xl font-bold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
+                className="h-10 px-4 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
               >
                 Cancel
               </button>
@@ -176,7 +176,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="h-10 px-5 rounded-xl bg-primary text-on-primary font-bold text-xs shadow-md shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                className="h-10 px-5 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
                 {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
               </button>

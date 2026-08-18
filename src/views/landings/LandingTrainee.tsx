@@ -61,7 +61,7 @@ function WaitingRow({
   return (
     <div
       className={cn(
-        "bg-surface rounded-2xl border p-5 transition-colors",
+        "bg-surface rounded-3xl border p-5 transition-colors",
         read ? "border-outline-variant/40" : "border-primary/30",
       )}
     >
@@ -99,7 +99,7 @@ function WaitingRow({
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors",
                 read
-                  ? "border-primary/30 bg-primary/10 text-primary"
+                  ? "border-accent-line bg-primary/10 text-accent"
                   : "border-outline-variant text-on-surface-variant hover:bg-surface-variant",
               )}
             >
@@ -304,7 +304,7 @@ export default function LandingTrainee() {
             sub={`A word from ${ftFirst} — things to pick up when you can.`}
             action={
               waitingUnread > 0 ? (
-                <span className="text-xs font-semibold text-primary bg-stage-accent-soft rounded-full px-2.5 py-1">
+                <span className="text-xs font-semibold text-accent bg-accent-soft rounded-full px-2.5 py-1">
                   {waitingUnread}
                 </span>
               ) : undefined

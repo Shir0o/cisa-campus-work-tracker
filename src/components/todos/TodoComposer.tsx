@@ -253,12 +253,12 @@ export default function TodoComposer({
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
         className={cn(
-          "bg-surface rounded-2xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
+          "bg-surface rounded-3xl border border-outline-variant shadow-xl p-4 text-on-surface relative z-10 my-auto max-h-[calc(100vh-2rem)] overflow-y-auto custom-scrollbar",
           !anchorRect && "w-full max-w-[min(92vw,360px)]",
         )}
       >
         <div className="flex items-center justify-between mb-2.5">
-          <span className="inline-flex items-center gap-1.5 text-xs font-semibold tracking-wide uppercase text-on-surface-variant">
+          <span className="inline-flex items-center gap-1.5 text-xs font-semibold   text-on-surface-variant">
             <CheckSquare className="w-3.5 h-3.5" /> {mode === "edit" ? "Edit to-do" : (texts.length > 1 ? `New to-dos (${texts.length})` : "New to-do")}
           </span>
           <button
@@ -299,12 +299,12 @@ export default function TodoComposer({
 
         {/* Subtasks Section */}
         <div className="mt-3">
-          <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 mb-1.5">
+          <div className="flex items-center justify-between text-[11px] font-semibold   text-on-surface-variant/70 mb-1.5">
             <span>Subtasks ({subtasks.length})</span>
             <button
               type="button"
               onClick={handleAddSubtask}
-              className="inline-flex items-center gap-1 text-xs text-primary hover:underline lowercase font-normal"
+              className="inline-flex items-center gap-1 text-xs text-accent hover:underline lowercase font-normal"
             >
               <Plus className="w-3 h-3" /> Add subtask
             </button>
@@ -334,7 +334,7 @@ export default function TodoComposer({
           )}
         </div>
 
-        <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 mt-3 mb-1.5">
+        <div className="text-[11px] font-semibold   text-on-surface-variant/70 mt-3 mb-1.5">
           Assign to
         </div>
         <div className="flex flex-wrap gap-1.5">
@@ -360,7 +360,7 @@ export default function TodoComposer({
           })}
         </div>
 
-        <div className="text-[11px] font-semibold tracking-wider uppercase text-on-surface-variant/70 mt-3 mb-1.5">
+        <div className="text-[11px] font-semibold   text-on-surface-variant/70 mt-3 mb-1.5">
           Due
         </div>
         <div className="flex flex-wrap gap-1.5">

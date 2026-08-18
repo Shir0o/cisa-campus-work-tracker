@@ -84,7 +84,7 @@ function ThrRow({ m, meStaffId, contactId, children }: ThrRowProps) {
               className={cn(
                 "inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs transition-colors",
                 reactedByMe(emoji)
-                  ? "border-primary/40 bg-primary/10 text-primary"
+                  ? "border-accent-line bg-primary/10 text-accent"
                   : "border-outline-variant/50 text-on-surface-variant hover:border-outline-variant",
               )}
             >
@@ -154,7 +154,7 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
       <ThrRow m={m} meStaffId={meStaffId} contactId={contactId}>
         <button
           onClick={() => setReplying(!replying)}
-          className="mt-1 inline-flex items-center gap-1 text-xs text-primary font-medium hover:underline"
+          className="mt-1 inline-flex items-center gap-1 text-xs text-accent font-medium hover:underline"
         >
           <MessageSquare className="w-3 h-3" />
           {replying ? "Cancel reply" : replies.length > 0 ? `${replies.length} ${replies.length === 1 ? "reply" : "replies"}` : "Reply"}
@@ -188,7 +188,7 @@ function ThreadMsg({ m, meStaffId, contactId, recipientUid, contactName }: Threa
                 <button
                   onClick={sendReply}
                   disabled={!draft.trim()}
-                  className="inline-flex items-center gap-1 px-2.5 h-7 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-1 px-2.5 h-7 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition disabled:opacity-50"
                 >
                   <Send className="w-3 h-3" /> Reply
                 </button>
@@ -292,7 +292,7 @@ export default function Thread({
           <button
             onClick={post}
             disabled={!draft.trim()}
-            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 h-8 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" /> Comment
           </button>

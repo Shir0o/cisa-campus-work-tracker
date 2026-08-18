@@ -218,11 +218,11 @@ function useOutreachData() {
 const INPUT =
   'w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface';
 const BTN_PRIMARY =
-  'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-on-primary font-bold shadow-lg shadow-primary/20 text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:shadow-primary/30 active:scale-[0.98]';
-const BTN_GHOST = 'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-bold text-primary hover:bg-primary/5 text-sm cursor-pointer';
-const BTN_SM = 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-full font-bold text-xs cursor-pointer transition-all';
-const BTN_SM_PRIMARY = cn(BTN_SM, 'bg-primary text-on-primary shadow-md shadow-primary/20 hover:shadow-primary/30 active:scale-[0.98]');
-const BTN_SM_GHOST = cn(BTN_SM, 'text-primary hover:bg-primary/5');
+  'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full bg-primary text-on-primary font-semibold   text-sm cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-all hover: active:scale-[0.98]';
+const BTN_GHOST = 'inline-flex items-center justify-center gap-2 h-11 px-6 rounded-full font-semibold text-accent hover:bg-primary/5 text-sm cursor-pointer';
+const BTN_SM = 'inline-flex items-center justify-center gap-1.5 h-9 px-4 rounded-full font-semibold text-xs cursor-pointer transition-all';
+const BTN_SM_PRIMARY = cn(BTN_SM, 'bg-primary text-on-primary   hover: active:scale-[0.98]');
+const BTN_SM_GHOST = cn(BTN_SM, 'text-accent hover:bg-primary/5');
 
 function Face({ label, title, lg }: { label: string; title?: string; lg?: boolean }) {
   return (
@@ -283,7 +283,7 @@ function PendingRow({
   const cold = days >= 7;
   const contact = n.contactId ? contactById(n.contactId) : undefined;
   return (
-    <div className={cn('rounded-2xl border bg-surface-container p-4 flex flex-col gap-3', cold ? 'border-warning' : 'border-outline-variant')}>
+    <div className={cn('rounded-3xl border bg-surface-container p-4 flex flex-col gap-3', cold ? 'border-warning' : 'border-outline-variant')}>
       <div className="flex items-start gap-3">
         <Face label={initialsOf(undefined, n.name)} lg title={n.name} />
         <div className="min-w-0 flex-1">
@@ -361,11 +361,11 @@ function OutreachCard({
   const nPhotos = item.photoCount || 0;
   const went = item.went || [];
   return (
-    <article className={cn('rounded-2xl border bg-surface-container shadow-sm overflow-hidden', open ? 'border-stage-accent' : 'border-outline-variant')}>
+    <article className={cn('rounded-3xl border bg-surface-container  overflow-hidden', open ? 'border-stage-accent' : 'border-outline-variant')}>
       <button className="w-full text-left px-4 sm:px-5 py-4 flex items-start gap-4 hover:bg-surface-container-high/40" onClick={onToggle}>
         <div className="flex flex-col items-center pt-0.5 w-[52px] shrink-0">
           <span className="font-serif text-[26px] leading-none text-on-surface">{otDayNum(item.date)}</span>
-          <span className="text-[11px] uppercase tracking-[0.06em] text-on-surface-variant">{otMonth(item.date)}</span>
+          <span className="text-[11px]   text-on-surface-variant">{otMonth(item.date)}</span>
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="font-serif text-[19px] font-medium text-on-surface leading-snug">{item.where}</h3>
@@ -416,7 +416,7 @@ function OutreachCard({
       {open && (
         <div className="px-4 sm:px-5 pb-4 pt-3 border-t border-outline-variant space-y-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.06em] text-on-surface-variant mb-1.5">How it went</div>
+            <div className="text-[11px]   text-on-surface-variant mb-1.5">How it went</div>
             {item.how ? (
               item.how.split('\n').filter(Boolean).map((p, i) => (
                 <p key={i} className="text-[15px] leading-relaxed text-on-surface">
@@ -430,7 +430,7 @@ function OutreachCard({
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.06em] text-on-surface-variant mb-1.5">Who went</div>
+              <div className="text-[11px]   text-on-surface-variant mb-1.5">Who went</div>
               <div className="flex flex-wrap gap-2">
                 {went.map((id) => (
                   <span key={id} className="inline-flex items-center gap-2 text-sm text-on-surface-variant">
@@ -442,7 +442,7 @@ function OutreachCard({
               </div>
             </div>
             <div>
-              <div className="text-[11px] uppercase tracking-[0.06em] text-on-surface-variant mb-1.5">What we handed out</div>
+              <div className="text-[11px]   text-on-surface-variant mb-1.5">What we handed out</div>
               <div className="flex gap-4 flex-wrap">
                 {(
                   [
@@ -461,7 +461,7 @@ function OutreachCard({
           </div>
 
           <div>
-            <div className="text-[11px] uppercase tracking-[0.06em] text-on-surface-variant mb-1.5">Who left us their number</div>
+            <div className="text-[11px]   text-on-surface-variant mb-1.5">Who left us their number</div>
             {names.length === 0 ? (
               <p className="text-sm italic text-on-surface-variant">Nobody, this time. It still counted.</p>
             ) : (
@@ -653,7 +653,7 @@ function LogOutreachModal({
               <BookOpen className="w-4 h-4" />
             </span>
             <div>
-              <div className="text-lg font-bold text-on-surface">{editing ? 'Edit an outreach' : 'Log an outreach'}</div>
+              <div className="text-lg font-semibold text-on-surface">{editing ? 'Edit an outreach' : 'Log an outreach'}</div>
               <div className="text-sm text-on-surface-variant">{editing ? 'Fix the record — nothing here notifies anyone.' : 'Write it down tonight, while the names still have faces.'}</div>
             </div>
           </div>
@@ -665,17 +665,17 @@ function LogOutreachModal({
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">When</span>
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">When</span>
               <input type="date" className={cn(INPUT, 'mt-1.5')} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
             <label className="block">
-              <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">Where</span>
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">Where</span>
               <input className={cn(INPUT, 'mt-1.5')} value={where} placeholder="e.g. Cedar Park — the north lawn" onChange={(e) => setWhere(e.target.value)} />
             </label>
           </div>
 
           <div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">Who went</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">Who went</span>
             <div className="flex flex-wrap gap-2 mt-2">
               {goers.map((u) => (
                 <button
@@ -698,7 +698,7 @@ function LogOutreachModal({
           </div>
 
           <div>
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">What we handed out</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">What we handed out</span>
             <div className="flex gap-4 flex-wrap mt-2">
               {(
                 [
@@ -716,7 +716,7 @@ function LogOutreachModal({
           </div>
 
           <label className="block">
-            <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">How it went</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">How it went</span>
             <textarea
               className="mt-1.5 w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
               rows={5}
@@ -728,7 +728,7 @@ function LogOutreachModal({
 
           {!editing && (
             <div>
-              <span className="text-xs font-bold text-on-surface-variant uppercase tracking-wider px-1">Who left us their number</span>
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">Who left us their number</span>
               <div className="flex flex-col gap-3 mt-2">
                 {rows.map((r) => (
                   <div key={r.key} className="rounded-2xl border border-outline-variant bg-surface-container-high p-3 space-y-2">
@@ -752,7 +752,7 @@ function LogOutreachModal({
                   </div>
                 ))}
               </div>
-              <button className="inline-flex items-center gap-1 text-sm font-semibold text-primary mt-3 cursor-pointer hover:underline" onClick={() => setRows((rs) => rs.concat({ key: nextKey.current++, name: '', contact: '', spokeWith: me, note: '' }))}>
+              <button className="inline-flex items-center gap-1 text-sm font-semibold text-accent mt-3 cursor-pointer hover:underline" onClick={() => setRows((rs) => rs.concat({ key: nextKey.current++, name: '', contact: '', spokeWith: me, note: '' }))}>
                 <Plus className="w-3 h-3" /> Another name
               </button>
               {filled.length > 0 && (
@@ -881,7 +881,7 @@ export default function Outreach() {
     <PageContainer variant="wide">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-xs font-medium uppercase tracking-wider text-on-surface-variant">Once a month, out in the open</div>
+          <div className="text-xs font-medium   text-on-surface-variant">Once a month, out in the open</div>
           <h1 className="font-serif text-3xl sm:text-4xl font-medium text-on-surface mt-1">Outreach</h1>
           <p className="text-on-surface-variant mt-2 max-w-2xl">
             {last ? (
@@ -947,7 +947,7 @@ export default function Outreach() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
+          <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
             {(
               [
                 [stats.months, 'months out'],
@@ -956,7 +956,7 @@ export default function Outreach() {
               ] as const
             ).map(([n, l]) => (
               <div key={l} className="flex items-baseline gap-2">
-                <span className="font-serif text-2xl font-medium text-on-surface">{n}</span>
+                <span className="text-2xl font-medium text-on-surface">{n}</span>
                 <span className="text-sm text-on-surface-variant">{l}</span>
               </div>
             ))}

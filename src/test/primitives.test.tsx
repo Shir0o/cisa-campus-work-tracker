@@ -7,7 +7,7 @@ import { getGreeting, stageColor } from '../components/landing/helpers';
 
 describe('statusPillClass', () => {
   it('returns active classes for each tone', () => {
-    expect(statusPillClass(true, 'ongoing')).toContain('text-primary');
+    expect(statusPillClass(true, 'ongoing')).toContain('text-accent');
     expect(statusPillClass(true, 'answered')).toContain('text-on-tertiary-container');
     expect(statusPillClass(true, 'archived')).toContain('text-on-surface-variant');
   });

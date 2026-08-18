@@ -206,7 +206,7 @@ export default function MyDayMobile({
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 md-page md-mobile" data-role="ft">
       {/* ── Mobile Hero ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 mdm-hero">
-        <div className="mdm-eyebrow text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1">
+        <div className="mdm-eyebrow text-xs   text-on-surface-variant/80 font-semibold mb-1">
           {format(new Date(), "EEEE, MMMM d")}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">
@@ -238,13 +238,13 @@ export default function MyDayMobile({
             onClick={() => onOpenContact(staleLeader.contact)}
             className="w-full flex items-center gap-3.5 bg-stage-accent-soft border border-primary/20 rounded-2xl p-4 text-left active:brightness-95 transition-all mdm-nudge"
           >
-            <div className="w-9 h-9 rounded-full bg-surface text-primary flex items-center justify-center mdm-nudge-ico shrink-0">
+            <div className="w-9 h-9 rounded-full bg-surface text-accent flex items-center justify-center mdm-nudge-ico shrink-0">
               <Heart className="w-[17px] h-[17px] fill-current" />
             </div>
             <span className="text-[14.5px] leading-snug text-on-surface-variant flex-1 mdm-nudge-txt">
               It's been <b className="font-semibold text-on-surface">{Math.max(1, Math.round(staleLeader.days / 7))} {Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? "week" : "weeks"}</b> since you sat with {staleLeader.contact.name.split(" ")[0]}. Maybe today.
             </span>
-            <ChevronRight className="w-5 h-5 text-primary shrink-0 mdm-nudge-chev" />
+            <ChevronRight className="w-5 h-5 text-accent shrink-0 mdm-nudge-chev" />
           </button>
         </div>
       )}
@@ -278,7 +278,7 @@ export default function MyDayMobile({
           </div>
         </div>
 
-        <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4 shadow-sm flex flex-col divide-y divide-outline-variant/30">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
           {/* Assigned tasks */}
           {assignedTasks.map((todo) => {
             const done = todo.status === "completed";
@@ -424,7 +424,7 @@ export default function MyDayMobile({
           ) : (
             <button
               onClick={() => setAddingTask(true)}
-              className="w-full py-2.5 text-left text-sm text-primary font-medium inline-flex items-center gap-1.5 active:text-primary-hover myd-addpp-link"
+              className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
               <Plus className="w-4 h-4" /> Add a task
             </button>
@@ -438,7 +438,7 @@ export default function MyDayMobile({
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your sheep</h2>
           <button
             onClick={() => setPickerOpen(true)}
-            className="text-xs font-semibold text-primary inline-flex items-center gap-1 dash-sec-link"
+            className="text-xs font-semibold text-accent inline-flex items-center gap-1 dash-sec-link"
           >
             <Pencil className="w-3 h-3" /> Your contacts
           </button>
@@ -452,7 +452,7 @@ export default function MyDayMobile({
                 <div
                   key={contact.id}
                   onClick={() => onOpenContact(contact)}
-                  className="flex items-center justify-between p-3.5 bg-surface rounded-2xl border border-outline-variant/40 active:bg-surface-variant/40 transition-colors mdm-person"
+                  className="flex items-center justify-between p-3.5 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/40 transition-colors mdm-person"
                 >
                   <div className="flex items-center gap-3.5 min-w-0 flex-1 mdm-person-main">
                     <Avatar contact={contact} size="md" />
@@ -478,7 +478,7 @@ export default function MyDayMobile({
                       e.stopPropagation();
                       onMessage(contact);
                     }}
-                    className="ml-3 p-2.5 bg-stage-accent-soft text-primary rounded-xl active:scale-95 transition-all mdm-person-msg"
+                    className="ml-3 p-2.5 bg-accent-soft text-accent rounded-xl active:scale-95 transition-all mdm-person-msg"
                     aria-label={`Message ${contact.name}`}
                   >
                     <MessageSquare className="w-4 h-4" />
@@ -498,14 +498,14 @@ export default function MyDayMobile({
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your week</h2>
-          <span className="text-xs text-primary font-semibold dash-sec-link">Calendar</span>
+          <span className="text-xs text-accent font-semibold dash-sec-link">Calendar</span>
         </div>
 
         {featuredEvent ? (
           <div className="space-y-3">
             {/* Featured Event Card */}
-            <div className="bg-stage-accent-soft rounded-2xl border border-primary/20 p-5 shadow-sm md-huddle">
-              <div className="text-[11px] font-bold uppercase tracking-widest text-primary md-huddle-eyebrow">
+            <div className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5  md-huddle">
+              <div className="text-[11px] font-semibold   text-accent md-huddle-eyebrow">
                 {isValid(new Date(featuredEvent.ev.date))
                   ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
                   : "This week"}{" "}
@@ -528,7 +528,7 @@ export default function MyDayMobile({
 
             {/* Rest of week */}
             {restOfWeekEvents.length > 0 && (
-              <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4 shadow-sm divide-y divide-outline-variant/30">
+              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30">
                 {restOfWeekEvents.map(({ ev }) => {
                   const d = new Date(ev.date);
                   return (
@@ -537,7 +537,7 @@ export default function MyDayMobile({
                         <div className="font-serif text-xl text-on-surface leading-none">
                           {isValid(d) ? format(d, "d") : "–"}
                         </div>
-                        <div className="text-[10px] uppercase tracking-wide text-on-surface-variant/80 mt-0.5">
+                        <div className="text-[10px]   text-on-surface-variant/80 mt-0.5">
                           {isValid(d) ? format(d, "MMM") : ""}
                         </div>
                       </div>
@@ -566,13 +566,13 @@ export default function MyDayMobile({
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your prayers</h2>
           <button
             onClick={() => setPickerOpen(true)}
-            className="text-xs font-semibold text-primary inline-flex items-center gap-1 dash-sec-link"
+            className="text-xs font-semibold text-accent inline-flex items-center gap-1 dash-sec-link"
           >
             <Pencil className="w-3 h-3" /> Your contacts
           </button>
         </div>
 
-        <div className="bg-surface rounded-2xl border border-outline-variant/50 p-4 shadow-sm flex flex-col divide-y divide-outline-variant/30">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
           {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
             <p className="text-sm text-on-surface-variant py-4 text-center">
               No prayers held currently.
@@ -624,7 +624,7 @@ export default function MyDayMobile({
           ) : (
             <button
               onClick={() => setAddPP(true)}
-              className="w-full py-2.5 text-left text-sm text-primary font-medium inline-flex items-center gap-1.5 active:text-primary-hover myd-addpp-link"
+              className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
               <Plus className="w-4 h-4" /> Add a personal prayer
             </button>
@@ -685,7 +685,7 @@ export default function MyDayMobile({
                       {c.name}
                     </span>
                     <StageChip stage={c.stage} stages={stages} />
-                    {checked && <Check className="w-4 h-4 text-primary shrink-0 ml-2" />}
+                    {checked && <Check className="w-4 h-4 text-accent shrink-0 ml-2" />}
                   </button>
                 );
               })}

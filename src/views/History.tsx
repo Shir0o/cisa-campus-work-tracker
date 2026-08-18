@@ -384,7 +384,7 @@ export default function History() {
     <PageContainer variant="wide">
       {/* Header */}
       <header className="mb-8">
-        <div className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant mb-2">
+        <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
           {todayLong}
         </div>
         <h1 className="font-serif page-title text-on-surface">Looking back</h1>
@@ -406,7 +406,7 @@ export default function History() {
               className={cn(
                 "text-[13px] px-3 py-1.5 rounded-full transition-colors",
                 kind === k.id
-                  ? "bg-surface text-on-surface shadow-sm"
+                  ? "bg-surface text-on-surface "
                   : "text-on-surface-variant hover:text-on-surface",
               )}
             >
@@ -498,7 +498,7 @@ export default function History() {
                           {a.contactId ? (
                             <button
                               onClick={() => openContact(a.contactId)}
-                              className="font-medium text-on-surface hover:text-primary hover:underline transition-colors"
+                              className="font-medium text-on-surface hover:text-accent hover:underline transition-colors"
                             >
                               {a.target}
                             </button>
@@ -522,19 +522,19 @@ export default function History() {
         </div>
       )}
 
-      {/* Quiet figures footer */}
+      {/* Quiet figures card */}
       {!loading && activities.length > 0 && (
-        <div className="mt-12 pt-6 border-t border-outline-variant flex flex-wrap items-baseline gap-x-8 gap-y-2">
+        <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{activities.length}</span>
+            <span className="text-xl text-on-surface">{activities.length}</span>
             <span className="text-[13px] text-on-surface-variant">moments noted</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{peopleRemembered}</span>
+            <span className="text-xl text-on-surface">{peopleRemembered}</span>
             <span className="text-[13px] text-on-surface-variant">people remembered</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="font-serif text-xl text-on-surface">{staff.length}</span>
+            <span className="text-xl text-on-surface">{staff.length}</span>
             <span className="text-[13px] text-on-surface-variant">hands at work</span>
           </div>
           <span className="text-[13px] text-on-surface-variant/70 italic ml-auto">

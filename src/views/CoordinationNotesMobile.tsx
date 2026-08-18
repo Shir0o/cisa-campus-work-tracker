@@ -175,7 +175,7 @@ export default function CoordinationNotesMobile({
     <div className="flex flex-col min-h-screen bg-surface-container-lowest pb-28 page dash bd-page bdoc-page bdm" data-role="ft">
       {/* Hero */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 mdm-hero bdm-hero">
-        <div className="text-xs uppercase tracking-wider text-on-surface-variant/80 font-semibold mb-1 mdm-eyebrow">
+        <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 mdm-eyebrow">
           The Board
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">{heading}</h1>
@@ -198,7 +198,7 @@ export default function CoordinationNotesMobile({
                   setMEditing(true);
                 }, 100);
               }}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline dash-sec-link"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline dash-sec-link"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>New page</span>
@@ -222,25 +222,25 @@ export default function CoordinationNotesMobile({
                 key={d.id}
                 onClick={() => openMobileDoc(d.id)}
                 className={cn(
-                  "flex items-center justify-between p-4 bg-surface border border-outline-variant/40 rounded-2xl text-left active:brightness-95 transition-all bdm-card",
+                  "flex items-center justify-between p-4 bg-surface border border-outline-variant/40 rounded-3xl text-left active:brightness-95 transition-all bdm-card",
                   isToday && "border-primary/20 bg-stage-accent-soft/30 today"
                 )}
               >
                 <div className="flex-1 min-w-0 pr-4 bdm-card-main">
                   <div className="flex flex-wrap items-center gap-1.5 mb-1.5 bdm-card-tags">
                     {d.pinned && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent bdm-pinned">
+                      <span className="text-[10px] font-semibold   px-2 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent bdm-pinned">
                         Pinned
                       </span>
                     )}
                     {isToday && (
-                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-primary text-on-primary bdm-today">
+                      <span className="text-[10px] font-semibold   px-2 py-0.5 rounded-full bg-primary text-on-primary bdm-today">
                         Today
                       </span>
                     )}
                     {d.audience && (canEdit || d.audience !== 'everyone') && (
                       <span className={cn(
-                        "text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bdoc-row-aud",
+                        "text-[10px] font-semibold   px-2 py-0.5 rounded-full bdoc-row-aud",
                         d.audience === 'everyone' ? "bg-surface-variant text-on-surface-variant" : "bg-stage-amber-soft text-stage-amber"
                       )}>
                         {BOARD_AUDIENCE[d.audience]?.label || d.audience}
@@ -254,7 +254,7 @@ export default function CoordinationNotesMobile({
                     {d.summary || mdSummary(d.md)}
                   </p>
                   {openTasksCount > 0 && canEdit && (
-                    <div className="flex items-center gap-1 mt-2 text-xs text-primary font-bold bdm-card-todo">
+                    <div className="flex items-center gap-1 mt-2 text-xs text-accent font-semibold bdm-card-todo">
                       <CheckSquare className="w-3.5 h-3.5" />
                       <span>{openTasksCount} to do</span>
                     </div>

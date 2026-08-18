@@ -118,14 +118,14 @@ export default function TodoRow({
             className={cn(
               "block text-left text-on-surface flex-1",
               isDone && "line-through text-on-surface-variant",
-              onEdit && "hover:text-primary transition-colors cursor-pointer",
+              onEdit && "hover:text-accent transition-colors cursor-pointer",
             )}
           >
             {todo.title}
           </button>
           {hasSubtasks && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/50">
-              <ListChecks className="w-3 h-3 text-primary" />
+              <ListChecks className="w-3 h-3 text-accent" />
               {completedSubtasksCount}/{subtasks.length}
             </span>
           )}
@@ -143,7 +143,7 @@ export default function TodoRow({
                   type="checkbox"
                   checked={st.done}
                   onChange={(e) => handleSubtaskToggle(st.id, e.target.checked)}
-                  className="w-3.5 h-3.5 rounded border-outline-variant text-primary focus:ring-primary/20 accent-primary"
+                  className="w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
                 />
                 <span className={cn(st.done && "line-through text-on-surface-variant/60")}>
                   {st.title}
@@ -168,7 +168,7 @@ export default function TodoRow({
                 onClick={onJumpToSource ? () => onJumpToSource(todo.sourceDocId as string) : undefined}
                 disabled={!onJumpToSource}
                 className={cn(
-                  "inline-flex items-center gap-1 text-primary font-medium max-w-[16rem] truncate",
+                  "inline-flex items-center gap-1 text-accent font-medium max-w-[16rem] truncate",
                   onJumpToSource && "hover:underline cursor-pointer",
                 )}
                 title={todo.sourceDocTitle}
@@ -182,7 +182,7 @@ export default function TodoRow({
                 type="button"
                 onClick={onContactClick ? () => onContactClick(todo.contactId as string) : undefined}
                 disabled={!onContactClick}
-                className={cn("text-primary font-medium", onContactClick && "hover:underline cursor-pointer")}
+                className={cn("text-accent font-medium", onContactClick && "hover:underline cursor-pointer")}
               >
                 {todo.contactName}
               </button>

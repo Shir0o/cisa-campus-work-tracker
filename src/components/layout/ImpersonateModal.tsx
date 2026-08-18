@@ -91,7 +91,7 @@ export default function ImpersonateModal({
                   className={cn(
                     'px-2.5 py-1 rounded-full border transition-all font-medium',
                     active
-                      ? 'bg-primary text-on-primary border-primary shadow-sm'
+                      ? 'bg-primary text-on-primary border-primary '
                       : 'bg-surface border-outline-variant/60 text-on-surface hover:bg-surface-container-high',
                   )}
                 >

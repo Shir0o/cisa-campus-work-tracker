@@ -204,7 +204,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-on-surface">Sync Google Sheet</h2>
+                  <h2 className="text-xl font-semibold text-on-surface">Sync Google Sheet</h2>
                   <p className="text-xs text-on-surface-variant">Update attendance from a spreadsheet</p>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
               {!dryRunData ? (
                 <>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-on-surface-variant ml-1">Sheet URL or ID</label>
+                    <label className="text-sm font-semibold text-on-surface-variant ml-1">Sheet URL or ID</label>
                     <input
                       type="text"
                       value={sheetUrl}
@@ -233,7 +233,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-on-surface-variant ml-1">Tab Name</label>
+                      <label className="text-sm font-semibold text-on-surface-variant ml-1">Tab Name</label>
                       <input
                         type="text"
                         value={tabName}
@@ -243,7 +243,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-bold text-on-surface-variant ml-1">Range</label>
+                      <label className="text-sm font-semibold text-on-surface-variant ml-1">Range</label>
                       <input
                         type="text"
                         value={range}
@@ -262,26 +262,26 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 >
                   <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-primary uppercase tracking-wider">Sync Preview</h4>
+                      <h4 className="text-xs font-semibold text-accent  ">Sync Preview</h4>
                       <button 
                         onClick={() => setDryRunData(null)}
-                        className="text-[10px] text-on-surface-variant hover:text-primary transition-colors font-bold"
+                        className="text-[10px] text-on-surface-variant hover:text-accent transition-colors font-semibold"
                       >
                         Edit Config
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30">
-                        <div className="text-lg font-black text-primary">{dryRunData.newContacts.length}</div>
-                        <div className="text-[10px] font-bold text-on-surface-variant">New Contacts</div>
+                        <div className="text-lg font-semibold text-accent">{dryRunData.newContacts.length}</div>
+                        <div className="text-[10px] font-semibold text-on-surface-variant">New Contacts</div>
                       </div>
                       <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30">
-                        <div className="text-lg font-black text-primary">{dryRunData.updates.length}</div>
-                        <div className="text-[10px] font-bold text-on-surface-variant">Updates</div>
+                        <div className="text-lg font-semibold text-accent">{dryRunData.updates.length}</div>
+                        <div className="text-[10px] font-semibold text-on-surface-variant">Updates</div>
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <div className="text-[10px] font-bold text-on-surface-variant flex items-center justify-between">
+                      <div className="text-[10px] font-semibold text-on-surface-variant flex items-center justify-between">
                         <span>Participants to Sync</span>
                         <span>{dryRunData.displayRows.length} rows</span>
                       </div>
@@ -290,12 +290,12 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                           <div key={idx} className="flex items-center justify-between text-[10px] bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/10">
                             <div className="flex items-center gap-2 overflow-hidden">
                               <span className={cn(
-                                "px-1.5 py-0.5 rounded text-[8px] font-black uppercase",
+                                "px-1.5 py-0.5 rounded text-[8px] font-semibold ",
                                 row.status === 'new' ? "bg-primary text-on-primary" : "bg-outline-variant text-on-surface-variant"
                               )}>
                                 {row.status}
                               </span>
-                              <span className="font-bold text-on-surface truncate">{row.identifier}</span>
+                              <span className="font-semibold text-on-surface truncate">{row.identifier}</span>
                             </div>
                             <span className="text-on-surface-variant shrink-0">{row.count} events</span>
                           </div>
@@ -304,14 +304,14 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                     </div>
 
                     <div className="space-y-1">
-                      <div className="text-[10px] font-bold text-on-surface-variant">Event Mappings</div>
+                      <div className="text-[10px] font-semibold text-on-surface-variant">Event Mappings</div>
                       <div className="space-y-1">
                         {Object.entries(dryRunData.eventMappings).map(([header, status]) => (
                           <div key={header} className="flex items-start gap-2 text-[10px] bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/10">
-                            <div className="font-bold text-on-surface w-1/3 truncate">{header}</div>
+                            <div className="font-semibold text-on-surface w-1/3 truncate">{header}</div>
                             <div className={cn(
                               "w-2/3 italic",
-                              (status as string).startsWith('Matches') ? "text-primary" : "text-secondary"
+                              (status as string).startsWith('Matches') ? "text-accent" : "text-secondary"
                             )}>{status as string}</div>
                           </div>
                         ))}
@@ -321,9 +321,9 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 </motion.div>
               )}
 
-              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
-                <h4 className="text-xs font-black uppercase tracking-widest text-on-surface-variant flex items-center gap-2">
-                  <Sparkles className="w-3 h-3 text-primary" />
+              <div className="p-4 rounded-3xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
+                <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-2">
+                  <Sparkles className="w-3 h-3 text-accent" />
                   Sync Protocol
                 </h4>
                 <ul className="text-[11px] text-on-surface-variant space-y-1.5 list-disc pl-4 leading-relaxed">
@@ -359,9 +359,9 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 onClick={dryRunData ? commitSync : handleDryRun}
                 disabled={loading || (!sheetUrl && !dryRunData) || !isAdmin}
                 className={cn(
-                  "w-full h-12 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all active:scale-95 relative overflow-hidden",
+                  "w-full h-12 rounded-2xl font-semibold flex items-center justify-center gap-2 transition-all active:scale-95 relative overflow-hidden",
                   loading ? "bg-surface-container text-on-surface-variant cursor-not-allowed" : 
-                  (dryRunData ? "bg-primary text-on-primary hover:shadow-lg hover:shadow-primary/25" : "bg-primary-container text-on-primary-container hover:bg-primary/20")
+                  (dryRunData ? "bg-primary text-on-primary  hover:" : "bg-primary-container text-on-primary-container hover:bg-primary/20")
                 )}
               >
                 {loading ? (

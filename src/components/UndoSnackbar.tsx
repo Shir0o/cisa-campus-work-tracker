@@ -31,7 +31,7 @@ export function UndoSnackbar({
                   undoSnack.onUndo();
                   onClose();
                 }}
-                className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-bold hover:opacity-90 active:scale-95 transition-all"
+                className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
               >
                 Undo
               </button>

@@ -232,7 +232,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
         {/* Header */}
         <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+            <div className="p-2.5 rounded-xl bg-primary/10 text-accent">
               <Wand2 className="w-5 h-5" />
             </div>
             <div>
@@ -269,7 +269,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 </label>
                 <button
                   onClick={() => setInputText(SAMPLE_TEXT)}
-                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                  className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
                 >
                   <Sparkles className="w-3.5 h-3.5" /> Load sample text
                 </button>
@@ -285,7 +285,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
               <div className="p-4 rounded-xl bg-surface-container-high border border-outline-variant text-xs text-on-surface-variant space-y-1">
                 <p className="font-semibold text-on-surface flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-primary" /> What Gemini AI extracts:
+                  <Sparkles className="w-4 h-4 text-accent" /> What Gemini AI extracts:
                 </p>
                 <ul className="list-disc list-inside space-y-1 pl-1">
                   <li><b>Contacts:</b> Names, emails, phones, stages, tags, spiritual background, & matching existing contacts.</li>
@@ -300,8 +300,8 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           {step === 'parsing' && (
             <div className="py-16 text-center space-y-4">
               <div className="relative inline-flex items-center justify-center">
-                <Loader2 className="w-12 h-12 text-primary animate-spin" />
-                <Sparkles className="w-5 h-5 text-primary absolute" />
+                <Loader2 className="w-12 h-12 text-accent animate-spin" />
+                <Sparkles className="w-5 h-5 text-accent absolute" />
               </div>
               <h3 className="font-serif text-lg font-medium">Parsing text with Gemini AI...</h3>
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
@@ -316,7 +316,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               {/* Summary Bar & Selection Toggle */}
               <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-high border border-outline-variant">
                 <div className="flex items-center gap-4 text-sm font-medium">
-                  <span className="flex items-center gap-1.5 text-primary">
+                  <span className="flex items-center gap-1.5 text-accent">
                     <User className="w-4 h-4" /> {parsedContacts.length} Contacts
                   </span>
                   <span className="flex items-center gap-1.5 text-secondary">
@@ -348,7 +348,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                   onClick={() => setActiveTab('all')}
                   className={`pb-2 px-3 border-b-2 transition-colors ${
                     activeTab === 'all'
-                      ? 'border-primary text-primary font-semibold'
+                      ? 'border-primary text-accent font-semibold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -358,7 +358,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                   onClick={() => setActiveTab('contacts')}
                   className={`pb-2 px-3 border-b-2 transition-colors ${
                     activeTab === 'contacts'
-                      ? 'border-primary text-primary font-semibold'
+                      ? 'border-primary text-accent font-semibold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -368,7 +368,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                   onClick={() => setActiveTab('interactions')}
                   className={`pb-2 px-3 border-b-2 transition-colors ${
                     activeTab === 'interactions'
-                      ? 'border-primary text-primary font-semibold'
+                      ? 'border-primary text-accent font-semibold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -378,7 +378,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                   onClick={() => setActiveTab('discussions')}
                   className={`pb-2 px-3 border-b-2 transition-colors ${
                     activeTab === 'discussions'
-                      ? 'border-primary text-primary font-semibold'
+                      ? 'border-primary text-accent font-semibold'
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -391,8 +391,8 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {/* CONTACTS SECTION */}
                 {(activeTab === 'all' || activeTab === 'contacts') && parsedContacts.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-primary" /> Contacts ({parsedContacts.length})
+                    <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-accent" /> Contacts ({parsedContacts.length})
                     </h4>
                     {parsedContacts.map((contact) => {
                       const itemKey = `c_${contact.tempId}`;
@@ -416,10 +416,10 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                     prev.map((c) => (c.tempId === contact.tempId ? { ...c, selected: !c.selected } : c))
                                   )
                                 }
-                                className="mt-0.5 text-primary focus:outline-none"
+                                className="mt-0.5 text-accent focus:outline-none"
                               >
                                 {contact.selected ? (
-                                  <CheckSquare className="w-5 h-5 text-primary" />
+                                  <CheckSquare className="w-5 h-5 text-accent" />
                                 ) : (
                                   <Square className="w-5 h-5 text-on-surface-variant" />
                                 )}
@@ -557,7 +557,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {/* INTERACTIONS SECTION */}
                 {(activeTab === 'all' || activeTab === 'interactions') && parsedInteractions.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
                       <MessageSquare className="w-3.5 h-3.5 text-secondary" /> Interactions / 1-on-1s ({parsedInteractions.length})
                     </h4>
                     {parsedInteractions.map((interaction) => {
@@ -700,7 +700,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {/* DISCUSSIONS SECTION */}
                 {(activeTab === 'all' || activeTab === 'discussions') && parsedDiscussions.length > 0 && (
                   <div className="space-y-3">
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                    <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-tertiary" /> Discussions / Board Notes ({parsedDiscussions.length})
                     </h4>
                     {parsedDiscussions.map((discussion) => {
@@ -839,7 +839,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           {/* STEP 4: IMPORTING */}
           {step === 'importing' && (
             <div className="py-16 text-center space-y-4">
-              <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto" />
+              <Loader2 className="w-12 h-12 text-accent animate-spin mx-auto" />
               <h3 className="font-serif text-lg font-medium">Writing items to database...</h3>
               <p className="text-sm text-on-surface-variant">
                 Saving confirmed contacts, interaction logs, and discussion docs into Firestore.
@@ -853,7 +853,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
                 <Check className="w-8 h-8" />
               </div>
-              <h3 className="font-serif text-2xl font-bold">Import Completed!</h3>
+              <h3 className="font-serif text-2xl font-semibold">Import Completed!</h3>
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
                 Successfully added {importSummary.contactsCount} contacts, logged {importSummary.interactionsCount} interactions, and created {importSummary.discussionsCount} discussion docs.
               </p>

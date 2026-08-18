@@ -49,7 +49,7 @@ export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
         backgroundColor: tone.band,
       }}
     >
-      <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), letterSpacing: 0.3, color: tone.text }}>
+      <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: tone.text }}>
         {BOARD_AUDIENCE[audience].label}
       </Text>
     </View>
@@ -82,7 +82,7 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
           {dayNum(doc.date)}
         </Text>
         <Text
-          style={{ fontFamily: font.bold, fontSize: fs(9.5), letterSpacing: 0.9, color: c.card.ink3, marginTop: 4 }}
+          style={{ fontFamily: font.bold, fontSize: fs(9.5), color: c.card.ink3, marginTop: 4 }}
         >
           {weekdayShort(doc.date).toUpperCase()}
         </Text>

@@ -30,7 +30,7 @@ export default function PrivacyPolicy() {
             <Shield className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Privacy Policy</h1>
+            <h1 className="text-2xl font-semibold text-slate-100">Privacy Policy</h1>
             <p className="text-sm text-slate-400">Enterprise Access & Data Protection Notice</p>
           </div>
         </div>

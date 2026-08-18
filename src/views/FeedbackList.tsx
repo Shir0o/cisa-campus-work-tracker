@@ -214,7 +214,7 @@ export default function FeedbackList() {
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-bold mb-4 text-on-background">Access Denied</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-on-background">Access Denied</h2>
           <p className="text-on-surface-variant leading-relaxed mb-6">
             You must be a Full-timer to view and manage user feedback submissions.
             If you believe this is an error, please get in touch with a Full-timer.
@@ -252,21 +252,21 @@ export default function FeedbackList() {
     switch (status) {
       case 'resolved':
         return (
-          <span className="flex items-center gap-1.5 py-1 px-3 bg-green-500/10 text-green-700 dark:text-green-400 font-bold text-xs rounded-full">
+          <span className="flex items-center gap-1.5 py-1 px-3 bg-green-500/10 text-green-700 dark:text-green-400 font-semibold text-xs rounded-full">
             <CheckCircle className="w-3.5 h-3.5" />
             Resolved
           </span>
         );
       case 'in_progress':
         return (
-          <span className="flex items-center gap-1.5 py-1 px-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-bold text-xs rounded-full">
+          <span className="flex items-center gap-1.5 py-1 px-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold text-xs rounded-full">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
             In Progress
           </span>
         );
       default:
         return (
-          <span className="flex items-center gap-1.5 py-1 px-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 font-bold text-xs rounded-full">
+          <span className="flex items-center gap-1.5 py-1 px-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold text-xs rounded-full">
             <Clock className="w-3.5 h-3.5" />
             New
           </span>
@@ -300,30 +300,30 @@ export default function FeedbackList() {
         
         {/* Metric counts */}
         <div className="flex gap-3">
-          <div className="bg-surface-container border border-outline-variant rounded-2xl py-2 px-4 shadow-xs text-center min-w-[90px]">
-            <p className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Total</p>
-            <p className="text-xl font-bold text-on-surface">{feedback.length}</p>
+          <div className="bg-surface-container border border-outline-variant rounded-2xl py-2 px-4  text-center min-w-[90px]">
+            <p className="text-[10px] font-semibold text-on-surface-variant  ">Total</p>
+            <p className="text-xl font-semibold text-on-surface">{feedback.length}</p>
           </div>
-          <div className="bg-error-container/15 border border-error-container/20 rounded-2xl py-2 px-4 shadow-xs text-center min-w-[90px]">
-            <p className="text-[10px] font-bold text-error uppercase tracking-wider">Bugs</p>
-            <p className="text-xl font-bold text-error">{feedback.filter(f => f.type === 'bug').length}</p>
+          <div className="bg-error-container/15 border border-error-container/20 rounded-2xl py-2 px-4  text-center min-w-[90px]">
+            <p className="text-[10px] font-semibold text-error  ">Bugs</p>
+            <p className="text-xl font-semibold text-error">{feedback.filter(f => f.type === 'bug').length}</p>
           </div>
-          <div className="bg-primary-container/15 border border-primary-container/20 rounded-2xl py-2 px-4 shadow-xs text-center min-w-[90px]">
-            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">Requests</p>
-            <p className="text-xl font-bold text-primary">{feedback.filter(f => f.type === 'enhancement').length}</p>
+          <div className="bg-primary-container/15 border border-primary-container/20 rounded-2xl py-2 px-4  text-center min-w-[90px]">
+            <p className="text-[10px] font-semibold text-accent  ">Requests</p>
+            <p className="text-xl font-semibold text-accent">{feedback.filter(f => f.type === 'enhancement').length}</p>
           </div>
         </div>
       </div>
 
       {/* Control panel containing tabs, search, and filters */}
-      <div className="bg-surface-container border border-outline-variant p-4 sm:p-5 rounded-3xl space-y-4 shadow-sm">
+      <div className="bg-surface-container border border-outline-variant p-4 sm:p-5 rounded-3xl space-y-4 ">
         <div className="flex flex-col lg:flex-row gap-4 lg:items-center justify-between">
           
           {/* Segmented active tab buttons */}
           <div className="flex flex-wrap gap-1.5 bg-surface p-1 rounded-2xl border border-outline-variant self-start">
             <button
               onClick={() => setActiveTab('all')}
-              className={`py-1.5 px-4 rounded-xl font-bold text-xs transition-all border-none ${
+              className={`py-1.5 px-4 rounded-xl font-semibold text-xs transition-all border-none ${
                 activeTab === 'all'
                   ? 'bg-primary text-on-primary'
                   : 'text-on-surface-variant hover:bg-surface-container-high'
@@ -338,7 +338,7 @@ export default function FeedbackList() {
                 <button
                   key={k.id}
                   onClick={() => setActiveTab(k.id)}
-                  className={`flex items-center gap-1.5 py-1.5 px-4 rounded-xl font-bold text-xs transition-all border-none ${
+                  className={`flex items-center gap-1.5 py-1.5 px-4 rounded-xl font-semibold text-xs transition-all border-none ${
                     on
                       ? `${TONE_CLASSES[k.tone].chip}`
                       : 'text-on-surface-variant hover:bg-surface-container-high'
@@ -405,7 +405,7 @@ export default function FeedbackList() {
       ) : filteredFeedback.length === 0 ? (
         <div className="bg-surface-container border border-outline-variant border-dashed rounded-3xl p-16 text-center">
           <Archive className="w-12 h-12 text-on-surface-variant/40 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-on-surface mb-1">No feedback found</h3>
+          <h3 className="text-lg font-semibold text-on-surface mb-1">No feedback found</h3>
           <p className="text-xs text-on-surface-variant">There are no feedback submissions that match your query.</p>
         </div>
       ) : (
@@ -423,7 +423,7 @@ export default function FeedbackList() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 layout
-                className={`bg-surface-container border border-outline-variant p-5 sm:p-6 rounded-3xl shadow-sm transition-all flex flex-col gap-5 relative overflow-hidden ${
+                className={`bg-surface-container border border-outline-variant p-5 sm:p-6 rounded-3xl  transition-all flex flex-col gap-5 relative overflow-hidden ${
                   item.status === 'resolved' ? 'opacity-70 group' : ''
                 }`}
               >
@@ -434,11 +434,11 @@ export default function FeedbackList() {
                   {/* Submitter User Details */}
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-bold text-on-surface text-base">{item.userName}</span>
+                      <span className="font-semibold text-on-surface text-base">{item.userName}</span>
                       <span className="text-xs text-on-surface-variant/80 font-mono">({item.userEmail})</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
-                      <span className={`flex items-center gap-1 text-xs font-bold py-0.5 px-2 rounded-md ${tone.chip}`}>
+                      <span className={`flex items-center gap-1 text-xs font-semibold py-0.5 px-2 rounded-md ${tone.chip}`}>
                         <KindIcon className="w-3 h-3" />
                         {meta.label}
                       </span>
@@ -450,7 +450,7 @@ export default function FeedbackList() {
                   {/* Actions & Status Dropdown on Top Right */}
                   <div className="flex flex-wrap items-center gap-2.5 self-start sm:self-center">
                     {isLinkingId === item.id ? (
-                      <div className="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl p-1.5 shadow-xs">
+                      <div className="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl p-1.5 ">
                         <input
                           type="text"
                           placeholder="Paste issue URL or #number..."
@@ -465,13 +465,13 @@ export default function FeedbackList() {
                         />
                         <button
                           onClick={() => handleSaveLink(item.id)}
-                          className="px-2 py-1 bg-primary text-on-primary rounded-lg text-[10px] font-bold border-none cursor-pointer"
+                          className="px-2 py-1 bg-primary text-on-primary rounded-lg text-[10px] font-semibold border-none cursor-pointer"
                         >
                           Link
                         </button>
                         <button
                           onClick={() => setIsLinkingId(null)}
-                          className="px-2 py-1 bg-surface-container-high text-on-surface-variant rounded-lg text-[10px] font-bold border-none cursor-pointer"
+                          className="px-2 py-1 bg-surface-container-high text-on-surface-variant rounded-lg text-[10px] font-semibold border-none cursor-pointer"
                         >
                           Cancel
                         </button>
@@ -484,7 +484,7 @@ export default function FeedbackList() {
                               href={item.githubIssueUrl}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="flex items-center gap-1.5 py-1 px-3 bg-neutral-500/10 text-neutral-700 dark:text-neutral-400 hover:bg-neutral-500/20 font-bold text-xs rounded-full transition-all"
+                              className="flex items-center gap-1.5 py-1 px-3 bg-neutral-500/10 text-neutral-700 dark:text-neutral-400 hover:bg-neutral-500/20 font-semibold text-xs rounded-full transition-all"
                               title="View GitHub Issue"
                             >
                               <Github className="w-3.5 h-3.5" />
@@ -495,7 +495,7 @@ export default function FeedbackList() {
                                 setIsLinkingId(item.id);
                                 setLinkInput(item.githubIssueUrl || '');
                               }}
-                              className="p-1 text-on-surface-variant hover:text-primary rounded-full transition-colors border-none cursor-pointer"
+                              className="p-1 text-on-surface-variant hover:text-accent rounded-full transition-colors border-none cursor-pointer"
                               title="Edit GitHub Link"
                             >
                               <Link className="w-3.5 h-3.5" />
@@ -511,14 +511,14 @@ export default function FeedbackList() {
                         ) : (
                           <div className="flex items-center gap-1.5">
                             <span
-                              className="text-[10px] font-semibold text-on-surface-variant/60 uppercase tracking-wide"
+                              className="text-[10px] font-semibold text-on-surface-variant/60  "
                               title="No GitHub issue was auto-created for this item — the server-side GitHub integration may not be configured. Use Create Issue or Link to attach one manually."
                             >
                               Not auto-synced
                             </span>
                             <button
                               onClick={() => handleCreateGitHubIssue(item)}
-                              className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-primary hover:bg-primary/20 font-bold text-xs rounded-full transition-all border-none cursor-pointer"
+                              className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-accent hover:bg-primary/20 font-semibold text-xs rounded-full transition-all border-none cursor-pointer"
                               title="Create prefilled GitHub Issue"
                             >
                               <Github className="w-3.5 h-3.5" />
@@ -529,7 +529,7 @@ export default function FeedbackList() {
                                 setIsLinkingId(item.id);
                                 setLinkInput('');
                               }}
-                              className="p-1 text-on-surface-variant hover:text-primary rounded-full transition-colors border-none cursor-pointer"
+                              className="p-1 text-on-surface-variant hover:text-accent rounded-full transition-colors border-none cursor-pointer"
                               title="Link existing GitHub Issue"
                             >
                               <Link className="w-3.5 h-3.5" />
@@ -557,8 +557,8 @@ export default function FeedbackList() {
                           onClick={() => handleToggleArchive(item.id, !item.archived)}
                           className={`p-1.5 rounded-full transition-colors border-none cursor-pointer ${
                             item.archived
-                              ? 'text-primary hover:bg-primary-container/20'
-                              : 'text-on-surface-variant hover:text-primary hover:bg-primary/10'
+                              ? 'text-accent hover:bg-primary-container/20'
+                              : 'text-on-surface-variant hover:text-accent hover:bg-primary/10'
                           }`}
                           title={item.archived ? "Restore from Archive" : "Archive Feedback"}
                         >
@@ -578,7 +578,7 @@ export default function FeedbackList() {
                 </div>
 
                 {/* Feedback Message Content */}
-                <div className="bg-surface/50 border border-outline-variant/40 rounded-2xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
+                <div className="bg-surface/50 border border-outline-variant/40 rounded-3xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
                   {item.message}
                 </div>
 
@@ -587,8 +587,8 @@ export default function FeedbackList() {
                   <div className="flex flex-col gap-1.5 text-xs text-on-surface-variant/80 border-t border-outline-variant/30 pt-3 pl-2 font-mono">
                     {item.url && (
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="font-bold text-on-surface">URL:</span>
-                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary truncate">
+                        <span className="font-semibold text-on-surface">URL:</span>
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent truncate">
                           {item.url}
                         </a>
                       </div>
@@ -596,12 +596,12 @@ export default function FeedbackList() {
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {item.viewport && (
                         <div>
-                          <span className="font-bold text-on-surface">Viewport:</span> {item.viewport}
+                          <span className="font-semibold text-on-surface">Viewport:</span> {item.viewport}
                         </div>
                       )}
                       {item.userAgent && (
                         <div className="truncate max-w-md" title={item.userAgent}>
-                          <span className="font-bold text-on-surface">User Agent:</span> {item.userAgent}
+                          <span className="font-semibold text-on-surface">User Agent:</span> {item.userAgent}
                         </div>
                       )}
                     </div>
@@ -610,10 +610,10 @@ export default function FeedbackList() {
 
                 {item.screenshot && (
                   <details className="text-xs text-on-surface-variant pl-2 cursor-pointer mt-3">
-                    <summary className="font-semibold select-none hover:text-primary list-item">
+                    <summary className="font-semibold select-none hover:text-accent list-item">
                       View Screenshot
                     </summary>
-                    <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface shadow-xs relative group">
+                    <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface  relative group">
                       <img
                         src={item.screenshot}
                         alt="Captured Screenshot"
@@ -623,7 +623,7 @@ export default function FeedbackList() {
                       />
                       <div
                         onClick={() => setEnlargedImage(item.screenshot)}
-                        className="absolute bottom-2 right-2 px-2.5 py-1 bg-surface/90 text-on-surface text-[11px] font-medium rounded-lg border border-outline-variant/50 shadow-xs backdrop-blur-xs flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
+                        className="absolute bottom-2 right-2 px-2.5 py-1 bg-surface/90 text-on-surface text-[11px] font-medium rounded-lg border border-outline-variant/50  backdrop-blur-xs flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
                       >
                         <ZoomIn className="w-3.5 h-3.5" /> Click to enlarge
                       </div>

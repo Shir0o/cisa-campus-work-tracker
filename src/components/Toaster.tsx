@@ -100,13 +100,13 @@ export default function Toaster() {
 
               <div className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center shrink-0 border",
-                "bg-surface border-outline-variant shadow-sm"
+                "bg-surface border-outline-variant "
               )}>
                 {getIcon(toast.type)}
               </div>
               
               <div className="flex-1 min-w-0 py-0.5">
-                <p className="text-sm font-bold text-on-surface mb-0.5">{toast.title}</p>
+                <p className="text-sm font-semibold text-on-surface mb-0.5">{toast.title}</p>
                 <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">
                   {toast.message}
                 </p>

@@ -178,7 +178,7 @@ export default function Visits() {
     <PageContainer variant="wide">
       <header className="flex items-start gap-6 flex-wrap mb-2">
         <div className="min-w-0">
-          <div className="font-sans text-[11px] uppercase tracking-[0.08em] text-on-surface-variant mb-2">
+          <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
             Where we've been
           </div>
           <h1 className="font-serif page-title text-on-surface">Visits</h1>
@@ -228,10 +228,10 @@ export default function Visits() {
                 {overdue.map(({ contact, visit, daysAgo }) => (
                   <div
                     key={contact.id}
-                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant shadow-sm transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px hover:shadow-lg"
+                    className="grid grid-cols-1 sm:grid-cols-[1fr_auto] items-center gap-[18px] px-5 py-[18px] rounded-[14px] bg-surface border border-outline-variant  transition-[border-color,transform,box-shadow] duration-150 hover:border-primary/30 hover:-translate-y-px "
                   >
                     <div className="flex items-start gap-4 min-w-0">
-                      <span className="w-10 h-10 rounded-full bg-primary/10 text-primary grid place-items-center text-xs font-bold shrink-0">
+                      <span className="w-10 h-10 rounded-full bg-primary/10 text-accent grid place-items-center text-xs font-semibold shrink-0">
                         {initialsOf(contact.name)}
                       </span>
                       <div className="min-w-0">
@@ -269,7 +269,7 @@ export default function Visits() {
           <VisitGroup title="Earlier" list={groups.earlier} {...groupProps} />
 
           {visits.length === 0 && (
-            <div className="mt-10 p-8 rounded-2xl bg-surface border border-outline-variant text-center">
+            <div className="mt-10 p-8 rounded-3xl bg-surface border border-outline-variant text-center">
               <House className="w-7 h-7 text-on-surface-variant mx-auto mb-4" />
               <p className="text-base text-on-surface-variant leading-relaxed max-w-lg mx-auto">
                 Nothing here yet. A visit gets written down after you've been — who you saw, where, and what you'd want
@@ -284,14 +284,14 @@ export default function Visits() {
             </div>
           )}
 
-          <footer className="mt-12 pt-6 border-t border-outline-variant flex items-end gap-10 flex-wrap">
+          <footer className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex items-end gap-10 flex-wrap">
             {[
               { n: stats.visits, l: 'visits' },
               { n: stats.peopleSeen, l: "people we've sat with" },
               { n: stats.wentOut, l: 'of us have gone out' },
             ].map((f) => (
               <div key={f.l} className="flex flex-col gap-1">
-                <span className="font-serif text-2xl leading-none text-on-surface">{f.n}</span>
+                <span className="text-2xl leading-none text-on-surface">{f.n}</span>
                 <span className="text-xs text-on-surface-variant">{f.l}</span>
               </div>
             ))}

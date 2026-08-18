@@ -251,7 +251,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
                     }}
                     className={`py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
                       isActive
-                        ? 'bg-primary text-on-primary shadow-sm'
+                        ? 'bg-primary text-on-primary '
                         : 'text-on-surface-variant hover:bg-surface-container-high'
                     }`}
                   >
@@ -278,7 +278,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
             <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-surface-container-lowest">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-2 text-on-surface-variant">
-                  <Loader2 className="w-7 h-7 animate-spin text-primary" />
+                  <Loader2 className="w-7 h-7 animate-spin text-accent" />
                   <span className="text-xs">Loading items...</span>
                 </div>
               ) : filteredItems.length === 0 ? (
@@ -301,7 +301,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
                       </p>
                     </div>
                     {item.status && (
-                      <span className={`text-[8.5px] font-bold uppercase rounded px-1.5 py-0.5 shrink-0 ${
+                      <span className={`text-[8.5px] font-semibold  rounded px-1.5 py-0.5 shrink-0 ${
                         item.status === 'completed' || item.status === 'resolved' || item.status === 'answered'
                           ? 'bg-success/10 text-success'
                           : item.status === 'pending' || item.status === 'new'

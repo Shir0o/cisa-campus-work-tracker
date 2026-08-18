@@ -36,8 +36,8 @@ export function NextUp({
         style={{
           fontFamily: font.bold,
           fontSize: fs(10.5),
-          letterSpacing: 1.26,
-          textTransform: 'uppercase',
+          
+          
           // `.mbr-tag{color:var(--mb-warm)}` — the widget layer's terracotta,
           // which unlike `card.warm` does not shift at night.
           color: c.widget.warm,
