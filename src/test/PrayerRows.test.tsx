@@ -106,7 +106,7 @@ describe('TeamPrayerRow', () => {
     expect(screen.queryByText(/How was it answered/)).not.toBeInTheDocument();
   });
 
-  it('does nothing when the prayer is on its prayer page', () => {
+  it('updates prayer status even when prayer has prayerPage true', () => {
     const onUpdateStatus = vi.fn();
     render(
       <TeamPrayerRow
@@ -118,7 +118,7 @@ describe('TeamPrayerRow', () => {
       />
     );
     fireEvent.click(screen.getByText('answered'));
-    expect(onUpdateStatus).not.toHaveBeenCalled();
+    expect(onUpdateStatus).toHaveBeenCalled();
   });
 
   it('opens the contact and the prayer log', () => {

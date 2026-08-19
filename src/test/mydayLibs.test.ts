@@ -188,3 +188,36 @@ describe('messaging.openMessage', () => {
     expect(openSpy).toHaveBeenCalledWith('https://messages.google.com/web/', '_blank', 'noopener');
   });
 });
+
+import { parseMs, daysSince, connectedLabel } from '../components/landing/helpers';
+
+describe('landing helpers', () => {
+  it('parses ISO strings, Timestamps, and numbers in parseMs', () => {
+    expect(parseMs(null)).toBeNull();
+    expect(parseMs(undefined)).toBeNull();
+    expect(parseMs('')).toBeNull();
+    expect(parseMs('invalid')).toBeNull();
+
+    const iso = '2026-08-19T10:00:00.000Z';
+    const expected = new Date(iso).getTime();
+    expect(parseMs(iso)).toBe(expected);
+
+    // Number timestamp
+    expect(parseMs(expected)).toBe(expected);
+
+    // Firestore Timestamp with toMillis
+    expect(parseMs({ toMillis: () => 123456789 })).toBe(123456789);
+
+    // Firestore Timestamp with toDate
+    expect(parseMs({ toDate: () => new Date(iso) })).toBe(expected);
+
+    // Timestamp with seconds
+    expect(parseMs({ seconds: 1700000000 })).toBe(1700000000000);
+  });
+
+  it('formats connectedLabel accurately', () => {
+    expect(connectedLabel(0)).toBe('Connected today');
+    expect(connectedLabel(1)).toBe('Last connected yesterday');
+    expect(connectedLabel(5)).toBe('Last connected 5 days ago');
+  });
+});

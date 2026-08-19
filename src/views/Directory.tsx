@@ -34,8 +34,12 @@ import CombineTagsModal from '../components/modals/CombineTagsModal';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
-const parseMs = (s?: string | null): number | null => {
+const parseMs = (s?: any): number | null => {
   if (!s) return null;
+  if (typeof s?.toMillis === 'function') return s.toMillis();
+  if (typeof s?.toDate === 'function') return s.toDate().getTime();
+  if (typeof s?.seconds === 'number') return s.seconds * 1000;
+  if (typeof s === 'number') return Number.isNaN(s) ? null : s;
   const t = new Date(s).getTime();
   return Number.isNaN(t) ? null : t;
 };
@@ -185,9 +189,10 @@ export default function Directory() {
     ) =>
       snap.docs.map((d) => {
         const data = d.data() as Record<string, unknown>;
+        const rawDate = data.dateTime || data.createdAt || data.date;
         return {
           contactId: d.ref.path.split('/')[1],
-          ms: new Date((data.createdAt as string) ?? '').getTime(),
+          ms: parseMs(rawDate) ?? NaN,
           note: ((data[noteKey] as string) ?? '').trim(),
         };
       });
@@ -706,7 +711,10 @@ export default function Directory() {
             const isStage = stagesData.some(s => s.label === contact.stage);
             const tStyle = isStage ? toneStyle(stageColor) : undefined;
             const touch = lastTouchByContact.get(contact.id);
-            const ms = touch?.ms ?? parseMs(contact.createdAt);
+            const contactLastMs = parseMs(contact.lastContactedDate) ?? parseMs(contact.lastSeen);
+            const touchMs = touch?.ms;
+            const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity);
+            const ms = Number.isFinite(bestMs) && bestMs > 0 ? bestMs : parseMs(contact.createdAt);
             const days = ms != null ? daysSince(ms) : null;
             const overdue = days != null && days >= 7;
             const note = (touch?.note || contact.notes || '').trim();

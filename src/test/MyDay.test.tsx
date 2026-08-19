@@ -18,9 +18,10 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+const mockSetSelectedContact = vi.fn();
 // ContactDetailsModal (rendered closed) pulls useLayout from ../App.
 vi.mock('../App', () => ({
-  useLayout: vi.fn(() => ({ setSelectedContact: vi.fn(), openLogInteraction: vi.fn() })),
+  useLayout: vi.fn(() => ({ setSelectedContact: mockSetSelectedContact, openLogInteraction: vi.fn() })),
 }));
 
 vi.mock('motion/react', () => ({
@@ -540,7 +541,7 @@ describe('MyDay', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/prayer');
   });
 
-  it('does not allow status updates or testimony editing for prayers created in the prayer page', async () => {
+  it('allows status updates for prayers created in the prayer page', async () => {
     vi.mocked(onSnapshot).mockImplementation(
       byPath({
         contacts: [contactDoc('c-1', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'u-test' })],
@@ -550,13 +551,11 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByText('health and provision')).toBeInTheDocument());
 
-    // Status pills should be disabled.
     const answeredButton = screen.getByRole('button', { name: 'answered' });
-    expect(answeredButton).toBeDisabled();
+    expect(answeredButton).not.toBeDisabled();
 
-    // Clicking it should not call updatePrayerStatus.
     fireEvent.click(answeredButton);
-    expect(h.updatePrayerStatus).not.toHaveBeenCalled();
+    expect(h.updatePrayerStatus).toHaveBeenCalledWith('p-1', 'answered', expect.anything(), undefined, expect.any(String));
   });
 
   it('hides archived (unanswered) contact prayers', async () => {
@@ -659,8 +658,8 @@ describe('MyDay', () => {
     );
     render(<MyDay />);
     await waitFor(() => expect(screen.getByText('John Sheep')).toBeInTheDocument());
-    fireEvent.click(screen.getByText('John Sheep'));
-    expect(await screen.findByRole('heading', { name: 'John Sheep', level: 2 })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    expect(mockSetSelectedContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c-1', name: 'John Sheep' }));
   });
 
   it('shows undo snackbar when a contact prayer is archived and allows undoing it', async () => {
@@ -860,7 +859,7 @@ describe('MyDay', () => {
     expect(screen.queryByPlaceholderText('What needs doing?')).not.toBeInTheDocument();
   });
 
-  it('closes the contact details modal', async () => {
+  it('selects the contact to open details', async () => {
     vi.mocked(onSnapshot).mockImplementation(
       byPath({
         contacts: [contactDoc('c-1', { name: 'Closable Friend', initials: 'CF', stage: 'Regular', createdBy: 'u-test' })],
@@ -869,10 +868,7 @@ describe('MyDay', () => {
     render(<MyDay />);
     await waitFor(() => expect(screen.getByText('Closable Friend')).toBeInTheDocument());
     fireEvent.click(screen.getByText('Closable Friend'));
-    const heading = await screen.findByRole('heading', { name: 'Closable Friend', level: 2 });
-    expect(heading).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /Close/i }));
-    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Closable Friend', level: 2 })).not.toBeInTheDocument());
+    expect(mockSetSelectedContact).toHaveBeenCalledWith(expect.objectContaining({ id: 'c-1', name: 'Closable Friend' }));
   });
 
   it('sorts completed tasks after pending ones', async () => {
