@@ -3,6 +3,14 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import PrayerListMobile from '../views/PrayerListMobile';
 
+vi.mock('../lib/firebase', () => ({
+  db: {},
+  auth: { currentUser: null },
+  handleFirestoreError: vi.fn(),
+  OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE' },
+  logActivity: vi.fn(),
+}));
+
 const contact = (over: any = {}) => ({
   id: 'c1',
   name: 'Alice Smith',

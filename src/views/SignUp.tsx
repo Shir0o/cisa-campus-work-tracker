@@ -13,7 +13,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { cn, getUserInitials } from '../lib/utils';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp, query, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useSeason, getAutoSemesterAndSchoolYearTags, SEASON_ORDER, SEASONS, seasonYear, SeasonId } from '../lib/seasons';
 import { normalizeTagList } from '../lib/tags';
 import { useAuth } from '../components/AuthProvider';
@@ -148,9 +148,6 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
 
     setLoading(true);
     try {
-      const stagesSnapshot = await getDocs(query(collection(db, 'stages'), limit(1)));
-      const firstStage = stagesSnapshot.empty ? 'Lead' : stagesSnapshot.docs[0].data().label;
-
       const autoTags = getAutoSemesterAndSchoolYearTags();
       const allTags = normalizeTagList([
         'New Sign Up',
@@ -173,7 +170,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         notes: form.notes.trim() || null,
         metVia: 'Sign-up form',
         role: 'Student',
-        stage: firstStage,
+        stage: '',
         initials: getUserInitials(form.name),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

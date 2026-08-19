@@ -203,6 +203,7 @@ describe('SignUp View', () => {
     expect(contactArg?.interests).toEqual(['Home fellowship', 'Bible study']);
     expect(contactArg?.prayerRequest).toBe('Pray for exams');
     expect(contactArg?.notes).toBe('No allergies');
+    expect(contactArg?.stage).toBe('');
     expect(contactArg?.createdBy).toBe('ft-123');
     expect(contactArg?.createdByName).toBe('Staff Tester');
     expect(contactArg?.tags).toEqual(
