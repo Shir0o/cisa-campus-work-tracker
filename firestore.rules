@@ -132,6 +132,7 @@ service cloud.firestore {
                (!('phone' in data) || data.phone == null || (data.phone is string && data.phone.size() <= 32)) &&
                (!('role' in data) || data.role == null || (data.role is string && data.role.size() <= 64)) &&
                (!('location' in data) || data.location == null || (data.location is string && data.location.size() <= 128)) &&
+               (!('metVia' in data) || data.metVia == null || (data.metVia is string && data.metVia.size() <= 64)) &&
                (!('stage' in data) || data.stage == null || (data.stage is string && data.stage.size() <= 64)) &&
                (!('reviewed' in data) || data.reviewed == null || data.reviewed is bool);
       }
@@ -154,7 +155,7 @@ service cloud.firestore {
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
                       isValidContact(incoming()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
-                        'name', 'initials', 'role', 'location', 'email', 'phone', 'stage',
+                        'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
                         'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
                         'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',

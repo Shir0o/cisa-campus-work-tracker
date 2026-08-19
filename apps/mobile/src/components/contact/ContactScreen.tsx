@@ -565,10 +565,11 @@ function Details({
       <DetailRow label="Phone" value={contact.phone} onPress={() => openCall(contact.phone)} />
       <DetailRow label="Email" value={contact.email} onPress={() => openEmail(contact.email)} />
       <DetailRow label="Instagram" value={contact.instagram} />
-      {/* One field, two readings — the new-contact form calls it "FIRST MET /
-          RESIDENCE", and the v2 log sheet fills it from "Where you met". "Lives"
-          alone mislabelled half of what lands here. */}
-      <DetailRow label="First met / lives" value={contact.location} />
+      {/* "How we met" (#356) — replaces the old "First met / lives" reading of
+          the dual-purpose location field. The address stays on `location` for
+          the v2 log sheet's "Where you met". */}
+      <DetailRow label="How we met" value={contact.metVia} />
+      <DetailRow label="Address" value={contact.location} />
       {/* The two fields the log sheet's "Fill in the rest" adds — the design
           asks that they have somewhere to be read. `role` is this app's
           contact group, which the sheet labels "Part of". */}

@@ -67,15 +67,15 @@ describe('diffContactFields', () => {
     ]);
   });
 
-  it('labels a location change "first met" by default', () => {
+  it('labels a location change "address"', () => {
     const changes = diffContactFields(contact(), fields({ location: 'Library' }));
-    expect(changes).toEqual(['first met: "Campus Coffee" → "Library"']);
+    expect(changes).toEqual(['address: "Campus Coffee" → "Library"']);
   });
 
-  it('labels a location change "residence hall" when tagged New Sign Up', () => {
-    const before = contact({ tags: ['New Sign Up'], location: 'Hall A' });
-    const changes = diffContactFields(before, fields({ tags: ['New Sign Up'], location: 'Hall B' }));
-    expect(changes).toEqual(['residence hall: "Hall A" → "Hall B"']);
+  it('labels a metVia change "how we met"', () => {
+    const before = contact({ metVia: undefined });
+    const changes = diffContactFields(before, fields({ metVia: 'A friend brought them' }));
+    expect(changes).toEqual(['how we met: "" → "A friend brought them"']);
   });
 
   it('reports group (role) and stage changes', () => {
@@ -129,7 +129,7 @@ describe('contactDeleteFieldsLog', () => {
       [
         'Group: Student',
         'Stage: Contact',
-        'Location: Campus Coffee',
+        'Address: Campus Coffee',
         'Email: alex@campus.edu',
         'Phone: (555) 000-0000',
         'Total Interactions: 3',

@@ -187,11 +187,11 @@ describe('logSavedLine / contactAddedLine', () => {
 });
 
 describe('newContactFromLog', () => {
-  it('puts "where you met" on location — the field this app labels FIRST MET', () => {
+  it('puts "where you met" on location — the address field', () => {
     // The design tags a new person with where you met; a Contact here has a
-    // `location` field whose own form calls it "FIRST MET / RESIDENCE", so that
-    // is its home. `tags` stays the active-season tag the other addContact
-    // callers already set.
+    // `location` field whose own form calls it "ADDRESS", so that is its home
+    // (the address a visit would go to). `tags` stays the active-season tag the
+    // other addContact callers already set.
     expect(
       newContactFromLog({
         name: '  Alex Johnson ',
@@ -267,8 +267,8 @@ describe('newContactFromLog', () => {
 
   it('still lands "where you met" on location even with the disclosure open', () => {
     // The design offers a separate "Lives" field; this app has one dual-purpose
-    // `location` ("FIRST MET / RESIDENCE"), so "where you met" keeps it and the
-    // design's "Lives" is dropped rather than fighting over the same field.
+    // `location` ("ADDRESS"), so "where you met" keeps it and the design's
+    // "Lives" is dropped rather than fighting over the same field.
     const input = newContactFromLog({
       name: 'Alex',
       where: 'The Quad',

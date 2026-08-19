@@ -40,7 +40,7 @@ export async function submitSignUp(
     name: form.name.trim(),
     email: form.email.trim(),
     phone: form.phone.trim(),
-    location: "Online Form",
+    metVia: "Sign-up form",
     role: "Student",
     stage: firstStage,
     initials: getUserInitials(form.name),

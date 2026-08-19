@@ -22,6 +22,7 @@ import {
   Footprints,
   Instagram,
   Check,
+  HeartHandshake,
 } from "lucide-react";
 import {
   db,
@@ -49,7 +50,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord } from "../../types";
+import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord, MET_VIA } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
@@ -248,6 +249,7 @@ export default function ContactDetailsModal({
     firstName: "",
     lastName: "",
     role: "",
+    metVia: "",
     location: "",
     email: "",
     phone: "",
@@ -290,6 +292,7 @@ export default function ContactDetailsModal({
         firstName: first,
         lastName: last,
         role: contact.role || "",
+        metVia: contact.metVia || "",
         location: contact.location || "",
         email: contact.email || "",
         phone: contact.phone || "",
@@ -581,12 +584,10 @@ export default function ContactDetailsModal({
         changes.push(`email: "${contact.email}" → "${formData.email}"`);
       if (formData.phone !== contact.phone)
         changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.location !== contact.location) {
-        const locLabel = formData.tags?.includes('New Sign Up') ? 'residence hall' : 'first met';
-        changes.push(
-          `${locLabel}: "${contact.location}" → "${formData.location}"`,
-        );
-      }
+      if (formData.location !== contact.location)
+        changes.push(`address: "${contact.location}" → "${formData.location}"`);
+      if (formData.metVia !== contact.metVia)
+        changes.push(`how we met: "${contact.metVia || ''}" → "${formData.metVia || ''}"`);
       if (formData.role !== contact.role)
         changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
@@ -599,6 +600,7 @@ export default function ContactDetailsModal({
         name: fullName,
         initials: getInitials(formData.firstName, formData.lastName),
         role: formData.role,
+        metVia: formData.metVia,
         location: formData.location,
         email: formData.email,
         phone: formData.phone,
@@ -658,7 +660,8 @@ export default function ContactDetailsModal({
       const fieldsLog = [
         `Group: ${contact.role}`,
         `Stage: ${contact.stage}`,
-        `Location: ${contact.location}`,
+        contact.metVia ? `How we met: ${contact.metVia}` : '',
+        `Address: ${contact.location}`,
         `Email: ${contact.email || "N/A"}`,
         `Phone: ${contact.phone || "N/A"}`,
         `Total Interactions: ${interactionsSnap.size}`,
@@ -1055,7 +1058,7 @@ export default function ContactDetailsModal({
                           ))}
                         </div>
                         <p className="text-xs text-on-surface-variant cdm-meta mt-3">
-                          {[contact.role, contact.location, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.metVia, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                     </div>
@@ -1121,10 +1124,10 @@ export default function ContactDetailsModal({
                       </div>
                       <div className="cd-meta">
                         <span>{[contact.year, contact.major].filter(Boolean).join(" · ") || "—"}</span>
-                        {contact.location && (
+                        {contact.metVia && (
                           <>
                             <span className="sep">·</span>
-                            <span className="row"><MapPin className="w-3.5 h-3.5" /> {contact.location}</span>
+                            <span className="row"><HeartHandshake className="w-3.5 h-3.5" /> {contact.metVia}</span>
                           </>
                         )}
                         <span className="sep">·</span>
@@ -1305,7 +1308,25 @@ export default function ContactDetailsModal({
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MapPin className="w-3.5 h-3.5" /> {formData.tags?.includes('New Sign Up') ? 'RESIDENCE HALL' : 'FIRST MET'}
+                        <HeartHandshake className="w-3.5 h-3.5" /> HOW WE MET
+                      </label>
+                      <select
+                        value={formData.metVia}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, metVia: e.target.value }))
+                        }
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
+                      >
+                        <option value="">How we met...</option>
+                        {MET_VIA.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                        <MapPin className="w-3.5 h-3.5" /> ADDRESS
                       </label>
                       <input
                         type="text"
@@ -1317,7 +1338,7 @@ export default function ContactDetailsModal({
                           }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="e.g. Campus Coffee"
+                        placeholder="e.g. Miller Hall, off-campus"
                       />
                     </div>
 

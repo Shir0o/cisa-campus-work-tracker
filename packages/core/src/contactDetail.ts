@@ -22,12 +22,13 @@ export interface ContactEditFields {
   tags: string[];
   notes: string;
   spiritualBackground: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). */
+  metVia?: string;
 }
 
 /** Diffs an edit form against the live contact, producing the audit-log
- * change lines (`handleUpdate`'s change block). Location's label swaps
- * between "residence hall"/"first met" depending on the 'New Sign Up' tag,
- * matching the edit form's own dynamic field label. */
+ * change lines (`handleUpdate`'s change block). Location is the optional
+ * address used by Visits; `metVia` ("How we met") is the header-line source. */
 export function diffContactFields(before: Contact, after: ContactEditFields): string[] {
   const changes: string[] = [];
   const fullName = `${after.firstName} ${after.lastName}`.trim();
@@ -36,8 +37,10 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (after.email !== before.email) changes.push(`email: "${before.email}" → "${after.email}"`);
   if (after.phone !== before.phone) changes.push(`phone: "${before.phone}" → "${after.phone}"`);
   if (after.location !== before.location) {
-    const locLabel = after.tags?.includes("New Sign Up") ? "residence hall" : "first met";
-    changes.push(`${locLabel}: "${before.location}" → "${after.location}"`);
+    changes.push(`address: "${before.location}" → "${after.location}"`);
+  }
+  if (after.metVia !== before.metVia) {
+    changes.push(`how we met: "${before.metVia || ""}" → "${after.metVia || ""}"`);
   }
   if (after.role !== before.role) changes.push(`group: "${before.role}" → "${after.role}"`);
   if (after.stage !== before.stage) changes.push(`stage: "${before.stage}" → "${after.stage}"`);
@@ -78,7 +81,8 @@ export function contactDeleteFieldsLog(
   return [
     `Group: ${contact.role}`,
     `Stage: ${contact.stage}`,
-    `Location: ${contact.location}`,
+    contact.metVia ? `How we met: ${contact.metVia}` : "",
+    `Address: ${contact.location}`,
     `Email: ${contact.email || "N/A"}`,
     `Phone: ${contact.phone || "N/A"}`,
     `Total Interactions: ${interactionCount}`,

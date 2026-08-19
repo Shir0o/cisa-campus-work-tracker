@@ -129,6 +129,8 @@ export interface NewContactInput {
   notes: string;
   spiritualBackground: string;
   initials: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). */
+  metVia?: string;
   year?: string;
   major?: string;
   /** Backdates the contact, for the v2 log sheet's "First met" — everything
@@ -230,6 +232,8 @@ export interface ContactUpdateFields {
   tags: string[];
   notes: string;
   spiritualBackground: string;
+  /** How we first met — the fixed "How we met" vocabulary (#356). */
+  metVia?: string;
 }
 
 /** Save the Contact Detail edit form (mirrors ContactDetailsModal's
