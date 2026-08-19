@@ -13,6 +13,7 @@ import {
   FileText,
   Clock,
   Keyboard,
+  ExternalLink as ExternalLinkIcon,
   type LucideIcon,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -30,7 +31,7 @@ import { cn, relTime } from '../../lib/utils';
 import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../../lib/commands';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
-import { hasMinRole, AppRole } from '../../lib/permissions';
+import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Cap per group so the panel stays scannable.
@@ -208,6 +209,28 @@ export default function GlobalSearch() {
       .slice(0, GS_MAX);
   }, [hasQ, ql, isFullStaff, boardNotes]);
 
+  // Every place the current role can reach — the top bar's tabs + More menu, so
+  // ⌘K can jump anywhere, not just search. ("Everything is reachable from search".)
+  const destinations = useMemo(() => {
+    const items = navItemsForRole(role).map((item) => ({
+      key: `dest:${item.href}`,
+      label: item.href === '/' ? (isAdmin ? 'My Day' : 'Home') : item.label,
+      href: item.href,
+      tone: 'violet' as Tone,
+      icon: Compass,
+      external: false,
+    }));
+    const ext = navExternalFor(role).map((item) => ({
+      key: `dest:${item.href}`,
+      label: item.label,
+      href: item.href,
+      tone: 'neutral' as Tone,
+      icon: Globe,
+      external: true,
+    }));
+    return [...items, ...ext];
+  }, [role, isAdmin]);
+
   const historyResults = useMemo(() => {
     if (!hasQ || !isStaff || !inclHistory) return [];
     return activities
@@ -219,6 +242,13 @@ export default function GlobalSearch() {
       )
       .slice(0, GS_MAX);
   }, [hasQ, ql, isStaff, inclHistory, activities]);
+
+  const destResults = useMemo(() => {
+    if (!hasQ) return [];
+    return destinations
+      .filter((d) => d.label.toLowerCase().includes(ql))
+      .slice(0, GS_MAX);
+  }, [hasQ, ql, destinations]);
 
   // ── actions ─────────────────────────────────────────────────────────────
   const openContactById = (id?: string) => {
@@ -291,10 +321,22 @@ export default function GlobalSearch() {
   // ── flat list for keyboard nav (recomputed each render; small) ────────────
   const navItems: NavItem[] = [];
   if (!hasQ) {
+    destinations.forEach((d) =>
+      navItems.push({
+        key: d.key,
+        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href)),
+      }),
+    );
     recentPeople.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     quickActions.forEach((a) => navItems.push({ key: a.key, run: a.run }));
     shortcutCommands.forEach((c) => navItems.push({ key: `cmd:${c.id}`, run: c.handler }));
   } else {
+    destResults.forEach((d) =>
+      navItems.push({
+        key: d.key,
+        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href)),
+      }),
+    );
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
     convResults.forEach((i) => navItems.push({ key: `i:${i.id}`, run: () => openContactById(i.contactId) }));
     boardResults.forEach((n) =>
@@ -309,7 +351,7 @@ export default function GlobalSearch() {
   navItems.forEach((it, idx) => (indexByKey[it.key] = idx));
 
   const hasResults = hasQ
-    ? peopleResults.length + convResults.length + boardResults.length + historyResults.length > 0
+    ? peopleResults.length + convResults.length + boardResults.length + historyResults.length + destResults.length > 0
     : true;
 
   // Keep latest nav state in a ref so the keydown handler stays stable.
@@ -454,6 +496,24 @@ export default function GlobalSearch() {
     <div className="px-2 pb-2">
       {!hasQ ? (
         <>
+          <div>
+            <GroupLabel>Go to</GroupLabel>
+            {destinations.map((d) => (
+              <Row
+                key={d.key}
+                navKey={d.key}
+                tone={d.tone}
+                icon={d.icon}
+                title={d.label}
+                onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href))}
+                badge={
+                  d.external ? (
+                    <ExternalLinkIcon className="w-3.5 h-3.5 opacity-60" />
+                  ) : undefined
+                }
+              />
+            ))}
+          </div>
           {recentPeople.length > 0 && (
             <div>
               <GroupLabel>Recent people</GroupLabel>
@@ -518,6 +578,22 @@ export default function GlobalSearch() {
         </div>
       ) : (
         <>
+          {destResults.length > 0 && (
+            <div>
+              <GroupLabel>Go to</GroupLabel>
+              {destResults.map((d) => (
+                <Row
+                  key={d.key}
+                  navKey={d.key}
+                  tone={d.tone}
+                  icon={d.icon}
+                  title={d.label}
+                  onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href))}
+                />
+              ))}
+            </div>
+          )}
+
           {peopleResults.length > 0 && (
             <div>
               <GroupLabel>People</GroupLabel>

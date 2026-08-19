@@ -19,7 +19,17 @@ import { test, expect, type Page } from '@playwright/test';
 import { signInAs, type Role } from './helpers/auth';
 
 async function visibleNavLabels(page: Page): Promise<string[]> {
-  return page.getByLabel('Main Navigation').getByRole('link').allInnerTexts();
+  const nav = page.getByLabel('Main Navigation');
+  // Primary tabs + brand link (anchor elements)
+  const labels = await nav.getByRole('link').allInnerTexts();
+  // Open "More" to gather the remaining destinations (menu items are buttons)
+  const more = nav.getByRole('button', { name: /More/i });
+  if (await more.isVisible().catch(() => false)) {
+    await more.click();
+    const moreLabels = await nav.getByRole('menu').getByRole('button').allInnerTexts();
+    labels.push(...moreLabels);
+  }
+  return labels;
 }
 
 async function expectRedirectedFrom(page: Page, from: string, expectedLanding: string) {

@@ -420,12 +420,11 @@ describe('GlobalSearch', () => {
   it('keyboard nav runs the quick-action at the cursor from the empty state', () => {
     render(<GlobalSearch />);
     const input = screen.getByPlaceholderText('Search people, notes…');
-    // Empty-state order: recent people (c1, c2), then quick actions.
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
-    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    // Move the cursor onto the "Log a visit" quick action, then ↵ runs it.
+    const logRow = screen.getAllByRole('button', { name: /Log a visit/i })[0];
+    fireEvent.mouseEnter(logRow);
     fireEvent.keyDown(input, { key: 'Enter' });
-    expect(h.mockLayout.openNewContact).toHaveBeenCalled();
+    expect(h.mockLayout.openLogInteraction).toHaveBeenCalled();
   });
 
   it('mouse-over (mouseEnter) a result row moves the keyboard cursor to it', () => {

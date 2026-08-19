@@ -11,8 +11,7 @@ import {
 import { cn } from "./lib/utils";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
 import ImpersonateModal from "./components/layout/ImpersonateModal";
-import Sidebar from "./components/layout/Sidebar";
-import TopBar from "./components/layout/TopBar";
+import TopNav from "./components/layout/TopNav";
 import MobileNav from "./components/layout/MobileNav";
 import NewContactModal from "./components/modals/NewContactModal";
 import Landing from "./views/landings/Landing";
@@ -52,8 +51,6 @@ const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinati
 
 
 interface LayoutContextType {
-  isSidebarCollapsed: boolean;
-  setIsSidebarCollapsed: (value: boolean) => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (value: boolean) => void;
   openNewContact: (initialStage?: string) => void;
@@ -152,9 +149,6 @@ function EmailPasswordForm() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut } = useAuth();
-  const isSidebarCollapsed =
-    typeof window !== "undefined" &&
-    localStorage.getItem("sidebar_collapsed") === "true";
 
   if (loading) {
     if (!user) {
@@ -162,31 +156,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
     }
     return (
       <div className="flex min-h-screen bg-background overflow-hidden">
-        {/* Sidebar Skeleton */}
-        <div
-          className={cn(
-            "hidden md:flex flex-col bg-surface-container border-r border-outline-variant p-6 gap-8 transition-all duration-300",
-            isSidebarCollapsed ? "w-20" : "w-20 lg:w-72",
-          )}
-        >
-          <Skeleton
-            className={cn(
-              "h-10 rounded-xl",
-              isSidebarCollapsed ? "w-10" : "w-32",
-            )}
-          />
-          <Skeleton className="h-12 w-full rounded-2xl" />
-          <div className="space-y-4">
-            {!isSidebarCollapsed && <Skeleton className="h-4 w-24" />}
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </div>
-
+        {/* TopNav Skeleton */}
         <div className="flex-1 flex flex-col min-h-screen">
-          {/* TopBar Skeleton */}
           <div className="h-16 border-b border-outline-variant px-6 flex items-center justify-between">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-10 w-10 rounded-full" />
@@ -308,18 +279,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(() => {
-    const saved = localStorage.getItem("sidebar_collapsed");
-    return saved === "true";
-  });
-
-  const toggleSidebarCollapse = () => {
-    setIsSidebarCollapsed((prev) => {
-      const newState = !prev;
-      localStorage.setItem("sidebar_collapsed", String(newState));
-      return newState;
-    });
-  };
 
   // Opening a person swaps the view for the full-page detail; remember where
   // the list was scrolled so "back" lands where you tapped (same pattern as the
@@ -338,8 +297,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <LayoutContext.Provider
       value={{
-        isSidebarCollapsed,
-        setIsSidebarCollapsed,
         isMobileMenuOpen,
         setIsMobileMenuOpen,
         openNewContact: (initialStage?: string) => {
@@ -356,18 +313,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
-        <Sidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={toggleSidebarCollapse}
-          onLogInteraction={() => setIsLogInteractionOpen(true)}
-        />
         <div
           className={cn(
             "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",
           )}
         >
           <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-          <TopBar onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+          <TopNav onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
           <main
             className={cn(
               "flex-1 w-full min-h-0",
