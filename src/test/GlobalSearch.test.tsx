@@ -124,7 +124,7 @@ function seedData() {
 }
 
 const typeDesktop = (value: string) =>
-  fireEvent.change(screen.getByPlaceholderText('Search people, notes…'), {
+  fireEvent.change(screen.getByPlaceholderText('Search or jump to…'), {
     target: { value },
   });
 
@@ -250,7 +250,7 @@ describe('GlobalSearch', () => {
   it('↓ then ↵ opens the focused contact', () => {
     render(<GlobalSearch />);
     typeDesktop('alice');
-    const input = screen.getByPlaceholderText('Search people, notes…');
+    const input = screen.getByPlaceholderText('Search or jump to…');
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
@@ -286,7 +286,7 @@ describe('GlobalSearch', () => {
     // Test container click when search is closed
     h.mockLayout.searchOpen = false;
     const { rerender } = render(<GlobalSearch />);
-    const desktopInput = screen.getByPlaceholderText('Search people, notes…') as HTMLInputElement;
+    const desktopInput = screen.getByPlaceholderText('Search or jump to…') as HTMLInputElement;
     const container = desktopInput.closest('.relative.w-full.h-10')!;
     
     fireEvent.click(container);
@@ -404,7 +404,7 @@ describe('GlobalSearch', () => {
   it('keyboard ArrowUp clamps the cursor at -1 from the first result', () => {
     render(<GlobalSearch />);
     typeDesktop('alice');
-    const input = screen.getByPlaceholderText('Search people, notes…');
+    const input = screen.getByPlaceholderText('Search or jump to…');
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     // Cursor -1 means Enter does nothing — the contact stays unopened.
     fireEvent.keyDown(input, { key: 'Enter' });
@@ -419,7 +419,7 @@ describe('GlobalSearch', () => {
 
   it('keyboard nav runs the quick-action at the cursor from the empty state', () => {
     render(<GlobalSearch />);
-    const input = screen.getByPlaceholderText('Search people, notes…');
+    const input = screen.getByPlaceholderText('Search or jump to…');
     // Move the cursor onto the "Log a visit" quick action, then ↵ runs it.
     const logRow = screen.getAllByRole('button', { name: /Log a visit/i })[0];
     fireEvent.mouseEnter(logRow);
@@ -432,7 +432,7 @@ describe('GlobalSearch', () => {
     typeDesktop('alice');
     const row = screen.getAllByText('Alice Wong')[0].closest('button')!;
     fireEvent.mouseEnter(row);
-    fireEvent.keyDown(screen.getByPlaceholderText('Search people, notes…'), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByPlaceholderText('Search or jump to…'), { key: 'Enter' });
     expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
     );

@@ -221,28 +221,28 @@ describe('TopNav primary tabs per role', () => {
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
-    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('The Board')).not.toBeInTheDocument();
     expect(screen.queryByText('People')).not.toBeInTheDocument();
     // primaryNavFor drives the tabs
     expect(primaryNavFor('viewer').map((i) => i.href)).toEqual(['/', '/attendance', '/prayer']);
     expect(primaryNavFor('viewer').every((i) => canAccessRoute('viewer', i.href))).toBe(true);
   });
 
-  it('operator: Home, People, On our hearts; no The Journey or Looking back', () => {
+  it('operator: Home, People, On our hearts; no The Board or Looking back', () => {
     currentUser = TEST_USERS.operator;
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
-    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
+    expect(screen.queryByText('The Board')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: Home, People, The Journey; hides gatherings/prayer/calendar', () => {
+  it('manager: Home, People, The Board; hides gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('The Board')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.queryByText('Shared Calendar')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
@@ -251,10 +251,10 @@ describe('TopNav primary tabs per role', () => {
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('admin: The Journey, People, On our hearts as primary tabs, home labeled "My Day" in More', () => {
+  it('admin: The Board, People, On our hearts as primary tabs, home labeled "My Day" in More', () => {
     currentUser = TEST_USERS.admin;
     renderTopNav();
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('The Board')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/board', '/directory', '/prayer']);
