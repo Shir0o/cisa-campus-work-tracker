@@ -51,7 +51,7 @@ const EXPECT: Record<Role, {
     landing: '/',
     nav: {
       present: ['Home', 'Gatherings', 'On our hearts', 'Messages', 'Settings'],
-      absent: ['The Journey', 'People', 'Looking back', 'Coordination Notes'],
+      absent: ['The Board', 'People', 'Looking back', 'Coordination Notes'],
     },
     allowed: ['/', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
     denied: ['/board', '/directory', '/history', '/coordination', '/admin/feedback'],
@@ -61,7 +61,7 @@ const EXPECT: Record<Role, {
     landing: '/',
     nav: {
       present: ['Home', 'People', 'Gatherings', 'On our hearts', 'Messages', 'Settings'],
-      absent: ['The Journey', 'Looking back'],
+      absent: ['The Board', 'Looking back'],
     },
     allowed: ['/', '/directory', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
     denied: ['/board', '/history', '/admin/feedback'],
@@ -70,7 +70,7 @@ const EXPECT: Record<Role, {
   trainee: { // manager
     landing: '/',
     nav: {
-      present: ['Home', 'The Journey', 'People', 'Messages'],
+      present: ['Home', 'The Board', 'People', 'Messages'],
       absent: ['Coordination Notes', 'Visits', 'Settings'],
     },
     allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
@@ -80,7 +80,7 @@ const EXPECT: Record<Role, {
   fulltimer: { // admin — home nav label is "My Day", not "Home"
     landing: '/',
     nav: {
-      present: ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'],
+      present: ['My Day', 'The Board', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'],
       absent: [],
     },
     allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/messages', '/settings', '/feedback', '/coordination', '/admin/feedback'],

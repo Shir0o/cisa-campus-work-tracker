@@ -725,11 +725,11 @@ export default function GlobalSearch() {
               setSearchOpen(true);
             }}
             className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70"
-            placeholder="Search people, notes…"
+            placeholder="Search or jump to…"
             aria-label="Search"
           />
           {!searchOpen ? (
-            <div className="absolute right-3 hidden xl:flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-medium text-on-surface-variant pointer-events-none">
+            <div className="absolute right-3 flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-medium text-on-surface-variant pointer-events-none">
               <Command className="w-3 h-3" />
               <span>K</span>
             </div>
