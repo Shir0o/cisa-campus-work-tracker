@@ -30,6 +30,7 @@ import {
 import { db, handleFirestoreError, OperationType } from "../lib/firebase";
 import { cn } from "../lib/utils";
 import { useAuth } from "../components/AuthProvider";
+import { useLayout } from "../App";
 import { Contact, PrayerRecord, Event, Stage } from "../types";
 import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
@@ -448,8 +449,9 @@ function AddTaskRow({
 }
 
 export default function MyDay() {
-  const isMobile = useMediaQuery("(max-width: 768px)");
   const { user } = useAuth();
+  const { setSelectedContact: setGlobalSelectedContact } = useLayout();
+  const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
   const firstName = user?.displayName?.split(" ")[0] || "friend";
   const uid = user?.uid;
@@ -541,16 +543,17 @@ export default function MyDay() {
       (e) => onLoadError(e, "prayers"),
     );
 
-    // Last-touch signal: most recent interaction/comment per contact (createdAt is ISO).
+    // Last-touch signal: most recent interaction/comment per contact (createdAt is ISO or Timestamp).
     const ingest = (
       snap: { docs: { id: string; data: () => unknown; ref: { path: string } }[] },
       noteKey: "content" | "text",
     ) =>
       snap.docs.map((d) => {
         const data = d.data() as Record<string, unknown>;
+        const rawDate = data.dateTime || data.createdAt || data.date;
         return {
           contactId: d.ref.path.split("/")[1],
-          ms: new Date((data.createdAt as string) ?? "").getTime(),
+          ms: parseMs(rawDate) ?? NaN,
           note: ((data[noteKey] as string) ?? "").trim(),
         };
       });
@@ -637,7 +640,10 @@ export default function MyDay() {
       .filter((c) => personalContactIds.has(c.id))
       .map((c) => {
         const touch = lastTouchByContact.get(c.id);
-        const ms = touch?.ms ?? parseMs(c.createdAt);
+        const contactLastMs = parseMs(c.lastContactedDate) ?? parseMs(c.lastSeen);
+        const touchMs = touch?.ms;
+        const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity);
+        const ms = Number.isFinite(bestMs) && bestMs > 0 ? bestMs : parseMs(c.createdAt);
         const days = ms == null ? Infinity : daysSince(ms);
         return { contact: c, days, note: touch?.note || c.notes || "" };
       })
@@ -709,10 +715,14 @@ export default function MyDay() {
     opts?: { tab?: "thread"; interactionId?: string | null },
   ) => {
     if (!c) return;
-    setSelectedContact(c);
-    setInitialTab(opts?.tab);
-    setInitialInteractionId(opts?.interactionId ?? null);
-    setIsDetailsModalOpen(true);
+    if (setGlobalSelectedContact) {
+      setGlobalSelectedContact(c);
+    } else {
+      setSelectedContact(c);
+      setInitialTab(opts?.tab);
+      setInitialInteractionId(opts?.interactionId ?? null);
+      setIsDetailsModalOpen(true);
+    }
   };
 
   const togglePersonalContact = (id: string) => {

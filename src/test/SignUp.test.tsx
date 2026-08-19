@@ -125,22 +125,13 @@ describe('SignUp View', () => {
 
   it('renders staff preview strip when viewed by staff', () => {
     render(<SignUp role="admin" />);
-    expect(
-      screen.getByText(
-        "You're previewing the sign-up form — how someone new asks to hear from us. It isn't an app account.",
-      ),
-    ).toBeInTheDocument();
     expect(screen.getByText(/Tagging sign-ups for/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Club rush/i })).toBeInTheDocument();
   });
 
   it('hides staff preview strip for student or community roles', () => {
     render(<SignUp role="student" />);
-    expect(
-      screen.queryByText(
-        "You're previewing the sign-up form — how someone new asks to hear from us. It isn't an app account.",
-      ),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Tagging sign-ups for/i)).not.toBeInTheDocument();
   });
 
   it('fills all fields and submits successfully in one step', async () => {

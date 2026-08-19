@@ -38,6 +38,7 @@ import {
 import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
+import { SIGNUP_TITLE } from './SignupInvite';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
 // same way). Fallback to LayoutDashboard for anything unmapped.
@@ -240,6 +241,36 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                           </button>
                         );
                       })}
+
+                      {externalLinks.length > 0 && (
+                        <div className="pt-1 mt-1 border-t border-outline-variant/60">
+                          {externalLinks.map((item) => (
+                            <a
+                              key={item.id}
+                              href={item.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
+                            >
+                              <CalendarDays className="w-[18px] h-[18px] shrink-0" />
+                              <span className="min-w-0 flex-1">{item.label}</span>
+                              <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                            </a>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className={externalLinks.length > 0 ? "" : "pt-1 mt-1 border-t border-outline-variant/60"}>
+                        <button
+                          type="button"
+                          onClick={() => go('/signup')}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
+                        >
+                          <FileText className="w-[18px] h-[18px] shrink-0" />
+                          <span className="min-w-0 flex-1">{SIGNUP_TITLE}</span>
+                          <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 )}
@@ -436,6 +467,24 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 ))}
               </div>
             )}
+
+            <div className="mt-2">
+              <NavLink
+                to="/signup"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
+                    isActive
+                      ? 'bg-accent-soft text-accent font-medium'
+                      : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+                  )
+                }
+              >
+                <FileText className="w-[18px] h-[18px] shrink-0" />
+                <span>{SIGNUP_TITLE}</span>
+              </NavLink>
+            </div>
 
             <div className="mt-auto pt-4 border-t border-outline-variant">
               <button

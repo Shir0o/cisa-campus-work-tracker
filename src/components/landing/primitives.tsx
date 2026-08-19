@@ -117,14 +117,19 @@ export function SectionHead({
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
       <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
       {sub && <span className="text-sm text-on-surface-variant flex-1 min-w-0">{sub}</span>}
-      {action && <div className="ml-auto self-center inline-flex items-center">{action}</div>}
-      {linkLabel && (
-        <button
-          onClick={onLink}
-          className="ml-auto text-sm font-medium text-accent hover:underline inline-flex items-center gap-1"
-        >
-          {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
-        </button>
+      {(action || linkLabel) && (
+        <div className="ml-auto flex items-center gap-3 self-center">
+          {action}
+          {linkLabel && (
+            <button
+              type="button"
+              onClick={onLink}
+              className="text-sm font-medium text-accent hover:underline inline-flex items-center gap-1"
+            >
+              {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

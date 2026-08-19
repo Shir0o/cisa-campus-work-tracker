@@ -94,13 +94,15 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('renders More menu and opens it to reveal alphabetically sorted destinations', () => {
+  it('renders More menu and opens it to reveal alphabetically sorted destinations and external links', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /more/i }));
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
     expect(screen.getByText('Visits')).toBeInTheDocument();
+    expect(screen.getByText('Shared Calendar')).toBeInTheDocument();
+    expect(screen.getByText('Sign-up form')).toBeInTheDocument();
   });
 
   it('opening More navigates to a destination', () => {

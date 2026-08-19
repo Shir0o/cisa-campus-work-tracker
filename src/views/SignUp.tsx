@@ -7,7 +7,6 @@ import {
   ArrowRight,
   Check,
   CheckCircle2,
-  FileText,
   X,
   Loader2,
 } from 'lucide-react';
@@ -485,11 +484,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
   // ── Staff Preview Strip (Season Override + Club Rush Toggle) ────
   const adminStrip = (
     <div className="su-admin">
-      <div className="su-admin-l">
-        <FileText className="w-3.5 h-3.5 shrink-0" />
-        <span>You're previewing the sign-up form — how someone new asks to hear from us. It isn't an app account.</span>
-      </div>
-      <div className="su-admin-r">
+      <div className="su-admin-r ml-auto">
         <span className="su-admin-lbl">Tagging sign-ups for</span>
         <select
           className="su-admin-sel"

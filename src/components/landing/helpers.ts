@@ -5,8 +5,12 @@ import { Stage } from "../../types";
 
 export const DAY_MS = 86_400_000;
 
-export const parseMs = (s?: string | null): number | null => {
+export const parseMs = (s?: any): number | null => {
   if (!s) return null;
+  if (typeof s?.toMillis === 'function') return s.toMillis();
+  if (typeof s?.toDate === 'function') return s.toDate().getTime();
+  if (typeof s?.seconds === 'number') return s.seconds * 1000;
+  if (typeof s === 'number') return Number.isNaN(s) ? null : s;
   const t = new Date(s).getTime();
   return Number.isNaN(t) ? null : t;
 };
