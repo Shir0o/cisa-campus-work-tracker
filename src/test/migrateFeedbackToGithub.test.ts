@@ -88,12 +88,21 @@ describe('migrate-feedback-to-github script', () => {
     expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen/screenshot)');
   });
 
-  it('truncates long messages in the title', async () => {
+  it('keeps the full message in the title', async () => {
     const longMsg = 'x'.repeat(120);
     const { db } = makeDb([{ id: 'f1', data: () => ({ message: longMsg, type: 'enhancement' }) }]);
     await migrateFeedbackToGithub(db as any);
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.title).toMatch(/^\[Feedback\] enhancement: x{50}\.\.\.$/);
+    expect(body.title).toBe(`[Feedback] enhancement: ${longMsg}`);
+  });
+
+  it('truncates the title only at the 512-character GitHub API limit', async () => {
+    const longMsg = 'x'.repeat(1000);
+    const { db } = makeDb([{ id: 'f1', data: () => ({ message: longMsg, type: 'enhancement' }) }]);
+    await migrateFeedbackToGithub(db as any);
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.title.length).toBe(512);
+    expect(body.title.endsWith('…')).toBe(true);
   });
 
   it('continues with the next item when a GitHub call fails', async () => {

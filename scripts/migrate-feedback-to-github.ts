@@ -14,6 +14,8 @@ const kindLabels: Record<string, string> = {
   request: 'A request',
 };
 
+const GITHUB_TITLE_MAX = 512;
+
 // Core migration, extracted so it can be unit-tested. Requires GITHUB_TOKEN and
 // GITHUB_REPO (or VITE_GITHUB_REPO) in the environment.
 export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
@@ -47,7 +49,11 @@ export async function migrateFeedbackToGithub(db: Firestore): Promise<void> {
   for (const item of unlinked) {
     const kindLabel = item.kind ? (kindLabels[item.kind] || item.kind) : item.type;
     const cleanMsg = item.message || '';
-    const title = `[Feedback] ${kindLabel}: ${cleanMsg.slice(0, 50)}${cleanMsg.length > 50 ? '...' : ''}`;
+    const prefix = `[Feedback] ${kindLabel}: `;
+    const remaining = GITHUB_TITLE_MAX - prefix.length;
+    const title = cleanMsg.length <= remaining
+      ? `${prefix}${cleanMsg}`
+      : `${prefix}${cleanMsg.slice(0, remaining - 1)}…`;
 
     const createdAtStr = item.createdAt ?
       (typeof item.createdAt.toDate === 'function' ? item.createdAt.toDate().toISOString() : String(item.createdAt)) :
