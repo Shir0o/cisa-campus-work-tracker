@@ -301,6 +301,12 @@ async function seed() {
   };
   const genderOf = (pronouns: string) =>
     pronouns === 'he/him' ? 'Male' : pronouns === 'she/her' ? 'Female' : undefined;
+  const metViaFor = (tags: string[]) => {
+    if (tags.includes('welcome-bbq')) return 'Gathering';
+    if (tags.includes('org-fair')) return 'Outreach';
+    if (tags.includes('dorm-outreach') || tags.includes('park')) return 'Outreach';
+    return 'Met on campus';
+  };
 
   const contacts: SeedContact[] = [
     { id: 'C-0142', name: 'Emerson Ahn', year: 'Sophomore', major: 'Computer Science', pronouns: 'he/him', hall: 'Whitman Hall', phone: '+1 (614) 555-0142', email: 'emerson.ahn@umail.edu', instagram: '@em.ahn', stage: 'regular', joinedDays: 64, owner: 'u2', lastTouch: 2, tags: ['small-group:tues', 'freshman-week-21'], notes: 'Plays jazz piano. Brother in Korea. Family is Buddhist; warm but cautious.' },
@@ -369,6 +375,7 @@ async function seed() {
         phone: c.phone,
         role: 'Student',
         location: c.hall,
+        metVia: metViaFor(c.tags),
         stage: c.stage,
         initials: initialsOf(c.name),
         tags: c.tags,

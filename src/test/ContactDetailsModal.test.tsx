@@ -413,7 +413,7 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByPlaceholderText('First name is plenty')).toBeRequired();
     expect(screen.getByPlaceholderText('alex@campus.edu')).not.toBeRequired();
     expect(screen.getByPlaceholderText('e.g. Student, Faculty')).not.toBeRequired();
-    expect(screen.getByPlaceholderText('e.g. Campus Coffee')).not.toBeRequired();
+    expect(screen.getByPlaceholderText('e.g. Miller Hall, off-campus')).not.toBeRequired();
     expect(screen.getByPlaceholderText('Add some context about this contact...')).not.toBeRequired();
   });
 
@@ -1054,13 +1054,13 @@ describe('ContactDetailsModal Component', () => {
 
     fireEvent.click(screen.getByTitle('Edit details'));
 
-    // RESIDENCE HALL label reflects the New Sign Up tag.
-    expect(screen.getByText('RESIDENCE HALL')).toBeInTheDocument();
+    // HOW WE MET label reflects the fixed "How we met" vocabulary.
+    expect(screen.getByText('HOW WE MET')).toBeInTheDocument();
 
     fireEvent.change(screen.getByPlaceholderText('alex@campus.edu'), {
       target: { value: 'john.new@example.com' },
     });
-    fireEvent.change(screen.getByPlaceholderText('e.g. Campus Coffee'), {
+    fireEvent.change(screen.getByPlaceholderText('e.g. Miller Hall, off-campus'), {
       target: { value: 'West Hall' },
     });
     const stageSelect = screen.getByDisplayValue('Regular');
@@ -1084,7 +1084,7 @@ describe('ContactDetailsModal Component', () => {
     );
     expect(logActivity).toHaveBeenCalledWith(
       expect.objectContaining({
-        description: expect.stringContaining('residence hall'),
+        description: expect.stringContaining('address'),
       }),
     );
   });

@@ -172,7 +172,7 @@ export default function SignUp({ onBack: onBackProp, onSubmitted, isMobile: isMo
         interests: form.interests,
         prayerRequest: form.prayerRequest.trim() || null,
         notes: form.notes.trim() || null,
-        location: 'Online Form',
+        metVia: 'Sign-up form',
         role: 'Student',
         stage: firstStage,
         initials: getUserInitials(form.name),

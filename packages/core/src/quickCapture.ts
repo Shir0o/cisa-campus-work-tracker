@@ -216,10 +216,10 @@ export function firstMetDate(preset: FirstMetPreset, now: number = Date.now()): 
  *
  * SUBSTITUTION: the design stores "where you met" as a tag on the contact and
  * offers a separate "Lives" field. A `Contact` here has ONE dual-purpose
- * `location` that this app's own new-contact form labels "FIRST MET /
- * RESIDENCE", so "where you met" keeps it and the design's "Lives" is dropped
- * rather than have the two fight over the same field. `tags` stays the
- * active-season tag every other `addContact` caller sets. */
+ * `location` that this app's own new-contact form labels "ADDRESS", so "where
+ * you met" keeps it (the address a visit would go to) and the design's "Lives"
+ * is dropped rather than have the two fight over the same field. `tags` stays
+ * the active-season tag every other `addContact` caller sets. */
 export function newContactFromLog({
   name,
   where,

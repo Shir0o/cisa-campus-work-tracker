@@ -1,5 +1,15 @@
 import type { AppRole } from './permissions';
 
+/** How we first met (#356) — the fixed "How we met" vocabulary replacing the
+ * residence-hall concept. Values are stored as-is on Contact.metVia. */
+export const MET_VIA = [
+  'Sign-up form',
+  'Outreach',
+  'A friend brought them',
+  'Gathering',
+  'Met on campus',
+];
+
 export interface Contact {
   id: string;
   name: string;
@@ -32,6 +42,10 @@ export interface Contact {
   major?: string;
   instagram?: string;
   howHeard?: string;
+  /** How we first met — the "How we met" source (sign-up form / outreach /
+   * a friend brought them / gathering / met on campus). Replaces the
+   * residence-hall concept on the header line (#356). */
+  metVia?: string;
   addedBy?: string;
   owner?: string;
   coCreators?: string[];

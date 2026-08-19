@@ -47,7 +47,8 @@ export async function addContact(
     const fieldsLog = [
       `Group: ${input.role}`,
       `Stage: ${input.stage}`,
-      `Location/Residence: ${input.location}`,
+      input.metVia ? `How we met: ${input.metVia}` : '',
+      input.location ? `Address: ${input.location}` : '',
       input.email ? `Email: ${input.email}` : '',
       input.phone ? `Phone: ${input.phone}` : '',
       input.spiritualBackground ? `Spiritual Background: ${input.spiritualBackground}` : '',
@@ -117,6 +118,7 @@ export async function updateContact(
         initials: (edits.firstName.charAt(0) + (edits.lastName.charAt(0) || '')).toUpperCase(),
         role: edits.role,
         location: edits.location,
+        metVia: edits.metVia,
         email: edits.email,
         phone: edits.phone,
         stage: edits.stage,

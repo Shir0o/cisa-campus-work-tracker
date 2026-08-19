@@ -76,7 +76,7 @@ describe('NewContactModal', () => {
     await user.click(screen.getByText(/\+ Add the rest/i));
 
     await waitFor(() => {
-      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
       expect(stageSelect.value).toBe('Unassigned');
     });
   });
@@ -91,7 +91,7 @@ describe('NewContactModal', () => {
     await user.click(screen.getByText(/\+ Add the rest/i));
 
     await waitFor(() => {
-      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
       expect(stageSelect.value).toBe('Contacted');
     });
   });
@@ -106,7 +106,7 @@ describe('NewContactModal', () => {
     await user.click(screen.getByText(/\+ Add the rest/i));
 
     await waitFor(() => {
-      const stageSelect = screen.getAllByRole('combobox')[0] as HTMLSelectElement;
+      const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
       expect(stageSelect.value).toBe('Contacted');
     });
   });
@@ -147,7 +147,7 @@ describe('NewContactModal', () => {
     const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
     await mockUserAct.type(role, 'Student');
 
-    const location = await screen.findByPlaceholderText('e.g. Campus Coffee, Miller Hall');
+    const location = await screen.findByPlaceholderText('e.g. Miller Hall, off-campus');
     await mockUserAct.type(location, 'Campus Coffee');
 
     const email = await screen.findByPlaceholderText('alex@campus.edu');

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Briefcase, MapPin, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
+import { X, User, Briefcase, MapPin, HeartHandshake, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerOf } from '../../lib/walking';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useSeason } from '../../lib/seasons';
-import { Contact, Stage } from '../../types';
+import { Contact, Stage, MET_VIA } from '../../types';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     firstName: '',
     lastName: '',
     role: '',
+    metVia: '',
     location: '',
     email: '',
     phone: '',
@@ -110,6 +111,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const contactData = {
         name: fullName,
         role: formData.role,
+        metVia: formData.metVia,
         location: formData.location,
         email: formData.email,
         phone: formData.phone,
@@ -134,7 +136,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const fieldsLog = [
         `Group: ${formData.role}`,
         `Stage: ${formData.stage}`,
-        `Location/Residence: ${formData.location}`,
+        formData.metVia ? `How we met: ${formData.metVia}` : '',
+        formData.location ? `Address: ${formData.location}` : '',
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
@@ -180,6 +183,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         firstName: '',
         lastName: '',
         role: '',
+        metVia: '',
         location: '',
         email: '',
         phone: '',
@@ -344,14 +348,30 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MapPin className="w-3.5 h-3.5" /> FIRST MET / RESIDENCE
+                        <HeartHandshake className="w-3.5 h-3.5" /> HOW WE MET
+                      </label>
+                      <select
+                        value={formData.metVia}
+                        onChange={e => setFormData(f => ({ ...f, metVia: e.target.value }))}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
+                      >
+                        <option value="">How we met...</option>
+                        {MET_VIA.map((m) => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                        <MapPin className="w-3.5 h-3.5" /> ADDRESS
                       </label>
                       <input
                         type="text"
                         value={formData.location}
                         onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                        placeholder="e.g. Campus Coffee, Miller Hall"
+                        placeholder="e.g. Miller Hall, off-campus"
                       />
                     </div>
 
@@ -375,6 +395,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                         <Calendar className="w-3.5 h-3.5" /> WHERE THEY'RE AT
                       </label>
                       <select
+                        aria-label="Stage"
                         value={formData.stage}
                         onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"

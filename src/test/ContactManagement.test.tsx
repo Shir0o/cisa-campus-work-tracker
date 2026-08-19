@@ -93,7 +93,8 @@ const mockContacts = [
     name: 'John Doe',
     email: 'john@example.com',
     role: 'Student',
-    location: 'Campus Hub',
+    metVia: 'Campus Hub',
+    location: '',
     phone: '123-456-7890',
     stage: 'First Contact',
     initials: 'JD',
@@ -155,7 +156,7 @@ describe('Contact Management', () => {
     fireEvent.change(screen.getByPlaceholderText(/e.g. Johnson/i), { target: { value: 'Builder' } });
     fireEvent.change(screen.getByPlaceholderText(/alex@campus.edu/i), { target: { value: 'bob@build.it' } });
     fireEvent.change(screen.getByPlaceholderText(/e.g. Student/i), { target: { value: 'Contractor' } });
-    fireEvent.change(screen.getByPlaceholderText(/e.g. Campus Coffee/i), { target: { value: 'Library' } });
+    fireEvent.change(screen.getByPlaceholderText(/e.g. Miller Hall/i), { target: { value: 'Library' } });
 
     // Submit
     const form = document.getElementById('new-contact-form');
