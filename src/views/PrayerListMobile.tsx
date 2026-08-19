@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { Plus, Search, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
+import { getContactGrade } from '../lib/prayers';
 
 type Status = PrayerRecord['status'];
 
@@ -333,8 +334,8 @@ function PrayerThreadCard({
   const carry = ongoingCount > 0
     ? { label: `${ongoingCount} ongoing`, tone: 'accent' }
     : prayers.length === 0
-    ? { label: 'Newly added', tone: 'muted' }
-    : { label: 'At rest', tone: 'rest' };
+    ? { label: 'No prayers yet', tone: 'muted' }
+    : { label: 'All answered', tone: 'rest' };
 
   return (
     <article className="bg-surface border border-outline-variant/45 rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
@@ -345,7 +346,7 @@ function PrayerThreadCard({
           <div className="min-w-0 flex-1 prt-person-id">
             <h4 className="font-serif text-lg text-on-surface leading-tight truncate prt-name">{contact.name}</h4>
             <div className="text-xs text-on-surface-variant truncate mt-0.5 prt-meta">
-              {[contact.role, contact.metVia].filter(Boolean).join(' · ')}
+              {[contact.role, getContactGrade(contact), contact.metVia].filter(Boolean).join(' · ')}
             </div>
             <div className="flex items-center gap-2 mt-2 prt-substatus">
               <span className={cn(

@@ -88,3 +88,58 @@ export function reconcilePrayerOrder(prevOrder: string[], currentIds: string[]):
   if (added.length === 0 && kept.length === prevOrder.length) return prevOrder;
   return [...added, ...kept];
 }
+
+/**
+ * Resolves a contact's academic year/grade (e.g. Freshman, Sophomore) from
+ * their `year` field or from tags.
+ */
+export function getContactGrade(contact: { year?: string; tags?: string[] }): string | undefined {
+  if (contact.year?.trim()) return contact.year.trim();
+  const found = contact.tags?.find((t) => {
+    const s = t.trim();
+    return (
+      /^(freshman|sophomore|junior|senior|graduate|grad|1st\s*year|2nd\s*year|3rd\s*year|4th\s*year)$/i.test(s) ||
+      s.toLowerCase().includes('year')
+    );
+  });
+  return found?.trim();
+}
+
+/**
+ * Checks if a contact matches Brother/Male filtering based on gender, pronouns, or tags.
+ */
+export function isContactBrother(contact: { gender?: string; pronouns?: string; tags?: string[] }): boolean {
+  const g = (contact.gender || '').toLowerCase().trim();
+  if (['male', 'm', 'brother', 'brothers', 'bro', 'man', 'men', 'boy'].includes(g)) return true;
+  if (g.startsWith('male') || g.startsWith('brother') || g === 'm') return true;
+
+  const pronouns = (contact.pronouns || '').toLowerCase();
+  if (pronouns.includes('he/him') || pronouns.includes('he/his')) return true;
+
+  if (contact.tags?.some((t) => {
+    const tl = t.toLowerCase().trim();
+    return tl === 'brother' || tl === 'brothers' || tl === 'male' || tl === 'bro';
+  })) return true;
+
+  return false;
+}
+
+/**
+ * Checks if a contact matches Sister/Female filtering based on gender, pronouns, or tags.
+ */
+export function isContactSister(contact: { gender?: string; pronouns?: string; tags?: string[] }): boolean {
+  const g = (contact.gender || '').toLowerCase().trim();
+  if (['female', 'f', 'sister', 'sisters', 'sis', 'woman', 'women', 'girl'].includes(g)) return true;
+  if (g.startsWith('female') || g.startsWith('sister') || g === 'f') return true;
+
+  const pronouns = (contact.pronouns || '').toLowerCase();
+  if (pronouns.includes('she/her') || pronouns.includes('she/hers')) return true;
+
+  if (contact.tags?.some((t) => {
+    const tl = t.toLowerCase().trim();
+    return tl === 'sister' || tl === 'sisters' || tl === 'female' || tl === 'sis';
+  })) return true;
+
+  return false;
+}
+

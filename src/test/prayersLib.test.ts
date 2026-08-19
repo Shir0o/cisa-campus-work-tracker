@@ -1,6 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc, collection, updateDoc } from 'firebase/firestore';
-import { addPrayerBurden, isTeamPrayer, reconcilePrayerOrder, updatePrayerStatus } from '../lib/prayers';
+import {
+  addPrayerBurden,
+  isTeamPrayer,
+  reconcilePrayerOrder,
+  updatePrayerStatus,
+  getContactGrade,
+  isContactBrother,
+  isContactSister,
+} from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
 vi.mock('firebase/firestore', () => ({
@@ -97,3 +105,51 @@ describe('reconcilePrayerOrder', () => {
     expect(reconcilePrayerOrder(prev, ['c1', 'c2'])).toBe(prev);
   });
 });
+
+describe('getContactGrade', () => {
+  it('prefers direct year field', () => {
+    expect(getContactGrade({ year: 'Freshman', tags: ['Senior'] })).toBe('Freshman');
+  });
+
+  it('falls back to grade/year tags', () => {
+    expect(getContactGrade({ tags: ['Sophomore', 'Campus'] })).toBe('Sophomore');
+    expect(getContactGrade({ tags: ['1st year'] })).toBe('1st year');
+  });
+
+  it('returns undefined when no year info is present', () => {
+    expect(getContactGrade({ tags: ['Campus'] })).toBeUndefined();
+    expect(getContactGrade({})).toBeUndefined();
+  });
+});
+
+describe('isContactBrother & isContactSister', () => {
+  it('identifies brothers by gender value', () => {
+    expect(isContactBrother({ gender: 'Male' })).toBe(true);
+    expect(isContactBrother({ gender: 'Brother' })).toBe(true);
+    expect(isContactBrother({ gender: 'm' })).toBe(true);
+  });
+
+  it('identifies brothers by pronouns or tags', () => {
+    expect(isContactBrother({ pronouns: 'he/him' })).toBe(true);
+    expect(isContactBrother({ tags: ['Brother', 'Fall 2026'] })).toBe(true);
+  });
+
+  it('identifies sisters by gender value', () => {
+    expect(isContactSister({ gender: 'Female' })).toBe(true);
+    expect(isContactSister({ gender: 'Sister' })).toBe(true);
+    expect(isContactSister({ gender: 'f' })).toBe(true);
+  });
+
+  it('identifies sisters by pronouns or tags', () => {
+    expect(isContactSister({ pronouns: 'she/her' })).toBe(true);
+    expect(isContactSister({ tags: ['Sister'] })).toBe(true);
+  });
+
+  it('returns false when no matching gender metadata', () => {
+    expect(isContactBrother({ gender: 'Female' })).toBe(false);
+    expect(isContactSister({ gender: 'Male' })).toBe(false);
+    expect(isContactBrother({})).toBe(false);
+    expect(isContactSister({})).toBe(false);
+  });
+});
+

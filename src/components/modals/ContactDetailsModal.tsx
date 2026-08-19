@@ -58,6 +58,7 @@ import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
+import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -1051,7 +1052,8 @@ export default function ContactDetailsModal({
                           {contact.tags?.map((t) => (
                             <span
                               key={t}
-                              className="text-[10px]  font-semibold  px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant"
+                              style={tagStyle(t)}
+                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)]"
                             >
                               {t}
                             </span>
@@ -2380,26 +2382,55 @@ export default function ContactDetailsModal({
                     <span className="text-xs text-on-surface-variant">None yet</span>
                   )}
                   {formData.tags.map((tag) => (
-                    <span key={tag} className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant text-xs font-medium border border-outline-variant/40">
+                    <span
+                      key={tag}
+                      style={tagStyle(tag)}
+                      className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
+                    >
                       {tag}
                       <button onClick={() => removeTag(tag)} className="cd-tag-x" title="Remove tag">×</button>
                     </span>
                   ))}
                   {addingTag ? (
-                    <span className="cd-tag-input-wrap">
-                      <input
-                        className="cd-tag-input"
-                        autoFocus
-                        value={tagInput}
-                        onChange={(e) => setTagInput(e.target.value)}
-                        placeholder="new tag…"
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitTag();
-                          if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
-                        }}
-                        onBlur={commitTag}
-                      />
-                    </span>
+                    <div className="flex flex-col gap-2 w-full">
+                      <span className="cd-tag-input-wrap">
+                        <input
+                          className="cd-tag-input w-full"
+                          autoFocus
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          placeholder="new tag…"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitTag();
+                            if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
+                          }}
+                          onBlur={() => {
+                            if (tagInput.trim()) commitTag();
+                            else setTimeout(() => setAddingTag(false), 200);
+                          }}
+                        />
+                      </span>
+                      {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).slice(0, 4).map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                persistTags([...formData.tags, s], "added", s);
+                                setTagInput("");
+                                setAddingTag(false);
+                              }}
+                              style={tagStyle(s)}
+                              className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
+                            >
+                              + {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <button
                       onClick={() => setAddingTag(true)}

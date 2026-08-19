@@ -3746,16 +3746,25 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cdm-page-body .cd-sec { padding-left: 0; padding-right: 0; border-bottom: 0; }
 .cdm-page-body .cd-sec-head { margin-bottom: 14px; }
 
-/* Hide the always-on scrollbar in the detail content (feedback #256): keep
-   the window scrollable but don't render the bar at rest. */
+/* Detail content scrollbar styling: sleek custom scrollbar so scrollable contents are visible */
 .cd-page-content,
 .cdm-page-body {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  scrollbar-width: thin;
+  scrollbar-color: var(--outline-variant) transparent;
 }
 .cd-page-content::-webkit-scrollbar,
 .cdm-page-body::-webkit-scrollbar {
-  display: none;
+  width: 6px;
+  height: 6px;
+}
+.cd-page-content::-webkit-scrollbar-thumb,
+.cdm-page-body::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: 9999px;
+}
+.cd-page-content::-webkit-scrollbar-thumb:hover,
+.cdm-page-body::-webkit-scrollbar-thumb:hover {
+  background: var(--on-surface-variant);
 }
 
 /* ── header ── */

@@ -41,9 +41,11 @@ export default function FeedbackFAB() {
 
   const submit = async () => {
     if (!canSend || !user) return;
-    setPhase('busy');
+    const submissionMessage = message.trim();
+    const submissionKind = kind;
+    const type = kindToType(submissionKind);
 
-    const type = kindToType(kind);
+    setPhase('busy');
 
     // Auto-capture screenshot and diagnostic information
     let screenshot = '';
@@ -87,8 +89,8 @@ export default function FeedbackFAB() {
       userEmail: user.email?.toLowerCase() || 'anonymous',
       userName: user.displayName || 'Anonymous User',
       type,
-      kind,
-      message: message.trim(),
+      kind: submissionKind,
+      message: submissionMessage,
       screenshot,
       url: window.location.href,
       userAgent: navigator.userAgent,
@@ -142,9 +144,9 @@ export default function FeedbackFAB() {
       await logActivity({
         action: 'submitted feedback',
         targetId: 'feedback_root',
-        targetName: kindMeta(kind).label,
+        targetName: kindMeta(submissionKind).label,
         targetType: 'contact',
-        description: `User left a note (${kindMeta(kind).label}): "${message.slice(0, 40)}${message.length > 40 ? '...' : ''}"`,
+        description: `User left a note (${kindMeta(submissionKind).label}): "${submissionMessage.slice(0, 40)}${submissionMessage.length > 40 ? '...' : ''}"`,
         type: 'create',
       });
     } catch (error) {

@@ -31,6 +31,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
+import { tagStyle } from '../lib/tags';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -786,10 +787,8 @@ export default function Directory() {
                         {tags.map((t) => (
                           <span
                             key={t}
-                            className={cn(
-                              "inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium",
-                              isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
-                            )}
+                            style={tagStyle(t)}
+                            className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)]"
                           >
                             {t}
                           </span>

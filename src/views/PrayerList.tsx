@@ -13,7 +13,7 @@ import { Contact, PrayerRecord, VisitPhoto } from '../types';
 import { Check, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
-import { isTeamPrayer, reconcilePrayerOrder } from '../lib/prayers';
+import { isTeamPrayer, reconcilePrayerOrder, isContactBrother, isContactSister, getContactGrade } from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
@@ -356,8 +356,7 @@ export default function PrayerList() {
         if (!matches) return false;
       }
       if (genderFilter === 'all') return true;
-      const g = (e.contact.gender || '').toLowerCase();
-      return genderFilter === 'brothers' ? g === 'male' : g === 'female';
+      return genderFilter === 'brothers' ? isContactBrother(e.contact) : isContactSister(e.contact);
     });
   }, [entries, searchQuery, genderFilter]);
 
@@ -706,19 +705,16 @@ function PrayerThread({
               {contact.name}
             </div>
             <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
-              {contact.role || 'Unassigned'}
-              {contact.tags?.find((t) => t.toLowerCase().includes('year')) && (
-                <>
-                  <span className="mx-1.5 opacity-50">·</span>
-                  {contact.tags.find((t) => t.toLowerCase().includes('year'))}
-                </>
-              )}
+              {[contact.role, getContactGrade(contact), contact.metVia].filter(Boolean).join(' · ') || 'Unassigned'}
             </div>
           </div>
         </button>
         <div className="ml-auto text-right shrink-0">
-          <div className={cn('font-serif text-[15px] leading-tight', ongoingCount > 0 ? 'text-stage-accent' : 'text-success')}>
-            {ongoingCount > 0 ? `${ongoingCount} ongoing` : 'At rest'}
+          <div className={cn(
+            'font-serif text-[15px] leading-tight',
+            ongoingCount > 0 ? 'text-stage-accent' : prayers.length === 0 ? 'text-on-surface-variant' : 'text-success'
+          )}>
+            {ongoingCount > 0 ? `${ongoingCount} ongoing` : prayers.length === 0 ? 'No prayers yet' : 'All answered'}
           </div>
           <div className="text-[11.5px] text-on-surface-variant">
             {prayers.length} {prayers.length === 1 ? 'prayer' : 'prayers'} in all

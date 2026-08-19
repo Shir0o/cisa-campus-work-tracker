@@ -20,6 +20,7 @@ import {
   Eye,
   ChevronDown,
   ExternalLink,
+  BookOpen,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
@@ -48,7 +49,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/directory': Contact,
   '/history': HistoryIcon,
   '/attendance': CalendarCheck,
-  '/outreach': HeartHandshake,
+  '/outreach': BookOpen,
   '/visits': CalendarDays,
   '/prayer': HeartHandshake,
   '/answered': Sun,

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeTag, normalizeTagList, planTagCombining } from '../lib/tags';
+import {
+  normalizeTag,
+  normalizeTagList,
+  planTagCombining,
+  TAG_SUGGESTIONS,
+  tagToneKey,
+  tagStyle,
+} from '../lib/tags';
 
 describe('normalizeTag', () => {
   it('turns short season labels into full year labels', () => {
@@ -38,3 +45,31 @@ describe('planTagCombining', () => {
     ]);
   });
 });
+
+describe('tagToneKey and tagStyle', () => {
+  it('includes Saved in TAG_SUGGESTIONS', () => {
+    expect(TAG_SUGGESTIONS).toContain('Saved');
+    expect(TAG_SUGGESTIONS).toContain('Baptized');
+  });
+
+  it('returns sage for Saved and Baptized', () => {
+    expect(tagToneKey('Saved')).toBe('sage');
+    expect(tagToneKey('baptized')).toBe('sage');
+  });
+
+  it('returns appropriate tones for student years', () => {
+    expect(tagToneKey('Freshman')).toBe('teal');
+    expect(tagToneKey('Sophomore')).toBe('indigo');
+    expect(tagToneKey('Junior')).toBe('plum');
+    expect(tagToneKey('Senior')).toBe('ochre');
+  });
+
+  it('returns a CSS variable style with tone variables', () => {
+    const style = tagStyle('Saved');
+    expect(style).toEqual({
+      '--tone': 'var(--t-sage)',
+      '--tone-soft': 'var(--t-sage-soft)',
+    });
+  });
+});
+
