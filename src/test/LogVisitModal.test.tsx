@@ -7,9 +7,31 @@ import { addTodo, updateTodo } from '../lib/todos';
 import { addPrayerBurden } from '../lib/prayers';
 import { uploadVisitPhotos } from '../lib/visitPhotos';
 import { logActivity } from '../lib/firebase';
+import { addDoc, collection } from 'firebase/firestore';
 import type { AppUser, Contact, Visit } from '../types';
 
 vi.mock('../components/AuthProvider', () => ({ useAuth: vi.fn() }));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  addDoc: vi.fn().mockResolvedValue({ id: 'c-new-123' }),
+  serverTimestamp: vi.fn(),
+}));
+
+vi.mock('../lib/seasons', () => ({
+  useSeason: () => ({
+    autoId: 'fall',
+    activeId: 'fall',
+    active: { id: 'fall', label: 'Fall', tone: 'accent', blurb: '' },
+    isAuto: true,
+    clubRush: false,
+    label: "Fall '26",
+    tags: ['Fall 2026'],
+    setSeason: vi.fn(),
+    resetSeason: vi.fn(),
+    toggleClubRush: vi.fn(),
+  }),
+}));
 
 vi.mock('../lib/firebase', () => ({
   db: {},
@@ -53,8 +75,10 @@ beforeEach(() => {
 });
 
 const pick = (name: string) => {
-  fireEvent.change(screen.getByPlaceholderText('Start typing a name'), { target: { value: name } });
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(name) }));
+  const input = screen.queryByPlaceholderText('Start typing a name') || screen.getByPlaceholderText('Anyone else?');
+  fireEvent.change(input, { target: { value: name } });
+  const buttons = screen.getAllByRole('button', { name: new RegExp(name) });
+  fireEvent.click(buttons[0]);
 };
 
 describe('LogVisitModal', () => {
@@ -255,4 +279,60 @@ describe('LogVisitModal', () => {
     expect(screen.getByRole('button', { name: /Remove Bo Chen/ })).toBeInTheDocument();
     await waitFor(() => expect(screen.getByLabelText('Where')).toHaveValue('Ridgewood House'));
   });
+
+  it('filters out non-person accounts from who went list (#366, #367)', () => {
+    const staffWithNonPersons = [
+      { uid: 'u1', displayName: 'Mei Tanaka' },
+      { uid: 'u2', displayName: 'Jordan Park' },
+      { uid: 'u3', displayName: 'App Store Reviewer' },
+      { uid: 'u4', displayName: 'cisa-admin' },
+      { uid: 'u5', displayName: 'reviewer' },
+    ] as AppUser[];
+
+    render(<LogVisitModal {...baseProps} staff={staffWithNonPersons} />);
+    expect(screen.getByRole('button', { name: 'Mei Tanaka' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Jordan Park' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'App Store Reviewer' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'cisa-admin' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'reviewer' })).not.toBeInTheDocument();
+  });
+
+  it('allows adding a new contact inline from the search dropdown (#369)', async () => {
+    render(<LogVisitModal {...baseProps} />);
+    fireEvent.change(screen.getByPlaceholderText('Start typing a name'), { target: { value: 'Kofi Mensah' } });
+
+    const addBtn = screen.getByRole('button', { name: /Add Kofi Mensah — someone new/ });
+    expect(addBtn).toBeInTheDocument();
+    expect(screen.getByText('starts a record')).toBeInTheDocument();
+
+    fireEvent.click(addBtn);
+
+    await waitFor(() => expect(addDoc).toHaveBeenCalled());
+    const [_, data] = (addDoc as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(data).toMatchObject({
+      name: 'Kofi Mensah',
+      role: 'Contact',
+      stage: 'Contact',
+      createdBy: 'u1',
+      createdByName: 'Mei Tanaka',
+      owner: 'u1',
+    });
+    expect(data.tags).toContain('Fall 2026');
+    expect(data.tags).toContain('visit');
+
+    expect(logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'created a new contact',
+        targetId: 'c-new-123',
+        targetName: 'Kofi Mensah',
+        targetType: 'contact',
+        type: 'create',
+      }),
+    );
+
+    // Chosen contact chip is rendered
+    expect(await screen.findByRole('button', { name: /Remove Kofi Mensah/ })).toBeInTheDocument();
+    expect(screen.getByText('⌘↵ to save')).toBeInTheDocument();
+  });
 });
+

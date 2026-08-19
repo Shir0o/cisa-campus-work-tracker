@@ -6,10 +6,11 @@
 // something to carry.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Check, House, Image as ImageIcon, Loader2, X } from 'lucide-react';
+import { Check, House, Image as ImageIcon, Loader2, Plus, X } from 'lucide-react';
 import { format } from 'date-fns';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { addVisit, attachVisitPhotos, initialsOf, updateVisit, type VisitInput } from '../../lib/visits';
-import { handleFirestoreError, logActivity, OperationType } from '../../lib/firebase';
+import { db, handleFirestoreError, logActivity, OperationType } from '../../lib/firebase';
 import { addPrayerBurden } from '../../lib/prayers';
 import { addTodo, updateTodo } from '../../lib/todos';
 import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
@@ -17,6 +18,8 @@ import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useCommand } from '../../lib/commands';
+import { pickableContacts, pickableStaff } from '../../lib/permissions';
+import { useSeason } from '../../lib/seasons';
 
 interface LogVisitModalProps {
   isOpen: boolean;
@@ -42,6 +45,7 @@ export default function LogVisitModal({
   initialContactId = null,
 }: LogVisitModalProps) {
   const { user, effectiveUserId } = useAuth();
+  const season = useSeason();
   const editing = !!visit;
 
   const [date, setDate] = useState('');
@@ -58,16 +62,23 @@ export default function LogVisitModal({
   const [newPhotos, setNewPhotos] = useState<File[]>([]);
   const [q, setQ] = useState('');
   const [saving, setSaving] = useState(false);
+  const [addingContact, setAddingContact] = useState(false);
+  const [localCreatedContacts, setLocalCreatedContacts] = useState<Contact[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const me = effectiveUserId || user?.uid || '';
   const myName = user?.displayName || 'A full-timer';
 
+  const allContacts = useMemo(
+    () => [...contacts, ...localCreatedContacts],
+    [contacts, localCreatedContacts],
+  );
+
   // One person, one place — offer it rather than making them type it. Two people
   // in different halls means we genuinely don't know, so we ask.
   const placeFor = (contactIds: string[]): string => {
     const places = Array.from(
-      new Set(contactIds.map((id) => contacts.find((c) => c.id === id)?.location).filter(Boolean)),
+      new Set(contactIds.map((id) => allContacts.find((c) => c.id === id)?.location).filter(Boolean)),
     );
     return places.length === 1 ? (places[0] as string) : '';
   };
@@ -98,15 +109,74 @@ export default function LogVisitModal({
   }, [isOpen, visit, initialContactId, me]);
 
   const chosen = useMemo(
-    () => ids.map((id) => contacts.find((c) => c.id === id)).filter((c): c is Contact => !!c),
-    [ids, contacts],
+    () => ids.map((id) => allContacts.find((c) => c.id === id)).filter((c): c is Contact => !!c),
+    [ids, allContacts],
   );
+
+  const realStaff = useMemo(() => pickableStaff(staff), [staff]);
+  const realContacts = useMemo(() => pickableContacts(allContacts), [allContacts]);
 
   const matches = useMemo(() => {
     const term = q.trim().toLowerCase();
     if (!term) return [];
-    return contacts.filter((c) => !ids.includes(c.id) && c.name.toLowerCase().includes(term)).slice(0, 6);
-  }, [q, ids, contacts]);
+    return realContacts.filter((c) => !ids.includes(c.id) && c.name.toLowerCase().includes(term)).slice(0, 6);
+  }, [q, ids, realContacts]);
+
+  const newName = q.trim();
+  const canAddNew =
+    newName.length > 1 &&
+    !matches.some((c) => c.name.toLowerCase() === newName.toLowerCase()) &&
+    !ids.some((id) => allContacts.find((c) => c.id === id)?.name.toLowerCase() === newName.toLowerCase());
+
+  const handleAddSomeoneNew = async () => {
+    if (!canAddNew || addingContact) return;
+    setAddingContact(true);
+    try {
+      const contactData = {
+        name: newName,
+        role: 'Contact',
+        location: '',
+        email: '',
+        phone: '',
+        stage: 'Contact',
+        tags: Array.from(new Set([...season.tags, 'visit'])),
+        notes: '',
+        spiritualBackground: '',
+        initials: initialsOf(newName),
+        lastSeen: 'Just now',
+        createdAt: new Date().toISOString(),
+        serverCreatedAt: serverTimestamp(),
+        createdBy: me,
+        createdByName: myName,
+        owner: me,
+        hasNewActivity: true,
+        attendance: {},
+      };
+
+      const docRef = await addDoc(collection(db, 'contacts'), contactData);
+      const newContactObj: Contact = {
+        id: docRef.id,
+        ...contactData,
+      };
+      setLocalCreatedContacts((prev) => [...prev, newContactObj]);
+      setPeople([...ids, docRef.id]);
+      setQ('');
+
+      void logActivity({
+        action: 'created a new contact',
+        targetId: docRef.id,
+        targetName: newName,
+        targetType: 'contact',
+        type: 'create',
+        description: 'Added from Log a Visit write-up',
+      });
+    } catch (e) {
+      console.error('Error adding contact from visit modal:', e);
+      handleFirestoreError(e, OperationType.WRITE, 'contacts');
+    } finally {
+      setAddingContact(false);
+    }
+  };
 
   const photoCount = existingPhotos.length + newPhotos.length;
 
@@ -305,11 +375,12 @@ export default function LogVisitModal({
                     className="flex-1 min-w-[10rem] bg-transparent px-2 py-1 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
                   />
                 </div>
-                {matches.length > 0 && (
+                {(matches.length > 0 || canAddNew) && (
                   <div className="mt-2 rounded-2xl border border-outline-variant overflow-hidden">
                     {matches.map((c) => (
                       <button
                         key={c.id}
+                        type="button"
                         onClick={() => {
                           setPeople([...ids, c.id]);
                           setQ('');
@@ -323,6 +394,25 @@ export default function LogVisitModal({
                         <span className="ml-auto text-xs text-on-surface-variant">{c.location}</span>
                       </button>
                     ))}
+                    {canAddNew && (
+                      <button
+                        type="button"
+                        disabled={addingContact}
+                        onClick={handleAddSomeoneNew}
+                        className={cn(
+                          'w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-variant transition-colors text-accent font-medium',
+                          matches.length > 0 && 'border-t border-outline-variant/60',
+                        )}
+                      >
+                        <span className="w-7 h-7 rounded-full bg-primary/15 text-accent grid place-items-center text-xs">
+                          {addingContact ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                        </span>
+                        <span className="text-sm">
+                          Add <strong>{newName}</strong> — someone new
+                        </span>
+                        <span className="ml-auto text-xs text-on-surface-variant">starts a record</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
@@ -362,7 +452,7 @@ export default function LogVisitModal({
               <div>
                 <span className={label}>Who went</span>
                 <div className="flex flex-wrap gap-2">
-                  {staff.map((s) => (
+                  {realStaff.map((s) => (
                     <button
                       key={s.uid}
                       aria-pressed={went.includes(s.uid)}

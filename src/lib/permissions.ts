@@ -258,5 +258,34 @@ export function getEffectiveRole(
   return actualRole;
 }
 
+/**
+ * Filter predicate for real people (#366, #367).
+ * The staff and contact lists carry logins/records that are not real campus folk —
+ * app-store review accounts, cisa-* service logins, test users. One predicate,
+ * used by every picker, so non-person accounts are never shown to full-timers.
+ */
+export const NON_PERSON_RE = /^(cisa[-_. ]|app[-_ ]?store|reviewer\b|review[-_. ]|test[-_. ]|demo[-_. ]|bot[-_. ]|qa[-_. ]|system\b|service\b)/i;
 
+export function isRealPerson(
+  x: { displayName?: string; name?: string; id?: string; uid?: string; email?: string; system?: boolean; serviceAccount?: boolean; kind?: string; role?: string } | null | undefined
+): boolean {
+  if (!x) return false;
+  if (x.system || x.serviceAccount || x.kind === 'system' || x.role === 'system') return false;
+  const name = String(x.displayName || x.name || x.id || x.uid || '').trim();
+  if (!name) return false;
+  if (NON_PERSON_RE.test(name)) return false;
+  if (/\b(reviewer|app ?store|service account|test account)\b/i.test(name)) return false;
+  return true;
+}
 
+export function pickableStaff<T extends { displayName?: string; name?: string; id?: string; uid?: string; email?: string; system?: boolean; serviceAccount?: boolean; kind?: string; role?: string }>(
+  staff: T[]
+): T[] {
+  return staff.filter(isRealPerson);
+}
+
+export function pickableContacts<T extends { displayName?: string; name?: string; id?: string; uid?: string; email?: string; system?: boolean; serviceAccount?: boolean; kind?: string; role?: string }>(
+  contacts: T[]
+): T[] {
+  return contacts.filter(isRealPerson);
+}
