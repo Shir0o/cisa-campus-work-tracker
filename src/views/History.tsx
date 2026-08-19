@@ -472,7 +472,7 @@ export default function History() {
                       <span className="w-2 h-2 rounded-full bg-outline ring-4 ring-background" aria-hidden />
                     </span>
                     <div className="flex items-baseline gap-2">
-                      <span className="font-serif text-lg text-on-surface leading-none">{d.label}</span>
+                      <span className="text-lg font-semibold text-on-surface leading-none">{d.label}</span>
                       <span className="text-[12px] text-on-surface-variant">{d.sub}</span>
                     </div>
                   </div>

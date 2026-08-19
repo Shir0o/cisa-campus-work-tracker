@@ -855,283 +855,304 @@ export default function MyDay() {
           <FromTraineesInbox meUid={uid} contacts={contacts} onOpenContact={openContact} />
         )}
 
-        {/* ── On the horizon — the actionable heart of the day ── */}
-        <section className="mt-12">
-          <SectionHead
-            title="On the horizon"
-            sub={
-              leftToDo > 0
-                ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"} this week.`
-                : "All clear — nothing waiting on you."
-            }
-            action={
-              completedCount > 0 ? (
-                <button
-                  onClick={() => setHideCompleted((h) => !h)}
-                  title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
-                  aria-pressed={hideCompleted}
-                  className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1 cursor-pointer"
-                >
-                  {hideCompleted ? (
-                    <EyeOff className="w-3.5 h-3.5" />
-                  ) : (
-                    <Eye className="w-3.5 h-3.5" />
-                  )}
-                  {hideCompleted ? "Show completed" : "Hide completed"}
-                </button>
-              ) : undefined
-            }
-          />
-          <div className={cardClass}>
-            {assignedTasks.length > 0 && (
-              <div className="pt-2">
-                <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
-                  <CheckSquare className="w-3 h-3" /> Assigned to you
-                </div>
-                {assignedTasks.map((t, i) => (
-                  <AssignedTaskRow
-                    key={t.id}
-                    todo={t}
-                    first={i === 0}
-                    onToggle={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
-                    onJumpToSource={jumpToSource}
-                    onUpdateDue={(todo, days) =>
-                      updateTodo(todo.id, { dueDate: duePresetToISO(days) })
-                    }
-                  />
-                ))}
-              </div>
-            )}
-            {personalTasks.length > 0 && (
-              <div
-                className={cn(
-                  "pt-2",
-                  assignedTasks.length > 0 && "border-t border-outline-variant/40 mt-1",
-                )}
-              >
-                {assignedTasks.length > 0 && (
-                  <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
-                    <Pencil className="w-3 h-3" /> Your tasks
+        {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
+          {/* Next up solid violet card */}
+          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs">
+            {thisWeek.length > 0 ? (() => {
+              const [{ ev: lead, ms: leadMs }] = thisWeek;
+              const d = new Date(leadMs);
+              const facts = [lead.type, lead.location].filter(Boolean) as string[];
+              return (
+                <>
+                  <div>
+                    <div className="text-xs font-medium text-white/75">
+                      Next up · {isValid(d) ? format(d, "EEEE, MMM d") : "This week"}
+                      {lead.location ? ` · ${lead.location}` : ""}
+                    </div>
+                    <h3 className="text-2xl font-semibold text-white mt-2">{lead.name}</h3>
+                    <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
+                      A good chance to be present with the people in your care.
+                    </p>
                   </div>
-                )}
-                {personalTasks.map((t, i) => (
-                  <PersonalTaskRow
-                    key={t.id}
-                    todo={t}
-                    first={i === 0}
-                    onToggle={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
-                    onUpdate={(id, patch) => updateTodo(id, patch)}
-                    onDelete={(id) => deleteTodo(id)}
-                  />
-                ))}
+                  {facts.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {facts.map((f) => (
+                        <span
+                          key={f}
+                          className="text-xs text-white/85 bg-white/15 border border-white/20 rounded-full px-3 py-1"
+                        >
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </>
+              );
+            })() : (
+              <div>
+                <div className="text-xs font-medium text-white/75">This week</div>
+                <h3 className="text-2xl font-semibold text-white mt-2">All clear this week</h3>
+                <p className="text-sm text-white/80 leading-relaxed mt-1.5">
+                  No gatherings scheduled.
+                </p>
               </div>
-            )}
-            {assignedTasks.length === 0 && personalTasks.length === 0 && !addingTask && (
-              <p className="text-sm text-on-surface-variant py-4">
-                Nothing on the horizon right now — a rare, quiet moment.
-              </p>
-            )}
-            {addingTask ? (
-              <AddTaskRow
-                onAdd={(title, dueDate) =>
-                  uid &&
-                  addTodo(
-                    { title, assigneeId: uid, dueDate, source: null },
-                    { uid, name: user?.displayName || "" },
-                  )
-                }
-                onClose={() => setAddingTask(false)}
-              />
-            ) : (
-              <button
-                onClick={() => setAddingTask(true)}
-                className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-accent transition-colors py-3"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add a task
-              </button>
             )}
           </div>
-        </section>
 
-        {/* ── The leaders you're caring for ── */}
-        <section className="mt-12">
-          <SectionHead
-            title="Your sheep"
-            sub="The contacts you are personally connected with."
-            action={
-              <button
-                onClick={() => setPickerOpen(true)}
-                className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1"
-              >
-                <Pencil className="w-3.5 h-3.5" /> Your contacts
-              </button>
-            }
-            linkLabel="See everyone"
-            onLink={() => navigate("/directory")}
-          />
-          {myLeaders.length > 0 ? (
-            <div className="flex flex-col gap-3">
-              {myLeaders.map(({ contact, days, note }) => (
-                <ReachCard
-                  key={contact.id}
-                  contact={contact}
-                  days={days}
-                  note={note}
-                  stages={stages}
-                  onOpen={() => openContact(contact)}
-                  onMessage={() => openMessage(contact.phone, desktopMessagingApp)}
-                />
-              ))}
+          {/* Figures card */}
+          <div className="lg:col-span-6 bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col justify-between gap-4">
+            <div className="flex flex-wrap items-baseline gap-x-8 gap-y-4">
+              <Figure n={myLeaders.length} label="contacts in care" />
+              <Figure n={prayersCount} label="prayers to hold" />
+              <Figure n={leftToDo} label="tasks to hold" />
+              <Figure n={thisWeek.length} label="gatherings this week" />
             </div>
-          ) : (
-            <p className="text-sm text-on-surface-variant py-2">
-              No one's in your care yet — pick your contacts to gather them here.
-            </p>
-          )}
-        </section>
+            <span className="text-xs text-on-surface-variant/80 italic mt-2">
+              Numbers are just a way of noticing people.
+            </span>
+          </div>
+        </div>
 
-        {/* ── Your week — the soonest gathering, featured, then the rest ── */}
-        <section className="mt-12">
-          <SectionHead
-            title="Your week"
-            sub="Where you're needed."
-            linkLabel="Full calendar"
-            onLink={() => navigate("/attendance")}
-          />
-          {thisWeek.length > 0 ? (
-            <div className="space-y-4">
-              {(() => {
-                const [{ ev: lead, ms: leadMs }, ...rest] = thisWeek;
-                const d = new Date(leadMs);
-                const facts = [lead.type, lead.location].filter(Boolean) as string[];
-                return (
-                  <>
-                    <div className="bg-accent-strong rounded-3xl p-6 text-white">
-                      <div className="text-xs font-medium text-white/75">
-                        Next up · {isValid(d) ? format(d, "EEEE, MMM d") : "This week"}
-                        {lead.location ? ` · ${lead.location}` : ""}
-                      </div>
-                      <h3 className="text-2xl font-semibold text-white mt-2">{lead.name}</h3>
-                      <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
-                        A good chance to be present with the people in your care.
-                      </p>
-                      {facts.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          {facts.map((f) => (
-                            <span
-                              key={f}
-                              className="text-xs text-white/85 bg-white/15 border border-white/20 rounded-full px-3 py-1"
-                            >
-                              {f}
-                            </span>
-                          ))}
-                        </div>
+        {/* ── Two-Column Bento Grid: Left (Horizon + Prayers) & Right (Your Sheep + Week) ── */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">
+          {/* ── Left Column: On the horizon + Your prayers ── */}
+          <div className="flex flex-col gap-10 min-w-0">
+            {/* On the horizon */}
+            <section>
+              <SectionHead
+                title="On the horizon"
+                sub={
+                  leftToDo > 0
+                    ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"} this week.`
+                    : "All clear — nothing waiting on you."
+                }
+                action={
+                  completedCount > 0 ? (
+                    <button
+                      onClick={() => setHideCompleted((h) => !h)}
+                      title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                      aria-pressed={hideCompleted}
+                      className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      {hideCompleted ? (
+                        <EyeOff className="w-3.5 h-3.5" />
+                      ) : (
+                        <Eye className="w-3.5 h-3.5" />
                       )}
+                      {hideCompleted ? "Show completed" : "Hide completed"}
+                    </button>
+                  ) : undefined
+                }
+              />
+              <div className={cardClass}>
+                {assignedTasks.length > 0 && (
+                  <div className="pt-2">
+                    <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
+                      <CheckSquare className="w-3 h-3" /> Assigned to you
                     </div>
-
-                    {rest.length > 0 && (
-                      <div className={cardClass}>
-                        {rest.map(({ ev, ms }, i) => {
-                          const rd = new Date(ms);
-                          return (
-                            <div
-                              key={ev.id}
-                              className={cn(
-                                "flex items-center gap-4 py-4",
-                                i > 0 && "border-t border-outline-variant/40",
-                              )}
-                            >
-                              <div className="text-center w-11 shrink-0">
-                                <div className="font-serif text-2xl text-on-surface leading-none">
-                                  {isValid(rd) ? format(rd, "d") : "–"}
-                                </div>
-                                <div className="text-xs text-on-surface-variant mt-1">
-                                  {isValid(rd) ? format(rd, "MMM") : ""}
-                                </div>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="font-medium text-on-surface truncate">{ev.name}</div>
-                                <div className="text-xs text-on-surface-variant mt-0.5">
-                                  {isValid(rd) ? format(rd, "EEEE") : ""}
-                                  {ev.location ? ` · ${ev.location}` : ""}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                    {assignedTasks.map((t, i) => (
+                      <AssignedTaskRow
+                        key={t.id}
+                        todo={t}
+                        first={i === 0}
+                        onToggle={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
+                        onJumpToSource={jumpToSource}
+                        onUpdateDue={(todo, days) =>
+                          updateTodo(todo.id, { dueDate: duePresetToISO(days) })
+                        }
+                      />
+                    ))}
+                  </div>
+                )}
+                {personalTasks.length > 0 && (
+                  <div
+                    className={cn(
+                      "pt-2",
+                      assignedTasks.length > 0 && "border-t border-outline-variant/40 mt-1",
+                    )}
+                  >
+                    {assignedTasks.length > 0 && (
+                      <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
+                        <Pencil className="w-3 h-3" /> Your tasks
                       </div>
                     )}
-                  </>
-                );
-              })()}
-            </div>
-          ) : (
-            <p className="text-sm text-on-surface-variant py-2">
-              Nothing on the calendar this week yet.
-            </p>
-          )}
-        </section>
+                    {personalTasks.map((t, i) => (
+                      <PersonalTaskRow
+                        key={t.id}
+                        todo={t}
+                        first={i === 0}
+                        onToggle={(todo) => setTodoDone(todo.id, todo.status !== "completed")}
+                        onUpdate={(id, patch) => updateTodo(id, patch)}
+                        onDelete={(id) => deleteTodo(id)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {assignedTasks.length === 0 && personalTasks.length === 0 && !addingTask && (
+                  <p className="text-sm text-on-surface-variant py-4">
+                    Nothing on the horizon right now — a rare, quiet moment.
+                  </p>
+                )}
+                {addingTask ? (
+                  <AddTaskRow
+                    onAdd={(title, dueDate) =>
+                      uid &&
+                      addTodo(
+                        { title, assigneeId: uid, dueDate, source: null },
+                        { uid, name: user?.displayName || "" },
+                      )
+                    }
+                    onClose={() => setAddingTask(false)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setAddingTask(true)}
+                    className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-accent transition-colors py-3"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add a task
+                  </button>
+                )}
+              </div>
+            </section>
 
-        {/* ── Prayers you're holding ── */}
-        <section className="mt-12">
-          <SectionHead
-            title="Your prayers"
-            sub={
-              <>
-                Prayers for the people you're personally caring for.{" "}
-                <button
-                  onClick={() => navigate("/prayer")}
-                  className="text-accent hover:underline"
-                >
-                  Team prayers →
-                </button>
-              </>
-            }
-          />
-          <div className={cardClass}>
-              {contactPrayers.map((p, i) => (
-                <TeamPrayerRow
-                  key={p.id}
-                  prayer={p}
-                  contact={contactById(p.contactId)}
-                  first={i === 0}
-                  onUpdateStatus={handleUpdatePrayerStatus}
-                  onOpenContact={openContact}
-                  onOpenPrayerLog={() => navigate("/prayer")}
-                />
-              ))}
-              {activePersonalPrayers.map((p, i) => (
-                <PersonalPrayerRow
-                  key={p.id}
-                  prayer={p}
-                  first={i === 0 && contactPrayers.length === 0}
+            {/* Prayers you're holding */}
+            <section>
+              <SectionHead
+                title="Your prayers"
+                sub={
+                  <>
+                    Prayers for the people you're personally caring for.{" "}
+                    <button
+                      onClick={() => navigate("/prayer")}
+                      className="text-accent hover:underline"
+                    >
+                      Team prayers →
+                    </button>
+                  </>
+                }
+              />
+              <div className={cardClass}>
+                {contactPrayers.map((p, i) => (
+                  <TeamPrayerRow
+                    key={p.id}
+                    prayer={p}
+                    contact={contactById(p.contactId)}
+                    first={i === 0}
+                    onUpdateStatus={handleUpdatePrayerStatus}
+                    onOpenContact={openContact}
+                    onOpenPrayerLog={() => navigate("/prayer")}
+                  />
+                ))}
+                {activePersonalPrayers.map((p, i) => (
+                  <PersonalPrayerRow
+                    key={p.id}
+                    prayer={p}
+                    first={i === 0 && contactPrayers.length === 0}
+                    contacts={contacts}
+                    onUpdate={handleUpdatePersonalPrayer}
+                    onDelete={(id) => uid && deletePersonalPrayer(uid, id)}
+                    onOpenContact={openContact}
+                  />
+                ))}
+                {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
+                  <p className="text-sm text-on-surface-variant py-4">
+                    No prayers in your care right now.
+                  </p>
+                )}
+                <AddPersonalPrayer
                   contacts={contacts}
-                  onUpdate={handleUpdatePersonalPrayer}
-                  onDelete={(id) => uid && deletePersonalPrayer(uid, id)}
-                  onOpenContact={openContact}
+                  onAdd={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
                 />
-              ))}
-              {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
-                <p className="text-sm text-on-surface-variant py-4">
-                  No prayers in your care right now.
+              </div>
+            </section>
+          </div>
+
+          {/* ── Right Column: Your sheep + Your week ── */}
+          <div className="flex flex-col gap-10 min-w-0">
+            {/* ── The leaders you're caring for (Your sheep) ── */}
+            <section>
+              <SectionHead
+                title="Your sheep"
+                sub="The contacts you are personally connected with."
+                action={
+                  <button
+                    onClick={() => setPickerOpen(true)}
+                    className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Your contacts
+                  </button>
+                }
+                linkLabel="See everyone"
+                onLink={() => navigate("/directory")}
+              />
+              {myLeaders.length > 0 ? (
+                <div className="flex flex-col gap-3">
+                  {myLeaders.map(({ contact, days, note }) => (
+                    <ReachCard
+                      key={contact.id}
+                      contact={contact}
+                      days={days}
+                      note={note}
+                      stages={stages}
+                      onOpen={() => openContact(contact)}
+                      onMessage={() => openMessage(contact.phone, desktopMessagingApp)}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-on-surface-variant py-2">
+                  No one's in your care yet — pick your contacts to gather them here.
                 </p>
               )}
-              <AddPersonalPrayer
-                contacts={contacts}
-                onAdd={(title, contactId) => uid && addPersonalPrayer(uid, { title, contactId })}
-              />
-            </div>
-        </section>
+            </section>
 
-        {/* ── Quiet figures: present, but never the headline ── */}
-        <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-10 gap-y-4">
-          <Figure n={myLeaders.length} label="contacts to care for" />
-          <Figure n={prayersCount} label="prayers to hold" />
-          <Figure n={leftToDo} label="tasks to hold" />
-          <Figure n={thisWeek.length} label="gatherings you're part of" />
-          <span className="text-sm text-on-surface-variant italic ml-auto">
-            Numbers are just a way of noticing people.
-          </span>
+            {/* ── Your week ── */}
+            <section>
+              <SectionHead
+                title="Your week"
+                sub="Where you're needed."
+                linkLabel="Full calendar"
+                onLink={() => navigate("/attendance")}
+              />
+              {thisWeek.length > 1 ? (
+                <div className={cardClass}>
+                  {thisWeek.slice(1).map(({ ev, ms }, i) => {
+                    const rd = new Date(ms);
+                    return (
+                      <div
+                        key={ev.id}
+                        className={cn(
+                          "flex items-center gap-4 py-4",
+                          i > 0 && "border-t border-outline-variant/40",
+                        )}
+                      >
+                        <div className="text-center w-11 shrink-0">
+                          <div className="text-2xl font-semibold text-on-surface leading-none">
+                            {isValid(rd) ? format(rd, "d") : "–"}
+                          </div>
+                          <div className="text-xs text-on-surface-variant mt-1">
+                            {isValid(rd) ? format(rd, "MMM") : ""}
+                          </div>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-on-surface truncate">{ev.name}</div>
+                          <div className="text-xs text-on-surface-variant mt-0.5">
+                            {isValid(rd) ? format(rd, "EEEE") : ""}
+                            {ev.location ? ` · ${ev.location}` : ""}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-on-surface-variant py-2">
+                  {thisWeek.length === 1 ? "That's everything on the calendar this week." : "Nothing on the calendar this week yet."}
+                </p>
+              )}
+            </section>
+          </div>
         </div>
 
         {/* ── Your-contacts picker ── */}

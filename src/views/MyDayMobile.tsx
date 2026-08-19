@@ -395,7 +395,7 @@ export default function MyDayMobile({
             <div className="py-3.5 first:pt-0 last:pb-0 flex flex-col gap-2">
               <input
                 autoFocus
-                className="w-full px-3 py-2 bg-surface-container border border-outline rounded-xl text-sm focus:border-primary outline-none"
+                className="w-full px-3 py-2 bg-surface-container border border-outline rounded-xl text-base focus:border-primary outline-none"
                 placeholder="What needs doing?"
                 value={newTaskText}
                 onChange={(e) => setNewTaskText(e.target.value)}
