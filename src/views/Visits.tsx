@@ -10,6 +10,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { House, Plus } from 'lucide-react';
 import { db, handleFirestoreError, logActivity, OperationType } from '../lib/firebase';
 import { deleteVisit, groupVisits, initialsOf, overdueVisits, subscribeVisits, visitStats } from '../lib/visits';
+import { isRealPerson } from '../lib/permissions';
 import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
@@ -59,7 +60,7 @@ export default function Visits() {
         setStaff(
           snapshot.docs
             .map((d) => ({ uid: d.id, ...d.data() }) as AppUser)
-            .filter((u) => u.role === 'admin' && u.approved !== false),
+            .filter((u) => u.role === 'admin' && u.approved !== false && isRealPerson(u)),
         ),
       (e) => onLoadError(e, 'users'),
     );

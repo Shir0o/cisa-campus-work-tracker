@@ -44,10 +44,11 @@ vi.mock('../components/modals/ContactDetailsModal', () => ({
     ) : null,
 }));
 vi.mock('../components/modals/LogVisitModal', () => ({
-  default: ({ isOpen, visit, initialContactId, onClose }: any) =>
+  default: ({ isOpen, visit, initialContactId, staff, onClose }: any) =>
     isOpen ? (
       <div>
         Log modal: {visit ? `editing ${visit.id}` : `seed ${initialContactId ?? 'none'}`}
+        <div data-testid="log-modal-staff">{(staff || []).map((s: any) => s.displayName).join(',')}</div>
         <button onClick={onClose}>Close log</button>
       </div>
     ) : null,
@@ -307,5 +308,38 @@ describe('Visits', () => {
     await waitFor(() => expect(screen.getByText('Visits')).toBeInTheDocument());
     expect(screen.getByText("Where we've been")).toBeInTheDocument();
     expect(screen.getByText('This week')).toBeInTheDocument();
+  });
+
+  it('filters out non-person admin logins when passing staff to LogVisitModal (#366, #367)', async () => {
+    const firestore = await import('firebase/firestore');
+    const onSnapshotMock = firestore.onSnapshot as unknown as ReturnType<typeof vi.fn>;
+    const original = onSnapshotMock.getMockImplementation();
+    onSnapshotMock.mockImplementation(
+      (ref: { path?: string }, cb: (snap: unknown) => void) => {
+        if (ref?.path === 'users') {
+          cb({
+            docs: [
+              { id: 'u1', data: () => ({ displayName: 'Mei Tanaka', role: 'admin', approved: true }) },
+              { id: 'u2', data: () => ({ displayName: 'cisa-admin', role: 'admin', approved: true }) },
+              { id: 'u3', data: () => ({ displayName: 'App Store Reviewer', role: 'admin', approved: true }) },
+              { id: 'u4', data: () => ({ displayName: 'Jordan Park', role: 'admin', approved: true }) },
+            ],
+          });
+          return vi.fn();
+        }
+        cb({ docs: contactDocs(ref) });
+        return vi.fn();
+      },
+    );
+
+    emitVisits([]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /Log a visit/ })[0]).toBeInTheDocument());
+    fireEvent.click(screen.getAllByRole('button', { name: /Log a visit/ })[0]);
+
+    await waitFor(() => expect(screen.getByTestId('log-modal-staff')).toBeInTheDocument());
+    expect(screen.getByTestId('log-modal-staff').textContent).toBe('Mei Tanaka,Jordan Park');
+
+    onSnapshotMock.mockImplementation(original!);
   });
 });

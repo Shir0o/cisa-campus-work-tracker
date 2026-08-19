@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts } from '../lib/permissions';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -420,6 +420,61 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
   it('exports OWNER_VIEW_ROLES centralized role options', () => {
     expect(OWNER_VIEW_ROLES).toHaveLength(4);
     expect(OWNER_VIEW_ROLES.map((r) => r.key)).toEqual(['admin', 'manager', 'operator', 'viewer']);
+  });
+
+  describe('isRealPerson, pickableStaff, pickableContacts (#366, #367)', () => {
+    it('identifies real persons correctly', () => {
+      expect(isRealPerson({ displayName: 'Tony Wang' })).toBe(true);
+      expect(isRealPerson({ name: 'Ama Osei' })).toBe(true);
+      expect(isRealPerson({ displayName: 'Jordan Park', role: 'admin' })).toBe(true);
+    });
+
+    it('filters out system accounts and service accounts', () => {
+      expect(isRealPerson(null)).toBe(false);
+      expect(isRealPerson(undefined)).toBe(false);
+      expect(isRealPerson({ displayName: '' })).toBe(false);
+      expect(isRealPerson({ displayName: 'System Admin', system: true })).toBe(false);
+      expect(isRealPerson({ displayName: 'Service Account', serviceAccount: true })).toBe(false);
+      expect(isRealPerson({ displayName: 'Sync Job', kind: 'system' })).toBe(false);
+      expect(isRealPerson({ displayName: 'Core', role: 'system' })).toBe(false);
+    });
+
+    it('filters out test/reviewer/cisa-* account names (#366, #367)', () => {
+      expect(isRealPerson({ displayName: 'reviewer' })).toBe(false);
+      expect(isRealPerson({ displayName: 'App Store Reviewer' })).toBe(false);
+      expect(isRealPerson({ displayName: 'cisa-admin' })).toBe(false);
+      expect(isRealPerson({ displayName: 'cisa_sync' })).toBe(false);
+      expect(isRealPerson({ displayName: 'cisa.bot' })).toBe(false);
+      expect(isRealPerson({ displayName: 'test user' })).toBe(false);
+      expect(isRealPerson({ displayName: 'demo-account' })).toBe(false);
+      expect(isRealPerson({ displayName: 'bot-notifier' })).toBe(false);
+      expect(isRealPerson({ displayName: 'qa-tester' })).toBe(false);
+    });
+
+    it('pickableStaff filters out non-real persons', () => {
+      const staffList = [
+        { uid: 'u1', displayName: 'Mei Tanaka' },
+        { uid: 'u2', displayName: 'cisa-service' },
+        { uid: 'u3', displayName: 'App Store Reviewer' },
+        { uid: 'u4', displayName: 'Jordan Park' },
+      ];
+      expect(pickableStaff(staffList)).toEqual([
+        { uid: 'u1', displayName: 'Mei Tanaka' },
+        { uid: 'u4', displayName: 'Jordan Park' },
+      ]);
+    });
+
+    it('pickableContacts filters out non-real contacts', () => {
+      const contactsList = [
+        { id: 'c1', name: 'Ama Osei' },
+        { id: 'c2', name: 'test contact' },
+        { id: 'c3', name: 'Bo Chen' },
+      ];
+      expect(pickableContacts(contactsList)).toEqual([
+        { id: 'c1', name: 'Ama Osei' },
+        { id: 'c3', name: 'Bo Chen' },
+      ]);
+    });
   });
 });
 
