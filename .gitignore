@@ -17,6 +17,7 @@ test-results/
 # AI coding-assistant session state & pack outputs — never commit
 .deepcode/
 .aider*
+.playwright-mcp/
 repomix-output.xml
 design-spec.xml
 
