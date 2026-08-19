@@ -703,9 +703,9 @@ export default function GlobalSearch() {
       <div ref={containerRef} className="relative w-full hidden lg:block">
         <div
           className={cn(
-            'relative flex items-center w-full h-10 rounded-full transition-all cursor-text',
+            'relative flex items-center w-full h-10 rounded-full transition-all cursor-text border-0 ring-0',
             searchOpen
-              ? 'bg-surface shadow-lg ring-1 ring-outline-variant'
+              ? 'bg-surface shadow-lg'
               : 'bg-surface-container-high hover:bg-surface-container-highest',
           )}
           onClick={() => {
@@ -725,12 +725,12 @@ export default function GlobalSearch() {
               setQ(e.target.value);
               setSearchOpen(true);
             }}
-            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70"
+            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
             placeholder="Search or jump to…"
             aria-label="Search"
           />
           {!searchOpen ? (
-            <div className="absolute right-3 flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md border border-outline-variant text-[10px] font-medium text-on-surface-variant pointer-events-none">
+            <div className="absolute right-3 flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md text-[10px] font-medium text-on-surface-variant pointer-events-none">
               <Command className="w-3 h-3" />
               <span>K</span>
             </div>

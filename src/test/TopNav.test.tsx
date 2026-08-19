@@ -94,13 +94,13 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('renders More menu and opens it to reveal grouped destinations', () => {
+  it('renders More menu and opens it to reveal alphabetically sorted destinations', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /more/i }));
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('My Day')).toBeInTheDocument();
-    expect(screen.getAllByText('Looking back').length).toBeGreaterThan(0);
-    expect(screen.getByText('Sign-up form')).toBeInTheDocument();
+    expect(screen.getByText('Looking back')).toBeInTheDocument();
+    expect(screen.getByText('Visits')).toBeInTheDocument();
   });
 
   it('opening More navigates to a destination', () => {
@@ -123,11 +123,12 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(h.mockSetIsMobileMenuOpen).toHaveBeenCalledWith(true);
   });
 
-  it('renders profile dropdown with persona, Settings and Log out', () => {
+  it('renders profile dropdown with persona, season chip, Settings and Log out', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /Profile/i }));
     expect(screen.getByText('tony@cisa.test')).toBeInTheDocument();
     expect(screen.getByText('Full-timer')).toBeInTheDocument();
+    expect(screen.getByTestId('season-chip')).toBeInTheDocument();
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Log out')).toBeInTheDocument();
   });

@@ -154,28 +154,13 @@ export function primaryNavFor(role: AppRole | string | null): NavItem[] {
   return out;
 }
 
-// "More" groups the remaining accessible destinations (everything not in the
-// three tabs). Grouping mirrors the shell bake-off's flat, ranked menu.
-const MORE_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: 'The work', hrefs: ['/board', '/attendance', '/visits', '/outreach', '/coordination'] },
-  { label: 'Looking back', hrefs: ['/answered', '/history'] },
-  { label: 'Elsewhere', hrefs: ['/messages', '/feedback'] },
-];
-
-export function moreNavFor(role: AppRole | string | null): NavGroup[] {
+export function moreNavFor(role: AppRole | string | null): NavItem[] {
   const primary = primaryNavFor(role).map((i) => i.href);
   const rest = navItemsForRole(role).filter(
     (i) => !primary.includes(i.href) && i.href !== '/settings',
   );
-  const groups: NavGroup[] = [];
-  for (const g of MORE_GROUPS) {
-    const items = rest.filter((i) => g.hrefs.includes(i.href));
-    if (items.length) groups.push({ label: g.label, items });
-  }
-  const grouped = new Set(MORE_GROUPS.flatMap((g) => g.hrefs));
-  const extra = rest.filter((i) => !grouped.has(i.href));
-  if (extra.length) groups.push({ items: extra });
-  return groups;
+  const getLabel = (item: NavItem) => (item.href === '/' && role === 'admin' ? 'My Day' : item.label);
+  return rest.sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
 }
 
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';

@@ -38,7 +38,6 @@ import {
 import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
-import { SIGNUP_TITLE } from './SignupInvite';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
 // same way). Fallback to LayoutDashboard for anything unmapped.
@@ -74,7 +73,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   const profileRef = useRef<HTMLDivElement>(null);
 
   const primary = primaryNavFor(role);
-  const moreGroups = moreNavFor(role);
+  const moreItems = moreNavFor(role);
   const externalLinks = navExternalFor(role);
 
   // Close "More" / avatar menus on outside click or Escape.
@@ -218,80 +217,29 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     exit={{ opacity: 0, y: 4, scale: 0.99 }}
                     transition={{ duration: 0.12 }}
                     role="menu"
-                    className="absolute right-0 top-[calc(100%+10px)] w-72 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50"
+                    className="absolute right-0 top-[calc(100%+10px)] w-56 bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50"
                   >
-                    <div className="max-h-[min(70vh,520px)] overflow-y-auto custom-scrollbar p-2">
-                      {moreGroups.map((g, gi) => (
-                        <div key={gi} className="mb-1">
-                          {g.label && (
-                            <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-                              {g.label}
-                            </div>
-                          )}
-                          {g.items.map((item) => {
-                            const href = item.href;
-                            const label = href === '/' ? homeLabel : item.label;
-                            return (
-                              <button
-                                key={href}
-                                type="button"
-                                onClick={() => go(href)}
-                                className={cn(
-                                  'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] transition-colors',
-                                  pathname === href || (href !== '/' && pathname.startsWith(href))
-                                    ? 'bg-accent-soft text-on-surface font-medium'
-                                    : 'text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface',
-                                )}
-                              >
-                                <NavGlyph href={href} size={18} />
-                                <span className="min-w-0 flex-1">{label}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      ))}
-
-                      {externalLinks.length > 0 && (
-                        <div className="mb-1">
-                          <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-                            Elsewhere
-                          </div>
-                          {externalLinks.map((item) => (
-                            <a
-                              key={item.id}
-                              href={item.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
-                            >
-                              <CalendarDays className="w-[18px] h-[18px] shrink-0" />
-                              <span className="min-w-0 flex-1">{item.label}</span>
-                              <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="mb-1">
-                        <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-on-surface-variant/70 uppercase tracking-wide">
-                          For someone new
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => go('/signup')}
-                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface"
-                        >
-                          <FileText className="w-[18px] h-[18px] shrink-0" />
-                          <span className="min-w-0 flex-1">{SIGNUP_TITLE}</span>
-                          <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
-                        </button>
-                      </div>
-
-                      <div className="px-3 py-2 rounded-xl bg-surface-container text-[11px] text-on-surface-variant flex items-center gap-1.5">
-                        <Search className="w-3.5 h-3.5" />
-                        Everything is reachable from search
-                        <kbd className="ml-auto text-[10px] px-1.5 py-0.5 rounded-md border border-outline-variant">⌘K</kbd>
-                      </div>
+                    <div className="max-h-[min(70vh,520px)] overflow-y-auto custom-scrollbar p-1.5 space-y-0.5">
+                      {moreItems.map((item) => {
+                        const href = item.href;
+                        const label = href === '/' ? homeLabel : item.label;
+                        return (
+                          <button
+                            key={href}
+                            type="button"
+                            onClick={() => go(href)}
+                            className={cn(
+                              'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] transition-colors',
+                              pathname === href || (href !== '/' && pathname.startsWith(href))
+                                ? 'bg-accent-soft text-on-surface font-medium'
+                                : 'text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface',
+                            )}
+                          >
+                            <NavGlyph href={href} size={18} />
+                            <span className="min-w-0 flex-1">{label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </motion.div>
                 )}
@@ -300,11 +248,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
           </nav>
 
           <div className="flex-1" />
-
-          {/* Season / club-rush strip */}
-          <div className="hidden xl:block">
-            <SeasonChip />
-          </div>
 
           {/* Search — ⌘K / Ctrl+K palette lives in GlobalSearch */}
           <div className="hidden lg:block w-full max-w-[220px] xl:max-w-sm">
@@ -382,9 +325,12 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     <p className="text-xs text-on-surface-variant truncate">
                       {impersonateTarget ? impersonateTarget.sub : user?.email}
                     </p>
-                    <span className="inline-block mt-1.5 text-[11px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
-                      {impersonateTarget ? impersonateTarget.sub : roleLabel(role)}
-                    </span>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className="inline-block text-[11px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
+                        {impersonateTarget ? impersonateTarget.sub : roleLabel(role)}
+                      </span>
+                      <SeasonChip className="px-0 mt-0" />
+                    </div>
                   </div>
 
                   <Link
@@ -446,10 +392,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               >
                 <X className="w-5 h-5" />
               </button>
-            </div>
-
-            <div className="mb-4">
-              <SeasonChip />
             </div>
 
             {NAV_ITEMS.filter((item) => canAccessRoute(role as AppRole, item.href)).map((item) => {

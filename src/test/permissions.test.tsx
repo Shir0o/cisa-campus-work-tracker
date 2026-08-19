@@ -258,14 +258,22 @@ describe('TopNav primary tabs per role', () => {
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/board', '/directory', '/prayer']);
-    // Everything else lands in the More menu, grouped.
-    const moreHrefs = moreNavFor('admin').flatMap((g) => g.items.map((i) => i.href));
+    // Everything else lands in the More menu, alphabetically sorted.
+    const moreHrefs = moreNavFor('admin').map((i) => i.href);
     for (const href of ['/', '/history', '/attendance', '/outreach', '/visits', '/answered', '/coordination', '/messages']) {
-      expect(moreHrefs, href).toContain(href);
+      expect(moreHrefs).toContain(href);
     }
-    expect(moreNavFor('admin').some((g) => g.label === 'The work')).toBe(true);
-    expect(moreNavFor('admin').some((g) => g.label === 'Looking back')).toBe(true);
-    expect(moreNavFor('admin').some((g) => g.label === 'Elsewhere')).toBe(true);
+    const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
+    expect(adminMoreLabels).toEqual([
+      'Answered',
+      'Coordination Notes',
+      'Gatherings',
+      'Gospel',
+      'Looking back',
+      'Messages',
+      'My Day',
+      'Visits',
+    ]);
   });
 
   it('navExternalFor returns external items according to role', () => {
@@ -277,7 +285,7 @@ describe('TopNav primary tabs per role', () => {
   it('primaryNavFor / moreNavFor never overlap and exclude Settings', () => {
     for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
       const primary = new Set(primaryNavFor(role).map((i) => i.href));
-      const more = moreNavFor(role).flatMap((g) => g.items.map((i) => i.href));
+      const more = moreNavFor(role).map((i) => i.href);
       for (const href of more) {
         expect(primary.has(href), `${role} more ${href} not in primary`).toBe(false);
       }

@@ -7,7 +7,13 @@ import { cn } from '../../lib/utils';
 // The "Spring · '26" strip under the brand. Shows the active season everywhere;
 // for staff (managers+) it opens a small popover to override the season + toggle
 // club-rush intake. Hidden when the sidebar is collapsed.
-export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
+export default function SeasonChip({
+  collapsed,
+  className,
+}: {
+  collapsed?: boolean;
+  className?: string;
+}) {
   const season = useSeason();
   const { isManager } = useAuth();
   const [open, setOpen] = useState(false);
@@ -38,13 +44,16 @@ export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
   );
 
   if (!isManager) {
-    return <div className="px-3 mt-0.5">{chip}</div>;
+    return <div className={cn('px-3 mt-0.5', className)}>{chip}</div>;
   }
 
   return (
-    <div ref={ref} className="relative px-3 mt-0.5">
+    <div ref={ref} className={cn('relative px-3 mt-0.5', className)}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
         className="inline-flex items-center gap-1 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
         title="Season & club rush"
       >
@@ -52,7 +61,10 @@ export default function SeasonChip({ collapsed }: { collapsed?: boolean }) {
       </button>
 
       {open && (
-        <div className="absolute left-3 top-full mt-2 z-50 w-56 bg-surface-container rounded-2xl shadow-xl border border-outline-variant p-3 space-y-3">
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-0 top-full mt-2 z-50 w-56 bg-surface-container rounded-2xl shadow-xl border border-outline-variant p-3 space-y-3"
+        >
           <div>
             <div className="text-xs font-medium text-on-surface-variant px-1 mb-1.5">
               Tagging sign-ups for
