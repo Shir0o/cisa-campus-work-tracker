@@ -12,8 +12,8 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor } from '../lib/permissions';
-import Sidebar from '../components/layout/Sidebar';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor } from '../lib/permissions';
+import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
 
 // ─── Module mocks ────────────────────────────────────────────────────────────
@@ -48,6 +48,18 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: () => currentUser,
 }));
 
+vi.mock('../components/layout/SeasonChip', () => ({
+  default: () => <div data-testid="season-chip" />,
+}));
+
+vi.mock('../components/layout/GlobalSearch', () => ({
+  default: () => <div data-testid="global-search" />,
+}));
+
+vi.mock('../components/layout/NotificationCenter', () => ({
+  default: () => <div data-testid="notification-center" />,
+}));
+
 vi.mock('../App', () => ({
   useLayout: () => ({
     isMobileMenuOpen: false,
@@ -72,10 +84,10 @@ vi.mock('motion/react', () => ({
 
 const ALL_ROUTES = NAV_ITEMS.map(i => i.href).concat(['/admin/feedback', '/feedback', 'https://shared-calendar-6u6.pages.dev/']);
 
-function renderSidebar() {
+function renderTopNav() {
   return render(
     <MemoryRouter>
-      <Sidebar isCollapsed={false} onToggleCollapse={vi.fn()} onLogInteraction={vi.fn()} />
+      <TopNav />
     </MemoryRouter>
   );
 }
@@ -197,40 +209,38 @@ describe('roleLabel()', () => {
   });
 });
 
-// ─── 4. Sidebar nav per role ─────────────────────────────────────────────────
+// ─── 4. TopNav primary tabs + More menu per role ───────────────────────────
 
-describe('Sidebar nav items', () => {
+describe('TopNav primary tabs per role', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it('viewer: shows Home, Gatherings, Prayer, Settings', () => {
+  it('viewer: Home, Gatherings, On our hearts as primary tabs; More holds the rest', () => {
     currentUser = TEST_USERS.viewer;
-    renderSidebar();
+    renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
-    expect(screen.getByText('Messages')).toBeInTheDocument();
-    expect(screen.getByText('Settings')).toBeInTheDocument();
-    expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('People')).not.toBeInTheDocument();
-    expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
+    // primaryNavFor drives the tabs
+    expect(primaryNavFor('viewer').map((i) => i.href)).toEqual(['/', '/attendance', '/prayer']);
+    expect(primaryNavFor('viewer').every((i) => canAccessRoute('viewer', i.href))).toBe(true);
   });
 
-  it('operator: adds People, labels home "Home", still no The Journey or Looking back', () => {
+  it('operator: Home, People, On our hearts; no The Journey or Looking back', () => {
     currentUser = TEST_USERS.operator;
-    renderSidebar();
+    renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
-    expect(screen.queryByText('Today')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
     expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: adds The Journey, Home labeled "Home", hides settings/history/gatherings/prayer/calendar', () => {
+  it('manager: Home, People, The Journey; hides gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
-    renderSidebar();
+    renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
     expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
@@ -238,26 +248,41 @@ describe('Sidebar nav items', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
     expect(screen.queryByText('Gatherings')).not.toBeInTheDocument();
     expect(screen.queryByText('On our hearts')).not.toBeInTheDocument();
-    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
-    expect(screen.queryByText('Today')).not.toBeInTheDocument();
   });
 
-  it('admin: sees all nav items with the home labeled "My Day"', () => {
+  it('admin: The Journey, People, On our hearts as primary tabs, home labeled "My Day" in More', () => {
     currentUser = TEST_USERS.admin;
-    renderSidebar();
-    const labels = ['My Day', 'The Journey', 'People', 'Shared Calendar', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings', 'Sign-up form'];
-    for (const label of labels) {
-      expect(screen.getByText(label), label).toBeInTheDocument();
+    renderTopNav();
+    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('People')).toBeInTheDocument();
+    expect(screen.getByText('On our hearts')).toBeInTheDocument();
+    expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/board', '/directory', '/prayer']);
+    // Everything else lands in the More menu, grouped.
+    const moreHrefs = moreNavFor('admin').flatMap((g) => g.items.map((i) => i.href));
+    for (const href of ['/', '/history', '/attendance', '/outreach', '/visits', '/answered', '/coordination', '/messages']) {
+      expect(moreHrefs, href).toContain(href);
     }
-    expect(screen.queryByText('Today')).not.toBeInTheDocument();
-    expect(screen.queryByText('Home')).not.toBeInTheDocument();
+    expect(moreNavFor('admin').some((g) => g.label === 'The work')).toBe(true);
+    expect(moreNavFor('admin').some((g) => g.label === 'Looking back')).toBe(true);
+    expect(moreNavFor('admin').some((g) => g.label === 'Elsewhere')).toBe(true);
   });
 
   it('navExternalFor returns external items according to role', () => {
     expect(navExternalFor('admin').map((i) => i.id)).toContain('calendar');
     expect(navExternalFor('viewer')).toEqual([]);
     expect(navExternalFor(null)).toEqual([]);
+  });
+
+  it('primaryNavFor / moreNavFor never overlap and exclude Settings', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      const primary = new Set(primaryNavFor(role).map((i) => i.href));
+      const more = moreNavFor(role).flatMap((g) => g.items.map((i) => i.href));
+      for (const href of more) {
+        expect(primary.has(href), `${role} more ${href} not in primary`).toBe(false);
+      }
+      expect(more.includes('/settings')).toBe(false);
+    }
   });
 });
 

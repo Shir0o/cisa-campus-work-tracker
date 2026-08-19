@@ -124,6 +124,60 @@ export function navItemsForRole(role: AppRole | string | null): NavItem[] {
   return NAV_ITEMS.filter((item) => canAccessRoute(role, item.href));
 }
 
+// ── Top-anchored navigation (shell bake-off, direction B — picked 18 Aug) ────
+// No rail: the three destinations that carry the week sit in the topbar beside
+// the mark; every other accessible place lives in one "More" menu. Settings is
+// deliberately excluded — it lives in the avatar menu at the right.
+
+export interface NavGroup {
+  label?: string;
+  items: NavItem[];
+}
+
+// The three tabs shown beside the brand, per role. Order matters; each is
+// filtered by what the role can actually reach.
+const PRIMARY_BY_ROLE: Record<AppRole, string[]> = {
+  admin: ['/board', '/directory', '/prayer'],
+  manager: ['/', '/directory', '/board'],
+  operator: ['/', '/directory', '/prayer'],
+  viewer: ['/', '/attendance', '/prayer'],
+};
+
+export function primaryNavFor(role: AppRole | string | null): NavItem[] {
+  const list = navItemsForRole(role);
+  const want = PRIMARY_BY_ROLE[role as AppRole] ?? [];
+  const out: NavItem[] = [];
+  for (const href of want) {
+    const item = list.find((i) => i.href === href);
+    if (item && !out.includes(item)) out.push(item);
+  }
+  return out;
+}
+
+// "More" groups the remaining accessible destinations (everything not in the
+// three tabs). Grouping mirrors the shell bake-off's flat, ranked menu.
+const MORE_GROUPS: { label: string; hrefs: string[] }[] = [
+  { label: 'The work', hrefs: ['/board', '/attendance', '/visits', '/outreach', '/coordination'] },
+  { label: 'Looking back', hrefs: ['/answered', '/history'] },
+  { label: 'Elsewhere', hrefs: ['/messages', '/feedback'] },
+];
+
+export function moreNavFor(role: AppRole | string | null): NavGroup[] {
+  const primary = primaryNavFor(role).map((i) => i.href);
+  const rest = navItemsForRole(role).filter(
+    (i) => !primary.includes(i.href) && i.href !== '/settings',
+  );
+  const groups: NavGroup[] = [];
+  for (const g of MORE_GROUPS) {
+    const items = rest.filter((i) => g.hrefs.includes(i.href));
+    if (items.length) groups.push({ label: g.label, items });
+  }
+  const grouped = new Set(MORE_GROUPS.flatMap((g) => g.hrefs));
+  const extra = rest.filter((i) => !grouped.has(i.href));
+  if (extra.length) groups.push({ items: extra });
+  return groups;
+}
+
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
 export const canSeePrefs = (role: AppRole | string | null) => role === 'admin' || role === 'manager';
 export const canSeeHistory = (role: AppRole | string | null) => role === 'admin';
