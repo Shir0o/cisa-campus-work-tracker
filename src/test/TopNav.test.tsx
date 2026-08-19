@@ -85,10 +85,10 @@ describe('TopNav (top-anchored navigation)', () => {
     h.layout = { isMobileMenuOpen: false, setIsMobileMenuOpen: h.mockSetIsMobileMenuOpen, setSearchOpen: h.mockSetSearchOpen };
   });
 
-  it('renders the brand and primary tabs for admin (The Journey · People · On our hearts)', () => {
+  it('renders the brand and primary tabs for admin (The Board · People · On our hearts)', () => {
     renderTopNav();
     expect(screen.getByAltText('CISA Campus Work Tracker')).toBeInTheDocument();
-    expect(screen.getByText('The Journey')).toBeInTheDocument();
+    expect(screen.getByText('The Board')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();

@@ -92,7 +92,7 @@ export function navExternalFor(role: AppRole | string | null): ExternalNavItem[]
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
-  { href: '/board', label: 'The Journey', minRole: 'manager' },
+  { href: '/board', label: 'The Board', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
   { href: '/attendance', label: 'Gatherings', minRole: 'viewer' },
