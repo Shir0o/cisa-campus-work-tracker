@@ -1,60 +1,34 @@
+import { UserEntityState, __resetUserEntityStateCache } from "./userEntityState";
+
 // Conversation hiding — client-only per-user state for hiding a whole
-// conversation from one viewer's rail list. Mirrors `src/lib/messageHides.ts`
-// and the design project's `ConvHides` (views/messages.jsx).
+// conversation from one viewer's rail list, backed by unified UserEntityState (#326).
 
-const CONV_HIDE_PREFIX = 'cisa.conv.hidden.';
+export const ConvHides = {
+  has(uid: string, convId: string): boolean {
+    return UserEntityState.isDone(uid, `conv:${convId}`);
+  },
 
-export const ConvHides = (() => {
-  const subs = new Set<() => void>();
+  hide(uid: string, convId: string): void {
+    UserEntityState.markDone(uid, `conv:${convId}`);
+  },
 
-  const key = (uid: string) => CONV_HIDE_PREFIX + uid;
+  unhide(uid: string, convId: string): void {
+    UserEntityState.markUndone(uid, `conv:${convId}`);
+  },
 
-  const load = (uid: string): string[] => {
-    try {
-      return JSON.parse(localStorage.getItem(key(uid)) || '[]');
-    } catch (e) {
-      return [];
+  unhideAll(uid: string, convIds?: string[]): void {
+    if (convIds && convIds.length > 0) {
+      UserEntityState.clearDone(uid, convIds.map((id) => `conv:${id}`));
+    } else {
+      UserEntityState.clearDone(uid);
     }
-  };
+  },
 
-  const save = (uid: string, arr: string[]) => {
-    try {
-      localStorage.setItem(key(uid), JSON.stringify(arr));
-    } catch (e) {
-      // Ignore quota errors
-    }
-  };
+  subscribe(fn: () => void): () => void {
+    return UserEntityState.subscribe(fn);
+  },
+};
 
-  const emit = () => subs.forEach((fn) => fn());
-
-  return {
-    has(uid: string, convId: string): boolean {
-      return load(uid).indexOf(convId) > -1;
-    },
-    hide(uid: string, convId: string): void {
-      const arr = load(uid);
-      if (arr.indexOf(convId) < 0) {
-        arr.push(convId);
-        save(uid, arr);
-        emit();
-      }
-    },
-    unhide(uid: string, convId: string): void {
-      save(uid, load(uid).filter((id) => id !== convId));
-      emit();
-    },
-    unhideAll(uid: string, convIds?: string[]): void {
-      if (convIds && convIds.length > 0) {
-        const idSet = new Set(convIds);
-        save(uid, load(uid).filter((id) => !idSet.has(id)));
-      } else {
-        save(uid, []);
-      }
-      emit();
-    },
-    subscribe(fn: () => void): () => void {
-      subs.add(fn);
-      return () => subs.delete(fn);
-    },
-  };
-})();
+export const __resetConvHidesCache = () => {
+  __resetUserEntityStateCache();
+};

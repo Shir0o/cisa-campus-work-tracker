@@ -15,8 +15,8 @@ describe("MessageHides (per-user localStorage hide-from-view state)", () => {
     // Different user does not see uidA's hides.
     expect(MessageHides.has("uidB", "m1")).toBe(false);
 
-    const raw = localStorage.getItem("cisa.msg.hidden.uidA");
-    expect(JSON.parse(raw as string)).toContain("m1");
+    const raw = localStorage.getItem("cisa.user.entity.uidA");
+    expect(JSON.parse(raw as string).done).toContain("message:m1");
   });
 
   it("unhide removes a single message", () => {
@@ -62,5 +62,16 @@ describe("MessageHides (per-user localStorage hide-from-view state)", () => {
     localStorage.setItem("cisa.msg.hidden.uidZ", JSON.stringify(["m42"]));
     __resetMessageHidesCache();
     expect(MessageHides.has("uidZ", "m42")).toBe(true);
+  });
+
+  it("useMessageHides hook returns MessageHides for valid uid and null for empty uid", async () => {
+    const { useMessageHides } = await import("../lib/messageHides");
+    const { renderHook } = await import("@testing-library/react");
+
+    const { result: rNull } = renderHook(() => useMessageHides(null));
+    expect(rNull.current).toBeNull();
+
+    const { result: rUid } = renderHook(() => useMessageHides("u1"));
+    expect(rUid.current).toBe(MessageHides);
   });
 });
