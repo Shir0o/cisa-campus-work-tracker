@@ -2,7 +2,7 @@ import React from "react";
 import { Mail, MessageSquare } from "lucide-react";
 import { Contact, Stage } from "../../types";
 import { Avatar, StageChip } from "./primitives";
-import { connectedLabel, truncate } from "./helpers";
+import { connectedLabel } from "./helpers";
 
 // A person you're walking with: avatar + name + stage, when you last connected,
 // a recent note, and reach actions (Message / Email / Open). Shared by My Day's
@@ -43,8 +43,8 @@ export function ReachCard({
           </div>
           {statusNode && <div className="mt-1.5">{statusNode}</div>}
           {note && (
-            <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-              {truncate(note, 120)}
+            <p className="text-sm text-on-surface-variant leading-relaxed mt-2 whitespace-pre-line">
+              {note}
             </p>
           )}
         </div>

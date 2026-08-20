@@ -1517,5 +1517,56 @@ describe('ContactDetailsModal Component', () => {
 
     expect(screen.getByText(/contacted by Tony Wang/i)).toBeInTheDocument();
   });
+
+  it('orders interactions by the date they happened, not when they were logged', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, callback: any) => {
+      if (q?.path?.includes('interactions')) {
+        callback({
+          docs: [
+            {
+              id: 'inter-older',
+              data: () => ({
+                userId: 'user-1',
+                userName: 'Bob',
+                content: 'Logged later but actually older',
+                dateTime: '2026-08-01T10:00:00Z',
+                createdAt: '2026-08-20T10:00:00Z',
+              }),
+            },
+            {
+              id: 'inter-newer',
+              data: () => ({
+                userId: 'user-2',
+                userName: 'Alice',
+                content: 'Backdated newer',
+                dateTime: '2026-08-19T14:00:00Z',
+                createdAt: '2026-08-18T14:00:00Z',
+              }),
+            },
+          ],
+        });
+      } else {
+        callback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={mockContact}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
+    await screen.findByText('Backdated newer');
+
+    const rendered = screen.getAllByText(/Backdated newer|Logged later but actually older/);
+    expect(rendered.map((node) => node.textContent)).toEqual([
+      'Backdated newer',
+      'Logged later but actually older',
+    ]);
+  });
 });
 

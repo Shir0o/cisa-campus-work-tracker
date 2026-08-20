@@ -635,6 +635,19 @@ export default function MyDay() {
     [prefContactIds, myCreatedIds],
   );
 
+  // The picker shows checked (personal) contacts first, then the rest; both
+  // groups alphabetical (#400).
+  const pickerContacts = useMemo(
+    () =>
+      [...contacts].sort((a, b) => {
+        const aChecked = personalContactIds.has(a.id);
+        const bChecked = personalContactIds.has(b.id);
+        if (aChecked !== bChecked) return aChecked ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      }),
+    [contacts, personalContactIds],
+  );
+
   // Leaders I'm caring for — my personal contacts, longest-since-connected first.
   const myLeaders = useMemo(() => {
     return contacts
@@ -1207,7 +1220,7 @@ export default function MyDay() {
                 visible on the People page.
               </p>
               <div className="overflow-y-auto px-3 pb-3 flex flex-col gap-0.5">
-                {contacts.map((c) => {
+                {pickerContacts.map((c) => {
                   const checked = personalContactIds.has(c.id);
                   return (
                     <label

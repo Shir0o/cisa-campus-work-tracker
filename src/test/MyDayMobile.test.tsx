@@ -350,6 +350,34 @@ describe('MyDayMobile', () => {
     expect(screen.queryByText('Your personal contacts')).not.toBeInTheDocument();
   });
 
+  it('sorts the contacts picker with checked contacts first, then alphabetically', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    const contacts = [
+      { id: 'zoe', name: 'Zoe Adams', stage: 'new' },
+      { id: 'alice', name: 'Alice Brown', stage: 'new' },
+      { id: 'mara', name: 'Mara Vale', stage: 'new' },
+    ] as any[];
+    const personalContactIds = new Set(['mara']);
+
+    render(
+      <MyDayMobile
+        contacts={contacts}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        personalContactIds={personalContactIds}
+      />
+    );
+
+    fireEvent.click(screen.getAllByText('Your contacts')[0]);
+    const rows = Array.from(document.querySelectorAll('.myd-picker-row')) as HTMLElement[];
+    const names = rows.map((row) => row.textContent?.trim().replace(/\s+/g, ' ') ?? '');
+    expect(names[0]).toContain('Mara Vale');
+    expect(names[1]).toContain('Alice Brown');
+    expect(names[2]).toContain('Zoe Adams');
+  });
+
   it('renders personal prayer composer and toggles addPP state', () => {
     (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
     const onAddPersonalPrayer = vi.fn();

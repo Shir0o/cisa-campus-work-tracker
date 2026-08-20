@@ -1018,6 +1018,17 @@ export default function ContactDetailsModal({
   };
   const currentContact = liveContact || contact;
 
+  // Interactions are sorted by the date they happened (dateTime), not by when
+  // they were entered into the app (createdAt). This keeps backdated log
+  // entries in the right place (#399).
+  const sortedInteractions = useMemo(() => {
+    return [...interactions].sort((a, b) => {
+      const aMs = parseMs(a.dateTime || a.createdAt) ?? 0;
+      const bMs = parseMs(b.dateTime || b.createdAt) ?? 0;
+      return bMs - aMs;
+    });
+  }, [interactions]);
+
   const latestInteraction = useMemo(() => {
     if (!interactions || interactions.length === 0) return null;
     let newest = interactions[0];
@@ -1587,7 +1598,7 @@ export default function ContactDetailsModal({
                           <div className="cd-empty">No conversations logged yet.</div>
                         ) : (
                           <div className="cd-tl">
-                            {[...interactions].reverse().slice(0, 3).map((i) => (
+                            {sortedInteractions.slice(0, 3).map((i) => (
                               <div className="cd-tl-item" key={i.id}>
                                 <div className="cd-tl-dot"></div>
                                 <div className="cd-tl-title">{i.content}</div>
@@ -1781,7 +1792,7 @@ export default function ContactDetailsModal({
                             </p>
                           </div>
                         ) : (
-                          [...interactions].reverse().map((interaction) => (
+                          sortedInteractions.map((interaction) => (
                             <div
                               key={interaction.id}
                               className="flex gap-3 group"

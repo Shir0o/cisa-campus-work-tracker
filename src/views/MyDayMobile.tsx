@@ -145,6 +145,17 @@ export default function MyDayMobile({
     return contacts.map((c) => ({ contact: c, days: 0, note: "" }));
   }, [rawMyLeaders, contacts]);
 
+  // The picker shows checked (personal) contacts first, then the rest; both
+  // groups alphabetical (#400).
+  const pickerContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      const aChecked = personalContactIds.has(a.id);
+      const bChecked = personalContactIds.has(b.id);
+      if (aChecked !== bChecked) return aChecked ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [contacts, personalContactIds]);
+
   const thisWeek = useMemo(() => {
     if (rawThisWeek.length > 0) return rawThisWeek;
     return events.map((ev) => ({ ev, ms: ev.date ? new Date(ev.date).getTime() : Date.now() }));
@@ -676,7 +687,7 @@ export default function MyDayMobile({
               visible on the People page.
             </p>
             <div className="overflow-y-auto px-4 pb-8 flex flex-col gap-0.5 myd-picker-list">
-              {contacts.map((c) => {
+              {pickerContacts.map((c) => {
                 const checked = personalContactIds.has(c.id);
                 return (
                   <button

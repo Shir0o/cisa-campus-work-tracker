@@ -444,6 +444,28 @@ describe('MyDay', () => {
     );
   });
 
+  it('sorts the desktop contacts picker with personal contacts first alphabetically', async () => {
+    h.prefsData = { personalContactIds: ['mara'], desktopMessagingApp: 'google' };
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [
+          contactDoc('zoe', { name: 'Zoe Adams', initials: 'ZA', stage: 'Regular', createdBy: 'u-test' }),
+          contactDoc('alice', { name: 'Alice Brown', initials: 'AB', stage: 'Regular', createdBy: 'u-test' }),
+          contactDoc('mara', { name: 'Mara Vale', initials: 'MV', stage: 'Regular', createdBy: 'u-test' }),
+        ],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Mara Vale')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: /Your contacts/i }));
+    const checkboxes = await screen.findAllByRole('checkbox');
+    const names = checkboxes.map((cb) => cb.closest('label')?.textContent?.replace(/\s+/g, ' ') ?? '');
+    expect(names[0]).toContain('Mara Vale');
+    expect(names[1]).toContain('Alice Brown');
+    expect(names[2]).toContain('Zoe Adams');
+  });
+
   it('uses the Message button for contacts with a phone, Email otherwise', async () => {
     vi.mocked(onSnapshot).mockImplementation(
       byPath({
