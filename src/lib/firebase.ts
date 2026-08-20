@@ -6,6 +6,9 @@ import { getStorage } from 'firebase/storage';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const finalConfig = { ...firebaseConfig };
+if (!finalConfig.apiKey) {
+  finalConfig.apiKey = import.meta.env.VITE_FIREBASE_API_KEY || 'mock-api-key';
+}
 if (import.meta.env.VITE_FIREBASE_API_KEY) {
   finalConfig.apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
 }

@@ -14,6 +14,11 @@ vi.mock("../components/AuthProvider", () => ({
   }),
 }));
 
+vi.mock("../lib/firebase", () => ({
+  db: {},
+  auth: { currentUser: { uid: "u1" } },
+}));
+
 describe("AttentionFeed Component (#330)", () => {
   const uid = "u1";
 
