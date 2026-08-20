@@ -33,6 +33,7 @@ import { fullTimerOf } from "../../lib/walking";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/threads";
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
+import FirstRunCard from "../../components/landing/FirstRunCard";
 
 // One thing the full-timer has put on the trainee's plate: a nudge to follow up
 // or a question awaiting a reply. "Open" jumps into the contact's conversation.
@@ -295,6 +296,19 @@ export default function LandingTrainee() {
             : "Here's your circle, and what you're holding in prayer."}
         </p>
       </header>
+
+      <FirstRunCard
+        role="trainee"
+        userId={uid}
+        context={{
+          contactsCount: myPeople.length,
+          interactionsCount: myPeople.filter((p) => p.note).length,
+          messagesCount: threads.filter((m) => m.from === uid).length,
+          prayersCount: personalPrayers.length + prayers.length,
+          todosCompletedCount: myPeople.filter((p) => p.note).length,
+        }}
+        className="mt-8"
+      />
 
       {/* ── What's waiting on you — your full-timer's nudges & questions ── */}
       {waiting.length > 0 && (

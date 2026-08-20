@@ -6,7 +6,7 @@ import PageContainer from "../../components/layout/PageContainer";
 import { SectionHead } from "../../components/landing/primitives";
 import { UpcomingEventsRsvp } from "../../components/landing/UpcomingEventsRsvp";
 import { PersonalPrayerRow, AddPersonalPrayer } from "../../components/landing/PrayerRows";
-import { cardClass, getGreeting } from "../../components/landing/helpers";
+import { cardClass } from "../../components/landing/helpers";
 import {
   subscribePersonalPrayers,
   addPersonalPrayer,
@@ -14,6 +14,7 @@ import {
   deletePersonalPrayer,
   type PersonalPrayer,
 } from "../../lib/personalPrayers";
+import FirstRunCard from "../../components/landing/FirstRunCard";
 
 // Student landing: what's coming up (with RSVP) + a quiet place to pray for the
 // friends on your heart. Friends are just titled personal prayers (no contacts).
@@ -46,6 +47,17 @@ export default function LandingStudent() {
           Here's what's coming up, and a quiet place to pray for the people on your heart.
         </p>
       </header>
+
+      <FirstRunCard
+        role="student"
+        userId={uid}
+        context={{
+          prayersCount: activePersonalPrayers.length,
+          messagesCount: 0,
+          feedbackCount: 0,
+        }}
+        className="mt-8"
+      />
 
       {/* ── Coming up ── */}
       <UpcomingEventsRsvp
