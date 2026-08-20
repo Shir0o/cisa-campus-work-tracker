@@ -22,7 +22,7 @@ import {
 import { cn } from '../lib/utils';
 import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/primitives';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
-import FromTraineesInbox from '../components/landing/FromTraineesInbox';
+import AttentionFeed from '../components/landing/AttentionFeed';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 
 interface MyTask {
@@ -251,10 +251,10 @@ export default function MyDayMobile({
         </div>
       )}
 
-      {/* ── From the team — relational inbox ── */}
+      {/* ── Needs your attention — unified attention feed ── */}
       {uid && (
         <div className="px-5 mt-2">
-          <FromTraineesInbox meUid={uid} contacts={contacts} onOpenContact={onOpenContact} mobile={true} />
+          <AttentionFeed contacts={contacts} onOpenContact={onOpenContact} mobile={true} />
         </div>
       )}
 
