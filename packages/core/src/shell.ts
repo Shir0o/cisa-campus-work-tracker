@@ -89,6 +89,7 @@ export const TRAINEE_DRAWER: ShellLink[] = [
   // Not an app login — the form you hand to someone new so the team can keep
   // in touch (the design's navId "*": open to every role). See SIGNUP.md.
   { key: "signup", label: "Sign-up form", href: "/signup" },
+  { key: "tutorial", label: "How this works", href: "/tutorial" },
   // "Your app", not "Settings" — M2_DRAWER's own label.
   { key: "settings", label: "Your app", href: "/settings" },
 ];
@@ -104,6 +105,7 @@ export const FT_MORE: ShellLink[] = [
   { key: "board", label: "The Board", href: "/coordination" },
   { key: "outreach", label: "Outreach", href: "/outreach" },
   { key: "signup", label: "Sign-up form", href: "/signup" },
+  { key: "tutorial", label: "How this works", href: "/tutorial" },
   { key: "settings", label: "Settings", href: "/settings" },
 ];
 

@@ -142,6 +142,7 @@ beforeEach(async () => {
   vi.stubEnv("GITHUB_WEBHOOK_SECRET", "");
   vi.stubEnv("TWILIO_AUTH_TOKEN", "");
   vi.stubEnv("GROUPME_GROUP_ID", "");
+  vi.stubEnv("GROUPME_BOT_ID", "");
   vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
   vi.stubEnv("APP_URL", "https://example.test");
   vi.stubEnv("EXPO_ACCESS_TOKEN", "test-expo-token");
@@ -658,6 +659,31 @@ describe("POST /api/webhook/groupme", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.contact.name).toBe("Leo King");
+  });
+
+  it("posts a GroupMe bot confirmation when GROUPME_BOT_ID is set", async () => {
+    vi.stubEnv("GROUPME_BOT_ID", "bot-123");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe("https://api.groupme.com/v3/bots/post");
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.bot_id).toBe("bot-123");
+    expect(body.text).toContain("Leo King");
+  });
+
+  it("does not post a GroupMe bot confirmation when GROUPME_BOT_ID is unset", async () => {
+    vi.stubEnv("GROUPME_BOT_ID", "");
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
 

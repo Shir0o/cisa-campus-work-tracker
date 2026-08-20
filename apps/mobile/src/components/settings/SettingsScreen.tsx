@@ -30,6 +30,8 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
 import { usePeopleData } from '../../lib/usePeopleData';
+import { ensureNotificationPermission, registerForPushToken } from '../../lib/notifications';
+import { setPushToken } from '../../lib/data/users';
 import { useQueuePrefs, type QueueSettings } from '../../lib/queuePrefs';
 import { useQueueState } from '../../lib/queueState';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -168,6 +170,7 @@ function Settings() {
   const people = usePeopleData(uid);
   const names = useFullTimerNames();
   const [toast, setToast] = React.useState<string | null>(null);
+  const [notifyBusy, setNotifyBusy] = React.useState(false);
 
   const isManager = role === 'admin' || role === 'manager';
 
@@ -194,6 +197,30 @@ function Settings() {
     set({ onCampus: { ...w, days: on ? w.days.filter((x) => x !== d) : [...w.days, d] } });
   };
   const setPref = (patch: Partial<QueueSettings>) => set(patch);
+
+  const enableNotifications = async () => {
+    if (notifyBusy) return;
+    setNotifyBusy(true);
+    try {
+      const granted = await ensureNotificationPermission();
+      if (!granted) {
+        setToast('Notifications are off. You can still use the app — this only affects phone nudges.');
+        return;
+      }
+      const token = await registerForPushToken();
+      if (token && uid) {
+        await setPushToken(uid, token);
+        setToast('Phone notifications are on.');
+      } else {
+        setToast('Permission granted, but this build cannot register for push yet.');
+      }
+    } catch (e) {
+      console.error('Failed to enable notifications:', e);
+      setToast('Could not turn on notifications right now.');
+    } finally {
+      setNotifyBusy(false);
+    }
+  };
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -453,6 +480,50 @@ function Settings() {
             />
           </Section>
         )}
+
+        <Section title="Nudges on your phone">
+          <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.card.ink2 }}>
+            Turn on notifications to get a nudge when something needs you — a due to-do, a new message, a quiet person.
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={enableNotifications}
+            disabled={notifyBusy}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: radius.card,
+              backgroundColor: c.card.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed || notifyBusy ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.onPrimary }}>
+              {notifyBusy ? 'Working…' : 'Turn on notifications'}
+            </Text>
+          </Pressable>
+        </Section>
+
+        <Section title="How this works">
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/tutorial')}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: radius.card,
+              backgroundColor: c.card.react,
+              borderWidth: 1.5,
+              borderColor: c.card.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
+              Read how this works
+            </Text>
+          </Pressable>
+        </Section>
 
         <Section title="How it looks">
           <Choice
