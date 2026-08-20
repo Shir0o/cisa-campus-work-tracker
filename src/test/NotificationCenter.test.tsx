@@ -2,7 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import NotificationCenter from '../components/layout/NotificationCenter';
+import NotificationCenter, { groupNotificationsIntoStacks } from '../components/layout/NotificationCenter';
 import * as firestore from 'firebase/firestore';
 import { auth, handleFirestoreError } from '../lib/firebase';
 
@@ -760,5 +760,269 @@ describe('NotificationCenter Component', () => {
     const item = screen.getByText('Key item').closest('[role="button"]')!;
     fireEvent.keyDown(item, { key: 'Enter' });
     expect(mockNavigate).toHaveBeenCalledWith('/myday');
+  });
+
+  // ── Target Stacking (#331) ──────────────────────────────────────────
+
+  it('groups multiple notifications for the same targetId into a stacked row with count badge', () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Sarah: New check-in',
+        message: 'Had coffee and read scripture together.',
+        targetId: 'contact-sarah',
+        type: 'info',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
+      },
+      {
+        id: 'n2',
+        userId: 'mock-user-id',
+        title: 'Sarah: Prayer request updated',
+        message: 'Exam week preparation prayer.',
+        targetId: 'contact-sarah',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+      {
+        id: 'n3',
+        userId: 'mock-user-id',
+        title: 'David: Follow-up needed',
+        message: 'Reach out about Sunday fellowship.',
+        targetId: 'contact-david',
+        type: 'warning',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 12, 0) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    // Stacking: Sarah's notifications collapse into one stack row with badge "2 updates"
+    expect(screen.getByText('2 updates')).toBeInTheDocument();
+    expect(screen.getByText('Sarah: New check-in')).toBeInTheDocument();
+    // David is a singleton so no "updates" badge on David
+    expect(screen.getByText('David: Follow-up needed')).toBeInTheDocument();
+  });
+
+  it('expands stack to reveal individual notifications and allows clicking a child', () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Sarah: New check-in',
+        message: 'Had coffee and read scripture.',
+        targetId: 'contact-sarah',
+        link: '/directory/contact-sarah',
+        type: 'info',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
+      },
+      {
+        id: 'n2',
+        userId: 'mock-user-id',
+        title: 'Sarah: Prayer request',
+        message: 'Exam week preparation prayer.',
+        targetId: 'contact-sarah',
+        link: '/prayer',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    // Initially child item 2 is not visible in expanded list
+    expect(screen.getByText('Show all 2')).toBeInTheDocument();
+    expect(screen.queryByText('Sarah: Prayer request')).not.toBeInTheDocument();
+
+    // Click to expand stack
+    fireEvent.click(screen.getByText('Show all 2'));
+
+    // Now both entries are visible inside the expanded stack
+    expect(screen.getByText('Hide updates')).toBeInTheDocument();
+    expect(screen.getByText('Sarah: Prayer request')).toBeInTheDocument();
+
+    // Click child entry to navigate
+    fireEvent.click(screen.getByText('Sarah: Prayer request'));
+    expect(mockNavigate).toHaveBeenCalledWith('/prayer');
+  });
+
+  it('allows dismissing an entire stack at once', async () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Sarah: New check-in',
+        message: 'Had coffee and read scripture.',
+        targetId: 'contact-sarah',
+        type: 'info',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
+      },
+      {
+        id: 'n2',
+        userId: 'mock-user-id',
+        title: 'Sarah: Prayer request',
+        message: 'Exam week prayer.',
+        targetId: 'contact-sarah',
+        type: 'success',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    // Click "Set stack aside"
+    const setStackAsideBtn = screen.getByLabelText('Set stack aside');
+    expect(setStackAsideBtn).toBeInTheDocument();
+    fireEvent.click(setStackAsideBtn);
+
+    await waitFor(() => {
+      expect(firestore.deleteDoc).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('allows dismissing an entire admin stack via writeBatch updateDoc', async () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'ALL_ADMINS',
+        title: 'Gathering 1',
+        message: 'Info 1',
+        targetId: 'event-101',
+        type: 'event',
+        read: true,
+        readBy: ['mock-user-id'],
+        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
+      },
+      {
+        id: 'n2',
+        userId: 'ALL_ADMINS',
+        title: 'Gathering 2',
+        message: 'Info 2',
+        targetId: 'event-101',
+        type: 'event',
+        read: true,
+        readBy: ['mock-user-id'],
+        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    const setStackAsideBtn = screen.getByLabelText('Set stack aside');
+    fireEvent.click(setStackAsideBtn);
+
+    await waitFor(() => {
+      expect(firestore.writeBatch).toHaveBeenCalled();
+    });
+  });
+
+  it('toggles stack expansion with keyboard Space and Enter', () => {
+    const mockNotifs = [
+      {
+        id: 'n1',
+        userId: 'mock-user-id',
+        title: 'Sarah: New check-in',
+        message: 'First msg',
+        targetId: 'contact-sarah',
+        type: 'info',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 15, 0) },
+      },
+      {
+        id: 'n2',
+        userId: 'mock-user-id',
+        title: 'Sarah: Second check-in',
+        message: 'Second msg',
+        targetId: 'contact-sarah',
+        type: 'info',
+        read: false,
+        createdAt: { toDate: () => new Date(2026, 7, 19, 14, 0) },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+
+    const stackHeader = screen.getByLabelText(/2 notifications on Sarah: New check-in/i);
+    expect(screen.queryByText('Sarah: Second check-in')).not.toBeInTheDocument();
+
+    // Toggle with Space
+    fireEvent.keyDown(stackHeader, { key: ' ' });
+    expect(screen.getByText('Sarah: Second check-in')).toBeInTheDocument();
+
+    // Toggle with Enter
+    fireEvent.keyDown(stackHeader, { key: 'Enter' });
+    expect(screen.queryByText('Sarah: Second check-in')).not.toBeInTheDocument();
+  });
+
+  it('groupNotificationsIntoStacks groups correctly and preserves singletons', () => {
+    const sample: any[] = [
+      { id: '1', targetId: 't1', title: 'A1', createdAt: '2026-08-19T10:00:00Z' },
+      { id: '2', targetId: 't2', title: 'B1', createdAt: '2026-08-19T09:00:00Z' },
+      { id: '3', targetId: 't1', title: 'A2', createdAt: '2026-08-19T08:00:00Z' },
+      { id: '4', title: 'C1', createdAt: '2026-08-19T07:00:00Z' },
+    ];
+
+    const result = groupNotificationsIntoStacks(sample);
+    expect(result).toHaveLength(3);
+    expect(result[0].kind).toBe('stack');
+    if (result[0].kind === 'stack') {
+      expect(result[0].targetId).toBe('t1');
+      expect(result[0].notifs).toHaveLength(2);
+    }
+    expect(result[1].kind).toBe('single');
+    if (result[1].kind === 'single') {
+      expect(result[1].notif.id).toBe('2');
+    }
+    expect(result[2].kind).toBe('single');
+    if (result[2].kind === 'single') {
+      expect(result[2].notif.id).toBe('4');
+    }
   });
 });
