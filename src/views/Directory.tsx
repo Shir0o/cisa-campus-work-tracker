@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Filter,
@@ -32,7 +32,7 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
-import { tagStyle } from '../lib/tags';
+import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -148,6 +148,12 @@ export default function Directory() {
   // ── Last-connected signal: most recent interaction/comment per contact ──
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
 
+  // Track whether both primary snapshots have arrived. Previously this effect
+  // waited an artificial 800ms, which caused a skeleton flash every time the
+  // people page remounted (e.g. after closing a contact detail).
+  const contactsLoadedRef = useRef(false);
+  const stagesLoadedRef = useRef(false);
+
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
   const onLoadError = (e: unknown, path: string) => {
@@ -164,6 +170,8 @@ export default function Directory() {
         ...doc.data()
       })) as Contact[];
       setContacts(contactData);
+      contactsLoadedRef.current = true;
+      if (stagesLoadedRef.current) setLoading(false);
     }, (e) => onLoadError(e, 'contacts'));
 
     const qStages = query(collection(db, 'stages'), orderBy('order', 'asc'));
@@ -173,9 +181,8 @@ export default function Directory() {
         ...doc.data()
       })) as Stage[];
       setStagesData(stages);
-
-      // Delay first loading=false after both are loaded or after contacts if stages are empty
-      setTimeout(() => setLoading(false), 800);
+      stagesLoadedRef.current = true;
+      if (contactsLoadedRef.current) setLoading(false);
     }, (e) => onLoadError(e, 'stages'));
 
     return () => {
@@ -284,7 +291,7 @@ export default function Directory() {
         (c.metVia && c.metVia.toLowerCase().includes(lowerQuery)) ||
         (c.location && c.location.toLowerCase().includes(lowerQuery)) ||
         (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
-        (c.tags && c.tags.some(t => t.toLowerCase().includes(lowerQuery)))
+        (c.tags && c.tags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery)))
       );
     }
 
@@ -303,10 +310,11 @@ export default function Directory() {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
-    // Filter by Tags
+    // Filter by Tags (compare normalized values so compact season variants like
+    // "Fall2025" match the displayed "Fall 2025" chip).
     if (selectedTags.length > 0) {
       result = result.filter(c =>
-        c.tags && selectedTags.every(tag => c.tags?.includes(tag))
+        c.tags && selectedTags.every(tag => (c.tags || []).some(t => normalizeTag(t).toLowerCase() === tag.toLowerCase()))
       );
     }
 
@@ -323,6 +331,7 @@ export default function Directory() {
   const handleBulkTag = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedIds.size === 0 || !newTag.trim()) return;
+    const normalizedTag = normalizeTag(newTag.trim());
 
     try {
       const batch = writeBatch(db);
@@ -330,8 +339,8 @@ export default function Directory() {
 
       selectedContacts.forEach(contact => {
         const currentTags = contact.tags || [];
-        if (!currentTags.includes(newTag)) {
-          const updatedTags = [...currentTags, newTag];
+        if (!currentTags.some(t => normalizeTag(t).toLowerCase() === normalizedTag.toLowerCase())) {
+          const updatedTags = [...currentTags, normalizedTag];
           batch.update(doc(db, 'contacts', contact.id), {
             tags: updatedTags,
             updatedAt: new Date().toISOString(),
@@ -340,7 +349,7 @@ export default function Directory() {
           });
 
           logActivity({
-            action: `added tag #${newTag} to`,
+            action: `added tag #${normalizedTag} to`,
             targetId: contact.id,
             targetName: contact.name,
             targetType: 'contact',
@@ -399,7 +408,7 @@ export default function Directory() {
   // blank option in the dropdown — drop them (#359).
   const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role).filter(Boolean))], [userContacts]);
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
-  const allTags = useMemo(() => [...new Set(userContacts.flatMap(c => c.tags || []))], [userContacts]);
+  const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => c.tags || [])), [userContacts]);
 
   const newCount = useMemo(
     () => userContacts.filter(c => {
@@ -770,7 +779,7 @@ export default function Directory() {
             const overdue = days != null && days >= 7;
             const note = (touch?.note || contact.notes || '').trim();
             const sub = [contact.role, contact.metVia].filter(Boolean).join(' · ');
-            const tags = (contact.tags || []).filter(Boolean);
+            const tags = normalizeTagList(contact.tags);
             const selected = selectedIds.has(contact.id);
 
             return (

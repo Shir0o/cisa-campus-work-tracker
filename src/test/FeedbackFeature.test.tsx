@@ -311,6 +311,26 @@ describe('User Feedback Feature', () => {
       expect(errSpy).toHaveBeenCalledWith('Feedback saved, but follow-up log failed:', expect.any(Error));
       errSpy.mockRestore();
     });
+
+    it('lets the user send another note from the success state', async () => {
+      const userAct = userEvent.setup();
+      render(<FeedbackFAB />);
+
+      await userAct.click(screen.getByTitle('Leave a note for the team'));
+      await userAct.type(screen.getByRole('textbox', { name: /Your note/i }), 'first note');
+      await userAct.click(screen.getByRole('button', { name: 'Send' }));
+
+      await waitFor(() => {
+        expect(screen.getByText('We got your note.')).toBeInTheDocument();
+      });
+
+      await userAct.click(screen.getByRole('button', { name: 'Send another' }));
+
+      // The panel stays open and the form is ready for a second note.
+      expect(screen.getByText('Leave a note')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /Your note/i })).toHaveValue('');
+      expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled();
+    });
   });
 
   describe('FeedbackList (Admin View)', () => {
