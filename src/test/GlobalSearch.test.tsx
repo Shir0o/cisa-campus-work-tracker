@@ -524,8 +524,8 @@ describe('GlobalSearch', () => {
 
   it('records open event when selecting destination in search results', () => {
     render(<GlobalSearch />);
-    typeDesktop('board');
-    const boardRow = screen.getAllByText('The Board')[0].closest('button')!;
+    typeDesktop('journey');
+    const boardRow = screen.getAllByText('The Journey')[0].closest('button')!;
     fireEvent.click(boardRow);
 
     expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
