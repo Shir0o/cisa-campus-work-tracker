@@ -415,7 +415,7 @@ describe('MyDayMobile', () => {
     expect(onAddPersonalPrayer).toHaveBeenCalledWith('New test prayer', null);
   });
 
-  it('renders FromTraineesInbox when uid is provided', () => {
+  it('renders AttentionFeed when uid is provided', () => {
     (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
 
     render(

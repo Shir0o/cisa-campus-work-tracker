@@ -78,7 +78,7 @@ import {
   AddPersonalPrayer,
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
-import FromTraineesInbox from "../components/landing/FromTraineesInbox";
+import AttentionFeed from "../components/landing/AttentionFeed";
 import FirstRunCard from "../components/landing/FirstRunCard";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
@@ -861,9 +861,9 @@ export default function MyDay() {
           </div>
         </header>
 
-        {/* ── From the team — the full-timer inbox ── */}
+        {/* ── Needs your attention — the unified attention feed ── */}
         {uid && (
-          <FromTraineesInbox meUid={uid} contacts={contacts} onOpenContact={openContact} />
+          <AttentionFeed contacts={contacts} onOpenContact={openContact} />
         )}
 
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
