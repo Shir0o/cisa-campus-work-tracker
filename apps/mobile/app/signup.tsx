@@ -367,13 +367,6 @@ function SeasonManagerCard({ season }: { season: ActiveSeason }) {
         gap: spacing.sm,
       }}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <Ionicons name="eye-outline" size={15} color={colors.onSurfaceVariant} />
-        <AppText variant="caption" color={colors.onSurfaceVariant} style={{ flex: 1 }}>
-          You're previewing the sign-up form — how someone new asks to hear from us.
-        </AppText>
-      </View>
-
       <View style={{ gap: 6 }}>
         <AppText variant="label" color={colors.onSurfaceVariant}>
           Tagging sign-ups for

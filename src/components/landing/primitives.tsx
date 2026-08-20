@@ -114,11 +114,13 @@ export function SectionHead({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-4">
-      <h2 className="font-serif text-2xl text-on-surface">{title}</h2>
-      {sub && <span className="text-sm text-on-surface-variant flex-1 min-w-0">{sub}</span>}
+    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-x-3 gap-y-1 mb-4">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 min-w-0">
+        <h2 className="font-serif text-2xl text-on-surface shrink-0">{title}</h2>
+        {sub && <span className="text-sm text-on-surface-variant">{sub}</span>}
+      </div>
       {(action || linkLabel) && (
-        <div className="ml-auto flex items-center gap-3 self-center">
+        <div className="flex items-center gap-3 shrink-0 self-start sm:self-baseline">
           {action}
           {linkLabel && (
             <button

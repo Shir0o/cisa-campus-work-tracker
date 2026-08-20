@@ -183,7 +183,8 @@ export default function LandingTrainee() {
     return contacts
       .filter((c) => uid && c.createdBy === uid)
       .map((c) => {
-        const ms = parseMs(c.lastSeen) ?? parseMs(c.createdAt);
+        const contactLastMs = parseMs(c.lastContactedDate) ?? parseMs(c.lastSeen);
+        const ms = Number.isFinite(contactLastMs) && (contactLastMs as number) > 0 ? (contactLastMs as number) : parseMs(c.createdAt);
         const days = ms == null ? Infinity : daysSince(ms);
         return { contact: c, days, note: c.notes || "" };
       })

@@ -1444,5 +1444,78 @@ describe('ContactDetailsModal Component', () => {
     // Score should be demoted due to quick close event
     expect(scoreAfterQuickClose).toBeLessThan(scoreAfterOpen);
   });
+
+  it('updates sinceText and sinceBy when live interaction subcollection or contact snapshot updates', async () => {
+    let interactionListener: any = null;
+    (firestore.onSnapshot as any).mockImplementation((q: any, callback: any) => {
+      if (q?.path?.includes('interactions')) {
+        interactionListener = callback;
+        callback({
+          docs: [
+            {
+              id: 'inter-1',
+              data: () => ({
+                userId: 'user-1',
+                userName: 'Sarah Chen',
+                content: 'First interaction',
+                dateTime: '2026-08-10T10:00:00Z',
+                createdAt: '2026-08-10T10:00:00Z',
+              }),
+            },
+          ],
+        });
+      } else {
+        callback({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{
+          ...mockContact,
+          lastContactedDate: undefined,
+          lastContactedBy: undefined,
+        }}
+      />
+    );
+
+    // Initial interaction is Sarah Chen on Aug 10
+    expect(screen.getByText(/contacted by Sarah Chen/i)).toBeInTheDocument();
+
+    // Now simulate a newer interaction logged by Tony Wang
+    await act(async () => {
+      if (interactionListener) {
+        interactionListener({
+          docs: [
+            {
+              id: 'inter-1',
+              data: () => ({
+                userId: 'user-1',
+                userName: 'Sarah Chen',
+                content: 'First interaction',
+                dateTime: '2026-08-10T10:00:00Z',
+                createdAt: '2026-08-10T10:00:00Z',
+              }),
+            },
+            {
+              id: 'inter-2',
+              data: () => ({
+                userId: 'user-2',
+                userName: 'Tony Wang',
+                content: 'Latest interaction',
+                dateTime: '2026-08-19T14:00:00Z',
+                createdAt: '2026-08-19T14:00:00Z',
+              }),
+            },
+          ],
+        });
+      }
+    });
+
+    expect(screen.getByText(/contacted by Tony Wang/i)).toBeInTheDocument();
+  });
 });
 

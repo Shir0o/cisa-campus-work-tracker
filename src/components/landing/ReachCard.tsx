@@ -55,7 +55,11 @@ export function ReachCard({
       >
         {contact.phone ? (
           <button
-            onClick={onMessage}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onMessage) onMessage();
+            }}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
           >
             <MessageSquare className="w-3.5 h-3.5" /> Message
@@ -63,13 +67,18 @@ export function ReachCard({
         ) : contact.email ? (
           <a
             href={`mailto:${contact.email}`}
+            onClick={(e) => e.stopPropagation()}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
           >
             <Mail className="w-3.5 h-3.5" /> Email
           </a>
         ) : null}
         <button
-          onClick={onOpen}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen();
+          }}
           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
         >
           Open
