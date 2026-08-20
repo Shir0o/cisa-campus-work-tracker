@@ -684,7 +684,9 @@ export default function MyDayMobile({
             </div>
             <p className="px-5 mt-1.5 mb-3 text-xs text-on-surface-variant/90 leading-relaxed myd-picker-desc">
               Prayers and reminders for these contacts appear in your day. Everyone is still
-              visible on the People page.
+              visible on the People page. The chip next to a name is that person's current
+              step from their contact record — “Lead” is the first step in The Journey, not
+              something this picker decides.
             </p>
             <div className="overflow-y-auto px-4 pb-8 flex flex-col gap-0.5 myd-picker-list">
               {pickerContacts.map((c) => {

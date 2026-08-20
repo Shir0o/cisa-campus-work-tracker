@@ -155,6 +155,33 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByText('Christian')).toBeInTheDocument();
   });
 
+  it('avoids dash placeholders when last-connected and meta details are missing', () => {
+    const { container } = render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={mockOnClose}
+        contact={{
+          ...mockContact,
+          lastSeen: undefined,
+          lastContactedDate: undefined,
+          createdAt: '2026-08-20',
+          year: undefined,
+          major: undefined,
+        }}
+      />,
+    );
+
+    // A missing last-connected date should read as a real empty state, not "Last connected —".
+    expect(screen.getByText('Not connected yet')).toBeInTheDocument();
+    expect(screen.queryByText(/Last connected\s*—/i)).not.toBeInTheDocument();
+
+    // The meta row should still show the added date without a bare em dash for the missing year/major.
+    const meta = container.querySelector('.cd-meta');
+    expect(meta).not.toBeNull();
+    expect(meta?.textContent).toContain('added');
+    expect(meta?.textContent).not.toContain('—');
+  });
+
   it('renders as a full desktop page with a two-column aside, not a popup', () => {
     const { container } = render(
       <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />,
