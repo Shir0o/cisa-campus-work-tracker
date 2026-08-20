@@ -7,6 +7,7 @@ import * as firestore from 'firebase/firestore';
 import { addThreadMessage } from '../lib/threads';
 import { useAuth } from '../components/AuthProvider';
 import { handleFirestoreError, logActivity } from '../lib/firebase';
+import { Frecency, __resetFrecencyCache } from '../lib/frecency';
 
 const hoisted = vi.hoisted(() => ({ messages: [] as any[] }));
 vi.mock('../lib/threads', () => ({
@@ -106,6 +107,8 @@ describe('ContactDetailsModal Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    __resetFrecencyCache();
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-123', displayName: 'Admin Tony' },
       isAdmin: true,
@@ -1420,6 +1423,26 @@ describe('ContactDetailsModal Component', () => {
     fireEvent.mouseEnter(item);
     fireEvent.mouseLeave(item);
     expect(item).toBeInTheDocument();
+  });
+
+  it('records frecency open on mount and records close demotion if quickly closed without action', async () => {
+    const uid = 'user-123';
+    const { unmount } = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />
+    );
+
+    // Initial mount records open
+    const scoreAfterOpen = Frecency.getScore(uid, mockContact.id);
+    expect(scoreAfterOpen).toBeGreaterThan(0);
+
+    // Close immediately via close button
+    const closeBtn = screen.getByTitle('Close');
+    fireEvent.click(closeBtn);
+
+    expect(mockOnClose).toHaveBeenCalled();
+    const scoreAfterQuickClose = Frecency.getScore(uid, mockContact.id);
+    // Score should be demoted due to quick close event
+    expect(scoreAfterQuickClose).toBeLessThan(scoreAfterOpen);
   });
 });
 

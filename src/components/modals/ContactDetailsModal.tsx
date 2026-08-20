@@ -59,6 +59,7 @@ import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
+import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -276,15 +277,40 @@ export default function ContactDetailsModal({
     return { first, last };
   };
 
+  const openedAtRef = React.useRef<number>(Date.now());
+  const hasActionRef = React.useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isOpen && contact?.id) {
+      openedAtRef.current = Date.now();
+      hasActionRef.current = false;
+      if (user?.uid) {
+        Frecency.recordOpen(user.uid, contact.id);
+      }
+    }
+  }, [isOpen, contact?.id, user?.uid]);
+
+  const handleClose = () => {
+    if (
+      !hasActionRef.current &&
+      Date.now() - openedAtRef.current < QUICK_CLOSE_THRESHOLD_MS &&
+      user?.uid &&
+      contact?.id
+    ) {
+      Frecency.recordClose(user.uid, contact.id);
+    }
+    onClose();
+  };
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleClose();
     };
     if (isOpen) {
       window.addEventListener("keydown", handleEsc);
     }
     return () => window.removeEventListener("keydown", handleEsc);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   useEffect(() => {
     if (contact) {
@@ -487,7 +513,7 @@ export default function ContactDetailsModal({
           </p>
           <div className="flex justify-end">
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="px-5 py-2.5 rounded-full bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-opacity"
             >
               Close
@@ -573,6 +599,7 @@ export default function ContactDetailsModal({
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phoneError) return;
+    hasActionRef.current = true;
     setLoading(true);
     try {
       const contactRef = doc(db, "contacts", contact.id);
@@ -645,6 +672,7 @@ export default function ContactDetailsModal({
 
   const handleDelete = async () => {
     if (!confirm("Are you sure you want to delete this contact?")) return;
+    hasActionRef.current = true;
     setLoading(true);
     try {
       const contactId = contact.id;
@@ -702,6 +730,7 @@ export default function ContactDetailsModal({
     )
       return;
 
+    hasActionRef.current = true;
     setSubmittingInteraction(true);
     try {
       const interactionsRef = collection(
@@ -770,6 +799,7 @@ export default function ContactDetailsModal({
     )
       return;
 
+    hasActionRef.current = true;
     setIsUpdatingInteraction(true);
     try {
       const interactionRef = doc(
@@ -810,6 +840,7 @@ export default function ContactDetailsModal({
     e.preventDefault();
     if (!newComment.trim() || !user || !contact) return;
 
+    hasActionRef.current = true;
     setSubmittingComment(true);
     try {
       const commentsRef = collection(db, "contacts", contact.id, "comments");
@@ -864,6 +895,7 @@ export default function ContactDetailsModal({
     e.preventDefault();
     if (!newPrayer.burden.trim() || !contact) return;
 
+    hasActionRef.current = true;
     setSubmittingPrayer(true);
     try {
       const burden = [newPrayer.burden.trim(), newPrayer.context.trim()]
@@ -901,6 +933,7 @@ export default function ContactDetailsModal({
 
   // ── Inline tag add / remove (persist to the contact's tags array) ──
   const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
+    hasActionRef.current = true;
     const prevTags = formData.tags;
     setFormData((f) => ({ ...f, tags: updatedTags }));
     try {
@@ -1022,7 +1055,7 @@ export default function ContactDetailsModal({
                   {/* Top back bar */}
                   <div className="cdm-top px-5 pt-4 flex items-center justify-between">
                     <button
-                      onClick={onClose}
+                      onClick={handleClose}
                       className="cdm-back text-on-surface-variant font-medium text-sm inline-flex items-center gap-1"
                     >
                       <ChevronRight className="w-4.5 h-4.5 rotate-180 cdm-back-ico text-on-surface-variant" />
@@ -1188,7 +1221,7 @@ export default function ContactDetailsModal({
                   )}
                 </div>
                 <button
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant shrink-0"
                   title="Close"
                 >
@@ -2200,7 +2233,7 @@ export default function ContactDetailsModal({
                   </>
                 ) : (
                   <button
-                    onClick={onClose}
+                    onClick={handleClose}
                     className="w-full sm:w-auto px-8 h-10 rounded-full bg-secondary-container text-on-secondary-container font-semibold  transition-all text-sm"
                   >
                     Done
