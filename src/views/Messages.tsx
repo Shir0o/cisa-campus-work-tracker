@@ -46,10 +46,11 @@ import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
 import { MessageHides } from '../lib/messageHides';
 import { ConvHides } from '../lib/convHides';
 
-// Modals
+// Modals & UI
 import CreateChatModal from '../components/modals/CreateChatModal';
 import ChatDetailsModal from '../components/modals/ChatDetailsModal';
 import AttachDataModal from '../components/modals/AttachDataModal';
+import ContactPill from '../components/ui/ContactPill';
 
 // The Field Notes design's quick reactions (views/messages.jsx).
 const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
@@ -887,6 +888,19 @@ export default function Messages() {
                               {msg.attachments && msg.attachments.length > 0 && (
                                 <div className="mt-2.5 space-y-1.5 border-t border-outline-variant/10 pt-2.5">
                                   {msg.attachments.map((attach, idx) => {
+                                    if (attach.type === 'contact') {
+                                      return (
+                                        <div key={idx} className="my-1">
+                                          <ContactPill
+                                            contactId={attach.id}
+                                            fallbackName={attach.name}
+                                            fallbackSubtitle={attach.subtitle}
+                                            onOpenContact={(contact) => setSelectedContact(contact)}
+                                          />
+                                        </div>
+                                      );
+                                    }
+
                                     const AttachIcon = getAttachmentIcon(attach.type);
                                     const isTodo = attach.type === 'todo';
                                     const isTodoChecked = attach.status === 'completed';

@@ -178,25 +178,33 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                       >
                         {m.text}
                       </Text>
-                      {(m.attachments ?? []).map((a) => (
-                        <View
-                          key={`${a.type}:${a.id}`}
-                          style={{
-                            alignSelf: 'flex-start',
-                            marginTop: 7,
-                            paddingHorizontal: 10,
-                            paddingVertical: 5,
-                            borderRadius: radius.chip,
-                            backgroundColor: mine ? c.room.chip : c.card.bg2,
-                          }}
-                        >
-                          <Text
-                            style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.card.onPrimary : c.card.ink2 }}
+                      {(m.attachments ?? []).map((a) => {
+                        const isContact = a.type === 'contact';
+                        return (
+                          <Pressable
+                            key={`${a.type}:${a.id}`}
+                            onPress={isContact ? () => router.push(`/contact/${a.id}`) : undefined}
+                            style={({ pressed }) => ({
+                              alignSelf: 'flex-start',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              marginTop: 7,
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              borderRadius: radius.chip,
+                              backgroundColor: mine ? c.room.chip : c.card.bg2,
+                              opacity: pressed && isContact ? 0.75 : 1,
+                            })}
                           >
-                            {a.name}
-                          </Text>
-                        </View>
-                      ))}
+                            <Text
+                              style={{ fontFamily: font.semi, fontSize: fs(11.5), color: mine ? c.card.onPrimary : c.card.ink2 }}
+                            >
+                              {a.name}
+                            </Text>
+                          </Pressable>
+                        );
+                      })}
                     </Pressable>
                   );
                 })}
