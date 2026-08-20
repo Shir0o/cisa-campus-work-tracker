@@ -46,6 +46,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
 import FeedbackList from './FeedbackList';
+import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 
 type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -1319,13 +1320,16 @@ export default function Settings() {
       {isDev && <IntegrationsSection currentUser={currentUser} />}
       {isDev && <WebhookConsoleSection />}
       {isOwner && (
-        <section className="mt-10">
-          <SectionHeader
-            title="What people are telling us"
-            sub="Feedback from the team and the community. Read it like notes from friends."
-          />
-          <FeedbackList />
-        </section>
+        <>
+          <UsageStatsPanel uid={currentUser?.uid || ''} />
+          <section className="mt-10">
+            <SectionHeader
+              title="What people are telling us"
+              sub="Feedback from the team and the community. Read it like notes from friends."
+            />
+            <FeedbackList />
+          </section>
+        </>
       )}
     </>
   );

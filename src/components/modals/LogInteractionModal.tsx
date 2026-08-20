@@ -26,6 +26,7 @@ import { applyContactActivityToBatch } from '../../lib/contactActivity';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { UsageStats } from '../../lib/usageStats';
 import { format } from 'date-fns';
 
 interface LogInteractionModalProps {
@@ -160,6 +161,15 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
       }
 
       await batch.commit();
+
+      if (user?.uid) {
+        UsageStats.record(user.uid, {
+          type: 'create',
+          path: typeof window !== 'undefined' ? window.location.pathname : '/',
+          role: role || undefined,
+          meta: 'interaction',
+        });
+      }
 
       // Walking together: when a trainee logs time, ping their full-timer's bell.
       const ft = isTrainee(user?.uid) ? fullTimerOf(user?.uid) : null;

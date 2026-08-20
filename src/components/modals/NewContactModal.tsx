@@ -7,6 +7,7 @@ import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } f
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useSeason } from '../../lib/seasons';
+import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage, MET_VIA } from '../../types';
 
 interface NewContactModalProps {
@@ -174,6 +175,15 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           message: 'A new person in your circle — take a look when you can.',
           type: 'assignment',
           targetId: docRef.id,
+        });
+      }
+
+      if (user?.uid) {
+        UsageStats.record(user.uid, {
+          type: 'create',
+          path: typeof window !== 'undefined' ? window.location.pathname : '/',
+          role: role || undefined,
+          meta: 'contact',
         });
       }
 
