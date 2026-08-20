@@ -816,49 +816,11 @@ describe('Settings', () => {
     });
   });
 
-  describe('OwnerViewSection (App Owner)', () => {
-    it('does not render OwnerViewSection when user is not app owner', () => {
-      setupNonManagerAuth({ isOwner: false });
+  describe('OwnerViewSection (#362)', () => {
+    it('does not render "See it as they do" in Settings even when user is app owner (handled via TopNav eye modal)', () => {
+      setupNonManagerAuth({ isOwner: true });
       render(<Settings />);
       expect(screen.queryByText(/See it as they do/i)).not.toBeInTheDocument();
-    });
-
-    it('renders OwnerViewSection and handles role selection when user is app owner', () => {
-      const mockSetOwnerViewRole = vi.fn();
-      setupNonManagerAuth({
-        isOwner: true,
-        ownerViewRole: null,
-        setOwnerViewRole: mockSetOwnerViewRole,
-      });
-
-      render(<Settings />);
-
-      expect(screen.getByText(/See it as they do/i)).toBeInTheDocument();
-
-      // Click "Trainee" view card
-      const traineeButton = screen.getByRole('button', { name: /View as Trainee/i });
-      fireEvent.click(traineeButton);
-
-      expect(mockSetOwnerViewRole).toHaveBeenCalledWith('manager');
-    });
-
-    it('shows current preview role and reset button when ownerViewRole is active', () => {
-      const mockSetOwnerViewRole = vi.fn();
-      setupNonManagerAuth({
-        isOwner: true,
-        ownerViewRole: 'operator',
-        setOwnerViewRole: mockSetOwnerViewRole,
-      });
-
-      render(<Settings />);
-
-      expect(screen.getByText(/Currently viewing as:/i)).toBeInTheDocument();
-      expect(screen.getAllByText('Student').length).toBeGreaterThan(0);
-
-      const resetButton = screen.getByRole('button', { name: /Reset/i });
-      fireEvent.click(resetButton);
-
-      expect(mockSetOwnerViewRole).toHaveBeenCalledWith(null);
     });
   });
 

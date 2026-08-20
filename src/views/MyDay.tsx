@@ -79,6 +79,7 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import FromTraineesInbox from "../components/landing/FromTraineesInbox";
+import FirstRunCard from "../components/landing/FirstRunCard";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
 
@@ -449,7 +450,7 @@ function AddTaskRow({
 }
 
 export default function MyDay() {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { setSelectedContact: setGlobalSelectedContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
@@ -923,6 +924,22 @@ export default function MyDay() {
             </span>
           </div>
         </div>
+
+        <FirstRunCard
+          role={role}
+          userId={uid}
+          context={{
+            contactsCount: contacts.length,
+            interactionsCount: touches.length,
+            prayersCount: personalPrayers.length + prayers.length,
+            todosCreatedCount: tasks.filter((t) => t.createdById === uid).length,
+            todosCompletedCount: tasks.filter((t) => t.status === "completed").length,
+            docsCount: 1,
+            messagesCount: 1,
+            feedbackCount: 0,
+          }}
+          className="mt-8"
+        />
 
         {/* ── Two-Column Bento Grid: Left (Horizon + Prayers) & Right (Your Sheep + Week) ── */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-10 items-start">

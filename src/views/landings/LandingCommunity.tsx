@@ -10,7 +10,7 @@ import { Contact } from "../../types";
 import PageContainer from "../../components/layout/PageContainer";
 import { Avatar, SectionHead } from "../../components/landing/primitives";
 import { UpcomingEventsRsvp } from "../../components/landing/UpcomingEventsRsvp";
-import { getGreeting } from "../../components/landing/helpers";
+import FirstRunCard from "../../components/landing/FirstRunCard";
 import { getOrCreateDirectChat } from "../../services/chat";
 
 interface FullTimer {
@@ -77,6 +77,17 @@ export default function LandingCommunity() {
           and the team is always glad to hear from you.
         </p>
       </header>
+
+      <FirstRunCard
+        role="community"
+        userId={uid}
+        context={{
+          prayersCount: 0,
+          messagesCount: 0,
+          feedbackCount: 0,
+        }}
+        className="mt-8"
+      />
 
       {/* ── Open gatherings ── */}
       <UpcomingEventsRsvp
