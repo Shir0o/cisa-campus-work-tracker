@@ -334,6 +334,14 @@
 
 .custom-scrollbar {
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 120ms linear;
+}
+
+.custom-scrollbar:hover,
+.custom-scrollbar:focus,
+.custom-scrollbar:focus-within {
   scrollbar-color: var(--outline-variant) transparent;
 }
 
@@ -349,11 +357,19 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: var(--outline-variant);
+    background: transparent;
     border-radius: 10px;
   }
 
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb,
+  .custom-scrollbar:focus::-webkit-scrollbar-thumb,
+  .custom-scrollbar:focus-within::-webkit-scrollbar-thumb {
+    background: var(--outline-variant);
+  }
+
+  .custom-scrollbar:hover::-webkit-scrollbar-thumb:hover,
+  .custom-scrollbar:focus::-webkit-scrollbar-thumb:hover,
+  .custom-scrollbar:focus-within::-webkit-scrollbar-thumb:hover {
     background: var(--outline);
   }
 }
@@ -3746,10 +3762,22 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 .cdm-page-body .cd-sec { padding-left: 0; padding-right: 0; border-bottom: 0; }
 .cdm-page-body .cd-sec-head { margin-bottom: 14px; }
 
-/* Detail content scrollbar styling: sleek custom scrollbar so scrollable contents are visible */
+/* Detail content scrollbar styling: keep the gutter reserved but the thumb
+   transparent until the panel is hovered/focused, so it doesn't draw the eye
+   when the user is just reading (#397). */
 .cd-page-content,
 .cdm-page-body {
   scrollbar-width: thin;
+  scrollbar-gutter: stable;
+  scrollbar-color: transparent transparent;
+  transition: scrollbar-color 120ms linear;
+}
+.cd-page-content:hover,
+.cd-page-content:focus,
+.cd-page-content:focus-within,
+.cdm-page-body:hover,
+.cdm-page-body:focus,
+.cdm-page-body:focus-within {
   scrollbar-color: var(--outline-variant) transparent;
 }
 .cd-page-content::-webkit-scrollbar,
@@ -3759,11 +3787,19 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 }
 .cd-page-content::-webkit-scrollbar-thumb,
 .cdm-page-body::-webkit-scrollbar-thumb {
-  background: var(--outline-variant);
+  background: transparent;
   border-radius: 9999px;
 }
-.cd-page-content::-webkit-scrollbar-thumb:hover,
-.cdm-page-body::-webkit-scrollbar-thumb:hover {
+.cd-page-content:hover::-webkit-scrollbar-thumb,
+.cd-page-content:focus::-webkit-scrollbar-thumb,
+.cd-page-content:focus-within::-webkit-scrollbar-thumb,
+.cdm-page-body:hover::-webkit-scrollbar-thumb,
+.cdm-page-body:focus::-webkit-scrollbar-thumb,
+.cdm-page-body:focus-within::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+}
+.cd-page-content:hover::-webkit-scrollbar-thumb:hover,
+.cdm-page-body:hover::-webkit-scrollbar-thumb:hover {
   background: var(--on-surface-variant);
 }
 
@@ -3811,9 +3847,10 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   display: inline-flex; align-items: center; gap: 6px;
   font-family: var(--font-sans); transition: color 120ms ease;
 }
-/* Bento active bar: a centred 16×4 rounded mark, not a full-width underline. */
+/* Bento active bar: a centred 16×4 rounded mark, not a full-width underline.
+   Sit at the bottom of the tab (aligned with the tab bar border) (#398). */
 .cd-tab::after {
-  content: ""; position: absolute; left: 50%; bottom: 7px;
+  content: ""; position: absolute; left: 50%; bottom: 0;
   width: 16px; height: 4px; border-radius: 999px; background: transparent;
   transform: translateX(-50%); transition: background 120ms ease;
 }

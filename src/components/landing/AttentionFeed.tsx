@@ -248,7 +248,7 @@ function AttentionStackRow({
           </div>
 
           {latestText && (
-            <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-2 bg-surface-variant/40 rounded-lg p-2">
+            <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-2 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2">
               {latestText}
             </p>
           )}
