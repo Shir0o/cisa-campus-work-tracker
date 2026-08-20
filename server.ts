@@ -13,6 +13,8 @@ import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 
 dotenv.config();
 
+const GITHUB_TITLE_MAX = 512;
+
 export async function createApp() {
   const app = express();
 
@@ -257,8 +259,12 @@ export async function createApp() {
         try {
           const kindLabel = kind || type;
           const cleanMsg = message.trim();
-          const title = `[Feedback] ${kindLabel}: ${cleanMsg.slice(0, 50)}${cleanMsg.length > 50 ? '...' : ''}`;
-          
+          const prefix = `[Feedback] ${kindLabel}: `;
+          const remaining = GITHUB_TITLE_MAX - prefix.length;
+          const title = cleanMsg.length <= remaining
+            ? `${prefix}${cleanMsg}`
+            : `${prefix}${cleanMsg.slice(0, remaining - 1)}…`;
+
           let body = `### Feedback Details
 - **Submitted By:** ${userName || 'Anonymous'} (${userEmail || 'anonymous'})
 - **Type:** ${type || 'enhancement'}

@@ -250,6 +250,39 @@ describe("POST /api/feedback", () => {
     expect(saved.status).toBe("in_progress");
   });
 
+  it("keeps the full feedback message in the GitHub issue title", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/43", number: 43 }), { status: 201 })
+    );
+
+    const longMsg = "x".repeat(120);
+    const res = await request(app).post("/api/feedback").send({ message: longMsg, kind: "bug" });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.title).toBe(`[Feedback] bug: ${longMsg}`);
+  });
+
+  it("truncates the GitHub issue title only at the 512-character API limit", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/44", number: 44 }), { status: 201 })
+    );
+
+    const longMsg = "x".repeat(1000);
+    const res = await request(app).post("/api/feedback").send({ message: longMsg, kind: "bug" });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse((init as RequestInit).body as string);
+    expect(body.title.length).toBe(512);
+    expect(body.title.endsWith("…")).toBe(true);
+  });
+
   it("includes screenshot markdown in GitHub issue body when screenshot is attached", async () => {
     vi.stubEnv("GITHUB_TOKEN", "gh-token");
     vi.stubEnv("GITHUB_REPO", "org/repo");
