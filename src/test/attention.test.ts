@@ -7,7 +7,7 @@ import {
   type AttentionItem,
 } from "../lib/attention";
 import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
-import type { Contact, Interaction } from "../types";
+import type { Contact, Interaction, Notification } from "../types";
 import type { ThreadMessageWithContact } from "../lib/threads";
 
 describe("Attention Data Layer (#330)", () => {
