@@ -4,6 +4,7 @@ import {
   Filter,
   Mail,
   Tag,
+  Kanban,
   Trash2,
   Check,
   Plus,
@@ -241,6 +242,8 @@ export default function Directory() {
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
+  const [isStageModalOpen, setIsStageModalOpen] = useState(false);
+  const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
@@ -249,15 +252,16 @@ export default function Directory() {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsTagModalOpen(false);
+        setIsStageModalOpen(false);
         setIsCombineTagsOpen(false);
         setShowFilterMenu(false);
       }
     };
-    if (isTagModalOpen || isCombineTagsOpen || showFilterMenu) {
+    if (isTagModalOpen || isStageModalOpen || isCombineTagsOpen || showFilterMenu) {
       window.addEventListener('keydown', handleEsc);
     }
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isTagModalOpen, isCombineTagsOpen, showFilterMenu]);
+  }, [isTagModalOpen, isStageModalOpen, isCombineTagsOpen, showFilterMenu]);
 
   // Days since last connected (interaction/comment, else createdAt) for a contact.
   const daysFor = (c: Contact): number | null => {
@@ -348,6 +352,42 @@ export default function Directory() {
       await batch.commit();
       setNewTag('');
       setIsTagModalOpen(false);
+      setSelectedIds(new Set());
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, 'contacts');
+    }
+  };
+
+  const handleBulkStage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedIds.size === 0 || !bulkStage) return;
+
+    try {
+      const batch = writeBatch(db);
+      const selectedContacts = userContacts.filter(c => selectedIds.has(c.id));
+
+      selectedContacts.forEach(contact => {
+        if (contact.stage !== bulkStage) {
+          batch.update(doc(db, 'contacts', contact.id), {
+            stage: bulkStage,
+            updatedAt: new Date().toISOString(),
+            updatedBy: user?.uid,
+            updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User'
+          });
+
+          logActivity({
+            action: `updated stage to ${bulkStage} for`,
+            targetId: contact.id,
+            targetName: contact.name,
+            targetType: 'contact',
+            type: 'edit',
+            description: `Stage: "${contact.stage || 'Unassigned'}" → "${bulkStage}"`
+          });
+        }
+      });
+      await batch.commit();
+      setBulkStage('');
+      setIsStageModalOpen(false);
       setSelectedIds(new Set());
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, 'contacts');
@@ -671,6 +711,16 @@ export default function Directory() {
               className="flex items-center gap-1"
             >
               <button
+                onClick={() => {
+                  setBulkStage(stagesData[0]?.label || '');
+                  setIsStageModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
+                title="Change stage for selected"
+              >
+                <Kanban className="w-4 h-4" /> Stage
+              </button>
+              <button
                 onClick={() => setIsTagModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
                 title="Tag selected"
@@ -821,6 +871,69 @@ export default function Directory() {
           onClose={() => setIsCombineTagsOpen(false)}
         />
       )}
+
+      {/* ── Bulk Stage Modal ── */}
+      <AnimatePresence>
+        {isStageModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsStageModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
+            >
+              <div className="p-6 border-b border-outline-variant">
+                <h2 className="font-serif text-2xl text-on-surface">Change stage</h2>
+                <p className="text-sm text-on-surface-variant mt-1">
+                  For {selectedIds.size} selected {selectedIds.size === 1 ? 'person' : 'people'}
+                </p>
+              </div>
+
+              <form onSubmit={handleBulkStage} className="p-6 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-on-surface-variant px-1">Stage</label>
+                  <select
+                    required
+                    data-testid="bulk-stage-select"
+                    value={bulkStage}
+                    onChange={e => setBulkStage(e.target.value)}
+                    className="w-full h-12 px-4 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-on-surface"
+                  >
+                    {stagesData.map(s => (
+                      <option key={s.id} value={s.label}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsStageModalOpen(false)}
+                    className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Update stage
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Tag Modal ── */}
       <AnimatePresence>

@@ -8,6 +8,7 @@ import {
   getContactGrade,
   isContactBrother,
   isContactSister,
+  sortPrayerEntries,
 } from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
@@ -152,4 +153,53 @@ describe('isContactBrother & isContactSister', () => {
     expect(isContactSister({})).toBe(false);
   });
 });
+
+describe('sortPrayerEntries', () => {
+  interface TestPrayer {
+    ms: number;
+    status?: string;
+  }
+  const getMs = (p: TestPrayer) => p.ms;
+
+  it('puts contacts needing attention first', () => {
+    const entries: { contact: { name: string }; prayers: TestPrayer[] }[] = [
+      { contact: { name: 'Bob' }, prayers: [{ ms: 200, status: 'answered' }] },
+      { contact: { name: 'Alice' }, prayers: [{ ms: 100, status: 'pending' }] },
+    ];
+    const sorted = sortPrayerEntries(
+      entries,
+      (prayers) => prayers.some((p) => p.status === 'pending'),
+      getMs
+    );
+    expect(sorted.map((e) => e.contact.name)).toEqual(['Alice', 'Bob']);
+  });
+
+  it('sorts by most recent prayer timestamp second', () => {
+    const entries = [
+      { contact: { name: 'Older' }, prayers: [{ ms: 100, status: 'answered' }] },
+      { contact: { name: 'Newer' }, prayers: [{ ms: 500, status: 'answered' }] },
+    ];
+    const sorted = sortPrayerEntries(
+      entries,
+      () => false,
+      getMs
+    );
+    expect(sorted.map((e) => e.contact.name)).toEqual(['Newer', 'Older']);
+  });
+
+  it('breaks ties alphabetically by contact name and handles empty prayers without NaN', () => {
+    const entries = [
+      { contact: { name: 'Charlie' }, prayers: [] },
+      { contact: { name: 'Alice' }, prayers: [] },
+      { contact: { name: 'Bob' }, prayers: [] },
+    ];
+    const sorted = sortPrayerEntries(
+      entries,
+      () => false,
+      getMs
+    );
+    expect(sorted.map((e) => e.contact.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+  });
+});
+
 

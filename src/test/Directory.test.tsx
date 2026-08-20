@@ -326,6 +326,40 @@ describe('Directory', () => {
     expect(screen.queryByText('selected')).not.toBeInTheDocument();
   });
 
+  it('performs bulk stage change when selected', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    const checkboxes = screen.getAllByTitle('Select');
+    fireEvent.click(checkboxes[0]); // Select Alice
+
+    const stageBtn = screen.getByTitle('Change stage for selected');
+    fireEvent.click(stageBtn);
+    expect(screen.getByText('Change stage')).toBeInTheDocument();
+
+    const select = screen.getByTestId('bulk-stage-select');
+    fireEvent.change(select, { target: { value: 'Regular' } });
+
+    const submitBtn = screen.getByRole('button', { name: 'Update stage' });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ stage: 'Regular' })
+      );
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({ action: 'updated stage to Regular for' })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByText('Change stage')).not.toBeInTheDocument();
+    });
+  });
+
   it('performs bulk delete when confirmed', async () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true);
 

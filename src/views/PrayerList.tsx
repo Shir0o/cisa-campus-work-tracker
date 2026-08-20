@@ -13,10 +13,11 @@ import { Contact, PrayerRecord, VisitPhoto } from '../types';
 import { Check, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
-import { isTeamPrayer, reconcilePrayerOrder, isContactBrother, isContactSister, getContactGrade } from '../lib/prayers';
+import { isTeamPrayer, reconcilePrayerOrder, isContactBrother, isContactSister, getContactGrade, sortPrayerEntries } from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -97,6 +98,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function PrayerList() {
   const { user, role } = useAuth();
+  const { setSelectedContact } = useLayout();
   const isOperator = hasMinRole(role, 'operator');
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
@@ -311,16 +313,11 @@ export default function PrayerList() {
       list.push({ contact, prayers: teamPrayers.filter((p) => p.contactId === id) });
     });
 
-    // Needs-attention first (last-week prayer still unmarked), then most recent.
-    list.sort((a, b) => {
-      const aNeeds = lastBeforeThisWeek(a.prayers)?.status === 'pending' ? 1 : 0;
-      const bNeeds = lastBeforeThisWeek(b.prayers)?.status === 'pending' ? 1 : 0;
-      if (aNeeds !== bNeeds) return bNeeds - aNeeds;
-      const aRecent = a.prayers.length ? Math.max(...a.prayers.map(prayerMs)) : Infinity;
-      const bRecent = b.prayers.length ? Math.max(...b.prayers.map(prayerMs)) : Infinity;
-      return bRecent - aRecent;
-    });
-    return list;
+    return sortPrayerEntries(
+      list,
+      (prayers) => lastBeforeThisWeek(prayers)?.status === 'pending',
+      prayerMs
+    );
   }, [teamPrayers, contacts, startedIds, hiddenIds]);
 
   // Freeze the display order once cards appear, so marking a prayer can't
@@ -446,6 +443,11 @@ export default function PrayerList() {
     );
   }
 
+  const openContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setProfileContact(contact);
+  };
+
   if (isMobile && !loading && !error) {
     return (
       <>
@@ -462,7 +464,7 @@ export default function PrayerList() {
           onAddBurden={handleAddBurden}
           onUpdateStatus={handleUpdateStatus}
           onUpdateBurden={handleUpdateBurden}
-          onOpenContact={setProfileContact}
+          onOpenContact={openContact}
           answeredThisYear={answeredThisYear}
           awaiting={awaiting}
           composeFor={composeFor}
@@ -470,6 +472,11 @@ export default function PrayerList() {
           onStopHolding={stopHolding}
           isOperator={isOperator}
           onMakeTodo={openTodoFor}
+        />
+        <ContactDetailsModal
+          isOpen={!!profileContact}
+          onClose={() => setProfileContact(null)}
+          contact={profileContact}
         />
         {todoFor && (
           <FromEntryTodoComposer
@@ -609,7 +616,7 @@ export default function PrayerList() {
                 onAddBurden={handleAddBurden}
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateBurden={handleUpdateBurden}
-                onOpenProfile={() => setProfileContact(e.contact)}
+                onOpenProfile={() => openContact(e.contact)}
                 isOperator={isOperator}
                 onMakeTodo={openTodoFor}
               />
