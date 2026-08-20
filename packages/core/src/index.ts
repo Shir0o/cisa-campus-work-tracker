@@ -56,4 +56,5 @@ export * from './data/board';
 export * from './data/interactions';
 export * from './data/comments';
 export * from './data/outreach';
+export * from './data/contactActivity';
 export * from './todoNotifications';

@@ -22,6 +22,7 @@ import {
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerOf } from '../../lib/walking';
+import { applyContactActivityToBatch } from '../../lib/contactActivity';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -126,14 +127,15 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
           contactName: contact?.name || 'Unknown'
         });
 
-        // Update contact's last seen/activity and last contacted info
+        // Update contact's derived activity fields (#329)
         const contactRef = doc(db, 'contacts', contactId);
-        batch.update(contactRef, {
-          lastSeen: date,
-          lastContactedBy: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
-          lastContactedById: user?.uid || null,
-          lastContactedDate: date,
-          updatedAt: serverTimestamp()
+        applyContactActivityToBatch(batch, contactRef, {
+          date,
+          by: {
+            uid: user?.uid || null,
+            name: user?.displayName || user?.email?.split('@')[0] || 'Anonymous',
+          },
+          type: 'interaction',
         });
 
         // Create tasks

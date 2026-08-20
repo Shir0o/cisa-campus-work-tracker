@@ -308,7 +308,17 @@ describe('Attendance', () => {
     const aliceBtn = screen.getByTitle('Tap to mark present');
     fireEvent.click(aliceBtn);
 
-    expect(updateDoc).toHaveBeenCalled();
+    expect(updateDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        attendance: expect.objectContaining({ e1: true }),
+        lastSeen: '2026-06-12',
+        lastContactedDate: '2026-06-12',
+        lastContactedBy: 'Test User',
+        lastContactedById: 'u-test',
+        hasNewActivity: true,
+      }),
+    );
   });
 
   it('offers a make-a-to-do for an absent person (issue #336)', async () => {

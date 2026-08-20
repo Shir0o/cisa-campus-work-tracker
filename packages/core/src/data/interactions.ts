@@ -16,6 +16,8 @@ import {
 } from "firebase/firestore";
 import type { Interaction } from "../types";
 
+import { buildContactActivityPatch } from "./contactActivity";
+
 const col = (db: Firestore, contactId: string) => collection(db, "contacts", contactId, "interactions");
 
 /** Live subscription to a contact's interactions, oldest first. */
@@ -58,6 +60,15 @@ export async function addInteraction(
     dateTime: input.dateTime,
     type: input.type,
     createdAt: serverTimestamp(),
+  });
+
+  const activityPatch = buildContactActivityPatch({
+    date: input.dateTime,
+    by,
+    type: "interaction",
+  });
+  await updateDoc(doc(db, "contacts", contactId), activityPatch as Record<string, unknown>).catch(() => {
+    /* The interaction is the record; don't fail save if parent activity update errors */
   });
 }
 

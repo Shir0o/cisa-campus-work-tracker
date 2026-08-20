@@ -125,11 +125,15 @@ describe('addVisit', () => {
     expect(serverTimestamp).toHaveBeenCalled();
   });
 
-  it('moves each person’s last seen, touching only the fields the rules allow', async () => {
+  it('moves each person’s last seen, touching only the fields the rules allow (#329)', async () => {
     await addVisit(input(), by);
     const contactUpdate = mock(updateDoc).mock.calls.find((c) => c[0].path === 'contacts/c1');
     expect(contactUpdate).toBeDefined();
     expect(Object.keys(contactUpdate![1]).sort()).toEqual([
+      'hasNewActivity',
+      'lastContactedBy',
+      'lastContactedById',
+      'lastContactedDate',
       'lastSeen',
       'updatedAt',
       'updatedBy',

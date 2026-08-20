@@ -58,6 +58,7 @@ import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
+import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
@@ -767,13 +768,12 @@ export default function ContactDetailsModal({
       });
 
       const userName = user.displayName || user.email?.split("@")[0] || "Anonymous";
-      await updateDoc(doc(db, "contacts", contact.id), {
-        lastSeen: newInteraction.dateTime,
-        lastContactedBy: userName,
-        lastContactedById: user.uid,
-        lastContactedDate: newInteraction.dateTime,
-        updatedAt: serverTimestamp(),
+      const activityPatch = buildContactActivityPatch({
+        date: newInteraction.dateTime,
+        by: { uid: user.uid, name: userName },
+        type: 'interaction',
       });
+      await updateDoc(doc(db, "contacts", contact.id), activityPatch as Record<string, unknown>);
 
       logActivity({
         action: "logged an interaction for",
