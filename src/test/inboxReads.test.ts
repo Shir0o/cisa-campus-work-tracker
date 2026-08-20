@@ -15,8 +15,8 @@ describe("InboxReads (per-user localStorage read-state)", () => {
     // Different user does not see uidA's reads.
     expect(InboxReads.isRead("uidB", "contact:1")).toBe(false);
 
-    const raw = localStorage.getItem("cisa.inbox.read.uidA");
-    expect(JSON.parse(raw as string)).toContain("contact:1");
+    const raw = localStorage.getItem("cisa.user.entity.uidA");
+    expect(JSON.parse(raw as string).read).toContain("contact:1");
   });
 
   it("markUnread removes an item", () => {
