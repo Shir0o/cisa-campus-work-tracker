@@ -333,6 +333,7 @@ export default function AttentionFeed({
   onOpenContact,
   onToast,
   mobile,
+  className,
 }: {
   contacts?: Contact[];
   interactions?: Interaction[];
@@ -354,6 +355,7 @@ export default function AttentionFeed({
   ) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
+  className?: string;
 }) {
   const { user, effectiveUserId, role } = useAuth();
   const uid = effectiveUserId || user?.uid || "u1";
@@ -466,7 +468,7 @@ export default function AttentionFeed({
   };
 
   return (
-    <section className="flex flex-col gap-3">
+    <section className={cn("flex flex-col gap-3", className)}>
       <SectionHead
         title="Needs your attention"
         sub={

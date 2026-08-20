@@ -251,6 +251,51 @@ describe('Directory', () => {
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
   });
 
+  it('normalizes compact season tags in the people tag chips', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            ...mockContacts,
+            {
+              id: 'c4',
+              data: () => ({
+                name: 'Dana Fall',
+                email: 'dana@example.com',
+                phone: '',
+                role: 'Student',
+                stage: 'Lead',
+                location: '',
+                spiritualBackground: '',
+                tags: ['Fall2025'],
+                createdAt: '2026-03-01T00:00:00.000Z',
+              }),
+            },
+          ],
+          size: 4,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Dana Fall')).toBeInTheDocument();
+    });
+
+    // The chip is the spaced, human-readable version.
+    const tagChip = screen.getByRole('button', { name: 'Fall 2025' });
+    fireEvent.click(tagChip);
+
+    expect(screen.getByText('Dana Fall')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+  });
+
   it('shows empty state when no contacts match query', async () => {
     render(<Directory />);
 

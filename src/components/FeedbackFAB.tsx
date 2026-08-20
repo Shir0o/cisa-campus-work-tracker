@@ -19,6 +19,7 @@ export default function FeedbackFAB() {
   const [message, setMessage] = useState('');
   const [phase, setPhase] = useState<'idle' | 'busy' | 'done'>('idle');
   const areaRef = useRef<HTMLTextAreaElement>(null);
+  const autoCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Focus the textarea shortly after the panel opens.
   useEffect(() => {
@@ -28,13 +29,29 @@ export default function FeedbackFAB() {
     }
   }, [isOpen, phase]);
 
+  const clearAutoClose = () => {
+    if (autoCloseTimer.current) {
+      clearTimeout(autoCloseTimer.current);
+      autoCloseTimer.current = null;
+    }
+  };
+
+  const resetForm = () => {
+    setKind('thought');
+    setMessage('');
+    setPhase('idle');
+  };
+
   const close = () => {
+    clearAutoClose();
     setIsOpen(false);
-    setTimeout(() => {
-      setKind('thought');
-      setMessage('');
-      setPhase('idle');
-    }, 320);
+    setTimeout(resetForm, 320);
+  };
+
+  const openFresh = () => {
+    clearAutoClose();
+    resetForm();
+    setIsOpen(true);
   };
 
   const canSend = message.trim().length > 0 && phase === 'idle';
@@ -137,7 +154,8 @@ export default function FeedbackFAB() {
 
     // Saved — show success state, then auto-close
     setPhase('done');
-    setTimeout(close, 2200);
+    clearAutoClose();
+    autoCloseTimer.current = setTimeout(close, 2200);
 
     // 2. Best-effort side-effects — their failure must not revert the success
     try {
@@ -175,7 +193,7 @@ export default function FeedbackFAB() {
       {/* FAB Button — pencil, morphs to × when open */}
       <button
         id="feedback-fab-btn"
-        onClick={() => (isOpen ? close() : setIsOpen(true))}
+        onClick={() => (isOpen ? close() : openFresh())}
         className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg  active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
           isMessagesPage ? 'bottom-20 lg:bottom-20 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
         } ${
@@ -224,6 +242,17 @@ export default function FeedbackFAB() {
                   </div>
                   <p className="font-serif text-lg text-on-surface">We got your note.</p>
                   <p className="text-sm text-on-surface-variant">Thank you for taking the time, {firstName}.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      clearAutoClose();
+                      resetForm();
+                      areaRef.current?.focus();
+                    }}
+                    className="mt-3 py-2 px-5 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors cursor-pointer"
+                  >
+                    Send another
+                  </button>
                 </div>
               ) : (
                 /* Form */

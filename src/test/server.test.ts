@@ -660,6 +660,43 @@ describe("POST /api/webhook/groupme", () => {
     expect(res.body.contact.name).toBe("Leo King");
   });
 
+
+  it("tags a new GroupMe-added contact with the current semester", async () => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const semesterTag = month >= 8 ? `Fall ${year}` : month >= 5 ? `Summer ${year}` : `Spring ${year}`;
+
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
+
+    expect(res.status).toBe(200);
+    const savedContacts = Object.values(getCollection("contacts"));
+    expect(savedContacts.some((c) => c.name === "Leo King" && (c.tags || []).includes(semesterTag))).toBe(true);
+  });
+
+  it("adds the semester tag to an existing GroupMe-matched contact", async () => {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+    const semesterTag = month >= 8 ? `Fall ${year}` : month >= 5 ? `Summer ${year}` : `Spring ${year}`;
+
+    seedDoc("contacts", "existing-leo", {
+      name: "Leo King",
+      role: "Student",
+      stage: "First Contact",
+      tags: ["Gospel"],
+    });
+
+    mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Leo King", role: "Student" }) });
+    const res = await request(app).post("/api/webhook/groupme").send({ text: "!add Leo King", name: "Sam", sender_id: "s-1" });
+
+    expect(res.status).toBe(200);
+    const saved = getCollection("contacts")["existing-leo"];
+    expect(saved.tags).toContain("Gospel");
+    expect(saved.tags).toContain(semesterTag);
+  });
+
   it("handles the /add prefix trigger", async () => {
     mockGenerateContent.mockResolvedValue({ text: JSON.stringify({ name: "Mia Lane", role: "Student" }) });
     const res = await request(app).post("/api/webhook/groupme").send({ text: "/add Mia Lane", name: "Sam" });

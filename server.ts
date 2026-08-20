@@ -734,6 +734,17 @@ Analyze the input text carefully and extract the following:
     };
   }
 
+  // GroupMe bot hook always tags new contacts with the active semester (e.g.
+  // "Fall 2026"). The web app's tag normalizer displays compact variants as
+  // spaced seasons, but the bot can write the canonical form directly.
+  function currentSemesterTag(now = new Date()) {
+    const month = now.getMonth() + 1; // 1-12
+    const year = now.getFullYear();
+    if (month >= 8) return `Fall ${year}`;
+    if (month >= 5) return `Summer ${year}`;
+    return `Spring ${year}`;
+  }
+
   // Core Endpoint Router: Dispatches to either contact addition/updating or specific interaction logging
   async function performQuickAdd(text: string, operatorInfo?: { userId?: string, userName?: string }) {
     const opUserId = operatorInfo?.userId || "system-quick-add";
@@ -1269,6 +1280,19 @@ Error: ${error.message || "Internal server processing error."}
         userId: sender_id ? `groupme-${sender_id}` : "system-groupme",
         userName: name ? `${name} (GroupMe)` : "GroupMe User"
       }) as any;
+
+      // Always carry the active semester on GroupMe-added contacts (issue #410).
+      const semesterTag = currentSemesterTag();
+      const groupMeContactRef = getAdminDb().collection("contacts").doc(contact.id);
+      const groupMeContactSnap = await groupMeContactRef.get();
+      if (groupMeContactSnap.exists) {
+        const contactData = groupMeContactSnap.data() || {};
+        const existingTags = Array.isArray(contactData.tags) ? contactData.tags : [];
+        if (!existingTags.some((t: any) => String(t).toLowerCase() === semesterTag.toLowerCase())) {
+          await groupMeContactRef.update({ tags: [...existingTags, semesterTag] });
+        }
+      }
+
       const outcome = contact.isExisting 
         ? `GroupMe trigger from "${name}" matched existing contact "${contact.name}" and logged interaction.`
         : `GroupMe trigger from "${name}" created new contact "${contact.name}".`;

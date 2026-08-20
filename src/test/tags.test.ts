@@ -14,6 +14,12 @@ describe('normalizeTag', () => {
     expect(normalizeTag('Spring 27')).toBe('Spring 2027');
   });
 
+  it('adds spaces to compact season tags like Fall2025', () => {
+    expect(normalizeTag('Fall2025')).toBe('Fall 2025');
+    expect(normalizeTag('Spring26')).toBe('Spring 2026');
+    expect(normalizeTag('fall 2027')).toBe('Fall 2027');
+  });
+
   it('normalizes club rush variants', () => {
     expect(normalizeTag('club-rush')).toBe('Club Rush');
   });
@@ -41,6 +47,21 @@ describe('planTagCombining', () => {
         name: 'A',
         from: ["Fall '26", 'Fall 2026'],
         to: ['Fall 2026'],
+      },
+    ]);
+  });
+
+  it('plans compact season spellings as canonical spaced tags', () => {
+    const contacts = [
+      { id: 'a', name: 'A', tags: ['Fall2025'] },
+    ];
+
+    expect(planTagCombining(contacts)).toEqual([
+      {
+        contactId: 'a',
+        name: 'A',
+        from: ['Fall2025'],
+        to: ['Fall 2025'],
       },
     ]);
   });

@@ -876,7 +876,7 @@ export default function MyDay() {
 
         {/* ── Needs your attention — the unified attention feed ── */}
         {uid && (
-          <AttentionFeed contacts={contacts} onOpenContact={openContact} />
+          <AttentionFeed contacts={contacts} onOpenContact={openContact} className="mt-8" />
         )}
 
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
