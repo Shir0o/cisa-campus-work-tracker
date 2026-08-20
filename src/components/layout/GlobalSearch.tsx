@@ -32,6 +32,7 @@ import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../..
 import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
+import { UsageStats } from '../../lib/usageStats';
 import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -84,6 +85,7 @@ export default function GlobalSearch() {
   const [q, setQ] = useState('');
   const [cursor, setCursor] = useState(-1);
   const [inclHistory, setInclHistory] = useState(false);
+  const resolvedRef = useRef(false);
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -98,6 +100,16 @@ export default function GlobalSearch() {
   const hasQ = ql.length > 0;
 
   const close = () => {
+    const uid = auth.currentUser?.uid;
+    if (uid && hasQ) {
+      UsageStats.record(uid, {
+        type: 'search',
+        path: typeof window !== 'undefined' ? window.location.pathname : '/',
+        role: role || undefined,
+        meta: resolvedRef.current ? 'resolved' : 'abandoned',
+      });
+    }
+    resolvedRef.current = false;
     setSearchOpen(false);
     setQ('');
     setCursor(-1);
@@ -261,6 +273,7 @@ export default function GlobalSearch() {
         if (currentUid) Frecency.recordOpen(currentUid, c.id);
         setSelectedContact(c);
       }
+      resolvedRef.current = true;
     }
     close();
   };
@@ -268,6 +281,7 @@ export default function GlobalSearch() {
     if (currentUid && entityKey) {
       Frecency.recordOpen(currentUid, entityKey);
     }
+    resolvedRef.current = true;
     navigate(path, state ? { state } : undefined);
     close();
   };
@@ -281,6 +295,7 @@ export default function GlobalSearch() {
       tone: 'accent' as Tone,
       show: isOperator,
       run: () => {
+        resolvedRef.current = true;
         close();
         openNewContact();
       },
@@ -293,6 +308,7 @@ export default function GlobalSearch() {
       tone: 'amber' as Tone,
       show: isOperator,
       run: () => {
+        resolvedRef.current = true;
         close();
         openLogInteraction();
       },

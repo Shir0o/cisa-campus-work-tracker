@@ -42,6 +42,7 @@ import SubmitFeedback from "./views/SubmitFeedback";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
+import { UsageStats } from "./lib/usageStats";
 
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
@@ -265,7 +266,7 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const isMessagesPage = location.pathname === "/messages";
-  const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey } = useAuth();
+  const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
   const [newContactStage, setNewContactStage] = React.useState<
@@ -293,6 +294,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     setSelectedContact(null);
   }, [location.pathname, effectiveIdentityKey]);
+
+  // Session 7 (#370): record which screen was opened. This is local-only,
+  // anonymous usage shape data for the owner's "what is the app costing"
+  // readings; no content is stored.
+  React.useEffect(() => {
+    if (user?.uid) {
+      UsageStats.record(user.uid, {
+        type: 'screen',
+        path: location.pathname,
+        role: role || undefined,
+      });
+    }
+  }, [location.pathname, user?.uid, role]);
 
   return (
     <LayoutContext.Provider
