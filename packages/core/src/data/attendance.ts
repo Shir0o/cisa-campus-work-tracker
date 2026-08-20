@@ -1,10 +1,7 @@
-// Contact attendance write — shared Firestore logic behind an injected `db`.
-// Mirrors the web app's src/views/Attendance.tsx's cycleAttendance. Activity
-// logging is left to each platform (each has its own logActivity) so this
-// module stays free of that side effect.
 import { doc, updateDoc, type Firestore } from "firebase/firestore";
 import type { AttendanceStatus } from "../attendance";
 import type { Contact } from "../types";
+import { buildContactActivityPatch, shouldTouchActivityForAttendance } from "./contactActivity";
 
 export async function setContactAttendance(
   db: Firestore,
@@ -12,12 +9,22 @@ export async function setContactAttendance(
   eventId: string,
   next: AttendanceStatus,
   by: { uid?: string | null; name?: string | null },
+  eventDate?: string,
 ): Promise<void> {
   const newAttendance = { ...(contact.attendance || {}), [eventId]: next };
-  await updateDoc(doc(db, "contacts", contact.id), {
+  const updateData: Record<string, unknown> = {
     attendance: newAttendance,
     updatedAt: new Date().toISOString(),
     updatedBy: by.uid ?? null,
     updatedByName: by.name ?? null,
-  });
+  };
+  if (shouldTouchActivityForAttendance(next)) {
+    const activityPatch = buildContactActivityPatch({
+      date: eventDate || new Date().toISOString(),
+      by,
+      type: "attendance",
+    });
+    Object.assign(updateData, activityPatch);
+  }
+  await updateDoc(doc(db, "contacts", contact.id), updateData);
 }

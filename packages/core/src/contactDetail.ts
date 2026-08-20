@@ -87,7 +87,7 @@ export function contactDeleteFieldsLog(
     `Phone: ${contact.phone || "N/A"}`,
     `Total Interactions: ${interactionCount}`,
     `Total Comments: ${commentCount}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 // ── mobile v2's person screen (the design's `M2Contact`) ───────────────────

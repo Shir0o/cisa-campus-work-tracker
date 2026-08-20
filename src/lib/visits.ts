@@ -23,6 +23,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { buildContactActivityPatch } from './contactActivity';
 import type { Contact, Visit, VisitPhoto } from '../types';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -319,14 +320,13 @@ async function syncVisitMirrors(
         });
       }
       // A visit is the strongest kind of contact there is — it should move the
-      // person's "last seen", not just sit in their history. Only the fields
-      // the contacts update rule allows are touched here.
-      await updateDoc(doc(db, 'contacts', cid), {
-        lastSeen: input.date,
-        updatedAt: new Date().toISOString(),
-        updatedBy: by.uid,
-        updatedByName: by.name,
-      }).catch(() => {
+      // person's "last seen" and activity fields (#329), not just sit in their history.
+      const activityPatch = buildContactActivityPatch({
+        date: input.date,
+        by: { uid: by.uid, name: by.name },
+        type: 'visit',
+      });
+      await updateDoc(doc(db, 'contacts', cid), activityPatch as Record<string, unknown>).catch(() => {
         /* The visit is the record; a stale lastSeen isn't worth failing the save. */
       });
     }),

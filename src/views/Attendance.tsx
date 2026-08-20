@@ -17,6 +17,7 @@ import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc } fro
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { subscribeEventRsvps } from '../lib/rsvp';
 import { useGatheringTypes, seedDefaultGatheringTypesIfEmpty } from '../lib/gatheringTypes';
+import { buildContactActivityPatch, shouldTouchActivityForAttendance } from '../lib/contactActivity';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
 import { Contact, Event } from '../types';
@@ -233,12 +234,26 @@ export default function Attendance() {
       const label = (v: boolean | 'late' | 'absent' | undefined) =>
         v === true ? 'Present' : v === 'late' ? 'Late' : v === 'absent' ? 'Absent' : 'None';
 
-      await updateDoc(doc(db, 'contacts', contact.id), {
+      const userName = user?.displayName || user?.email?.split('@')[0] || 'Unknown User';
+      const userUid = user?.uid || null;
+
+      const updateData: Record<string, unknown> = {
         attendance: newAttendance,
         updatedAt: new Date().toISOString(),
-        updatedBy: user?.uid,
-        updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
-      });
+        updatedBy: userUid,
+        updatedByName: userName,
+      };
+
+      if (shouldTouchActivityForAttendance(next) && event?.date) {
+        const activityPatch = buildContactActivityPatch({
+          date: event.date,
+          by: { uid: userUid, name: userName },
+          type: 'attendance',
+        });
+        Object.assign(updateData, activityPatch);
+      }
+
+      await updateDoc(doc(db, 'contacts', contact.id), updateData);
 
       logActivity({
         action: `updated attendance for "${event?.name || 'a gathering'}" to ${label(next)} for`,
