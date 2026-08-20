@@ -708,5 +708,22 @@ describe('PrayerList', () => {
     expect(await screen.findByPlaceholderText(/What are we praying for Carol this week/i)).toBeInTheDocument();
     expect(screen.getByPlaceholderText('Find someone…')).toHaveValue('');
   });
+
+  it('opens contact details when clicking on a contact name in prayer list (issue #345)', async () => {
+    const mockSetSelectedContact = vi.fn();
+    (useLayout as any).mockReturnValue({
+      setSelectedContact: mockSetSelectedContact,
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => expect(screen.getByText('Alice Johnson')).toBeInTheDocument());
+
+    const contactNameBtns = screen.getAllByTitle('Open profile');
+    fireEvent.click(contactNameBtns[0]);
+
+    expect(mockSetSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Johnson' })
+    );
+  });
 });
 

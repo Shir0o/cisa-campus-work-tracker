@@ -143,3 +143,28 @@ export function isContactSister(contact: { gender?: string; pronouns?: string; t
   return false;
 }
 
+/**
+ * Sorts prayer list entries deterministically:
+ * 1. Needs-attention first (has a pending prayer from before this week).
+ * 2. Most recent prayer timestamp (newest prayer first, 0 if none).
+ * 3. Tie-breaker by contact name alphabetically.
+ */
+export function sortPrayerEntries<
+  C extends { name: string },
+  P
+>(
+  entries: { contact: C; prayers: P[] }[],
+  isPendingBeforeThisWeek: (prayers: P[]) => boolean,
+  getPrayerMs: (prayer: P) => number
+): { contact: C; prayers: P[] }[] {
+  return [...entries].sort((a, b) => {
+    const aNeeds = isPendingBeforeThisWeek(a.prayers) ? 1 : 0;
+    const bNeeds = isPendingBeforeThisWeek(b.prayers) ? 1 : 0;
+    if (aNeeds !== bNeeds) return bNeeds - aNeeds;
+    const aRecent = a.prayers.length ? Math.max(...a.prayers.map(getPrayerMs)) : 0;
+    const bRecent = b.prayers.length ? Math.max(...b.prayers.map(getPrayerMs)) : 0;
+    if (aRecent !== bRecent) return bRecent - aRecent;
+    return a.contact.name.localeCompare(b.contact.name);
+  });
+}
+
