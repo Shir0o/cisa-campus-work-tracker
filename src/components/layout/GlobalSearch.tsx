@@ -29,6 +29,7 @@ import { db, auth } from '../../lib/firebase';
 import { Contact, Interaction, SystemActivity } from '../../types';
 import { cn, relTime } from '../../lib/utils';
 import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../../lib/commands';
+import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
 import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
@@ -77,6 +78,8 @@ export default function GlobalSearch() {
   const isStaff = isManager; // Trainee+ (manager/admin)
   const isFullStaff = isAdmin; // Full-timer
   const isOperator = hasMinRole(role as AppRole, 'operator');
+  const currentUid = auth.currentUser?.uid || '';
+  useFrecency(currentUid);
 
   const [q, setQ] = useState('');
   const [cursor, setCursor] = useState(-1);
@@ -167,28 +170,28 @@ export default function GlobalSearch() {
       }
       return '';
     };
-    const key = (c: Contact) => stampKey(c.updatedAt || c.createdAt || c.lastSeen);
-    return contacts
-      .slice()
-      .sort((a, b) => key(b).localeCompare(key(a)))
-      .slice(0, GS_MAX);
-  }, [contacts]);
+    const tieBreaker = (a: Contact, b: Contact) => {
+      const keyA = stampKey(a.updatedAt || a.createdAt || a.lastSeen);
+      const keyB = stampKey(b.updatedAt || b.createdAt || b.lastSeen);
+      return keyB.localeCompare(keyA);
+    };
+    return rankByFrecency(currentUid, contacts, (c) => c.id, tieBreaker).slice(0, GS_MAX);
+  }, [contacts, currentUid]);
 
   const peopleResults = useMemo(() => {
     if (!hasQ) return [];
-    return contacts
-      .filter(
-        (c) =>
-          c.name?.toLowerCase().includes(ql) ||
-          (c.role || '').toLowerCase().includes(ql) ||
-          (c.metVia || '').toLowerCase().includes(ql) ||
-          (c.location || '').toLowerCase().includes(ql) ||
-          (c.notes || '').toLowerCase().includes(ql) ||
-          (c.spiritualBackground || '').toLowerCase().includes(ql) ||
-          (c.tags || []).some((t) => t.toLowerCase().includes(ql)),
-      )
-      .slice(0, GS_MAX);
-  }, [hasQ, ql, contacts]);
+    const matched = contacts.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(ql) ||
+        (c.role || '').toLowerCase().includes(ql) ||
+        (c.metVia || '').toLowerCase().includes(ql) ||
+        (c.location || '').toLowerCase().includes(ql) ||
+        (c.notes || '').toLowerCase().includes(ql) ||
+        (c.spiritualBackground || '').toLowerCase().includes(ql) ||
+        (c.tags || []).some((t) => t.toLowerCase().includes(ql)),
+    );
+    return rankByFrecency(currentUid, matched, (c) => c.id).slice(0, GS_MAX);
+  }, [hasQ, ql, contacts, currentUid]);
 
   const convResults = useMemo(() => {
     if (!hasQ || !isStaff) return [];
@@ -246,20 +249,25 @@ export default function GlobalSearch() {
 
   const destResults = useMemo(() => {
     if (!hasQ) return [];
-    return destinations
-      .filter((d) => d.label.toLowerCase().includes(ql))
-      .slice(0, GS_MAX);
-  }, [hasQ, ql, destinations]);
+    const matched = destinations.filter((d) => d.label.toLowerCase().includes(ql));
+    return rankByFrecency(currentUid, matched, (d) => d.key).slice(0, GS_MAX);
+  }, [hasQ, ql, destinations, currentUid]);
 
   // ── actions ─────────────────────────────────────────────────────────────
   const openContactById = (id?: string) => {
     if (id) {
       const c = contacts.find((x) => x.id === id);
-      if (c) setSelectedContact(c);
+      if (c) {
+        if (currentUid) Frecency.recordOpen(currentUid, c.id);
+        setSelectedContact(c);
+      }
     }
     close();
   };
-  const go = (path: string, state?: object) => {
+  const go = (path: string, state?: object, entityKey?: string) => {
+    if (currentUid && entityKey) {
+      Frecency.recordOpen(currentUid, entityKey);
+    }
     navigate(path, state ? { state } : undefined);
     close();
   };
@@ -325,7 +333,7 @@ export default function GlobalSearch() {
     destinations.forEach((d) =>
       navItems.push({
         key: d.key,
-        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href)),
+        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key)),
       }),
     );
     recentPeople.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
@@ -335,7 +343,7 @@ export default function GlobalSearch() {
     destResults.forEach((d) =>
       navItems.push({
         key: d.key,
-        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href)),
+        run: () => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key)),
       }),
     );
     peopleResults.forEach((c) => navItems.push({ key: `c:${c.id}`, run: () => openContactById(c.id) }));
@@ -506,7 +514,7 @@ export default function GlobalSearch() {
                 tone={d.tone}
                 icon={d.icon}
                 title={d.label}
-                onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href))}
+                onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key))}
                 badge={
                   d.external ? (
                     <ExternalLinkIcon className="w-3.5 h-3.5 opacity-60" />
@@ -589,7 +597,7 @@ export default function GlobalSearch() {
                   tone={d.tone}
                   icon={d.icon}
                   title={d.label}
-                  onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href))}
+                  onClick={() => (d.external ? window.open(d.href, '_blank') : go(d.href, undefined, d.key))}
                 />
               ))}
             </div>

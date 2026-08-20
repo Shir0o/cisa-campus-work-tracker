@@ -7,6 +7,7 @@ import { TEST_USERS } from './fixtures/users';
 import GlobalSearch from '../components/layout/GlobalSearch';
 import MobileNav from '../components/layout/MobileNav';
 import { registerCommand } from '../lib/commands';
+import { Frecency, __resetFrecencyCache } from '../lib/frecency';
 
 // Hoisted shared spies + mutable dataset so the firestore/auth/layout mocks and
 // the tests reference the same instances.
@@ -131,6 +132,8 @@ const typeDesktop = (value: string) =>
 describe('GlobalSearch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
+    __resetFrecencyCache();
     seedData();
     h.mockAuth.value = TEST_USERS.admin;
     h.mockLayout.searchOpen = true;
@@ -463,5 +466,69 @@ describe('GlobalSearch', () => {
     render(<GlobalSearch />);
     expect(consoleErrorSpy).toHaveBeenCalledWith('GlobalSearch contacts listener:', expect.any(Error));
     consoleErrorSpy.mockRestore();
+  });
+
+  it('ranks frequently opened contacts at top of recent people (no query)', () => {
+    // Alice (c1) has newer updatedAt ('2026-06-12') than Bob (c2, '2026-06-09')
+    // By default without frecency opens, Alice is first, Bob is second.
+    // Let's open Bob (c2) multiple times to build up frecency score.
+    const uid = 'u1';
+    Frecency.recordOpen(uid, 'c2');
+    Frecency.recordOpen(uid, 'c2');
+    Frecency.recordOpen(uid, 'c2');
+
+    render(<GlobalSearch />);
+    const rows = screen.getAllByRole('button');
+    const personRowTexts = rows
+      .map((r) => r.textContent || '')
+      .filter((t) => t.includes('Alice Wong') || t.includes('Bob Lee'));
+
+    // Bob Lee should appear before Alice Wong due to frecency ranking
+    expect(personRowTexts[0]).toContain('Bob Lee');
+    expect(personRowTexts[1]).toContain('Alice Wong');
+  });
+
+  it('ranks query matches by frecency score', () => {
+    // Add multiple contacts with "Hall"
+    h.mockData.contacts = [
+      docOf('c1', { name: 'Alice Wong', location: 'Hall A', updatedAt: '2026-06-10T10:00:00Z' }),
+      docOf('c2', { name: 'Bob Lee', location: 'Hall B', updatedAt: '2026-06-11T10:00:00Z' }),
+    ];
+
+    const uid = 'u1';
+    Frecency.recordOpen(uid, 'c1');
+    Frecency.recordOpen(uid, 'c1');
+
+    render(<GlobalSearch />);
+    typeDesktop('hall');
+
+    const rows = screen.getAllByRole('button');
+    const matchTexts = rows
+      .map((r) => r.textContent || '')
+      .filter((t) => t.includes('Alice Wong') || t.includes('Bob Lee'));
+
+    expect(matchTexts[0]).toContain('Alice Wong');
+    expect(matchTexts[1]).toContain('Bob Lee');
+  });
+
+  it('records open event when selecting contact in search results', () => {
+    render(<GlobalSearch />);
+    const aliceRow = screen.getAllByText('Alice Wong')[0].closest('button')!;
+    fireEvent.click(aliceRow);
+
+    expect(h.mockLayout.setSelectedContact).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'c1', name: 'Alice Wong' }),
+    );
+    expect(Frecency.getScore('u1', 'c1')).toBeGreaterThan(0);
+  });
+
+  it('records open event when selecting destination in search results', () => {
+    render(<GlobalSearch />);
+    typeDesktop('board');
+    const boardRow = screen.getAllByText('The Board')[0].closest('button')!;
+    fireEvent.click(boardRow);
+
+    expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
+    expect(Frecency.getScore('u1', 'dest:/board')).toBeGreaterThan(0);
   });
 });
