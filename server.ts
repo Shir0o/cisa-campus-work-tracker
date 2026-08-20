@@ -1299,6 +1299,25 @@ Error: ${error.message || "Internal server processing error."}
 
       await logApiCall("GroupMe", req.body, req.headers, "success", outcome);
 
+      // Confirm back into the group. This is best-effort: if the bot isn't
+      // configured or the GroupMe API is briefly down, the quick-add has
+      // already succeeded and we should not fail the webhook for it.
+      const groupMeBotId = process.env.GROUPME_BOT_ID;
+      if (groupMeBotId) {
+        const confirmationText = contact.isExisting
+          ? `✅ ${contact.name} was already on the list, so I logged the interaction.`
+          : `✅ Added ${contact.name} to the tracker.`;
+        try {
+          await fetch("https://api.groupme.com/v3/bots/post", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ bot_id: groupMeBotId, text: confirmationText }),
+          });
+        } catch (botError: any) {
+          console.error("GroupMe bot confirmation failed: ", botError.message || botError);
+        }
+      }
+
       res.status(200).json({
         success: true,
         message: contact.isExisting 

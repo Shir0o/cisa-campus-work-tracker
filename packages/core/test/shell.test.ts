@@ -95,6 +95,7 @@ describe('the drawer and More lists', () => {
       'The Journey',
       'Messages',
       'Sign-up form',
+      'How this works',
       'Your app',
     ]);
   });
@@ -120,6 +121,7 @@ describe('the drawer and More lists', () => {
       'The Board',
       'Outreach',
       'Sign-up form',
+      'How this works',
       'Settings',
     ]);
   });

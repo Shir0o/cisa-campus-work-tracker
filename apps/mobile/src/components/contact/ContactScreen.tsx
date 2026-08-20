@@ -28,14 +28,17 @@ import {
   stageToneKey,
   storyRowLine,
   threadsFor,
+  type Contact,
   type Interaction,
   type PrayerRecord,
   type ThreadKind,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useContactDetailData } from '../../lib/useContactDetailData';
+import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
+import { moveContactStage } from '../../lib/data/contacts';
 import { openCall, openEmail, openMessage } from '../../lib/messaging';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton } from '../queue/atoms';
@@ -44,6 +47,7 @@ import { ContactSkeleton } from '../skeleton/ContactSkeleton';
 import { SkeletonList } from '../skeleton/SkeletonList';
 import { Snackbar } from '../ui';
 import { LogSheet } from '../log/LogSheet';
+import { MoveStepSheet } from '../journey/MoveStepSheet';
 import { ContactPrayerSheet } from './ContactPrayerSheet';
 import { ThreadCompose } from './ThreadCompose';
 import { ThreadMessageRow } from './ThreadMessageRow';
@@ -70,7 +74,7 @@ export function ContactScreen(props: ContactScreenProps) {
 function Person({ contactId, initialTab, initialInteractionId }: ContactScreenProps) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
-  const { uid, role } = useAuth();
+  const { uid, user, role } = useAuth();
   const data = useContactDetailData(contactId);
   const queueState = useQueueState(uid ?? null);
 
@@ -78,6 +82,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [openStoryId, setOpenStoryId] = useState<string | null>(initialInteractionId ?? null);
   const [showDetails, setShowDetails] = useState(false);
   const [sheet, setSheet] = useState<'log' | 'pray' | null>(null);
+  const [moving, setMoving] = useState<Contact | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
   const canWrite = role !== 'viewer';
@@ -126,6 +131,24 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const first = firstName(contact.name);
   const lastTime = lastTimeLine(story[0]);
 
+  // The same stage list The Journey uses, including the synthetic Unassigned
+  // row when this contact's stage is blank or no longer exists (#395).
+  const moveStages = useMemo<JourneyStage[]>(() => {
+    const list = data.stages.map((s) => ({ id: s.id, label: s.label }));
+    const hasUnassigned = data.stages.some((s) => s.label === 'Unassigned');
+    if (contact && !data.stages.some((s) => s.label === contact.stage) && !hasUnassigned) {
+      list.unshift({ id: 'uncategorized', label: 'Unassigned' });
+    }
+    return list;
+  }, [data.stages, contact]);
+
+  const handleMove = async (_contactId: string, newStageLabel: string) => {
+    if (!moving) return;
+    await moveContactStage(moving, newStageLabel, { uid, name: user?.displayName });
+    setToast(newStageLabel ? `Moved to ${newStageLabel}.` : 'Moved to Unassigned.');
+    setMoving(null);
+  };
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <BackRow onBack={back} note={contactCareLine(data.inYourCare, contact.createdByName)} />
@@ -165,6 +188,16 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.ink2 }}>
               {contactConnectedLine(lastTouchDays)}
             </Text>
+            {canWrite && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setMoving(contact)}
+                hitSlop={8}
+                style={({ pressed }) => ({ paddingVertical: 6, paddingHorizontal: 2, opacity: pressed ? 0.6 : 1 })}
+              >
+                <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.link }}>Move a step</Text>
+              </Pressable>
+            )}
           </View>
 
           {!!lastTime && (
@@ -321,6 +354,16 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           void data.addPrayer(input);
         }}
         onClose={() => setSheet(null)}
+      />
+
+      {/* Change where they're at right from the person screen (#395). */}
+      <MoveStepSheet
+        visible={!!moving}
+        contact={moving}
+        stages={moveStages}
+        room={roomForRole(role)}
+        onMove={handleMove}
+        onClose={() => setMoving(null)}
       />
 
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}

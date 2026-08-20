@@ -162,6 +162,28 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         )}
 
         <View>
+          <Sech label="How this works" />
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push('/tutorial')}
+            style={({ pressed }) => ({
+              backgroundColor: c.widget.tile,
+              borderRadius: radius.tile,
+              padding: 18,
+              opacity: pressed ? 0.85 : 1,
+              ...c.widget.shadow,
+            })}
+          >
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+              Read how this works
+            </Text>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
+              A quick tour of logging, the on-campus window, Later, and whose people you see.
+            </Text>
+          </Pressable>
+        </View>
+
+        <View>
           <Sech label="How it looks" />
           {/* Reads and writes ThemeProvider's own scheme — the one source of
               truth for light/dark app-wide, just in v2 clothes here. */}
