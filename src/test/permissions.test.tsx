@@ -238,11 +238,11 @@ describe('TopNav primary tabs per role', () => {
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
   });
 
-  it('manager: Home, People, The Board; hides gatherings/prayer/calendar', () => {
+  it('manager: Home, People, The Journey; hides gatherings/prayer/calendar', () => {
     currentUser = TEST_USERS.manager;
     renderTopNav();
     expect(screen.getByText('Home')).toBeInTheDocument();
-    expect(screen.getByText('The Board')).toBeInTheDocument();
+    expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.queryByText('Shared Calendar')).not.toBeInTheDocument();
     expect(screen.queryByText('Looking back')).not.toBeInTheDocument();
@@ -251,27 +251,27 @@ describe('TopNav primary tabs per role', () => {
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
   });
 
-  it('admin: The Board, People, On our hearts as primary tabs, home labeled "My Day" in More', () => {
+  it('admin: Coordination Notes, People, On our hearts as primary tabs, home labeled "My Day" in More', () => {
     currentUser = TEST_USERS.admin;
     renderTopNav();
-    expect(screen.getByText('The Board')).toBeInTheDocument();
+    expect(screen.getByText('Coordination Notes')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
-    expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/board', '/directory', '/prayer']);
+    expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/history', '/attendance', '/outreach', '/visits', '/answered', '/coordination', '/messages']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
     expect(adminMoreLabels).toEqual([
       'Answered',
-      'Coordination Notes',
       'Gatherings',
       'Gospel',
       'Looking back',
       'Messages',
       'My Day',
+      'The Journey',
       'Visits',
     ]);
   });

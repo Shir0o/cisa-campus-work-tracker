@@ -85,19 +85,21 @@ describe('TopNav (top-anchored navigation)', () => {
     h.layout = { isMobileMenuOpen: false, setIsMobileMenuOpen: h.mockSetIsMobileMenuOpen, setSearchOpen: h.mockSetSearchOpen };
   });
 
-  it('renders the brand and primary tabs for admin (The Board · People · On our hearts)', () => {
+  it('renders the brand and primary tabs for admin (Coordination Notes · People · On our hearts)', () => {
     renderTopNav();
     expect(screen.getByAltText('CISA Campus Work Tracker')).toBeInTheDocument();
-    expect(screen.getByText('The Board')).toBeInTheDocument();
+    expect(screen.getByText('Coordination Notes')).toBeInTheDocument();
     expect(screen.getByText('People')).toBeInTheDocument();
     expect(screen.getByText('On our hearts')).toBeInTheDocument();
     expect(screen.queryByText('My Day')).not.toBeInTheDocument();
+    expect(screen.queryByText('The Journey')).not.toBeInTheDocument();
   });
 
   it('renders More menu and opens it to reveal alphabetically sorted destinations and external links', () => {
     renderTopNav();
     fireEvent.click(screen.getByRole('button', { name: /more/i }));
     expect(screen.getByText('Gatherings')).toBeInTheDocument();
+    expect(screen.getByText('The Journey')).toBeInTheDocument();
     expect(screen.getByText('My Day')).toBeInTheDocument();
     expect(screen.getByText('Looking back')).toBeInTheDocument();
     expect(screen.getByText('Visits')).toBeInTheDocument();
