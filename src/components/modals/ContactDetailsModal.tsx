@@ -1011,10 +1011,10 @@ export default function ContactDetailsModal({
 
   // ── Desktop page aside data (Field Notes: how to reach / where they are /
   //    cared for by / who else can see / tags) ──
-  const fmtDate = (v?: string | null): string => {
-    if (!v) return "—";
+  const fmtDate = (v?: string | null): string | null => {
+    if (!v) return null;
     const d = new Date(v);
-    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
+    return isNaN(d.getTime()) ? null : d.toLocaleDateString();
   };
   const currentContact = liveContact || contact;
 
@@ -1049,8 +1049,9 @@ export default function ContactDetailsModal({
     currentContact?.lastContactedDate ||
     currentContact?.lastSeen;
 
-  const sinceText = effectiveLastContactedDate
-    ? `Last connected ${fmtDate(effectiveLastContactedDate)}`
+  const lastConnectedDate = fmtDate(effectiveLastContactedDate);
+  const sinceText = lastConnectedDate
+    ? `Last connected ${lastConnectedDate}`
     : "Not connected yet";
   const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
   const ownerInfo = teamMembers.find((m) => m.id === ownerId);
@@ -1206,15 +1207,20 @@ export default function ContactDetailsModal({
                         {sinceBy && <span className="cd-by">contacted by {sinceBy}</span>}
                       </div>
                       <div className="cd-meta">
-                        <span>{[contact.year, contact.major].filter(Boolean).join(" · ") || "—"}</span>
-                        {contact.metVia && (
-                          <>
-                            <span className="sep">·</span>
+                        {[
+                          [contact.year, contact.major].filter(Boolean).join(" · ") || null,
+                          contact.metVia && (
                             <span className="row"><HeartHandshake className="w-3.5 h-3.5" /> {contact.metVia}</span>
-                          </>
-                        )}
-                        <span className="sep">·</span>
-                        <span>added {fmtDate(contact.createdAt)}</span>
+                          ),
+                          fmtDate(contact.createdAt) && `added ${fmtDate(contact.createdAt)}`,
+                        ]
+                          .filter(Boolean)
+                          .map((item, i) => (
+                            <React.Fragment key={i}>
+                              {i > 0 && <span className="sep">·</span>}
+                              {item}
+                            </React.Fragment>
+                          ))}
                       </div>
                     </>
                   )}
@@ -2390,7 +2396,7 @@ export default function ContactDetailsModal({
                         <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
-                        <span>Added by <b>{addedByName}</b>{contact.createdAt ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                        <span>Added by <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
                       </div>
                     )}
                     {sinceBy && (
@@ -2398,7 +2404,7 @@ export default function ContactDetailsModal({
                         <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
-                        <span>Last contacted by <b>{sinceBy}</b>{contact.lastContactedDate ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                        <span>Last contacted by <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
                       </div>
                     )}
                   </div>
