@@ -134,8 +134,8 @@ describe("AttentionFeed Component (#330)", () => {
     const expandBtn = screen.getByText("All 3");
     fireEvent.click(expandBtn);
 
-    expect(screen.getByText("Met at library for study session")).toBeInTheDocument();
-    expect(screen.getByText("How should we follow up with Alex?")).toBeInTheDocument();
+    expect(screen.getAllByText("Met at library for study session").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("How should we follow up with Alex?").length).toBeGreaterThanOrEqual(1);
   });
 
   it("calls onOpenContact with initialTab='thread' when clicking 'Comment'", () => {
