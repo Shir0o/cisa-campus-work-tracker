@@ -23,6 +23,7 @@ describe('sync-github-issues script', () => {
           number: 1,
           title: 'First issue',
           state: 'open',
+          label: 'OPEN',
           user: {
             login: 'alice',
             avatar_url: 'https://github.com/alice.png',
@@ -71,7 +72,7 @@ describe('sync-github-issues script', () => {
 
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(fetchMock).toHaveBeenCalledWith(
-        'https://api.github.com/repos/owner/repo/issues?state=open&per_page=100&page=1',
+        'https://api.github.com/repos/owner/repo/issues?state=all&per_page=100&page=1',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-token',
@@ -88,6 +89,7 @@ describe('sync-github-issues script', () => {
         number: 1,
         title: 'First issue',
         state: 'open',
+        label: 'OPEN',
         user: {
           login: 'alice',
           avatar_url: 'https://github.com/alice.png',
@@ -104,8 +106,9 @@ describe('sync-github-issues script', () => {
         is_pull_request: false,
       });
 
-      // Verify PR issue mapping
+      // Verify PR issue mapping + clear state label
       expect(issues[1].is_pull_request).toBe(true);
+      expect(issues[1].label).toBe('CLOSED');
     });
 
     it('paginates correctly across multiple API pages', async () => {
@@ -257,6 +260,55 @@ describe('sync-github-issues script', () => {
       expect(parsed[0].id).toBe(201);
     });
 
+    it('writes both open and closed issues with a clear state label', async () => {
+      const mockIssues = [
+        {
+          id: 1,
+          number: 1,
+          title: 'Open Issue',
+          state: 'open',
+          user: null,
+          labels: [],
+          assignees: [],
+          comments: 0,
+          created_at: '2026-08-01T00:00:00Z',
+          updated_at: '2026-08-01T00:00:00Z',
+          closed_at: null,
+          body: null,
+          html_url: 'https://github.com/owner/repo/issues/1',
+        },
+        {
+          id: 2,
+          number: 2,
+          title: 'Closed Issue',
+          state: 'closed',
+          user: null,
+          labels: [],
+          assignees: [],
+          comments: 0,
+          created_at: '2026-08-01T00:00:00Z',
+          updated_at: '2026-08-02T00:00:00Z',
+          closed_at: '2026-08-02T00:00:00Z',
+          body: null,
+          html_url: 'https://github.com/owner/repo/issues/2',
+        },
+      ];
+
+      globalThis.fetch = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(mockIssues), { status: 200 })
+      );
+
+      await syncIssuesToDocs({
+        repo: 'test-owner/test-repo',
+        outputPath: testOutputPath,
+      });
+
+      const parsed = JSON.parse(fs.readFileSync(testOutputPath, 'utf8'));
+      expect(parsed).toHaveLength(2);
+      expect(parsed.find((i: any) => i.number === 1)?.label).toBe('OPEN');
+      expect(parsed.find((i: any) => i.number === 2)?.label).toBe('CLOSED');
+    });
+
     it('triggers autoCommitAndPush when autoCommitPush is true', async () => {
       const execSyncSpy = vi.fn().mockImplementation((cmd: string) => {
         if (typeof cmd === 'string' && cmd.startsWith('git status')) {
@@ -277,6 +329,10 @@ describe('sync-github-issues script', () => {
         execFn: execSyncSpy,
       });
 
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git switch main'),
+        expect.any(Object)
+      );
       expect(execSyncSpy).toHaveBeenCalledWith(
         expect.stringContaining('git status --porcelain'),
         expect.any(Object)
@@ -305,7 +361,15 @@ describe('sync-github-issues script', () => {
 
       const result = autoCommitAndPush(testOutputPath, 'main', execSyncSpy);
       expect(result).toBe(false);
-      expect(execSyncSpy).toHaveBeenCalledTimes(1);
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git switch main'),
+        expect.any(Object)
+      );
+      expect(execSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('git status --porcelain'),
+        expect.any(Object)
+      );
+      expect(execSyncSpy).toHaveBeenCalledTimes(2);
     });
   });
 });

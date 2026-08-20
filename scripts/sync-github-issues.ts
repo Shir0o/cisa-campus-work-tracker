@@ -10,6 +10,7 @@ export interface GitHubIssueSummary {
   number: number;
   title: string;
   state: string;
+  label: 'OPEN' | 'CLOSED';
   user: {
     login: string;
     avatar_url: string;
@@ -50,7 +51,7 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
   }
 
   while (true) {
-    const url = `https://api.github.com/repos/${repo}/issues?state=open&per_page=${perPage}&page=${page}`;
+    const url = `https://api.github.com/repos/${repo}/issues?state=all&per_page=${perPage}&page=${page}`;
     const res = await fetch(url, { headers });
 
     if (!res.ok) {
@@ -72,6 +73,7 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
         number: item.number,
         title: item.title,
         state: item.state,
+        label: item.state === 'closed' ? 'CLOSED' : 'OPEN',
         user: item.user
           ? {
               login: item.user.login,
@@ -120,6 +122,9 @@ export function autoCommitAndPush(
 ): boolean {
   try {
     const relativePath = path.relative(process.cwd(), filePath);
+    console.log(`Switching to ${branch}...`);
+    execFn(`git switch ${branch}`, { stdio: 'inherit' });
+
     const status = (execFn(`git status --porcelain "${relativePath}"`, { encoding: 'utf8' }) || '').toString().trim();
 
     if (!status) {
@@ -167,6 +172,7 @@ export async function syncIssuesToDocs(opts?: {
   const outputPath = opts?.outputPath || path.join(process.cwd(), 'docs', 'issues.json');
   const autoCommitPush = opts?.autoCommitPush ?? false;
   const branch = opts?.branch || 'main';
+  const execFn = opts?.execFn || execSync;
 
   console.log(`Fetching GitHub issues for repository "${repo}"...`);
   const issues = await fetchGitHubIssues(repo, token);
@@ -184,7 +190,7 @@ export async function syncIssuesToDocs(opts?: {
   console.log(`Successfully written issues to ${outputPath}`);
 
   if (autoCommitPush) {
-    autoCommitAndPush(outputPath, branch, opts?.execFn);
+    autoCommitAndPush(outputPath, branch, execFn);
   }
 }
 
