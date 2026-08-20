@@ -18,6 +18,7 @@ vi.mock('../lib/seasons', () => ({
 
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn((_db, ...parts) => ({ path: parts.join('/') })),
+  doc: vi.fn((_db, ...parts) => ({ path: parts.join('/'), id: parts[parts.length - 1] })),
   query: vi.fn((ref) => ref),
   orderBy: vi.fn(),
   where: vi.fn(),

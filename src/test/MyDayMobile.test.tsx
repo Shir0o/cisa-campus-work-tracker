@@ -596,5 +596,28 @@ describe('MyDayMobile', () => {
     fireEvent.click(pickerButtons[pickerButtons.length - 1]);
     expect(screen.getByText('Your personal contacts')).toBeInTheDocument();
   });
+
+  it('renders Not connected yet when a leader has not been connected with', () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'John Doe' } });
+
+    render(
+      <MyDayMobile
+        contacts={[]}
+        events={[]}
+        prayers={[]}
+        stages={[]}
+        myLeaders={[
+          {
+            contact: { id: 'c1', name: 'Never Connected Contact' } as any,
+            days: Infinity,
+            note: '',
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Never Connected Contact')).toBeInTheDocument();
+    expect(screen.getByText('Not connected yet')).toBeInTheDocument();
+  });
 });
 

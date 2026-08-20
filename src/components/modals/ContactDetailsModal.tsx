@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -60,6 +60,7 @@ import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
+import { parseMs } from "../landing/helpers";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -196,6 +197,22 @@ export default function ContactDetailsModal({
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "comments" | "history"
   >("overview");
+
+  const [liveContact, setLiveContact] = useState<Contact | null>(contact);
+
+  useEffect(() => {
+    setLiveContact(contact);
+  }, [contact]);
+
+  useEffect(() => {
+    if (!isOpen || !contact?.id) return;
+    const unsub = onSnapshot(doc(db, "contacts", contact.id), (snap: any) => {
+      if (snap && typeof snap.data === "function" && (snap.exists === undefined || snap.exists())) {
+        setLiveContact({ id: snap.id, ...snap.data() } as Contact);
+      }
+    });
+    return () => unsub();
+  }, [isOpen, contact?.id]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -999,12 +1016,32 @@ export default function ContactDetailsModal({
     const d = new Date(v);
     return isNaN(d.getTime()) ? "—" : d.toLocaleDateString();
   };
-  const sinceText = contact.lastContactedDate
-    ? `Last connected ${fmtDate(contact.lastContactedDate)}`
-    : contact.lastSeen
-      ? `Last seen ${fmtDate(contact.lastSeen)}`
-      : "Not connected yet";
-  const sinceBy = contact.lastContactedBy || null;
+  const currentContact = liveContact || contact;
+
+  const latestInteraction = useMemo(() => {
+    if (!interactions || interactions.length === 0) return null;
+    let newest = interactions[0];
+    let newestMs = parseMs(newest.dateTime || newest.createdAt) ?? -Infinity;
+    for (let i = 1; i < interactions.length; i++) {
+      const ms = parseMs(interactions[i].dateTime || interactions[i].createdAt) ?? -Infinity;
+      if (ms > newestMs) {
+        newest = interactions[i];
+        newestMs = ms;
+      }
+    }
+    return newest;
+  }, [interactions]);
+
+  const effectiveLastContactedDate =
+    latestInteraction?.dateTime ||
+    latestInteraction?.createdAt ||
+    currentContact?.lastContactedDate ||
+    currentContact?.lastSeen;
+
+  const sinceText = effectiveLastContactedDate
+    ? `Last connected ${fmtDate(effectiveLastContactedDate)}`
+    : "Not connected yet";
+  const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
   const ownerInfo = teamMembers.find((m) => m.id === ownerId);
   const ownerName = ownerInfo?.name || contact.createdByName || "—";
   const ownerRole = ownerInfo?.role || "";

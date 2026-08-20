@@ -124,5 +124,9 @@ describe('primitives components', () => {
     );
     expect(screen.getByText('Not connected yet')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Email/i })).toHaveAttribute('href', 'mailto:bob@example.com');
+
+    const openBtn = screen.getByRole('button', { name: /^Open$/i });
+    openBtn.click();
+    expect(onOpen).toHaveBeenCalled();
   });
 });

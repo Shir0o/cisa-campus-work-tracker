@@ -1262,7 +1262,10 @@ function InternalKanbanCard({
   dragListeners
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
   const touch = lastTouchByContact.get(contact.id);
-  const ms = touch?.ms ?? parseMs(contact.createdAt);
+  const contactLastMs = parseMs(contact.lastContactedDate) ?? parseMs(contact.lastSeen);
+  const touchMs = touch?.ms;
+  const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity);
+  const ms = Number.isFinite(bestMs) && bestMs > 0 ? bestMs : parseMs(contact.createdAt);
   const days = ms != null ? daysSince(ms) : null;
   const overdue = days != null && days >= 7;
   const note = (touch?.note || contact.notes || '').trim();

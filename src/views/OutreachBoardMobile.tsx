@@ -228,7 +228,10 @@ export default function OutreachBoardMobile({
           <div className="space-y-2.5 jrnm-list">
             {items.map((c) => {
               const touch = lastTouchByContact.get(c.id);
-              const ms = touch?.ms ?? parseMs(c.createdAt);
+              const contactLastMs = parseMs(c.lastContactedDate) ?? parseMs(c.lastSeen);
+              const touchMs = touch?.ms;
+              const bestMs = Math.max(touchMs ?? -Infinity, contactLastMs ?? -Infinity);
+              const ms = Number.isFinite(bestMs) && bestMs > 0 ? bestMs : parseMs(c.createdAt);
               const days = ms != null ? daysSince(ms) : null;
               const overdue = days != null && days >= 7;
               const note = (touch?.note || c.notes || '').trim();

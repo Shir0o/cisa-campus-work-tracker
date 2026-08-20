@@ -475,7 +475,7 @@ export default function MyDayMobile({
                           </span>
                         )}
                         <span className={cn("text-xs text-on-surface-variant/70 mdm-person-since", overdue && "over text-error font-medium")}>
-                          {days === 0 ? "Connected today" : days === 1 ? "Last connected yesterday" : `Last connected ${days} days ago`}
+                          {!Number.isFinite(days) ? "Not connected yet" : days === 0 ? "Connected today" : days === 1 ? "Last connected yesterday" : `Last connected ${days} days ago`}
                         </span>
                       </div>
                     </div>
