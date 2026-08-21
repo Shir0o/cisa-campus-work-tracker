@@ -45,6 +45,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import { applyWalkingPairs } from '../lib/walking';
@@ -284,6 +285,48 @@ function AppearanceSection({
             >
               <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-on-surface-variant')} />
               <span className="font-serif text-base text-on-surface leading-none">{label}</span>
+              <span className="text-xs text-on-surface-variant">{note}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ── Language ───────────────────────────────────────────────────────────
+
+const LANGUAGES: { key: 'en' | 'es'; label: string; note: string; flag: string }[] = [
+  { key: 'en', label: 'English', note: 'Default language', flag: '🇺🇸' },
+  { key: 'es', label: 'Español', note: 'Traducción inteligente en vivo', flag: '🇪🇸' },
+];
+
+function LanguageSection() {
+  const { language, setLanguage } = useLanguage();
+
+  return (
+    <section className="mt-10">
+      <SectionHeader title="Language" sub="Choose your preferred interface and live translation language." />
+      <div className="grid grid-cols-2 gap-3 max-w-xl">
+        {LANGUAGES.map(({ key, label, note, flag }) => {
+          const active = language === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setLanguage(key)}
+              aria-pressed={active}
+              className={cn(
+                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors cursor-pointer',
+                active
+                  ? 'border-primary/40 bg-primary/5'
+                  : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
+              )}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-xl leading-none" role="img" aria-label={label}>{flag}</span>
+                <span className="font-serif text-base text-on-surface leading-none">{label}</span>
+              </div>
               <span className="text-xs text-on-surface-variant">{note}</span>
             </button>
           );
@@ -1380,6 +1423,7 @@ export default function Settings() {
         </section>
 
         <AppearanceSection theme={theme} setTheme={setTheme} />
+        <LanguageSection />
 
         {sharedTail}
 
@@ -1404,6 +1448,7 @@ export default function Settings() {
 
       <AccountSection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
+      <LanguageSection />
 
       <section className="mt-10">
         <SectionHeader

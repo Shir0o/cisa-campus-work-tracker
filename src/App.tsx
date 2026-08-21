@@ -28,6 +28,7 @@ import PrivacyPolicy from "./views/PrivacyPolicy";
 import Support from "./views/Support";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
+import { LanguageProvider } from "./components/LanguageProvider";
 import { Plus } from "lucide-react";
 import { Skeleton } from "./components/ui/Skeleton";
 import { Contact } from "./types";
@@ -410,201 +411,157 @@ export default function App() {
       <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
         <Router>
           <AuthProvider>
-            <WalkingPairsSync />
-            <Routes>
-              <Route path="/signup" element={<SignUp />} />
+            <LanguageProvider>
+              <WalkingPairsSync />
+              <Routes>
+                <Route path="/signup" element={<SignUp />} />
 
-              <Route
-                path="/embed/coordination/:docId"
-                element={
-                  <React.Suspense fallback={null}>
-                    <EmbedCoordinationDoc />
-                  </React.Suspense>
-                }
-              />
+                <Route
+                  path="/embed/coordination/:docId"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <EmbedCoordinationDoc />
+                    </React.Suspense>
+                  }
+                />
 
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/support" element={<Support />} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/support" element={<Support />} />
 
-              <Route
-                path="/"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="viewer">
-                      <DashboardLayout>
-                        <Landing />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          <Landing />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/attendance"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="viewer">
-                      <DashboardLayout>
-                        <Attendance />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/attendance"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          <Attendance />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/outreach"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="admin">
-                      <DashboardLayout>
-                        <Outreach />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/outreach"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <Outreach />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/board"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="manager">
-                      <DashboardLayout>
-                        <OutreachBoard />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/board"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="manager">
+                        <DashboardLayout>
+                          <OutreachBoard />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/directory"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="operator">
-                      <DashboardLayout>
-                        <Directory />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/directory"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="operator">
+                        <DashboardLayout>
+                          <Directory />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/history"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="manager">
-                      <DashboardLayout>
-                        <History />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/history"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="manager">
+                        <DashboardLayout>
+                          <History />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/visits"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="admin">
-                      <DashboardLayout>
-                        <Visits />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/visits"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <Visits />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/prayer"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="viewer">
-                      <DashboardLayout>
-                        <PrayerList />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/prayer"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          <PrayerList />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/answered"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="viewer">
-                      <DashboardLayout>
-                        <AnsweredList />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/answered"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          <AnsweredList />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/settings"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="viewer">
-                      <DashboardLayout>
-                        <Settings />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                <Route
+                  path="/settings"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          <Settings />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/messages"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <React.Suspense
-                        fallback={
-                          <div className="p-8 space-y-6">
-                            <Skeleton className="h-10 w-64" />
-                            <Skeleton className="h-96 w-full rounded-3xl" />
-                          </div>
-                        }
-                      >
-                        <Messages />
-                      </React.Suspense>
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/feedback"
-                element={
-                  <ProtectedRoute>
-                    <DashboardLayout>
-                      <SubmitFeedback />
-                    </DashboardLayout>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/admin/feedback"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="admin">
-                      <DashboardLayout>
-                        <FeedbackList />
-                      </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
-
-              <Route
-                path="/coordination"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="operator">
+                <Route
+                  path="/messages"
+                  element={
+                    <ProtectedRoute>
                       <DashboardLayout>
                         <React.Suspense
                           fallback={
@@ -614,39 +571,85 @@ export default function App() {
                             </div>
                           }
                         >
-                          <CoordinationNotes />
+                          <Messages />
                         </React.Suspense>
                       </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                    </ProtectedRoute>
+                  }
+                />
 
-              <Route
-                path="/coordination/trash"
-                element={
-                  <ProtectedRoute>
-                    <RoleGuard minRole="admin">
+                <Route
+                  path="/feedback"
+                  element={
+                    <ProtectedRoute>
                       <DashboardLayout>
-                        <React.Suspense
-                          fallback={
-                            <div className="p-8 space-y-6">
-                              <Skeleton className="h-10 w-64" />
-                              <Skeleton className="h-96 w-full rounded-3xl" />
-                            </div>
-                          }
-                        >
-                          <CoordinationTrash />
-                        </React.Suspense>
+                        <SubmitFeedback />
                       </DashboardLayout>
-                    </RoleGuard>
-                  </ProtectedRoute>
-                }
-              />
+                    </ProtectedRoute>
+                  }
+                />
 
-              {/* Redirect unknown routes */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+                <Route
+                  path="/admin/feedback"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <FeedbackList />
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/coordination"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="operator">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <CoordinationNotes />
+                          </React.Suspense>
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/coordination/trash"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="admin">
+                        <DashboardLayout>
+                          <React.Suspense
+                            fallback={
+                              <div className="p-8 space-y-6">
+                                <Skeleton className="h-10 w-64" />
+                                <Skeleton className="h-96 w-full rounded-3xl" />
+                              </div>
+                            }
+                          >
+                            <CoordinationTrash />
+                          </React.Suspense>
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Redirect unknown routes */}
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </LanguageProvider>
           </AuthProvider>
         </Router>
       </ThemeProvider>

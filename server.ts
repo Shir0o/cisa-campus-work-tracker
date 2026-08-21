@@ -1781,6 +1781,191 @@ ${JSON.stringify(contactsList)}`;
     }
   });
 
+  // Translation Endpoint: translates batched text strings to targetLang with Firestore L3 caching
+  app.post("/api/translate", async (req, res) => {
+    try {
+      if (process.env.NODE_ENV !== "test") {
+        try {
+          await authenticateFirebaseUser(req);
+        } catch (authErr: any) {
+          return res.status(401).json({ error: `Unauthorized: ${authErr.message || String(authErr)}` });
+        }
+      }
+
+      const { texts, targetLang = "es", sourceLang = "en" } = req.body;
+
+      if (!texts || !Array.isArray(texts) || texts.length === 0) {
+        return res.status(400).json({ error: "Missing or invalid 'texts' parameter. Must be a non-empty array of strings." });
+      }
+
+      if (texts.length > 100) {
+        return res.status(400).json({ error: "Batch size exceeds maximum limit of 100 items." });
+      }
+
+      if (typeof targetLang !== "string" || !/^[a-z]{2,5}(-[a-zA-Z0-9]+)?$/i.test(targetLang.trim())) {
+        return res.status(400).json({ error: "Invalid 'targetLang' parameter." });
+      }
+
+      const normalizedTargetLang = targetLang.trim().toLowerCase();
+
+      let totalChars = 0;
+      for (const t of texts) {
+        if (typeof t !== "string") {
+          return res.status(400).json({ error: "All elements in 'texts' must be strings." });
+        }
+        totalChars += t.length;
+      }
+
+      if (totalChars > 50000) {
+        return res.status(400).json({ error: "Total character length exceeds maximum limit of 50000 characters." });
+      }
+
+      const db = getAdminDb();
+      const cacheMap = new Map<string, string>();
+      const existingCachedHashes = new Set<string>();
+
+      // Compute hashes for unique non-empty trimmed texts
+      const uniqueItemsMap = new Map<string, string>(); // hash -> trimmedText
+      for (const rawText of texts) {
+        const trimmed = rawText.trim();
+        if (trimmed) {
+          const hash = crypto.createHash("sha256").update(`${normalizedTargetLang}:${trimmed}`).digest("hex");
+          uniqueItemsMap.set(hash, trimmed);
+        }
+      }
+
+      // Check Firestore cache for existing translations
+      const hashList = Array.from(uniqueItemsMap.keys());
+      if (hashList.length > 0) {
+        const lookups = hashList.map(async (hash) => {
+          try {
+            const docSnap = await db.collection("translations").doc(hash).get();
+            if (docSnap.exists) {
+              const data = docSnap.data();
+              if (data && typeof data.translatedText === "string") {
+                cacheMap.set(hash, data.translatedText);
+                existingCachedHashes.add(hash);
+              }
+            }
+          } catch (e) {
+            console.warn(`[Translation Cache] Lookup failed for hash ${hash}:`, e);
+          }
+        });
+        await Promise.all(lookups);
+      }
+
+      // Identify items that need translation
+      const uncachedItems: Array<{ id: number; hash: string; text: string }> = [];
+      let nextId = 0;
+      for (const [hash, trimmedText] of uniqueItemsMap.entries()) {
+        if (!cacheMap.has(hash)) {
+          uncachedItems.push({ id: nextId++, hash, text: trimmedText });
+        }
+      }
+
+      // If we have uncached items, call Gemini
+      if (uncachedItems.length > 0) {
+        const langName = normalizedTargetLang === "es" ? "Spanish" : normalizedTargetLang;
+        const prompt = `Translate the following ${uncachedItems.length} text items into ${langName}:\n\n` +
+          JSON.stringify(uncachedItems.map((item) => ({ id: item.id, text: item.text })));
+
+        const response = await getAiClient().models.generateContent({
+          model: "gemini-3.5-flash",
+          contents: prompt,
+          config: {
+            systemInstruction: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
+CRITICAL RULES:
+1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
+2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
+3. Preserve emojis and special characters.
+4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                translations: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      id: { type: Type.INTEGER },
+                      translatedText: { type: Type.STRING }
+                    },
+                    required: ["id", "translatedText"]
+                  }
+                }
+              },
+              required: ["translations"]
+            }
+          }
+        });
+
+        if (!response.text) {
+          throw new Error("No response returned from the Gemini API.");
+        }
+
+        const parsed = JSON.parse(response.text.trim());
+        const resultMap = new Map<number, string>();
+        if (parsed.translations && Array.isArray(parsed.translations)) {
+          for (const item of parsed.translations) {
+            if (typeof item.id === "number" && typeof item.translatedText === "string") {
+              resultMap.set(item.id, item.translatedText);
+            }
+          }
+        }
+
+        // Store new translations in Firestore using batch write
+        const batch = db.batch();
+        const now = new Date().toISOString();
+        for (const item of uncachedItems) {
+          const translatedText = resultMap.get(item.id) ?? item.text;
+          cacheMap.set(item.hash, translatedText);
+          const docRef = db.collection("translations").doc(item.hash);
+          batch.set(docRef, {
+            hash: item.hash,
+            sourceText: item.text,
+            translatedText: translatedText,
+            targetLang: normalizedTargetLang,
+            sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
+            createdAt: now,
+          });
+        }
+        await batch.commit();
+      }
+
+      // Map back to output preserving exact original array ordering
+      const translations = texts.map((original) => {
+        const trimmed = original.trim();
+        if (!trimmed) {
+          return {
+            original,
+            translated: original,
+            hash: "",
+            cached: true
+          };
+        }
+        const hash = crypto.createHash("sha256").update(`${normalizedTargetLang}:${trimmed}`).digest("hex");
+        const translated = cacheMap.get(hash) ?? trimmed;
+        const cached = existingCachedHashes.has(hash);
+        return {
+          original,
+          translated,
+          hash,
+          cached
+        };
+      });
+
+      res.status(200).json({
+        success: true,
+        targetLang: normalizedTargetLang,
+        translations
+      });
+    } catch (error: any) {
+      console.error("Translation API Error: ", error);
+      res.status(500).json({ error: error.message || "Failed to translate texts." });
+    }
+  });
+
   // Endpoint 3: Public endpoint to verify that the Gemini API is configured
 
   app.get("/api/quick-add/status", (req, res) => {

@@ -698,6 +698,12 @@ service cloud.firestore {
       }
     }
 
+    // 18. Translations Cache Collection (shared multi-tier cache)
+    match /translations/{translationId} {
+      allow read: if isApprovedUser();
+      allow write: if false; // Only written via Firebase Admin SDK backend
+    }
+
     // Collection Group helpers
     match /{path=**}/interactions/{interactionId} {
       allow list: if isApprovedUser();

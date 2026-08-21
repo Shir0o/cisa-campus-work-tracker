@@ -184,4 +184,12 @@ describe('TopNav (top-anchored navigation)', () => {
     fireEvent.error(logoImg);
     expect(logoImg.style.display).toBe('none');
   });
+
+  it('renders language selector in the profile menu', () => {
+    renderTopNav();
+    fireEvent.click(screen.getByRole('button', { name: /Profile/i }));
+    expect(screen.getByText('Language')).toBeInTheDocument();
+    expect(screen.getByText('EN')).toBeInTheDocument();
+    expect(screen.getByText('ES')).toBeInTheDocument();
+  });
 });
