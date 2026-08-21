@@ -1,10 +1,620 @@
 [
   {
+    "id": 5216857942,
+    "number": 429,
+    "title": "fix(ci): resolve firestore rules evaluation, e2e test selectors, and workflow deprecations",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T18:04:19Z",
+    "updated_at": "2026-08-21T18:12:06Z",
+    "closed_at": "2026-08-21T18:12:04Z",
+    "body": "## Summary of Changes\n\nFixes active CI/CD workflow test failures on `main` and resolves GitHub Actions deprecations:\n\n1. **Firestore Security Rules**:\n   - Replaced unguarded `resource.data.scope` and `incoming().scope` access on thread messages in `firestore.rules` with safe `.get('scope', '')` and `.get('scope', null)` calls to prevent `Property scope is undefined on object` runtime evaluation errors during rules test execution.\n\n2. **Web E2E (Playwright)**:\n   - In `e2e/outreach-signup.spec.ts`, switched `#signup-major` interaction to text input fill (`.fill('Computer Science')`) matching the updated single-step intake form component.\n   - In `e2e/permissions.spec.ts`, updated navigation item expectations (e.g. `\"The Journey\"` instead of `\"The Board\"`) and aligned top navigation assertions.\n\n3. **Workflow Modernization & Stability**:\n   - Upgraded `actions/setup-java@v4` to `actions/setup-java@v5` in `.github/workflows/deploy-firestore-rules.yml` and `.github/workflows/e2e.yml`.\n   - Added `testTimeout: 15000` to `apps/mobile/jest.config.js` to prevent runner congestion timeouts.\n   - Updated `CHANGELOG.md` under `[Unreleased]`.\n\n## Pre-PR Verification\n- `npm run typecheck`: Passed (`tsc --noEmit`)\n- `npm run lint`: Passed (`eslint .`)\n- `npm run test:coverage`: Passed (`vitest run --coverage`, 0 threshold drops)\n- `npm run build`: Passed (Vite + esbuild server)",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/429",
+    "is_pull_request": true
+  },
+  {
+    "id": 5216034510,
+    "number": 428,
+    "title": "perf: optimize lighthouse performance, a11y, seo, and agentic browsing",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T16:16:55Z",
+    "updated_at": "2026-08-21T17:51:46Z",
+    "closed_at": "2026-08-21T17:51:45Z",
+    "body": "## Summary\nOptimizes Core Web Vitals, initial payload size, dark mode color contrast, and metadata based on Lighthouse audit diagnostics across mobile and desktop.\n\n### Changes\n1. **Performance & Bundle Optimization**:\n   - Converted non-home route views in `src/App.tsx` (`Attendance`, `Outreach`, `OutreachBoard`, `Directory`, `History`, `PrayerList`, `AnsweredList`, `Settings`, `SignUp`, `PrivacyPolicy`, `Support`, `FeedbackList`, `SubmitFeedback`) to lazy-loaded components with `lazyWithRetry`.\n   - Configured vendor chunking in `vite.config.ts` for `firebase` and `lucide-icons`, reducing entry bundle size from ~1.6MB down to ~735KB (215KB gzipped).\n   - Converted Google Fonts stylesheet loading in `index.html` to non-render-blocking preload (`media=\"print\" onload=\"this.media='all'\"`).\n\n2. **Accessibility (WCAG AA Compliance)**:\n   - Adjusted dark theme contrast tokens (`--on-primary-container`, `--danger`, `--text-mute`) in `src/index.css` to achieve $\\ge 4.5:1$ contrast ratio against dark panels.\n   - Updated role badge opacity in `src/views/MyDayMobile.tsx` for compliant contrast.\n\n3. **SEO & Crawl Policy**:\n   - Added descriptive `<meta name=\"description\">` tag in `index.html`.\n   - Maintained private crawler policy in `public/robots.txt`.\n\n4. **Agentic Browsing**:\n   - Added standardized `public/llms.txt` with top-level H1 header and documentation links.\n\n### Verification\n- `npm run typecheck` passed\n- `npm run lint` passed\n- Unit test suite passed\n- `npm run build` passed",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/428",
+    "is_pull_request": true
+  },
+  {
+    "id": 5215415985,
+    "number": 427,
+    "title": "fix(translator): attach Firebase auth token to translation requests",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T15:03:39Z",
+    "updated_at": "2026-08-21T15:11:25Z",
+    "closed_at": "2026-08-21T15:11:23Z",
+    "body": "## Summary\n- Attaches Firebase ID token via `Authorization: Bearer <token>` in both web (`src/lib/translator.ts`) and mobile (`apps/mobile/src/lib/translator.ts`) `flushBatch` calls when a user is signed in.\n- Deployed latest container revision containing `POST /api/translate` to Google Cloud Run (`campus-hub-backend` and `campus-hub-qa`), resolving the 404/401 endpoint errors on live translation requests.\n\n## Test Plan\n- `npm run typecheck` passed\n- `npm run lint` passed\n- `npm run test:coverage` passed (all thresholds met)\n- `npm run build` passed\n- Verified live endpoint with `curl -i -X POST https://campus-hub-backend-d2h5m26nrq-wl.a.run.app/api/translate`",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/427",
+    "is_pull_request": true
+  },
+  {
+    "id": 5211478317,
+    "number": 426,
+    "title": "feat: Spanish Localization Dictionaries, Dynamic UGC Toggles & Mobile Parity (#420, #421, #422)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T07:08:44Z",
+    "updated_at": "2026-08-21T07:38:15Z",
+    "closed_at": "2026-08-21T07:38:13Z",
+    "body": "## Description\nImplements the remaining phases of full-app Spanish translation and localization architecture across web and mobile.\n\n### Changes\n- **Phase 3 (Issue #420) — Static UI Strings Localization Dictionaries**:\n  - Added lightweight JSON localization dictionaries (`src/locales/en.json`, `src/locales/es.json`) with key parity.\n  - Added zero-latency string lookup helper `t(key, lang)` in `src/lib/i18n.ts` and exposed via `LanguageProvider.tsx`.\n  - Localized mobile navigation (`MobileNav.tsx`), top navigation (`TopNav.tsx`), and settings.\n  - Unit tests in `src/test/i18n.test.ts`.\n\n- **Phase 4 (Issue #421) — Dynamic UGC Translation & Original Content Switcher**:\n  - Implemented `showOriginalToggle` in `src/components/Translate.tsx` with bilingual \"Ver original\" / \"Ver traducción\" toggle (`<OriginalToggle />`).\n  - Integrated translation across contact notes, interaction histories, and prayers in `ContactDetailsModal.tsx`.\n  - Integrated translation in `Directory.tsx`, `OutreachBoard.tsx`, `History.tsx`, and `HistoryMobile.tsx`.\n\n- **Phase 5 (Issue #422) — Batch Prefetching & Mobile App Parity with Offline Caching**:\n  - Added `prefetchTranslations()` in `src/lib/translator.ts` to pre-warm client cache.\n  - Built mobile translation engine in `apps/mobile/src/lib/translator.ts` with SHA-256 hashing, L1 memory Map, and L2 `AsyncStorage` caching (`cisa_tr_*`).\n  - Created mobile `LanguageProvider.tsx` and `Translate.tsx`, wired into `PrayersToCarry.tsx`.\n  - Unit tests in `apps/mobile/src/lib/translator.test.ts`.\n\n- **Changelog**:\n  - Updated `CHANGELOG.md` under `[Unreleased]`.\n\n### Verification\n- `npm run typecheck`: Passed (0 errors)\n- `npm run lint`: Passed (0 errors)\n- `npm run test`: Passed (134 test suites, 1848 tests)\n- `npm --prefix apps/mobile test`: Passed (28 test suites, 131 tests)\n- `npm run build`: Succeeded",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/426",
+    "is_pull_request": true
+  },
+  {
+    "id": 5211219054,
+    "number": 425,
+    "title": "feat(i18n): wire full Spanish translation across navigation and app content (#351)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T06:33:32Z",
+    "updated_at": "2026-08-21T06:54:02Z",
+    "closed_at": "2026-08-21T06:53:59Z",
+    "body": "### Summary of Changes\n\nCloses #351\n\nThis PR expands the translation engine and multi-tier caching system introduced in #423 / #419 by wiring dynamic live translation across all primary user workflows, menus, records, and inputted content:\n\n- **Enhanced Polymorphic `<Translate />` Component (`src/components/Translate.tsx`)**:\n  - Supports both direct string `text` props and string/number child nodes (e.g. `<Translate>Settings</Translate>`).\n  - Supports configurable HTML tag rendering via `as` prop (`span`, `div`, `p`, etc.) preserving DOM hierarchy and CSS class behavior.\n- **Top & Mobile Navigation Menus**:\n  - `TopNav.tsx`: Primary nav items, More menu entries, dropdown actions (Settings, Language, Log out), and mobile drawer items.\n  - `MobileNav.tsx`: Home, Gatherings, Contacts, and Prayer tab labels.\n- **Dynamic Tasks & Subtasks**:\n  - `TodoRow.tsx`: Task title and subtask items.\n  - `MyDay.tsx` & `MyDayMobile.tsx`: Active tasks and personal to-dos.\n- **Prayers & Answer Testimonies**:\n  - `PrayerList.tsx` & `PrayerListMobile.tsx`: Prayer burdens and answered testimonies.\n  - `AnsweredList.tsx`: Answered prayer list and past answers.\n- **Visits**:\n  - `VisitCard.tsx`: Visit summary notes (`how`), purpose (`purpose`), follow-up items (`followUp`), and prayer burdens (`prayerBurden`).\n- **Messages / Chat**:\n  - `Messages.tsx`: Chat bubble body content and system notices.\n- **Tests & Quality**:\n  - Added unit test coverage in `useTranslate.test.tsx`, `TodoRow.test.tsx`, and `TopNav.test.tsx`.\n  - All CI steps pass: typecheck, lint, coverage, and build.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/425",
+    "is_pull_request": true
+  },
+  {
+    "id": 5210942406,
+    "number": 424,
+    "title": "feat: one conversation thread per person and retire admin comments (#333)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T05:55:07Z",
+    "updated_at": "2026-08-21T06:33:04Z",
+    "closed_at": "2026-08-21T06:33:02Z",
+    "body": "Closes #333\n\n## Summary\nRetire the legacy per-contact comments subcollection and make `contacts/{id}/threads` the single conversation surface, while preserving the Full-timer-only audience via the existing `scope: \"team\"` Discussion mechanism.\n\n## Changes\n- Removed old comments reads/writes from `ContactDetailsModal`\n- Renamed the admin Comments tab to Discussion, backed by thread `scope: \"team\"`\n- Updated Directory / My Day / Outreach / Outreach Board last-touch feeds to use threads instead of the retired comments collection\n- Filtered Full-timer-only team-scope Discussion out of trainee attention, inbox, and landing feeds\n- Enforced team-scope privacy in Firestore rules (nested reads/writes + collection-group list)\n- Added a dry-runnable, reversible migration script: `scripts/migrate-comments-to-threads.ts`\n- Added/updated unit tests and emulator-backed rules tests\n\n## Validation\n- `npm run typecheck` ✅\n- `npm run lint` ✅\n- `npm test` ✅ — 1803 passed, 107 skipped",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/424",
+    "is_pull_request": true
+  },
+  {
+    "id": 5210840000,
+    "number": 423,
+    "title": "feat(api): add batch translation endpoint with Gemini and Firestore caching (#351)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T05:40:10Z",
+    "updated_at": "2026-08-21T06:15:10Z",
+    "closed_at": "2026-08-21T06:15:08Z",
+    "body": "## Summary\nImplements Phase 1 of #351 (*\"spanish translation (live yet smart cached) of everything\"*). Subsequent phases are broken down and documented in tracked issues (#419, #420, #421, #422).\n\n### Changes\n- **Backend Translation Endpoint (`POST /api/translate`) in `server.ts`**:\n  - Batches text translation requests to Gemini (`gemini-3.5-flash`) with structured JSON schema output.\n  - Implements deterministic SHA-256 fingerprint hashing (`sha256(\"${targetLang}:${trimmedText}\")`).\n  - Checks Firestore `translations/{hash}` cache before calling Gemini to eliminate duplicate AI calls.\n  - Preserves Markdown formatting (`**bold**`, `[links]()`, headings, lists), mentions (`@Name`), URLs, and emojis.\n  - Commits new translations into Firestore using `writeBatch`.\n  - Enforces batch validation (array of strings, max 100 items, max 50k characters).\n- **Firestore Security Rules in `firestore.rules`**:\n  - Added rules for `match /translations/{translationId}` allowing authenticated & approved users to read cached translations while denying direct client writes.\n- **Testing & Verification**:\n  - Added unit test suite in `src/test/server.test.ts` for batch translation, smart caching, mixed batch ordering, validations, and API failure handling.\n  - Added security rules unit tests in `src/test/firestore.rules.test.ts`.\n  - Updated `CHANGELOG.md`.\n\n### Roadmap / Related Issues\n- Phase 1 (Completed): #351 (This PR)\n- Phase 2: #419 (Client Translation Engine & State)\n- Phase 3: #420 (Static UI Localization)\n- Phase 4: #421 (Dynamic UGC Translation)\n- Phase 5: #422 (Prefetching, Parity & Performance)\n\n### Verification\n- `npm run typecheck` — clean (0 errors)\n- `npm run lint` — clean (0 errors)\n- `npm run test:coverage` — all 133 test files passed (1,061 tests)\n- `npm run build` — clean production build",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/423",
+    "is_pull_request": true
+  },
+  {
+    "id": 5210754513,
+    "number": 422,
+    "title": "Phase 5: Translation Batch Prefetching, Mobile App Parity & Offline Caching",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-21T05:23:59Z",
+    "updated_at": "2026-08-21T05:23:59Z",
+    "closed_at": null,
+    "body": "Follow-up to #351 (Phase 5):\n\n### Summary\nAdd intelligent viewport/list prefetching, offline translation fallback, and mobile app parity (`apps/mobile`).\n\n### Scope\n- **Batch Prefetching:**\n  - Prefetch visible list items upon feed load (e.g. 20 prayers at once in a single `/api/translate` call).\n  - Background warming of cache for frequently viewed contacts and pinned notes.\n- **Mobile Parity (`apps/mobile`):**\n  - Integrate translation service in React Native mobile views (Today, Prayers, Messages, People).\n  - Use AsyncStorage for mobile L2 cache.\n- **Offline & Fallback Polish:**\n  - Graceful fallback to original text on network failure or rate limits with retry indicators.\n\n### Acceptance Criteria\n- Lists load with minimal perceived translation delay via batch prefetching.\n- Mobile client supports full Spanish mode with cached translations.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/422",
+    "is_pull_request": false
+  },
+  {
+    "id": 5210754084,
+    "number": 421,
+    "title": "Phase 4: Dynamic UGC Translation Integration across Prayers, People, Messages & Notes",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-21T05:23:53Z",
+    "updated_at": "2026-08-21T05:23:53Z",
+    "closed_at": null,
+    "body": "Follow-up to #351 (Phase 4):\n\n### Summary\nWire the translation hook and `<Translate />` component into dynamic User-Generated Content (UGC) across the application.\n\n### Scope\n- **Prayers & Testimonies:**\n  - `PrayerList.tsx`, `AnsweredList.tsx`, and mobile `PrayerListMobile.tsx`.\n  - Translate prayer burdens, prayer titles, update notes, and answered testimonies.\n- **People & Directory:**\n  - `ContactDetailsModal.tsx`, `Directory.tsx`, and `History.tsx`.\n  - Translate contact notes, interaction log summaries, and next step reminders.\n- **Messages & Chat:**\n  - `Messages.tsx`, `chat.ts`, and mobile chat threads.\n  - Live translation of incoming chat messages with reactive subscription.\n- **Coordination Notes & The Board:**\n  - `CoordinationNotes.tsx`, `EmbedCoordinationDoc.tsx`.\n  - Markdown-aware translation preserving headings, checklists, links, and code blocks.\n- **Original Content Switcher:**\n  - Add an inline 'Ver original' / 'Show original' toggle for translated user cards.\n\n### Acceptance Criteria\n- User-entered text in any section translates seamlessly when Spanish is active.\n- Clicking 'Ver original' toggles back to the raw source text.\n- Comprehensive unit tests across components.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/421",
+    "is_pull_request": false
+  },
+  {
+    "id": 5210753521,
+    "number": 420,
+    "title": "Phase 3: Static UI Strings Localization (i18n) for Shell, Modals & Navigation",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-21T05:23:47Z",
+    "updated_at": "2026-08-21T05:23:47Z",
+    "closed_at": null,
+    "body": "Follow-up to #351 (Phase 3):\n\n### Summary\nExtract and localize all static UI strings (navigation tabs, buttons, modal headers, empty states, system alerts, and notifications) into an English/Spanish dictionary.\n\n### Scope\n- **UI Localization Dictionary (`src/locales/es.json` / `src/locales/en.json`):**\n  - Navigation items: Coordination Notes, People, The Journey, On our hearts, History, Settings, More menu.\n  - Action buttons: 'Add someone', 'Log a visit', 'Smart Import', 'Quick Add', 'Export CSV', 'Save', 'Cancel'.\n  - Modal titles, empty state descriptions, error messages, and form labels.\n- **Integration:**\n  - Lightweight dictionary helper `t(key, fallback)` integrated with layout and language preference context.\n  - Zero-latency, deterministic rendering for all chrome and static controls.\n\n### Acceptance Criteria\n- When Spanish is toggled on, all shell controls and UI buttons switch instantly to Spanish.\n- Unit tests verify all dictionary keys exist and render correctly.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/420",
+    "is_pull_request": false
+  },
+  {
+    "id": 5210753168,
+    "number": 419,
+    "title": "Phase 2: Client Translation Engine, Multi-Tier Caching & Language Preference Toggle",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-21T05:23:42Z",
+    "updated_at": "2026-08-21T05:23:42Z",
+    "closed_at": null,
+    "body": "Follow-up to #351 (Phase 2):\n\n### Summary\nImplement the client-side translation engine, reactive hooks, multi-tier caching (L1 React state / memory + L2 IndexedDB / localStorage), and user language preference toggle.\n\n### Scope\n- **Translation Client Core (`src/lib/translator.ts`):**\n  - Content hashing (SHA-256 / Murmur3) matching backend.\n  - L1 (in-memory LRU) + L2 (IndexedDB / localStorage) client cache.\n  - Request batcher & debouncer (50ms queue) calling `POST /api/translate`.\n- **React Hooks & Primitives:**\n  - `useTranslate(text, options)` hook.\n  - `<Translate text={...} />` component with loading skeleton and error fallback.\n- **Language Preference & UI Controls:**\n  - Add `language?: 'en' | 'es'` to `userPreferences` schema and Firestore subscription.\n  - Language toggle selector in `TopNav.tsx`, `MobileNav.tsx`, and `Settings.tsx`.\n\n### Acceptance Criteria\n- Seamless synchronous lookup for already-cached translations with zero layout shift.\n- Language toggle flips app preference and reactivity triggers live re-rendering.\n- Full unit test coverage.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/419",
+    "is_pull_request": false
+  },
+  {
+    "id": 5210527996,
+    "number": 418,
+    "title": "feat: shared action vocabulary and row menu (#332)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T04:39:16Z",
+    "updated_at": "2026-08-21T05:15:38Z",
+    "closed_at": "2026-08-21T05:15:36Z",
+    "body": "Closes #332\n\n### Changes\n- Added shared `RowActions` component (`src/components/ui/RowActions.tsx`) with desktop ⋯ popover and mobile bottom-sheet behavior.\n- Added `buildContactRowActions` helper (`src/lib/rowActions.ts`) for the shared person-row vocabulary: **Open · Make a to-do · Share · I followed up**.\n- Wired the shared row menu into:\n  - People cards (`Directory.tsx`)\n  - Prayer person cards (`PrayerList.tsx`)\n  - Visit cards (`VisitCard.tsx`)\n  - Outreach pending rows (`Outreach.tsx`)\n- Added `RowActions.test.tsx` and updated visit tests for the new row trigger.\n- Updated `CHANGELOG.md`.\n\n### Tests\n- `npx tsc --noEmit`\n- `npx vitest run` (1798 passed, 104 skipped)",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/418",
+    "is_pull_request": true
+  },
+  {
+    "id": 5209019282,
+    "number": 417,
+    "title": "feat: add admin walking-together pairing picker (#358)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-21T00:11:15Z",
+    "updated_at": "2026-08-21T03:43:56Z",
+    "closed_at": "2026-08-21T03:43:54Z",
+    "body": "## Summary\n\nCloses #358 by adding an admin-only **Walking together** pairing picker.\n\nFull-timers (admins) can now open **Settings → Walking together** and choose which trainees are paired with which full-timer. The pairs are stored in `settings/walking`, applied live on web and mobile, and replace the previous hardcoded `FT_TRAINEES` defaults at runtime.\n\n## Changes\n\n- Admin-only **Walking together** section in Settings (`src/views/Settings.tsx`)\n- Live walking-pair sync on web (`src/App.tsx`) and mobile (`apps/mobile/src/lib/AuthProvider.tsx`)\n- Firestore-backed helpers:\n  - `src/lib/walkingPairs.ts`\n  - `packages/core/src/data/walkingPairs.ts`\n  - `apps/mobile/src/lib/data/walkingPairs.ts`\n- Mutable walking map support in `src/lib/walking.ts` and `packages/core/src/walking.ts`\n- Firestore rules for `settings/walking` (admin write, public read)\n- Tests for walking pair application, Settings UI, and Firestore rules\n\n## Verification\n\n- `npm run typecheck`\n- `npm run lint` (0 errors)\n- `npm test -- --run` (1793 passed)\n- `cd packages/core && npm test -- --run` (577 passed)\n- `npm run build`\n- `cd apps/mobile && npm run typecheck`\n",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/417",
+    "is_pull_request": true
+  },
+  {
+    "id": 5208820054,
+    "number": 416,
+    "title": "feat: add owner-only usage readings for feedback #370",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 2,
+    "created_at": "2026-08-20T23:32:03Z",
+    "updated_at": "2026-08-20T23:40:34Z",
+    "closed_at": "2026-08-20T23:40:32Z",
+    "body": "## Summary\n\nPicks up the remaining feedback item **#370** (admin-only usage stats) using the Session 7 design reference from the CISA design zip.\n\nThis adds a small, local-first usage instrument rather than analytics plumbing:\n\n- Records only the **shape** of activity in per-user localStorage:\n  - screens opened\n  - searches run (resolved vs abandoned)\n  - things created (contact / interaction)\n- Does **not** store names, notes, search text, or per-person identity.\n- Adds an owner-only **What the app is costing** panel in Settings with three honest readings:\n  - **The long walks** — last screen before a creation\n  - **The dead ends** — screens left within 4 seconds\n  - **The slow finds** — searches that ended without opening anything\n- Adds a clear-readings action and plain-language privacy copy.\n\nAlso closes **#360** as moot: the top-anchored shell already replaced the collapsed side rail, so there is no rail to misalign.\n\n## Changes\n\n- `src/lib/usageStats.ts` — storage, derivation, and path labels\n- `src/components/settings/UsageStatsPanel.tsx` — owner-only readings UI\n- `src/App.tsx` — records screen opens\n- `src/components/layout/GlobalSearch.tsx` — records resolved/abandoned searches\n- `src/components/modals/NewContactModal.tsx`, `src/components/modals/LogInteractionModal.tsx` — records creates\n- `src/views/Settings.tsx` — mounts the owner-only panel\n- Tests for the store/derivations and panel\n\n## Validation\n\n- `npm run typecheck`\n- `npm run lint`\n- `npm test` (130 files, 1791 tests passed)\n- `npm run test:coverage`\n",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/416",
+    "is_pull_request": true
+  },
+  {
+    "id": 5208670744,
+    "number": 415,
+    "title": "fix: resolve feedback issues #396 and #365",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-20T23:04:19Z",
+    "updated_at": "2026-08-20T23:15:14Z",
+    "closed_at": "2026-08-20T23:15:11Z",
+    "body": "## Summary\n\nAddresses two open `feedback`-tagged issues:\n\n- **#396** — Contact detail no longer shows bare `—` placeholders for missing last-connected data or missing year/major. It now shows `Not connected yet` and only renders meta values that exist (e.g. `added 8/20/2026`).\n- **#365** — The “Your personal contacts” picker now explains that the chip beside each name is the person’s current step from their contact record, and that `Lead` is the first step in The Journey—not something the picker assigns.\n\n## Changes\n\n- `src/components/modals/ContactDetailsModal.tsx`\n- `src/views/MyDay.tsx`\n- `src/views/MyDayMobile.tsx`\n- `src/test/ContactDetailsModal.test.tsx`\n- `CHANGELOG.md`\n\n## Verification\n\n- `npm run typecheck` ✅\n- `npm run lint -- --quiet` ✅\n- `npx vitest run src/test/ContactDetailsModal.test.tsx src/test/MyDay.test.tsx src/test/MyDayMobile.test.tsx` ✅ — 115 tests passed",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/415",
+    "is_pull_request": true
+  },
+  {
+    "id": 5208303533,
+    "number": 414,
+    "title": "feat: address feedback issues #393 #395 #401 #402",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-20T22:06:17Z",
+    "updated_at": "2026-08-20T22:48:12Z",
+    "closed_at": "2026-08-20T22:48:10Z",
+    "body": "Picks up feedback issues:\n\n- #401 mobile tutorial\n- #402 notification opt-in\n- #395 stage change on contact screen\n- #393 GroupMe bot confirmation\n\nIncludes tests and typecheck passes.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/414",
+    "is_pull_request": true
+  },
+  {
+    "id": 5208012143,
+    "number": 413,
+    "title": "fix: address feedback issues #411 #409 #408 #407 #406 #410",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-20T21:25:11Z",
+    "updated_at": "2026-08-20T21:34:08Z",
+    "closed_at": "2026-08-20T21:34:06Z",
+    "body": "## Summary\n\nPicked a batch of currently open **feedback**-tagged issues and addressed them:\n\n- **#411** — People page tag chips now display compact season tags as spaced words (`Fall2025` → `Fall 2025`). Tag search/filter, bulk add, and Combine tags all use the same normalized form.\n- **#408** — The in-app feedback popover now has a **Send another** action in the success state.\n- **#409** — Feedback auto-close timers are cleared when the panel is reopened/reset, so a stale success state can't close a newly opened panel.\n- **#407** — Removed the artificial 800ms Directory skeleton delay; returning from a contact detail no longer flashes a loader.\n- **#406** — Added spacing above the desktop “Needs your attention” feed on My Day.\n- **#410** — GroupMe bot hook now adds the current semester tag (e.g. `Fall 2026`) to new and matched contacts.\n\n## Verification\n- `npm run typecheck` ✅\n- `npm run build` ✅\n- Full test suite: 128 files passed, 1,781 tests passed, 102 skipped ✅\n- `npx eslint ...` no errors (only pre-existing warnings)\n\nCloses #411\nCloses #409\nCloses #408\nCloses #407\nCloses #406\nCloses #410",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/413",
+    "is_pull_request": true
+  },
+  {
+    "id": 5207825213,
+    "number": 412,
+    "title": "fix: address feedback issues #400 #399 #404 #398 #397",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [],
+    "assignees": [],
+    "comments": 3,
+    "created_at": "2026-08-20T21:00:16Z",
+    "updated_at": "2026-08-20T21:10:01Z",
+    "closed_at": "2026-08-20T21:09:58Z",
+    "body": "Closes #400\nCloses #399\nCloses #404\nCloses #398\nCloses #397\n\n## Summary\n- **#400** — The \"Your contacts\" picker now lists checked/personal contacts first, then the rest, each alphabetically, on desktop and mobile My Day.\n- **#399** — Contact interactions are sorted by the date they happened (`dateTime`) rather than when they were logged (`createdAt`), so backdated entries appear in the correct place in the contact detail modal.\n- **#404** — Contact notes on Today's \"Your sheep\" cards are no longer truncated/collapsed; they preserve line breaks and wrap naturally.\n- **#398** — The active 16×4 bar under Contact Details tabs is aligned to the bottom edge of the tab bar, matching the Bento reference.\n- **#397** — Scrollbars in custom scroll areas and contact-detail panels are hidden until hover/focus, matching the design reference.\n\n## Tests\n- Added regression tests for picker sorting and interaction date sorting.\n- Ran `npm run typecheck`, `npm run lint -- --quiet`, and `npm test` — all passing.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/412",
+    "is_pull_request": true
+  },
+  {
+    "id": 5207822864,
+    "number": 411,
+    "title": "[Feedback] idea: tags for people page try to keep space between wor...",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:59:56Z",
+    "updated_at": "2026-08-20T21:34:07Z",
+    "closed_at": "2026-08-20T21:34:07Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/20/2026, 8:59:56 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ntags for people page try to keep space between words (e.g. Fall2025-> Fall 2025)\nalso in combine tags make it to auto update (maybe change the name to fit more to both feat)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/O6SbPNL4hBWccx3PXSrh/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/411",
+    "is_pull_request": false
+  },
+  {
+    "id": 5207813044,
+    "number": 410,
+    "title": "[Feedback] thought: groupme bot hook auto tag always add semester (e.g...",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:58:30Z",
+    "updated_at": "2026-08-20T21:34:09Z",
+    "closed_at": "2026-08-20T21:34:09Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 8:58:30 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ngroupme bot hook auto tag always add semester (e.g. Fall 2026)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/NpmwTurNEMqkdUOQIZhc/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/410",
+    "is_pull_request": false
+  },
+  {
+    "id": 5207810352,
+    "number": 409,
+    "title": "[Feedback] Something's off: feedback popover closes if user tries to open it b...",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:58:07Z",
+    "updated_at": "2026-08-20T21:34:08Z",
+    "closed_at": "2026-08-20T21:34:08Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** something's off\n- **Date:** 8/20/2026, 8:58:07 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nfeedback popover closes if user tries to open it before the auto close time is up\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/qbEuTknvA6n1FEUFfsYy/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/409",
+    "is_pull_request": false
+  },
+  {
+    "id": 5207807567,
+    "number": 408,
+    "title": "[Feedback] thought: give me a way to submit another after one feedback",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:57:45Z",
+    "updated_at": "2026-08-20T21:34:08Z",
+    "closed_at": "2026-08-20T21:34:08Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 8:57:44 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ngive me a way to submit another after one feedback\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pX3FrkR2NkYBlaiw66Yn/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/408",
+    "is_pull_request": false
+  },
+  {
+    "id": 5207805170,
+    "number": 407,
+    "title": "[Feedback] thought: closing the contacts detail don't need skeleton lo...",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:57:24Z",
+    "updated_at": "2026-08-20T21:34:08Z",
+    "closed_at": "2026-08-20T21:34:08Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 8:57:24 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nclosing the contacts detail don't need skeleton loader on people page?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pFy2ZYV2dhGO27FS4Cf7/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/407",
+    "is_pull_request": false
+  },
+  {
+    "id": 5207783820,
+    "number": 406,
+    "title": "[Feedback] off: this line Needs your attention\nEverything the team...",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-20T20:54:27Z",
+    "updated_at": "2026-08-20T21:34:09Z",
+    "closed_at": "2026-08-20T21:34:09Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/20/2026, 8:54:27 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthis line Needs your attention\nEverything the team has stirred up, gathered by person. Say you followed up and they go quiet. -> no room between this and the elements above it\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nhi5MTnHtzrA66WrBiVk/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/406",
+    "is_pull_request": false
+  },
+  {
     "id": 5206268228,
     "number": 405,
     "title": "fix: set first nav item to coordination notes and label board as the journey (#403)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -14,8 +624,8 @@
     "assignees": [],
     "comments": 3,
     "created_at": "2026-08-20T17:42:22Z",
-    "updated_at": "2026-08-20T17:44:55Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T20:45:22Z",
+    "closed_at": "2026-08-20T20:45:19Z",
     "body": "Fixes #403\n\n### Changes\n- Updated `PRIMARY_BY_ROLE.admin` so that the first primary navigation item is **Coordination Notes** (`/coordination`), followed by People (`/directory`) and On our hearts (`/prayer`).\n- Updated `NAV_ITEMS` so that `/board` is consistently labeled **The Journey** across navigation items, More menu, mobile navigation, and global search destination results.\n- Updated tests in `permissions.test.tsx`, `TopNav.test.tsx`, and `GlobalSearch.test.tsx`.\n- Updated `CHANGELOG.md` under `[Unreleased]`.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/pull/405",
     "is_pull_request": true
@@ -24,8 +634,8 @@
     "id": 5206076639,
     "number": 404,
     "title": "[Feedback] thought: the contact notes squished into one line on page \"...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -48,8 +658,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T17:19:19Z",
-    "updated_at": "2026-08-20T17:19:19Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T21:10:00Z",
+    "closed_at": "2026-08-20T21:10:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 5:19:19 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe contact notes squished into one line on page \"Today\"\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/9vRROhSMpceSmNcbdB1L/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/404",
     "is_pull_request": false
@@ -58,8 +668,8 @@
     "id": 5205671824,
     "number": 403,
     "title": "[Feedback] off: the first item should be the coordination notes no...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -82,8 +692,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T16:30:21Z",
-    "updated_at": "2026-08-20T16:30:21Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T20:45:21Z",
+    "closed_at": "2026-08-20T20:45:21Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/20/2026, 4:30:21 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/board\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe first item should be the coordination notes not the journey, the journey nav menu item should still be the journey\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/AnBe4zeTf2rDNwUdGzsF/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/403",
     "is_pull_request": false
@@ -92,8 +702,8 @@
     "id": 5205488177,
     "number": 402,
     "title": "[Feedback] off: is notification for eas mobile app working (ios)?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -114,10 +724,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-20T16:08:00Z",
-    "updated_at": "2026-08-20T16:08:00Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:47Z",
+    "closed_at": "2026-08-21T03:47:47Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/20/2026, 4:08:00 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nis notification for eas mobile app working (ios)?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/YVhft1W03Vgd8ZLKrXjc/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/402",
     "is_pull_request": false
@@ -126,8 +736,8 @@
     "id": 5205471843,
     "number": 401,
     "title": "[Feedback] thought: make a user tutorial page for mobile",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -148,10 +758,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-20T16:06:06Z",
-    "updated_at": "2026-08-20T16:06:06Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:48Z",
+    "closed_at": "2026-08-21T03:47:48Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 4:06:06 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmake a user tutorial page for mobile\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/D9JKmcvsR7hoxxkEvycz/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/401",
     "is_pull_request": false
@@ -160,8 +770,8 @@
     "id": 5205467598,
     "number": 400,
     "title": "[Feedback] thought: Your contacts popover can we put all the checked t...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -184,8 +794,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T16:05:38Z",
-    "updated_at": "2026-08-20T16:05:38Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T21:10:00Z",
+    "closed_at": "2026-08-20T21:10:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 4:05:38 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nYour contacts popover can we put all the checked to the top (sorted alphabetically) and the rest sorted alphabetically separately?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/32J8FUTel3j3Zzz8DcOQ/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/400",
     "is_pull_request": false
@@ -194,8 +804,8 @@
     "id": 5205437442,
     "number": 399,
     "title": "[Feedback] off: interactions are not sorted by date?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -218,8 +828,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T16:02:12Z",
-    "updated_at": "2026-08-20T16:02:12Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T21:10:00Z",
+    "closed_at": "2026-08-20T21:10:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/20/2026, 4:02:11 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ninteractions are not sorted by date?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nkgVL6kby7v1MFyzpQcJ/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/399",
     "is_pull_request": false
@@ -228,8 +838,8 @@
     "id": 5205420025,
     "number": 398,
     "title": "[Feedback] off: the bar under the sub menu (e.g. prayer, interacti...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -252,8 +862,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T16:00:22Z",
-    "updated_at": "2026-08-20T16:00:22Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T21:10:01Z",
+    "closed_at": "2026-08-20T21:10:01Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/20/2026, 4:00:22 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe bar under the sub menu (e.g. prayer, interactions, ...) is misaligned\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/vBKGtH58pvyhrS4P0Poc/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/398",
     "is_pull_request": false
@@ -262,8 +872,8 @@
     "id": 5205415148,
     "number": 397,
     "title": "[Feedback] thought: I don't like the always displayed scroll bar (vert...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -286,8 +896,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-20T15:59:50Z",
-    "updated_at": "2026-08-20T15:59:50Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T21:10:01Z",
+    "closed_at": "2026-08-20T21:10:01Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 3:59:50 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nI don't like the always displayed scroll bar (vertical)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/NfSlZnhzBcf0jcLPOC2c/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/397",
     "is_pull_request": false
@@ -296,8 +906,8 @@
     "id": 5205409883,
     "number": 396,
     "title": "[Feedback] thought: is last connected and the row below working? they ...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -318,10 +928,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-20T15:59:14Z",
-    "updated_at": "2026-08-20T15:59:14Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:50Z",
+    "closed_at": "2026-08-21T03:47:50Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 3:59:14 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nis last connected and the row below working? they are both showing –\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/O5aMyf2OIFcFFzqDYzcP/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/396",
     "is_pull_request": false
@@ -330,8 +940,8 @@
     "id": 5205369590,
     "number": 395,
     "title": "[Feedback] thought: able to change stage in contacts page",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -352,10 +962,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-20T15:54:46Z",
-    "updated_at": "2026-08-20T15:54:46Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:52Z",
+    "closed_at": "2026-08-21T03:47:52Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 3:54:45 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nable to change stage in contacts page\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/uuzLJyQlnhJWqo2Jhb4b/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/395",
     "is_pull_request": false
@@ -385,8 +995,8 @@
     "id": 5204723024,
     "number": 393,
     "title": "[Feedback] thought: groupme bot should send a response for confirmatio...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -407,10 +1017,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-20T14:50:45Z",
-    "updated_at": "2026-08-20T14:50:45Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:53Z",
+    "closed_at": "2026-08-21T03:47:53Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/20/2026, 2:50:44 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/settings\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ngroupme bot should send a response for confirmation\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/eUTk6TZ1uK8KNnNbmDvC/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/393",
     "is_pull_request": false
@@ -697,8 +1307,8 @@
     "id": 5194774134,
     "number": 380,
     "title": "[Feedback] idea: a constant tag of \"Saved\"",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -719,10 +1329,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T16:15:42Z",
-    "updated_at": "2026-08-19T16:15:42Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:55Z",
+    "closed_at": "2026-08-21T03:47:55Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/19/2026, 4:15:42 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\na constant tag of \"Saved\"\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/PoJT8JL5zznbTAwUXnad/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/380",
     "is_pull_request": false
@@ -731,8 +1341,8 @@
     "id": 5194772017,
     "number": 379,
     "title": "[Feedback] thought: color coded tags",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -753,10 +1363,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T16:15:26Z",
-    "updated_at": "2026-08-19T16:15:26Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:56Z",
+    "closed_at": "2026-08-21T03:47:56Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/19/2026, 4:15:26 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ncolor coded tags\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ak7chq8PFpAEKD9Uyv3Y/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/379",
     "is_pull_request": false
@@ -833,8 +1443,8 @@
     "id": 5194364849,
     "number": 376,
     "title": "[Feedback] off: the prayers from the on our hearts page displayed ...",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -855,10 +1465,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T15:31:45Z",
-    "updated_at": "2026-08-19T15:31:45Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:47:58Z",
+    "closed_at": "2026-08-21T03:47:58Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/19/2026, 3:31:45 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe prayers from the on our hearts page displayed on home page are not editable but has link to source\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/jYHojDrMdRCbTGgG68pH/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/376",
     "is_pull_request": false
@@ -985,8 +1595,8 @@
     "id": 5189166908,
     "number": 370,
     "title": "[Feedback] A thought: can we have a way to stat the users' action on site (hidden from user) but admin (myself only) can see for the sake of enhancing ux (reduce number of clicks and seek time)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1007,10 +1617,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T05:13:58Z",
-    "updated_at": "2026-08-19T05:56:16Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:00Z",
+    "closed_at": "2026-08-21T03:48:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/19/2026, 5:13:58 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/visits\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ncan we have a way to stat the users' action on site (hidden from user) but admin (myself only) can see for the sake of enhancing ux (reduce number of clicks and seek time)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/QrZzQyCkylZUtYTwqlUx/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/370",
     "is_pull_request": false
@@ -1053,8 +1663,8 @@
     "id": 5189158221,
     "number": 368,
     "title": "[Feedback] A request: closing feedback while submitting terminates the process? can we make it optimistic ui response?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1075,10 +1685,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T05:12:32Z",
-    "updated_at": "2026-08-19T05:56:19Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:02Z",
+    "closed_at": "2026-08-21T03:48:02Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/19/2026, 5:12:32 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/visits\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nclosing feedback while submitting terminates the process? can we make it optimistic ui response?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/SftcnD2ofqNZg9Wu1qix/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/368",
     "is_pull_request": false
@@ -1155,8 +1765,8 @@
     "id": 5188229284,
     "number": 365,
     "title": "[Feedback] A thought: on the Your personal contacts popup how is \"lead\" tag determined",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1177,10 +1787,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-19T02:18:11Z",
-    "updated_at": "2026-08-19T05:56:27Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:03Z",
+    "closed_at": "2026-08-21T03:48:03Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/19/2026, 2:18:10 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\non the Your personal contacts popup how is \"lead\" tag determined\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/fbY77JOgNsLoMCf5FcfK/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/365",
     "is_pull_request": false
@@ -1286,8 +1896,8 @@
     "id": 5185144130,
     "number": 360,
     "title": "[Feedback] Something's off: collapsed side ba menu not vertical aligned (last two item - calendar and form)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1308,10 +1918,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T18:45:38Z",
-    "updated_at": "2026-08-19T05:55:54Z",
-    "closed_at": null,
+    "updated_at": "2026-08-20T23:28:22Z",
+    "closed_at": "2026-08-20T23:28:22Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/18/2026, 6:45:38 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ncollapsed side ba menu not vertical aligned (last two item - calendar and form)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/1JDeLLIqSAd6QcSerys6/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/360",
     "is_pull_request": false
@@ -1354,8 +1964,8 @@
     "id": 5184959078,
     "number": 358,
     "title": "[Feedback] A thought: a new page for the trainees to select users and their contacts (could be dynamic though may be the same list usually, sometimes may be different)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1378,8 +1988,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-18T18:23:14Z",
-    "updated_at": "2026-08-19T05:56:27Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:43:55Z",
+    "closed_at": "2026-08-21T03:43:55Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/18/2026, 6:23:14 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\na new page for the trainees to select users and their contacts (could be dynamic though may be the same list usually, sometimes may be different)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/eqaXI3Xe8lmBmTk3N0Se/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/358",
     "is_pull_request": false
@@ -1456,8 +2066,8 @@
     "id": 5184833472,
     "number": 355,
     "title": "[Feedback] An idea: also display their grade (e.g. freshman, ...)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1478,10 +2088,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T18:08:02Z",
-    "updated_at": "2026-08-19T05:56:09Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:05Z",
+    "closed_at": "2026-08-21T03:48:05Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/18/2026, 6:08:01 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nalso display their grade (e.g. freshman, ...)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/HPvlmA1anIOdI6Aq3Prl/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/355",
     "is_pull_request": false
@@ -1524,8 +2134,8 @@
     "id": 5184746886,
     "number": 353,
     "title": "[Feedback] A thought: what is this at rest label logic?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1546,10 +2156,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:58:00Z",
-    "updated_at": "2026-08-19T05:55:57Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:07Z",
+    "closed_at": "2026-08-21T03:48:07Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/18/2026, 5:58:00 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nwhat is this at rest label logic?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/3BaMd1qwAxhvg7apb2FD/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/353",
     "is_pull_request": false
@@ -1558,8 +2168,8 @@
     "id": 5184727912,
     "number": 352,
     "title": "[Feedback] An idea: another layout that is not side bar menu?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1580,10 +2190,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:55:47Z",
-    "updated_at": "2026-08-19T05:56:08Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:09Z",
+    "closed_at": "2026-08-21T03:48:09Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/18/2026, 5:55:47 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nanother layout that is not side bar menu?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/GYyPZpM0PVXE8Klw2M6F/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/352",
     "is_pull_request": false
@@ -1592,8 +2202,8 @@
     "id": 5184716607,
     "number": 351,
     "title": "[Feedback] An idea: spanish translation (live yet smart cached) of everything (not just menu but everything inputted and everything in app)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1614,10 +2224,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:54:18Z",
-    "updated_at": "2026-08-19T05:56:42Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T06:54:00Z",
+    "closed_at": "2026-08-21T06:54:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/18/2026, 5:54:17 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nspanish translation (live yet smart cached) of everything (not just menu but everything inputted and everything in app)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/wcDd4sJshdp2qm4Bsu4L/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/351",
     "is_pull_request": false
@@ -1626,8 +2236,8 @@
     "id": 5184707318,
     "number": 350,
     "title": "[Feedback] An idea: the visits and gospel icon on side menu is the same",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1648,10 +2258,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:53:04Z",
-    "updated_at": "2026-08-19T05:56:28Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:10Z",
+    "closed_at": "2026-08-21T03:48:10Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/18/2026, 5:53:03 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe visits and gospel icon on side menu is the same\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/g9rRxaZ6NwM7w2XUzq0M/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/350",
     "is_pull_request": false
@@ -1728,8 +2338,8 @@
     "id": 5184671855,
     "number": 347,
     "title": "[Feedback] Something's off: what is the default order?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1750,10 +2360,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:48:24Z",
-    "updated_at": "2026-08-19T05:56:32Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:12Z",
+    "closed_at": "2026-08-21T03:48:12Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/18/2026, 5:48:24 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nwhat is the default order?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/mCQZGyBTzLxWImI0Xmxl/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/347",
     "is_pull_request": false
@@ -1762,8 +2372,8 @@
     "id": 5184637264,
     "number": 346,
     "title": "[Feedback] Something's off: brothers' filter not displaying correctly",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1784,10 +2394,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:43:54Z",
-    "updated_at": "2026-08-19T05:56:12Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:13Z",
+    "closed_at": "2026-08-21T03:48:13Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/18/2026, 5:43:53 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nbrothers' filter not displaying correctly\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/N9dnlzHqobbaZ572JBft/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/346",
     "is_pull_request": false
@@ -1796,8 +2406,8 @@
     "id": 5184615021,
     "number": 345,
     "title": "[Feedback] A thought: clicking on name should open the contact page",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1818,10 +2428,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:40:58Z",
-    "updated_at": "2026-08-19T05:56:03Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:15Z",
+    "closed_at": "2026-08-21T03:48:15Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/18/2026, 5:40:57 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nclicking on name should open the contact page\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/9s8y9CkzutrMR780B2Ym/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/345",
     "is_pull_request": false
@@ -1864,8 +2474,8 @@
     "id": 5184548649,
     "number": 343,
     "title": "[Feedback] Something's off: the student detail page no scrollable contents are hidden",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -1886,10 +2496,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T17:32:46Z",
-    "updated_at": "2026-08-19T05:56:24Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T03:48:17Z",
+    "closed_at": "2026-08-21T03:48:17Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/18/2026, 5:32:46 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/board\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe student detail page no scrollable contents are hidden\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/cgkASqxc3dnLcdaO6bv4/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/343",
     "is_pull_request": false
@@ -2029,8 +2639,8 @@
     "id": 5177163722,
     "number": 337,
     "title": "[Macro study] Expand the command palette + central shortcut registry",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -2045,10 +2655,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T01:50:11Z",
-    "updated_at": "2026-08-18T01:50:11Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T06:44:45Z",
+    "closed_at": "2026-08-21T06:44:45Z",
     "body": "Part of #325 · **Code**\n\n## Problem\n\nKeyboard handling is ad hoc and undiscoverable: `⌘K` in `GlobalSearch.tsx:295`, `⌘Enter` in `Thread.tsx`, `TodoComposer.tsx`, `LogVisitModal.tsx`, and `FeedbackFAB.tsx` — five separate listeners, no registry, nothing listed anywhere. The ⌘K palette offers four quick actions with no way to learn what else exists.\n\n## What Macro does\n\n`apps/web/src/lib/core/hotkey/` — a registry where every command declares its scope, description, condition, and handler, so the same registration both binds the key and populates the command palette. Shortcuts teach themselves.\n\n## Explicitly NOT adopting\n\nTheir leader grammar (`c`+letter creates, `g`+letter goes) and vim navigation (`j`/`k`, `gg`, `shift+G`). Macro serves ~15 engineers living in the tool 8 hours a day; this app serves students and Full-timers opening it a few times a week, often on a phone. Also skipping their priority chain and scope inheritance — far more machinery than this needs.\n\n## Scope\n\n- A small registry: id, scope, description, handler\n- Both binds the shortcut and populates the ⌘K palette\n- Migrate the five existing ad-hoc listeners onto it\n- Palette lists available actions with their shortcuts\n\n## Acceptance criteria\n\n- [ ] Every existing shortcut still works\n- [ ] The palette lists actions the user can currently take, filtered by role\n- [ ] Registering a command in one place makes it both bound and discoverable\n",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/337",
     "is_pull_request": false
@@ -2057,8 +2667,8 @@
     "id": 5177163551,
     "number": 336,
     "title": "[Macro study] Four new to-do creation entry points",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -2073,10 +2683,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T01:50:09Z",
-    "updated_at": "2026-08-18T01:50:09Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T06:44:43Z",
+    "closed_at": "2026-08-21T06:44:43Z",
     "body": "Part of #325 · **Code + light design**\n\n## Problem\n\nTo-dos can be created from two places: highlighting a line on a Board page, and from an interaction. Macro's argument is that trackers go stale because logging costs a context switch — they made tasks creatable from seven places for exactly this reason.\n\n## Scope — four new entry points\n\n1. **From an attendance absence** — marking someone absent on the Gatherings screen is the exact moment someone thinks \"I should check on them.\" Highest value of the four.\n2. **From the visit log form** — `Visit.followUpTaskId` already exists in the data model, so this is wiring, not schema. Makes creating the follow-up part of writing the visit up rather than a separate step.\n3. **From a chat message** — hover / long-press → \"Make a to-do\", carrying the message as source. Mirrors the Board highlight flow already built.\n4. **From a prayer** — turn a burden into a concrete follow-up while keeping the prayer linked as source.\n\n## Implementation note\n\nOne shared helper over `addTodo` in `src/lib/todos.ts`; each site differs only in which source it links. The existing `sourceDocId` / `sourceInteractionId` pattern extends naturally.\n\n## Design needed\n\nSmall — the affordance in four placements. Reuse the existing \"Make a to-do\" treatment from the Board.\n\n## Acceptance criteria\n\n- [ ] All four create a to-do linked back to its source\n- [ ] The source is visible on the resulting to-do row\n- [ ] Available on mobile where the source screen exists\n",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/336",
     "is_pull_request": false
@@ -2153,8 +2763,8 @@
     "id": 5177162654,
     "number": 333,
     "title": "[Macro study] One conversation thread per person; retire the admin Comments tab",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -2177,8 +2787,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-18T01:49:58Z",
-    "updated_at": "2026-08-18T01:49:58Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T06:33:03Z",
+    "closed_at": "2026-08-21T06:33:03Z",
     "body": "Part of #325 · **Design + code** · ⚠️ **Has a privacy consequence — read before designing**\n\n## Problem\n\nA conversation about one person can live in three places today:\n\n1. `contacts/{id}/threads` — the walking-together thread (Trainee-visible)\n2. The Comments tab in `ContactDetailsModal.tsx` (~line 2079) — gated `role === \"admin\" || isAdmin`, **Full-timers only**\n3. Messages, with the contact attached via `ChatAttachment`\n\nSomeone asking \"what did we say about Sarah?\" has to check all three.\n\n## What Macro does\n\n*\"Every deal gets its own channel, automatically, pinned right to the deal record.\"* Their argument: a CRM comment box always loses to where the conversation really happens, because people comment *and then* go ping the channel anyway. So the record's notes ARE the chat system, not a parallel one.\n\n## ⚠️ Blocker — decide before this is designed\n\nThe Comments tab is Full-timer-only; the walking-together thread is Trainee-visible. **Merging them changes who can read pastoral oversight notes that were written under a different expectation.** This is a privacy change, not just a data migration. Pick one:\n\n- **(recommended)** Migrated comments carry a visibility flag and the merged thread filters by role — preserves the original audience while still giving one place to look. Costs a `firestore.rules` change.\n- Comments migrate into a Full-timer-only section of the merged thread.\n- Existing comments stay in place; only *new* conversation goes to the thread.\n\n## Scope\n\n- `contacts/{id}/threads` becomes the single conversation surface\n- Comments migrated per the decision above, with a migration script\n- Attaching a contact in Messages links into that same thread rather than starting a parallel one\n- `firestore.rules` updated and reproduced against the emulator **before** the rule is edited (rules deploys have their own CI gate — budget for it)\n\n## Acceptance criteria\n\n- [ ] Visibility decision recorded in this issue before design starts\n- [ ] No existing comment becomes readable by someone who could not read it before\n- [ ] Emulator-backed rules tests, red before green\n- [ ] Migration is reversible or dry-runnable\n",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/333",
     "is_pull_request": false
@@ -2187,8 +2797,8 @@
     "id": 5177162545,
     "number": 332,
     "title": "[Macro study] Shared action vocabulary + shared row menu",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -2211,8 +2821,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-18T01:49:57Z",
-    "updated_at": "2026-08-18T01:49:57Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T05:15:37Z",
+    "closed_at": "2026-08-21T05:15:37Z",
     "body": "Part of #325 · **Design + code**\n\n## Problem\n\nRow actions differ per view — the same intent is worded and placed differently on a person, a prayer, a visit, and a gathering. Users learn the app per screen instead of once.\n\n## What Macro does\n\nDefines an action vocabulary once and applies it to every object type — `apps/web/src/lib/core/hotkey/tokens.ts` has `entity.action.{markDone, markRead, delete, rename, share, favorite, createReminder, assignee, status, ...}`. Same key, same menu, same wording regardless of what the object is. Their keyboard reference has a single \"Entity Actions\" section covering all types.\n\n## Scope\n\n- Agree one action set — done, follow up later, share, make a to-do, open — and the exact wording, in the app's existing warm voice\n- One row/overflow menu component consumed by person, prayer, visit, and gathering rows\n- First consumer is the merged attention feed (#330), so co-design with it\n\n## Design needed\n\nThe overflow menu, its trigger, and mobile (long-press drawer) treatment.\n\n## Acceptance criteria\n\n- [ ] One menu component used by all four row types\n- [ ] \"Done\" means the same thing everywhere\n- [ ] Wording reviewed against the existing nav voice (\"The Journey\", \"On our hearts\", \"Looking back\")\n",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/332",
     "is_pull_request": false
@@ -2401,8 +3011,8 @@
     "id": 5177151259,
     "number": 325,
     "title": "[Macro study] Adopt product patterns from the Macro codebase (tracking)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -2417,10 +3027,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-18T01:47:49Z",
-    "updated_at": "2026-08-18T01:50:29Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T06:44:56Z",
+    "closed_at": "2026-08-21T06:44:56Z",
     "body": "Tracking issue for work adopting product patterns from a read-only study of [macro-inc/macro](https://github.com/macro-inc/macro) (AGPLv3, SolidJS + Rust all-in-one workspace).\n\n## Why\n\nMacro's CRM, tasks, docs, and channels map closely onto People/The Journey, to-dos, Coordination Notes, and Messages. Their product decisions are stances rather than infrastructure, so they port even though none of their code does. Their core arguments:\n\n- **Trackers go stale** because logging costs a context switch — so make creating an entry possible from wherever the decision is actually made.\n- **Records should build themselves**; only judgment (stage) is manual.\n- **You should check one thing** to know what needs your attention, and \"done\" must be a real verb distinct from \"seen.\"\n- **A record's notes ARE the chat system** — a separate comments box always loses to where the conversation really happens.\n\n## Scaled down deliberately\n\nMacro serves ~15 engineers living in the tool 8 hours a day. This app serves four roles who open it a few times a week, often on a phone. Keyboard-first navigation (vim keys, `c`/`g` leader grammar) was evaluated and **declined**; splits/window management, the filter AST, the properties system, and AI Signal/Noise sorting were also declined as poor fits.\n\n## Scope multiplier\n\nEvery design-touching item lands in up to three places: the desktop view, its `*Mobile.tsx` twin (7 such pairs exist), and the React Native app in `apps/mobile/`. This is the main reason the code-only foundation goes first — it is written once and shared.\n\n## Phase 1 — foundation, code only, unblocked\n\nNothing here needs design input; all four can proceed in parallel.\n\n- [ ] #326 — Unify read/done state into one per-user model **(prerequisite for the merged feed)**\n- [ ] #327 — Shared date bucketing util **(feeds the merged feed's grouping)**\n- [ ] #328 — Frecency ranking in Global Search\n- [ ] #329 — Audit and derive Contact activity fields\n\n## Phase 2 — design assets\n\nMerged attention feed · shared row action menu · contact pill + hover preview · merged thread tab · role-aware first-run checklist · four \"Make a to-do\" affordances.\n\n## Phase 3 — build against the designs\n\n- [ ] #330 — Merge attention surfaces into one feed with a done action\n- [ ] #331 — Notification stacking by target\n- [ ] #332 — Shared action vocabulary + shared row menu\n- [ ] #333 — One conversation thread per person; retire the admin Comments tab ⚠️ **has a privacy decision to make first**\n- [ ] #334 — Live contact pill with hover preview\n- [ ] #335 — Role-aware first-run checklist\n- [ ] #336 — Four to-do creation entry points\n- [ ] #337 — Expand the ⌘K palette + central shortcut registry\n\n## Testing\n\nPer `CLAUDE.md` §6 all of this is logic/data/permissions code, so TDD is mandatory — failing test first. Coverage thresholds in `vitest.config.ts` ratchet up only.\n",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/325",
     "is_pull_request": false
