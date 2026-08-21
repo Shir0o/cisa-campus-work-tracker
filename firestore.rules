@@ -300,8 +300,14 @@ service cloud.firestore {
                (!('clubRush' in data) || data.clubRush is bool);
       }
 
+      function isValidWalkingSettings(data) {
+        return data.keys().hasOnly(['pairs']) &&
+               data.pairs is map;
+      }
+
       allow read: if true;
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
+      allow create, update: if docId == 'walking' && isAdmin() && isValidWalkingSettings(incoming());
       allow delete: if false;
     }
 

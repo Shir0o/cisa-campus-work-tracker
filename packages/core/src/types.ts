@@ -174,6 +174,13 @@ export interface SeasonSettings {
   clubRush?: boolean;
 }
 
+// Team-wide walking-together pairs (one doc: settings/walking). The map keys are
+// full-timer uids and values are the trainee uids walking with them. Admin-only
+// writes; readable by the app so both sides can resolve "who walks with me".
+export interface WalkingPairs {
+  pairs: Record<string, string[]>;
+}
+
 export interface PrayerRecord {
   id: string;
   contactId: string;

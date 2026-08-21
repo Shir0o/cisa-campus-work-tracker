@@ -1421,6 +1421,26 @@ describeRules('Firestore Security Rules', () => {
       const db = getFirestore({ uid: 'manager1' });
       await assertFails(setDoc(doc(db, 'settings', 'other'), { clubRush: true }));
     });
+
+    it('SW1: Admin can write settings/walking pairs', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'settings', 'walking'), { pairs: { admin1: ['trainee1', 'trainee2'] } }),
+      );
+    });
+
+    it('SW2: Manager cannot write settings/walking pairs', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
+      });
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(
+        setDoc(doc(db, 'settings', 'walking'), { pairs: { admin1: ['trainee1'] } }),
+      );
+    });
   });
 
   describe('Notifications', () => {
