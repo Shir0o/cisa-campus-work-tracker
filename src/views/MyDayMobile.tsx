@@ -486,7 +486,7 @@ export default function MyDayMobile({
                       <div className="flex items-center gap-2 mt-0.5 mdm-person-sub">
                         <StageChip stage={contact.stage} stages={stages} />
                         {contact.role && (
-                          <span className="text-xs text-on-surface-variant/60 font-medium">
+                          <span className="text-xs text-on-surface-variant/80 font-medium">
                             {contact.role}
                           </span>
                         )}

@@ -206,7 +206,7 @@
     --border-soft: #333E4C;
     --text: #F6F8FB;
     --text-dim: #B6C2D3;
-    --text-mute: #9AA8BC;
+    --text-mute: #AEC0D6;
     --accent: #9A8FFF;
     --accent-strong: #5C17E5;
     --accent-hover: #6D2BEE;
@@ -217,7 +217,7 @@
     --success-soft: rgba(81, 224, 152, 0.16);
     --warn: #F2930D;
     --warn-soft: rgba(242, 147, 13, 0.16);
-    --danger: #F14A58;
+    --danger: #FF7B88;
     --danger-soft: rgba(241, 74, 88, 0.16);
 
     --tone-l: 0.80;
@@ -245,7 +245,7 @@
     --primary: var(--accent-strong);
     --on-primary: var(--accent-on);
     --primary-container: var(--accent-soft);
-    --on-primary-container: var(--accent);
+    --on-primary-container: #C8C2FF;
 
     --secondary: var(--text-dim);
     --on-secondary: var(--accent-on);
