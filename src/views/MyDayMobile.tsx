@@ -24,6 +24,7 @@ import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/pr
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 import AttentionFeed from '../components/landing/AttentionFeed';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
+import { Translate } from '../components/Translate';
 
 interface MyTask {
   id: string;
@@ -307,9 +308,11 @@ export default function MyDayMobile({
                   {done && <Check className="w-3 h-3" />}
                 </button>
                 <div className="min-w-0 flex-1">
-                  <div className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}>
-                    {todo.title}
-                  </div>
+                  <Translate
+                    as="div"
+                    className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}
+                    text={todo.title}
+                  />
                   {todo.sourceDocTitle && (
                     <div className="text-xs text-on-surface-variant mt-1">
                       From {todo.sourceDocTitle}
@@ -386,9 +389,11 @@ export default function MyDayMobile({
                       {done && <Check className="w-3 h-3" />}
                     </button>
                     <div className="min-w-0 flex-1">
-                      <div className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}>
-                        {todo.title}
-                      </div>
+                      <Translate
+                        as="div"
+                        className={cn("text-[14.5px] leading-snug font-medium text-on-surface", done && "line-through text-on-surface-variant")}
+                        text={todo.title}
+                      />
                       {todo.dueDate && (
                         <div className="text-xs text-on-surface-variant mt-1">
                           Due: {format(new Date(todo.dueDate), "MMM d")}

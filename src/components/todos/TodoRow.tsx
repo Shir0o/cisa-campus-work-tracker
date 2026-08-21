@@ -1,6 +1,7 @@
 import { Check, FileText, Trash2, ListChecks, MessageSquare } from "lucide-react";
 import { cn, getUserInitials } from "../../lib/utils";
 import { dueChip, dueToneClass, toggleSubtask, type TodoPerson, type SubtaskItem } from "../../lib/todos";
+import { Translate } from "../Translate";
 
 // A reusable initials/photo avatar — shared with the to-do composer.
 export function PersonAvatar({
@@ -124,7 +125,7 @@ export default function TodoRow({
               onEdit && "hover:text-accent transition-colors cursor-pointer",
             )}
           >
-            {todo.title}
+            <Translate text={todo.title} />
           </button>
           {hasSubtasks && (
             <span className="inline-flex items-center gap-1 text-[11px] font-medium text-on-surface-variant bg-surface-container-low px-2 py-0.5 rounded-full border border-outline-variant/50">
@@ -149,7 +150,7 @@ export default function TodoRow({
                   className="w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
                 />
                 <span className={cn(st.done && "line-through text-on-surface-variant/60")}>
-                  {st.title}
+                  <Translate text={st.title} />
                 </span>
               </label>
             ))}

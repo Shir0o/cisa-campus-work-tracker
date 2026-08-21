@@ -30,6 +30,7 @@ import PrayerListMobile from './PrayerListMobile';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
+import { Translate } from '../components/Translate';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
 const DAY_MS = 86_400_000;
@@ -1001,7 +1002,7 @@ function PrayerItem({
         </div>
       ) : (
         <p className={cn('text-sm leading-relaxed mt-1.5 whitespace-pre-wrap', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
-          {prayer.burden}
+          <Translate text={prayer.burden} />
         </p>
       )}
 
@@ -1023,7 +1024,7 @@ function PrayerItem({
           </div>
           {prayer.answer && (
             <p className="font-serif text-[15px] text-on-surface mt-1 leading-relaxed italic">
-              "{prayer.answer}"
+              "<Translate text={prayer.answer} />"
             </p>
           )}
           {(prayer.answeredPhotos || []).length > 0 && (

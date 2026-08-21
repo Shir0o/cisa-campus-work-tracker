@@ -5,6 +5,7 @@ import { Plus, Search, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade } from '../lib/prayers';
+import { Translate } from '../components/Translate';
 
 type Status = PrayerRecord['status'];
 
@@ -608,7 +609,7 @@ function PrayerItemMobile({
         </div>
       ) : (
         <p className={cn('text-sm leading-relaxed mt-1 whitespace-pre-wrap prt-prayer-text', dimmed ? 'text-on-surface-variant' : 'text-on-surface')}>
-          {prayer.burden}
+          <Translate text={prayer.burden} />
         </p>
       )}
 
@@ -633,7 +634,7 @@ function PrayerItemMobile({
           </div>
           {prayer.answer && (
             <p className="font-serif text-[14px] text-on-surface mt-1 leading-relaxed italic">
-              "{prayer.answer}"
+              "<Translate text={prayer.answer} />"
             </p>
           )}
         </div>

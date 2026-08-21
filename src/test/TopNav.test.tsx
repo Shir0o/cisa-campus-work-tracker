@@ -192,4 +192,27 @@ describe('TopNav (top-anchored navigation)', () => {
     expect(screen.getByText('EN')).toBeInTheDocument();
     expect(screen.getByText('ES')).toBeInTheDocument();
   });
+
+  it('renders translated tabs in Spanish mode when cached', async () => {
+    const { setCachedTranslation } = await import('../lib/translator');
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+
+    setCachedTranslation('Coordination Notes', 'Notas de coordinación', 'es');
+    setCachedTranslation('People', 'Personas', 'es');
+    setCachedTranslation('On our hearts', 'En nuestros corazones', 'es');
+    setCachedTranslation('More', 'Más', 'es');
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <LanguageProvider defaultLanguage="es">
+          <TopNav />
+        </LanguageProvider>
+      </MemoryRouter>
+    );
+
+    expect(screen.getByText('Notas de coordinación')).toBeInTheDocument();
+    expect(screen.getByText('Personas')).toBeInTheDocument();
+    expect(screen.getByText('En nuestros corazones')).toBeInTheDocument();
+    expect(screen.getByText('Más')).toBeInTheDocument();
+  });
 });

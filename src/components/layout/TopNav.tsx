@@ -40,6 +40,7 @@ import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { LanguageToggle } from '../LanguageToggle';
+import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
@@ -176,7 +177,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   {({ isActive }) => (
                     <>
                       <NavGlyph href={href} size={18} className={isActive ? 'text-accent' : ''} />
-                      <span className="text-sm whitespace-nowrap">{label}</span>
+                      <Translate as="span" className="text-sm whitespace-nowrap" text={label} />
                       {/* 16×4 active bar (design B) */}
                       <span
                         className={cn(
@@ -208,7 +209,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 aria-expanded={moreOpen}
               >
                 <NavGlyph href={pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
-                <span className="whitespace-nowrap">More</span>
+                <Translate as="span" className="whitespace-nowrap">More</Translate>
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', moreOpen && 'rotate-180')} />
               </button>
 
@@ -239,7 +240,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                             )}
                           >
                             <NavGlyph href={href} size={18} />
-                            <span className="min-w-0 flex-1">{label}</span>
+                            <Translate as="span" className="min-w-0 flex-1" text={label} />
                           </button>
                         );
                       })}
@@ -255,7 +256,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                               className="flex items-center gap-3 px-3 py-2 rounded-xl text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
                             >
                               <CalendarDays className="w-[18px] h-[18px] shrink-0" />
-                              <span className="min-w-0 flex-1">{item.label}</span>
+                              <Translate as="span" className="min-w-0 flex-1" text={item.label} />
                               <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
                             </a>
                           ))}
@@ -269,7 +270,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                           className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors"
                         >
                           <FileText className="w-[18px] h-[18px] shrink-0" />
-                          <span className="min-w-0 flex-1">{SIGNUP_TITLE}</span>
+                          <Translate as="span" className="min-w-0 flex-1" text={SIGNUP_TITLE} />
                           <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
                         </button>
                       </div>
@@ -372,11 +373,11 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="flex items-center gap-3 px-4 py-2 text-sm text-on-surface-variant hover:bg-surface-container-highest transition-colors"
                   >
                     <SettingsIcon className="w-4 h-4" />
-                    Settings
+                    <Translate>Settings</Translate>
                   </Link>
 
                   <div className="px-4 py-2 flex items-center justify-between border-t border-outline-variant/50">
-                    <span className="text-xs text-on-surface-variant font-medium">Language</span>
+                    <Translate as="span" className="text-xs text-on-surface-variant font-medium">Language</Translate>
                     <LanguageToggle />
                   </div>
 
@@ -389,7 +390,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    Log out
+                    <Translate>Log out</Translate>
                   </button>
                 </motion.div>
               )}
@@ -450,14 +451,14 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   }
                 >
                   <NavGlyph href={href} size={18} />
-                  <span>{label}</span>
+                  <Translate as="span" text={label} />
                 </NavLink>
               );
             })}
 
             {externalLinks.length > 0 && (
               <div className="mt-4">
-                <div className="text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5">Elsewhere</div>
+                <Translate as="div" className="text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5">Elsewhere</Translate>
                 {externalLinks.map((item) => (
                   <a
                     key={item.id}
@@ -468,7 +469,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
                   >
                     <CalendarDays className="w-[18px] h-[18px] shrink-0" />
-                    <span>{item.label}</span>
+                    <Translate as="span" text={item.label} />
                     <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0 ml-auto" />
                   </a>
                 ))}
@@ -489,13 +490,13 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 }
               >
                 <FileText className="w-[18px] h-[18px] shrink-0" />
-                <span>{SIGNUP_TITLE}</span>
+                <Translate as="span" text={SIGNUP_TITLE} />
               </NavLink>
             </div>
 
             <div className="mt-auto pt-4 border-t border-outline-variant space-y-3">
               <div className="flex items-center justify-between px-3">
-                <span className="text-xs font-medium text-on-surface-variant">Language</span>
+                <Translate as="span" className="text-xs font-medium text-on-surface-variant">Language</Translate>
                 <LanguageToggle />
               </div>
               <button
@@ -507,7 +508,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 className="w-full flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-error hover:bg-error/10 font-medium cursor-pointer"
               >
                 <LogOut className="w-[18px] h-[18px] shrink-0" />
-                Log out
+                <Translate>Log out</Translate>
               </button>
             </div>
           </motion.nav>

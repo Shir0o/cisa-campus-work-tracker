@@ -11,6 +11,7 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
 import { hasMinRole, AppRole } from '../../lib/permissions';
+import { Translate } from '../Translate';
 
 export default function MobileNav() {
   const { role } = useAuth();
@@ -38,7 +39,7 @@ export default function MobileNav() {
               )}>
                 <LayoutDashboard className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium">Home</span>
+              <Translate as="span" className="text-[11px] font-medium">Home</Translate>
             </>
           )}
         </NavLink>
@@ -58,7 +59,7 @@ export default function MobileNav() {
               )}>
                 <CalendarCheck className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium">Gatherings</span>
+              <Translate as="span" className="text-[11px] font-medium">Gatherings</Translate>
             </>
           )}
         </NavLink>
@@ -93,7 +94,7 @@ export default function MobileNav() {
               )}>
                 <Contact className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium">Contacts</span>
+              <Translate as="span" className="text-[11px] font-medium">Contacts</Translate>
             </>
           )}
         </NavLink>
@@ -113,7 +114,7 @@ export default function MobileNav() {
               )}>
                 <HeartHandshake className="w-5 h-5" />
               </div>
-              <span className="text-[11px] font-medium">Prayer</span>
+              <Translate as="span" className="text-[11px] font-medium">Prayer</Translate>
             </>
           )}
         </NavLink>
