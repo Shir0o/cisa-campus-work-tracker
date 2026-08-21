@@ -244,12 +244,27 @@ async function flushBatch() {
 
   for (const [targetLang, requests] of byLang.entries()) {
     try {
+      let token: string | null = null;
+      try {
+        const { auth } = await import('./firebase');
+        if (auth?.currentUser) {
+          token = await auth.currentUser.getIdToken();
+        }
+      } catch (tokenErr) {
+        console.warn('[Translator] Failed to get Firebase ID token:', tokenErr);
+      }
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const textsToTranslate = requests.map((r) => r.text);
       const res = await fetch(`${baseUrl}/api/translate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({
           targetLang,
           texts: textsToTranslate,
