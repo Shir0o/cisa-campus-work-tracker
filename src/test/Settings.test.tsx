@@ -22,7 +22,7 @@ vi.mock('../components/ThemeProvider', () => ({
 
 const mockSetLanguage = vi.fn();
 vi.mock('../components/LanguageProvider', () => ({
-  useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false }),
+  useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false, t: (_key: string, fallback?: string) => fallback ?? _key }),
 }));
 
 vi.mock('./FeedbackList', () => ({

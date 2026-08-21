@@ -28,6 +28,7 @@ import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
+import { Translate } from '../Translate';
 import { ThreadSkeleton } from './ThreadSkeleton';
 
 export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {}) {
@@ -168,16 +169,15 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                           {memberSenderName(m, uid)}
                         </Text>
                       )}
-                      <Text
+                      <Translate
                         style={{
                           fontFamily: font.medium,
                           fontSize: fs(15),
                           lineHeight: fs(21),
                           color: mine ? c.card.onPrimary : c.card.said,
                         }}
-                      >
-                        {m.text}
-                      </Text>
+                        text={m.text}
+                      />
                       {(m.attachments ?? []).map((a) => {
                         const isContact = a.type === 'contact';
                         return (

@@ -336,7 +336,12 @@ export async function prefetchTranslations(
     ),
   );
 
-  const uncached = validTexts.filter((t) => getCachedTranslation(t, targetLang) === null);
+  const uncached: string[] = [];
+  for (const text of validTexts) {
+    if (getCachedTranslation(text, targetLang) !== null) continue;
+    const asyncCached = await getAsyncCachedTranslation(text, targetLang);
+    if (asyncCached === null) uncached.push(text);
+  }
   if (uncached.length === 0) return;
 
   await translateBatch(uncached, targetLang);

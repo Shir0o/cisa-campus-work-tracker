@@ -3,6 +3,7 @@ import { Text, type TextProps } from 'react-native';
 import { useLanguage } from '../lib/LanguageProvider';
 import {
   getCachedTranslation,
+  getAsyncCachedTranslation,
   translateText,
   subscribeTranslation,
   computeTranslationHash,
@@ -36,36 +37,46 @@ export function useTranslate(
       return;
     }
 
-    const currentCached = getCachedTranslation(rawText, targetLang);
-    if (currentCached !== null) {
-      setTranslatedText(currentCached);
-      setIsPending(false);
-      return;
-    }
-
     setIsPending(true);
     let isMounted = true;
+    let unsubscribe = () => {};
 
-    const hash = computeTranslationHash(targetLang, rawText);
-    const unsubscribe = subscribeTranslation(hash, (newTranslation) => {
-      if (isMounted) {
-        setTranslatedText(newTranslation);
-        setIsPending(false);
-      }
-    });
-
-    translateText(rawText, targetLang)
-      .then((res) => {
+    const startTranslation = () => {
+      const hash = computeTranslationHash(targetLang, rawText);
+      unsubscribe = subscribeTranslation(hash, (newTranslation) => {
         if (isMounted) {
-          setTranslatedText(res);
+          setTranslatedText(newTranslation);
           setIsPending(false);
         }
+      });
+
+      translateText(rawText, targetLang)
+        .then((res) => {
+          if (isMounted) {
+            setTranslatedText(res);
+            setIsPending(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) {
+            setTranslatedText(rawText);
+            setIsPending(false);
+          }
+        });
+    };
+
+    getAsyncCachedTranslation(rawText, targetLang)
+      .then((asyncCached) => {
+        if (!isMounted) return;
+        if (asyncCached !== null) {
+          setTranslatedText(asyncCached);
+          setIsPending(false);
+          return;
+        }
+        startTranslation();
       })
       .catch(() => {
-        if (isMounted) {
-          setTranslatedText(rawText);
-          setIsPending(false);
-        }
+        if (isMounted) startTranslation();
       });
 
     return () => {

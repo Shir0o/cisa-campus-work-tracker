@@ -6,14 +6,17 @@
 // tile read — uncapped here, capped there — so the number on the tile and the
 // length of this list can never disagree. "I prayed just now" is device-local
 // for the day, exactly as it is everywhere else in v2 (see useFtHomeData).
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import type { FtCarryRow } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
+import { prefetchTranslations } from '../../lib/translator';
 import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
+import { Translate } from '../Translate';
 import { Room, V2PersonRow, V2Screen } from '../v2/Widget';
 import { SkeletonList } from '../skeleton/SkeletonList';
 
@@ -52,6 +55,7 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
 function FtPrayerLog() {
   const { c, font, fs } = useV2Theme();
   const { uid, user } = useAuth();
+  const { language } = useLanguage();
   const router = useRouter();
   const data = useFtHomeData(uid, user?.displayName ?? null);
   // `prayedToday` reads a store outside React, so nudge a render on tap.
@@ -59,6 +63,14 @@ function FtPrayerLog() {
 
   const rows = data.carryRows;
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
+
+  useEffect(() => {
+    if (language !== 'es') return;
+    void prefetchTranslations(
+      rows.map((row) => row.burden),
+      language,
+    );
+  }, [rows, language]);
 
   if (data.loading) {
     return (
@@ -89,7 +101,7 @@ function FtPrayerLog() {
             key={row.id}
             name={row.who ?? 'Someone'}
             colorSeed={row.contactId ?? row.id}
-            sub={row.burden}
+            sub={<Translate text={row.burden} />}
             note={[row.asked ? 'They asked the team' : null, row.heavy ? 'Weighs heavy' : null]
               .filter(Boolean)
               .join(' · ')}

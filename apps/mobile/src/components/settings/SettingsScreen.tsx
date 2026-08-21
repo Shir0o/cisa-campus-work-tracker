@@ -27,6 +27,7 @@ import {
   shellForRole,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
 import { usePeopleData } from '../../lib/usePeopleData';
@@ -163,6 +164,7 @@ function Settings() {
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role, logOut } = useAuth();
+  const { language, setLanguage } = useLanguage();
   const season = useActiveSeason();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
@@ -523,6 +525,36 @@ function Settings() {
               Read how this works
             </Text>
           </Pressable>
+        </Section>
+
+        <Section title="Language">
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {(['en', 'es'] as const).map((lang) => {
+              const active = language === lang;
+              return (
+                <Pressable
+                  key={lang}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  onPress={() => setLanguage(lang)}
+                  style={{
+                    flex: 1,
+                    minHeight: 48,
+                    borderRadius: radius.chip,
+                    borderWidth: 1.5,
+                    borderColor: active ? c.card.ink : c.card.border,
+                    backgroundColor: active ? c.card.ink : c.card.react,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: active ? c.card.bg : c.card.ink2 }}>
+                    {lang === 'en' ? 'English' : 'Español'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
         </Section>
 
         <Section title="How it looks">

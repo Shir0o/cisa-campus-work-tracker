@@ -177,6 +177,7 @@ describe('sync-github-issues script', () => {
   describe('syncIssuesToDocs', () => {
     const testOutputDir = path.join(process.cwd(), 'tmp', 'test-docs');
     const testOutputPath = path.join(testOutputDir, 'issues.json');
+    const testIndexOutputPath = path.join(testOutputDir, 'issues-index.json');
 
     afterEach(() => {
       if (fs.existsSync(testOutputDir)) {
@@ -218,6 +219,17 @@ describe('sync-github-issues script', () => {
       const parsed = JSON.parse(writtenContent);
       expect(parsed).toHaveLength(1);
       expect(parsed[0].title).toBe('Test Issue');
+
+      expect(fs.existsSync(testIndexOutputPath)).toBe(true);
+      const indexParsed = JSON.parse(fs.readFileSync(testIndexOutputPath, 'utf8'));
+      expect(indexParsed).toHaveLength(1);
+      expect(indexParsed[0]).toEqual({
+        number: 1,
+        title: 'Test Issue',
+        state: 'open',
+        labels: [],
+        body: '',
+      });
     });
 
     it('removes existing output file before writing fresh issues', async () => {
@@ -267,13 +279,13 @@ describe('sync-github-issues script', () => {
           title: 'Open Issue',
           state: 'open',
           user: null,
-          labels: [],
+          labels: [{ id: 10, name: 'bug', color: 'ff0000', description: 'Bug report' }],
           assignees: [],
           comments: 0,
           created_at: '2026-08-01T00:00:00Z',
           updated_at: '2026-08-01T00:00:00Z',
           closed_at: null,
-          body: null,
+          body: 'First line\nSecond line\n\n- item',
           html_url: 'https://github.com/owner/repo/issues/1',
         },
         {
@@ -282,7 +294,7 @@ describe('sync-github-issues script', () => {
           title: 'Closed Issue',
           state: 'closed',
           user: null,
-          labels: [],
+          labels: [{ id: 11, name: 'enhancement', color: 'a2eeef' }],
           assignees: [],
           comments: 0,
           created_at: '2026-08-01T00:00:00Z',
@@ -306,6 +318,24 @@ describe('sync-github-issues script', () => {
       expect(parsed).toHaveLength(2);
       expect(parsed.find((i: any) => i.number === 1)?.label).toBe('OPEN');
       expect(parsed.find((i: any) => i.number === 2)?.label).toBe('CLOSED');
+
+      const indexParsed = JSON.parse(fs.readFileSync(testIndexOutputPath, 'utf8'));
+      expect(indexParsed).toEqual([
+        {
+          number: 1,
+          title: 'Open Issue',
+          state: 'open',
+          labels: ['bug'],
+          body: 'First line Second line - item',
+        },
+        {
+          number: 2,
+          title: 'Closed Issue',
+          state: 'closed',
+          labels: ['enhancement'],
+          body: '',
+        },
+      ]);
     });
 
     it('triggers autoCommitAndPush when autoCommitPush is true', async () => {

@@ -151,6 +151,8 @@ import TodoRow, { PersonAvatar } from '../components/todos/TodoRow';
 import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
 import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { Translate } from '../components/Translate';
+import { useTranslate } from '../hooks/useTranslate';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 export interface TeamMember {
@@ -514,6 +516,9 @@ function ReadOnlyDoc({
   canNativeFs?: boolean;
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
+  const { translatedText: translatedMarkdown } = useTranslate(d.md || '');
+  const { translatedText: translatedTitle } = useTranslate(d.title || '');
+  const markdownToRender = d.md ? translatedMarkdown : '_This page is empty._';
   return (
     <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
       {/* head */}
@@ -578,12 +583,12 @@ function ReadOnlyDoc({
       </div>
 
       <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-3">
-        {d.title}
+        {translatedTitle}
       </h1>
 
       <div className="bdoc-fs-canvas px-5 lg:px-8 pb-6 bdoc-prose-viewer">
         <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
-          {d.md || '_This page is empty._'}
+          {markdownToRender}
         </ReactMarkdown>
       </div>
     </div>
@@ -2194,7 +2199,9 @@ function DocRow({
         </span>
         <span className="min-w-0 flex flex-col gap-0.5">
           <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-12">{d.title}</span>
-          <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">{d.summary || mdSummary(md)}</span>
+          <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">
+            <Translate as="span" text={d.summary || mdSummary(md)} />
+          </span>
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
               <span className="text-[10.5px] font-semibold   text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">

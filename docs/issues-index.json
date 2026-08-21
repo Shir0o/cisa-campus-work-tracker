@@ -1,0 +1,1435 @@
+[
+  {
+    "number": 422,
+    "title": "Phase 5: Translation Batch Prefetching, Mobile App Parity & Offline Caching",
+    "state": "open",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Follow-up to #351 (Phase 5): ### Summary Add intelligent viewport/list prefetching, offline translation fallback, and mobile app parity (`apps/mobile`). ### Scope - **Batch Prefetching:** - Prefetch visible list items upon feed load (e.g. 20 prayers at once in a single `/api/translate` call). - Background warming of cache for frequently viewed contacts and pinned notes. - **Mobile Parity (`apps/mobile`):** - Integrate translation service in React Native mobile views (Today, Prayers, Messages, People). - Use AsyncStorage for mobile L2 cache. - **Offline & Fallback Polish:** - Graceful fallback to original text on network failure or rate limits with retry indicators. ### Acceptance Criteria - Lists load with minimal perceived translation delay via batch prefetching. - Mobile client supports full Spanish mode with cached translations."
+  },
+  {
+    "number": 421,
+    "title": "Phase 4: Dynamic UGC Translation Integration across Prayers, People, Messages & Notes",
+    "state": "open",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Follow-up to #351 (Phase 4): ### Summary Wire the translation hook and `<Translate />` component into dynamic User-Generated Content (UGC) across the application. ### Scope - **Prayers & Testimonies:** - `PrayerList.tsx`, `AnsweredList.tsx`, and mobile `PrayerListMobile.tsx`. - Translate prayer burdens, prayer titles, update notes, and answered testimonies. - **People & Directory:** - `ContactDetailsModal.tsx`, `Directory.tsx`, and `History.tsx`. - Translate contact notes, interaction log summaries, and next step reminders. - **Messages & Chat:** - `Messages.tsx`, `chat.ts`, and mobile chat threads. - Live translation of incoming chat messages with reactive subscription. - **Coordination Notes & The Board:** - `CoordinationNotes.tsx`, `EmbedCoordinationDoc.tsx`. - Markdown-aware translation preserving headings, checklists, links, and code blocks. - **Original Content Switcher:** - Add an inline 'Ver original' / 'Show original' toggle for translated user cards. ### Acceptance Criteria - User-entered text in any section translates seamlessly when Spanish is active. - Clicking 'Ver original' toggles back to the raw source text. - Comprehensive unit tests across components."
+  },
+  {
+    "number": 420,
+    "title": "Phase 3: Static UI Strings Localization (i18n) for Shell, Modals & Navigation",
+    "state": "open",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Follow-up to #351 (Phase 3): ### Summary Extract and localize all static UI strings (navigation tabs, buttons, modal headers, empty states, system alerts, and notifications) into an English/Spanish dictionary. ### Scope - **UI Localization Dictionary (`src/locales/es.json` / `src/locales/en.json`):** - Navigation items: Coordination Notes, People, The Journey, On our hearts, History, Settings, More menu. - Action buttons: 'Add someone', 'Log a visit', 'Smart Import', 'Quick Add', 'Export CSV', 'Save', 'Cancel'. - Modal titles, empty state descriptions, error messages, and form labels. - **Integration:** - Lightweight dictionary helper `t(key, fallback)` integrated with layout and language preference context. - Zero-latency, deterministic rendering for all chrome and static controls. ### Acceptance Criteria - When Spanish is toggled on, all shell controls and UI buttons switch instantly to Spanish. - Unit tests verify all dictionary keys exist and render correctly."
+  },
+  {
+    "number": 419,
+    "title": "Phase 2: Client Translation Engine, Multi-Tier Caching & Language Preference Toggle",
+    "state": "open",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Follow-up to #351 (Phase 2): ### Summary Implement the client-side translation engine, reactive hooks, multi-tier caching (L1 React state / memory + L2 IndexedDB / localStorage), and user language preference toggle. ### Scope - **Translation Client Core (`src/lib/translator.ts`):** - Content hashing (SHA-256 / Murmur3) matching backend. - L1 (in-memory LRU) + L2 (IndexedDB / localStorage) client cache. - Request batcher & debouncer (50ms queue) calling `POST /api/translate`. - **React Hooks & Primitives:** - `useTranslate(text, options)` hook. - `<Translate text={...} />` component with loading skeleton and error fallback. - **Language Preference & UI Controls:** - Add `language?: 'en' | 'es'` to `userPreferences` schema and Firestore subscription. - Language toggle selector in `TopNav.tsx`, `MobileNav.tsx`, and `Settings.tsx`. ### Acceptance Criteria - Seamless synchronous lookup for already-cached translations with zero layout shift. - Language toggle flips app preference and reactivity triggers live re-rendering. - Full unit test coverage."
+  },
+  {
+    "number": 411,
+    "title": "[Feedback] idea: tags for people page try to keep space between wor...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/20/2026, 8:59:56 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text tags for people page try to keep space between words (e.g. Fall2025-> Fall 2025) also in combine tags make it to auto update (maybe change the name to fit more to both feat) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/O6SbPNL4hBWccx3PXSrh/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 410,
+    "title": "[Feedback] thought: groupme bot hook auto tag always add semester (e.g...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 8:58:30 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text groupme bot hook auto tag always add semester (e.g. Fall 2026) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/NpmwTurNEMqkdUOQIZhc/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 409,
+    "title": "[Feedback] Something's off: feedback popover closes if user tries to open it b...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** something's off - **Date:** 8/20/2026, 8:58:07 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text feedback popover closes if user tries to open it before the auto close time is up ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/qbEuTknvA6n1FEUFfsYy/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 408,
+    "title": "[Feedback] thought: give me a way to submit another after one feedback",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 8:57:44 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text give me a way to submit another after one feedback ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pX3FrkR2NkYBlaiw66Yn/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 407,
+    "title": "[Feedback] thought: closing the contacts detail don't need skeleton lo...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 8:57:24 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text closing the contacts detail don't need skeleton loader on people page? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pFy2ZYV2dhGO27FS4Cf7/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 406,
+    "title": "[Feedback] off: this line Needs your attention\nEverything the team...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/20/2026, 8:54:27 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text this line Needs your attention Everything the team has stirred up, gathered by person. Say you followed up and they go quiet. -> no room between this and the elements above it ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nhi5MTnHtzrA66WrBiVk/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 404,
+    "title": "[Feedback] thought: the contact notes squished into one line on page \"...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 5:19:19 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the contact notes squished into one line on page \"Today\" ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/9vRROhSMpceSmNcbdB1L/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 403,
+    "title": "[Feedback] off: the first item should be the coordination notes no...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/20/2026, 4:30:21 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the first item should be the coordination notes not the journey, the journey nav menu item should still be the journey ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/AnBe4zeTf2rDNwUdGzsF/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 402,
+    "title": "[Feedback] off: is notification for eas mobile app working (ios)?",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/20/2026, 4:08:00 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text is notification for eas mobile app working (ios)? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/YVhft1W03Vgd8ZLKrXjc/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 401,
+    "title": "[Feedback] thought: make a user tutorial page for mobile",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 4:06:06 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text make a user tutorial page for mobile ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/D9JKmcvsR7hoxxkEvycz/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 400,
+    "title": "[Feedback] thought: Your contacts popover can we put all the checked t...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 4:05:38 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text Your contacts popover can we put all the checked to the top (sorted alphabetically) and the rest sorted alphabetically separately? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/32J8FUTel3j3Zzz8DcOQ/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 399,
+    "title": "[Feedback] off: interactions are not sorted by date?",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/20/2026, 4:02:11 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text interactions are not sorted by date? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nkgVL6kby7v1MFyzpQcJ/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 398,
+    "title": "[Feedback] off: the bar under the sub menu (e.g. prayer, interacti...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/20/2026, 4:00:22 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the bar under the sub menu (e.g. prayer, interactions, ...) is misaligned ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/vBKGtH58pvyhrS4P0Poc/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 397,
+    "title": "[Feedback] thought: I don't like the always displayed scroll bar (vert...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 3:59:50 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text I don't like the always displayed scroll bar (vertical) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/NfSlZnhzBcf0jcLPOC2c/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 396,
+    "title": "[Feedback] thought: is last connected and the row below working? they ...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 3:59:14 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text is last connected and the row below working? they are both showing – ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/O5aMyf2OIFcFFzqDYzcP/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 395,
+    "title": "[Feedback] thought: able to change stage in contacts page",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 3:54:45 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text able to change stage in contacts page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/uuzLJyQlnhJWqo2Jhb4b/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 393,
+    "title": "[Feedback] thought: groupme bot should send a response for confirmatio...",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/20/2026, 2:50:44 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/settings - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text groupme bot should send a response for confirmation ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/eUTk6TZ1uK8KNnNbmDvC/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 382,
+    "title": "[Feedback] off: we still need the sign up form link and the calend...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 4:17:08 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text we still need the sign up form link and the calendar link under the more drop down menu ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2rFFpPDr33E5cA07ADBU/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 381,
+    "title": "[Feedback] off: the form don't need \"You're previewing the sign-up...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 4:16:43 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the form don't need \"You're previewing the sign-up form\" ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/FxtsNq6BkOw5QwlWUORb/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 380,
+    "title": "[Feedback] idea: a constant tag of \"Saved\"",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/19/2026, 4:15:42 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text a constant tag of \"Saved\" ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/PoJT8JL5zznbTAwUXnad/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 379,
+    "title": "[Feedback] thought: color coded tags",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 4:15:26 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text color coded tags ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ak7chq8PFpAEKD9Uyv3Y/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 378,
+    "title": "[Feedback] off: last connected was not updated after logging inter...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 4:13:46 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text last connected was not updated after logging interaction, how is it calculated? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/jW1sD9eloQ5jazwumHi7/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 377,
+    "title": "[Feedback] off: open btn for your sheep section contact is not tak...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 4:11:03 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text open btn for your sheep section contact is not taking user to the contact detail page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2rVM08foDgtfLZyxSjKh/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 376,
+    "title": "[Feedback] off: the prayers from the on our hearts page displayed ...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 3:31:45 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the prayers from the on our hearts page displayed on home page are not editable but has link to source ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/jYHojDrMdRCbTGgG68pH/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 375,
+    "title": "[Feedback] off: your contact and see everyone for the your sheep s...",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/19/2026, 3:30:48 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text your contact and see everyone for the your sheep section are not aligned ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/RIj2cZ2d6hcRtlFQjMlb/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 370,
+    "title": "[Feedback] A thought: can we have a way to stat the users' action on site (hidden from user) but admin (myself only) can see for the sake of enhancing ux (reduce number of clicks and seek time)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 5:13:58 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/visits - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text can we have a way to stat the users' action on site (hidden from user) but admin (myself only) can see for the sake of enhancing ux (reduce number of clicks and seek time) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/QrZzQyCkylZUtYTwqlUx/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 369,
+    "title": "[Feedback] A thought: can we have a way to add contact on log a visit page? without going to people page and back and forth",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 5:13:08 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/visits - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text can we have a way to add contact on log a visit page? without going to people page and back and forth ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/4CzbHWCHA6XpTZOki2Cr/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 368,
+    "title": "[Feedback] A request: closing feedback while submitting terminates the process? can we make it optimistic ui response?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/19/2026, 5:12:32 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/visits - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text closing feedback while submitting terminates the process? can we make it optimistic ui response? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/SftcnD2ofqNZg9Wu1qix/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 367,
+    "title": "[Feedback] A thought: log a visit remove reivewer and cisa-* as option",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 5:12:07 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/visits - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text log a visit remove reivewer and cisa-* as option ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/8375ZKrhsonUvt7FQCPj/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 366,
+    "title": "[Feedback] A thought: remove reviewer appstore and cisa-* from log a visit popup",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 5:11:13 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/visits - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text remove reviewer appstore and cisa-* from log a visit popup ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/p7JVUaTIHE23HrKRYKW4/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 365,
+    "title": "[Feedback] A thought: on the Your personal contacts popup how is \"lead\" tag determined",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/19/2026, 2:18:10 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text on the Your personal contacts popup how is \"lead\" tag determined ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/fbY77JOgNsLoMCf5FcfK/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 362,
+    "title": "[Feedback] A thought: see it as they do do not need to be in settings page",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 8:47:20 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/settings - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text see it as they do do not need to be in settings page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/RhqZx2aepxkDi9BwFVJy/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 360,
+    "title": "[Feedback] Something's off: collapsed side ba menu not vertical aligned (last two item - calendar and form)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 6:45:38 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text collapsed side ba menu not vertical aligned (last two item - calendar and form) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/1JDeLLIqSAd6QcSerys6/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 359,
+    "title": "[Feedback] Something's off: the filter group dropdown options are wrong",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 6:24:21 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the filter group dropdown options are wrong ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2ZXKRtIH7qoJqTlV7eJS/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 358,
+    "title": "[Feedback] A thought: a new page for the trainees to select users and their contacts (could be dynamic though may be the same list usually, sometimes may be different)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 6:23:14 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text a new page for the trainees to select users and their contacts (could be dynamic though may be the same list usually, sometimes may be different) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/eqaXI3Xe8lmBmTk3N0Se/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 357,
+    "title": "[Feedback] Something's off: combine tag popup covered by side menu",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 6:19:28 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text combine tag popup covered by side menu ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2PkFF6gPcNcdjv8TzHOC/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 356,
+    "title": "[Feedback] A thought: there's no residence hall, change it to source (open for another word)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 6:12:39 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text there's no residence hall, change it to source (open for another word) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nshTzfT3tNZtHOVmY9Ff/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 355,
+    "title": "[Feedback] An idea: also display their grade (e.g. freshman, ...)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/18/2026, 6:08:01 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text also display their grade (e.g. freshman, ...) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/HPvlmA1anIOdI6Aq3Prl/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 354,
+    "title": "[Feedback] Something's off: on clicking search (which has no background border) shows te(...).localeCompare is not a function",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:58:54 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text on clicking search (which has no background border) shows te(...).localeCompare is not a function ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/wXPAlAi1FOX1nkG1iUIF/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 353,
+    "title": "[Feedback] A thought: what is this at rest label logic?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 5:58:00 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text what is this at rest label logic? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/3BaMd1qwAxhvg7apb2FD/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 352,
+    "title": "[Feedback] An idea: another layout that is not side bar menu?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/18/2026, 5:55:47 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text another layout that is not side bar menu? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/GYyPZpM0PVXE8Klw2M6F/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 351,
+    "title": "[Feedback] An idea: spanish translation (live yet smart cached) of everything (not just menu but everything inputted and everything in app)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/18/2026, 5:54:17 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text spanish translation (live yet smart cached) of everything (not just menu but everything inputted and everything in app) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/wcDd4sJshdp2qm4Bsu4L/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 350,
+    "title": "[Feedback] An idea: the visits and gospel icon on side menu is the same",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/18/2026, 5:53:03 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the visits and gospel icon on side menu is the same ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/g9rRxaZ6NwM7w2XUzq0M/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 349,
+    "title": "[Feedback] Something's off: new todo should not show reviewer-appstore",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:51:37 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text new todo should not show reviewer-appstore ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/NHv5FqOJdT2NCfO9ojnM/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 348,
+    "title": "[Feedback] Something's off: new todo should not show cisa-*",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:51:25 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text new todo should not show cisa-* ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2FE2ndn5sk3ztzRmwGjk/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 347,
+    "title": "[Feedback] Something's off: what is the default order?",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:48:24 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text what is the default order? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/mCQZGyBTzLxWImI0Xmxl/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 346,
+    "title": "[Feedback] Something's off: brothers' filter not displaying correctly",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:43:53 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text brothers' filter not displaying correctly ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/N9dnlzHqobbaZ572JBft/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 345,
+    "title": "[Feedback] A thought: clicking on name should open the contact page",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 5:40:57 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text clicking on name should open the contact page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/9s8y9CkzutrMR780B2Ym/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 344,
+    "title": "[Feedback] A thought: have a select and bulk change stage feat",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 5:33:30 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text have a select and bulk change stage feat ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/nyn9w9B1IJ59rig2tu6z/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 343,
+    "title": "[Feedback] Something's off: the student detail page no scrollable contents are hidden",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:32:46 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the student detail page no scrollable contents are hidden ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/cgkASqxc3dnLcdaO6bv4/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 342,
+    "title": "[Feedback] Something's off: sign up form tagging people to stage group meeting (the journey page), the auto assign should not tag the stage or change",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/18/2026, 5:31:23 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text sign up form tagging people to stage group meeting (the journey page), the auto assign should not tag the stage or change ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/phzIdezZasMxPklEAKVo/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 341,
+    "title": "[Feedback] A thought: default should be hide completed",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/18/2026, 4:51:18 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text default should be hide completed ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/xEwyeV541Q17jYpIkxpS/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 337,
+    "title": "[Macro study] Expand the command palette + central shortcut registry",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Code** ## Problem Keyboard handling is ad hoc and undiscoverable: `⌘K` in `GlobalSearch.tsx:295`, `⌘Enter` in `Thread.tsx`, `TodoComposer.tsx`, `LogVisitModal.tsx`, and `FeedbackFAB.tsx` — five separate listeners, no registry, nothing listed anywhere. The ⌘K palette offers four quick actions with no way to learn what else exists. ## What Macro does `apps/web/src/lib/core/hotkey/` — a registry where every command declares its scope, description, condition, and handler, so the same registration both binds the key and populates the command palette. Shortcuts teach themselves. ## Explicitly NOT adopting Their leader grammar (`c`+letter creates, `g`+letter goes) and vim navigation (`j`/`k`, `gg`, `shift+G`). Macro serves ~15 engineers living in the tool 8 hours a day; this app serves students and Full-timers opening it a few times a week, often on a phone. Also skipping their priority chain and scope inheritance — far more machinery than this needs. ## Scope - A small registry: id, scope, description, handler - Both binds the shortcut and populates the ⌘K palette - Migrate the five existing ad-hoc listeners onto it - Palette lists available actions with their shortcuts ## Acceptance criteria - [ ] Every existing shortcut still works - [ ] The palette lists actions the user can currently take, filtered by role - [ ] Registering a command in one place makes it both bound and discoverable"
+  },
+  {
+    "number": 336,
+    "title": "[Macro study] Four new to-do creation entry points",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Code + light design** ## Problem To-dos can be created from two places: highlighting a line on a Board page, and from an interaction. Macro's argument is that trackers go stale because logging costs a context switch — they made tasks creatable from seven places for exactly this reason. ## Scope — four new entry points 1. **From an attendance absence** — marking someone absent on the Gatherings screen is the exact moment someone thinks \"I should check on them.\" Highest value of the four. 2. **From the visit log form** — `Visit.followUpTaskId` already exists in the data model, so this is wiring, not schema. Makes creating the follow-up part of writing the visit up rather than a separate step. 3. **From a chat message** — hover / long-press → \"Make a to-do\", carrying the message as source. Mirrors the Board highlight flow already built. 4. **From a prayer** — turn a burden into a concrete follow-up while keeping the prayer linked as source. ## Implementation note One shared helper over `addTodo` in `src/lib/todos.ts`; each site differs only in which source it links. The existing `sourceDocId` / `sourceInteractionId` pattern extends naturally. ## Design needed Small — the affordance in four placements. Reuse the existing \"Make a to-do\" treatment from the Board. ## Acceptance criteria - [ ] All four create a to-do linked back to its source - [ ] The source is visible on the resulting to-do row - [ ] Available on mobile where the source screen exists"
+  },
+  {
+    "number": 335,
+    "title": "[Macro study] Role-aware first-run checklist",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** ## Problem There is no first-run experience. New trainees arrive every semester, and the four roles (Full-timer / Trainee / Student / Community) see substantially different apps. ## What Macro does `apps/web/src/features/getting-started/getting-started-types.ts` — a checklist where each row has an optional `isComplete()` read reactively from **live state**, plus `observe()` for event-driven completion, defaulting to \"clicking it completes it\". Their comment on why completion is derived rather than remembered: > never persisted itself, so it stays honest when e.g. a tool is disconnected ## Scope - Dismissible checklist on Home, rows differing per role - Completion derived from real state — \"logged your first conversation\" is true because they did, not because they clicked a button once - Collapsible sections, persisted per user ## Design needed Checklist layout, per-role row sets, and copy for four roles in the app's existing voice. ## Acceptance criteria - [ ] Each role sees rows relevant to what they can actually do - [ ] Completion reads live state; deleting the underlying data un-completes the row - [ ] Dismissible, and stays dismissed"
+  },
+  {
+    "number": 334,
+    "title": "[Macro study] Live contact pill with hover preview",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** ## Problem Attaching a contact to a message stores `ChatAttachment { type, id, name, subtitle }` — a display cache written at attach time. It goes stale, and checking one fact about the person means opening `ContactDetailsModal.tsx` (2,402 lines). ## What Macro does Every @mention renders as a live pill carrying its target's *current* metadata — a task pill shows the task's status and priority — and previews on hover. Context without a click, and the pill can't go stale because it reads live. ## Scope - Contact pill showing stage and last-seen, read live rather than from the cached `subtitle` - Hover preview card on desktop; tap-to-preview on mobile - Contacts only for now; the other seven `ChatAttachment` types can follow if this lands well ## Design needed Pill treatment (including stage colour, which already exists as `StageChip`) and the preview card. ## Acceptance criteria - [ ] Pill reflects a stage change without the message being re-sent - [ ] Preview shows enough to answer \"who is this and where are they at\" without opening the modal - [ ] Works on mobile web and in `apps/mobile/`"
+  },
+  {
+    "number": 333,
+    "title": "[Macro study] One conversation thread per person; retire the admin Comments tab",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** · ⚠️ **Has a privacy consequence — read before designing** ## Problem A conversation about one person can live in three places today: 1. `contacts/{id}/threads` — the walking-together thread (Trainee-visible) 2. The Comments tab in `ContactDetailsModal.tsx` (~line 2079) — gated `role === \"admin\" || isAdmin`, **Full-timers only** 3. Messages, with the contact attached via `ChatAttachment` Someone asking \"what did we say about Sarah?\" has to check all three. ## What Macro does *\"Every deal gets its own channel, automatically, pinned right to the deal record.\"* Their argument: a CRM comment box always loses to where the conversation really happens, because people comment *and then* go ping the channel anyway. So the record's notes ARE the chat system, not a parallel one. ## ⚠️ Blocker — decide before this is designed The Comments tab is Full-timer-only; the walking-together thread is Trainee-visible. **Merging them changes who can read pastoral oversight notes that were written under a different expectation.** This is a privacy change, not just a data migration. Pick one: - **(recommended)** Migrated comments carry a visibility flag and the merged thread filters by role — preserves the original audience while still giving one place to look. Costs a `firestore.rules` change. - Comments migrate into a Full-timer-only section of the merged thread. - Existing comments stay in place; only *new* conversation goes to the thread. ## Scope - `contacts/{id}/threads` becomes the single conversation surface - Comments migrated per the decision above, with a migration script - Attaching a contact in Messages links into that same thread rather than starting a parallel one - `firestore.rules` updated and reproduced against the emulator **before** the rule is edited (rules deploys have their own CI gate — budget for it) ## Acceptance criteria - [ ] Visibility decision recorded in this issue before design starts - [ ] No existing comment becomes readable by someone who could not read it before - [ ] Emulator-backed rules tests, red before green - [ ] Migration is reversible or dry-runnable"
+  },
+  {
+    "number": 332,
+    "title": "[Macro study] Shared action vocabulary + shared row menu",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** ## Problem Row actions differ per view — the same intent is worded and placed differently on a person, a prayer, a visit, and a gathering. Users learn the app per screen instead of once. ## What Macro does Defines an action vocabulary once and applies it to every object type — `apps/web/src/lib/core/hotkey/tokens.ts` has `entity.action.{markDone, markRead, delete, rename, share, favorite, createReminder, assignee, status, ...}`. Same key, same menu, same wording regardless of what the object is. Their keyboard reference has a single \"Entity Actions\" section covering all types. ## Scope - Agree one action set — done, follow up later, share, make a to-do, open — and the exact wording, in the app's existing warm voice - One row/overflow menu component consumed by person, prayer, visit, and gathering rows - First consumer is the merged attention feed (#330), so co-design with it ## Design needed The overflow menu, its trigger, and mobile (long-press drawer) treatment. ## Acceptance criteria - [ ] One menu component used by all four row types - [ ] \"Done\" means the same thing everywhere - [ ] Wording reviewed against the existing nav voice (\"The Journey\", \"On our hearts\", \"Looking back\")"
+  },
+  {
+    "number": 331,
+    "title": "[Macro study] Notification stacking by target",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** · Pairs with #330 ## Problem `NotificationCenter.tsx` renders notifications flat. Three people commenting on one contact produces three rows, so the one thing that actually needed attention gets buried. This matters more here than in a workspace tool — notification volume per person is low, so a flat list is mostly noise around a few signals. ## What Macro does Collapses all notifications about the same entity into a single row showing the most recent, with the rest behind a collapsible list (`DEFAULT_VISIBLE_COUNT = 3`), and lets you mark the whole stack read or done at once. See `apps/web/src/features/entity/extractors-notification/notification-stacks.tsx`. ## Scope Group rows by target entity, show a count (\"3 new on Sarah\"), expand on demand, mark-all-done on the stack. ## Design needed Stacked row treatment, count badge, expanded state. ## Acceptance criteria - [ ] Multiple notifications about one contact render as one row with a count - [ ] Expanding shows the individual entries - [ ] Mark-done on the stack clears all of them"
+  },
+  {
+    "number": 330,
+    "title": "[Macro study] Merge attention surfaces into one feed with a done action",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of #325 · **Design + code** · Blocked on #326 (read/done model) and #327 (date bucketing) ## Problem \"What needs my attention\" is split across three surfaces: - My Day's hand-assembled sections (`src/views/MyDay.tsx`, 1,192 lines) - `FromTraineesInbox` — the Full-timer oversight feed - `NotificationCenter` — the bell, a separate list entirely Someone has to check all three to know where they stand. And `src/lib/inboxReads.ts` only tracks *scanned*, which is passive — without a \"done\", the list only grows, so it stops being a list anyone can finish, and people stop opening it. ## What Macro does One list holding email, messages, @mentions, task assignments, and agent results. `e` marks done and removes the item. Their framing: *\"You can think of the Signal view as your action list.\"* The stance is that you should check exactly one thing. **Not adopting:** their AI-sorted Signal/Noise split (volume doesn't justify it, and the failure mode — AI hides something pastoral — is worse than the problem), and Inbox-Zero-as-pressure. A list of people you haven't followed up with is not disposable the way email is; \"clearing\" a person is a strange verb, and a UI that rewards emptying the list can teach people to dismiss rather than follow up. Take *\"done is distinct from seen\"*; leave the pressure to reach zero. ## Scope - One attention feed on My Day carrying team activity, to-do assignments, thread questions, and notifications - Explicit per-row \"done\" that removes it, built on #326 - Date-group headers from #327 - Bell becomes push delivery only, not a second list ## Design needed Row anatomy per item kind, the done affordance, group headers, empty state. Desktop, `MyDayMobile.tsx`, and `apps/mobile/`. ## Watch The feed reads contacts, interactions, a `collectionGroup` over threads, notifications, and to-dos. My Day already does several of these — measure read volume before adding more, and check whether new composite indexes are needed. ## Acceptance criteria - [ ] One feed replaces the three surfaces; the bell no longer maintains a parallel list - [ ] Marking done removes the row and persists per-user - [ ] Each of the four roles sees an appropriate feed - [ ] Firestore read count per load measured and recorded"
+  },
+  {
+    "number": 329,
+    "title": "[Macro study] Audit and derive Contact activity fields",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Phase 1 — code only** ## Problem `Contact` carries `lastSeen`, `lastContactedDate`, `lastContactedBy`, `lastContactedById`, and `hasNewActivity`. All of these look derivable from interactions, visits, and attendance — but if any is hand-entered, or written at only some of the call sites, it goes stale silently. A stale `lastContactedDate` breaks exactly the question the app exists to answer: who have we not seen in a while. ## What Macro does From their CRM docs: *\"records create themselves … stages are all manual: Macro doesn't yet know where a company lies in your pipeline and relies on you.\"* A clean line between what the system can observe and what only a person knows. Their \"Last Interaction\" is a sortable column precisely because it is never typed. Stage stays manual here too — that is judgment, and correctly a human's. ## Scope 1. Map every write of the five fields across web (`src/lib/`, `src/views/`, `src/components/modals/`) and `apps/mobile/` 2. Route them through one derived update triggered by logging an interaction, a visit, or an attendance mark 3. Remove any path that accepts them as direct user input ## Acceptance criteria - [ ] Logging an interaction, a visit, and an attendance mark each update the fields identically - [ ] No UI writes these fields directly - [ ] Tests cover all three event types - [ ] Audit findings recorded in the issue before the fix lands, so the size of the drift is known"
+  },
+  {
+    "number": 328,
+    "title": "[Macro study] Frecency ranking in Global Search",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Phase 1 — code only** · Highest value-per-line item in the study ## Problem `src/components/layout/GlobalSearch.tsx` does substring filtering, caps each group at `GS_MAX = 4`, and applies **no ranking**. With no query, \"recent people\" sorts by `updatedAt` — which is *someone else's* edit, not your usage. So the people you open every day are not the people you are shown. ## What Macro does `crates/frecency` computes, per user per entity: ``` frequency = log2(event_count + 2) recency = Σ over last 10 events of exp(-0.1 × hours_ago) × weight score = 0.7 × frequency + 0.3 × recency weights: open = +2.0, ping = 0.0, close = -1.0 ``` The negative close weight is the interesting part: opening something and immediately closing it is evidence it was the *wrong* result, so it demotes itself. Their own client ships a much cheaper version for the command palette — `apps/web/src/features/command/recency.ts` is ~20 lines, a persisted `Record<commandId, timestamp>`. **That is the version to copy**, not the Rust service. ## Scope - Track opens in a per-uid localStorage store, reusing the pub/sub pattern already in `src/lib/inboxReads.ts` - Rank results by score; keep the substring filter as the gate (frecency only orders what already matched) - Consider whether `GS_MAX = 4` should rise once ordering is meaningful ## Acceptance criteria - [ ] Opening a contact repeatedly floats it to the top of the no-query list - [ ] Open-then-immediately-close does not promote a result - [ ] Scoring is a pure function with unit tests; storage is tested separately"
+  },
+  {
+    "number": 327,
+    "title": "[Macro study] Shared date bucketing util (Today / Yesterday / This Week / Older)",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Phase 1 — code only** · Feeds the merged attention feed's grouping ## Problem Date grouping is implemented inline in History, My Day, and the activity feed, each slightly differently. The merged attention feed will want the same grouping, which would make a fourth copy. ## What Macro does `crates/models_grouping/src/date_buckets.rs` — a fixed vocabulary as three tiny pure functions: | Bucket | Range | Order | |---|---|---| | Today | 0 days | 0 | | Yesterday | 1 day | 1 | | This Week | 2–6 days | 2 | | Last Week | 7–13 days | 3 | | This Month | 14–30 days | 4 | | Last Month | 31–60 days | 5 | | Older | 61+ days | 6 | Their docs frame it as a product feature, not formatting: it \"keeps a busy list scannable without changing any of your filters or sorting.\" ## Scope `bucketFor(date)`, `bucketLabel(key)`, `bucketOrder(key)` in a shared util, built on the existing `daysSince` / `parseMs` in `src/components/landing/helpers.ts`. Adopt in History, My Day, and the activity feed. ## Acceptance criteria - [ ] Three pure functions, no view imports - [ ] Unit tests at every boundary: 0, 1, 2, 6, 7, 13, 14, 30, 31, 60, 61 days - [ ] Existing groupings in History / My Day / activity render identically or better - [ ] Warm labels agreed — the app says \"Looking back\", not \"This Month\", so copy should match the app's voice rather than Macro's"
+  },
+  {
+    "number": 326,
+    "title": "[Macro study] Unify read/done state into one per-user model",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Part of #325 · **Phase 1 — code only** · **Prerequisite for the merged attention feed** ## Problem Five mechanisms currently answer fragments of one question — \"has this person seen / dealt with this?\": - `src/lib/inboxReads.ts` — localStorage, per-uid, ids like `contact:<id>` (already an entity ref) - `src/lib/convHides.ts` — localStorage, hidden conversations - `src/lib/messageHides.ts` — localStorage, hidden messages - `Notification.readBy` / `dismissedBy` — Firestore arrays - `Contact.reviewed` — a boolean on the shared domain object Three storage strategies, no shared vocabulary. `Contact.reviewed` is the worst of them: it puts a per-user workflow state onto a shared record, so when two Full-timers walk with the same trainee it is ambiguous who reviewed it. ## What Macro does Separates two orthogonal axes and applies both uniformly to any entity: **read** (I have seen it) and **done** (I have dealt with it). `inboxReads` today only models \"scanned\", which is passive — there is no way to clear something off your list. ## Scope - One per-user store keyed by entity ref (`contact:<id>`, `interaction:<id>`, `thread:<id>` — the shape `inboxReads.ts` already uses), with `read` and `done` as separate axes. - Migrate `inboxReads`, `convHides`, `messageHides` behind it. - Leave `Notification.readBy` alone for now — it is genuinely shared state, not a per-device preference. - Plan the `Contact.reviewed` migration but do not remove the field in this issue. ## Acceptance criteria - [ ] Existing inbox-read and hide behaviour is unchanged from the user's point of view - [ ] A `done` axis exists and is independently settable from `read` - [ ] Unit tests cover set/clear/subscribe on both axes and the migration from each legacy store"
+  },
+  {
+    "number": 325,
+    "title": "[Macro study] Adopt product patterns from the Macro codebase (tracking)",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Tracking issue for work adopting product patterns from a read-only study of [macro-inc/macro](https://github.com/macro-inc/macro) (AGPLv3, SolidJS + Rust all-in-one workspace). ## Why Macro's CRM, tasks, docs, and channels map closely onto People/The Journey, to-dos, Coordination Notes, and Messages. Their product decisions are stances rather than infrastructure, so they port even though none of their code does. Their core arguments: - **Trackers go stale** because logging costs a context switch — so make creating an entry possible from wherever the decision is actually made. - **Records should build themselves**; only judgment (stage) is manual. - **You should check one thing** to know what needs your attention, and \"done\" must be a real verb distinct from \"seen.\" - **A record's notes ARE the chat system** — a separate comments box always loses to where the conversation really happens. ## Scaled down deliberately Macro serves ~15 engineers living in the tool 8 hours a day. This app serves four roles who open it a few times a week, often on a phone. Keyboard-first navigation (vim keys, `c`/`g` leader grammar) was evaluated and **declined**; splits/window management, the filter AST, the properties system, and AI Signal/Noise sorting were also declined as poor fits. ## Scope multiplier Every design-touching item lands in up to three places: the desktop view, its `*Mobile.tsx` twin (7 such pairs exist), and the React Native app in `apps/mobile/`. This is the main reason the code-only foundation goes first — it is written once and shared. ## Phase 1 — foundation, code only, unblocked Nothing here needs design input; all four can proceed in parallel. - [ ] #326 — Unify read/done state into one per-user model **(prerequisite for the merged feed)** - [ ] #327 — Shared date bucketing util **(feeds the merged feed's grouping)** - [ ] #328 — Frecency ranking in Global Search - [ ] #329 — Audit and derive Contact activity fields ## Phase 2 — design assets Merged attention feed · shared row action menu · contact pill + hover preview · merged thread tab · role-aware first-run checklist · four \"Make a to-do\" affordances. ## Phase 3 — build against the designs - [ ] #330 — Merge attention surfaces into one feed with a done action - [ ] #331 — Notification stacking by target - [ ] #332 — Shared action vocabulary + shared row menu - [ ] #333 — One conversation thread per person; retire the admin Comments tab ⚠️ **has a privacy decision to make first** - [ ] #334 — Live contact pill with hover preview - [ ] #335 — Role-aware first-run checklist - [ ] #336 — Four to-do creation entry points - [ ] #337 — Expand the ⌘K palette + central shortcut registry ## Testing Per `CLAUDE.md` §6 all of this is logic/data/permissions code, so TDD is mandatory — failing test first. Coverage thresholds in `vitest.config.ts` ratchet up only."
+  },
+  {
+    "number": 321,
+    "title": "[Feedback] A thought: edit contact page required field different from add contact/sign up form, can we conform to sign up form? (e.g. in this case the email is required on edit contact details page)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/17/2026, 10:02:02 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text edit contact page required field different from add contact/sign up form, can we conform to sign up form? (e.g. in this case the email is required on edit contact details page) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/TSCuFaSf3yNjcKswV07J/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 317,
+    "title": "[Feedback] Something's off: auto tagging should check existing tag to not make new tags \ndate range for fall is Aug - Dec",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/17/2026, 6:10:44 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text auto tagging should check existing tag to not make new tags date range for fall is Aug - Dec ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/UcXRucO8u7KyxG92g9xi/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 316,
+    "title": "[Feedback] A thought: validate auto tagging",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/17/2026, 6:00:00 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text validate auto tagging ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/FOUlunWDME93RD40TwH3/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 315,
+    "title": "[Feedback] A thought: airtable import validation",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/17/2026, 5:59:37 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text airtable import validation ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/ujzZJW2XLQQ5rIAfIY4y/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 303,
+    "title": "[Feedback] Something's off: \"Your contacts\" button misaligned",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/14/2026, 9:01:48 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text \"Your contacts\" button misaligned ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/KdjhA5MzosF2JyStVgC4/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 302,
+    "title": "[Feedback] A thought: hide the completed tasks",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/14/2026, 9:01:19 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text hide the completed tasks ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/bx0PbJHasEc0ixBMBdOx/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 292,
+    "title": "[Feedback] Something's off: the input box is pushed out of page",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/14/2026, 4:44:49 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the input box is pushed out of page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/0csdJjKqBG4qGL8Cc0FX/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 275,
+    "title": "[Feedback] A thought: if user don't have profile pic, use a generic one",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/13/2026, 5:43:45 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text if user don't have profile pic, use a generic one ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 273,
+    "title": "[Feedback] Something's off: on our hearts / answered toggle styling wrong (not indication which is selected)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/13/2026, 5:02:35 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text on our hearts / answered toggle styling wrong (not indication which is selected) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 272,
+    "title": "[Feedback] Something's off: if trainee (or other user) is switched to from admin, it still may show a page they are not allowed to view (because it was there before the see their view)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/13/2026, 4:52:27 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text if trainee (or other user) is switched to from admin, it still may show a page they are not allowed to view (because it was there before the see their view) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 271,
+    "title": "[Feedback] Something's off: spacing is off",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/13/2026, 4:50:13 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text spacing is off ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 270,
+    "title": "[Feedback] An idea: system notification on mobile?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/13/2026, 4:49:12 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text system notification on mobile? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 269,
+    "title": "[Feedback] Something's off: the earlier toggle animation looks strainge",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/13/2026, 4:47:38 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the earlier toggle animation looks strainge ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 268,
+    "title": "[Feedback] Something's off: updated card (last week item) should not jump to bottom",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/13/2026, 4:45:07 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text updated card (last week item) should not jump to bottom ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 267,
+    "title": "[Feedback] A request: how it's answered can have a picture input",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/13/2026, 4:44:36 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text how it's answered can have a picture input ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 266,
+    "title": "[Feedback] A request: add select people on this page to select",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/13/2026, 4:44:19 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text add select people on this page to select ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 265,
+    "title": "[Feedback] A thought: filter brothers/sisters",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/13/2026, 4:43:19 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text filter brothers/sisters ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 258,
+    "title": "[Feedback] A request: refine the flow of opening a card (which jumps to full screen contact detail) and then closing the details (which triggers the skeleton loaders again)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/12/2026, 5:23:56 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text refine the flow of opening a card (which jumps to full screen contact detail) and then closing the details (which triggers the skeleton loaders again) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 257,
+    "title": "[Feedback] Something's off: once opened, the page switching to other pages do not work anymore (overlayed by the people popup)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/12/2026, 5:23:03 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text once opened, the page switching to other pages do not work anymore (overlayed by the people popup) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 257,
+    "title": "[Feedback] Something's off: once opened, the page switching to other pages do not work anymore (overlayed by the people popup)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/12/2026, 5:23:03 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text once opened, the page switching to other pages do not work anymore (overlayed by the people popup) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 256,
+    "title": "[Feedback] A thought: no displaying the scroll bar all the time?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/12/2026, 5:22:25 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text no displaying the scroll bar all the time? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 255,
+    "title": "[Feedback] Something's off: no margin on edit details view (people)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/12/2026, 5:21:52 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text no margin on edit details view (people) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 217,
+    "title": "[Feedback] A thought: when I am impersonating a trainee I can still see messages of my own account",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/5/2026, 6:13:24 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text when I am impersonating a trainee I can still see messages of my own account ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 216,
+    "title": "[Feedback] An idea: the name under see their view should be updated\nand the logic should be when seeing someone else's view they should be able to see exactly what they see\n(the view by role sees their permissions - e.g. which side bar menu or page they are allowed to access)\nfor example, if I impersonate a trainee I should be able to see the contacts that they created, etc.",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/5/2026, 6:11:47 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text the name under see their view should be updated and the logic should be when seeing someone else's view they should be able to see exactly what they see (the view by role sees their permissions - e.g. which side bar menu or page they are allowed to access) for example, if I impersonate a trainee I should be able to see the contacts that they created, etc. ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 215,
+    "title": "[Feedback] A thought: log and display \"contacted by\"",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/5/2026, 6:08:17 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text log and display \"contacted by\" ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 214,
+    "title": "[Feedback] Something's off: the feedback confirmation has two toast",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/5/2026, 6:02:59 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text the feedback confirmation has two toast ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 213,
+    "title": "[Feedback] A thought: more colors for stages",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/5/2026, 6:02:36 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text more colors for stages ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 212,
+    "title": "[Feedback] Something's off: orange not displaying correctly (stage color)",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/5/2026, 6:01:55 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text orange not displaying correctly (stage color) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 211,
+    "title": "[Feedback] A thought: rearrangeable order of stage",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/5/2026, 6:01:07 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text rearrangeable order of stage ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 210,
+    "title": "[Feedback] A thought: make only first name and phone number mandatory",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/5/2026, 5:57:08 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text make only first name and phone number mandatory ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 209,
+    "title": "[Feedback] Something's off: 1 person of 19 (not clear because the other 18 are hidden)\nshared calendar link should not be seen by trainees",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/5/2026, 5:54:12 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text 1 person of 19 (not clear because the other 18 are hidden) shared calendar link should not be seen by trainees ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 200,
+    "title": "[Feedback] A request: a new page for visitations",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/4/2026, 6:27:18 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text a new page for visitations ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 184,
+    "title": "[Feedback] A thought: How do access the trainee section of the webpage?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Kevin Munga (kevinwmunga@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 7/30/2026, 12:29:00 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/settings - **Viewport:** 1440x820 (DPR: 2) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15 ### Message ```text How do access the trainee section of the webpage? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 182,
+    "title": "[Feedback] An idea: extend the community to incorporate monthly gospel preaching related feats?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 7/29/2026, 6:32:48 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/settings - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 ### Message ```text extend the community to incorporate monthly gospel preaching related feats? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 181,
+    "title": "[Feedback] A thought: Can you see the workspace in \"trainee view\"?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Kevin Munga (kevinwmunga@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 7/28/2026, 8:12:51 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1440x820 (DPR: 2) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5.2 Safari/605.1.15 ### Message ```text Can you see the workspace in \"trainee view\"? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 163,
+    "title": "[Feedback] A thought: test",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 7/22/2026, 11:25:36 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination - **Viewport:** 1491x806 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36 ### Message ```text test ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
+  },
+  {
+    "number": 77,
+    "title": "[Feedback] A thought: test",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** A thought - **Date:** 6/16/2026, 2:06:33 PM - **Status:** new ### Message ```text test ``` --- *Created from CISA Campus Work Tracker user feedback.*"
+  },
+  {
+    "number": 72,
+    "title": "[Feedback] Something's off: markdown is not editable",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** Something's off - **Date:** 6/16/2026, 10:13:00 AM - **Status:** new ### Message ```text markdown is not editable ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 71,
+    "title": "[Feedback] Something's off: the markdown not displaying correctly, just as bullet list",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** Something's off - **Date:** 6/16/2026, 10:13:58 AM - **Status:** new ### Message ```text the markdown not displaying correctly, just as bullet list ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 70,
+    "title": "[Feedback] A thought: collapsible sidebar on the board page?",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** A thought - **Date:** 6/16/2026, 11:55:51 AM - **Status:** new ### Message ```text collapsible sidebar on the board page? ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 69,
+    "title": "[Feedback] Something's off: the side bar not scrollable",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** Something's off - **Date:** 6/16/2026, 10:13:39 AM - **Status:** new ### Message ```text the side bar not scrollable ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 68,
+    "title": "[Feedback] A thought: test",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** A thought - **Date:** 6/16/2026, 11:56:46 AM - **Status:** new ### Message ```text test ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 67,
+    "title": "[Feedback] A request: markdown paste should attempt to match format better",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** A request - **Date:** 6/16/2026, 10:13:14 AM - **Status:** new ### Message ```text markdown paste should attempt to match format better ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 66,
+    "title": "[Feedback] An idea: the side bar content is not showing the right content",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** An idea - **Date:** 6/16/2026, 11:34:57 AM - **Status:** new ### Message ```text the side bar content is not showing the right content ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 65,
+    "title": "[Feedback] A request: the markdown bar disappears when the page is scrolled down",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** A request - **Date:** 6/16/2026, 10:17:24 AM - **Status:** new ### Message ```text the markdown bar disappears when the page is scrolled down ``` --- *Created automatically via bulk migration script from CISA Campus Work Tracker.*"
+  },
+  {
+    "number": 63,
+    "title": "Auto-create a GitHub issue when feedback is submitted",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "## Context / Problem Feedback submitted through the in-app feedback module (the \"Leave a note\" FAB and the `/feedback` page) lands only in the Firestore `feedback` collection and the admin Feedback list (`/admin/feedback`). There is no bridge into our engineering workflow, so actionable feedback has to be manually re-entered as GitHub issues. We want submissions to automatically open a GitHub issue in this repo so they show up in normal triage. ## Proposed behavior When a user submits feedback, automatically open a GitHub issue in `Shir0o/cisa-campus-work-traker`: - **Trigger on all four kinds** — thought, idea, \"something's off\", request. - Map kind → labels: `off` → `bug`; `thought`/`idea`/`request` → `enhancement`; plus a new `feedback` label (needs creating). - Title: short summary from the kind + first line of the message. - Body: full message, submitter name/email, kind, and a link to the admin feedback entry. - **Link back:** store the created issue's number/URL on the feedback doc and show a \"View on GitHub\" link in the admin Feedback list (`/admin/feedback`). - **Best-effort:** a GitHub failure must NOT block or revert the in-app success state (mirror the existing `logActivity` / `sendNotification` pattern). ## Suggested implementation - Feedback is written client-side directly to Firestore today (`addDoc(collection(db, 'feedback'), …)`) in `src/components/FeedbackFAB.tsx` and `src/views/SubmitFeedback.tsx`. Keep that write; add a best-effort backend call afterward. - Add an endpoint (e.g. `POST /api/feedback/github-issue`) in `server.ts` (Express on Cloud Run, fronted by the Cloudflare proxy in `functions/api/[[path]].ts`) that creates the issue via the GitHub REST API and writes the issue URL/number back onto the feedback doc with the Admin SDK. - Store a `GITHUB_TOKEN` (fine-grained PAT with Issues:write on this repo, or a GitHub App token) as a Cloud Run env var — never exposed to the client. - Create a `feedback` label in the repo. - Add optional `githubIssueUrl` / `githubIssueNumber` to the `Feedback` type (`src/types.ts`) and render the link in `src/views/FeedbackList.tsx`. ## Acceptance criteria - Submitting any feedback kind opens a GitHub issue with appropriate labels. - The issue references the submitter + message; the feedback doc / admin list links to the issue. - A GitHub outage does not break feedback submission. --- _Filed as a tracking issue; implementation not started yet._"
+  },
+  {
+    "number": 62,
+    "title": "ci: enforce 90% coverage thresholds (P6)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Final ratchet.** ### Scope — enforce 90% in CI - [ ] Set `vitest.config.ts` thresholds to the 90% target — e.g. `lines: 90, statements: 90, functions: 85, branches: 80` (final numbers chosen from the measured result; branches/functions trail lines as conventional). - [ ] Finalize the `coverage.exclude` list. - [ ] Refresh the config comment (drop the \"raise toward 90%\" note now that it's done). - [ ] Document the policy in `CLAUDE.md` / `README.md`: new code ships with tests; thresholds only go up. ### Done - CI (`.github/workflows/ci.yml` → `npm run test:coverage`) enforces 90% on every PR. Epic #55 checklist fully ticked."
+  },
+  {
+    "number": 61,
+    "title": "test: modals & layout (P5)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Target ≈ +10–14pts.** Should clear ~88%+. ### Scope — modals & layout - [ ] `ContactDetailsModal.tsx` (2k) - [ ] `AddEventModal.tsx` - [ ] `LogInteractionModal.tsx` - [ ] `SyncSheetModal.tsx` - [ ] `NewContactModal.tsx` depth - [ ] `TopBar.tsx` - [ ] `NotificationCenter.tsx` - [ ] `MobileNav.tsx` - [ ] `GlobalSearch.tsx` depth - [ ] `App.tsx` route guards / `useLayout` ### Done - `npm run test:coverage` green; thresholds ratcheted up to just under the new measured number."
+  },
+  {
+    "number": 60,
+    "title": "test: large views (P4)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Target ≈ +14–18pts.** The bulk of the climb. ### Scope — large views - [ ] `Settings.tsx` (1.5k) — user/stage/contact CRUD, search, sync. - [ ] `Dashboard.tsx` / `MyDay.tsx` / `OutreachBoard.tsx` depth — drag-drop, filtering, status derivation. - [ ] `CoordinationNotes.tsx` happy-path — reducer + Firestore persistence; treat the live TipTap/Yjs editor as a thin seam (don't unit-test the CRDT transport). ### Done - `npm run test:coverage` green; thresholds ratcheted up to just under the new measured number."
+  },
+  {
+    "number": 59,
+    "title": "test: core views (P3)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Target ≈ +12–16pts.** ### Scope — core views Render + loading/empty/error states + primary CRUD interactions, reusing the `onSnapshot` mock pattern from `Dashboard.test.tsx` / `MyDay.test.tsx`. - [ ] `Directory.tsx` - [ ] `PrayerList.tsx` - [ ] `Attendance.tsx` - [ ] `History.tsx` - [ ] `SignUp.tsx` - [ ] `FeedbackList.tsx` ### Done - `npm run test:coverage` green; thresholds ratcheted up to just under the new measured number."
+  },
+  {
+    "number": 58,
+    "title": "test: providers & shared UI primitives (P2)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Target ≈ +6–8pts.** ### Scope — providers & shared UI primitives - [ ] Deepen `AuthProvider.test.tsx`: first-sign-in user-doc creation, invitation/approval gating, `admin` custom-claim upgrade, real-time role changes. - [ ] `ThemeProvider` - [ ] `ErrorBoundary` - [ ] `ActivityItem` - [ ] `Toaster` - [ ] `ui/DatePicker` - [ ] `ui/Skeleton` - [ ] `FeedbackFAB` Reuse fixtures in `src/test/fixtures/users.ts`. ### Done - `npm run test:coverage` green; thresholds ratcheted up to just under the new measured number."
+  },
+  {
+    "number": 57,
+    "title": "test: unit-test src/lib pure logic (P1)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Target ≈ +8–12pts.** Cheapest, highest-leverage tests. ### Scope — unit-test `src/lib` pure logic - [ ] `permissions.ts` — `canAccessRoute`, `hasMinRole`, `roleLabel`, `defaultRouteForRole`, plus `ROLE_LEVEL`/`NAV_ITEMS` invariants. Cover all four roles × representative routes. - [ ] `board.ts` — `sessionStatus`, `docGroup`, `newId`, date formatters, `byDateAsc`/`docByDateDesc`. Use fake timers for date-relative logic. - [ ] Expand `utils.ts` — `formatPhoneNumber`, `validatePhoneNumber`, `getUserInitials`, `ntfWhen` (existing `relTime` tests already present). - [ ] `feedbackKinds.ts` — `kindToType`, `typeToKind`, `kindMeta`. - [ ] `markdown.ts`. - [ ] `firebase.ts` — `handleFirestoreError` serialization. ### Done - New `src/test/*.test.ts` files for the above. `npm run test:coverage` green; thresholds ratcheted up to just under the new measured number."
+  },
+  {
+    "number": 56,
+    "title": "test: stabilize the coverage harness (P0)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "Part of the coverage epic #55. **Prerequisite — no threshold bump in this PR.** Before any honest coverage number exists, the harness must be stable and measurable. ### Scope - [ ] Make `src/test/OutreachBoard.test.tsx` + `src/test/OutreachBoardBreakdown.test.tsx` pass **regardless of env**. They mock `firebase/app`/`firestore`/`auth` but not `firebase/database`/`../lib/firebase`; with `VITE_FIREBASE_DATABASE_URL` set, `src/lib/firebase.ts:24` runs `getDatabase(app, …)` against a mock app and throws. Prefer mocking `../lib/firebase` directly (the pattern in `MyDay.test.tsx:41` / `Dashboard.test.tsx:42`). - [ ] Resolve the v8 remap parse crash on `src/views/CoordinationNotes.tsx` and `src/lib/yjsRtdbProvider.ts` (\"Expected ',', got 'ident'\"), which silently drops them from the denominator and errors out `npm run test:coverage` locally. Ensure `CoordinationNotes.tsx` stays measurable; `yjsRtdbProvider.ts` is excluded below. - [ ] Add pragmatic `coverage.exclude` entries in `vitest.config.ts`: `src/main.tsx`, `src/lib/yjsRtdbProvider.ts`, `src/vite-env.d.ts`, `src/constants.ts`, and the `VITE_E2E_MODE` `window.__e2eSignIn` block in `src/lib/firebase.ts`. ### Done - `npm run test:coverage` runs **clean and green**, prints a table, writes `coverage/coverage-summary.json`. - `npm run test` passes **with and without** `VITE_FIREBASE_DATABASE_URL`. - Honest baseline coverage number recorded in this issue. Thresholds unchanged."
+  },
+  {
+    "number": 55,
+    "title": "Epic: Raise unit-test coverage to 90%",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "**Goal:** raise unit-test coverage from the current ~24% baseline to **90%**, enforced in CI. Today `vitest.config.ts` enforces only **22% lines / 15% branches / 15% functions / 22% statements**. Most of the app's logic lives in large, untested React view/modal components. This epic tracks a deliberate, phased climb to 90%. ### Strategy A single PR jumping to 90% isn't reviewable. Each child below is **one PR** that adds tests for a layer and **ratchets the `thresholds` in `vitest.config.ts` up to just under the new measured number** — so coverage can never regress, and CI (`npm run test:coverage`) enforces each step. We build outward from cheap, high-signal pure logic to the expensive UI components. Indicative targets are guides; the implementer reads the actual `coverage/coverage-summary.json` after each PR and sets the new threshold a few points below it. ### Pragmatic exclusions (so 90% is real, not padded) Added to `coverage.exclude` in P0: - `src/main.tsx` (bootstrap) - `src/lib/yjsRtdbProvider.ts` (Yjs⇄RTDB CRDT transport — needs an emulator/integration harness, out of scope for unit coverage) - `src/vite-env.d.ts` - `src/constants.ts` (placeholder data) - the `VITE_E2E_MODE` `window.__e2eSignIn` block in `src/lib/firebase.ts` ### Phases - [ ] **P0** — stabilize the coverage harness (prerequisite; no threshold bump) → #56 - [ ] **P1** — unit-test `src/lib` pure logic (≈ +8–12pts) → #57 - [ ] **P2** — providers & shared UI primitives (≈ +6–8pts) → #58 - [ ] **P3** — core views (≈ +12–16pts) → #59 - [ ] **P4** — large views (≈ +14–18pts) → #60 - [ ] **P5** — modals & layout (≈ +10–14pts) → #61 - [ ] **P6** — enforce 90% thresholds in CI (final ratchet) → #62 ### Definition of done - `vitest.config.ts` thresholds at the 90% target (lines/statements 90; branches/functions trail as conventional). - `npm run test:coverage` green; CI enforces it on every PR. - Every phase issue closed."
+  },
+  {
+    "number": 48,
+    "title": "Move Firestore-rules deploy to keyless auth (Workload Identity Federation)",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "## Goal Replace the long-lived service-account **key** used by the Firestore-rules deploy with **keyless auth via Workload Identity Federation (WIF)** — GitHub's OIDC token is exchanged for short-lived GCP credentials, so there's no JSON key stored in a GitHub secret. > Terminology: for CI/workloads this is **Workload Identity Federation** (a *Workload* Identity Pool + OIDC provider). \"Workforce pools\" are the sibling feature for human users from an external IdP — not what we want here. ## Why Follow-up to #44 / #46. Today [`.github/workflows/deploy-firestore-rules.yml`](.github/workflows/deploy-firestore-rules.yml) (lines 76–79) authenticates with: ```yaml - name: Authenticate to Google Cloud uses: google-github-actions/auth@v2 with: credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }} ``` That secret holds a **long-lived private key** for `github-action@sac-campus-hub.iam.gserviceaccount.com`. Downsides: - A non-expiring credential sits in GitHub secrets; if it leaks, it's valid until manually revoked. - No rotation story — keys silently age forever (`validBeforeTime: 9999`). - During #46 we hit exactly the failure mode this invites: the secret was holding the *wrong* SA's key and nobody could tell (secrets are write-only). WIF removes the key entirely. With WIF: tokens are minted per-run, expire in minutes, and access is scoped by an attribute condition to **this repo only**. ## Current state (already in place) - Deploy SA `github-action@sac-campus-hub.iam.gserviceaccount.com` exists and holds the 3 roles a rules deploy needs: `roles/firebaserules.admin`, `roles/datastore.indexAdmin`, `roles/serviceusage.serviceUsageConsumer`. - Project: `sac-campus-hub` (project number `914549253362`). - Repo: `Shir0o/cisa-campus-work-traker`. ## Setup (one-time, GCP side) ```bash PROJECT_ID=sac-campus-hub PROJECT_NUMBER=914549253362 POOL=github-actions PROVIDER=github REPO=Shir0o/cisa-campus-work-traker SA=github-action@sac-campus-hub.iam.gserviceaccount.com # 1. Workload Identity Pool gcloud iam workload-identity-pools create \"$POOL\" \\ --project=\"$PROJECT_ID\" --location=global --display-name=\"GitHub Actions\" # 2. OIDC provider, locked to this repo (the attribute-condition is required) gcloud iam workload-identity-pools providers create-oidc \"$PROVIDER\" \\ --project=\"$PROJECT_ID\" --location=global --workload-identity-pool=\"$POOL\" \\ --display-name=\"GitHub\" \\ --issuer-uri=\"https://token.actions.githubusercontent.com\" \\ --attribute-mapping=\"google.subject=assertion.sub,attribute.repository=assertion.repository\" \\ --attribute-condition=\"assertion.repository == '${REPO}'\" # 3. Let this repo's tokens impersonate the deploy SA gcloud iam service-accounts add-iam-policy-binding \"$SA\" \\ --project=\"$PROJECT_ID\" \\ --role=\"roles/iam.workloadIdentityUser\" \\ --member=\"principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/${POOL}/attribute.repository/${REPO}\" ``` Provider resource name for the workflow: `projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github` ## Workflow change ```yaml permissions: contents: read id-token: write # required for OIDC # ...in the deploy job, replace the auth step: - name: Authenticate to Google Cloud uses: google-github-actions/auth@v2 with: project_id: sac-campus-hub workload_identity_provider: projects/914549253362/locations/global/workloadIdentityPools/github-actions/providers/github service_account: github-action@sac-campus-hub.iam.gserviceaccount.com ``` The action still exports `GOOGLE_APPLICATION_CREDENTIALS` (now a short-lived token file), so the `firebase deploy` step needs no change. Update the file's header comment (lines 6–9) which currently describes the key-based flow. ## Cutover & cleanup (after a green WIF run) - [ ] Confirm `workflow_dispatch` + a real push both deploy green via WIF. - [ ] Delete the GitHub secret `FIREBASE_SERVICE_ACCOUNT`. - [ ] Delete `github-action@`'s user-managed key `63fafb9d4edaa333c8060133ed5814a41419b9e9` (`gcloud iam service-accounts keys delete …`) so no long-lived key remains. ## Acceptance criteria - [ ] WIF pool + OIDC provider created, scoped to `Shir0o/cisa-campus-work-traker`. - [ ] `github-action@` granted `roles/iam.workloadIdentityUser` for the repo's principalSet. - [ ] Workflow uses `workload_identity_provider` + `service_account`, with `id-token: write`. - [ ] Deploy is green with **no** `FIREBASE_SERVICE_ACCOUNT` secret present. - [ ] Old key and secret removed. _Refs: #44 (auto-deploy), #46 (credential validation + the wrong-key incident)._"
+  },
+  {
+    "number": 46,
+    "title": "Confirm Firestore rules auto-deploy works after #44 merges",
+    "state": "closed",
+    "labels": [],
+    "body": "Follow-up to #44, which adds automated Firestore **rules** deployment on merge to `main`. ## Why this issue exists The deploy credential (`FIREBASE_SERVICE_ACCOUNT` secret) can't be fully validated before merge: GitHub secrets are write-only, and `workflow_dispatch` only works once the workflow is on the default branch. So the first real, end-to-end test is the auto-run that fires **when #44 merges**. ## Validated pre-merge ✅ - Secret `FIREBASE_SERVICE_ACCOUNT` exists on the repo (set 2026-06-15). - Service account `github-action@sac-campus-hub.iam.gserviceaccount.com` exists and is enabled. - It holds the exact roles `firebase deploy --only firestore:rules` needs: - `roles/firebaserules.admin` — writes the ruleset/release. - `roles/datastore.indexAdmin` — satisfies the CLI's pre-flight permission check for the `firestore` target (`datastore.indexes.*`), required even for rules-only deploys. - Workflow wiring (`credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}`) is correct. ## To confirm after merge ⏳ - [ ] Merge #44 → the **Deploy Firestore Rules** workflow auto-runs (push to `main` hits the path filter). - [ ] `test-rules` job (Firestore emulator) passes. - [ ] `deploy` job authenticates via `FIREBASE_SERVICE_ACCOUNT` (no auth error). - [ ] Rules publish to the **named** database `ai-studio-43298cca-4d70-4c5d-bada-c10ab66ab897` (not `(default)`) — confirm in Firebase Console → Firestore → Rules, or via the deploy log. - [ ] Verify the pending `board_sessions` / `board_notes` rules from #42 are now live. - [ ] Close this issue once the first run is green. ## If the deploy job fails on auth Most likely the pasted secret JSON is malformed/truncated. Re-paste the full service-account key JSON into the `FIREBASE_SERVICE_ACCOUNT` secret and re-run the failed job."
+  },
+  {
+    "number": 45,
+    "title": "Inconsistent error state across data views (stuck skeletons / silent failures on Firestore errors)",
+    "state": "closed",
+    "labels": [
+      "bug"
+    ],
+    "body": "## Background `handleFirestoreError` (`src/lib/firebase.ts:68`) **throws** after logging. PR #43 fixed the cases where a `setLoading(false)` sat *after* the throw (dead code → skeleton stuck forever). But that PR deliberately left a broader gap: **there is no consistent error state across the data views.** Today data views (Attendance, Dashboard, MyDay, Directory, OutreachBoard, History, PrayerList) only track `loading`. On a list error there are two bad outcomes: 1. **Stuck skeleton** — if the listener that owns `setLoading(false)` is the one that errors, loading never clears. 2. **Silent empty/partial list** — if a *different* listener errors after loading was already cleared, the user just sees missing/empty data with no indication anything failed. Users can't distinguish \"no data yet\" / \"empty\" / \"load failed\", and there's no reusable error UI (only `Settings`/`SignUp` have local form-level `error` state). ## Affected listeners (error callbacks that never clear/​surface state) Multi-listener views where `setLoading(false)` is only in the *first* success callback, so other listeners' errors are invisible and the owning listener's error hangs the skeleton: - `src/views/Dashboard.tsx` — loading cleared only at `:83` (contacts success); error callbacks at `:85` `:91` `:97` `:103` `:133` `:142` - `src/views/MyDay.tsx` — loading cleared only at `:113`; error callbacks at `:115` `:121` `:127` `:133` `:161` `:170` `:189` - `src/views/History.tsx` — loading cleared only at `:252` (activities success); error callbacks at `:230` (contacts) `:254` (activities) Secondary listeners with no error surface (loading driven by a sibling listener): - `src/views/Directory.tsx` — contacts `:152`, interactions `:202`, comments `:211` - `src/views/OutreachBoard.tsx` — contacts `:305`, interactions `:342`, comments `:351` - `src/views/Attendance.tsx` — contacts `:98` ## Options considered (pick one when scheduled) 1. **Shared error UI + retry (recommended)** — add an `error` state per data view, set it in each error callback (before the throw), and render one reusable component, e.g. `Couldn't load {label} — Reload`. Distinguishes failure from empty; recoverable. (`onSnapshot` auto-retries on reconnect, but permission-denied won't recover — a `location.reload()` action is the practical retry.) 2. **Shared error message, no retry** — same component, display-only. 3. **Just clear loading everywhere** — generalize PR #43 so every error callback clears loading before the throw. No more stuck skeletons, but failures still look like empty lists (no explicit error message). ## Notes - Keep the established ordering invariant: **clear state before calling `handleFirestoreError`**, since it throws (see PR #43 and `CoordinationNotes.tsx` as the reference). - Whatever the choice, apply it uniformly to all the views/listeners listed above for consistency."
+  },
+  {
+    "number": 29,
+    "title": "The Journey board: header count mismatch + 'Add to {stage}' doesn't prefill stage",
+    "state": "closed",
+    "labels": [
+      "bug",
+      "design-overhaul"
+    ],
+    "body": "Two cosmetic/UX follow-ups found while reviewing the Outreach Board reskin ([PR #28](https://github.com/Shir0o/cisa-campus-work-traker/pull/28), Overhaul #12). Neither is a crash or data issue — splitting them out so #28 can land. ## 1. Header total doesn't reconcile with the per-stage breakdown In [`src/views/OutreachBoard.tsx`](https://github.com/Shir0o/cisa-campus-work-traker/blob/main/src/views/OutreachBoard.tsx) the prose header bolds `filteredContacts.length` (which **includes** unmapped/unassigned contacts) but the per-stage breakdown sums only `getStageContactsArr(s.label).length` for **active** stages. **Effect:** when any contact has a stage not in the active stages list (shown in the separate \"Unassigned\" column), the numbers don't add up — e.g. *\"10 people walking it — 2 first contact, 3 second contact, 3 regular\"* (sums to 8, not 10). Looks like a bug to the user. **Fix options:** base the bold count on the per-stage sum, or append an \"N unassigned\" term when `unmappedContacts.length > 0`. ## 2. \"Add to {stage}\" / \"Welcome someone new\" footer buttons don't prefill the stage The column footer buttons call `openNewContact()`, which opens the new-contact modal with **no stage argument** (`useLayout().openNewContact: () => setIsNewContactModalOpen(true)` in `src/App.tsx`). **Effect:** clicking *\"Add to Regular\"* and saving lands the contact in the modal's default stage, not Regular — the label overpromises. The \"Unassigned\" column's *\"Add to Unassigned\"* is likewise misleading. **Fix options:** thread an optional `initialStage` through `openNewContact` / `NewContactModal` and prefill it, or soften the labels (e.g. a single \"Welcome someone new\" everywhere) until prefill is wired. --- _Found during local code review of #28; the PR-Reviewer bot rated #12 fully compliant. Out of scope for #28 (reskin-only)._"
+  },
+  {
+    "number": 24,
+    "title": "[Overhaul #15] The Board — Coordination Notes (warm re-derive)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## Context This is the sibling to #18 (\"My Day\") — the design's `board.jsx` covers **two** Full-timer surfaces: *My Day* (personal cockpit) and *The Board* (shared coordination notes). My Day got its own issue; The Board did not, so this fills the gap. Unlike the other overhaul issues, this screen **already exists in code** — `src/views/CoordinationNotes.tsx` (route `/coordination`, admin-only) was generated by Google AI Studio, not hand-built from the design (see PR #23, which restored RBAC/CI/E2E and kept this view as-is). So this is a **re-derive / align** task, not a build-from-scratch. ## Files - `src/views/CoordinationNotes.tsx` — current AI-generated implementation (Markdown doc editor + categories + todos + archive). - Design ref: `docs/design/project/views/board.jsx` (the coordination / \"The Board\" portion) · `docs/design/project/CLAUDE.md` (spec) · `docs/design/project/styles.css` (Field Notes system). - ⚠️ The committed `docs/design/` bundle holds an **earlier** export; the user later changed the board design (added the Markdown doc-editing surface). Refresh `docs/design/project/` from the latest Claude Design export (`board.jsx`, `app.jsx`, `data.jsx`, `styles.css`, `ui.jsx` changed) before diffing. ## Task 1. Refresh `docs/design/` with the latest board export so the reference matches what the user actually designed. 2. Diff `CoordinationNotes.tsx` against the design's `board.jsx`. Identify where the AI-generated version drifts from the warm **Field notes** intent — layout, serif headings + Hanken Grotesk body, slate-blue accent + stage tones, category framing, Markdown editing UX, todos, archive. 3. Re-derive / restyle the view to match the design (recreate the visual output; don't copy the prototype's internal structure). Keep the working Firestore CRUD + Markdown persistence + archive behavior. 4. Keep `/coordination` **admin-only** (matches the `coordination_notes` firestore rules: `allow get, list: if isAdmin()`). ## Acceptance - The Board reads as a warm, editorial coordination space consistent with the rest of the overhaul (no purple/MD3, no visible monospace). - Markdown doc editing, categories, todos, and archive still work against `coordination_notes`. - Still admin-only; nav + route unchanged. - `docs/design/` reference reflects the latest board design."
+  },
+  {
+    "number": 22,
+    "title": "[Overhaul #14] Sign-up reskin",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9. ## File `src/views/SignUp.tsx` · ref `docs/design/project/views/signup.jsx`. ## Build Warm **two-panel welcome** onboarding; no monospace, no visible `C-0xxx` ID line. ## Acceptance Warm two-panel sign-up in light+dark; no mono/IDs; existing onboarding flow intact."
+  },
+  {
+    "number": 21,
+    "title": "[Overhaul #13] Feedback FAB reskin",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## Files `src/components/FeedbackFAB.tsx`, `src/views/SubmitFeedback.tsx` · ref `docs/design/project/views/feedback-fab.jsx`. ## Build Align the existing pencil FAB + submit flow to the warm panel (visible to all roles, bottom-right, above mobile bottom nav). - Four kind pills: **A thought / An idea / Something's off / A request**; textarea (**⌘↵** to submit); persona name/role footer; success state. ## Acceptance Warm FAB + panel; four kind pills; ⌘↵ submits; success state; submissions still reach the feedback inbox."
+  },
+  {
+    "number": 20,
+    "title": "[Overhaul #12] Notifications — \"What's stirring\"",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/components/layout/NotificationCenter.tsx` (+ topbar bell) · ref `docs/design/project/views/notifications.jsx`. ## Build Reskin the existing notification center into a warm **bell + \"What's stirring\" panel** (not an alert feed). - Items generated from live data: new faces, new/answered prayers, overdue care, gatherings, journey moves, tasks. Each = a plain-spoken line on a tonal **28px icon node** (accent/violet/amber/teal/sage). - Grouped **Worth a look** (unread) / **Earlier** (read). Mark-all-read + per-item **set-aside**; read & dismissed sets persist per role (e.g. `cisa.notif.read.<role>`). - Members get a gentler, smaller feed (gathering reminders, \"the team prayed for you\"). ## Acceptance Bell + unread badge in topbar; warm grouped panel from live data; mark-all-read + set-aside persist per role; member feed is gentler."
+  },
+  {
+    "number": 19,
+    "title": "[Overhaul #11] Global Search (⌘K)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/components/layout/GlobalSearch.tsx` (+ topbar wiring) · ref `docs/design/project/views/global-search.jsx`. ## Build Unified **⌘K** search replacing the dead topbar input + Add button. - ⌘K or click expands an **in-place dropdown** (desktop) / **full-screen overlay** (mobile). - Empty state: recent contacts (by `lastTouch`) + quick actions (New contact / Log a visit / Sign-up / The Journey). - Results grouped: **People** (name/notes/major/year/hall/tags → open contact) · **Conversations** (interaction title+body, staff only) · **The Board** (board notes, FT only → navigate). **History** is opt-in behind a pill toggle (staff only). - Keyboard: ↑↓ navigate, ↵ open, Esc close+clear. Mobile bottom-nav FAB → 🔍. ## Acceptance ⌘K opens search; grouped results + quick actions; keyboard nav works; mobile overlay; respects role visibility."
+  },
+  {
+    "number": 18,
+    "title": "[Overhaul #10] \"My Day\" — Full-timer cockpit (new screen)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## What **New screen** + route, gated to **admin** (Full-timer). FT's personal home, counterpart to The Journey. Ref `docs/design/project/views/board.jsx` (`MyDayFT`). ## Build - New view `src/views/MyDay.tsx`; add route in `src/App.tsx`; add nav entry in `src/lib/permissions.ts` (`NAV_ITEMS` + `ROUTE_MIN_ROLE`, minRole `admin`) and an icon in `Sidebar.tsx`. - Sections: prose greeting → **On your plate** (checkable to-dos from tasks + board commitments, due chips, live count) → **The leaders you're walking with** (owned contacts as reach cards) → **Your week** (featured prayer-huddle card + gatherings with his role) → **Prayers you're carrying** (\"I prayed today\") → quiet figures. - Data keyed off the signed-in admin's id. ## Acceptance Admin-only My Day route + nav entry; all sections render from live data; checkable to-dos update a live count; non-admins can't reach it."
+  },
+  {
+    "number": 17,
+    "title": "[Overhaul #9] Settings reskin (keep RBAC)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/views/Settings.tsx` (largest view) · ref `docs/design/project/views/settings.jsx`, `settings-admin.jsx`, `settings-integrations.jsx`. ## Redesign Reskin profile / organization / invitations / advanced into **warm cards**. - **Keep** the **Roles & access** RBAC section — reskin only (this is a locked decision; do not remove enforcement or the role cards). - Reskin integrations. **Leave Google Sheets sync in place** (reskinned) but add a short note/flag in the issue thread for a later keep-or-drop decision — the design dropped it, but we are not deleting working code unasked. (`src/services/sheetsService.ts`, `SyncSheetModal` stay.) ## Acceptance Warm settings; Roles & access section retained + restyled; integrations restyled; Sheets sync still functions; no purple/mono."
+  },
+  {
+    "number": 16,
+    "title": "[Overhaul #8] Looking back (History)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/views/History.tsx` · ref `docs/design/project/views/edit-log.jsx`. ## Redesign Reframe the \"Edit log\" audit trail into **\"Looking back\"** — a warm record of the work of care. - **One continuous stream**: a single vertical thread with small serif **date markers** where the day changes (no day blocks, no grid). - Each entry = one tonal **28px icon node** (steps/prayer/talk/gather = accent/violet/amber/teal). - **Humanize** actions (moved → \"walked … a step further\", created prayer → \"started praying for\", …); scrub IDs / \"(+34 chars)\" / masked digits. - Drop **Export** and \"searchable/exportable\" copy; mono uppercase day labels → plain language (Today / Yesterday / weekday). - Controls in one row: kind pills + \"Whole team ▾\" select + search. ## Acceptance Single warm thread with serif date markers + tonal icon nodes; humanized lines; no IDs/export/mono; filters work."
+  },
+  {
+    "number": 15,
+    "title": "[Overhaul #7] Prayer",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/views/PrayerList.tsx` · ref `docs/design/project/views/prayer.jsx`. ## Redesign A weekly **walk**, not a list: - **One card per person**, grouped **this week / last week / earlier**. - Inline **mark prayed** + **edit**; status pending / answered / ongoing. ## Acceptance Person-grouped weekly cards; inline mark/edit; statuses preserved."
+  },
+  {
+    "number": 14,
+    "title": "[Overhaul #6] Gatherings (Attendance)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## Files `src/views/Attendance.tsx`, `src/components/modals/AddEventModal.tsx` · ref `docs/design/project/views/attendance.jsx`. ## Redesign Replace the contacts×sessions grid with care-first framing: - **Who we've missed lately** (absence → care) first. - **When we gathered** — warm session cards; tap to expand a **Gathered / We-missed** roster; tap a name to cycle **present→late→absent**. - **Coming up** + a quiet figures footer. - \"New gathering\" → **Log a gathering** modal (name, type pills, date, location). ## Acceptance Missed-lately section leads; expandable session rosters with cycling marks; Coming up + quiet figures; log-a-gathering works."
+  },
+  {
+    "number": 13,
+    "title": "[Overhaul #5] People (Directory + contact profile)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## Files `src/views/Directory.tsx`, `src/components/modals/ContactDetailsModal.tsx` · ref `docs/design/project/views/contacts.jsx`, `contact-detail.jsx`. ## Redesign - **People-first warm directory** — cards, **not** a dense table; keep search + filters (stage/role/spiritual bg/tags). - **Warm contact profile**: Conversations + Prayer tabs; inline **+ add tag** / remove; header actions **Log interaction**, **Add prayer**, **Call · Text · Email** (`tel:`/`sms:`/`mailto:`). - Remove visible `C-0xxx` IDs everywhere. ## Acceptance Warm card directory (no table); warm profile with working tabs, inline tags, log/prayer/contact actions; no IDs."
+  },
+  {
+    "number": 12,
+    "title": "[Overhaul #4] The Journey (Outreach Board)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/views/OutreachBoard.tsx` · ref `docs/design/project/views/stage-board.jsx`. ## Redesign Reframe the kanban from a sales pipeline into a warm **left→right journey**. - Cards **lead with the person** + \"last connected\" (relative time); drop `C-0xxx` IDs and monospace. - Keep @dnd-kit drag/drop between stages and stage CRUD. - StageChip tones use the four stage tones (accent/amber/teal/violet). ## Acceptance Warm journey board; person-first cards with \"last connected\"; drag/drop + stage CRUD intact; no IDs/mono."
+  },
+  {
+    "number": 11,
+    "title": "[Overhaul #3] Today (Dashboard)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** overhaul (epic #8). Depends on Foundation #9 + Shell #10. ## File `src/views/Dashboard.tsx` · ref `docs/design/project/views/dashboard.jsx`. ## Redesign Reframe around people & care, not KPIs. - Plain-language **greeting + prose summary** (serif). - Sections: **People to reach out to** · **New faces** · **This week** · **Prayers we're carrying**. - Metrics demoted to a quiet **figures footer** (\"Numbers are just a way of noticing people.\"). - **No** KPI cards, sparklines, or DB IDs. ## Acceptance Warm Today page in light+dark; sections present; metrics only in the quiet footer; no IDs/sparklines."
+  },
+  {
+    "number": 10,
+    "title": "[Overhaul #2] Shell: sidebar + topbar + nav relabel",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** design overhaul (epic #8). Depends on Foundation https://github.com/Shir0o/cisa-campus-work-traker/issues/9. **Blocks all screen issues.** ## Goal Reskin the app shell and relabel navigation to warm, human language. ## Files - `src/lib/permissions.ts` — `NAV_ITEMS` labels (and add My Day later in #10). - `src/components/layout/Sidebar.tsx`, `src/components/layout/TopBar.tsx`. - Reference: `docs/design/project/views/sidebar.jsx`, `docs/design/project/styles.css` (`.sidebar`/`.topbar`/`.nav-item` blocks). ## Nav relabel (route hrefs unchanged — labels only) | href | old label | new label | |---|---|---| | `/` | Dashboard | **Today** | | `/board` | Stage | **The Journey** | | `/directory` | Contacts | **People** | | `/attendance` | Attendance | **Gatherings** | | `/prayer` | Prayer List | **Prayer** | | `/history` | History | **Looking back** | | `/settings` | Settings | Settings | ## Shell reskin - Sidebar: warm `--bg-elev` surface, serif brand title, accent left-rail on active item, soft borders; show the user's **role/director name in the sidebar foot** (avatar + name + role label via existing `roleLabel()`). Drop monospace. - Topbar: warm surface, serif page title/crumbs, room for the Global Search field (#11) and Notifications bell (#12) — leave hooks but those land in their own issues. - Keep collapse behavior, mobile overlay, and Motion animations. ## Acceptance - Nav reads Today / People / The Journey / Gatherings / Prayer / Looking back / Settings; routing unchanged; RBAC filtering still applies. - Sidebar + topbar match the warm look; role shown in foot; no monospace. - Mobile overlay + collapse still work."
+  },
+  {
+    "number": 9,
+    "title": "[Overhaul #1] Foundation: Field Notes tokens, fonts & global styles",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "design-overhaul"
+    ],
+    "body": "Part of the **Field notes** design overhaul (epic #8). **Blocks every other overhaul issue.** ## Goal Replace the Material Design 3 *purple* design tokens with the warm **Field Notes** palette so the new look ripples through every existing Tailwind class (`bg-surface`, `text-on-surface`, `bg-primary`, `border-outline-variant`, …) with minimal churn. **Keep token names; change values.** ## Files - `src/index.css` — `@theme` block + `:root` (light) and `.dark` token values. - `index.html` — Google Fonts link. ## Token mapping (light `:root` = warm paper, default / dark `.dark`) Source of truth: `docs/design/project/styles.css` (`[data-theme=light]` / `:root`). | MD3 token | Light | Dark | from | |---|---|---|---| | `--background` | `#eaeef4` | `#15191f` | page `--bg` | | `--surface`, `--surface-container-lowest` | `#ffffff` | `#1f252e` | card `--panel` | | `--surface-container-low`, `--surface-container` | `#f4f6fb` | `#1b2027` | `--bg-elev` | | `--surface-container-high`, `--surface-container-highest` | `#e1e7f0` | `#2b333f` | `--hover`/`--panel-2` | | `--on-background`, `--on-surface` | `#232b38` | `#e7ebf2` | `--text` | | `--on-surface-variant` | `#5c6675` | `#a6afbe` | `--text-dim` | | `--outline-variant` | `#d6dde9` | `#364150` | `--border` | | `--outline` | `#8f98a8` | `#717c8d` | `--text-mute` | | `--primary` | `#3a5a82` | `#7aa0cc` | `--accent` | | `--on-primary` | `#ffffff` | `#15191f` | — | | `--primary-container` / `--secondary-container` (active nav) | accent-soft tint `rgba(58,90,130,.09)` | `rgba(122,160,204,.16)` | `--accent-soft` | | `--error` | `#b5503f` | `#d77c64` | `--danger` | | `--success` | `#5d8071` | `#8fae9d` | `--success` | | `--warning` | `#b0833a` | `#d6ac63` | `--warn` | ## Stage tones Add four stage tones as CSS vars + Tailwind utilities, replacing the eight `--color-board-*`: - **accent** slate-blue `#3a5a82`/`#7aa0cc` · **amber** terracotta `#c0823f`/`#d39e68` · **teal** sage `#5d8071`/`#8bae9d` · **violet** plum `#7d5a86`/`#b58cc4` (each with a `-soft` ~16% tint). ## Fonts & type - Add **Hanken Grotesk** (`400;500;600;700`) to the `index.html` Google Fonts link (Newsreader is already loaded). - `@theme` → `--font-sans: \"Hanken Grotesk\", ui-sans-serif, system-ui, sans-serif;` keep `--font-serif: \"Newsreader\", …`. - Apply Newsreader serif to `h1, h2, h3` (base rule) and expose a `.serif` utility. - **Remove all visible monospace** — alias any mono usage to the sans stack. (Real code blocks — webhook URLs/payloads in integrations — may keep `--font-code`.) - Body: 15px, line-height 1.6. Radii: card `10px` / large `16px`. ## Theme mechanism Keep the existing `.dark` class + `ThemeProvider` (Light/Dark/System). **Default = light** (warm paper). Update `index.html` `theme-color` meta (`#6750A4` → `#3a5a82`). ## Acceptance - App renders warm in both light and dark; no purple anywhere; no visible monospace. - Existing screens still lay out correctly (this is a value swap, not a structural change). - `npm run build` / typecheck pass."
+  },
+  {
+    "number": 8,
+    "title": "Epic: Design overhaul — \"Field notes\" warm/pastoral reskin",
+    "state": "closed",
+    "labels": [
+      "documentation",
+      "design-overhaul"
+    ],
+    "body": "## What this is A full reskin of the CISA Campus Work Tracker from its current **Material Design 3 / purple** look into **\"Field notes\"** — a warm, editorial, pastoral design. Mocked up in [Claude Design](https://claude.ai/design) and exported as a handoff bundle. **Design reference** (PR #7): `docs/design/` — start with `docs/design/project/CLAUDE.md` (master per-screen spec) and `docs/design/project/styles.css` (design system). ## The brief The original felt \"too dense and technical\" — a dev-tool / sales-CRM skin (near-black bg, monospace ID codes like `C-0142`, KPI sparklines, \"Stage Board\" pipeline framing) on top of genuinely human, pastoral data. Goal: **keep all features, reskin to feel warm and people-first.** Design language: - **Type:** Newsreader serif for headings/greetings, Hanken Grotesk sans for body. No visible monospace. - **Palette:** slate-blue accent on cool paper; sage success; stage tones accent/amber/teal/violet (slate-blue / terracotta / sage / plum) at matched chroma. - **Tone:** metrics demoted to quiet footers (\"Numbers are just a way of noticing people.\"), DB IDs hidden, nav relabeled to human language, kanban reframed as a warm \"journey\" not a sales pipeline. - Light (\"warm paper\") is the **default**; dark matters too. Both devices matter. ## Locked decisions - **Keep** the permissions/RBAC UI (enforcement + Settings \"Roles & access\") — reskin only. - **Include** all four net-new features: Global Search (⌘K), Notifications bell, Feedback FAB reskin, \"My Day\" cockpit. - **Google Sheets sync:** reskin in place; flag for a later keep/remove decision. - **One screen at a time.** ## Work (sequenced — #9 and #10 block the rest) - [x] #9 — Foundation: Field Notes tokens, fonts & global styles - [x] #10 — Shell: sidebar + topbar + nav relabel - [x] #11 — Today (Dashboard) - [x] #12 — The Journey (Outreach Board) - [x] #13 — People (Directory + contact profile) - [x] #14 — Gatherings (Attendance) - [x] #15 — Prayer - [x] #16 — Looking back (History) - [x] #17 — Settings reskin (keep RBAC) - [x] #18 — \"My Day\" — Full-timer cockpit (new screen) - [x] #19 — Global Search (⌘K) - [x] #20 — Notifications — \"What's stirring\" - [x] #21 — Feedback FAB reskin - [x] #22 — Sign-up reskin - [x] #24 — The Board — Coordination Notes (warm re-derive)"
+  },
+  {
+    "number": 5,
+    "title": "Automate E2E tests for role-based permission matrix (4 roles, real login)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "testing"
+    ],
+    "body": "## Goal Add automated **end-to-end tests for the role-based permission matrix** (PR #3) so the four role paths are checked on every PR instead of by hand. Each role signs in as a **real Firebase email/password test user** and we assert landing route, sidebar nav filtering, and route-guard redirects. This was verified manually in a real browser for all four roles (localhost + the Cloudflare preview); this issue captures how to automate it. ## Current state Scaffolding already landed in PR #3 and can be reused: - `playwright.config.ts` - `e2e/permissions.spec.ts` - `e2e/helpers/auth.ts` - `e2e/.test-credentials.example.json` (template; real file is gitignored) - `e2e/README.md` - `scripts/seed-test-user-docs.ts` (firebase-admin seeder) The app now also has an **email/password sign-in form** (added in `a038cc6`), so tests can drive the real login UI — no test-only auth hook required. ## Roles under test | Display name | Internal role | Test login env | | ------------ | ------------- | -------------- | | Full-timer | `admin` | `fulltimer` | | Trainee | `manager` | `trainee` | | Student | `operator` | `student` | | Community | `viewer` | `community` | Expected matrix (source of truth: `src/lib/permissions.ts`): | Route | min role | viewer | operator | manager | admin | |-------|----------|:------:|:--------:|:-------:|:-----:| | `/` dashboard | operator | ✗ | ✓ | ✓ | ✓ | | `/directory` | operator | ✗ | ✓ | ✓ | ✓ | | `/board` stage | manager | ✗ | ✗ | ✓ | ✓ | | `/history` | manager | ✗ | ✗ | ✓ | ✓ | | `/admin/feedback` | admin | ✗ | ✗ | ✗ | ✓ | | `/attendance` `/prayer` `/settings` | viewer | ✓ | ✓ | ✓ | ✓ | Viewer default route is `/attendance`; everyone else defaults to `/`. --- ## Prerequisites (one-time) ### 1. Test users exist in Firebase Auth (email/password) and have **approved `/users/{uid}` docs** The app signs out any authenticated user without an approved user doc, so this is required. Two ways: - **In-app invite (no service account):** sign in as an admin → Settings → Add Member → invite the four emails with roles Full-timer/Trainee/Student/Community. The approved `/users` doc is auto-created on each user's first sign-in. - **Seed script (service account / ADC):** ```bash GOOGLE_APPLICATION_CREDENTIALS=/path/to/sa.json npm run seed:e2e-users ``` ### 2. Credentials file (gitignored) ```bash cp e2e/.test-credentials.example.json e2e/.test-credentials.json # fill in the real emails + passwords ``` Shape: ```json { \"fulltimer\": { \"email\": \"<email>\", \"password\": \"<pw>\", \"role\": \"admin\", \"label\": \"Full-timer\" }, \"trainee\": { \"email\": \"<email>\", \"password\": \"<pw>\", \"role\": \"manager\", \"label\": \"Trainee\" }, \"student\": { \"email\": \"<email>\", \"password\": \"<pw>\", \"role\": \"operator\", \"label\": \"Student\" }, \"community\": { \"email\": \"<email>\", \"password\": \"<pw>\", \"role\": \"viewer\", \"label\": \"Community\" } } ``` ### 3. `VITE_FIREBASE_API_KEY` available to the dev server / build `firebase-applet-config.json` ships with a blank `apiKey`; the dev server reads `VITE_FIREBASE_API_KEY` from `.env`. CI must provide it as a secret. --- ## Implementation plan ### `playwright.config.ts` ```ts import { defineConfig, devices } from '@playwright/test'; // Run against a deployed preview by setting E2E_BASE_URL; otherwise boot the dev server. const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:3000'; export default defineConfig({ testDir: './e2e', fullyParallel: true, workers: process.env.CI ? 2 : undefined, // Firebase Auth occasionally needs a retry on a cold page load; keep this small. retries: process.env.CI ? 2 : 1, reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list', use: { baseURL, trace: 'on-first-retry', // Tall enough that the sidebar footer (logout) is on-screen for 7-item roles (see #4). viewport: { width: 1280, height: 1000 }, }, projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }], webServer: process.env.E2E_BASE_URL ? undefined : { command: 'npm run dev', port: 3000, reuseExistingServer: !process.env.CI, timeout: 60_000 }, }); ``` ### `e2e/helpers/auth.ts` Drive the real email/password form. **Each Playwright test runs in its own isolated browser context**, so there is no shared Firebase auth state between roles — no logout step and none of the persistence races seen during manual testing. ```ts import { type Page } from '@playwright/test'; import { readFileSync } from 'node:fs'; import { fileURLToPath } from 'node:url'; import { dirname, resolve } from 'node:path'; const dir = dirname(fileURLToPath(import.meta.url)); export type Role = 'fulltimer' | 'trainee' | 'student' | 'community'; interface Cred { email: string; password: string; role: string; label: string } export function creds(): Record<Role, Cred> { try { return JSON.parse(readFileSync(resolve(dir, '../.test-credentials.json'), 'utf8')); } catch { throw new Error('Missing e2e/.test-credentials.json — copy from .test-credentials.example.json'); } } export async function signInAs(page: Page, role: Role) { const { email, password } = creds()[role]; await page.goto('/'); await page.getByPlaceholder('Email').waitFor({ state: 'visible' }); // Let Firebase Auth finish initialising before submitting (prevents a cold-load race). await page.waitForTimeout(1500); await page.getByPlaceholder('Email').fill(email); await page.getByPlaceholder('Password').fill(password); await page.getByRole('button', { name: /sign in with email/i }).click(); // The app shell (sidebar) only renders once authenticated AND approved. await page.getByLabel('Main Navigation').waitFor({ state: 'visible', timeout: 20_000 }); } ``` ### `e2e/permissions.spec.ts` ```ts import { test, expect, type Page } from '@playwright/test'; import { signInAs, type Role } from './helpers/auth'; const MATRIX: Record<Role, { landing: RegExp; navPresent: string[]; navAbsent: string[]; allowed: string[]; denied: { from: string; to: RegExp }[]; }> = { community: { landing: /\\/attendance$/, navPresent: ['Attendance', 'Prayer List', 'Settings'], navAbsent: ['Dashboard', 'Stage', 'Contacts', 'History'], allowed: ['/attendance', '/prayer', '/settings'], denied: [ { from: '/', to: /\\/attendance$/ }, { from: '/board', to: /\\/attendance$/ }, { from: '/directory', to: /\\/attendance$/ }, { from: '/admin/feedback', to: /\\/attendance$/ }, ], }, student: { landing: /\\/$/, navPresent: ['Dashboard', 'Contacts', 'Attendance', 'Prayer List', 'Settings'], navAbsent: ['Stage', 'History'], allowed: ['/', '/directory', '/attendance', '/prayer', '/settings'], denied: [ { from: '/board', to: /\\/$/ }, { from: '/history', to: /\\/$/ }, { from: '/admin/feedback', to: /\\/$/ }, ], }, trainee: { landing: /\\/$/, navPresent: ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Settings'], navAbsent: [], allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings'], denied: [{ from: '/admin/feedback', to: /\\/$/ }], }, fulltimer: { landing: /\\/$/, navPresent: ['Dashboard', 'Stage', 'Contacts', 'History', 'Attendance', 'Prayer List', 'Settings'], navAbsent: [], allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/settings', '/admin/feedback'], denied: [], }, }; const navText = (page: Page) => page.getByLabel('Main Navigation').getByRole('link').allInnerTexts().then(t => t.join(' ')); for (const role of Object.keys(MATRIX) as Role[]) { const m = MATRIX[role]; test.describe(`role: ${role}`, () => { test.beforeEach(async ({ page }) => { await signInAs(page, role); }); test('lands on the correct default route', async ({ page }) => { await expect(page).toHaveURL(m.landing); }); test('sidebar shows only permitted nav items', async ({ page }) => { const labels = await navText(page); for (const item of m.navPresent) expect(labels).toContain(item); for (const item of m.navAbsent) expect(labels).not.toContain(item); }); test('allowed routes stay put', async ({ page }) => { for (const route of m.allowed) { await page.goto(route); await expect(page).toHaveURL(new RegExp(route.replace(/\\//g, '\\\\/') + '$')); } }); if (m.denied.length) { test('denied routes redirect to fallback', async ({ page }) => { for (const d of m.denied) { await page.goto(d.from); await expect(page).toHaveURL(d.to); } }); } }); } ``` ### `package.json` ```jsonc \"scripts\": { \"test:e2e\": \"playwright test\", \"seed:e2e-users\": \"tsx scripts/seed-test-user-docs.ts\" } ``` ### Run it ```bash # local dev server (auto-started by Playwright) VITE_FIREBASE_API_KEY=<key> npm run test:e2e # against a deployed preview E2E_BASE_URL=https://<preview>.pages.dev npm run test:e2e ``` --- ## Why this avoids the manual-testing pitfalls - **No logout / account-switch race.** Playwright gives each test a fresh, isolated browser context, so every role gets a clean Firebase auth state. The manual run shared one browser and had to log out between roles, which caused session-persist races and hit the clipped logout button (#4). Tests don't. - **`displayName` provisioning bug is already fixed** (`a038cc6`): email/password accounts have a `null` displayName, which the Firestore rules reject on first-login `setDoc`. Without that fix, first-login provisioning fails with *\"Missing or insufficient permissions\"* and the app hangs on the loading skeleton. - **Cold-load race** mitigated by the short settle in `signInAs` plus 1–2 Playwright retries. - **Footer/logout viewport issue (#4)** avoided by a 1000px-tall viewport (and tests never click logout anyway). ## CI integration ```yaml # .github/workflows/e2e.yml (sketch) name: E2E permissions on: [pull_request] jobs: e2e: runs-on: ubuntu-latest steps: - uses: actions/checkout@v4 - uses: actions/setup-node@v4 with: { node-version: 20, cache: npm } - run: npm ci - run: npx playwright install --with-deps chromium - name: Write test credentials run: echo \"$E2E_TEST_CREDENTIALS\" > e2e/.test-credentials.json env: { E2E_TEST_CREDENTIALS: ${{ secrets.E2E_TEST_CREDENTIALS }} } - run: npm run test:e2e env: { VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }} } - uses: actions/upload-artifact@v4 if: failure() with: { name: playwright-report, path: playwright-report/, retention-days: 7 } ``` Secrets required: - `VITE_FIREBASE_API_KEY` — Firebase web API key - `E2E_TEST_CREDENTIALS` — the JSON contents of `e2e/.test-credentials.json` Notes: - These tests hit the **real** Firebase project. Keep them **read-only** (navigation/redirect assertions only — no data mutation) and consider gating on a label or running against the preview URL rather than on every push. - Make the check **non-blocking** until it's proven stable, then add it to the branch ruleset. ## Acceptance criteria - [ ] `npm run test:e2e` green locally against the dev server for all four roles - [ ] Same green against a deployed preview via `E2E_BASE_URL` - [ ] CI workflow runs on PRs with credentials from secrets - [ ] `.test-credentials.json` and `playwright-report/` are gitignored (already are) - [ ] README documents provisioning + how to run Related: #4 (logout/account-switching UX), PR #3 (the permission feature being tested)."
+  },
+  {
+    "number": 4,
+    "title": "Account switching: session sometimes fails to persist after quick re-login",
+    "state": "closed",
+    "labels": [
+      "bug"
+    ],
+    "body": "## Summary While verifying the role-based permissions in a real browser (signing in as each of the four role test users), I hit two problems related to **switching between user accounts**. ## 1. Log out control can be unreachable (primary, actionable) The **Log out** button lives in the sidebar footer (`src/components/layout/Sidebar.tsx`, the `mt-auto` footer block). The sidebar (`h-screen`, `overflow-hidden`) and its nav-items container are both `overflow-hidden`, so on **shorter viewports** the footer can be pushed below the fold for roles that show many nav items: - **Full-timer (admin)** and **Trainee (manager)** see all **7** nav items → the footer (Log out / Collapse) is clipped and not clickable. - **Student (operator, 5)** and **Community (viewer, 3)** have fewer items → logout is reachable. **Impact:** an admin/manager on a laptop with a shorter window (or OS chrome reducing height) may be unable to log out / switch accounts from the desktop sidebar. **Repro:** sign in as an admin, shrink the window height (~660px content), observe the Log out button is not visible/clickable in the sidebar. **Suggested fix:** make the nav-items region scrollable (`overflow-y-auto`) instead of `overflow-hidden`, and/or guarantee the footer is always pinned/visible regardless of item count. ## 2. Session occasionally fails to persist right after re-login (secondary, lower confidence) When logging out and signing back in as a different user **quickly**, the new sign-in sometimes does not stick — the app returns to the welcome/sign-in screen instead of the dashboard, and a retry is needed. This was intermittent and may be a Firebase auth-persistence timing issue when a sign-in happens immediately after a sign-out/reload. Worth confirming whether real users hit it (e.g. shared kiosk / quick account switches). ## Context Found during PR #3 (role-based access control). The permission logic itself works correctly for all four roles; this issue is specifically about the **logout / account-switching UX**."
+  }
+]

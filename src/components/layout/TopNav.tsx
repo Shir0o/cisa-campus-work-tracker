@@ -40,6 +40,7 @@ import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
 import { LanguageToggle } from '../LanguageToggle';
+import { useI18n } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
 
@@ -68,6 +69,7 @@ function NavGlyph({ href, size = 20, className }: { href: string; size?: number;
 export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateModal?: () => void }) {
   const { user, logOut, isAdmin, isOwner, role, impersonateTarget, ownerViewRole } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen, setSearchOpen } = useLayout();
+  const { t } = useI18n();
   const { pathname } = useLocation();
   const navigate = useNavigate();
 
@@ -121,7 +123,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
           <button
             onClick={() => setIsMobileMenuOpen(true)}
             className="lg:hidden p-2 -ml-1 text-on-surface hover:bg-surface-container-high rounded-full transition-colors shrink-0"
-            aria-label="Open navigation"
+            aria-label={t('nav.open_navigation', 'Open navigation')}
           >
             <MenuIcon />
           </button>
@@ -209,7 +211,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 aria-expanded={moreOpen}
               >
                 <NavGlyph href={pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
-                <Translate as="span" className="whitespace-nowrap">More</Translate>
+                <span className="whitespace-nowrap">{t('actions.more', 'More')}</span>
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', moreOpen && 'rotate-180')} />
               </button>
 
@@ -373,11 +375,11 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="flex items-center gap-3 px-4 py-2 text-sm text-on-surface-variant hover:bg-surface-container-highest transition-colors"
                   >
                     <SettingsIcon className="w-4 h-4" />
-                    <Translate>Settings</Translate>
+                    <span>{t('nav.settings', 'Settings')}</span>
                   </Link>
 
                   <div className="px-4 py-2 flex items-center justify-between border-t border-outline-variant/50">
-                    <Translate as="span" className="text-xs text-on-surface-variant font-medium">Language</Translate>
+                    <span className="text-xs text-on-surface-variant font-medium">{t('settings.language', 'Language')}</span>
                     <LanguageToggle />
                   </div>
 
@@ -390,7 +392,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     className="w-full flex items-center gap-3 px-4 py-2 text-sm text-error hover:bg-error/10 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
-                    <Translate>Log out</Translate>
+                    <span>{t('actions.log_out', 'Log out')}</span>
                   </button>
                 </motion.div>
               )}
@@ -458,7 +460,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
 
             {externalLinks.length > 0 && (
               <div className="mt-4">
-                <Translate as="div" className="text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5">Elsewhere</Translate>
+                <div className="text-xs font-medium text-on-surface-variant/70 px-3 mb-1.5">{t('nav.elsewhere', 'Elsewhere')}</div>
                 {externalLinks.map((item) => (
                   <a
                     key={item.id}
@@ -490,13 +492,13 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 }
               >
                 <FileText className="w-[18px] h-[18px] shrink-0" />
-                <Translate as="span" text={SIGNUP_TITLE} />
+                <span>{t('nav.sign_up_form', 'Sign-up form')}</span>
               </NavLink>
             </div>
 
             <div className="mt-auto pt-4 border-t border-outline-variant space-y-3">
               <div className="flex items-center justify-between px-3">
-                <Translate as="span" className="text-xs font-medium text-on-surface-variant">Language</Translate>
+                <span className="text-xs font-medium text-on-surface-variant">{t('settings.language', 'Language')}</span>
                 <LanguageToggle />
               </div>
               <button
@@ -508,7 +510,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 className="w-full flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-error hover:bg-error/10 font-medium cursor-pointer"
               >
                 <LogOut className="w-[18px] h-[18px] shrink-0" />
-                <Translate>Log out</Translate>
+                <span>{t('actions.log_out', 'Log out')}</span>
               </button>
             </div>
           </motion.nav>

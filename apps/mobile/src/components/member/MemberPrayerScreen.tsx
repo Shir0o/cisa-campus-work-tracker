@@ -16,6 +16,7 @@ import { memberAgo, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useMemberPrayerData } from '../../lib/useMemberPrayerData';
 import { useV2Theme } from '../../theme/v2';
+import { Translate } from '../Translate';
 import { Snackbar } from '../ui';
 import { Sech } from '../v2/Widget';
 import { MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
@@ -73,7 +74,7 @@ function PrayerCard({
   quiet,
   children,
 }: {
-  title: string;
+  title: React.ReactNode;
   meta?: string;
   quiet?: boolean;
   children?: React.ReactNode;
@@ -146,7 +147,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </Text>
             )}
             {data.holding.map((row) => (
-              <PrayerCard key={row.prayerId} title={row.burden} meta={`For ${row.who}`}>
+              <PrayerCard key={row.prayerId} title={<Translate text={row.burden} />} meta={`For ${row.who}`}>
                 <CarryButton
                   carried={data.carriedToday(row.prayerId)}
                   label="I'm praying for this"
@@ -211,7 +212,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               {data.asks.open.map((ask) => (
                 <PrayerCard
                   key={ask.id}
-                  title={ask.body}
+                  title={<Translate text={ask.body} />}
                   meta={`The team is praying · ${memberAgo(ask.createdAt)}`}
                 >
                   <InlineLink
@@ -250,7 +251,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </Text>
             )}
             {data.onYourHeart.open.map((p) => (
-              <PrayerCard key={p.id} title={p.title} meta={`Since ${memberAgo(p.date)}`}>
+              <PrayerCard key={p.id} title={<Translate text={p.title} />} meta={`Since ${memberAgo(p.date)}`}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <CarryButton
                     carried={data.carriedToday(p.id)}
@@ -295,10 +296,10 @@ function MemberPrayer({ role }: { role: MemberRole }) {
             <Sech label="Looking back" />
             <View style={{ gap: 10 }}>
               {data.asks.answered.map((a) => (
-                <PrayerCard key={a.id} title={a.body} meta="Answered" quiet />
+                <PrayerCard key={a.id} title={<Translate text={a.body} />} meta="Answered" quiet />
               ))}
               {data.onYourHeart.answered.map((p) => (
-                <PrayerCard key={p.id} title={p.title} meta="Answered" quiet />
+                <PrayerCard key={p.id} title={<Translate text={p.title} />} meta="Answered" quiet />
               ))}
             </View>
           </View>
