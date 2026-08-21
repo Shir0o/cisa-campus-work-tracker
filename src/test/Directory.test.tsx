@@ -468,6 +468,83 @@ describe('Directory', () => {
     });
   });
 
+  it('lets trainees browse all people and by teammate', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'u1', email: 'trainee@example.com' },
+      role: 'manager',
+      isAdmin: false,
+    } as any);
+
+    const teamContacts = [
+      {
+        id: 'c1',
+        data: () => ({
+          name: 'Alice Johnson',
+          email: 'alice@example.com',
+          phone: '123-456-7890',
+          role: 'Student',
+          stage: 'Lead',
+          location: 'Dorm A',
+          spiritualBackground: 'None',
+          tags: ['Freshman'],
+          createdAt: '2026-01-01T00:00:00.000Z',
+          createdBy: 'u1',
+          createdByName: 'Mei Tanaka',
+        }),
+      },
+      {
+        id: 'c2',
+        data: () => ({
+          name: 'Bob Smith',
+          email: 'bob@example.com',
+          phone: '987-654-3210',
+          role: 'Leader',
+          stage: 'Regular',
+          location: 'Off-campus',
+          spiritualBackground: 'Christian',
+          tags: ['Senior'],
+          createdAt: '2026-02-01T00:00:00.000Z',
+          createdBy: 'u2',
+          createdByName: 'Ana Beltrán',
+        }),
+      },
+    ];
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({ docs: teamContacts, size: 2 });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+
+    await waitFor(() => {
+      expect(screen.getByText('By teammate')).toBeInTheDocument();
+    });
+
+    // Default "My people" only shows contacts the trainee added.
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Everyone'));
+    await waitFor(() => {
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('By teammate'));
+    const teammateSelect = screen.getByLabelText('Choose a teammate');
+    expect(teammateSelect).toBeInTheDocument();
+
+    fireEvent.change(teammateSelect, { target: { value: 'u2' } });
+    expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+  });
+
   it('handles snapshot errors for contacts and stages', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any, errorCallback: any) => {
