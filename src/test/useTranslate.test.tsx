@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { useTranslate } from "../hooks/useTranslate";
-import { Translate } from "../components/Translate";
+import { Translate, OriginalToggle } from "../components/Translate";
 import { LanguageToggle } from "../components/LanguageToggle";
-import { LanguageProvider, useLanguage } from "../components/LanguageProvider";
+import { LanguageProvider, useLanguage, useI18n } from "../components/LanguageProvider";
 import * as translator from "../lib/translator";
 
 function TestTranslateComponent({ text }: { text: string }) {
@@ -24,6 +24,18 @@ function TestLanguageSwitcher() {
       <span data-testid="current-lang">{language}</span>
       <button onClick={() => setLanguage("es")}>Switch ES</button>
       <button onClick={() => setLanguage("en")}>Switch EN</button>
+    </div>
+  );
+}
+
+function TestI18nComponent() {
+  const { t, language, isSpanish } = useI18n();
+  return (
+    <div>
+      <span data-testid="i18n-lang">{language}</span>
+      <span data-testid="i18n-is-spanish">{isSpanish ? "yes" : "no"}</span>
+      <span data-testid="i18n-save">{t("actions.save")}</span>
+      <span data-testid="i18n-custom">{t("non.existent", "Fallback Text")}</span>
     </div>
   );
 }
@@ -87,18 +99,22 @@ describe("useTranslate and Translate component", () => {
     expect(titleEl.textContent).toBe("Compañerismo");
   });
 
-  it("Translate component supports children as string content", async () => {
+  it("Translate component supports children as string content and number content", async () => {
     translator.setCachedTranslation("Settings", "Ajustes", "es");
 
     render(
       <LanguageProvider defaultLanguage="es">
         <Translate as="div" data-testid="settings-label">Settings</Translate>
+        <Translate as="div" data-testid="number-label">{42}</Translate>
       </LanguageProvider>
     );
 
     const el = screen.getByTestId("settings-label");
     expect(el.tagName.toLowerCase()).toBe("div");
     expect(el.textContent).toBe("Ajustes");
+
+    const numEl = screen.getByTestId("number-label");
+    expect(numEl.textContent).toBe("42");
   });
 
   it("handles empty or null text gracefully", () => {
@@ -131,6 +147,71 @@ describe("useTranslate and Translate component", () => {
 
     expect(screen.getByTestId("pending").textContent).toBe("done");
     expect(screen.getByTestId("translated").textContent).toBe("Active item");
+  });
+
+  it("supports showOriginalToggle and toggles back and forth", () => {
+    translator.setCachedTranslation("Original Prayer Note", "Nota de oración original", "es");
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <Translate text="Original Prayer Note" showOriginalToggle data-testid="ugc-text" />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("ugc-text").textContent).toContain("Nota de oración original");
+    const toggleBtn = screen.getByRole("button", { name: "Ver original" });
+    expect(toggleBtn).toBeInTheDocument();
+
+    fireEvent.click(toggleBtn);
+    expect(screen.getByTestId("ugc-text").textContent).toContain("Original Prayer Note");
+    expect(screen.getByRole("button", { name: "Ver traducción" })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver traducción" }));
+    expect(screen.getByTestId("ugc-text").textContent).toContain("Nota de oración original");
+  });
+
+  it("renders standalone OriginalToggle button and handles clicks", () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(
+      <LanguageProvider defaultLanguage="es">
+        <OriginalToggle showingOriginal={false} onToggle={onToggle} />
+      </LanguageProvider>
+    );
+
+    const btn = screen.getByRole("button", { name: "Ver original" });
+    fireEvent.click(btn);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <LanguageProvider defaultLanguage="es">
+        <OriginalToggle showingOriginal={true} onToggle={onToggle} />
+      </LanguageProvider>
+    );
+    expect(screen.getByRole("button", { name: "Ver traducción" })).toBeInTheDocument();
+  });
+
+  it("OriginalToggle formats in English when targetLang is English", () => {
+    const onToggle = vi.fn();
+    render(
+      <LanguageProvider defaultLanguage="en">
+        <OriginalToggle showingOriginal={false} onToggle={onToggle} targetLang="en" />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByRole("button", { name: "Show original" })).toBeInTheDocument();
+  });
+
+  it("useI18n hook provides translation helper and active language status", () => {
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestI18nComponent />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("i18n-lang").textContent).toBe("es");
+    expect(screen.getByTestId("i18n-is-spanish").textContent).toBe("yes");
+    expect(screen.getByTestId("i18n-save").textContent).toBe("Guardar");
+    expect(screen.getByTestId("i18n-custom").textContent).toBe("Fallback Text");
   });
 
   it("updates translation when subscriber callback fires", async () => {

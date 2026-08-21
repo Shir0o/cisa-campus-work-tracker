@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { AppLanguage, saveUserPreferences, subscribeUserPreferences } from "../lib/userPreferences";
 import { useAuth } from "./AuthProvider";
+import { t as translateKey } from "../lib/i18n";
 
 interface LanguageContextType {
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
   isSpanish: boolean;
+  t: (key: string, fallback?: string) => string;
 }
 
 const STORAGE_KEY = "cisa_language";
@@ -62,13 +64,21 @@ export function LanguageProvider({
     }
   }, [effectiveUserId]);
 
+  const t = React.useCallback(
+    (key: string, fallback?: string) => {
+      return translateKey(key, language, fallback);
+    },
+    [language],
+  );
+
   const value = React.useMemo<LanguageContextType>(
     () => ({
       language,
       setLanguage,
       isSpanish: language === "es",
+      t,
     }),
-    [language, setLanguage],
+    [language, setLanguage, t],
   );
 
   return (
@@ -85,7 +95,14 @@ export function useLanguage() {
       language: "en" as AppLanguage,
       setLanguage: () => {},
       isSpanish: false,
+      t: (key: string, fallback?: string) => translateKey(key, "en", fallback),
     };
   }
   return context;
 }
+
+export function useI18n() {
+  const { t, language, isSpanish } = useLanguage();
+  return { t, language, isSpanish };
+}
+

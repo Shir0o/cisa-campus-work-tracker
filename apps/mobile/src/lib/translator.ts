@@ -1,20 +1,21 @@
-// Pure client translation utility with multi-tier caching (L1 memory + L2 localStorage)
+// Pure mobile client translation utility with multi-tier caching (L1 memory + L2 AsyncStorage)
 // and batch request debouncing against POST /api/translate.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// ── Pure SHA-256 implementation (synchronous, 0 dependency, matches server hash) ──
+export type AppLanguage = 'en' | 'es';
+
+// ── Pure SHA-256 implementation (synchronous, matches server hash) ──
 function sha256Sync(ascii: string): string {
   function rightRotate(value: number, amount: number) {
     return (value >>> amount) | (value << (32 - amount));
   }
 
-  const mathPow = Math.pow;
-  const maxWord = mathPow(2, 32);
-  let lengthProperty = "length";
-  let i = 0, j = 0;
-  let result = "";
+  let i = 0;
+  let j = 0;
+  let result = '';
 
   const words: number[] = [];
-  const asciiBitLength = ascii[lengthProperty] * 8;
+  const asciiBitLength = ascii.length * 8;
 
   let hash = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -103,14 +104,14 @@ function sha256Sync(ascii: string): string {
   }
 
   for (i = 0; i < 8; i++) {
-    result += (hash[i] >>> 0).toString(16).padStart(8, "0");
+    result += (hash[i] >>> 0).toString(16).padStart(8, '0');
   }
 
   return result;
 }
 
 export function computeTranslationHash(targetLang: string, text: string): string {
-  const normalizedLang = (targetLang || "es").trim().toLowerCase();
+  const normalizedLang = (targetLang || 'es').trim().toLowerCase();
   const trimmedText = text.trim();
   return sha256Sync(`${normalizedLang}:${trimmedText}`);
 }
@@ -119,48 +120,51 @@ export function computeTranslationHash(targetLang: string, text: string): string
 
 const L1_CACHE = new Map<string, string>(); // hash -> translatedText
 const SUBSCRIBERS = new Map<string, Set<(translated: string) => void>>();
-const STORAGE_PREFIX = "cisa_tr_";
+const STORAGE_PREFIX = 'cisa_tr_';
 
-export function getCachedTranslation(text: string, targetLang: string = "es"): string | null {
+export function getCachedTranslation(text: string, targetLang: string = 'es'): string | null {
   if (!text || !text.trim()) return text;
-  if (targetLang === "en") return text;
+  if (targetLang === 'en') return text;
 
   const hash = computeTranslationHash(targetLang, text);
 
-  // 1. Check L1 in-memory cache
+  // Check in-memory L1 cache
   if (L1_CACHE.has(hash)) {
     return L1_CACHE.get(hash)!;
-  }
-
-  // 2. Check L2 localStorage cache
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const stored = localStorage.getItem(`${STORAGE_PREFIX}${hash}`);
-      if (stored) {
-        L1_CACHE.set(hash, stored);
-        return stored;
-      }
-    } catch {
-      // Ignore localStorage read errors
-    }
   }
 
   return null;
 }
 
-export function setCachedTranslation(text: string, translated: string, targetLang: string = "es"): void {
+export async function getAsyncCachedTranslation(text: string, targetLang: string = 'es'): Promise<string | null> {
+  if (!text || !text.trim()) return text;
+  if (targetLang === 'en') return text;
+
+  const hash = computeTranslationHash(targetLang, text);
+  if (L1_CACHE.has(hash)) {
+    return L1_CACHE.get(hash)!;
+  }
+
+  try {
+    const stored = await AsyncStorage.getItem(`${STORAGE_PREFIX}${hash}`);
+    if (stored) {
+      L1_CACHE.set(hash, stored);
+      return stored;
+    }
+  } catch {
+    // Ignore AsyncStorage read errors
+  }
+
+  return null;
+}
+
+export function setCachedTranslation(text: string, translated: string, targetLang: string = 'es'): void {
   if (!text || !text.trim()) return;
 
   const hash = computeTranslationHash(targetLang, text);
   L1_CACHE.set(hash, translated);
 
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      localStorage.setItem(`${STORAGE_PREFIX}${hash}`, translated);
-    } catch {
-      // Storage quota exceeded or disabled
-    }
-  }
+  AsyncStorage.setItem(`${STORAGE_PREFIX}${hash}`, translated).catch(() => {});
 
   // Notify active subscribers
   const subs = SUBSCRIBERS.get(hash);
@@ -169,22 +173,17 @@ export function setCachedTranslation(text: string, translated: string, targetLan
   }
 }
 
-export function clearTranslationCache(): void {
+export async function clearTranslationCache(): Promise<void> {
   L1_CACHE.clear();
   SUBSCRIBERS.clear();
-  if (typeof window !== "undefined" && window.localStorage) {
-    try {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(STORAGE_PREFIX)) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach((k) => localStorage.removeItem(k));
-    } catch {
-      // Ignore errors
+  try {
+    const allKeys = await AsyncStorage.getAllKeys();
+    const translationKeys = allKeys.filter((k) => k.startsWith(STORAGE_PREFIX));
+    if (translationKeys.length > 0) {
+      await AsyncStorage.multiRemove(translationKeys);
     }
+  } catch {
+    // Ignore clear errors
   }
 }
 
@@ -220,6 +219,13 @@ interface PendingRequest {
 let batchQueue: PendingRequest[] = [];
 let batchTimer: any = null;
 
+const getApiUrl = () => {
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  return 'https://cisa-campus-work-traker.pages.dev';
+};
+
 async function flushBatch() {
   const currentBatch = batchQueue;
   batchQueue = [];
@@ -227,7 +233,6 @@ async function flushBatch() {
 
   if (currentBatch.length === 0) return;
 
-  // Group by targetLang
   const byLang = new Map<string, PendingRequest[]>();
   for (const item of currentBatch) {
     const list = byLang.get(item.targetLang) ?? [];
@@ -235,13 +240,15 @@ async function flushBatch() {
     byLang.set(item.targetLang, list);
   }
 
+  const baseUrl = getApiUrl();
+
   for (const [targetLang, requests] of byLang.entries()) {
     try {
       const textsToTranslate = requests.map((r) => r.text);
-      const res = await fetch("/api/translate", {
-        method: "POST",
+      const res = await fetch(`${baseUrl}/api/translate`, {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           targetLang,
@@ -255,7 +262,7 @@ async function flushBatch() {
 
       const data = await res.json();
       if (!data.success || !Array.isArray(data.translations)) {
-        throw new Error("Invalid response format from translation API");
+        throw new Error('Invalid response format from translation API');
       }
 
       for (let i = 0; i < requests.length; i++) {
@@ -266,8 +273,7 @@ async function flushBatch() {
         req.resolve(translated);
       }
     } catch (err) {
-      console.warn("[Translator] Batch translation failed, falling back to original text:", err);
-      // Fall back gracefully to original text
+      console.warn('[Translator Mobile] Batch translation failed, falling back to original:', err);
       for (const req of requests) {
         req.resolve(req.text);
       }
@@ -275,9 +281,9 @@ async function flushBatch() {
   }
 }
 
-export function translateText(text: string, targetLang: string = "es"): Promise<string> {
+export function translateText(text: string, targetLang: string = 'es'): Promise<string> {
   if (!text || !text.trim()) return Promise.resolve(text);
-  if (targetLang === "en") return Promise.resolve(text);
+  if (targetLang === 'en') return Promise.resolve(text);
 
   const cached = getCachedTranslation(text, targetLang);
   if (cached !== null) {
@@ -293,24 +299,24 @@ export function translateText(text: string, targetLang: string = "es"): Promise<
   });
 }
 
-export async function translateBatch(texts: string[], targetLang: string = "es"): Promise<string[]> {
+export async function translateBatch(texts: string[], targetLang: string = 'es'): Promise<string[]> {
   if (!texts || texts.length === 0) return [];
-  if (targetLang === "en") return texts;
+  if (targetLang === 'en') return texts;
 
   return Promise.all(texts.map((t) => translateText(t, targetLang)));
 }
 
 export async function prefetchTranslations(
   texts: (string | null | undefined)[],
-  targetLang: string = "es",
+  targetLang: string = 'es',
 ): Promise<void> {
   if (!texts || texts.length === 0) return;
-  if (targetLang === "en") return;
+  if (targetLang === 'en') return;
 
   const validTexts = Array.from(
     new Set(
       texts
-        .filter((t): t is string => typeof t === "string" && t.trim().length > 0)
+        .filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
         .map((t) => t.trim()),
     ),
   );

@@ -33,6 +33,7 @@ import PageContainer from "../components/layout/PageContainer";
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
+import { Translate } from '../components/Translate';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -517,7 +518,9 @@ export default function History() {
                       <span className="text-[13px] text-on-surface-variant/80">{relTime(a.createdAt)}</span>
                     </div>
                     {h.detail && (
-                      <div className="text-[13.5px] text-on-surface-variant/90 leading-relaxed mt-1">{h.detail}</div>
+                      <div className="text-[13.5px] text-on-surface-variant/90 leading-relaxed mt-1">
+                        <Translate text={h.detail} />
+                      </div>
                     )}
                   </div>
                 </div>
