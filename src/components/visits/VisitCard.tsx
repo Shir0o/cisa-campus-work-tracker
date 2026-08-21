@@ -4,6 +4,9 @@ import React, { useState } from 'react';
 import { Check, HeartHandshake, House, Image as ImageIcon, Pencil, Trash2 } from 'lucide-react';
 import { andList, initialsOf, visitDayNum, visitMonth, visitWhen } from '../../lib/visits';
 import { cn } from '../../lib/utils';
+import { RowActions } from '../ui/RowActions';
+import { buildContactRowActions } from '../../lib/rowActions';
+import { UserEntityState } from '../../lib/userEntityState';
 import type { Visit } from '../../types';
 
 interface VisitGroupProps {
@@ -16,6 +19,7 @@ interface VisitGroupProps {
   onEdit: (visit: Visit) => void;
   onRemove: (visit: Visit) => void;
   compact?: boolean;
+  uid?: string;
 }
 
 /** One of the page's three sections — This week, Last week, Earlier. An empty
@@ -30,6 +34,7 @@ export function VisitGroup({
   onEdit,
   onRemove,
   compact = false,
+  uid,
 }: VisitGroupProps) {
   if (list.length === 0) return null;
   return (
@@ -56,6 +61,7 @@ export function VisitGroup({
             onOpenContact={onOpenContact}
             onEdit={() => onEdit(v)}
             onRemove={onRemove}
+            uid={uid}
           />
         ))}
       </div>
@@ -72,6 +78,7 @@ interface VisitCardProps {
   onRemove: (visit: Visit) => void;
   /** Tighter padding for the phone layout. */
   compact?: boolean;
+  uid?: string;
 }
 
 const Face = ({ name, className }: { name: string; className?: string }) => (
@@ -102,6 +109,7 @@ export default function VisitCard({
   onEdit,
   onRemove,
   compact = false,
+  uid,
 }: VisitCardProps) {
   const [confirming, setConfirming] = useState(false);
   const names = visit.contactNames || [];
@@ -115,62 +123,90 @@ export default function VisitCard({
         open ? 'border-primary/30' : 'border-outline-variant hover:border-primary/20',
       )}
     >
-      <button
-        onClick={onToggle}
-        aria-expanded={open}
-        className={cn('w-full flex items-start gap-4 text-left', compact ? 'p-4' : 'p-5')}
-      >
-        <div className="w-12 shrink-0 text-center">
-          <div className="font-serif text-2xl leading-none text-on-surface">{visitDayNum(visit.date)}</div>
-          <div className="text-[10px]   text-on-surface-variant mt-1">
-            {visitMonth(visit.date)}
+      <div className="relative">
+        <button
+          onClick={onToggle}
+          aria-expanded={open}
+          className={cn('w-full flex items-start gap-4 text-left', compact ? 'p-4' : 'p-5')}
+        >
+          <div className="w-12 shrink-0 text-center">
+            <div className="font-serif text-2xl leading-none text-on-surface">{visitDayNum(visit.date)}</div>
+            <div className="text-[10px]   text-on-surface-variant mt-1">
+              {visitMonth(visit.date)}
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 min-w-0">
-          <h3 className="font-serif text-lg text-on-surface leading-snug">{andList(names)}</h3>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-on-surface-variant mt-1">
-            <span className="inline-flex items-center gap-1.5">
-              <House className="w-3.5 h-3.5 shrink-0" />
-              {visit.where || 'no address noted'}
-            </span>
-            <span aria-hidden>·</span>
-            <span>{visitWhen(visit.date)}</span>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-serif text-lg text-on-surface leading-snug">{andList(names)}</h3>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-on-surface-variant mt-1">
+              <span className="inline-flex items-center gap-1.5">
+                <House className="w-3.5 h-3.5 shrink-0" />
+                {visit.where || 'no address noted'}
+              </span>
+              <span aria-hidden>·</span>
+              <span>{visitWhen(visit.date)}</span>
+            </div>
+            {!open && visit.how && (
+              <p className="text-sm text-on-surface-variant/90 leading-relaxed mt-2 line-clamp-2">{visit.how}</p>
+            )}
           </div>
-          {!open && visit.how && (
-            <p className="text-sm text-on-surface-variant/90 leading-relaxed mt-2 line-clamp-2">{visit.how}</p>
-          )}
-        </div>
 
-        <div className="flex flex-col items-end gap-2 shrink-0">
-          <div className="flex -space-x-2">
-            {wentNames.map((n, i) => (
-              <Face key={`${n}-${i}`} name={n} className="ring-2 ring-surface" />
-            ))}
+          <div className="flex flex-col items-end gap-2 shrink-0">
+            <div className="flex -space-x-2">
+              {wentNames.map((n, i) => (
+                <Face key={`${n}-${i}`} name={n} className="ring-2 ring-surface" />
+              ))}
+            </div>
+            <div className="flex items-center gap-1.5 text-on-surface-variant">
+              {visit.followUp && (
+                <span title={`Follow-up: ${visit.followUp}`} className="text-stage-teal">
+                  <Check className="w-3.5 h-3.5" />
+                </span>
+              )}
+              {visit.prayerId && (
+                <span
+                  title={visit.prayerBurden ? `Prayer: ${visit.prayerBurden}` : 'A prayer came out of this'}
+                  className="text-stage-violet"
+                >
+                  <HeartHandshake className="w-3.5 h-3.5" />
+                </span>
+              )}
+              {photos.length > 0 && (
+                <span title={`${photos.length} photos`} className="inline-flex items-center gap-0.5 text-[11px]">
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  {photos.length}
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 text-on-surface-variant">
-            {visit.followUp && (
-              <span title={`Follow-up: ${visit.followUp}`} className="text-stage-teal">
-                <Check className="w-3.5 h-3.5" />
-              </span>
-            )}
-            {visit.prayerId && (
-              <span
-                title={visit.prayerBurden ? `Prayer: ${visit.prayerBurden}` : 'A prayer came out of this'}
-                className="text-stage-violet"
-              >
-                <HeartHandshake className="w-3.5 h-3.5" />
-              </span>
-            )}
-            {photos.length > 0 && (
-              <span title={`${photos.length} photos`} className="inline-flex items-center gap-0.5 text-[11px]">
-                <ImageIcon className="w-3.5 h-3.5" />
-                {photos.length}
-              </span>
-            )}
-          </div>
+        </button>
+        <div className="absolute top-3 right-3">
+          <RowActions
+            label={`More for ${andList(names) || 'this visit'}`}
+            items={buildContactRowActions({
+              contact: {
+                id: visit.contactIds[0] || '',
+                name: names[0] || 'This visit',
+                role: '',
+                location: '',
+                email: '',
+                phone: '',
+                stage: '',
+                lastSeen: '',
+                initials: '',
+              },
+              onOpen: () => {
+                if (visit.contactIds[0]) onOpenContact(visit.contactIds[0]);
+              },
+              onFollowUp: () => {
+                if (!uid || !visit.id) return;
+                UserEntityState.markDone(uid, `visit:${visit.id}`);
+              },
+              hide: ['todo', 'share'],
+            })}
+          />
         </div>
-      </button>
+      </div>
 
       {open && (
         <div className={cn('border-t border-outline-variant space-y-5', compact ? 'p-4' : 'p-5')}>

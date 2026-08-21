@@ -157,9 +157,9 @@ describe('Visits', () => {
     emitVisits([visit()]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
-    // The avatar's initials are part of the button's accessible name ("AOAma Osei").
-    fireEvent.click(screen.getByRole('button', { name: /Ama Osei$/ }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
+    // The avatar's initials are part of the button's accessible name ("AO Ama Osei").
+    fireEvent.click(screen.getByRole('button', { name: /AO\s*Ama Osei$/ }));
     expect(screen.getByText('Contact: Ama Osei')).toBeInTheDocument();
   });
 
@@ -168,7 +168,7 @@ describe('Visits', () => {
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Remove$/ }));
     expect(screen.getByText('Remove it from the record?')).toBeInTheDocument();
     expect(deleteVisit).not.toHaveBeenCalled();
@@ -182,7 +182,7 @@ describe('Visits', () => {
     emitVisits([visit({ prayerId: 'p1', prayerBurden: "Her mum's recovery" })]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.getByText("Her mum's recovery")).toBeInTheDocument();
     expect(screen.getByText('now on our hearts')).toBeInTheDocument();
   });
@@ -191,7 +191,7 @@ describe('Visits', () => {
     emitVisits([visit({ prayerId: 'p1' })]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.getByText('A prayer came out of this visit')).toBeInTheDocument();
   });
 
@@ -199,7 +199,7 @@ describe('Visits', () => {
     emitVisits([visit({ photos: [{ path: 'visits/v1/1.jpg', url: '', name: 'room.jpg' }] })]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
     expect(screen.getByTitle('room.jpg')).toBeInTheDocument();
   });
@@ -208,7 +208,7 @@ describe('Visits', () => {
     emitVisits([visit()]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Edit this visit/ }));
     expect(screen.getByText('Log modal: editing v1')).toBeInTheDocument();
   });
@@ -255,7 +255,7 @@ describe('Visits', () => {
     emitVisits([visit()]);
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Edit this visit/ }));
     expect(screen.getByText('Log modal: editing v1')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Close log'));
@@ -269,7 +269,7 @@ describe('Visits', () => {
     render(<Visits />);
     await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { expanded: false }));
+    fireEvent.click(screen.getAllByRole('button', { expanded: false })[0]);
     fireEvent.click(screen.getByRole('button', { name: /Remove$/ }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     await waitFor(() =>

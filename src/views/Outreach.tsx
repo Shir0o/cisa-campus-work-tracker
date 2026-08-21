@@ -35,6 +35,9 @@ import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
+import { RowActions } from '../components/ui/RowActions';
+import { buildContactRowActions } from '../lib/rowActions';
+import { UserEntityState } from '../lib/userEntityState';
 
 // ── types (the web app has no @cisa/core dependency — own copy) ────────────
 interface OutreachName {
@@ -307,6 +310,32 @@ function PendingRow({
             )}
           </p>
         </div>
+        <RowActions
+          className="shrink-0"
+          label={`More for ${n.name}`}
+          items={buildContactRowActions({
+            contact: contact || {
+              id: '',
+              name: n.name,
+              role: '',
+              location: '',
+              email: '',
+              phone: '',
+              stage: '',
+              lastSeen: '',
+              initials: '',
+            },
+            onOpen: contact ? () => onOpenContact(contact) : undefined,
+            onMakeTodo: isAdmin && !n.takenBy ? () => onTake(o, n) : undefined,
+            onFollowUp: contact
+              ? () => {
+                  UserEntityState.markDone(me, `contact:${contact.id}`);
+                  UserEntityState.markDone(me, contact.id);
+                }
+              : undefined,
+            hide: ['share', ...(contact ? [] : ['open'])],
+          })}
+        />
       </div>
       <div className="flex gap-2 flex-wrap">
         {isAdmin && n.spokeWith !== me && !n.takenBy && (
