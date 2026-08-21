@@ -20,6 +20,11 @@ vi.mock('../components/ThemeProvider', () => ({
   useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }),
 }));
 
+const mockSetLanguage = vi.fn();
+vi.mock('../components/LanguageProvider', () => ({
+  useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false }),
+}));
+
 vi.mock('./FeedbackList', () => ({
   default: () => {
     const { createElement } = require('react');
@@ -214,6 +219,18 @@ describe('Settings', () => {
 
       expect(screen.getByText('Pending approval')).toBeInTheDocument();
       expect(screen.queryByText('Approved')).not.toBeInTheDocument();
+    });
+
+    it('renders Language section and allows switching language', () => {
+      setupNonManagerAuth();
+
+      render(<Settings />);
+
+      expect(screen.getByText('Language')).toBeInTheDocument();
+      expect(screen.getByText('Español')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Español'));
+      expect(mockSetLanguage).toHaveBeenCalledWith('es');
     });
   });
 

@@ -39,6 +39,7 @@ import {
 import SeasonChip from './SeasonChip';
 import GlobalSearch from './GlobalSearch';
 import NotificationCenter from './NotificationCenter';
+import { LanguageToggle } from '../LanguageToggle';
 import { SIGNUP_TITLE } from './SignupInvite';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
@@ -374,6 +375,11 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     Settings
                   </Link>
 
+                  <div className="px-4 py-2 flex items-center justify-between border-t border-outline-variant/50">
+                    <span className="text-xs text-on-surface-variant font-medium">Language</span>
+                    <LanguageToggle />
+                  </div>
+
                   <button
                     type="button"
                     onClick={() => {
@@ -487,14 +493,18 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
               </NavLink>
             </div>
 
-            <div className="mt-auto pt-4 border-t border-outline-variant">
+            <div className="mt-auto pt-4 border-t border-outline-variant space-y-3">
+              <div className="flex items-center justify-between px-3">
+                <span className="text-xs font-medium text-on-surface-variant">Language</span>
+                <LanguageToggle />
+              </div>
               <button
                 type="button"
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   logOut();
                 }}
-                className="w-full flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-error hover:bg-error/10 font-medium"
+                className="w-full flex items-center gap-3 rounded-xl h-11 px-3 text-sm text-error hover:bg-error/10 font-medium cursor-pointer"
               >
                 <LogOut className="w-[18px] h-[18px] shrink-0" />
                 Log out

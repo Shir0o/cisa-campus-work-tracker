@@ -2,8 +2,11 @@
 // `db`. Mirrors the web app's src/lib/userPreferences.ts.
 import { doc, onSnapshot, setDoc, type Firestore } from "firebase/firestore";
 
+export type AppLanguage = "en" | "es";
+
 export interface UserPreferences {
   personalContactIds?: string[];
+  language?: AppLanguage;
 }
 
 export function subscribeUserPreferences(
