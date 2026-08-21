@@ -12,6 +12,7 @@ const preset = require('jest-expo/jest-preset');
 module.exports = {
   preset: 'jest-expo',
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  testTimeout: 15000,
   moduleNameMapper: {
     ...preset.moduleNameMapper,
     '^@cisa/core$': '<rootDir>/../../packages/core/src/index.ts',

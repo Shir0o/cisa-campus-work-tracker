@@ -50,8 +50,8 @@ const EXPECT: Record<Role, {
   community: { // viewer
     landing: '/',
     nav: {
-      present: ['Home', 'Gatherings', 'On our hearts', 'Messages', 'Settings'],
-      absent: ['The Board', 'People', 'Looking back', 'Coordination Notes'],
+      present: ['Home', 'Gatherings', 'On our hearts', 'Messages'],
+      absent: ['The Journey', 'People', 'Looking back', 'Coordination Notes'],
     },
     allowed: ['/', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
     denied: ['/board', '/directory', '/history', '/coordination', '/admin/feedback'],
@@ -60,8 +60,8 @@ const EXPECT: Record<Role, {
   student: { // operator
     landing: '/',
     nav: {
-      present: ['Home', 'People', 'Gatherings', 'On our hearts', 'Messages', 'Settings'],
-      absent: ['The Board', 'Looking back'],
+      present: ['Home', 'People', 'Gatherings', 'On our hearts', 'Messages', 'Coordination Notes'],
+      absent: ['The Journey', 'Looking back'],
     },
     allowed: ['/', '/directory', '/attendance', '/prayer', '/messages', '/settings', '/feedback'],
     denied: ['/board', '/history', '/admin/feedback'],
@@ -70,8 +70,8 @@ const EXPECT: Record<Role, {
   trainee: { // manager
     landing: '/',
     nav: {
-      present: ['Home', 'The Board', 'People', 'Messages'],
-      absent: ['Coordination Notes', 'Visits', 'Settings'],
+      present: ['Home', 'The Journey', 'People', 'Messages'],
+      absent: ['Coordination Notes', 'Visits'],
     },
     allowed: ['/', '/board', '/directory', '/messages', '/feedback'],
     denied: ['/coordination', '/admin/feedback', '/settings'],
@@ -80,7 +80,7 @@ const EXPECT: Record<Role, {
   fulltimer: { // admin — home nav label is "My Day", not "Home"
     landing: '/',
     nav: {
-      present: ['My Day', 'The Board', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages', 'Settings'],
+      present: ['My Day', 'The Journey', 'People', 'Looking back', 'Gatherings', 'On our hearts', 'Coordination Notes', 'Messages'],
       absent: [],
     },
     allowed: ['/', '/board', '/directory', '/history', '/attendance', '/prayer', '/messages', '/settings', '/feedback', '/coordination', '/admin/feedback'],

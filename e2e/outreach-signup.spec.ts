@@ -45,14 +45,9 @@ test.describe('Outreach & Sign-Up Intake Flow', () => {
       await emailField.fill(`jordan.student.${Date.now()}@example.com`);
     }
 
-    const majorField = page.getByPlaceholder(/major/i).first();
+    const majorField = page.locator('#signup-major').or(page.getByPlaceholder(/major/i).first());
     if (await majorField.isVisible()) {
       await majorField.fill('Computer Science');
-    } else {
-      const majorSelect = page.locator('#signup-major');
-      if (await majorSelect.isVisible()) {
-        await majorSelect.selectOption('Computer Science');
-      }
     }
 
     // Select gender chip if present
