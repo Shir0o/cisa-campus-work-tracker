@@ -22,6 +22,7 @@ import { deleteChatRoom, hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { PersonMark } from '../queue/atoms';
+import { Translate } from '../Translate';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
 import { MessagesListSkeleton } from './MessagesListSkeleton';
 import { SwipeToDelete } from './SwipeToDelete';
@@ -92,12 +93,11 @@ function ConversationRow({
         <Text numberOfLines={1} style={{ fontFamily: font.extra, fontSize: fs(15), color: c.card.ink }}>
           {name}
         </Text>
-        <Text
+        <Translate
           numberOfLines={1}
           style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink2, marginTop: 2 }}
-        >
-          {preview || 'No messages yet'}
-        </Text>
+          text={preview || 'No messages yet'}
+        />
         {!!kind && (
           <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3, marginTop: 3 }}>{kind}</Text>
         )}

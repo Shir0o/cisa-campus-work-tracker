@@ -511,8 +511,8 @@ export function V2PersonRow({
   name: string;
   /** Stable per-person colour, so the same face is the same colour everywhere. */
   colorSeed: string;
-  sub?: string;
-  note?: string;
+  sub?: React.ReactNode;
+  note?: React.ReactNode;
   right?: React.ReactNode;
   rightText?: string;
   /** The stage dot beside `rightText` — resolve it from `stageToneKey`. */

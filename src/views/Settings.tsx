@@ -204,13 +204,14 @@ function RolesReference({ currentRole }: { currentRole: AppRole | null }) {
 
 function AccountSection() {
   const { user, logOut, role, isApproved } = useAuth();
+  const { t } = useLanguage();
   const myRole = (role as AppRole) ?? null;
 
   return (
     <section className="mt-10">
       <SectionHeader
-        title="Account & Session"
-        sub="Manage your signed-in account and session state."
+        title={t('settings.account_session', 'Account & Session')}
+        sub={t('settings.account_session_sub', 'Manage your signed-in account and session state.')}
       />
       <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4 min-w-0">
@@ -228,7 +229,7 @@ function AccountSection() {
                 )}
               >
                 {isApproved ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                {isApproved ? 'Approved' : 'Pending approval'}
+                {isApproved ? t('settings.approved', 'Approved') : t('settings.pending_approval', 'Pending approval')}
               </span>
               {myRole && (
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-stage-accent-soft text-stage-accent border border-outline-variant/40">
@@ -243,7 +244,7 @@ function AccountSection() {
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-error/10 text-error hover:bg-error/20 font-medium text-sm transition-colors cursor-pointer shrink-0 min-h-[44px] w-full sm:w-auto"
         >
           <LogOut className="w-4 h-4" />
-          Log out
+          {t('actions.log_out', 'Log out')}
         </button>
       </div>
     </section>
@@ -265,9 +266,10 @@ function AppearanceSection({
   theme: string;
   setTheme: (t: 'light' | 'dark' | 'system') => void;
 }) {
+  const { t } = useLanguage();
   return (
     <section className="mt-10">
-      <SectionHeader title="Appearance" sub="How CISA looks. Choose paper, dusk, or follow your device." />
+      <SectionHeader title={t('settings.appearance', 'Appearance')} sub={t('settings.appearance_sub', 'How CISA looks. Choose paper, dusk, or follow your device.')} />
       <div className="grid grid-cols-3 gap-3 max-w-2xl">
         {APPEARANCE.map(({ key, label, note, Icon }) => {
           const active = theme === key;
@@ -302,11 +304,11 @@ const LANGUAGES: { key: 'en' | 'es'; label: string; note: string; flag: string }
 ];
 
 function LanguageSection() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <section className="mt-10">
-      <SectionHeader title="Language" sub="Choose your preferred interface and live translation language." />
+      <SectionHeader title={t('settings.language', 'Language')} sub={t('settings.language_sub', 'Choose your preferred interface and live translation language.')} />
       <div className="grid grid-cols-2 gap-3 max-w-xl">
         {LANGUAGES.map(({ key, label, note, flag }) => {
           const active = language === key;
@@ -1225,6 +1227,7 @@ export default function Settings() {
   const isDev = currentUser?.email?.toLowerCase() === OWNER_EMAIL || isAdmin || isManager;
   const isOwner = currentUser?.email?.toLowerCase() === OWNER_EMAIL;
   const { theme, setTheme } = useTheme();
+  const { t } = useLanguage();
 
   const [users, setUsers] = useState<AppUser[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -1395,8 +1398,8 @@ export default function Settings() {
           <UsageStatsPanel uid={currentUser?.uid || ''} />
           <section className="mt-10">
             <SectionHeader
-              title="What people are telling us"
-              sub="Feedback from the team and the community. Read it like notes from friends."
+              title={t('settings.what_people_telling_us', 'What people are telling us')}
+              sub={t('settings.what_people_telling_us_sub', 'Feedback from the team and the community. Read it like notes from friends.')}
             />
             <FeedbackList />
           </section>
@@ -1410,16 +1413,16 @@ export default function Settings() {
     return (
       <div className="p-6 md:p-8 max-w-3xl pb-24 lg:pb-8">
         <header className="mb-8">
-          <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">Settings</h1>
-          <p className="text-base text-on-surface-variant mt-2">Your account and preferences.</p>
+          <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">{t('settings.title', 'Settings')}</h1>
+          <p className="text-base text-on-surface-variant mt-2">{t('settings.subtitle', 'Your account and preferences.')}</p>
         </header>
 
         <AccountSection />
 
         <section className="mt-10">
           <SectionHeader
-            title="Roles & access"
-            sub="Roles are labels — a way to know who carries what, and what each person sees."
+            title={t('settings.roles_access', 'Roles & access')}
+            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
           />
           <RolesReference currentRole={myRole} />
         </section>
@@ -1430,7 +1433,7 @@ export default function Settings() {
         {sharedTail}
 
         <p className="mt-12 text-center text-[13px] text-on-surface-variant/70 italic">
-          More account settings will arrive in time.
+          {t('settings.more_account_settings', 'More account settings will arrive in time.')}
         </p>
       </div>
     );
@@ -1440,11 +1443,11 @@ export default function Settings() {
   return (
     <PageContainer variant="reading">
       <header className="mb-8">
-        <h1 className="font-serif page-title text-on-surface">Settings</h1>
+        <h1 className="font-serif page-title text-on-surface">{t('settings.title', 'Settings')}</h1>
         <p className="text-base text-on-surface-variant mt-2">
           {currentUser?.displayName
-            ? `Signed in as ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`
-            : 'Your workspace and preferences.'}
+            ? `${t('settings.signed_in_as', 'Signed in as')} ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`
+            : t('settings.manager_subtitle', 'Your workspace and preferences.')}
         </p>
       </header>
 
@@ -1454,8 +1457,8 @@ export default function Settings() {
 
       <section className="mt-10">
         <SectionHeader
-          title="Roles & access"
-          sub="Roles are labels — a way to know who carries what, and what each person sees."
+          title={t('settings.roles_access', 'Roles & access')}
+          sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
         />
         <RolesReference currentRole={myRole} />
       </section>
@@ -1463,8 +1466,8 @@ export default function Settings() {
       {/* Your team */}
       <section className="mt-10">
         <SectionHeader
-          title="Your team"
-          sub="Everyone with access to CISA. Their contacts, notes, and history stay with the work."
+          title={t('settings.your_team', 'Your team')}
+          sub={t('settings.your_team_sub', 'Everyone with access to CISA. Their contacts, notes, and history stay with the work.')}
         />
 
         <div className="flex flex-col sm:flex-row gap-2.5 mb-5">
@@ -1472,7 +1475,7 @@ export default function Settings() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
             <input
               type="text"
-              placeholder="Find a teammate…"
+              placeholder={t('settings.find_teammate', 'Find a teammate…')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-3 bg-surface rounded-xl border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
@@ -1482,7 +1485,7 @@ export default function Settings() {
             onClick={() => setShowInviteDialog(true)}
             className="px-4 py-3 rounded-xl bg-primary text-on-primary font-medium flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shrink-0"
           >
-            <UserPlus className="w-4 h-4" /> Add someone
+            <UserPlus className="w-4 h-4" /> {t('settings.add_someone', 'Add someone')}
           </button>
         </div>
 
@@ -1541,7 +1544,7 @@ export default function Settings() {
           </div>
         ) : approvedUsers.length === 0 && filteredInvites.length === 0 ? (
           <div className="py-12 text-center rounded-2xl border border-dashed border-outline-variant/50">
-            <p className="text-sm text-on-surface-variant">No teammates or invites match your search.</p>
+            <p className="text-sm text-on-surface-variant">{t('settings.no_matches', 'No teammates or invites match your search.')}</p>
           </div>
         ) : (
           <div className="space-y-2.5">
@@ -1569,8 +1572,8 @@ export default function Settings() {
       {isAdmin && (
         <section className="mt-10">
           <SectionHeader
-            title="Walking together"
-            sub="Pair each trainee with a full-timer who walks alongside them. These pairs drive the trainee's “your full-timer” and the full-timer's trainee inbox."
+            title={t('settings.walking_together', 'Walking together')}
+            sub={t('settings.walking_together_sub', 'Pair each trainee with a full-timer who walks alongside them. These pairs drive the trainee’s “your full-timer” and the full-timer’s trainee inbox.')}
           />
           {admins.length === 0 || trainees.length === 0 ? (
             <p className="text-sm text-on-surface-variant">
@@ -1629,10 +1632,9 @@ export default function Settings() {
           <Shield className="w-4 h-4" />
         </span>
         <div>
-          <h3 className="font-serif text-base text-on-surface leading-tight">A note on access</h3>
+          <h3 className="font-serif text-base text-on-surface leading-tight">{t('settings.note_on_access', 'A note on access')}</h3>
           <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
-            Approving or removing access takes effect right away. You can't remove your own access or change your own
-            role — that's by design, so no one locks themselves out.
+            {t('settings.note_on_access_body', 'Approving or removing access takes effect right away. You can’t remove your own access or change your own role — that’s by design, so no one locks themselves out.')}
           </p>
         </div>
       </div>

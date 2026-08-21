@@ -2926,6 +2926,40 @@
     "is_pull_request": false
   },
   {
+    "id": 5133521925,
+    "number": 257,
+    "title": "[Feedback] Something's off: once opened, the page switching to other pages do not work anymore (overlayed by the people popup)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 2,
+    "created_at": "2026-08-12T17:23:03Z",
+    "updated_at": "2026-08-19T05:56:39Z",
+    "closed_at": "2026-08-13T21:49:05Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/12/2026, 5:23:03 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nonce opened, the page switching to other pages do not work anymore (overlayed by the people popup)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/257",
+    "is_pull_request": false
+  },
+  {
     "id": 5133516824,
     "number": 256,
     "title": "[Feedback] A thought: no displaying the scroll bar all the time?",

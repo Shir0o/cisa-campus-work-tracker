@@ -36,6 +36,8 @@ import {
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { prefetchTranslations } from '../lib/translator';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
@@ -113,6 +115,16 @@ export default function Messages() {
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [roomSearch, setRoomSearch] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
+  const { language, t } = useLanguage();
+
+  // Warm translation cache for visible chat messages when Spanish is active.
+  useEffect(() => {
+    if (language !== 'es') return;
+    void prefetchTranslations(
+      messages.flatMap((m) => [m.text, ...(m.attachments ?? []).map((a) => a.name)]),
+      language,
+    );
+  }, [messages, language]);
 
   // Rail filter + thread chrome (the design's msgs-filters / pinned strip / thread search)
   const [filter, setFilter] = useState<'all' | 'unread' | 'groups' | 'announce'>('all');
@@ -844,7 +856,7 @@ export default function Messages() {
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
                   <MessageSquare className="w-10 h-10 text-outline" />
-                  <p className="text-sm">No messages yet. Send a message to start the conversation!</p>
+                  <p className="text-sm">{t('common.empty_messages', 'No messages yet. Send a message to start the conversation!')}</p>
                 </div>
               ) : visibleMsgs.length === 0 && threadSearch ? (
                 <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>

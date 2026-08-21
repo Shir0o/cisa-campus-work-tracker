@@ -14,6 +14,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeProvider';
 import { AuthProvider, useAuth } from '../src/lib/AuthProvider';
+import { LanguageProvider } from '../src/lib/LanguageProvider';
 import { useRoomTint } from '../src/lib/roomTint';
 import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
@@ -104,11 +105,13 @@ export default function RootLayout() {
             appearance preference is saved per person, so the theme needs a uid.
             AuthProvider itself reads no theme. */}
         <AuthProvider>
-          <ThemeProvider>
-            <BottomSheetModalProvider>
-              <RootNavigator />
-            </BottomSheetModalProvider>
-          </ThemeProvider>
+          <LanguageProvider>
+            <ThemeProvider>
+              <BottomSheetModalProvider>
+                <RootNavigator />
+              </BottomSheetModalProvider>
+            </ThemeProvider>
+          </LanguageProvider>
         </AuthProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

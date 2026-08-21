@@ -17,6 +17,8 @@ import { isTeamPrayer, reconcilePrayerOrder, isContactBrother, isContactSister, 
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { prefetchTranslations } from '../lib/translator';
 import { useLayout } from '../App';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
@@ -142,6 +144,16 @@ export default function PrayerList() {
   const [profileContact, setProfileContact] = useState<Contact | null>(null);
   // Whether the "Choose people" picker is open.
   const [picking, setPicking] = useState(false);
+  const { language } = useLanguage();
+
+  // Warm the translation cache for visible prayer text when Spanish is active.
+  useEffect(() => {
+    if (language !== 'es') return;
+    void prefetchTranslations(
+      prayers.flatMap((p) => [p.burden, p.answer]),
+      language,
+    );
+  }, [prayers, language]);
 
   // Load contacts
   useEffect(() => {

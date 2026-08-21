@@ -26,6 +26,8 @@ import { db, handleFirestoreError, OperationType, logActivity } from '../lib/fir
 import { cn, getUserInitials } from '../lib/utils';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { prefetchTranslations } from '../lib/translator';
 import { visibleContacts, seesAllPeople } from '../lib/permissions';
 import { Contact, Stage } from '../types';
 import { Skeleton } from '../components/ui/Skeleton';
@@ -158,6 +160,16 @@ export default function Directory() {
   // people page remounted (e.g. after closing a contact detail).
   const contactsLoadedRef = useRef(false);
   const stagesLoadedRef = useRef(false);
+  const { language } = useLanguage();
+
+  // Warm translation cache for visible contact notes when Spanish is active.
+  useEffect(() => {
+    if (language !== 'es') return;
+    void prefetchTranslations(
+      contacts.flatMap((c) => [c.notes, c.name]),
+      language,
+    );
+  }, [contacts, language]);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.

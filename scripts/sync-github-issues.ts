@@ -35,6 +35,28 @@ export interface GitHubIssueSummary {
   is_pull_request: boolean;
 }
 
+export interface GitHubIssueIndex {
+  number: number;
+  title: string;
+  state: string;
+  labels: string[];
+  body: string;
+}
+
+export function oneLineBody(body: string | null | undefined): string {
+  return (body ?? '').replace(/\s+/g, ' ').trim();
+}
+
+export function buildIssueIndex(issues: GitHubIssueSummary[]): GitHubIssueIndex[] {
+  return issues.map((issue) => ({
+    number: issue.number,
+    title: issue.title,
+    state: issue.state,
+    labels: issue.labels.map((label) => label.name),
+    body: oneLineBody(issue.body),
+  }));
+}
+
 export async function fetchGitHubIssues(repo: string, token?: string): Promise<GitHubIssueSummary[]> {
   const issues: GitHubIssueSummary[] = [];
   let page = 1;
@@ -120,24 +142,28 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
 }
 
 export function autoCommitAndPush(
-  filePath: string,
+  filePath: string | string[],
   branch = 'main',
   execFn: (cmd: string, opts?: any) => any = execSync
 ): boolean {
   try {
-    const relativePath = path.relative(process.cwd(), filePath);
+    const filePaths = Array.isArray(filePath) ? filePath : [filePath];
+    const relativePaths = filePaths.map((file) => path.relative(process.cwd(), file));
+    const pathsForShell = relativePaths.map((relativePath) => `"${relativePath}"`).join(' ');
+    const displayPaths = relativePaths.join(', ');
+
     console.log(`Switching to ${branch}...`);
     execFn(`git switch ${branch}`, { stdio: 'inherit' });
 
-    const status = (execFn(`git status --porcelain "${relativePath}"`, { encoding: 'utf8' }) || '').toString().trim();
+    const status = (execFn(`git status --porcelain ${pathsForShell}`, { encoding: 'utf8' }) || '').toString().trim();
 
     if (!status) {
-      console.log(`No changes detected in ${relativePath}. Skipping commit and push.`);
+      console.log(`No changes detected in ${displayPaths}. Skipping commit and push.`);
       return false;
     }
 
-    console.log(`Staging ${relativePath}...`);
-    execFn(`git add "${relativePath}"`, { stdio: 'inherit' });
+    console.log(`Staging ${displayPaths}...`);
+    execFn(`git add ${pathsForShell}`, { stdio: 'inherit' });
 
     try {
       execFn('git config user.name', { encoding: 'utf8' });
@@ -147,11 +173,11 @@ export function autoCommitAndPush(
     }
 
     console.log(`Committing changes...`);
-    execFn(`git commit -m "docs: sync github issues into ${relativePath} [skip ci]"`, { stdio: 'inherit' });
+    execFn(`git commit -m "docs: sync github issues into ${displayPaths} [skip ci]"`, { stdio: 'inherit' });
 
     console.log(`Pushing to ${branch}...`);
     execFn(`git push origin ${branch}`, { stdio: 'inherit' });
-    console.log(`Successfully committed and pushed ${relativePath} to ${branch}.`);
+    console.log(`Successfully committed and pushed ${displayPaths} to ${branch}.`);
     return true;
   } catch (err) {
     console.error('Error during auto-commit and push:', err);
@@ -163,6 +189,7 @@ export async function syncIssuesToDocs(opts?: {
   repo?: string;
   token?: string;
   outputPath?: string;
+  indexOutputPath?: string;
   autoCommitPush?: boolean;
   branch?: string;
   execFn?: (cmd: string, opts?: any) => any;
@@ -174,6 +201,7 @@ export async function syncIssuesToDocs(opts?: {
     'Shir0o/cisa-campus-work-traker';
   const token = opts?.token || process.env.GITHUB_TOKEN;
   const outputPath = opts?.outputPath || path.join(process.cwd(), 'docs', 'issues.json');
+  const indexOutputPath = opts?.indexOutputPath || path.join(path.dirname(outputPath), 'issues-index.json');
   const autoCommitPush = opts?.autoCommitPush ?? false;
   const branch = opts?.branch || 'main';
   const execFn = opts?.execFn || execSync;
@@ -193,8 +221,17 @@ export async function syncIssuesToDocs(opts?: {
   await fs.promises.writeFile(outputPath, JSON.stringify(issues, null, 2) + '\n', 'utf8');
   console.log(`Successfully written issues to ${outputPath}`);
 
+  const issueIndex = buildIssueIndex(issues);
+  if (fs.existsSync(indexOutputPath)) {
+    console.log(`Removing existing issues index file at ${indexOutputPath}...`);
+    await fs.promises.rm(indexOutputPath, { force: true });
+  }
+
+  await fs.promises.writeFile(indexOutputPath, JSON.stringify(issueIndex, null, 2) + '\n', 'utf8');
+  console.log(`Successfully written issue index to ${indexOutputPath}`);
+
   if (autoCommitPush) {
-    autoCommitAndPush(outputPath, branch, execFn);
+    autoCommitAndPush([outputPath, indexOutputPath], branch, execFn);
   }
 }
 
