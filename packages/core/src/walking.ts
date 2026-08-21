@@ -12,18 +12,33 @@
 
 // Demo/seed pair (sac-campus-hub test users):
 //   full-timer = cisa-ft@hub.com (admin), trainee = cisa-trainee@hub.com (manager).
+// These defaults can be replaced at runtime by the team-wide settings/walking
+// doc (admin-managed). `applyWalkingPairs` swaps the active map in place so all
+// existing callers keep reading the same module-level constants.
 export const FT_TRAINEES: Record<string, string[]> = {
   b5YPihN2cGRESPRgiTd8sMlNGBz2: ["JfcxyTTTFuNUYMLQTisyq2ppoy82"],
 };
 
 // Reverse lookup: trainee uid → the full-timer walking with them.
-export const FT_OF: Record<string, string> = Object.entries(FT_TRAINEES).reduce(
-  (map, [ft, trainees]) => {
-    for (const t of trainees) map[t] = ft;
-    return map;
-  },
-  {} as Record<string, string>,
-);
+export const FT_OF: Record<string, string> = {};
+
+function rebuildWalkingLookups(): void {
+  for (const key of Object.keys(FT_OF)) delete FT_OF[key];
+  for (const [ft, trainees] of Object.entries(FT_TRAINEES)) {
+    for (const t of trainees) FT_OF[t] = ft;
+  }
+}
+
+rebuildWalkingLookups();
+
+/** Replace the active full-timer → trainees map (from settings/walking). */
+export function applyWalkingPairs(pairs: Record<string, string[]>): void {
+  for (const key of Object.keys(FT_TRAINEES)) delete FT_TRAINEES[key];
+  for (const [ft, trainees] of Object.entries(pairs)) {
+    FT_TRAINEES[ft] = [...trainees];
+  }
+  rebuildWalkingLookups();
+}
 
 /** True when this uid is a trainee someone is walking with. */
 export function isTrainee(uid?: string | null): boolean {

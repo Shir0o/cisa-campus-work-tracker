@@ -146,6 +146,8 @@ function setupManagerSnapshot() {
       callback({ docs: mockUsers });
     } else if (ref?.path === 'invitations') {
       callback({ docs: mockInvitations });
+    } else if (ref?.path === 'settings/walking') {
+      callback({ data: () => ({ pairs: {} }) });
     } else {
       callback({ docs: [] });
     }
@@ -161,9 +163,14 @@ describe('Settings', () => {
     vi.restoreAllMocks();
     // Default: non-manager view
     setupNonManagerAuth();
-    // Default: onSnapshot fires immediately with empty docs
-    vi.mocked(onSnapshot).mockImplementation((_ref: any, callback: any) => {
-      callback({ docs: [], size: 0 });
+    // Default: onSnapshot fires immediately with empty docs (and an empty
+    // walking-pairs doc so manager Settings can mount).
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'settings/walking') {
+        callback({ data: () => ({ pairs: {} }) });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
       return vi.fn();
     });
   });
@@ -231,6 +238,62 @@ describe('Settings', () => {
       });
       expect(screen.getByText('charlie@test.com')).toBeInTheDocument();
     });
+
+    it('lets an admin pair trainees with full-timers and saves to settings/walking', async () => {
+      const adminTraineeUsers = [
+        {
+          id: 'u-admin',
+          data: () => ({
+            uid: 'u-admin',
+            email: 'admin@test.com',
+            displayName: 'Admin User',
+            approved: true,
+            role: 'admin',
+            photoURL: null,
+          }),
+        },
+        {
+          id: 'u-trainee',
+          data: () => ({
+            uid: 'u-trainee',
+            email: 'trainee@test.com',
+            displayName: 'Trainee User',
+            approved: true,
+            role: 'manager',
+            photoURL: null,
+          }),
+        },
+      ];
+
+      setupManagerAuth();
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'users') {
+          callback({ docs: adminTraineeUsers });
+        } else if (ref?.path === 'invitations') {
+          callback({ docs: [] });
+        } else if (ref?.path === 'settings/walking') {
+          callback({ data: () => ({ pairs: {} }) });
+        } else {
+          callback({ docs: [] });
+        }
+        return vi.fn();
+      });
+
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Walking together')).toBeInTheDocument();
+      });
+
+      const checkbox = screen.getByRole('checkbox', { name: 'Trainee User' });
+      fireEvent.click(checkbox);
+
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.objectContaining({ path: 'settings/walking' }),
+        { pairs: { 'u-admin': ['u-trainee'] } },
+        { merge: true },
+      );
+    });
   });
 
   // ── 5. Search filtering ──
@@ -294,6 +357,8 @@ describe('Settings', () => {
           callback({ docs: mockUsersWithTest });
         } else if (ref?.path === 'invitations') {
           callback({ docs: mockInvitations });
+        } else if (ref?.path === 'settings/walking') {
+          callback({ data: () => ({ pairs: {} }) });
         } else {
           callback({ docs: [] });
         }
@@ -782,6 +847,8 @@ describe('Settings', () => {
           callback({ docs: mockUsers });
         } else if (ref?.path === 'invitations') {
           callback({ docs: mockInvitations });
+        } else if (ref?.path === 'settings/walking') {
+          callback({ data: () => ({ pairs: {} }) });
         } else {
           callback({ docs: [] });
         }

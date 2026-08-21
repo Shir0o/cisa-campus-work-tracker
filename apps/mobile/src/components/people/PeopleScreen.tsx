@@ -4,12 +4,11 @@
 //
 // No stage-filter pills: in v2 the stages belong to The Journey, and People is
 // a directory you look someone up in.
-import { useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
-  groupContactsByCreator,
   isPushedScreen,
   stageToneKey,
   touchWords,
@@ -64,17 +63,9 @@ function People() {
   const data = usePeopleData(uid);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  // #358 — trainees can browse the whole team's People list by teammate.
-  const [peopleView, setPeopleView] = useState<'people' | 'teammates'>('people');
-  const visibleContacts = useMemo(
-    () => [...data.mine.map((l) => l.contact), ...data.rest.map((l) => l.contact)],
-    [data.mine, data.rest],
-  );
-  const creatorGroups = useMemo(() => groupContactsByCreator(visibleContacts), [visibleContacts]);
-  const showTeammateToggle = role === 'manager';
 
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
-  const nothing = data.mine.length === 0 && data.rest.length === 0 && creatorGroups.length === 0;
+  const nothing = data.mine.length === 0 && data.rest.length === 0;
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -89,64 +80,12 @@ function People() {
           placeholder="Find someone by name, major, hall…"
         />
 
-        {showTeammateToggle && (
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
-            {([
-              ['people', 'People'],
-              ['teammates', 'By teammate'],
-            ] as const).map(([key, label]) => (
-              <Pressable
-                key={key}
-                onPress={() => setPeopleView(key)}
-                style={{
-                  minHeight: 40,
-                  paddingHorizontal: 14,
-                  borderRadius: 999,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  backgroundColor: peopleView === key ? c.room.chip : 'transparent',
-                }}
-              >
-                <Text
-                  style={{
-                    fontFamily: 'System',
-                    fontWeight: peopleView === key ? '700' : '500',
-                    fontSize: 13,
-                    color: peopleView === key ? c.room.ink : c.room.ink3,
-                  }}
-                >
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-
         {data.loading ? (
           <SkeletonList rows={7} style={{ marginTop: 20 }} />
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : nothing ? (
           <V2Empty>Nobody by that name. Try less of it.</V2Empty>
-        ) : peopleView === 'teammates' ? (
-          creatorGroups.length === 0 ? (
-            <V2Empty>No teammates have added people yet.</V2Empty>
-          ) : (
-            creatorGroups.map((group) => (
-              <View key={group.key} style={{ marginTop: 22, gap: 8 }}>
-                <Kicker onRoom>{`${group.name} · ${group.contacts.length}`}</Kicker>
-                {group.contacts.map((contact) => (
-                  <V2PersonRow
-                    key={contact.id}
-                    name={contact.name}
-                    colorSeed={contact.id}
-                    sub={subLine({ contact, days: 0, note: '' })}
-                    onPress={() => router.push(`/contact/${contact.id}`)}
-                  />
-                ))}
-              </View>
-            ))
-          )
         ) : (
           <>
             {data.mine.length > 0 && (

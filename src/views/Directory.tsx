@@ -33,7 +33,6 @@ import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
 import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
-import { groupContactsByCreator } from '../lib/peopleByUser';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -254,10 +253,6 @@ export default function Directory() {
   const [bulkStage, setBulkStage] = useState('');
   const [isCombineTagsOpen, setIsCombineTagsOpen] = useState(false);
   const [newTag, setNewTag] = useState('');
-  // #358 — trainees can browse the whole team's People list by teammate.
-  const isTrainee = role === 'manager';
-  const [peopleScope, setPeopleScope] = useState<'mine' | 'everyone' | 'teammates'>('mine');
-  const [selectedCreatorKey, setSelectedCreatorKey] = useState('all');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
   useEffect(() => {
@@ -282,17 +277,9 @@ export default function Directory() {
   };
 
   const userContacts = useMemo(() => visibleContacts(role, user?.uid, contacts), [role, user?.uid, contacts]);
-  const creatorGroups = useMemo(() => groupContactsByCreator(contacts), [contacts]);
-  const scopeContacts = useMemo(() => {
-    if (!isTrainee || peopleScope !== 'teammates') {
-      return isTrainee && peopleScope === 'mine' ? userContacts : contacts;
-    }
-    if (selectedCreatorKey === 'all') return contacts;
-    return creatorGroups.find((g) => g.key === selectedCreatorKey)?.contacts ?? [];
-  }, [isTrainee, peopleScope, selectedCreatorKey, userContacts, contacts, creatorGroups]);
 
   const filteredContacts = useMemo(() => {
-    let result = scopeContacts;
+    let result = userContacts;
 
     // Search
     if (searchQuery) {
@@ -332,7 +319,7 @@ export default function Directory() {
     }
 
     return result;
-  }, [scopeContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -419,23 +406,23 @@ export default function Directory() {
   const filterStages = useMemo(() => ['All', ...new Set(stagesData.map(s => s.label))], [stagesData]);
   // Contacts without a group (blank/missing role) would otherwise render a
   // blank option in the dropdown — drop them (#359).
-  const filterRoles = useMemo(() => ['All', ...new Set(scopeContacts.map(c => c.role).filter(Boolean))], [scopeContacts]);
-  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(scopeContacts.map(c => c.spiritualBackground).filter(Boolean))], [scopeContacts]);
-  const allTags = useMemo(() => normalizeTagList(scopeContacts.flatMap(c => c.tags || [])), [scopeContacts]);
+  const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role).filter(Boolean))], [userContacts]);
+  const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
+  const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => c.tags || [])), [userContacts]);
 
   const newCount = useMemo(
-    () => scopeContacts.filter(c => {
+    () => userContacts.filter(c => {
       const ms = parseMs(c.createdAt);
       return ms != null && daysSince(ms) <= 14;
     }).length,
-    [scopeContacts],
+    [userContacts],
   );
   const overdueCount = useMemo(
-    () => scopeContacts.filter(c => {
+    () => userContacts.filter(c => {
       const d = daysFor(c);
       return d != null && d >= 7;
     }).length,
-    [scopeContacts, lastTouchByContact],
+    [userContacts, lastTouchByContact],
   );
 
   const toggleTagFilter = (tag: string) => {
@@ -509,7 +496,6 @@ export default function Directory() {
   };
 
   const allSelected = selectedIds.size > 0 && selectedIds.size === filteredContacts.length;
-  const canSelect = !isTrainee || peopleScope === 'mine';
 
   if (error) {
     return <DataLoadError label={error} />;
@@ -546,28 +532,17 @@ export default function Directory() {
         <div className="flex-1 min-w-0">
           <h1 className="font-serif page-title text-on-surface">People</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-            {isTrainee && peopleScope === 'teammates' ? (
-              <>
-                <b className="text-on-surface font-semibold">
-                  {scopeContacts.length} {scopeContacts.length === 1 ? 'person' : 'people'}
-                </b>{' '}
-                in this teammate view
-              </>
-            ) : (
-              <>
-                <b className="text-on-surface font-semibold">
-                  {scopeContacts.length} {scopeContacts.length === 1 ? 'person' : 'people'}
-                </b>{' '}
-                {isTrainee && peopleScope === 'everyone' ? 'on the team' : 'in your care'}
-              </>
-            )}
-            {newCount > 0 && peopleScope !== 'teammates' && (
+            <b className="text-on-surface font-semibold">
+              {userContacts.length} {userContacts.length === 1 ? 'person' : 'people'}
+            </b>{' '}
+            in your care
+            {newCount > 0 && (
               <>
                 {' '}— <span className="text-on-surface font-medium">{newCount}</span> new in the
                 last two weeks
               </>
             )}
-            {overdueCount > 0 && peopleScope !== 'teammates' && (
+            {overdueCount > 0 && (
               <>
                 , and <span className="text-on-surface font-medium">{overdueCount}</span> you
                 haven't connected with in over a week
@@ -598,48 +573,6 @@ export default function Directory() {
           </button>
         </div>
       </header>
-
-      {isTrainee && (
-        <div className="flex flex-wrap items-center gap-2 mt-6">
-          {([
-            ['mine', 'My people'],
-            ['everyone', 'Everyone'],
-            ['teammates', 'By teammate'],
-          ] as const).map(([scope, label]) => (
-            <button
-              key={scope}
-              onClick={() => {
-                setSelectedIds(new Set());
-                setPeopleScope(scope);
-              }}
-              className={cn(
-                "h-10 px-4 rounded-full border text-sm font-medium transition-colors",
-                peopleScope === scope
-                  ? "border-primary bg-primary/10 text-accent"
-                  : "border-outline-variant text-on-surface-variant hover:bg-surface-variant"
-              )}
-            >
-              {label}
-            </button>
-          ))}
-
-          {peopleScope === 'teammates' && (
-            <select
-              value={selectedCreatorKey}
-              onChange={(e) => setSelectedCreatorKey(e.target.value)}
-              className="h-10 px-3 rounded-full border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
-              aria-label="Choose a teammate"
-            >
-              <option value="all">All teammates</option>
-              {creatorGroups.map((g) => (
-                <option key={g.key} value={g.key}>
-                  {g.name} · {g.contacts.length}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
 
       {/* ── Search + filters ── */}
       <div className="flex flex-wrap items-center gap-3 mt-8">
@@ -756,38 +689,30 @@ export default function Directory() {
 
       {/* ── Select bar / count ── */}
       <div className="flex items-center justify-between gap-3 mt-8 mb-4">
-        {canSelect ? (
-          <label className="flex items-center gap-2.5 cursor-pointer group select-none" onClick={toggleSelectAll}>
-            <span className={cn(
-              "w-5 h-5 rounded-md border-2 transition-colors flex items-center justify-center",
-              allSelected ? "bg-primary border-primary" :
-                selectedIds.size > 0 ? "border-primary" : "border-outline group-hover:border-primary"
-            )}>
-              {allSelected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
-              {selectedIds.size > 0 && !allSelected && <span className="w-2 h-0.5 bg-primary rounded" />}
-            </span>
-            <span className="text-sm text-on-surface-variant">
-              {selectedIds.size > 0
-                ? `${selectedIds.size} selected`
-                : !seesAllPeople(role)
-                  ? filteredContacts.length === userContacts.length
-                    ? `${peopleCount(filteredContacts.length)} — everyone you added, or were named on`
-                    : `${filteredContacts.length} of the ${userContacts.length} people you added or were named on`
-                  : filteredContacts.length === scopeContacts.length
-                    ? peopleCount(filteredContacts.length)
-                    : `${peopleCount(filteredContacts.length)} of ${scopeContacts.length}`}
-            </span>
-          </label>
-        ) : (
-          <span className="text-sm text-on-surface-variant">
-            {filteredContacts.length === scopeContacts.length
-              ? peopleCount(filteredContacts.length)
-              : `${peopleCount(filteredContacts.length)} of ${scopeContacts.length}`}
+        <label className="flex items-center gap-2.5 cursor-pointer group select-none" onClick={toggleSelectAll}>
+          <span className={cn(
+            "w-5 h-5 rounded-md border-2 transition-colors flex items-center justify-center",
+            allSelected ? "bg-primary border-primary" :
+              selectedIds.size > 0 ? "border-primary" : "border-outline group-hover:border-primary"
+          )}>
+            {allSelected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
+            {selectedIds.size > 0 && !allSelected && <span className="w-2 h-0.5 bg-primary rounded" />}
           </span>
-        )}
+          <span className="text-sm text-on-surface-variant">
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selected`
+              : !seesAllPeople(role)
+                ? filteredContacts.length === userContacts.length
+                  ? `${peopleCount(filteredContacts.length)} — everyone you added, or were named on`
+                  : `${filteredContacts.length} of the ${userContacts.length} people you added or were named on`
+                : filteredContacts.length === userContacts.length
+                  ? peopleCount(filteredContacts.length)
+                  : `${peopleCount(filteredContacts.length)} of ${userContacts.length}`}
+          </span>
+        </label>
 
         <AnimatePresence>
-          {canSelect && selectedIds.size > 0 && (
+          {selectedIds.size > 0 && (
             <motion.div
               initial={{ opacity: 0, x: 8 }}
               animate={{ opacity: 1, x: 0 }}
@@ -868,21 +793,19 @@ export default function Directory() {
                 )}
               >
                 <div className="flex gap-4 min-w-0">
-                  {/* Select checkbox (browse-only in everyone / by teammate) */}
-                  {canSelect && (
-                    <button
-                      onClick={(e) => toggleSelect(contact.id, e)}
-                      className={cn(
-                        "mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all",
-                        selected
-                          ? "bg-primary border-primary opacity-100"
-                          : "border-outline opacity-40 group-hover:opacity-100 hover:border-primary"
-                      )}
-                      title={selected ? 'Deselect' : 'Select'}
-                    >
-                      {selected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
-                    </button>
-                  )}
+                  {/* Select checkbox */}
+                  <button
+                    onClick={(e) => toggleSelect(contact.id, e)}
+                    className={cn(
+                      "mt-0.5 w-5 h-5 rounded-md border-2 shrink-0 flex items-center justify-center transition-all",
+                      selected
+                        ? "bg-primary border-primary opacity-100"
+                        : "border-outline opacity-40 group-hover:opacity-100 hover:border-primary"
+                    )}
+                    title={selected ? 'Deselect' : 'Select'}
+                  >
+                    {selected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
+                  </button>
 
                   <Avatar contact={contact} />
 

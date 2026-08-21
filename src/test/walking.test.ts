@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  applyWalkingPairs,
   FT_TRAINEES,
   FT_OF,
   isTrainee,
@@ -39,6 +40,19 @@ describe("walking relationships", () => {
     expect(fullTimerOf(undefined)).toBeNull();
     expect(traineesOf("nobody")).toEqual([]);
     expect(traineesOf(undefined)).toEqual([]);
+  });
+});
+
+describe("applyWalkingPairs", () => {
+  it("replaces the active walking map with admin-managed pairs", () => {
+    const original = Object.fromEntries(
+      Object.entries(FT_TRAINEES).map(([ft, trainees]) => [ft, [...trainees]]),
+    );
+    applyWalkingPairs({ ft1: ["t1", "t2"], ft2: ["t3"] });
+    expect(traineesOf("ft1")).toEqual(["t1", "t2"]);
+    expect(fullTimerOf("t1")).toBe("ft1");
+    expect(isTrainee("t3")).toBe(true);
+    applyWalkingPairs(original);
   });
 });
 

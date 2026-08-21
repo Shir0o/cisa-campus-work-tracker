@@ -43,6 +43,8 @@ import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions"
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { UsageStats } from "./lib/usageStats";
+import { applyWalkingPairs } from "./lib/walking";
+import { subscribeWalkingPairs } from "./lib/walkingPairs";
 
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
@@ -397,12 +399,18 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function WalkingPairsSync() {
+  React.useEffect(() => subscribeWalkingPairs(applyWalkingPairs), []);
+  return null;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
         <Router>
           <AuthProvider>
+            <WalkingPairsSync />
             <Routes>
               <Route path="/signup" element={<SignUp />} />
 

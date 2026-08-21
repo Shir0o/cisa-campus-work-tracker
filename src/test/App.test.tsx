@@ -116,6 +116,25 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { LIST: 'LIST' },
 }));
 
+// Mock Firestore just enough for the app-level walking-pairs sync.
+vi.mock('firebase/firestore', () => ({
+  doc: vi.fn((_db: any, collection: string, id: string) => ({ path: `${collection}/${id}`, id })),
+  onSnapshot: vi.fn((_ref: any, callback: any) => {
+    callback({ data: () => ({ pairs: {} }) });
+    return vi.fn();
+  }),
+  collection: vi.fn((_db: any, path: string) => ({ path })),
+  collectionGroup: vi.fn((_db: any, group: string) => ({ group })),
+  query: vi.fn((ref: any) => ref),
+  orderBy: vi.fn(),
+  limit: vi.fn(),
+  writeBatch: vi.fn(() => ({
+    update: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn().mockResolvedValue(undefined),
+  })),
+}));
+
 describe('App Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();

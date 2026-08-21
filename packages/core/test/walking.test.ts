@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
+  applyWalkingPairs,
   FT_OF,
+  FT_TRAINEES,
   isTrainee,
   fullTimerOf,
   traineesOf,
@@ -9,6 +11,19 @@ import {
 
 const FT = 'b5YPihN2cGRESPRgiTd8sMlNGBz2';
 const TRAINEE = 'JfcxyTTTFuNUYMLQTisyq2ppoy82';
+
+describe('applyWalkingPairs', () => {
+  it('replaces the active walking map with admin-managed pairs', () => {
+    const original = Object.fromEntries(
+      Object.entries(FT_TRAINEES).map(([ft, trainees]) => [ft, [...trainees]]),
+    );
+    applyWalkingPairs({ ft1: ['t1', 't2'], ft2: ['t3'] });
+    expect(traineesOf('ft1')).toEqual(['t1', 't2']);
+    expect(fullTimerOf('t1')).toBe('ft1');
+    expect(isTrainee('t3')).toBe(true);
+    applyWalkingPairs(original);
+  });
+});
 
 describe('walking relationships', () => {
   it('derives the reverse trainee → full-timer lookup', () => {

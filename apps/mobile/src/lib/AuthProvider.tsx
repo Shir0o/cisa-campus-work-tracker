@@ -11,6 +11,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
+  applyWalkingPairs,
   isAppOwner,
   canSimulateRole,
   getEffectiveRole,
@@ -21,6 +22,7 @@ import {
   type ImpersonateTarget,
 } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
+import { subscribeWalkingPairs } from './data/walkingPairs';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
@@ -172,6 +174,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       unsubAuth();
       unsubUserDoc?.();
     };
+  }, []);
+
+  useEffect(() => {
+    // Keep the core walking-together map in sync with the admin-managed
+    // settings/walking doc so mobile resolves pairings exactly like web.
+    return subscribeWalkingPairs(applyWalkingPairs);
   }, []);
 
   const value: AuthContextValue = {
