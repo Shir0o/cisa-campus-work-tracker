@@ -18,6 +18,12 @@ export default defineConfig({
           ) {
             return 'board-editor';
           }
+          if (id.includes('node_modules/firebase/')) {
+            return 'firebase';
+          }
+          if (id.includes('node_modules/lucide-react/')) {
+            return 'lucide-icons';
+          }
         },
       },
     },

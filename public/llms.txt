@@ -1,0 +1,10 @@
+# CISA Campus Work Tracker
+
+> Campus ministry contact management, outreach planning, and journey tracking application.
+
+## Overview
+CISA Campus Work Tracker provides tools for campus ministry teams to organize outreach, coordinate prayer requests, track attendance, and manage student journey stages.
+
+## Links & Documentation
+- [Privacy Policy](/docs/privacy.html): Information on data collection, storage, and privacy practices.
+- [Support](/docs/support.html): Help and contact information for application users.

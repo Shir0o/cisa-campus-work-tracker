@@ -15,17 +15,6 @@ import TopNav from "./components/layout/TopNav";
 import MobileNav from "./components/layout/MobileNav";
 import NewContactModal from "./components/modals/NewContactModal";
 import Landing from "./views/landings/Landing";
-import Attendance from "./views/Attendance";
-import Outreach from "./views/Outreach";
-import OutreachBoard from "./views/OutreachBoard";
-import Directory from "./views/Directory";
-import History from "./views/History";
-import PrayerList from "./views/PrayerList";
-import AnsweredList from "./views/AnsweredList";
-import Settings from "./views/Settings";
-import SignUp from "./views/SignUp";
-import PrivacyPolicy from "./views/PrivacyPolicy";
-import Support from "./views/Support";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { LanguageProvider } from "./components/LanguageProvider";
@@ -38,8 +27,6 @@ import SmartImportModal from "./components/modals/SmartImportModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
-import FeedbackList from "./views/FeedbackList";
-import SubmitFeedback from "./views/SubmitFeedback";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
@@ -47,6 +34,21 @@ import { UsageStats } from "./lib/usageStats";
 import { applyWalkingPairs } from "./lib/walking";
 import { subscribeWalkingPairs } from "./lib/walkingPairs";
 
+/* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
+const Attendance = lazyWithRetry(() => import("./views/Attendance"));
+const Outreach = lazyWithRetry(() => import("./views/Outreach"));
+const OutreachBoard = lazyWithRetry(() => import("./views/OutreachBoard"));
+const Directory = lazyWithRetry(() => import("./views/Directory"));
+const History = lazyWithRetry(() => import("./views/History"));
+const PrayerList = lazyWithRetry(() => import("./views/PrayerList"));
+const AnsweredList = lazyWithRetry(() => import("./views/AnsweredList"));
+const Settings = lazyWithRetry(() => import("./views/Settings"));
+const SignUp = lazyWithRetry(() => import("./views/SignUp"));
+const PrivacyPolicy = lazyWithRetry(() => import("./views/PrivacyPolicy"));
+const Support = lazyWithRetry(() => import("./views/Support"));
+const FeedbackList = lazyWithRetry(() => import("./views/FeedbackList"));
+const SubmitFeedback = lazyWithRetry(() => import("./views/SubmitFeedback"));
+/* v8 ignore stop */
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
 const Messages = lazyWithRetry(() => import("./views/Messages"));
@@ -360,7 +362,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               // skeleton instead of the previous viewer's content — the flash
               // every identity-keyed view would otherwise show until its
               // effects re-subscribed and its stale state cleared.
-              <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
+              <React.Suspense
+                fallback={
+                  <div className="p-8 space-y-6">
+                    <Skeleton className="h-10 w-64" />
+                    <Skeleton className="h-96 w-full rounded-3xl" />
+                  </div>
+                }
+              >
+                <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
+              </React.Suspense>
             )}
           </main>
         </div>
@@ -414,7 +425,14 @@ export default function App() {
             <LanguageProvider>
               <WalkingPairsSync />
               <Routes>
-                <Route path="/signup" element={<SignUp />} />
+                <Route
+                  path="/signup"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <SignUp />
+                    </React.Suspense>
+                  }
+                />
 
                 <Route
                   path="/embed/coordination/:docId"
@@ -425,8 +443,22 @@ export default function App() {
                   }
                 />
 
-                <Route path="/privacy" element={<PrivacyPolicy />} />
-                <Route path="/support" element={<Support />} />
+                <Route
+                  path="/privacy"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <PrivacyPolicy />
+                    </React.Suspense>
+                  }
+                />
+                <Route
+                  path="/support"
+                  element={
+                    <React.Suspense fallback={null}>
+                      <Support />
+                    </React.Suspense>
+                  }
+                />
 
                 <Route
                   path="/"
