@@ -1,9 +1,14 @@
 import React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
+import { useMediaQuery } from '../lib/useMediaQuery';
 import type { Contact } from '../types';
+
+vi.mock('../lib/useMediaQuery', () => ({
+  useMediaQuery: vi.fn(),
+}));
 
 const contact: Contact = {
   id: 'c1',
@@ -16,6 +21,10 @@ const contact: Contact = {
   lastSeen: '',
   initials: 'LR',
 };
+
+beforeEach(() => {
+  vi.mocked(useMediaQuery).mockReturnValue(false);
+});
 
 describe('RowActions', () => {
   it('renders nothing when there are no actions', () => {
@@ -45,7 +54,7 @@ describe('RowActions', () => {
     expect(onFollowUp).toHaveBeenCalledTimes(1);
   });
 
-  it('closes on Escape', () => {
+  it('closes on Escape and on outside mousedown', () => {
     const onOpen = vi.fn();
     render(
       <RowActions
@@ -58,6 +67,49 @@ describe('RowActions', () => {
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+    expect(screen.getByRole('menuitem', { name: /Open Lila's page/i })).toBeInTheDocument();
+
+    fireEvent.mouseDown(document.body);
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+  });
+
+  it('renders the mobile bottom sheet and runs an action', () => {
+    vi.mocked(useMediaQuery).mockReturnValue(true);
+    const onOpen = vi.fn();
+    render(
+      <RowActions
+        items={buildContactRowActions({ contact, onOpen, hide: ['todo', 'share', 'followed'] })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+    expect(screen.getByRole('menuitem', { name: /Open Lila's page/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: /Open Lila's page/i }));
+    expect(onOpen).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menuitem')).not.toBeInTheDocument();
+  });
+
+  it('renders disabled actions without running them', () => {
+    const onOpen = vi.fn();
+    render(
+      <RowActions
+        items={[
+          {
+            id: 'disabled',
+            label: 'Disabled action',
+            disabled: true,
+            onSelect: onOpen,
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /more for this row/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Disabled action/i }));
+    expect(onOpen).not.toHaveBeenCalled();
   });
 });
 
@@ -89,5 +141,10 @@ describe('buildContactRowActions', () => {
     });
 
     expect(actions.map((a) => a.id)).toEqual(['open']);
+  });
+
+  it('omits actions whose handlers are missing', () => {
+    const actions = buildContactRowActions({ contact });
+    expect(actions.map((a) => a.id)).toEqual([]);
   });
 });
