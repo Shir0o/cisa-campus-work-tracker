@@ -58,6 +58,7 @@ import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
+import { Translate } from "../Translate";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
@@ -1483,7 +1484,11 @@ export default function ContactDetailsModal({
                           <h3 className="cd-sec-title">What we know</h3>
                         </div>
                         <div className="cd-prose">
-                          {contact.notes || "No notes recorded for this contact yet."}
+                          {contact.notes ? (
+                            <Translate showOriginalToggle text={contact.notes} />
+                          ) : (
+                            "No notes recorded for this contact yet."
+                          )}
                         </div>
                       </div>
 
@@ -1507,7 +1512,9 @@ export default function ContactDetailsModal({
                             {sortedInteractions.slice(0, 3).map((i) => (
                               <div className="cd-tl-item" key={i.id}>
                                 <div className="cd-tl-dot"></div>
-                                <div className="cd-tl-title">{i.content}</div>
+                                <div className="cd-tl-title">
+                                  <Translate showOriginalToggle text={i.content} />
+                                </div>
                                 <div className="cd-tl-meta">
                                   {i.dateTime ? new Date(i.dateTime).toLocaleDateString() : ""}
                                   <span className="sep">·</span>
@@ -1542,7 +1549,7 @@ export default function ContactDetailsModal({
                                 <div key={p.id} className="cd-pray-card">
                                   <div className="cd-pray-top">
                                     <strong className="cd-pray-title">
-                                      {title}
+                                      <Translate showOriginalToggle text={title} />
                                     </strong>
                                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stage-violet-soft text-stage-violet">
                                       <span className="w-1.5 h-1.5 rounded-full bg-stage-violet" /> open
@@ -1550,7 +1557,7 @@ export default function ContactDetailsModal({
                                   </div>
                                   {context && (
                                     <div className="cd-pray-body">
-                                      {context}
+                                      <Translate showOriginalToggle text={context} />
                                     </div>
                                   )}
                                   <div className="cd-pray-foot">
@@ -1849,7 +1856,7 @@ export default function ContactDetailsModal({
                                       </div>
                                     </div>
                                     <div className="p-3 rounded-2xl rounded-tl-none bg-surface-container-high text-on-surface text-sm leading-relaxed border border-outline-variant/30 group-hover:border-outline-variant transition-colors whitespace-pre-wrap">
-                                      {interaction.content}
+                                      <Translate showOriginalToggle text={interaction.content} />
                                     </div>
                                     <div className="mt-1 flex items-center justify-between gap-2">
                                       <span className="text-[10px] font-semibold text-on-surface-variant/40  ">

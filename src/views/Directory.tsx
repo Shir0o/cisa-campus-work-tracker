@@ -37,6 +37,7 @@ import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
 import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
 import { subscribeAllThreads } from '../lib/threads';
+import { Translate } from '../components/Translate';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -847,7 +848,7 @@ export default function Directory() {
                     )}
                     {note && (
                       <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-                        <span className="text-on-surface-variant/70">Lately:</span> {truncate(note, 120)}
+                        <span className="text-on-surface-variant/70">Lately:</span> <Translate text={truncate(note, 120)} />
                       </p>
                     )}
                     {tags.length > 0 && (

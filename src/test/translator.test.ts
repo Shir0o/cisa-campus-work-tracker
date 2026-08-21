@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   translateText,
   translateBatch,
+  prefetchTranslations,
   getCachedTranslation,
   setCachedTranslation,
   clearTranslationCache,
@@ -101,6 +102,32 @@ describe("translator client", () => {
 
     const results = await translateBatch(["Apple", "Banana"], "es");
     expect(results).toEqual(["Manzana", "Plátano"]);
+  });
+
+  it("prefetchTranslations warms cache for uncached texts and ignores already cached ones", async () => {
+    setCachedTranslation("Already Cached", "Ya en caché", "es");
+
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "es",
+        translations: [
+          { original: "Need Translation", translated: "Necesita traducción", hash: "h1", cached: false },
+        ],
+      }),
+    } as any);
+
+    await prefetchTranslations(["Already Cached", "Need Translation", "", null, undefined], "es");
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetLang: "es", texts: ["Need Translation"] }),
+    });
+
+    expect(getCachedTranslation("Need Translation", "es")).toBe("Necesita traducción");
   });
 
   it("falls back to original text when API call fails without throwing error", async () => {

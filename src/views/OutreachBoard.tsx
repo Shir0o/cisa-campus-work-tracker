@@ -38,6 +38,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
+import { Translate } from '../components/Translate';
 import { journeyContacts } from '../lib/permissions';
 import {
   collection,
@@ -1310,7 +1311,7 @@ function InternalKanbanCard({
       {/* Last note */}
       {note && (
         <p className="text-[12.5px] text-on-surface-variant leading-relaxed">
-          <span className="text-on-surface-variant/70">Last:</span> {truncate(note, 100)}
+          <span className="text-on-surface-variant/70">Last:</span> <Translate text={truncate(note, 100)} />
         </p>
       )}
 

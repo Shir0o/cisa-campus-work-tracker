@@ -11,11 +11,12 @@ import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
 import { useLayout } from '../../App';
 import { hasMinRole, AppRole } from '../../lib/permissions';
-import { Translate } from '../Translate';
+import { useI18n } from '../LanguageProvider';
 
 export default function MobileNav() {
   const { role } = useAuth();
   const { setSearchOpen } = useLayout();
+  const { t } = useI18n();
   const isOperator = hasMinRole(role as AppRole, 'operator');
 
   return (
@@ -39,7 +40,7 @@ export default function MobileNav() {
               )}>
                 <LayoutDashboard className="w-5 h-5" />
               </div>
-              <Translate as="span" className="text-[11px] font-medium">Home</Translate>
+              <span className="text-[11px] font-medium">{t('nav.home', 'Home')}</span>
             </>
           )}
         </NavLink>
@@ -59,7 +60,7 @@ export default function MobileNav() {
               )}>
                 <CalendarCheck className="w-5 h-5" />
               </div>
-              <Translate as="span" className="text-[11px] font-medium">Gatherings</Translate>
+              <span className="text-[11px] font-medium">{t('nav.gatherings', 'Gatherings')}</span>
             </>
           )}
         </NavLink>
@@ -72,7 +73,7 @@ export default function MobileNav() {
         <button
           onClick={() => setSearchOpen(true)}
           className="relative -top-5 w-14 h-14 bg-primary text-on-primary rounded-2xl  flex items-center justify-center hover:bg-primary/90 active:scale-95 transition-all outline-none"
-          aria-label="Search"
+          aria-label={t('nav.search', 'Search')}
         >
           <Search className="w-6 h-6" />
         </button>
@@ -94,7 +95,7 @@ export default function MobileNav() {
               )}>
                 <Contact className="w-5 h-5" />
               </div>
-              <Translate as="span" className="text-[11px] font-medium">Contacts</Translate>
+              <span className="text-[11px] font-medium">{t('nav.contacts', 'Contacts')}</span>
             </>
           )}
         </NavLink>
@@ -114,7 +115,7 @@ export default function MobileNav() {
               )}>
                 <HeartHandshake className="w-5 h-5" />
               </div>
-              <Translate as="span" className="text-[11px] font-medium">Prayer</Translate>
+              <span className="text-[11px] font-medium">{t('nav.prayer', 'Prayer')}</span>
             </>
           )}
         </NavLink>

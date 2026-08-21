@@ -1,0 +1,51 @@
+{
+  "nav": {
+    "my_day": "My Day",
+    "home": "Home",
+    "the_journey": "The Journey",
+    "directory": "People",
+    "contacts": "Contacts",
+    "coordination": "Coordination Notes",
+    "prayers": "On our hearts",
+    "prayer": "Prayer",
+    "answered": "Answered",
+    "history": "History",
+    "attendance": "Attendance",
+    "gatherings": "Gatherings",
+    "outreach": "Outreach",
+    "visits": "Visits",
+    "messages": "Messages",
+    "settings": "Settings",
+    "more": "More",
+    "search": "Search",
+    "notifications": "Notifications",
+    "sign_out": "Sign out"
+  },
+  "actions": {
+    "add_someone": "Add someone",
+    "log_visit": "Log a visit",
+    "smart_import": "Smart Import",
+    "quick_add": "Quick Add",
+    "export_csv": "Export CSV",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "view_original": "View original",
+    "show_translation": "Show translation",
+    "reply": "Reply",
+    "send": "Send"
+  },
+  "common": {
+    "loading": "Loading...",
+    "no_results": "No results found",
+    "error_occurred": "An error occurred",
+    "try_again": "Try again",
+    "language": "Language",
+    "english": "English",
+    "spanish": "Spanish"
+  }
+}

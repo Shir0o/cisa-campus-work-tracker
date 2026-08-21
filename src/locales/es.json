@@ -1,0 +1,51 @@
+{
+  "nav": {
+    "my_day": "Mi Día",
+    "home": "Inicio",
+    "the_journey": "La Jornada",
+    "directory": "Personas",
+    "contacts": "Contactos",
+    "coordination": "Notas de coordinación",
+    "prayers": "En nuestro corazón",
+    "prayer": "Oración",
+    "answered": "Contestadas",
+    "history": "Historial",
+    "attendance": "Asistencia",
+    "gatherings": "Reuniones",
+    "outreach": "Alcance",
+    "visits": "Visitas",
+    "messages": "Mensajes",
+    "settings": "Ajustes",
+    "more": "Más",
+    "search": "Buscar",
+    "notifications": "Notificaciones",
+    "sign_out": "Cerrar sesión"
+  },
+  "actions": {
+    "add_someone": "Añadir persona",
+    "log_visit": "Registrar visita",
+    "smart_import": "Importación inteligente",
+    "quick_add": "Añadir rápido",
+    "export_csv": "Exportar CSV",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "close": "Cerrar",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "view_original": "Ver original",
+    "show_translation": "Ver traducción",
+    "reply": "Responder",
+    "send": "Enviar"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "no_results": "No se encontraron resultados",
+    "error_occurred": "Ocurrió un error",
+    "try_again": "Intentar de nuevo",
+    "language": "Idioma",
+    "english": "Inglés",
+    "spanish": "Español"
+  }
+}

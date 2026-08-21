@@ -1244,6 +1244,7 @@ export default function Settings() {
   useEffect(() => {
     if (!isManager) return;
 
+    let timer: any = null;
     const usersQ = query(collection(db, 'users'), orderBy('email', 'asc'));
     const unsubscribeUsers = onSnapshot(
       usersQ,
@@ -1255,11 +1256,11 @@ export default function Settings() {
           return !email.startsWith('cisa-') && !displayName.startsWith('cisa-');
         });
         setUsers(filteredUsers);
-        setTimeout(() => setLoading(false), 600);
+        timer = setTimeout(() => setLoading(false), 600);
       },
       (error) => {
         console.error('Error fetching users:', error);
-        setTimeout(() => setLoading(false), 600);
+        timer = setTimeout(() => setLoading(false), 600);
       },
     );
 
@@ -1271,6 +1272,7 @@ export default function Settings() {
     );
 
     return () => {
+      if (timer) clearTimeout(timer);
       unsubscribeUsers();
       unsubscribeInvites();
     };

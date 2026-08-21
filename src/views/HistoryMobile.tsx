@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
+import { Translate } from '../components/Translate';
 import { Filter, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact } from '../types';
@@ -192,7 +193,7 @@ export default function HistoryMobile({
 
                     {h.detail && (
                       <p className="text-[13.5px] leading-relaxed text-on-surface-variant mt-1 italic pl-2.5 border-l border-outline-variant/60 hist-detail">
-                        {h.detail}
+                        <Translate text={h.detail} />
                       </p>
                     )}
 
