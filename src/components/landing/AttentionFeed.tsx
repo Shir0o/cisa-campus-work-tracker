@@ -398,7 +398,11 @@ export default function AttentionFeed({
   }, [propsThreads]);
 
   const interactions = propsInteractions || liveInteractions;
-  const threads = propsThreads || liveThreads;
+  // Team-scope Discussion is Full-timer-only; hide it from any other role even
+  // before the security rules filter it out server-side.
+  const threads = (propsThreads || liveThreads).filter(
+    (m) => m.scope !== "team" || role === "admin",
+  );
 
   const staffNameMap = useMemo(() => {
     if (propsStaffNameMap) return propsStaffNameMap;

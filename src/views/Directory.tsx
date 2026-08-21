@@ -36,6 +36,7 @@ import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
 import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
+import { subscribeAllThreads } from '../lib/threads';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
 const DAY_MS = 86_400_000;
@@ -223,18 +224,23 @@ export default function Directory() {
       (e) => onLoadError(e, 'interactions (collectionGroup)'),
     );
 
-    const unsubComments = onSnapshot(
-      query(collectionGroup(db, 'comments'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) => {
-        commentTouches = ingest(snap as never, 'text');
-        publish();
-      },
-      (e) => onLoadError(e, 'comments (collectionGroup)'),
-    );
+    const unsubThreads = subscribeAllThreads((messages) => {
+      // Threads are the single per-person conversation surface. Team-scope
+      // Discussion messages are Full-timer-only, so don't surface them as a
+      // public "last connected" touch.
+      commentTouches = messages
+        .filter((m) => m.scope !== 'team')
+        .map((m) => ({
+          contactId: m.contactId,
+          ms: parseMs(m.at) ?? NaN,
+          note: m.body.trim(),
+        }));
+      publish();
+    });
 
     return () => {
       unsubInteractions();
-      unsubComments();
+      unsubThreads();
     };
   }, []);
 

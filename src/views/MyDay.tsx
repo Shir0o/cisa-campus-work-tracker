@@ -62,6 +62,7 @@ import {
 } from "../lib/personalPrayers";
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
+import { subscribeAllThreads } from "../lib/threads";
 import {
   parseMs,
   daysSince,
@@ -573,14 +574,19 @@ export default function MyDay() {
       (e) => onLoadError(e, "interactions (collectionGroup)"),
     );
 
-    const unsubComments = onSnapshot(
-      query(collectionGroup(db, "comments"), orderBy("createdAt", "desc"), limit(500)),
-      (snap) => {
-        commentTouches = ingest(snap as never, "text");
-        publish();
-      },
-      (e) => onLoadError(e, "comments (collectionGroup)"),
-    );
+    const unsubThreads = subscribeAllThreads((messages) => {
+      // Threads are the single per-person conversation surface. Team-scope
+      // Discussion messages are Full-timer-only, so don't surface them as a
+      // public "last connected" touch.
+      commentTouches = messages
+        .filter((m) => m.scope !== "team")
+        .map((m) => ({
+          contactId: m.contactId,
+          ms: parseMs(m.at) ?? NaN,
+          note: m.body.trim(),
+        }));
+      publish();
+    });
 
     return () => {
       unsubContacts();
@@ -588,7 +594,7 @@ export default function MyDay() {
       unsubEvents();
       unsubPrayers();
       unsubInteractions();
-      unsubComments();
+      unsubThreads();
     };
   }, []);
 

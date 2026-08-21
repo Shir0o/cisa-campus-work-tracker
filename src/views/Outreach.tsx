@@ -25,7 +25,7 @@ import {
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { addTodo } from '../lib/todos';
-import { addThreadMessage } from '../lib/threads';
+import { addThreadMessage, subscribeAllThreads } from '../lib/threads';
 import { canLogOutreach } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
@@ -132,23 +132,23 @@ function useTouches(): { touches: Touch[] } {
         ),
       onError,
     );
-    const unsubC = onSnapshot(
-      query(collectionGroup(db, 'comments'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) =>
-        setTouches((prev) =>
-          snap.docs
-            .map((d) => {
-              const data = d.data();
-              return { contactId: contactIdFromPath(d.ref.path), ms: new Date(data.createdAt ?? '').getTime(), note: (data.text ?? '').trim() };
-            })
-            .filter((t) => !Number.isNaN(t.ms))
-            .concat(prev),
-        ),
-      onError,
-    );
+    const unsubT = subscribeAllThreads((messages) => {
+      // Threads are the single per-person conversation surface. Team-scope
+      // Discussion messages are Full-timer-only, so don't surface them as a
+      // public outreach touch.
+      const threadTouches = messages
+        .filter((m) => m.scope !== 'team')
+        .map((m) => ({
+          contactId: m.contactId,
+          ms: new Date(m.at).getTime(),
+          note: m.body.trim(),
+        }))
+        .filter((t) => !Number.isNaN(t.ms));
+      setTouches((prev) => threadTouches.concat(prev));
+    });
     return () => {
       unsubI();
-      unsubC();
+      unsubT();
     };
   }, []);
   return { touches };

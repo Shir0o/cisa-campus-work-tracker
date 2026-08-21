@@ -50,7 +50,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Comment, Activity, PrayerRecord, MET_VIA } from "../../types";
+import { Contact, Stage, Interaction, Activity, PrayerRecord, MET_VIA } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
@@ -185,10 +185,8 @@ export default function ContactDetailsModal({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [interactionsLoading, setInteractionsLoading] = useState(true);
-  const [commentsLoading, setCommentsLoading] = useState(true);
   const [stages, setStages] = useState<Stage[]>([]);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [activitiesLoading, setActivitiesLoading] = useState(true);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
@@ -196,7 +194,7 @@ export default function ContactDetailsModal({
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string; initials: string }[]>([]);
   const [sharing, setSharing] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    "overview" | "interactions" | "thread" | "prayer" | "comments" | "history"
+    "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
   >("overview");
 
   const [liveContact, setLiveContact] = useState<Contact | null>(contact);
@@ -244,9 +242,6 @@ export default function ContactDetailsModal({
   const [submittingPrayer, setSubmittingPrayer] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState("");
-  const [newComment, setNewComment] = useState("");
-  const [submittingComment, setSubmittingComment] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [newInteraction, setNewInteraction] = useState({
     content: "",
     dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -402,42 +397,6 @@ export default function ContactDetailsModal({
             error,
             OperationType.LIST,
             `contacts/${contact.id}/interactions`,
-          );
-        },
-      );
-
-      return () => unsubscribe();
-    }
-  }, [isOpen, contact]);
-
-  useEffect(() => {
-    if (isOpen && contact) {
-      const commentsRef = collection(db, "contacts", contact.id, "comments");
-      const q = query(commentsRef, orderBy("createdAt", "asc"));
-
-      setCommentsLoading(true);
-      const unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          const commentData = snapshot.docs.map((doc) => {
-            const data = doc.data();
-            return {
-              id: doc.id,
-              ...data,
-              createdAt:
-                data.createdAt instanceof Timestamp
-                  ? data.createdAt.toDate().toISOString()
-                  : data.createdAt,
-            } as Comment;
-          });
-          setComments(commentData);
-          setCommentsLoading(false);
-        },
-        (error) => {
-          handleFirestoreError(
-            error,
-            OperationType.LIST,
-            `contacts/${contact.id}/comments`,
           );
         },
       );
@@ -700,9 +659,6 @@ export default function ContactDetailsModal({
       const interactionsSnap = await getDocs(
         collection(db, "contacts", contactId, "interactions"),
       );
-      const commentsSnap = await getDocs(
-        collection(db, "contacts", contactId, "comments"),
-      );
 
       const fieldsLog = [
         `Group: ${contact.role}`,
@@ -712,7 +668,6 @@ export default function ContactDetailsModal({
         `Email: ${contact.email || "N/A"}`,
         `Phone: ${contact.phone || "N/A"}`,
         `Total Interactions: ${interactionsSnap.size}`,
-        `Total Comments: ${commentsSnap.size}`,
       ].join("\\n");
 
       await deleteDoc(doc(db, "contacts", contactId));
@@ -850,61 +805,6 @@ export default function ContactDetailsModal({
       );
     } finally {
       setIsUpdatingInteraction(false);
-    }
-  };
-
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newComment.trim() || !user || !contact) return;
-
-    hasActionRef.current = true;
-    setSubmittingComment(true);
-    try {
-      const commentsRef = collection(db, "contacts", contact.id, "comments");
-      const commentData: any = {
-        userId: user.uid,
-        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
-        userPhoto: user.photoURL || "",
-        text: newComment.trim(),
-        createdAt: serverTimestamp(),
-      };
-      if (replyingTo) {
-        commentData.parentId = replyingTo;
-      }
-      const docRef = await addDoc(commentsRef, commentData);
-
-      logActivity({
-        action: "left a comment on",
-        targetId: contact.id,
-        targetName: contact.name,
-        targetType: "contact",
-        type: "comment",
-        description: newComment.trim(),
-      });
-
-      // Send notification to contact creator if it's not the current user
-      if (contact.createdBy && contact.createdBy !== user.uid) {
-        await sendNotification({
-          userId: contact.createdBy,
-          title: "New Comment",
-          message: `${user.displayName || user.email} commented on ${contact.name}: "${newComment.trim().substring(0, 50)}${newComment.length > 50 ? "..." : ""}"`,
-          type: "info",
-          link: `/directory`, // Focus on directory for now, or just notify
-          targetId: contact.id,
-        });
-      }
-
-      setNewComment("");
-      setReplyingTo(null);
-    } catch (error) {
-      handleFirestoreError(
-        error,
-        OperationType.CREATE,
-        `contacts/${contact.id}/comments`,
-      );
-    } finally {
-      setSubmittingComment(true); // Keep spinner until next tick or just reset
-      setSubmittingComment(false);
     }
   };
 
@@ -1289,7 +1189,7 @@ export default function ContactDetailsModal({
               const visibleTabList = [
                 { id: "overview", label: "Overview" },
                 { id: "thread", label: "Follow-up", count: countFor(threadMessages, null) },
-                ...((role === "admin" || isAdmin) ? [{ id: "comments", label: "Discussion", count: countFor(threadMessages, null, "team") }] : []),
+                ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: "Discussion", count: countFor(threadMessages, null, "team") }] : []),
                 { id: "interactions", label: "Interactions", count: interactions.length },
                 { id: "prayer", label: "Prayer", count: prayers.length },
                 ...(canSeeHistory(role) ? [{ id: "history", label: "History" }] : []),
@@ -2182,7 +2082,7 @@ export default function ContactDetailsModal({
                     </motion.div>
                   )}
 
-                  {activeTab === "comments" && (role === "admin" || isAdmin) && (
+                  {activeTab === "discussion" && (role === "admin" || isAdmin) && (
                     <div className="cd-sec">
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">Discussion</h3>

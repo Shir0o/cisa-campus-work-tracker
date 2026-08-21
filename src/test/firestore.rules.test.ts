@@ -1322,6 +1322,40 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(getDocs(query(collectionGroup(db, 'threads'))));
     });
 
+    it('keeps Full-timer-only Discussion scope away from non-admins', async () => {
+      await seedThreadUsers();
+      await seedMsg('team1', { scope: 'team' });
+
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(getDoc(doc(adminDb, 'contacts/contact1/threads/team1')));
+
+      const operatorDb = getFirestore({ uid: 'operator1' });
+      await assertFails(getDoc(doc(operatorDb, 'contacts/contact1/threads/team1')));
+    });
+
+    it('lets only a Full-timer create team-scope Discussion', async () => {
+      await seedThreadUsers();
+
+      const operatorDb = getFirestore({ uid: 'operator1' });
+      await assertFails(setDoc(doc(operatorDb, 'contacts/contact1/threads/team2'), newMsg({ scope: 'team' })));
+
+      const adminDb = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(adminDb, 'contacts/contact1/threads/team3'), newMsg({ from: 'admin1', scope: 'team' })));
+    });
+
+    it('collection-group thread lists hide team-scope from non-admins', async () => {
+      await seedThreadUsers();
+      await seedMsg('team4', { scope: 'team' });
+
+      const adminDb = getFirestore({ uid: 'admin1' });
+      const adminSnap = await getDocs(query(collectionGroup(adminDb, 'threads')));
+      expect(adminSnap.docs.map((d) => d.id)).toContain('team4');
+
+      const operatorDb = getFirestore({ uid: 'operator1' });
+      const operatorSnap = await getDocs(query(collectionGroup(operatorDb, 'threads')));
+      expect(operatorSnap.docs.map((d) => d.id)).not.toContain('team4');
+    });
+
     it('lets a full-timer mark a contact reviewed (bool only)', async () => {
       await seedThreadUsers();
       const db = getFirestore({ uid: 'admin1' });

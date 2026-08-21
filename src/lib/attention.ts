@@ -147,9 +147,11 @@ export function buildAttentionItems(params: {
       }
     }
   } else if (isTrainee) {
-    // Trainee: full-timer answers/comments/nudges + questions
+    // Trainee: full-timer answers/comments/nudges + questions. Team-scope
+    // Discussion messages are Full-timer-only and must never reach trainees.
     const ft = fullTimerOf(uid);
     for (const m of threads) {
+      if (m.scope === "team") continue;
       if (m.from && (m.from === ft || m.kind === "nudge" || m.kind === "question") && m.from !== uid) {
         items.push({
           id: "thread:" + m.id,

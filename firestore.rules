@@ -210,9 +210,13 @@ service cloud.firestore {
 
       // Walking-together threads (trainee <-> full-timer). A light conversation
       // attached to the contact (interactionId null) or to one interaction.
+      // The same collection is also the single home for the Full-timer-only
+      // Discussion scope (`scope: "team"`); rules below keep that scope hidden
+      // from everyone who could not read the old admin Comments tab.
       match /threads/{threadId} {
         function isValidThread(data) {
           return data.keys().hasAll(['from', 'fromName', 'kind', 'body', 'at', 'reactions', 'interactionId']) &&
+                 (data.scope == null || data.scope == 'team') &&
                  data.from is string && data.from.size() <= 128 &&
                  data.fromName is string && data.fromName.size() <= 128 &&
                  data.kind in ['note', 'question', 'comment', 'encouragement', 'nudge'] &&
@@ -222,14 +226,16 @@ service cloud.firestore {
                  (data.interactionId == null || (data.interactionId is string && data.interactionId.size() <= 128));
         }
 
-        allow read: if isApprovedUser();
+        allow read: if isApprovedUser() && (resource.data.scope != 'team' || isAdmin());
         allow create: if isValidId(threadId) && isApprovedUser() && isOperator() &&
                         isValidThread(incoming()) &&
+                        (incoming().scope != 'team' || isAdmin()) &&
                         incoming().from == request.auth.uid &&
                         incoming().reactions.size() == 0;
-        // Reactions: any approved operator may toggle the reactions array.
-        // Body edits: author only (kind/from/at are immutable).
-        allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && (
+        // Reactions: any approved operator may toggle the reactions array on a
+        // shared-scope message; Full-timer-only Discussion reactions stay with
+        // Full-timers. Body edits: author only (kind/from/at are immutable).
+        allow update: if isValidId(threadId) && isApprovedUser() && isOperator() && (resource.data.scope != 'team' || isAdmin()) && (
                         incoming().diff(existing()).affectedKeys().hasOnly(['reactions'])
                         || (
                           incoming().diff(existing()).affectedKeys().hasOnly(['body']) &&
@@ -237,7 +243,7 @@ service cloud.firestore {
                           incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
                         )
                       );
-        allow delete: if isValidId(threadId) && isApprovedUser() && (isManager() || existing().from == request.auth.uid);
+        allow delete: if isValidId(threadId) && isApprovedUser() && (resource.data.scope != 'team' || isAdmin()) && (isManager() || existing().from == request.auth.uid);
       }
     }
 
@@ -702,8 +708,9 @@ service cloud.firestore {
     // Walking-together threads — collection-group list for the full-timer inbox
     // (My Day) and the trainee cockpit, which read thread messages across all
     // contacts at once. The nested contacts/{id}/threads rule governs get/write.
+    // Team-scope Discussion is only visible to Full-timers here too.
     match /{path=**}/threads/{threadId} {
-      allow list: if isApprovedUser();
+      allow list: if isApprovedUser() && (resource.data.scope != 'team' || isAdmin());
     }
     // RSVPs — collection-group query for "events I'm going to" (subscribeMyRsvps).
     // Scoped to the requester's own RSVPs: the query filters on the `uid` field,

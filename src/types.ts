@@ -123,16 +123,6 @@ export interface Task {
   subtasks?: Subtask[];
 }
 
-export interface Comment {
-  id: string;
-  userId: string;
-  userName: string;
-  userPhoto?: string;
-  text: string;
-  createdAt: string;
-  parentId?: string;
-}
-
 export interface Interaction {
   id: string;
   userId?: string;

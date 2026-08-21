@@ -11,12 +11,13 @@ import {
 import { useEffect, useState } from "react";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
 
-// "Walking together" threads — a light conversation between a trainee and the
-// full-timer walking with them, attached to a contact and (optionally) to one
-// logged interaction. Stored as a subcollection beside interactions/comments:
+// "Walking together" threads — the single per-person conversation surface,
+// attached to a contact and (optionally) to one logged interaction. Stored as:
 //   contacts/{contactId}/threads/{threadId}
 // interactionId === null is the contact-level thread; otherwise it hangs off that
-// interaction. No word "mentor" anywhere.
+// interaction. The old contacts/{id}/comments subcollection has been retired;
+// Full-timer-only Discussion lives here with `scope: "team"`. No word "mentor"
+// anywhere.
 
 export type ThreadKind = "note" | "question" | "comment" | "encouragement" | "nudge";
 
@@ -112,9 +113,10 @@ export function subscribeAllThreads(
       cb(
         snap.docs.map((d) => {
           const data = d.data() as Partial<ThreadMessage>;
+          const pathParts = typeof d.ref?.path === "string" ? d.ref.path.split("/") : [];
           return {
             id: d.id,
-            contactId: d.ref.parent.parent?.id ?? "",
+            contactId: d.ref.parent?.parent?.id ?? pathParts[1] ?? "",
             interactionId: data.interactionId ?? null,
             parentId: data.parentId ?? null,
             scope: (data.scope as "team") ?? null,

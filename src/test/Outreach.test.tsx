@@ -84,6 +84,7 @@ vi.mock('../lib/todos', () => ({
 
 vi.mock('../lib/threads', () => ({
   addThreadMessage: vi.fn(() => Promise.resolve()),
+  subscribeAllThreads: vi.fn(() => () => {}),
 }));
 
 vi.mock('../components/modals/ContactDetailsModal', () => ({
