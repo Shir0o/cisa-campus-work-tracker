@@ -10,13 +10,12 @@ function sha256Sync(ascii: string): string {
     return (value >>> amount) | (value << (32 - amount));
   }
 
-  const mathPow = Math.pow;
-  let lengthProperty = 'length';
-  let i = 0, j = 0;
+  let i = 0;
+  let j = 0;
   let result = '';
 
   const words: number[] = [];
-  const asciiBitLength = ascii[lengthProperty] * 8;
+  const asciiBitLength = ascii.length * 8;
 
   let hash = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
