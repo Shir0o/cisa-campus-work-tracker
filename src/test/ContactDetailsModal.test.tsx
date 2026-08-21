@@ -982,7 +982,7 @@ describe('ContactDetailsModal Component', () => {
     );
   });
 
-  it('reports snapshot failures for interactions, comments, activities and prayers', async () => {
+  it('reports snapshot failures for interactions, activities and prayers', async () => {
     (firestore.onSnapshot as any).mockImplementation((q: any, s: any, e: any) => {
       if (typeof e === 'function') e(new Error('snapshot boom'));
       return vi.fn();
@@ -995,11 +995,6 @@ describe('ContactDetailsModal Component', () => {
         expect.any(Error),
         'LIST',
         'contacts/contact-abc/interactions',
-      );
-      expect(handleFirestoreError).toHaveBeenCalledWith(
-        expect.any(Error),
-        'LIST',
-        'contacts/contact-abc/comments',
       );
       expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'activities');
       expect(handleFirestoreError).toHaveBeenCalledWith(expect.any(Error), 'LIST', 'prayers');

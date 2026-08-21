@@ -123,4 +123,19 @@ describe("traineeWaitingItems", () => {
     ]);
     expect(items.map((x) => x.id)).toEqual(["thread:q2"]);
   });
+
+  it("hides Full-timer-only Discussion from the trainee waiting feed", () => {
+    const items = traineeWaitingItems("t1", [
+      thread({
+        id: "team_nudge",
+        contactId: "c1",
+        from: "ft1",
+        kind: "nudge",
+        at: "2026-02-01T00:00:00Z",
+        scope: "team",
+      }),
+      thread({ id: "normal_q", contactId: "c2", from: "ft1", kind: "question", at: "2026-02-02T00:00:00Z" }),
+    ]);
+    expect(items.map((x) => x.id)).toEqual(["thread:normal_q"]);
+  });
 });

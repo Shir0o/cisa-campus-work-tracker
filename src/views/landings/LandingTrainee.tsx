@@ -176,7 +176,14 @@ export default function LandingTrainee() {
   // weighed-in status. Needs the threads collection-group rule deployed; until
   // then it's permission-denied and stays empty (section simply doesn't render),
   // so degrade quietly rather than surfacing a load error.
-  useEffect(() => subscribeAllThreads(setThreads), []);
+  useEffect(
+    () =>
+      subscribeAllThreads((messages) =>
+        // Trainees never see Full-timer-only Discussion scope.
+        setThreads(messages.filter((m) => m.scope !== "team")),
+      ),
+    [],
+  );
 
   // Your people — the contacts you created, longest-since-seen first.
   const myPeople = useMemo(() => {

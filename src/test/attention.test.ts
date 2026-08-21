@@ -276,6 +276,31 @@ describe("Attention Data Layer (#330)", () => {
     expect(types).toContain("notification");
   });
 
+  it("does not surface Full-timer-only Discussion messages to trainees", () => {
+    const traineeItems = buildAttentionItems({
+      role: "trainee",
+      uid: "u3",
+      threads: [
+        {
+          id: "team_nudge",
+          contactId: "c1",
+          from: "u1",
+          fromName: "Tony",
+          kind: "nudge",
+          body: "Full-timers only: pastoral discussion",
+          at: new Date().toISOString(),
+          interactionId: null,
+          reactions: [],
+          scope: "team",
+        },
+      ],
+      tasks: [],
+      notifications: [],
+    });
+
+    expect(traineeItems.some((i) => i.id === "thread:team_nudge")).toBe(false);
+  });
+
   it("stacks items by targetId and respects targetId done filtering", () => {
     const targetItems: AttentionItem[] = [
       {

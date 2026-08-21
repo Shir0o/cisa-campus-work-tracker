@@ -122,6 +122,7 @@ export function traineeWaitingItems(
 
   const items: InboxItem[] = [];
   for (const m of threads) {
+    if (m.scope === "team") continue; // Full-timer-only Discussion
     if (m.from !== ft) continue;
     if (m.kind !== "nudge" && m.kind !== "question") continue;
     const answered = threads.some(

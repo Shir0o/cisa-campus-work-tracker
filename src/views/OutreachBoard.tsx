@@ -57,6 +57,7 @@ import { applyStageReorder, persistStageOrder } from '../lib/data/stages';
 import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import { useMediaQuery } from '../lib/useMediaQuery';
+import { subscribeAllThreads } from '../lib/threads';
 import OutreachBoardMobile from './OutreachBoardMobile';
 
 // ── Field Notes helpers (mirror Dashboard.tsx) ──────────────────────────
@@ -373,18 +374,23 @@ export default function OutreachBoard() {
       (e) => onLoadError(e, 'interactions (collectionGroup)'),
     );
 
-    const unsubComments = onSnapshot(
-      query(collectionGroup(db, 'comments'), orderBy('createdAt', 'desc'), limit(500)),
-      (snap) => {
-        commentTouches = ingest(snap as never, 'text');
-        publish();
-      },
-      (e) => onLoadError(e, 'comments (collectionGroup)'),
-    );
+    const unsubThreads = subscribeAllThreads((messages) => {
+      // Threads are the single per-person conversation surface. Team-scope
+      // Discussion messages are Full-timer-only, so don't surface them as a
+      // public "last connected" touch.
+      commentTouches = messages
+        .filter((m) => m.scope !== 'team')
+        .map((m) => ({
+          contactId: m.contactId,
+          ms: new Date(m.at).getTime(),
+          note: m.body.trim(),
+        }));
+      publish();
+    });
 
     return () => {
       unsubInteractions();
-      unsubComments();
+      unsubThreads();
     };
   }, []);
 
