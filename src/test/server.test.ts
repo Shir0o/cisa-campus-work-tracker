@@ -49,6 +49,7 @@ const {
           _col: name,
           _id: docId,
           get: async () => ({ exists: docId in col, data: () => col[docId], id: docId }),
+          set: async (d: Doc) => { col[docId] = { ...d }; },
           update: async (u: Doc) => { col[docId] = { ...(col[docId] ?? {}), ...u }; },
           ref: { _col: name, _id: docId },
           collection: (sub: string) => collection(`${name}/${docId}/${sub}`),
@@ -70,8 +71,16 @@ const {
     batch: () => {
       const pending: Array<{ _col: string; _id: string; data: Doc }> = [];
       return {
-        set: (ref: { _col: string; _id: string }, data: Doc) => pending.push({ ...ref, data }),
-        update: (ref: { _col: string; _id: string }, data: Doc) => pending.push({ ...ref, data }),
+        set: (ref: any, data: Doc) => {
+          const col = ref._col || ref.ref?._col || (ref._id && ref._id.includes("/") ? ref._id.split("/")[0] : "");
+          const id = ref._id || ref.id || ref.ref?._id || "";
+          pending.push({ _col: col, _id: id, data });
+        },
+        update: (ref: any, data: Doc) => {
+          const col = ref._col || ref.ref?._col || "";
+          const id = ref._id || ref.id || ref.ref?._id || "";
+          pending.push({ _col: col, _id: id, data });
+        },
         commit: async () => {
           for (const p of pending) {
             (store[p._col] ??= {})[p._id] = { ...(store[p._col]?.[p._id] ?? {}), ...p.data };
@@ -1252,6 +1261,177 @@ describe("production static serving", () => {
         }
       }
     }
+  });
+});
+
+describe("POST /api/translate — batch translation & smart caching", () => {
+  let app: Express;
+
+  beforeEach(async () => {
+    resetDb();
+    mockGenerateContent.mockReset();
+    app = await createApp();
+  });
+
+  it("returns 400 when texts is missing or not an array", async () => {
+    const res = await request(app).post("/api/translate").send({});
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Missing or invalid 'texts' parameter");
+  });
+
+  it("returns 400 when texts is empty", async () => {
+    const res = await request(app).post("/api/translate").send({ texts: [] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Missing or invalid 'texts' parameter");
+  });
+
+  it("returns 400 when any text in array is not a string", async () => {
+    const res = await request(app).post("/api/translate").send({ texts: ["valid", 123 as any] });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("must be strings");
+  });
+
+  it("returns 400 when targetLang is invalid format", async () => {
+    const res = await request(app).post("/api/translate").send({ texts: ["hello"], targetLang: "invalid_lang_code!@#" });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("Invalid 'targetLang' parameter");
+  });
+
+  it("returns 400 when batch size exceeds 100", async () => {
+    const texts = Array.from({ length: 101 }, (_, i) => `Text ${i}`);
+    const res = await request(app).post("/api/translate").send({ texts });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain("exceeds maximum limit of 100");
+  });
+
+  it("translates uncached strings with Gemini and caches them in Firestore", async () => {
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({
+        translations: [
+          { id: 0, translatedText: "Orad por los estudiantes durante los exámenes finales" },
+          { id: 1, translatedText: "Reunión de compañerismo" }
+        ]
+      })
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: [
+        "Pray for students during finals week",
+        "Fellowship Gathering",
+        "   "
+      ]
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.targetLang).toBe("es");
+    expect(res.body.translations).toHaveLength(3);
+
+    expect(res.body.translations[0]).toEqual({
+      original: "Pray for students during finals week",
+      translated: "Orad por los estudiantes durante los exámenes finales",
+      hash: expect.any(String),
+      cached: false
+    });
+
+    expect(res.body.translations[1]).toEqual({
+      original: "Fellowship Gathering",
+      translated: "Reunión de compañerismo",
+      hash: expect.any(String),
+      cached: false
+    });
+
+    // Whitespace-only string returns unchanged and cached
+    expect(res.body.translations[2]).toEqual({
+      original: "   ",
+      translated: "   ",
+      hash: "",
+      cached: true
+    });
+
+    // Verify stored in Firestore translations collection
+    const translationsCol = getCollection("translations");
+    const storedKeys = Object.keys(translationsCol);
+    expect(storedKeys.length).toBe(2);
+    expect(translationsCol[storedKeys[0]].targetLang).toBe("es");
+  });
+
+  it("returns cached translations directly without calling Gemini when already present", async () => {
+    const hash1 = crypto.createHash("sha256").update("es:Welcome to Campus Hub").digest("hex");
+    seedDoc("translations", hash1, {
+      hash: hash1,
+      sourceText: "Welcome to Campus Hub",
+      translatedText: "Bienvenido a Campus Hub",
+      targetLang: "es",
+      createdAt: new Date().toISOString()
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Welcome to Campus Hub"]
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.translations[0]).toEqual({
+      original: "Welcome to Campus Hub",
+      translated: "Bienvenido a Campus Hub",
+      hash: hash1,
+      cached: true
+    });
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+  });
+
+  it("handles a mix of cached and uncached texts correctly in exact order", async () => {
+    const hashCached = crypto.createHash("sha256").update("es:Hello").digest("hex");
+    seedDoc("translations", hashCached, {
+      hash: hashCached,
+      sourceText: "Hello",
+      translatedText: "Hola",
+      targetLang: "es",
+      createdAt: new Date().toISOString()
+    });
+
+    mockGenerateContent.mockResolvedValueOnce({
+      text: JSON.stringify({
+        translations: [
+          { id: 0, translatedText: "Mundo" }
+        ]
+      })
+    });
+
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts: ["Hello", "World"]
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.translations[0]).toEqual({
+      original: "Hello",
+      translated: "Hola",
+      hash: hashCached,
+      cached: true
+    });
+    expect(res.body.translations[1]).toEqual({
+      original: "World",
+      translated: "Mundo",
+      hash: expect.any(String),
+      cached: false
+    });
+    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns 500 when Gemini API fails", async () => {
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGenerateContent.mockRejectedValueOnce(new Error("Gemini quota exceeded"));
+
+    const res = await request(app).post("/api/translate").send({
+      texts: ["Some new text"]
+    });
+
+    expect(res.status).toBe(500);
+    expect(res.body.error).toContain("Gemini quota exceeded");
+    errSpy.mockRestore();
   });
 });
 

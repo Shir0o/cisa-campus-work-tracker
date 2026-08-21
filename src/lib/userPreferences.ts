@@ -5,6 +5,7 @@ import { db, handleFirestoreError, OperationType } from "./firebase";
 // personal choices (not shared team data): which contacts you're personally
 // walking with, and how the "Message" button should behave on a laptop.
 export type DesktopMessagingApp = "apple" | "google";
+export type AppLanguage = "en" | "es";
 
 export interface UserPreferences {
   // Contacts the user treats as "theirs" on My Day. Undefined = not chosen yet,
@@ -12,6 +13,8 @@ export interface UserPreferences {
   personalContactIds?: string[];
   // Which app the "Message" button opens on a desktop. Undefined = auto-detect.
   desktopMessagingApp?: DesktopMessagingApp;
+  // User language preference (default: 'en')
+  language?: AppLanguage;
 }
 
 // Live subscription to a user's preference doc. Calls back with {} when the doc

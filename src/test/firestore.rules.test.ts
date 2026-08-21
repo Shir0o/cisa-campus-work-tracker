@@ -1508,4 +1508,60 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(updateDoc(doc(db, 'notifications', 'n1'), { title: 'Edited by staff' }));
     });
   });
+
+  describe('Translations Cache Collection', () => {
+    const seedUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'unapproved1'), { role: 'viewer', approved: false });
+      });
+    };
+
+    it('TR1: allows approved users to read translations', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'translations', 'hash123'), {
+          hash: 'hash123',
+          sourceText: 'Hello',
+          translatedText: 'Hola',
+          targetLang: 'es',
+        });
+      });
+
+      const db = getFirestore({ uid: 'viewer1' });
+      await assertSucceeds(getDoc(doc(db, 'translations', 'hash123')));
+    });
+
+    it('TR2: denies unauthenticated or unapproved users from reading translations', async () => {
+      await seedUsers();
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adminDb = context.firestore();
+        await setDoc(doc(adminDb, 'translations', 'hash123'), {
+          hash: 'hash123',
+          sourceText: 'Hello',
+          translatedText: 'Hola',
+          targetLang: 'es',
+        });
+      });
+
+      const unauthDb = getFirestore();
+      await assertFails(getDoc(doc(unauthDb, 'translations', 'hash123')));
+
+      const unapprovedDb = getFirestore({ uid: 'unapproved1' });
+      await assertFails(getDoc(doc(unapprovedDb, 'translations', 'hash123')));
+    });
+
+    it('TR3: denies client-side writes to translations collection (must go through server admin)', async () => {
+      await seedUsers();
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'translations', 'hash123'), {
+        hash: 'hash123',
+        sourceText: 'Hello',
+        translatedText: 'Hola',
+        targetLang: 'es',
+      }));
+    });
+  });
 });
