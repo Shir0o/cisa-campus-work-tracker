@@ -81,7 +81,7 @@ describe('sync-github-issues script', () => {
         })
       );
 
-      expect(issues).toHaveLength(2);
+      expect(issues).toHaveLength(1);
 
       // Verify regular issue mapping
       expect(issues[0]).toEqual({
@@ -106,9 +106,8 @@ describe('sync-github-issues script', () => {
         is_pull_request: false,
       });
 
-      // Verify PR issue mapping + clear state label
-      expect(issues[1].is_pull_request).toBe(true);
-      expect(issues[1].label).toBe('CLOSED');
+      // Pull requests should not be treated as issues in the sync file.
+      expect(issues.some((i) => i.number === 2)).toBe(false);
     });
 
     it('paginates correctly across multiple API pages', async () => {

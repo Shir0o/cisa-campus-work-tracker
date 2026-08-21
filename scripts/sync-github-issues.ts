@@ -68,6 +68,10 @@ export async function fetchGitHubIssues(repo: string, token?: string): Promise<G
     }
 
     for (const item of data) {
+      // GitHub's /issues endpoint also returns pull requests. Keep the sync
+      // file focused on actual issues only, so the count doesn't include PRs.
+      if (item.pull_request) continue;
+
       issues.push({
         id: item.id,
         number: item.number,
