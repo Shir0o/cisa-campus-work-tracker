@@ -23,7 +23,7 @@ import VisitsMobile from './VisitsMobile';
 import type { AppUser, Contact, Visit } from '../types';
 
 export default function Visits() {
-  useAuth();
+  const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
   const [visits, setVisits] = useState<Visit[]>([]);
@@ -173,6 +173,7 @@ export default function Visits() {
     onOpenContact: openContact,
     onEdit: setEditing,
     onRemove: removeVisit,
+    uid: user?.uid,
   };
 
   return (

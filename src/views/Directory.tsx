@@ -32,6 +32,9 @@ import { Skeleton } from '../components/ui/Skeleton';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import PageContainer from '../components/layout/PageContainer';
 import CombineTagsModal from '../components/modals/CombineTagsModal';
+import { RowActions } from '../components/ui/RowActions';
+import { buildContactRowActions } from '../lib/rowActions';
+import { UserEntityState } from '../lib/userEntityState';
 import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
 
 // ── Field Notes helpers (mirror Dashboard.tsx / OutreachBoard.tsx) ──────────
@@ -866,6 +869,21 @@ export default function Directory() {
                       <Mail className="w-3.5 h-3.5" /> Email
                     </a>
                   )}
+
+                  <RowActions
+                    className="self-start"
+                    label={`More for ${contact.name}`}
+                    items={buildContactRowActions({
+                      contact,
+                      onOpen: () => setSelectedContact(contact),
+                      onFollowUp: () => {
+                        if (!user?.uid) return;
+                        UserEntityState.markDone(user.uid, `contact:${contact.id}`);
+                        UserEntityState.markDone(user.uid, contact.id);
+                      },
+                      hide: ['todo', 'share'],
+                    })}
+                  />
                 </div>
               </div>
             );

@@ -27,6 +27,9 @@ import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import PrayerListMobile from './PrayerListMobile';
+import { RowActions } from '../components/ui/RowActions';
+import { buildContactRowActions } from '../lib/rowActions';
+import { UserEntityState } from '../lib/userEntityState';
 
 // ── week math, relative to today (Monday = start of week) ──────────────
 const DAY_MS = 86_400_000;
@@ -619,6 +622,7 @@ export default function PrayerList() {
                 onOpenProfile={() => openContact(e.contact)}
                 isOperator={isOperator}
                 onMakeTodo={openTodoFor}
+                meUid={user?.uid ?? ''}
               />
             ))}
           </AnimatePresence>
@@ -669,6 +673,7 @@ function PrayerThread({
   onOpenProfile,
   isOperator,
   onMakeTodo,
+  meUid,
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
@@ -679,6 +684,7 @@ function PrayerThread({
   onOpenProfile: () => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
+  meUid?: string;
 }) {
   const [showEarlier, setShowEarlier] = useState(false);
 
@@ -716,16 +722,35 @@ function PrayerThread({
             </div>
           </div>
         </button>
-        <div className="ml-auto text-right shrink-0">
-          <div className={cn(
-            'font-serif text-[15px] leading-tight',
-            ongoingCount > 0 ? 'text-stage-accent' : prayers.length === 0 ? 'text-on-surface-variant' : 'text-success'
-          )}>
-            {ongoingCount > 0 ? `${ongoingCount} ongoing` : prayers.length === 0 ? 'No prayers yet' : 'All answered'}
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          <div className="text-right">
+            <div className={cn(
+              'font-serif text-[15px] leading-tight',
+              ongoingCount > 0 ? 'text-stage-accent' : prayers.length === 0 ? 'text-on-surface-variant' : 'text-success'
+            )}>
+              {ongoingCount > 0 ? `${ongoingCount} ongoing` : prayers.length === 0 ? 'No prayers yet' : 'All answered'}
+            </div>
+            <div className="text-[11.5px] text-on-surface-variant">
+              {prayers.length} {prayers.length === 1 ? 'prayer' : 'prayers'} in all
+            </div>
           </div>
-          <div className="text-[11.5px] text-on-surface-variant">
-            {prayers.length} {prayers.length === 1 ? 'prayer' : 'prayers'} in all
-          </div>
+          <RowActions
+            label={`More for ${contact.name}`}
+            items={buildContactRowActions({
+              contact,
+              onOpen: onOpenProfile,
+              onMakeTodo: () => {
+                const latest = weekItem || lastItem || sorted[0];
+                if (latest) onMakeTodo?.(latest);
+              },
+              onFollowUp: () => {
+                if (!meUid) return;
+                UserEntityState.markDone(meUid, `contact:${contact.id}`);
+                UserEntityState.markDone(meUid, contact.id);
+              },
+              hide: ['share'],
+            })}
+          />
         </div>
       </div>
 
