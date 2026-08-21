@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { RowActions } from '../ui/RowActions';
 import { buildContactRowActions } from '../../lib/rowActions';
 import { UserEntityState } from '../../lib/userEntityState';
+import { Translate } from '../Translate';
 import type { Visit } from '../../types';
 
 interface VisitGroupProps {
@@ -147,7 +148,7 @@ export default function VisitCard({
               <span>{visitWhen(visit.date)}</span>
             </div>
             {!open && visit.how && (
-              <p className="text-sm text-on-surface-variant/90 leading-relaxed mt-2 line-clamp-2">{visit.how}</p>
+              <Translate as="p" className="text-sm text-on-surface-variant/90 leading-relaxed mt-2 line-clamp-2" text={visit.how} />
             )}
           </div>
 
@@ -212,13 +213,13 @@ export default function VisitCard({
         <div className={cn('border-t border-outline-variant space-y-5', compact ? 'p-4' : 'p-5')}>
           {visit.purpose && (
             <Block label="Why we went">
-              <p className="text-sm text-on-surface-variant leading-relaxed">{visit.purpose}</p>
+              <Translate as="p" className="text-sm text-on-surface-variant leading-relaxed" text={visit.purpose} />
             </Block>
           )}
 
           <Block label="How it went">
             {visit.how ? (
-              <p className="text-[15px] text-on-surface leading-relaxed whitespace-pre-line">{visit.how}</p>
+              <Translate as="p" className="text-[15px] text-on-surface leading-relaxed whitespace-pre-line" text={visit.how} />
             ) : (
               <p className="text-sm text-on-surface-variant/70 italic">Nothing written down yet.</p>
             )}
@@ -257,14 +258,14 @@ export default function VisitCard({
               {visit.followUp && (
                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-stage-teal-soft text-sm text-on-surface">
                   <Check className="w-4 h-4 text-stage-teal shrink-0" />
-                  <span className="min-w-0">{visit.followUp}</span>
+                  <Translate as="span" className="min-w-0" text={visit.followUp} />
                   <span className="ml-auto text-xs text-on-surface-variant shrink-0">on someone's plate</span>
                 </div>
               )}
               {visit.prayerId && (
                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-stage-violet-soft text-sm text-on-surface">
                   <HeartHandshake className="w-4 h-4 text-stage-violet shrink-0" />
-                  <span className="min-w-0">{visit.prayerBurden || 'A prayer came out of this visit'}</span>
+                  <Translate as="span" className="min-w-0" text={visit.prayerBurden || 'A prayer came out of this visit'} />
                   <span className="ml-auto text-xs text-on-surface-variant shrink-0">now on our hearts</span>
                 </div>
               )}

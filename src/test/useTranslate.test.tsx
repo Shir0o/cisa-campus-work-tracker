@@ -87,6 +87,20 @@ describe("useTranslate and Translate component", () => {
     expect(titleEl.textContent).toBe("Compañerismo");
   });
 
+  it("Translate component supports children as string content", async () => {
+    translator.setCachedTranslation("Settings", "Ajustes", "es");
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <Translate as="div" data-testid="settings-label">Settings</Translate>
+      </LanguageProvider>
+    );
+
+    const el = screen.getByTestId("settings-label");
+    expect(el.tagName.toLowerCase()).toBe("div");
+    expect(el.textContent).toBe("Ajustes");
+  });
+
   it("handles empty or null text gracefully", () => {
     render(
       <LanguageProvider defaultLanguage="es">

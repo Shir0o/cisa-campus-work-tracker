@@ -179,5 +179,27 @@ describe('TodoRow', () => {
     render(<TodoRow todo={todoWithSubtasks} onToggle={vi.fn()} />);
     expect(() => fireEvent.click(screen.getByRole('checkbox'))).not.toThrow();
   });
+
+  it('renders translated todo title and subtask in Spanish mode when cached', async () => {
+    const { setCachedTranslation } = await import('../lib/translator');
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+
+    setCachedTranslation('Confirm the Friday setlist', 'Confirmar el repertorio del viernes', 'es');
+    setCachedTranslation('Book the van', 'Reservar la furgoneta', 'es');
+
+    const todoWithSubtasks: TodoItem = {
+      ...baseTodo,
+      subtasks: [{ id: 's1', title: 'Book the van', done: false }],
+    };
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TodoRow todo={todoWithSubtasks} onToggle={vi.fn()} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByText('Confirmar el repertorio del viernes')).toBeInTheDocument();
+    expect(screen.getByText('Reservar la furgoneta')).toBeInTheDocument();
+  });
 });
 

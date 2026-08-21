@@ -9,6 +9,7 @@ import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
+import { Translate } from '../components/Translate';
 
 const TONES: ('accent' | 'violet' | 'amber' | 'sage')[] = ['accent', 'violet', 'amber', 'sage'];
 function getToneForId(id: string): 'accent' | 'violet' | 'amber' | 'sage' {
@@ -218,9 +219,9 @@ export default function AnsweredList() {
                       </div>
                       <div className="ans-card-body">
                         <div className="ans-who">{name}</div>
-                        <p className="ans-how">{p.answer || p.burden}</p>
+                        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
                         <div className="ans-arc">
-                          <span className="ans-item">{p.burden}</span>
+                          <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
                             <span>asked {formatDate(p.date)}</span>
                             <span className="ans-sep" />
@@ -271,9 +272,9 @@ export default function AnsweredList() {
                       </div>
                       <div className="ans-card-body">
                         <div className="ans-who">{name}</div>
-                        <p className="ans-how">{p.answer || p.burden}</p>
+                        <Translate as="p" className="ans-how" text={p.answer || p.burden} />
                         <div className="ans-arc">
-                          <span className="ans-item">{p.burden}</span>
+                          <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
                             <span>asked {formatDate(p.date)}</span>
                             <span className="ans-sep" />

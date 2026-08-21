@@ -51,6 +51,8 @@ import CreateChatModal from '../components/modals/CreateChatModal';
 import ChatDetailsModal from '../components/modals/ChatDetailsModal';
 import AttachDataModal from '../components/modals/AttachDataModal';
 import ContactPill from '../components/ui/ContactPill';
+import { Translate } from '../components/Translate';
+import { useTranslate } from '../hooks/useTranslate';
 
 // The Field Notes design's quick reactions (views/messages.jsx).
 const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
@@ -83,6 +85,11 @@ function renderBody(text: string, memberFirstNames: string[]): React.ReactNode[]
     }
     return <React.Fragment key={i}>{part}</React.Fragment>;
   });
+}
+
+function MessageBody({ text, memberFirstNames }: { text: string; memberFirstNames: string[] }) {
+  const { translatedText } = useTranslate(text);
+  return <>{renderBody(translatedText, memberFirstNames)}</>;
 }
 
 export default function Messages() {
@@ -855,9 +862,7 @@ export default function Messages() {
                   if (isSys) {
                     return (
                       <div key={msg.id} className="flex justify-center select-none">
-                        <span className="text-[11px] font-medium bg-surface-container-low/60 text-on-surface-variant border border-outline-variant/10 rounded-full px-3 py-0.5">
-                          {msg.text}
-                        </span>
+                        <Translate as="span" className="text-[11px] font-medium bg-surface-container-low/60 text-on-surface-variant border border-outline-variant/10 rounded-full px-3 py-0.5" text={msg.text} />
                       </div>
                     );
                   }
@@ -882,7 +887,7 @@ export default function Messages() {
                             <div className="msgb-gone">{messageGoneLabel(msg, effectiveUid)}</div>
                           ) : (
                             <div className={cn("msgb-bubble", msg.pinned && "pinned")}>
-                              {renderBody(msg.text, memberFirstNames)}
+                              <MessageBody text={msg.text} memberFirstNames={memberFirstNames} />
 
                               {/* Attachments inside bubble */}
                               {msg.attachments && msg.attachments.length > 0 && (

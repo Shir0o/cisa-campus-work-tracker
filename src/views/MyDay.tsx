@@ -36,6 +36,7 @@ import { Skeleton } from "../components/ui/Skeleton";
 import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import PageContainer from "../components/layout/PageContainer";
+import { Translate } from "../components/Translate";
 import {
   addTodo,
   updateTodo,
@@ -187,14 +188,14 @@ function AssignedTaskRow({
       <div className="flex items-start gap-3.5">
         <CheckButton done={done} onClick={() => onToggle(todo)} />
         <div className="min-w-0 flex-1 cursor-pointer" onClick={() => setOpen((o) => !o)}>
-          <div
+          <Translate
+            as="div"
             className={cn(
               "text-on-surface font-medium leading-snug",
               done && "line-through text-on-surface-variant",
             )}
-          >
-            {todo.title}
-          </div>
+            text={todo.title}
+          />
 
           {!open && todo.sourceDocId && todo.sourceDocTitle && (
             <button
@@ -316,14 +317,14 @@ function PersonalTaskRow({
           className={cn("min-w-0 flex-1", !done && !open && "cursor-pointer")}
           onClick={() => !done && !open && openEdit()}
         >
-          <div
+          <Translate
+            as="div"
             className={cn(
               "text-on-surface font-medium leading-snug",
               done && "line-through text-on-surface-variant",
             )}
-          >
-            {todo.title}
-          </div>
+            text={todo.title}
+          />
 
           {open && (
             <div className="mt-2.5 flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
