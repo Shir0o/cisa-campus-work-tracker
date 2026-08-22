@@ -81,6 +81,13 @@
     "language_selector": "Language selector",
     "you": "You"
   },
+  "meta": {
+    "title": "CISA Campus Work Tracker",
+    "description": "Collaborative campus ministry contact management, outreach planning, and journey tracking.",
+    "manifest_name": "CISA Campus Work Tracker",
+    "manifest_short_name": "CISA Tracker",
+    "manifest_description": "A comprehensive community management system for tracking student engagement, campus events, and organizational progress."
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Your account and preferences.",
