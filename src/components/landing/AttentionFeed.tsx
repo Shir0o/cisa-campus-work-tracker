@@ -26,6 +26,7 @@ import {
   type AttentionItem,
 } from "../../lib/attention";
 import { useUserEntityState, UserEntityState } from "../../lib/userEntityState";
+import { Translate } from "../Translate";
 import { addThreadMessage, subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/threads";
 
 const IBX_ENCOURAGE: Record<string, string> = {
@@ -85,7 +86,7 @@ function AttentionSubItem({
             <span>{item.title || (item.type === "contact" ? "New Contact" : item.type === "thread" ? "Question" : "Interaction")}</span>
             {!read && <span className="w-1.5 h-1.5 rounded-full bg-accent inline-block" />}
           </div>
-          {item.body && <p className="text-xs text-on-surface-variant line-clamp-2 mt-0.5">{item.body}</p>}
+          {item.body && <Translate as="p" className="text-xs text-on-surface-variant line-clamp-2 mt-0.5" text={item.body} />}
           <span className="text-[11px] text-on-surface-variant/70 mt-1 block">{relTime(item.at)}</span>
         </div>
       </div>
@@ -248,9 +249,11 @@ function AttentionStackRow({
           </div>
 
           {latestText && (
-            <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-2 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2">
-              {latestText}
-            </p>
+            <Translate
+              as="p"
+              className="text-xs text-on-surface-variant/90 mt-1 line-clamp-2 whitespace-pre-line bg-surface-variant/40 rounded-lg p-2"
+              text={latestText}
+            />
           )}
 
           <div className="flex items-center gap-2 mt-3 flex-wrap">

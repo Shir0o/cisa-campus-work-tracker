@@ -14,6 +14,7 @@ import {
   type QueueCard as QueueCardData,
 } from '@cisa/core';
 import { FocusCard } from './FocusCard';
+import { useTranslate } from '../Translate';
 import {
   AboutChip,
   Ask,
@@ -61,6 +62,7 @@ export function QueueCard({
   const c = card.contact;
   const first = c ? firstName(c.name) : '';
   const later = () => api.later(card.id);
+  const { translatedText: translatedNotes } = useTranslate(c?.notes);
 
   // ── a to-do off The Board, due now ────────────────────────────────────────
   if (card.kind === 'due' && card.task) {
@@ -152,7 +154,7 @@ export function QueueCard({
             You {agoPhrase(card.last)} — {card.last.content.split('. ')[0].toLowerCase()}. Nothing since.
           </Why>
         )}
-        {!!c.notes && <NoteBlock label="What you wrote down">{c.notes}</NoteBlock>}
+        {!!c.notes && <NoteBlock label="What you wrote down">{translatedNotes}</NoteBlock>}
       </FocusCard>
     );
   }
@@ -182,7 +184,7 @@ export function QueueCard({
           {card.last ? ` and ${agoPhrase(card.last)}` : ''}. Nothing since. Early on, the second and third message are
           the ones that decide whether someone comes back.
         </Why>
-        {!!c.notes && <NoteBlock label="What you wrote down">{c.notes}</NoteBlock>}
+        {!!c.notes && <NoteBlock label="What you wrote down">{translatedNotes}</NoteBlock>}
       </FocusCard>
     );
   }

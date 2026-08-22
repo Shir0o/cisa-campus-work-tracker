@@ -116,4 +116,25 @@ describe('OutreachBoardMobile', () => {
     render(<OutreachBoardMobile {...baseProps} />);
     expect(screen.getByText('No one at this step just now.')).toBeInTheDocument();
   });
+
+  it('renders translated contact notes in Spanish mode when cached', async () => {
+    const { setCachedTranslation } = await import('../lib/translator');
+    const { LanguageProvider } = await import('../components/LanguageProvider');
+
+    setCachedTranslation('Coffee chat', 'Charla de café', 'es');
+
+    const lastTouchByContact = new Map([['c1', { ms: Date.now(), note: 'Coffee chat' }]]);
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <OutreachBoardMobile
+          {...baseProps}
+          contacts={[contact()]}
+          lastTouchByContact={lastTouchByContact}
+        />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByText('Charla de café')).toBeInTheDocument();
+    expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
+  });
 });

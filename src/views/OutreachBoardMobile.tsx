@@ -3,6 +3,7 @@ import { ChevronRight, Settings2, X, ArrowRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { Avatar } from '../components/landing/primitives';
+import { Translate } from '../components/Translate';
 
 type Touch = { ms: number; note: string };
 type TouchMap = Map<string, Touch>;
@@ -259,7 +260,7 @@ export default function OutreachBoardMobile({
                     )}
                     {note && (
                       <p className="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed opacity-95">
-                        <span className="font-medium text-on-surface-variant/70">Last:</span> {note}
+                        <span className="font-medium text-on-surface-variant/70">Last:</span> <Translate text={note} />
                       </p>
                     )}
                   </div>
