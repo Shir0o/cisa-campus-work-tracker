@@ -81,6 +81,13 @@
     "language_selector": "Selector de idioma",
     "you": "Tú"
   },
+  "meta": {
+    "title": "CISA Campus Work Tracker",
+    "description": "Gestión colaborativa de contactos para el ministerio universitario, planificación de alcance y seguimiento del recorrido.",
+    "manifest_name": "CISA Campus Work Tracker",
+    "manifest_short_name": "CISA Tracker",
+    "manifest_description": "Un sistema integral de gestión comunitaria para dar seguimiento a la participación estudiantil, los eventos del campus y el progreso organizacional."
+  },
   "settings": {
     "title": "Ajustes",
     "subtitle": "Tu cuenta y preferencias.",

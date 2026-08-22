@@ -86,6 +86,33 @@ export function LanguageProvider({
     [language],
   );
 
+  // Keep browser/PWA metadata in sync with the active language.
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    document.documentElement.lang = language;
+    document.title = translateKey("meta.title", language);
+
+    let metaDescription = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (!metaDescription) {
+      metaDescription = document.createElement("meta");
+      metaDescription.setAttribute("name", "description");
+      document.head.appendChild(metaDescription);
+    }
+    metaDescription.setAttribute("content", translateKey("meta.description", language));
+
+    let manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (!manifestLink) {
+      manifestLink = document.createElement("link");
+      manifestLink.setAttribute("rel", "manifest");
+      document.head.appendChild(manifestLink);
+    }
+    manifestLink.setAttribute(
+      "href",
+      language === "es" ? "/manifest-es.json" : "/manifest.json",
+    );
+  }, [language]);
+
   const value = React.useMemo<LanguageContextType>(
     () => ({
       language,
