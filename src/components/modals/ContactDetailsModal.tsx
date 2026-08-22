@@ -52,7 +52,7 @@ import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
 import { Contact, Stage, Interaction, Activity, PrayerRecord, MET_VIA } from "../../types";
 import { useAuth } from "../AuthProvider";
-import { canSeeContact, canSeeHistory } from "../../lib/permissions";
+import { canSeeContact, canSeeHistory, hasMinRole } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
@@ -74,6 +74,22 @@ interface ContactDetailsModalProps {
   initialTab?: "thread";
   initialInteractionId?: string | null;
 }
+
+type PrayerStatus = PrayerRecord["status"];
+
+const PRAYER_MARK_ORDER: PrayerStatus[] = ["ongoing", "answered", "unanswered"];
+const PRAYER_STATUS_LABEL: Record<PrayerStatus, string> = {
+  pending: "Unmarked",
+  ongoing: "Ongoing",
+  answered: "Answered",
+  unanswered: "Archived",
+};
+const PRAYER_MARK_ON: Record<PrayerStatus, string> = {
+  pending: "",
+  ongoing: "bg-stage-accent-soft text-stage-accent border-stage-accent/40",
+  answered: "bg-success/10 text-success border-success/40",
+  unanswered: "bg-error/10 text-error border-error/40",
+};
 
 function AuditActivityItem({
   activity,
@@ -849,6 +865,36 @@ export default function ContactDetailsModal({
     }
   };
 
+  const handleUpdatePrayerStatus = async (prayer: PrayerRecord, status: PrayerStatus) => {
+    if (!contact) return;
+    try {
+      const now = new Date().toISOString();
+      const patch: Record<string, any> = {
+        status,
+        updatedAt: now,
+        updatedBy: user?.uid || "",
+        updatedByName:
+          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+      };
+      if (status === "answered") {
+        patch.answeredAt =
+          prayer.answeredAt ||
+          new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+      await updateDoc(doc(db, "prayers", prayer.id), patch);
+      logActivity({
+        action: `marked a prayer burden as ${status} for`,
+        targetId: contact.id,
+        targetName: contact.name,
+        targetType: "contact",
+        type: "edit",
+        description: `Status changed to ${status}`,
+      });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, "prayers");
+    }
+  };
+
   // ── Inline tag add / remove (persist to the contact's tags array) ──
   const persistTags = async (updatedTags: string[], verb: string, tag: string) => {
     hasActionRef.current = true;
@@ -965,6 +1011,7 @@ export default function ContactDetailsModal({
   const stageIdx = contact.stage
     ? sortedStages.findIndex((s) => s.label === contact.stage)
     : -1;
+  const canUpdatePrayers = isAdmin || hasMinRole(role, "operator");
   const openPrayers = prayers.filter(
     (p) => p.status !== "answered" && p.status !== "unanswered",
   );
@@ -2081,6 +2128,33 @@ export default function ContactDetailsModal({
                                 <p className="text-sm text-on-surface leading-relaxed whitespace-pre-wrap">
                                   {p.burden}
                                 </p>
+                                {canUpdatePrayers && (
+                                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                    <span className="text-[11px] text-on-surface-variant mr-0.5">
+                                      Mark
+                                    </span>
+                                    {PRAYER_MARK_ORDER.map((s) => (
+                                      <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() =>
+                                          handleUpdatePrayerStatus(
+                                            p,
+                                            p.status === s ? "pending" : s,
+                                          )
+                                        }
+                                        className={cn(
+                                          "text-xs px-2.5 py-1 rounded-full border transition-colors",
+                                          p.status === s
+                                            ? PRAYER_MARK_ON[s]
+                                            : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline",
+                                        )}
+                                      >
+                                        {PRAYER_STATUS_LABEL[s]}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             );
                           })

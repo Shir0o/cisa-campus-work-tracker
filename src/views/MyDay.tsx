@@ -714,17 +714,27 @@ export default function MyDay() {
   }, [events]);
 
   // Contact (corporate) prayers — shared prayers on my personal contacts that
-  // aren't archived (unanswered = archived-equivalent), oldest first.
+  // are still open (not answered or archived), oldest first. #464 keeps home
+  // focused on what we're still carrying.
   const contactPrayers = useMemo(
     () =>
       prayers
-        .filter((p) => p.contactId && personalContactIds.has(p.contactId) && p.status !== "unanswered")
+        .filter(
+          (p) =>
+            p.contactId &&
+            personalContactIds.has(p.contactId) &&
+            p.status !== "answered" &&
+            p.status !== "unanswered",
+        )
         .sort((a, b) => (parseMs(a.date) ?? 0) - (parseMs(b.date) ?? 0)),
     [prayers, personalContactIds],
   );
-  // Personal prayers — mine, not archived (already date-sorted by the query).
+  // Personal prayers — mine, still open (not answered or archived). #464
   const activePersonalPrayers = useMemo(
-    () => personalPrayers.filter((p) => p.status !== "archived"),
+    () =>
+      personalPrayers.filter(
+        (p) => p.status !== "answered" && p.status !== "archived",
+      ),
     [personalPrayers],
   );
   const prayersCount = contactPrayers.length + activePersonalPrayers.length;

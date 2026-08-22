@@ -592,6 +592,19 @@ describe('MyDay', () => {
     expect(screen.queryByText('archived burden')).not.toBeInTheDocument();
   });
 
+  it('hides answered contact prayers from home too (#464)', async () => {
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-1', { name: 'Mara', initials: 'M', stage: 'Regular', createdBy: 'u-test' })],
+        prayers: [prayerDoc('p-done', { contactId: 'c-1', burden: 'answered burden', status: 'answered', date: soonISO })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => expect(screen.getByText('Your prayers')).toBeInTheDocument());
+    expect(screen.queryByText('answered burden')).not.toBeInTheDocument();
+  });
+
+
   it('renders, edits, status-updates and deletes a personal prayer (with optional contact tag)', async () => {
     h.personalPrayersData = [
       { id: 'pp-1', title: 'pray for exams', contactId: null, date: soonISO, status: 'open' },

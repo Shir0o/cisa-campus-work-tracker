@@ -199,17 +199,26 @@ export default function LandingTrainee() {
   }, [contacts, uid]);
   const myIds = useMemo(() => new Set(myPeople.map((p) => p.contact.id)), [myPeople]);
 
-  // Prayers you're holding — shared prayers on your people (not archived) +
-  // your own private personal prayers.
+  // Prayers you're holding — shared prayers on your people that are still open
+  // (not answered or archived) + your own private personal prayers. #464.
   const contactPrayers = useMemo(
     () =>
       prayers
-        .filter((p) => p.contactId && myIds.has(p.contactId) && p.status !== "unanswered")
+        .filter(
+          (p) =>
+            p.contactId &&
+            myIds.has(p.contactId) &&
+            p.status !== "answered" &&
+            p.status !== "unanswered",
+        )
         .sort((a, b) => (parseMs(a.date) ?? 0) - (parseMs(b.date) ?? 0)),
     [prayers, myIds],
   );
   const activePersonalPrayers = useMemo(
-    () => personalPrayers.filter((p) => p.status !== "archived"),
+    () =>
+      personalPrayers.filter(
+        (p) => p.status !== "answered" && p.status !== "archived",
+      ),
     [personalPrayers],
   );
 

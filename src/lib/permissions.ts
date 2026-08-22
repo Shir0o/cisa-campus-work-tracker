@@ -111,6 +111,10 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // operator (student) and manager (trainee) cannot, even though a viewer-level
   // min role would let them through. Keep it explicit here.
   if (path === '/outreach') return role === 'admin' || role === 'viewer';
+  // Person detail is now a real URL route so back/top-nav navigation works.
+  // Every approved role can open a person page; individual contact visibility
+  // is still enforced inside ContactDetailsModal.
+  if (path.startsWith('/people/')) return hasMinRole(role, 'viewer');
   if (role === 'manager') {
     const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
     return allowedTraineeRoutes.includes(path);

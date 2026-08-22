@@ -140,6 +140,14 @@ describe('canAccessRoute()', () => {
       expect(canAccessRoute(null, route)).toBe(false);
     }
   });
+
+  it('allows approved roles to open the person detail URL route', () => {
+    expect(canAccessRoute('viewer', '/people/c1')).toBe(true);
+    expect(canAccessRoute('operator', '/people/c1')).toBe(true);
+    expect(canAccessRoute('manager', '/people/c1')).toBe(true);
+    expect(canAccessRoute('admin', '/people/c1')).toBe(true);
+    expect(canAccessRoute(null, '/people/c1')).toBe(false);
+  });
 });
 
 // ─── 2. hasMinRole() ─────────────────────────────────────────────────────────

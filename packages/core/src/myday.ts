@@ -237,18 +237,26 @@ export interface SplitPrayers {
 }
 
 // Contact (corporate) prayers — shared prayers on my personal contacts that
-// aren't archived (unanswered = archived-equivalent), oldest first. Personal
-// prayers are assumed already date-ascending (the Firestore query orders them)
-// — this only filters, matching the web behavior.
+// are still open (not answered or archived), oldest first. #464 keeps home
+// focused on what we're still carrying. Personal prayers are assumed already
+// date-ascending (the Firestore query orders them) — this only filters.
 export function splitPrayers(
   prayers: PrayerRecord[],
   personalContactIds: Set<string>,
   personalPrayers: PersonalPrayer[],
 ): SplitPrayers {
   const contactPrayers = prayers
-    .filter((p) => p.contactId && personalContactIds.has(p.contactId) && p.status !== "unanswered")
+    .filter(
+      (p) =>
+        p.contactId &&
+        personalContactIds.has(p.contactId) &&
+        p.status !== "answered" &&
+        p.status !== "unanswered",
+    )
     .sort((a, b) => (parseMs(a.date) ?? 0) - (parseMs(b.date) ?? 0));
-  const activePersonalPrayers = personalPrayers.filter((p) => p.status !== "archived");
+  const activePersonalPrayers = personalPrayers.filter(
+    (p) => p.status !== "answered" && p.status !== "archived",
+  );
   return {
     contactPrayers,
     activePersonalPrayers,

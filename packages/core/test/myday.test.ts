@@ -265,11 +265,12 @@ describe('your prayers', () => {
     ...overrides,
   });
 
-  it('keeps contact prayers on personal contacts, excluding unanswered, oldest first', () => {
+  it('keeps contact prayers on personal contacts, excluding answered and unanswered, oldest first', () => {
     const prayers = [
       prayer({ id: 'newer', contactId: 'c1', date: new Date(NOW).toISOString() }),
       prayer({ id: 'older', contactId: 'c1', date: new Date(NOW - DAY_MS).toISOString() }),
       prayer({ id: 'not-mine', contactId: 'c2' }),
+      prayer({ id: 'answered', contactId: 'c1', status: 'answered' }),
       prayer({ id: 'unanswered', contactId: 'c1', status: 'unanswered' }),
     ];
     const { contactPrayers, prayersCount } = splitPrayers(prayers, new Set(['c1']), []);
@@ -277,10 +278,11 @@ describe('your prayers', () => {
     expect(prayersCount).toBe(2);
   });
 
-  it('drops archived personal prayers and counts the rest', () => {
+  it('drops answered and archived personal prayers and counts the rest', () => {
     const personalPrayers = [
       { id: 'pp1', title: 'a', date: '', status: 'open' as const },
       { id: 'pp2', title: 'b', date: '', status: 'archived' as const },
+      { id: 'pp3', title: 'c', date: '', status: 'answered' as const },
     ];
     const { activePersonalPrayers, prayersCount } = splitPrayers([], new Set(), personalPrayers);
     expect(activePersonalPrayers.map((p) => p.id)).toEqual(['pp1']);

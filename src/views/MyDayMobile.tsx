@@ -164,12 +164,16 @@ export default function MyDayMobile({
 
   const contactPrayers = useMemo(() => {
     if (rawContactPrayers.length > 0) return rawContactPrayers;
-    return prayers.filter(p => p.contactId);
+    return prayers.filter(
+      (p) => p.contactId && p.status !== "answered" && p.status !== "unanswered",
+    );
   }, [rawContactPrayers, prayers]);
 
   const activePersonalPrayers = useMemo(() => {
     if (rawActivePersonalPrayers.length > 0) return rawActivePersonalPrayers;
-    return prayers.filter(p => !p.contactId);
+    return prayers.filter(
+      (p) => !p.contactId && p.status !== "answered" && p.status !== "unanswered",
+    );
   }, [rawActivePersonalPrayers, prayers]);
 
   const leftToDo = rawLeftToDo || assignedTasks.length + personalTasks.length;
