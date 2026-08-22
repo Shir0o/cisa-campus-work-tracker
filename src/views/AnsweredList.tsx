@@ -8,6 +8,7 @@ import { cn } from '../lib/utils';
 import PageContainer from '../components/layout/PageContainer';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
+import { useLanguage } from '../components/LanguageProvider';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import { Translate } from '../components/Translate';
 
@@ -30,6 +31,7 @@ function formatDate(isoString: string) {
 
 export default function AnsweredList() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,38 +149,38 @@ export default function AnsweredList() {
     <PageContainer variant="wide">
       <header className="ans-head">
         <div className="ans-eyebrow">
-          <span className="ans-lit" /> Answered
+          <span className="ans-lit" /> {t('answered.eyebrow')}
         </div>
         <div className="ans-head-row">
           <div>
-            <h1 className="ans-h1">Answered</h1>
+            <h1 className="ans-h1">{t('answered.title')}</h1>
             <p className="ans-sub">
-              A record of the prayers this ministry has watched God answer. Every one of them a small testimony.
+              {t('answered.subtitle')}
             </p>
           </div>
           <div className="ans-count">
             <div className="ans-count-n">{totalThisYear}</div>
             <div className="ans-count-l">
-              answered
+              {t('answered.answered_count')}
               <br />
-              this year
+              {t('answered.this_year')}
             </div>
           </div>
         </div>
         <div className="ans-toggle">
           <button className="ans-toggle-opt" onClick={() => navigate('/prayer')}>
-            On our hearts
+            {t('answered.on_our_hearts')}
           </button>
-          <button className="ans-toggle-opt on">Answered</button>
+          <button className="ans-toggle-opt on">{t('answered.title')}</button>
         </div>
       </header>
 
       {prayers.length === 0 ? (
         <div className="text-center py-20 bg-surface rounded-3xl border border-outline-variant/60">
           <Heart className="w-12 h-12 text-on-surface-variant opacity-25 mx-auto mb-4" />
-          <h3 className="font-serif text-xl text-on-surface">No answered prayers recorded yet</h3>
+          <h3 className="font-serif text-xl text-on-surface">{t('answered.no_prayers_title')}</h3>
           <p className="text-sm text-on-surface-variant mt-1">
-            As prayers are marked answered and testimonies are written, they will blossom here.
+            {t('answered.no_prayers_body')}
           </p>
         </div>
       ) : (
@@ -186,14 +188,14 @@ export default function AnsweredList() {
           {recent.length > 0 && (
             <section className="ans-group">
               <div className="ans-group-h">
-                <span className="ans-group-label">Recent answers</span>
+                <span className="ans-group-label">{t('answered.recent_answers')}</span>
                 <span className="ans-group-count">{recent.length}</span>
                 <span className="ans-group-rule" />
               </div>
               <div className="ans-wall">
                 {recent.map((p) => {
                   const contact = contactMap.get(p.contactId);
-                  const name = contact?.name || 'Whole Team';
+                  const name = contact?.name || t('answered.whole_team');
                   const initial = name.trim().charAt(0).toUpperCase();
                   const tone = getToneForId(p.id);
                   
@@ -223,9 +225,9 @@ export default function AnsweredList() {
                         <div className="ans-arc">
                           <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
-                            <span>asked {formatDate(p.date)}</span>
+                            <span>{t('answered.asked')} {formatDate(p.date)}</span>
                             <span className="ans-sep" />
-                            <span className="ans-ans">answered {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
+                            <span className="ans-ans">{t('answered.answered')} {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
                           </span>
                         </div>
                       </div>
@@ -239,14 +241,14 @@ export default function AnsweredList() {
           {earlier.length > 0 && (
             <section className="ans-group">
               <div className="ans-group-h">
-                <span className="ans-group-label">Earlier this year</span>
+                <span className="ans-group-label">{t('answered.earlier_this_year')}</span>
                 <span className="ans-group-count">{earlier.length}</span>
                 <span className="ans-group-rule" />
               </div>
               <div className="ans-wall">
                 {earlier.map((p) => {
                   const contact = contactMap.get(p.contactId);
-                  const name = contact?.name || 'Whole Team';
+                  const name = contact?.name || t('answered.whole_team');
                   const initial = name.trim().charAt(0).toUpperCase();
                   const tone = getToneForId(p.id);
 
@@ -276,9 +278,9 @@ export default function AnsweredList() {
                         <div className="ans-arc">
                           <Translate as="span" className="ans-item" text={p.burden} />
                           <span className="ans-dates">
-                            <span>asked {formatDate(p.date)}</span>
+                            <span>{t('answered.asked')} {formatDate(p.date)}</span>
                             <span className="ans-sep" />
-                            <span className="ans-ans">answered {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
+                            <span className="ans-ans">{t('answered.answered')} {p.answeredAt || formatDate(p.answeredAt || p.updatedAt)}</span>
                           </span>
                         </div>
                       </div>

@@ -37,6 +37,7 @@ import { DataLoadError } from "../components/ui/DataLoadError";
 import ContactDetailsModal from "../components/modals/ContactDetailsModal";
 import PageContainer from "../components/layout/PageContainer";
 import { Translate } from "../components/Translate";
+import { useLanguage } from "../components/LanguageProvider";
 import {
   addTodo,
   updateTodo,
@@ -108,15 +109,16 @@ const taskSort = (a: MyTask, b: MyTask) => {
 
 // ── Round check button — shared by the task rows ──
 function CheckButton({ done, onClick }: { done: boolean; onClick: () => void }) {
+  const { t } = useLanguage();
   return (
     <button
       onClick={(e) => {
         e.stopPropagation();
         onClick();
       }}
-      title={done ? "Done — tap to reopen" : "Mark done"}
+      title={done ? t('myDay.done_tap_reopen') : t('myDay.mark_done')}
       aria-pressed={done}
-      aria-label={done ? "Mark not done" : "Mark done"}
+      aria-label={done ? t('myDay.mark_not_done') : t('myDay.mark_done')}
       className={cn(
         "mt-0.5 w-5 h-5 rounded-full border flex items-center justify-center shrink-0 transition-colors",
         done ? "bg-primary border-primary text-on-primary" : "border-outline hover:border-primary",
@@ -172,6 +174,7 @@ function AssignedTaskRow({
   onJumpToSource: (docId: string) => void;
   onUpdateDue: (todo: MyTask, days: number | null) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const done = todo.status === "completed";
   const due = done ? null : dueChip(todo.dueDate);
@@ -208,14 +211,14 @@ function AssignedTaskRow({
               title={todo.sourceDocTitle}
             >
               <FileText className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">From {todo.sourceDocTitle}</span>
+              <span className="truncate">{t('myDay.from')} {todo.sourceDocTitle}</span>
             </button>
           )}
 
           {!open && !todo.sourceDocId && todo.sourceInteractionId && todo.sourceInteractionTitle && (
             <span className="inline-flex items-center gap-1 mt-1 text-sm text-accent font-medium max-w-[18rem]">
               <MessageSquare className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">From {todo.sourceInteractionTitle}</span>
+              <span className="truncate">{t('myDay.from')} {todo.sourceInteractionTitle}</span>
             </span>
           )}
 
@@ -224,7 +227,7 @@ function AssignedTaskRow({
               {todo.sourceDocId && (
                 <div className="inline-flex flex-wrap items-center gap-1.5 text-xs text-on-surface-variant">
                   <FileText className="w-3 h-3 shrink-0" />
-                  <span>To change the text,</span>
+                  <span>{t('myDay.to_change_the_text')}</span>
                   <button
                     type="button"
                     className="text-accent hover:underline"
@@ -233,11 +236,11 @@ function AssignedTaskRow({
                       setOpen(false);
                     }}
                   >
-                    open it on The Board
+                    {t('myDay.open_it_on_the_board')}
                   </button>
                 </div>
               )}
-              <div className={dueLabelClass}>Due</div>
+              <div className={dueLabelClass}>{t('myDay.due')}</div>
               <DuePresetPills value={preset} onPick={(_k, days) => onUpdateDue(todo, days)} />
               <div className="flex">
                 <div className="flex-1" />
@@ -283,6 +286,7 @@ function PersonalTaskRow({
   onUpdate: (id: string, patch: { title?: string; dueDate?: string | null }) => void;
   onDelete: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(todo.title);
   const [preset, setPreset] = useState<DuePresetKey>(() => presetForDue(todo.dueDate));
@@ -337,9 +341,9 @@ function PersonalTaskRow({
                   if (e.key === "Enter") save();
                   if (e.key === "Escape") setOpen(false);
                 }}
-                placeholder="What needs doing?"
+                placeholder={t('myDay.what_needs_doing')}
               />
-              <div className={dueLabelClass}>Due</div>
+              <div className={dueLabelClass}>{t('myDay.due')}</div>
               <DuePresetPills
                 value={preset}
                 onPick={(key, days) => {
@@ -353,7 +357,7 @@ function PersonalTaskRow({
                   className="inline-flex items-center gap-1 text-sm text-on-surface-variant hover:text-error transition-colors"
                   onClick={() => onDelete(todo.id)}
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                  <Trash2 className="w-3.5 h-3.5" /> {t('actions.delete')}
                 </button>
                 <div className="flex-1" />
                 <button
@@ -399,13 +403,14 @@ function AddTaskRow({
   onAdd: (title: string, dueDate: string | null) => void;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const [text, setText] = useState("");
   const [preset, setPreset] = useState<DuePresetKey>("week");
   const [dueDate, setDueDate] = useState<string | null>(() => duePresetToISO(5));
   const commit = () => {
-    const t = text.trim();
-    if (!t) return;
-    onAdd(t, dueDate);
+    const textValue = text.trim();
+    if (!textValue) return;
+    onAdd(textValue, dueDate);
     onClose();
   };
   return (
@@ -419,9 +424,9 @@ function AddTaskRow({
           if (e.key === "Enter") commit();
           if (e.key === "Escape") onClose();
         }}
-        placeholder="What needs doing?"
+        placeholder={t('myDay.what_needs_doing')}
       />
-      <div className={dueLabelClass}>Due</div>
+      <div className={dueLabelClass}>{t('myDay.due')}</div>
       <DuePresetPills
         value={preset}
         onPick={(key, days) => {
@@ -453,6 +458,7 @@ function AddTaskRow({
 
 export default function MyDay() {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   const { setSelectedContact: setGlobalSelectedContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
@@ -495,7 +501,7 @@ export default function MyDay() {
     if (patch.status === "archived" && oldPrayer && oldPrayer.status !== "archived") {
       const previousStatus = oldPrayer.status;
       await updatePersonalPrayer(uid, id, patch);
-      showUndoSnack("Personal prayer archived", () => {
+      showUndoSnack(t('myDay.personal_prayer_archived'), () => {
         updatePersonalPrayer(uid, id, { status: previousStatus });
       });
     } else {
@@ -510,7 +516,7 @@ export default function MyDay() {
       const previousAnswer = oldPrayer.answer;
       const previousAnsweredAt = oldPrayer.answeredAt;
       await updatePrayerStatus(id, status, { uid, name: user?.displayName }, answer, answeredAt);
-      showUndoSnack("Prayer archived", () => {
+      showUndoSnack(t('myDay.prayer_archived'), () => {
         updatePrayerStatus(id, previousStatus, { uid, name: user?.displayName }, previousAnswer || undefined, previousAnsweredAt || undefined);
       });
     } else {
@@ -847,32 +853,26 @@ export default function MyDay() {
         <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
           <div className="flex-1">
             <p className="text-sm text-on-surface-variant">
-              {format(new Date(), "EEEE, MMMM d")} · Your day
+              {format(new Date(), 'EEEE, MMMM d')} · {t('myDay.your_day')}
             </p>
             <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">
               {getGreeting()}, {firstName}.
             </h1>
             <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
-              You're working closely with{" "}
-              <b className="text-on-surface font-semibold">
-                {myLeaders.length} {myLeaders.length === 1 ? "contact" : "contacts"}
-              </b>{" "}
-              this season, and there {leftToDo === 1 ? "is" : "are"}{" "}
-              <span className="text-on-surface font-medium">{leftToDo}</span>{" "}
-              {leftToDo === 1 ? "thing" : "things"} that {leftToDo === 1 ? "is" : "are"} yours to
-              tend before the week is out.
+              {t('myDay.working_closely')
+                .replace('{contacts}', `${myLeaders.length} ${myLeaders.length === 1 ? t('myDay.contact') : t('myDay.contacts')}`)
+                .replace('{isAre}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))
+                .replace('{tasks}', String(leftToDo))
+                .replace('{thingThings}', leftToDo === 1 ? t('myDay.thing') : t('myDay.things'))
+                .replace('{isAre2}', leftToDo === 1 ? t('myDay.is') : t('myDay.are'))}
               {staleLeader && (
-                <>
-                  {" "}
-                  It's been{" "}
-                  <b className="text-on-surface font-semibold">
-                    {Math.max(1, Math.round(staleLeader.days / 7))} weeks
-                  </b>{" "}
-                  since you sat with {staleLeader.contact.name.split(" ")[0]} — maybe today.
-                </>
+                <>{" "}{t('myDay.its_been_since')
+                  .replace('{weeks}', `${Math.max(1, Math.round(staleLeader.days / 7))} ${Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? t('myDay.week') : t('myDay.weeks')}`)
+                  .replace('{name}', staleLeader.contact.name.split(" ")[0])}</>
               )}{" "}
-              And <span className="text-on-surface font-medium">{prayersCount}</span>{" "}
-              {prayersCount === 1 ? "prayer" : "prayers"} to hold.
+              {t('myDay.and_prayers_to_hold')
+                .replace('{prayers}', String(prayersCount))
+                .replace('{unit}', prayersCount === 1 ? t('myDay.prayer') : t('myDay.prayers'))}
             </p>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -880,13 +880,13 @@ export default function MyDay() {
               onClick={() => navigate("/prayer")}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
             >
-              <HeartHandshake className="w-4 h-4" /> Pray together
+              <HeartHandshake className="w-4 h-4" /> {t('myDay.pray_together')}
             </button>
             <button
               onClick={() => navigate("/coordination")}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity"
             >
-              <ClipboardList className="w-4 h-4" /> The team's board
+              <ClipboardList className="w-4 h-4" /> {t('myDay.the_teams_board')}
             </button>
           </div>
         </header>
@@ -908,12 +908,12 @@ export default function MyDay() {
                 <>
                   <div>
                     <div className="text-xs font-medium text-white/75">
-                      Next up · {isValid(d) ? format(d, "EEEE, MMM d") : "This week"}
+                      {t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}
                       {lead.location ? ` · ${lead.location}` : ""}
                     </div>
                     <h3 className="text-2xl font-semibold text-white mt-2">{lead.name}</h3>
                     <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
-                      A good chance to be present with the people in your care.
+                      {t('myDay.good_chance')}
                     </p>
                   </div>
                   {facts.length > 0 && (
@@ -932,10 +932,10 @@ export default function MyDay() {
               );
             })() : (
               <div>
-                <div className="text-xs font-medium text-white/75">This week</div>
-                <h3 className="text-2xl font-semibold text-white mt-2">All clear this week</h3>
+                <div className="text-xs font-medium text-white/75">{t('myDay.this_week')}</div>
+                <h3 className="text-2xl font-semibold text-white mt-2">{t('myDay.all_clear_this_week')}</h3>
                 <p className="text-sm text-white/80 leading-relaxed mt-1.5">
-                  No gatherings scheduled.
+                  {t('myDay.no_gatherings_scheduled')}
                 </p>
               </div>
             )}
@@ -944,13 +944,13 @@ export default function MyDay() {
           {/* Figures card */}
           <div className="lg:col-span-6 bg-surface rounded-3xl border border-outline-variant/60 p-6 flex flex-col justify-between gap-4">
             <div className="flex flex-wrap items-baseline gap-x-8 gap-y-4">
-              <Figure n={myLeaders.length} label="contacts in care" />
-              <Figure n={prayersCount} label="prayers to hold" />
-              <Figure n={leftToDo} label="tasks to hold" />
-              <Figure n={thisWeek.length} label="gatherings this week" />
+              <Figure n={myLeaders.length} label={t('myDay.contacts_in_care')} />
+              <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
+              <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
+              <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
             </div>
             <span className="text-xs text-on-surface-variant/80 italic mt-2">
-              Numbers are just a way of noticing people.
+              {t('myDay.numbers_notice')}
             </span>
           </div>
         </div>
@@ -978,17 +978,17 @@ export default function MyDay() {
             {/* On the horizon */}
             <section>
               <SectionHead
-                title="On the horizon"
+                title={t('myDay.on_the_horizon')}
                 sub={
                   leftToDo > 0
-                    ? `${leftToDo} small ${leftToDo === 1 ? "thing" : "things"} this week.`
-                    : "All clear — nothing waiting on you."
+                    ? t('myDay.small_things_this_week').replace('{n}', String(leftToDo))
+                    : t('myDay.all_clear_nothing')
                 }
                 action={
                   completedCount > 0 ? (
                     <button
                       onClick={() => setHideCompleted((h) => !h)}
-                      title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                      title={hideCompleted ? t('myDay.show_completed_tasks') : t('myDay.hide_completed_tasks')}
                       aria-pressed={hideCompleted}
                       className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1 cursor-pointer"
                     >
@@ -997,7 +997,7 @@ export default function MyDay() {
                       ) : (
                         <Eye className="w-3.5 h-3.5" />
                       )}
-                      {hideCompleted ? "Show completed" : "Hide completed"}
+                      {hideCompleted ? t('myDay.show_completed') : t('myDay.hide_completed')}
                     </button>
                   ) : undefined
                 }
@@ -1006,7 +1006,7 @@ export default function MyDay() {
                 {assignedTasks.length > 0 && (
                   <div className="pt-2">
                     <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
-                      <CheckSquare className="w-3 h-3" /> Assigned to you
+                      <CheckSquare className="w-3 h-3" /> {t('myDay.assigned_to_you')}
                     </div>
                     {assignedTasks.map((t, i) => (
                       <AssignedTaskRow
@@ -1031,7 +1031,7 @@ export default function MyDay() {
                   >
                     {assignedTasks.length > 0 && (
                       <div className="inline-flex items-center gap-1.5 text-xs font-medium text-on-surface-variant py-2">
-                        <Pencil className="w-3 h-3" /> Your tasks
+                        <Pencil className="w-3 h-3" /> {t('myDay.your_tasks')}
                       </div>
                     )}
                     {personalTasks.map((t, i) => (
@@ -1048,7 +1048,7 @@ export default function MyDay() {
                 )}
                 {assignedTasks.length === 0 && personalTasks.length === 0 && !addingTask && (
                   <p className="text-sm text-on-surface-variant py-4">
-                    Nothing on the horizon right now — a rare, quiet moment.
+                    {t('myDay.nothing_on_horizon')}
                   </p>
                 )}
                 {addingTask ? (
@@ -1067,7 +1067,7 @@ export default function MyDay() {
                     onClick={() => setAddingTask(true)}
                     className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-accent transition-colors py-3"
                   >
-                    <Plus className="w-3.5 h-3.5" /> Add a task
+                    <Plus className="w-3.5 h-3.5" /> {t('myDay.add_a_task')}
                   </button>
                 )}
               </div>
@@ -1076,15 +1076,15 @@ export default function MyDay() {
             {/* Prayers you're holding */}
             <section>
               <SectionHead
-                title="Your prayers"
+                title={t('myDay.your_prayers')}
                 sub={
                   <>
-                    Prayers for the people you're personally caring for.{" "}
+                    {t('myDay.prayers_for_people')}{" "}
                     <button
                       onClick={() => navigate("/prayer")}
                       className="text-accent hover:underline"
                     >
-                      Team prayers →
+                      {t('myDay.team_prayers')}
                     </button>
                   </>
                 }
@@ -1114,7 +1114,7 @@ export default function MyDay() {
                 ))}
                 {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
                   <p className="text-sm text-on-surface-variant py-4">
-                    No prayers in your care right now.
+                    {t('myDay.no_prayers_in_care')}
                   </p>
                 )}
                 <AddPersonalPrayer
@@ -1130,17 +1130,17 @@ export default function MyDay() {
             {/* ── The leaders you're caring for (Your sheep) ── */}
             <section>
               <SectionHead
-                title="Your sheep"
-                sub="The contacts you are personally connected with."
+                title={t('myDay.your_sheep')}
+                sub={t('myDay.sheep_sub')}
                 action={
                   <button
                     onClick={() => setPickerOpen(true)}
                     className="text-sm font-medium text-on-surface-variant hover:text-accent inline-flex items-center gap-1"
                   >
-                    <Pencil className="w-3.5 h-3.5" /> Your contacts
+                    <Pencil className="w-3.5 h-3.5" /> {t('myDay.your_contacts')}
                   </button>
                 }
-                linkLabel="See everyone"
+                linkLabel={t('myDay.see_everyone')}
                 onLink={() => navigate("/directory")}
               />
               {myLeaders.length > 0 ? (
@@ -1159,7 +1159,7 @@ export default function MyDay() {
                 </div>
               ) : (
                 <p className="text-sm text-on-surface-variant py-2">
-                  No one's in your care yet — pick your contacts to gather them here.
+                  {t('myDay.no_one_in_care')}
                 </p>
               )}
             </section>
@@ -1167,9 +1167,9 @@ export default function MyDay() {
             {/* ── Your week ── */}
             <section>
               <SectionHead
-                title="Your week"
-                sub="Where you're needed."
-                linkLabel="Full calendar"
+                title={t('myDay.your_week')}
+                sub={t('myDay.week_sub')}
+                linkLabel={t('myDay.full_calendar')}
                 onLink={() => navigate("/attendance")}
               />
               {thisWeek.length > 1 ? (
@@ -1205,7 +1205,7 @@ export default function MyDay() {
                 </div>
               ) : (
                 <p className="text-sm text-on-surface-variant py-2">
-                  {thisWeek.length === 1 ? "That's everything on the calendar this week." : "Nothing on the calendar this week yet."}
+                  {thisWeek.length === 1 ? t('myDay.that_is_everything') : t('myDay.nothing_on_calendar_yet')}
                 </p>
               )}
             </section>
@@ -1223,20 +1223,17 @@ export default function MyDay() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between px-5 pt-5">
-                <h3 className="font-serif text-lg text-on-surface">Your personal contacts</h3>
+                <h3 className="font-serif text-lg text-on-surface">{t('myDay.your_personal_contacts')}</h3>
                 <button
                   onClick={() => setPickerOpen(false)}
                   className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                  aria-label="Close"
+                  aria-label={t('actions.close')}
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
               <p className="px-5 mt-1.5 mb-3 text-sm text-on-surface-variant leading-relaxed">
-                Prayers and reminders for these contacts appear in your day. Everyone is still
-                visible on the People page. The chip next to a name is that person's current
-                step from their contact record — “Lead” is the first step in The Journey, not
-                something this picker decides.
+                {t('myDay.picker_desc')}
               </p>
               <div className="overflow-y-auto px-3 pb-3 flex flex-col gap-0.5">
                 {pickerContacts.map((c) => {

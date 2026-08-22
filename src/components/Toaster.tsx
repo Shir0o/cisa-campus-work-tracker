@@ -5,6 +5,7 @@ import { Notification } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Bell, Info, CheckCircle2, AlertCircle, UserPlus, Calendar } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { Translate } from './Translate';
 
 export default function Toaster() {
   const [activeToasts, setActiveToasts] = useState<Notification[]>([]);
@@ -106,9 +107,9 @@ export default function Toaster() {
               </div>
               
               <div className="flex-1 min-w-0 py-0.5">
-                <p className="text-sm font-semibold text-on-surface mb-0.5">{toast.title}</p>
+                <p className="text-sm font-semibold text-on-surface mb-0.5"><Translate text={toast.title} /></p>
                 <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">
-                  {toast.message}
+                  <Translate text={toast.message} />
                 </p>
               </div>
 

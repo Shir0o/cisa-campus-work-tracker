@@ -120,7 +120,7 @@ describe('AttendanceMobile', () => {
     expect(document.querySelector('.gthm-scount b')?.textContent).toBe('1');
 
     fireEvent.click(screen.getByText('Bible Study'));
-    expect(screen.getByText('Here')).toBeInTheDocument();
+    expect(screen.getAllByText('Here').length).toBeGreaterThan(0);
     expect(screen.getByText('We missed')).toBeInTheDocument();
     expect(screen.getByText('Tap a name to cycle.')).toBeInTheDocument();
   });

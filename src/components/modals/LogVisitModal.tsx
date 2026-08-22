@@ -17,6 +17,7 @@ import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
 import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { useCommand } from '../../lib/commands';
 import { pickableContacts, pickableStaff } from '../../lib/permissions';
 import { useSeason } from '../../lib/seasons';
@@ -45,6 +46,7 @@ export default function LogVisitModal({
   initialContactId = null,
 }: LogVisitModalProps) {
   const { user, effectiveUserId } = useAuth();
+  const { t } = useLanguage();
   const season = useSeason();
   const editing = !!visit;
 
@@ -322,7 +324,7 @@ export default function LogVisitModal({
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             role="dialog"
             aria-modal="true"
-            aria-label={editing ? 'Edit a visit' : 'Log a visit'}
+            aria-label={editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}
             className="relative w-full max-w-2xl max-h-[90vh] bg-surface-container rounded-[2rem] shadow-2xl overflow-hidden border border-outline-variant flex flex-col"
           >
             <div className="p-6 border-b border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
@@ -330,7 +332,7 @@ export default function LogVisitModal({
                 <House className="w-6 h-6" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-serif text-2xl text-on-surface">{editing ? 'Edit a visit' : 'Log a visit'}</h2>
+                <h2 className="font-serif text-2xl text-on-surface">{editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}</h2>
                 <p className="text-xs text-on-surface-variant">
                   {editing
                     ? 'Fix the record — nothing here notifies anyone.'
@@ -339,7 +341,7 @@ export default function LogVisitModal({
               </div>
               <button
                 onClick={onClose}
-                aria-label="Close"
+                aria-label={t('modals.close')}
                 className="ml-auto p-2 rounded-full hover:bg-surface-variant transition-colors"
               >
                 <X className="w-5 h-5" />
@@ -371,7 +373,7 @@ export default function LogVisitModal({
                     id="visit-who"
                     value={q}
                     onChange={(e) => setQ(e.target.value)}
-                    placeholder={chosen.length ? 'Anyone else?' : 'Start typing a name'}
+                    placeholder={chosen.length ? t('modals.anyone_else') : t('modals.start_typing_name')}
                     className="flex-1 min-w-[10rem] bg-transparent px-2 py-1 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none"
                   />
                 </div>
@@ -410,7 +412,7 @@ export default function LogVisitModal({
                         <span className="text-sm">
                           Add <strong>{newName}</strong> — someone new
                         </span>
-                        <span className="ml-auto text-xs text-on-surface-variant">starts a record</span>
+                        <span className="ml-auto text-xs text-on-surface-variant">{t('modals.starts_a_record')}</span>
                       </button>
                     )}
                   </div>
@@ -450,7 +452,7 @@ export default function LogVisitModal({
 
               {/* Who went */}
               <div>
-                <span className={label}>Who went</span>
+                <span className={label}>{t('modals.who_went')}</span>
                 <div className="flex flex-wrap gap-2">
                   {realStaff.map((s) => (
                     <button
@@ -470,7 +472,7 @@ export default function LogVisitModal({
                     </button>
                   ))}
                 </div>
-                <p className="mt-2 text-xs text-on-surface-variant">Most visits are a pair.</p>
+                <p className="mt-2 text-xs text-on-surface-variant">{t('modals.most_visits_are_a_pair')}</p>
               </div>
 
               {/* Why */}
@@ -517,7 +519,7 @@ export default function LogVisitModal({
                       : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
                   )}
                 >
-                  {followUpOn ? 'Yes — put it on the list' : 'Nothing to chase'}
+                  {followUpOn ? t('modals.yes_put_on_list') : t('modals.nothing_to_chase')}
                 </button>
                 {followUpOn && (
                   <>
@@ -525,7 +527,7 @@ export default function LogVisitModal({
                       value={followUp}
                       onChange={(e) => setFollowUp(e.target.value)}
                       placeholder="e.g. Ask after her mum on Friday"
-                      aria-label="What to follow up"
+                      aria-label={t('modals.what_to_follow_up')}
                       className={cn(input, 'mt-3')}
                     />
                     {!editing && (
@@ -550,7 +552,7 @@ export default function LogVisitModal({
                     value={prayer}
                     onChange={(e) => setPrayer(e.target.value)}
                     placeholder={
-                      chosen[0] ? `Something to carry for ${chosen[0].name.split(' ')[0]}` : 'Something to carry'
+                      chosen[0] ? `${t('modals.something_to_carry')} ${chosen[0].name.split(' ')[0]}` : t('modals.something_to_carry')
                     }
                     className={input}
                   />
@@ -645,7 +647,7 @@ export default function LogVisitModal({
                 className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the visit'}
+                {saving ? t('modals.saving') : editing ? t('modals.save_changes') : t('modals.log_the_visit')}
               </button>
             </div>
           </motion.div>

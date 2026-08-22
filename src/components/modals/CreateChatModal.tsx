@@ -5,6 +5,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { AppUser } from '../../types';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { getOrCreateDirectChat, createGroupChat, createAnnouncementRoom } from '../../services/chat';
 import { getUserInitials, firstName } from '../../lib/utils';
 
@@ -22,6 +23,7 @@ interface CreateChatModalProps {
 
 export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: CreateChatModalProps) {
   const { user: currentUser, role } = useAuth();
+  const { t } = useLanguage();
   // Only a Full-timer may open an announcement room — the same gate
   // firestore.rules applies to a chatRooms create with type 'announcement'.
   const canAnnounce = role === 'admin';
@@ -161,7 +163,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
           >
             {/* Header */}
             <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
-              <h3 className="font-serif text-xl text-on-surface">New message</h3>
+              <h3 className="font-serif text-xl text-on-surface">{t('modals.new_message')}</h3>
               <button
                 onClick={onClose}
                 className="p-2 rounded-full hover:bg-surface-container-high transition-colors text-on-surface-variant cursor-pointer"
@@ -180,7 +182,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                     : 'text-on-surface-variant hover:bg-surface-container-high'
                 }`}
               >
-                Message
+                {t('modals.message')}
               </button>
               {canAnnounce && (
                 <button
@@ -191,7 +193,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                       : 'text-on-surface-variant hover:bg-surface-container-high'
                   }`}
                 >
-                  Announcement
+                  {t('modals.announcement')}
                 </button>
               )}
             </div>
@@ -201,7 +203,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               <Search className="w-4 h-4 text-on-surface-variant shrink-0" />
               <input
                 type="text"
-                placeholder="Find someone by name…"
+                placeholder={t('modals.find_someone')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant/70"
@@ -213,7 +215,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
               {fetching ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                  <span className="text-xs">Fetching people…</span>
+                  <span className="text-xs">{t('modals.fetching_people')}</span>
                 </div>
               ) : (
                 <>
@@ -245,7 +247,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                       {selectedUids.length > 1 && (
                         <input
                           type="text"
-                          placeholder="Name this group (optional)"
+                          placeholder={t('modals.name_group_optional')}
                           value={groupName}
                           onChange={(e) => setGroupName(e.target.value)}
                           className="w-full h-11 px-4 rounded-xl bg-surface border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface mb-3"
@@ -253,7 +255,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                       )}
                       {filteredUsers.length === 0 ? (
                         <div className="text-center py-12 text-on-surface-variant text-sm">
-                          Nobody by that name.
+                          {t('modals.nobody_by_that_name')}
                         </div>
                       ) : (
                         filteredUsers.map((u) => {
@@ -295,13 +297,12 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                     /* Announcement form — a name + who receives it. */
                     <form id="create-announcement-form" onSubmit={sendAnnouncement}>
                       <p className="text-xs text-on-surface-variant leading-relaxed px-1 mb-3">
-                        Everyone here reads it; only Full-timers can post. Replies come
-                        back to the team directly.
+                        {t('modals.announcement_desc')}
                       </p>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Weekly notes, Campus updates"
+                        placeholder={t('modals.announcement_placeholder')}
                         value={announceName}
                         onChange={(e) => setAnnounceName(e.target.value)}
                         className="w-full h-11 px-4 rounded-xl bg-surface border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface mb-3"
@@ -309,7 +310,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                       <div className="space-y-2 max-h-[190px] overflow-y-auto p-1">
                         {filteredUsers.length === 0 ? (
                           <div className="text-center py-6 text-on-surface-variant text-xs">
-                            No users found.
+                            {t('modals.no_users_found')}
                           </div>
                         ) : (
                           filteredUsers.map((u) => {
@@ -357,7 +358,7 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                 onClick={onClose}
                 className="flex-1 h-11 rounded-full font-semibold text-accent hover:bg-primary/5 transition-all text-sm cursor-pointer"
               >
-                Cancel
+                {t('modals.cancel')}
               </button>
               {tab === 'message' ? (
                 <button
@@ -367,11 +368,11 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
-                    <span className="animate-pulse">Starting…</span>
+                    <span className="animate-pulse">{t('modals.starting')}</span>
                   ) : selectedUids.length > 1 ? (
-                    `Start group (${selectedUids.length})`
+                    t('modals.start_group').replace('{n}', String(selectedUids.length))
                   ) : (
-                    'Start conversation'
+                    t('modals.start_conversation')
                   )}
                 </button>
               ) : (
@@ -382,9 +383,9 @@ export default function CreateChatModal({ isOpen, onClose, onSelectRoom }: Creat
                   className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 >
                   {loading ? (
-                    <span className="animate-pulse">Sending…</span>
+                    <span className="animate-pulse">{t('modals.sending')}</span>
                   ) : (
-                    'Send announcement'
+                    t('modals.send_announcement')
                   )}
                 </button>
               )}

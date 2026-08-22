@@ -8,6 +8,7 @@ import { addDays, addWeeks, addMonths, format, parseISO, getDay, startOfMonth, e
 
 import DatePicker from '../ui/DatePicker';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
+import { useLanguage } from '../LanguageProvider';
 
 interface AddEventModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const DAYS = [
 ];
 
 export default function AddEventModal({ isOpen, onClose, currentEventCount }: AddEventModalProps) {
+  const { t } = useLanguage();
   const gatheringTypes = useGatheringTypes();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -259,8 +261,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                 <CalendarHeart className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-serif text-xl text-on-surface leading-tight">Log a gathering</h2>
-                <p className="text-sm text-on-surface-variant">Add it to the record — then mark who came.</p>
+                <h2 className="font-serif text-xl text-on-surface leading-tight">{t('modals.log_a_gathering')}</h2>
+                <p className="text-sm text-on-surface-variant">{t('modals.add_to_record')}</p>
               </div>
               <button
                 onClick={onClose}
@@ -291,7 +293,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
 
                 {/* Type pills */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">Type</label>
+                  <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">{t('modals.type')}</label>
                   <div className="flex flex-wrap gap-2">
                     {gatheringTypes.map(t => (
                       <button
@@ -313,7 +315,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
 
                 {/* Event Date */}
                 <DatePicker
-                  label="Date"
+                  label={t('modals.date')}
                   value={formData.date}
                   onChange={val => setFormData(f => ({ ...f, date: val }))}
                   required
@@ -343,8 +345,8 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                       <RefreshCw className={cn("w-4 h-4", formData.isRecurring && "animate-spin-slow")} />
                     </div>
                     <div>
-                      <p className="text-xs font-semibold text-on-surface">Recurring Event</p>
-                      <p className="text-[10px] text-on-surface-variant">Repeat this event</p>
+                      <p className="text-xs font-semibold text-on-surface">{t('modals.recurring_event')}</p>
+                      <p className="text-[10px] text-on-surface-variant">{t('modals.repeat_this_event')}</p>
                     </div>
                   </div>
                   <button
@@ -373,7 +375,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                     >
                       <div className="grid grid-cols-2 gap-3">
                         <div className="space-y-1.5 text-left">
-                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Frequency</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">{t('modals.frequency')}</label>
                           <select
                             value={formData.recurrenceType}
                             onChange={e => {
@@ -387,14 +389,14 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                             }}
                             className="w-full h-10 px-3 rounded-xl bg-surface-container-high border border-outline outline-none text-xs text-on-surface"
                           >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
+                            <option value="daily">{t('modals.daily')}</option>
+                            <option value="weekly">{t('modals.weekly')}</option>
+                            <option value="monthly">{t('modals.monthly')}</option>
                           </select>
                         </div>
                         <div className="space-y-1.5 text-left">
                           <DatePicker 
-                            label="End By"
+                            label={t('modals.end_by')}
                             value={formData.recurrenceEndDate}
                             onChange={val => setFormData(f => ({ ...f, recurrenceEndDate: val }))}
                           />
@@ -404,7 +406,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                       {/* Weekly Day Selection */}
                       {formData.recurrenceType === 'weekly' && (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Repeat on</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">{t('modals.repeat_on')}</label>
                           <div className="flex justify-between gap-1">
                             {DAYS.map(day => (
                               <button
@@ -436,7 +438,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                       {/* Monthly Options */}
                       {formData.recurrenceType === 'monthly' && (
                         <div className="space-y-2">
-                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">Repeat on</label>
+                          <label className="text-[10px] font-semibold text-on-surface-variant  px-1 ">{t('modals.repeat_on')}</label>
                           <div className="grid grid-cols-1 gap-2">
                             <button
                               type="button"
@@ -464,7 +466,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                               <span>
                                 {formData.date 
                                   ? `${getWeekOrdinal(parseISO(formData.date))} ${format(parseISO(formData.date), 'EEEE')} of month` 
-                                  : 'Relative day of month'}
+                                  : t('modals.relative_day_of_month')}
                               </span>
                               {formData.monthlyType === 'relative-day' && <Plus className="w-3 h-3" />}
                             </button>
@@ -503,7 +505,7 @@ export default function AddEventModal({ isOpen, onClose, currentEventCount }: Ad
                   ) : (
                     <>
                       <Plus className="w-3 h-3" />
-                      {formData.isRecurring ? 'Create schedule' : 'Log gathering'}
+                      {formData.isRecurring ? t('modals.create_schedule') : t('modals.log_gathering')}
                     </>
                   )}
                 </button>

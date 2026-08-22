@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2, Loader2, CalendarHeart } from 'lucide-react';
 import type { GatheringType } from '../../types';
+import { useLanguage } from '../LanguageProvider';
 import {
   addGatheringType,
   removeGatheringType,
@@ -22,6 +23,7 @@ interface Row {
 }
 
 export default function ManageGatheringTypesModal({ isOpen, onClose, types }: ManageGatheringTypesModalProps) {
+  const { t } = useLanguage();
   const [rows, setRows] = useState<Row[]>([]);
   const [newName, setNewName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -107,8 +109,8 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                 <CalendarHeart className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-serif text-xl text-on-surface leading-tight">Kinds of gathering</h2>
-                <p className="text-sm text-on-surface-variant">The ways your fellowship comes together.</p>
+                <h2 className="font-serif text-xl text-on-surface leading-tight">{t('modals.kinds_of_gathering')}</h2>
+                <p className="text-sm text-on-surface-variant">{t('modals.ways_fellowship')}</p>
               </div>
               <button
                 onClick={onClose}
@@ -121,20 +123,20 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
             {/* Body */}
             <div className="p-5 space-y-2 max-h-[50vh] overflow-y-auto">
               {rows.length === 0 && (
-                <p className="text-sm text-on-surface-variant italic py-2">No kinds yet — add one below.</p>
+                <p className="text-sm text-on-surface-variant italic py-2">{t('modals.no_kinds_yet')}</p>
               )}
               {rows.map((r) => (
                 <div key={r.key} className="flex items-center gap-2">
                   <input
                     value={r.name}
                     onChange={(e) => setRow(r.key, { name: e.target.value })}
-                    placeholder="Name"
+                    placeholder={t('modals.name')}
                     className="flex-1 min-w-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
                   />
                   <button
                     type="button"
                     onClick={() => removeRow(r.key)}
-                    title="Remove this kind"
+                    title={t('modals.remove_this_kind')}
                     className="p-2 rounded-full text-on-surface-variant hover:bg-error-container hover:text-on-error-container transition-colors shrink-0 cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -148,7 +150,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') addRow(); }}
-                  placeholder="New kind, e.g. Workshop"
+                  placeholder={t('modals.new_kind_placeholder')}
                   className="flex-1 min-w-0 h-10 px-3 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
                 />
                 <button
@@ -157,20 +159,20 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                   disabled={!newName.trim()}
                   className="inline-flex items-center gap-1 px-3 h-10 rounded-xl bg-surface-container-high border border-outline/40 text-on-surface text-xs font-semibold hover:border-outline transition-colors disabled:opacity-50 shrink-0 cursor-pointer"
                 >
-                  <Plus className="w-3 h-3" /> Add
+                  <Plus className="w-3 h-3" /> {t('actions.add')}
                 </button>
               </div>
             </div>
 
             {/* Footer */}
             <div className="px-5 py-4 border-t border-outline-variant flex items-center gap-2">
-              <span className="text-[11px] text-on-surface-variant mr-auto">Renaming a kind updates past gatherings too.</span>
+              <span className="text-[11px] text-on-surface-variant mr-auto">{t('modals.renaming_kind_updates')}</span>
               <button
                 type="button"
                 onClick={onClose}
                 className="h-10 px-4 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
               >
-                Cancel
+                {t('modals.cancel')}
               </button>
               <button
                 type="button"
@@ -178,7 +180,7 @@ export default function ManageGatheringTypesModal({ isOpen, onClose, types }: Ma
                 disabled={saving}
                 className="h-10 px-5 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
               >
-                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save'}
+                {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : t('modals.save')}
               </button>
             </div>
           </motion.div>

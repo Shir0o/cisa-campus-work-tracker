@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, FileSpreadsheet, RefreshCw, AlertCircle, CheckCircle2, Sparkles } from 'lucide-react';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { fetchSheetData, extractSpreadsheetId } from '../../services/sheetsService';
 import { collection, doc, updateDoc, getDocs, query, where, addDoc } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../../lib/firebase';
@@ -17,6 +18,7 @@ interface SyncSheetModalProps {
 
 export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetModalProps) {
   const { authorizeSheets, isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [sheetUrl, setSheetUrl] = useState('');
   const [tabName, setTabName] = useState('Sheet1');
   const [range, setRange] = useState('A1:Z100');
@@ -204,14 +206,14 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                   <FileSpreadsheet className="w-5 h-5" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-on-surface">Sync Google Sheet</h2>
-                  <p className="text-xs text-on-surface-variant">Update attendance from a spreadsheet</p>
+                  <h2 className="text-xl font-semibold text-on-surface">{t('modals.sync_google_sheet')}</h2>
+                  <p className="text-xs text-on-surface-variant">{t('modals.update_attendance_spreadsheet')}</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
                 className="p-2 hover:bg-surface-container rounded-full transition-colors"
-                aria-label="Close modal"
+                aria-label={t('modals.close_modal')}
               >
                 <X className="w-5 h-5 text-on-surface-variant" />
               </button>
@@ -221,7 +223,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
               {!dryRunData ? (
                 <>
                   <div className="space-y-1.5">
-                    <label className="text-sm font-semibold text-on-surface-variant ml-1">Sheet URL or ID</label>
+                    <label className="text-sm font-semibold text-on-surface-variant ml-1">{t('modals.sheet_url_or_id')}</label>
                     <input
                       type="text"
                       value={sheetUrl}
@@ -233,7 +235,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-on-surface-variant ml-1">Tab Name</label>
+                      <label className="text-sm font-semibold text-on-surface-variant ml-1">{t('modals.tab_name')}</label>
                       <input
                         type="text"
                         value={tabName}
@@ -243,7 +245,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <label className="text-sm font-semibold text-on-surface-variant ml-1">Range</label>
+                      <label className="text-sm font-semibold text-on-surface-variant ml-1">{t('modals.range')}</label>
                       <input
                         type="text"
                         value={range}
@@ -262,27 +264,27 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 >
                   <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 space-y-3">
                     <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-semibold text-accent  ">Sync Preview</h4>
+                      <h4 className="text-xs font-semibold text-accent  ">{t('modals.sync_preview')}</h4>
                       <button 
                         onClick={() => setDryRunData(null)}
                         className="text-[10px] text-on-surface-variant hover:text-accent transition-colors font-semibold"
                       >
-                        Edit Config
+                        {t('modals.edit_config')}
                       </button>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30">
                         <div className="text-lg font-semibold text-accent">{dryRunData.newContacts.length}</div>
-                        <div className="text-[10px] font-semibold text-on-surface-variant">New Contacts</div>
+                        <div className="text-[10px] font-semibold text-on-surface-variant">{t('modals.new_contacts')}</div>
                       </div>
                       <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30">
                         <div className="text-lg font-semibold text-accent">{dryRunData.updates.length}</div>
-                        <div className="text-[10px] font-semibold text-on-surface-variant">Updates</div>
+                        <div className="text-[10px] font-semibold text-on-surface-variant">{t('modals.updates')}</div>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <div className="text-[10px] font-semibold text-on-surface-variant flex items-center justify-between">
-                        <span>Participants to Sync</span>
+                        <span>{t('modals.participants_to_sync')}</span>
                         <span>{dryRunData.displayRows.length} rows</span>
                       </div>
                       <div className="space-y-1 max-h-[120px] overflow-y-auto pr-1">
@@ -297,14 +299,14 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                               </span>
                               <span className="font-semibold text-on-surface truncate">{row.identifier}</span>
                             </div>
-                            <span className="text-on-surface-variant shrink-0">{row.count} events</span>
+                            <span className="text-on-surface-variant shrink-0">{row.count} {t('modals.events')}</span>
                           </div>
                         ))}
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <div className="text-[10px] font-semibold text-on-surface-variant">Event Mappings</div>
+                      <div className="text-[10px] font-semibold text-on-surface-variant">{t('modals.event_mappings')}</div>
                       <div className="space-y-1">
                         {Object.entries(dryRunData.eventMappings).map(([header, status]) => (
                           <div key={header} className="flex items-start gap-2 text-[10px] bg-surface-container-lowest p-2 rounded-lg border border-outline-variant/10">
@@ -324,12 +326,12 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
               <div className="p-4 rounded-3xl bg-surface-container-lowest border border-outline-variant/30 space-y-2">
                 <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-2">
                   <Sparkles className="w-3 h-3 text-accent" />
-                  Sync Protocol
+                  {t('modals.sync_protocol')}
                 </h4>
                 <ul className="text-[11px] text-on-surface-variant space-y-1.5 list-disc pl-4 leading-relaxed">
-                  <li><strong>Auto-Creation</strong>: New people will be added as "Leads".</li>
-                  <li><strong>Dry Run</strong>: Validate row-by-row before any database changes.</li>
-                  <li><strong>Exact Matching</strong>: Maps columns using exact name matches.</li>
+                  <li><strong>{t('modals.auto_creation')}</strong>: {t('modals.auto_creation_body')}</li>
+                  <li><strong>{t('modals.dry_run')}</strong>: {t('modals.dry_run_body')}</li>
+                  <li><strong>{t('modals.exact_matching')}</strong>: {t('modals.exact_matching_body')}</li>
                 </ul>
               </div>
 
@@ -371,7 +373,7 @@ export default function SyncSheetModal({ isOpen, onClose, contacts }: SyncSheetM
                 ) : (
                   <>
                     <RefreshCw className="w-5 h-5" />
-                    {dryRunData ? `Confirm & Commit (${dryRunData.newContacts.length + dryRunData.updates.length} rows)` : 'Run Dry Run'}
+                    {dryRunData ? t('modals.confirm_commit').replace('{n}', String(dryRunData.newContacts.length + dryRunData.updates.length)) : t('modals.run_dry_run')}
                   </>
                 )}
               </button>

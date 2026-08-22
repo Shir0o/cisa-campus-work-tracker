@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import type { Event } from '../../types';
 import { useGatheringTypes } from '../../lib/gatheringTypes';
 import DatePicker from '../ui/DatePicker';
+import { useLanguage } from '../LanguageProvider';
 
 interface EditEventModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ interface EditEventModalProps {
 // it is (attendance lives on contacts, keyed by event id). Recurrence is not
 // edited here (a series is edited per occurrence).
 export default function EditEventModal({ isOpen, onClose, event }: EditEventModalProps) {
+  const { t } = useLanguage();
   const gatheringTypes = useGatheringTypes();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({ name: '', type: '', location: '', date: '' });
@@ -101,8 +103,8 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
                 <CalendarHeart className="w-5 h-5" />
               </div>
               <div className="min-w-0">
-                <h2 className="font-serif text-xl text-on-surface leading-tight">Edit gathering</h2>
-                <p className="text-sm text-on-surface-variant">Fix a detail — who came stays as it is.</p>
+                <h2 className="font-serif text-xl text-on-surface leading-tight">{t('modals.edit_gathering')}</h2>
+                <p className="text-sm text-on-surface-variant">{t('modals.fix_detail')}</p>
               </div>
               <button
                 onClick={onClose}
@@ -117,7 +119,7 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
               {/* Name */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                  <Tag className="w-3 h-3" /> Name
+                  <Tag className="w-3 h-3" /> {t('modals.name')}
                 </label>
                 <input
                   required
@@ -126,13 +128,13 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
                   value={formData.name}
                   onChange={(e) => setFormData((f) => ({ ...f, name: e.target.value }))}
                   className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder="e.g. Friday Night Gathering"
+                  placeholder={t('modals.event_name_placeholder')}
                 />
               </div>
 
               {/* Type pills */}
               <div className="space-y-1.5">
-                <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">Type</label>
+                <label className="text-[10px] font-semibold text-on-surface-variant px-1  ">{t('modals.type')}</label>
                 <div className="flex flex-wrap gap-2">
                   {gatheringTypes.map((t) => (
                     <button
@@ -154,7 +156,7 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
 
               {/* Date */}
               <DatePicker
-                label="Date"
+                label={t('modals.date')}
                 value={formData.date}
                 onChange={(val) => setFormData((f) => ({ ...f, date: val }))}
                 required
@@ -163,14 +165,14 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
               {/* Location */}
               <div className="space-y-1.5">
                 <label className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                  <MapPin className="w-3 h-3" /> Location <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">(optional)</span>
+                  <MapPin className="w-3 h-3" /> {t('modals.location')} <span className="font-semibold normal-case tracking-normal text-on-surface-variant/70">{t('modals.optional')}</span>
                 </label>
                 <input
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData((f) => ({ ...f, location: e.target.value }))}
                   className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface text-sm"
-                  placeholder="e.g. Lower Common Room"
+                  placeholder={t('modals.location_placeholder')}
                 />
               </div>
 
@@ -181,14 +183,14 @@ export default function EditEventModal({ isOpen, onClose, event }: EditEventModa
                   onClick={onClose}
                   className="flex-1 h-10 rounded-xl font-semibold text-xs text-on-surface-variant hover:bg-surface-container-high transition-all cursor-pointer"
                 >
-                  Cancel
+                  {t('modals.cancel')}
                 </button>
                 <button
                   disabled={loading || !formData.name.trim() || !formData.date}
                   type="submit"
                   className="flex-[1.5] h-10 rounded-xl bg-primary text-on-primary font-semibold text-xs   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale cursor-pointer"
                 >
-                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Save changes'}
+                  {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : t('modals.save_changes')}
                 </button>
               </div>
             </form>

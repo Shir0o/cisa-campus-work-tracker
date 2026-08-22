@@ -3,12 +3,12 @@ import { useLanguage } from "./LanguageProvider";
 import { cn } from "../lib/utils";
 
 export function LanguageToggle({ className }: { className?: string }) {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <div
       role="group"
-      aria-label="Language selector"
+      aria-label={t('common.language_selector')}
       className={cn(
         "inline-flex items-center p-1 bg-surface-container rounded-xl border border-outline-variant/40",
         className,

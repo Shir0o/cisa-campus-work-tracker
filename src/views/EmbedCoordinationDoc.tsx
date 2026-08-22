@@ -17,6 +17,7 @@ import { softDeleteBoardDoc, restoreBoardDoc } from '../lib/data/board';
 import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type NoteFormInitial } from './CoordinationNotes';
 import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
 import { Contact } from '../types';
@@ -30,6 +31,7 @@ declare global {
 }
 
 export default function EmbedCoordinationDoc() {
+  const { t } = useLanguage();
   const { docId } = useParams<{ docId: string }>();
   const { user, isAdmin, loading } = useAuth();
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -72,7 +74,7 @@ export default function EmbedCoordinationDoc() {
             .map((d) => {
               const data = d.data() as { displayName?: string; email?: string; photoURL?: string; role?: string; approved?: boolean };
               return {
-                member: { uid: d.id, name: data.displayName || data.email || 'Teammate', photoURL: data.photoURL, role: data.role } as TeamMember,
+                member: { uid: d.id, name: data.displayName || data.email || t('embed.teammate'), photoURL: data.photoURL, role: data.role } as TeamMember,
                 approved: data.approved,
               };
             })
@@ -100,7 +102,7 @@ export default function EmbedCoordinationDoc() {
     );
   }, [isAdmin]);
 
-  const meName = user?.displayName || user?.email || 'Someone';
+  const meName = user?.displayName || user?.email || t('embed.someone');
   const uid = user?.uid || '';
 
   const saveMarkdown = async (id: string, md: string) => {
@@ -113,7 +115,7 @@ export default function EmbedCoordinationDoc() {
   const saveTitle = async (id: string, title: string) => {
     try {
       await updateDoc(doc(db, 'board_docs', id), {
-        title: title.trim() || 'Untitled page',
+        title: title.trim() || t('embed.untitled_page'),
         updatedAt: serverTimestamp(),
         updatedBy: user?.uid,
         updatedByName: meName,
@@ -136,7 +138,7 @@ export default function EmbedCoordinationDoc() {
   const onDelete = async (d: BoardDoc) => {
     try {
       await softDeleteBoardDoc(d);
-      showUndoSnack('Page moved to Trash', () => restoreBoardDoc(d));
+      showUndoSnack(t('embed.page_moved_to_trash'), () => restoreBoardDoc(d));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -156,7 +158,7 @@ export default function EmbedCoordinationDoc() {
       await setDoc(ref, {
         type: fields.type,
         series: fields.series,
-        title: fields.title.trim() || 'Untitled note',
+        title: fields.title.trim() || t('embed.untitled_note'),
         body: fields.body.trim(),
         date: todayISO(),
         contributorIds: [uid],
@@ -172,7 +174,7 @@ export default function EmbedCoordinationDoc() {
       logActivity({
         action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
         targetId: ref.id,
-        targetName: fields.title || 'Note',
+        targetName: fields.title || t('embed.note'),
         targetType: 'comment',
         type: 'create',
         description: fields.series,
@@ -184,22 +186,22 @@ export default function EmbedCoordinationDoc() {
   };
 
   if (signInError) {
-    return <EmbedStatus>Sign-in failed: {signInError}</EmbedStatus>;
+    return <EmbedStatus>{t('embed.sign_in_failed')} {signInError}</EmbedStatus>;
   }
   if (!docId) {
-    return <EmbedStatus>Missing doc id.</EmbedStatus>;
+    return <EmbedStatus>{t('embed.missing_doc_id')}</EmbedStatus>;
   }
   if (loading || !user) {
-    return <EmbedStatus>Signing in…</EmbedStatus>;
+    return <EmbedStatus>{t('embed.signing_in')}</EmbedStatus>;
   }
   if (!isAdmin) {
-    return <EmbedStatus>Admin access required.</EmbedStatus>;
+    return <EmbedStatus>{t('embed.admin_required')}</EmbedStatus>;
   }
   if (activeDoc === undefined) {
-    return <EmbedStatus>Loading document…</EmbedStatus>;
+    return <EmbedStatus>{t('embed.loading_document')}</EmbedStatus>;
   }
   if (activeDoc === null) {
-    return <EmbedStatus>Document not found.</EmbedStatus>;
+    return <EmbedStatus>{t('embed.document_not_found')}</EmbedStatus>;
   }
 
   // The person detail is a full page (the design's ContactDetail): it replaces

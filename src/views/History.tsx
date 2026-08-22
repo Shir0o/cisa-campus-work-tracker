@@ -34,6 +34,7 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import HistoryMobile from './HistoryMobile';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 
 // ── the work of care, in four warm kinds ──────────────────────────────
 type Bucket = "steps" | "prayer" | "talk" | "gather";
@@ -239,6 +240,7 @@ const firstName = (name: string) => (name || "Someone").split(" ")[0];
 
 export default function History() {
   useAuth();
+  const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [activities, setActivities] = useState<Hist[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -393,11 +395,10 @@ export default function History() {
         <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
           {todayLong}
         </div>
-        <h1 className="font-serif page-title text-on-surface">Looking back</h1>
+        <h1 className="font-serif page-title text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
-          A record of the small, faithful work of the last little while — conversations had, prayers begun, steps
-          taken. <span className="text-on-surface font-medium">{activities.length}</span>{" "}
-          {activities.length === 1 ? "moment" : "moments"} across the team, touching{" "}
+          {t('history.record_small_faithful')} <span className="text-on-surface font-medium">{activities.length}</span>{" "}
+          {activities.length === 1 ? t('history.moment') : t('history.moments')} across the team, touching{" "}
           <span className="text-on-surface font-medium">{peopleRemembered}</span> of the people in our care.
         </p>
       </header>
@@ -416,7 +417,7 @@ export default function History() {
                   : "text-on-surface-variant hover:text-on-surface",
               )}
             >
-              {k.label}
+              {t('history.' + k.id)}
             </button>
           ))}
         </div>
@@ -428,7 +429,7 @@ export default function History() {
             onChange={(e) => setWho(e.target.value)}
             className="bg-transparent outline-none pr-1 text-on-surface cursor-pointer"
           >
-            <option value="all">Whole team</option>
+            <option value="all">{t('history.whole_team')}</option>
             {staff.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -442,7 +443,7 @@ export default function History() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Find a moment or a name…"
+            placeholder={t('history.find_moment')}
             className="pl-10 pr-4 h-10 w-full rounded-full bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-sm text-on-surface placeholder:text-on-surface-variant/60"
           />
         </div>
@@ -452,11 +453,11 @@ export default function History() {
       {error ? (
         <DataLoadError label={error} />
       ) : loading ? (
-        <div className="text-center py-16 text-on-surface-variant">Gathering the last few days…</div>
+        <div className="text-center py-16 text-on-surface-variant">{t('history.gathering_last_few_days')}</div>
       ) : rows.length === 0 ? (
         <div className="text-center py-16">
-          <h3 className="font-serif text-xl text-on-surface mb-1">Nothing here yet for that filter</h3>
-          <p className="text-sm text-on-surface-variant">Try widening it.</p>
+          <h3 className="font-serif text-xl text-on-surface mb-1">{t('history.nothing_yet_filter')}</h3>
+          <p className="text-sm text-on-surface-variant">{t('history.try_widening')}</p>
         </div>
       ) : (
         <div className="relative">
@@ -535,18 +536,18 @@ export default function History() {
         <div className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-baseline gap-x-8 gap-y-2">
           <div className="flex items-baseline gap-2">
             <span className="text-xl text-on-surface">{activities.length}</span>
-            <span className="text-[13px] text-on-surface-variant">moments noted</span>
+            <span className="text-[13px] text-on-surface-variant">{t('history.moments_noted')}</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl text-on-surface">{peopleRemembered}</span>
-            <span className="text-[13px] text-on-surface-variant">people remembered</span>
+            <span className="text-[13px] text-on-surface-variant">{t('history.people_remembered')}</span>
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-xl text-on-surface">{staff.length}</span>
-            <span className="text-[13px] text-on-surface-variant">hands at work</span>
+            <span className="text-[13px] text-on-surface-variant">{t('history.hands_at_work')}</span>
           </div>
           <span className="text-[13px] text-on-surface-variant/70 italic ml-auto">
-            We write it down so nothing — and no one — is forgotten.
+            {t('history.we_write_it_down')}
           </span>
         </div>
       )}

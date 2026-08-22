@@ -4,6 +4,9 @@ import { Pencil, X, Loader2 } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useCommand } from '../lib/commands';
 import { useAuth } from './AuthProvider';
+import { useLanguage } from './LanguageProvider';
+import { Translate } from './Translate';
+import { useTranslate } from '../hooks/useTranslate';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
 import { FeedbackKind } from '../types';
@@ -187,6 +190,8 @@ export default function FeedbackFAB() {
 
   const firstName = (user.displayName || '').trim().split(/\s+/)[0] || 'friend';
   const activeMeta = kindMeta(kind);
+  const { t } = useLanguage();
+  const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
 
   return (
     <>
@@ -201,8 +206,8 @@ export default function FeedbackFAB() {
             ? 'bg-surface-container-highest text-on-surface-variant'
             : 'bg-primary text-on-primary hover:scale-105'
         }`}
-        title={isOpen ? 'Close' : 'Leave a note for the team'}
-        aria-label={isOpen ? 'Close feedback panel' : 'Leave a note for the team'}
+        title={isOpen ? t('feedback.close') : t('feedback.leave_note_for_team')}
+        aria-label={isOpen ? t('feedback.close_feedback_panel') : t('feedback.leave_note_for_team')}
         aria-expanded={isOpen}
       >
         {isOpen ? <X className="w-5 h-5" /> : <Pencil className="w-5 h-5" />}
@@ -229,7 +234,7 @@ export default function FeedbackFAB() {
               transition={{ type: 'spring', damping: 26, stiffness: 360 }}
               role="dialog"
               aria-modal="true"
-              aria-label="Leave a note for the team"
+              aria-label={t('feedback.leave_note_for_team')}
               className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none ${
                 isMessagesPage ? 'bottom-36 lg:bottom-36 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
               }`}
@@ -240,8 +245,8 @@ export default function FeedbackFAB() {
                   <div className="w-12 h-12 rounded-full bg-primary/10 text-accent grid place-items-center text-xl mb-1">
                     ✦
                   </div>
-                  <p className="font-serif text-lg text-on-surface">We got your note.</p>
-                  <p className="text-sm text-on-surface-variant">Thank you for taking the time, {firstName}.</p>
+                  <p className="font-serif text-lg text-on-surface">{t('feedback.we_got_your_note')}</p>
+                  <p className="text-sm text-on-surface-variant">{t('feedback.thanks_for_time')} {firstName}.</p>
                   <button
                     type="button"
                     onClick={() => {
@@ -258,13 +263,13 @@ export default function FeedbackFAB() {
                 /* Form */
                 <div className="flex flex-col gap-3.5">
                   <div className="flex flex-col gap-0.5">
-                    <h3 className="font-serif text-lg font-medium text-on-surface leading-snug">Leave a note</h3>
+                    <h3 className="font-serif text-lg font-medium text-on-surface leading-snug">{t('feedback.leave_a_note')}</h3>
                     <p className="text-[13px] text-on-surface-variant leading-snug">
-                      Ideas, friction, appreciation — all welcome.
+                      {t('feedback.all_welcome')}
                     </p>
                   </div>
 
-                  <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kind of note">
+                  <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('feedback.kind_of_note')}>
                     {FEEDBACK_KINDS.map((k) => {
                       const on = kind === k.id;
                       return (
@@ -279,7 +284,7 @@ export default function FeedbackFAB() {
                               : 'text-on-surface-variant bg-surface border-outline-variant hover:bg-surface-container-high'
                           }`}
                         >
-                          {k.label}
+                          <Translate text={k.label} />
                         </button>
                       );
                     })}
@@ -292,14 +297,14 @@ export default function FeedbackFAB() {
                     onChange={(e) => setMessage(e.target.value)}
                     rows={4}
                     maxLength={600}
-                    placeholder={activeMeta.placeholder}
-                    aria-label="Your note"
+                    placeholder={activePlaceholder}
+                    aria-label={t('feedback.your_note')}
                     className="w-full resize-none bg-surface border border-outline-variant rounded-xl p-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow disabled:opacity-60"
                   />
 
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-xs text-on-surface-variant truncate min-w-0">
-                      {user.displayName || 'You'} · {roleLabel(role)}
+                      {user.displayName || t('common.you')} · <Translate text={roleLabel(role)} />
                     </span>
                     <button
                       type="button"
@@ -310,10 +315,10 @@ export default function FeedbackFAB() {
                       {phase === 'busy' ? (
                         <>
                           <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                          <span>Sending…</span>
+                          <span>{t('feedback.sending')}</span>
                         </>
                       ) : (
-                        'Send'
+                        t('feedback.send')
                       )}
                     </button>
                   </div>

@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { ChatAttachment } from '../../types';
 
 interface AttachDataModalProps {
@@ -34,6 +35,7 @@ type TabType = 'contact' | 'todo' | 'event' | 'interaction' | 'prayer' | 'note' 
 
 export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDataModalProps) {
   const { role: userRole } = useAuth();
+  const { t } = useLanguage();
   const isAdmin = userRole === 'admin';
 
   const [activeTab, setActiveTab] = useState<TabType>('contact');
@@ -43,13 +45,13 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
 
   // Tabs layout configuration
   const tabs = [
-    { id: 'contact' as TabType, label: 'Contact', icon: User, adminOnly: false },
-    { id: 'todo' as TabType, label: 'Todo', icon: CheckSquare, adminOnly: false },
-    { id: 'event' as TabType, label: 'Event', icon: Calendar, adminOnly: false },
-    { id: 'interaction' as TabType, label: 'Interaction', icon: History, adminOnly: false },
-    { id: 'prayer' as TabType, label: 'Prayer', icon: HeartHandshake, adminOnly: false },
-    { id: 'note' as TabType, label: 'Note', icon: FileText, adminOnly: true },
-    { id: 'feedback' as TabType, label: 'Feedback', icon: MessageSquare, adminOnly: true },
+    { id: 'contact' as TabType, label: t('modals.contact'), icon: User, adminOnly: false },
+    { id: 'todo' as TabType, label: t('modals.todo'), icon: CheckSquare, adminOnly: false },
+    { id: 'event' as TabType, label: t('modals.event'), icon: Calendar, adminOnly: false },
+    { id: 'interaction' as TabType, label: t('modals.interaction'), icon: History, adminOnly: false },
+    { id: 'prayer' as TabType, label: t('modals.prayer'), icon: HeartHandshake, adminOnly: false },
+    { id: 'note' as TabType, label: t('modals.note'), icon: FileText, adminOnly: true },
+    { id: 'feedback' as TabType, label: t('modals.feedback'), icon: MessageSquare, adminOnly: true },
   ].filter(t => !t.adminOnly || isAdmin);
 
   useEffect(() => {
@@ -76,7 +78,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().name,
-            subtitle: doc.data().role || doc.data().location || 'Contact',
+            subtitle: doc.data().role || doc.data().location || t('modals.contact_subtitle'),
             ...doc.data()
           })));
           setLoading(false);
@@ -90,7 +92,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().title,
-            subtitle: doc.data().dueDate ? `Due: ${doc.data().dueDate}` : 'No due date',
+            subtitle: doc.data().dueDate ? `${t('modals.due')}: ${doc.data().dueDate}` : t('modals.no_due_date'),
             status: doc.data().status,
             priority: doc.data().priority,
             ...doc.data()
@@ -106,7 +108,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().name,
-            subtitle: doc.data().date || 'Event date unknown',
+            subtitle: doc.data().date || t('modals.event_date_unknown'),
             ...doc.data()
           })));
           setLoading(false);
@@ -120,7 +122,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
           setItems(snap.docs.map(doc => ({
             id: doc.id,
             name: doc.data().content.substring(0, 80) + (doc.data().content.length > 80 ? '...' : ''),
-            subtitle: `${doc.data().userName || 'Someone'} • ${new Date(doc.data().dateTime || doc.data().createdAt).toLocaleDateString()}`,
+            subtitle: `${doc.data().userName || t('modals.someone')} • ${new Date(doc.data().dateTime || doc.data().createdAt).toLocaleDateString()}`,
             ...doc.data()
           })));
           setLoading(false);
@@ -226,8 +228,8 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
             {/* Header */}
             <div className="px-6 py-3.5 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
               <div>
-                <h3 className="font-serif text-lg text-on-surface">Attach Reference Data</h3>
-                <p className="text-xs text-on-surface-variant mt-0.5">Share dynamic database cards in chat</p>
+                <h3 className="font-serif text-lg text-on-surface">{t('modals.attach_reference_data')}</h3>
+                <p className="text-xs text-on-surface-variant mt-0.5">{t('modals.share_dynamic_cards')}</p>
               </div>
               <button
                 onClick={onClose}
@@ -267,7 +269,7 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
               <Search className="w-4 h-4 text-on-surface-variant shrink-0" />
               <input
                 type="text"
-                placeholder={`Search ${activeTab}s...`}
+                placeholder={t('modals.search_placeholder').replace('{type}', activeTab)}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full bg-transparent text-sm text-on-surface outline-none placeholder:text-on-surface-variant/70"
@@ -279,11 +281,11 @@ export default function AttachDataModal({ isOpen, onClose, onAttach }: AttachDat
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-2 text-on-surface-variant">
                   <Loader2 className="w-7 h-7 animate-spin text-accent" />
-                  <span className="text-xs">Loading items...</span>
+                  <span className="text-xs">{t('modals.loading_items')}</span>
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="text-center py-16 text-on-surface-variant text-sm">
-                  No {activeTab}s found matching your query.
+                  {t('modals.no_items_found').replace('{type}', activeTab)}
                 </div>
               ) : (
                 filteredItems.map((item) => (

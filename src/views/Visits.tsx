@@ -15,6 +15,7 @@ import { useAuth } from '../components/AuthProvider';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import PageContainer from '../components/layout/PageContainer';
+import { useLanguage } from '../components/LanguageProvider';
 import { DataLoadError } from '../components/ui/DataLoadError';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import LogVisitModal from '../components/modals/LogVisitModal';
@@ -23,6 +24,7 @@ import VisitsMobile from './VisitsMobile';
 import type { AppUser, Contact, Visit } from '../types';
 
 export default function Visits() {
+  const { t } = useLanguage();
   const { user } = useAuth();
   const isMobile = useMediaQuery('(max-width: 768px)');
 
@@ -181,24 +183,22 @@ export default function Visits() {
       <header className="flex items-start gap-6 flex-wrap mb-2">
         <div className="min-w-0">
           <div className="font-sans text-[11px]   text-on-surface-variant mb-2">
-            Where we've been
+            {t('visits.where_weve_been')}
           </div>
-          <h1 className="font-serif page-title text-on-surface">Visits</h1>
+          <h1 className="font-serif page-title text-on-surface">{t('visits.title')}</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
             {groups.thisWeek.length > 0 ? (
               <>
-                We've been round to{' '}
+                {t('visits.weve_been_round_to')}{' '}
                 <span className="text-on-surface font-semibold">
-                  {groups.thisWeek.length} {groups.thisWeek.length === 1 ? 'home' : 'homes'}
+                  {groups.thisWeek.length} {groups.thisWeek.length === 1 ? t('visits.home') : t('visits.homes')}
                 </span>{' '}
-                this week
-                {groups.lastWeek.length > 0 && <>, {groups.lastWeek.length} last week</>}. Going to where someone lives
-                says something a coffee can't.
+                {t('visits.this_week')}
+                {groups.lastWeek.length > 0 && <>, {groups.lastWeek.length} {t('visits.last_week')}</>}. {t('visits.going_to_where')}
               </>
             ) : (
               <>
-                No visits logged this week yet. Going to where someone lives says something a coffee can't — write one
-                down while you still remember the room.
+                {t('visits.no_visits_this_week')}
               </>
             )}
           </p>
@@ -207,22 +207,22 @@ export default function Visits() {
           onClick={() => openLog()}
           className="ml-auto inline-flex items-center gap-2 px-5 h-10 rounded-full bg-primary text-on-primary text-sm font-medium shrink-0"
         >
-          <Plus className="w-4 h-4" /> Log a visit
+          <Plus className="w-4 h-4" /> {t('visits.log_a_visit')}
         </button>
       </header>
 
       {error ? (
         <DataLoadError label={error} />
       ) : loading ? (
-        <div className="text-center py-16 text-on-surface-variant">Gathering where we've been…</div>
+        <div className="text-center py-16 text-on-surface-variant">{t('visits.gathering')}</div>
       ) : (
         <>
           {overdue.length > 0 && (
             <section className="mt-10">
               <div className="flex items-baseline gap-4 flex-wrap mb-4">
-                <h2 className="font-serif text-[23px] text-on-surface">We haven't been round in a while</h2>
+                <h2 className="font-serif text-[23px] text-on-surface">{t('visits.havent_been_round')}</h2>
                 <span className="text-sm text-on-surface-variant">
-                  You've been to theirs before — it's been a few weeks.
+                  {t('visits.youve_been_to_theirs')}
                 </span>
               </div>
               {/* The design's `.reach`: a two-column row that lifts on hover. */}
@@ -239,7 +239,7 @@ export default function Visits() {
                       <div className="min-w-0">
                         <div className="text-[17px] font-semibold text-on-surface">{contact.name}</div>
                         <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
-                          Last visit {daysAgo} days ago · {visit.where || contact.location}
+                          {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || contact.location}
                           {visit.followUp && (
                             <> · you said you'd {visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1)}</>
                           )}
@@ -251,7 +251,7 @@ export default function Visits() {
                         onClick={() => openContact(contact.id)}
                         className="px-4 h-9 rounded-full border border-outline-variant text-sm text-on-surface hover:border-primary/30 transition-colors"
                       >
-                        Open
+                        {t('visits.open')}
                       </button>
                       <button
                         onClick={() => openLog(contact.id)}
@@ -266,31 +266,30 @@ export default function Visits() {
             </section>
           )}
 
-          <VisitGroup title="This week" sub="Tap a visit to read it back." list={groups.thisWeek} {...groupProps} />
-          <VisitGroup title="Last week" list={groups.lastWeek} {...groupProps} />
-          <VisitGroup title="Earlier" list={groups.earlier} {...groupProps} />
+          <VisitGroup title={t('visits.this_week_group')} sub={t('visits.tap_a_visit')} list={groups.thisWeek} {...groupProps} />
+          <VisitGroup title={t('visits.last_week_group')} list={groups.lastWeek} {...groupProps} />
+          <VisitGroup title={t('visits.earlier')} list={groups.earlier} {...groupProps} />
 
           {visits.length === 0 && (
             <div className="mt-10 p-8 rounded-3xl bg-surface border border-outline-variant text-center">
               <House className="w-7 h-7 text-on-surface-variant mx-auto mb-4" />
               <p className="text-base text-on-surface-variant leading-relaxed max-w-lg mx-auto">
-                Nothing here yet. A visit gets written down after you've been — who you saw, where, and what you'd want
-                to remember in a month.
+                {t('visits.nothing_here_yet')}
               </p>
               <button
                 onClick={() => openLog()}
                 className="mt-5 inline-flex items-center gap-2 px-5 h-10 rounded-full bg-primary text-on-primary text-sm font-medium"
               >
-                <Plus className="w-4 h-4" /> Log a visit
+                <Plus className="w-4 h-4" /> {t('visits.log_a_visit')}
               </button>
             </div>
           )}
 
           <footer className="mt-12 bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex items-end gap-10 flex-wrap">
             {[
-              { n: stats.visits, l: 'visits' },
-              { n: stats.peopleSeen, l: "people we've sat with" },
-              { n: stats.wentOut, l: 'of us have gone out' },
+              { n: stats.visits, l: t('visits.visits_count') },
+              { n: stats.peopleSeen, l: t('visits.people_weve_sat_with') },
+              { n: stats.wentOut, l: t('visits.of_us_have_gone_out') },
             ].map((f) => (
               <div key={f.l} className="flex flex-col gap-1">
                 <span className="text-2xl leading-none text-on-surface">{f.n}</span>
@@ -298,7 +297,7 @@ export default function Visits() {
               </div>
             ))}
             <span className="ml-auto text-sm italic text-on-surface-variant">
-              Counted only so we notice whose door we haven't knocked on.
+              {t('visits.counted_notice')}
             </span>
           </footer>
         </>
