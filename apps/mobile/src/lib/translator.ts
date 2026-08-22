@@ -120,6 +120,7 @@ export function computeTranslationHash(targetLang: string, text: string): string
 
 const L1_CACHE = new Map<string, string>(); // hash -> translatedText
 const SUBSCRIBERS = new Map<string, Set<(translated: string) => void>>();
+const IN_FLIGHT_PROMISES = new Map<string, Promise<string>>(); // hash -> in-flight translation promise
 const STORAGE_PREFIX = 'cisa_tr_';
 
 export function getCachedTranslation(text: string, targetLang: string = 'es'): string | null {
@@ -176,6 +177,7 @@ export function setCachedTranslation(text: string, translated: string, targetLan
 export async function clearTranslationCache(): Promise<void> {
   L1_CACHE.clear();
   SUBSCRIBERS.clear();
+  IN_FLIGHT_PROMISES.clear();
   try {
     const allKeys = await AsyncStorage.getAllKeys();
     const translationKeys = allKeys.filter((k) => k.startsWith(STORAGE_PREFIX));
@@ -305,13 +307,24 @@ export function translateText(text: string, targetLang: string = 'es'): Promise<
     return Promise.resolve(cached);
   }
 
-  return new Promise<string>((resolve, reject) => {
+  const hash = computeTranslationHash(targetLang, text);
+  const inFlight = IN_FLIGHT_PROMISES.get(hash);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const promise = new Promise<string>((resolve, reject) => {
     batchQueue.push({ text, targetLang, resolve, reject });
 
     if (!batchTimer) {
-      batchTimer = setTimeout(flushBatch, 30);
+      batchTimer = setTimeout(flushBatch, 50);
     }
+  }).finally(() => {
+    IN_FLIGHT_PROMISES.delete(hash);
   });
+
+  IN_FLIGHT_PROMISES.set(hash, promise);
+  return promise;
 }
 
 export async function translateBatch(texts: string[], targetLang: string = 'es'): Promise<string[]> {

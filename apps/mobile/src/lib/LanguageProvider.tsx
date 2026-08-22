@@ -57,15 +57,30 @@ export function LanguageProvider({
     };
   }, [effectiveUserId]);
 
+  const savePrefTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const setLanguage = React.useCallback((lang: AppLanguage) => {
     setLanguageState(lang);
     AsyncStorage.setItem(STORAGE_KEY, lang).catch(() => {});
     if (effectiveUserId) {
-      import('./data/userPreferences').then(({ saveUserPreferences }) => {
-        saveUserPreferences(effectiveUserId!, { language: lang }).catch(() => {});
-      }).catch(() => {});
+      if (savePrefTimerRef.current) {
+        clearTimeout(savePrefTimerRef.current);
+      }
+      savePrefTimerRef.current = setTimeout(() => {
+        import('./data/userPreferences').then(({ saveUserPreferences }) => {
+          saveUserPreferences(effectiveUserId!, { language: lang }).catch(() => {});
+        }).catch(() => {});
+      }, 500);
     }
   }, [effectiveUserId]);
+
+  useEffect(() => {
+    return () => {
+      if (savePrefTimerRef.current) {
+        clearTimeout(savePrefTimerRef.current);
+      }
+    };
+  }, []);
 
   const value = React.useMemo<LanguageContextType>(
     () => ({

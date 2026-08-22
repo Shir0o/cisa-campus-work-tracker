@@ -281,5 +281,49 @@ describe("useTranslate and Translate component", () => {
     const esButton = screen.getByRole("button", { name: "ES" });
     fireEvent.click(esButton);
     expect(localStorage.getItem("cisa_language")).toBe("es");
+
+    // Clicking ES again when already ES
+    fireEvent.click(esButton);
+    expect(localStorage.getItem("cisa_language")).toBe("es");
+
+    const enButton = screen.getByRole("button", { name: "EN" });
+    fireEvent.click(enButton);
+    expect(localStorage.getItem("cisa_language")).toBe("en");
+
+    // Clicking EN again when already EN
+    fireEvent.click(enButton);
+    expect(localStorage.getItem("cisa_language")).toBe("en");
+  });
+
+  it("useLanguage fallback returns no-op functions when used outside Provider", () => {
+    function FallbackConsumer() {
+      const { setLanguage, t, isSpanish } = useLanguage();
+      return (
+        <div>
+          <button onClick={() => setLanguage("es")}>Set Lang</button>
+          <span data-testid="t-out">{t("actions.save", "Fallback")}</span>
+          <span data-testid="spanish">{isSpanish ? "yes" : "no"}</span>
+        </div>
+      );
+    }
+
+    render(<FallbackConsumer />);
+    expect(screen.getByTestId("spanish").textContent).toBe("no");
+    expect(screen.getByTestId("t-out").textContent).toBe("Save");
+    fireEvent.click(screen.getByText("Set Lang"));
+  });
+
+  it("Translate component applies loading transition class while pending translation", async () => {
+    vi.spyOn(translator, "translateText").mockImplementationOnce(() => new Promise(() => {}));
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <Translate text="Fresh text waiting" data-testid="pending-translate" />
+      </LanguageProvider>
+    );
+
+    const el = screen.getByTestId("pending-translate");
+    expect(el.className).toContain("animate-pulse");
+    expect(el.className).toContain("opacity-70");
   });
 });

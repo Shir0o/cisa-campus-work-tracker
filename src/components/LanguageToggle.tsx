@@ -16,7 +16,9 @@ export function LanguageToggle({ className }: { className?: string }) {
     >
       <button
         type="button"
-        onClick={() => setLanguage("en")}
+        onClick={() => {
+          if (language !== "en") setLanguage("en");
+        }}
         aria-pressed={language === "en"}
         className={cn(
           "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
@@ -29,7 +31,9 @@ export function LanguageToggle({ className }: { className?: string }) {
       </button>
       <button
         type="button"
-        onClick={() => setLanguage("es")}
+        onClick={() => {
+          if (language !== "es") setLanguage("es");
+        }}
         aria-pressed={language === "es"}
         className={cn(
           "px-2.5 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer",
