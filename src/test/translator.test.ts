@@ -191,4 +191,44 @@ describe("translator client", () => {
     expect(result).toBe("Invalid payload text");
     warnSpy.mockRestore();
   });
+
+  it("deduplicates identical in-flight translation requests into a single network call", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "es",
+        translations: [
+          { original: "Repeated prayer query", translated: "Consulta de oración repetida", hash: "h1", cached: false },
+        ],
+      }),
+    } as any);
+
+    // Trigger multiple simultaneous calls for the exact same uncached text
+    const [p1, p2, p3] = await Promise.all([
+      translateText("Repeated prayer query", "es"),
+      translateText("Repeated prayer query", "es"),
+      translateText("Repeated prayer query", "es"),
+    ]);
+
+    expect(p1).toBe("Consulta de oración repetida");
+    expect(p2).toBe("Consulta de oración repetida");
+    expect(p3).toBe("Consulta de oración repetida");
+
+    // Only one network call made and texts array only had 1 element
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith("/api/translate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetLang: "es", texts: ["Repeated prayer query"] }),
+    });
+  });
+
+  it("prefetchTranslations handles empty or already cached array without network request", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    await prefetchTranslations([]);
+    await prefetchTranslations(["", "   "]);
+    await prefetchTranslations(["Hello"], "en");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

@@ -30,7 +30,7 @@ export function Translate({
         ? String(children)
         : null;
 
-  const { translatedText, originalText } = useTranslate(content, { targetLang, enabled });
+  const { translatedText, originalText, isPending } = useTranslate(content, { targetLang, enabled });
   const [showingOriginal, setShowingOriginal] = useState(false);
   const { language } = useLanguage();
   const effectiveLang = targetLang ?? language;
@@ -42,7 +42,13 @@ export function Translate({
   const displayText = showingOriginal ? originalText : translatedText;
 
   return (
-    <Component className={className} {...rest}>
+    <Component
+      className={cn(
+        isPending && effectiveLang !== "en" ? "transition-opacity duration-200 opacity-70 animate-pulse" : "",
+        className,
+      )}
+      {...rest}
+    >
       {displayText}
       {showOriginalToggle && isTranslated && (
         <button

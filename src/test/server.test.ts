@@ -1421,17 +1421,46 @@ describe("POST /api/translate — batch translation & smart caching", () => {
     expect(mockGenerateContent).toHaveBeenCalledTimes(1);
   });
 
-  it("returns 500 when Gemini API fails", async () => {
-    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  it("falls back gracefully to original text when Gemini API fails without crashing", async () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     mockGenerateContent.mockRejectedValueOnce(new Error("Gemini quota exceeded"));
 
     const res = await request(app).post("/api/translate").send({
       texts: ["Some new text"]
     });
 
-    expect(res.status).toBe(500);
-    expect(res.body.error).toContain("Gemini quota exceeded");
-    errSpy.mockRestore();
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.translations).toHaveLength(1);
+    expect(res.body.translations[0].translated).toBe("Some new text");
+    expect(warnSpy).toHaveBeenCalled();
+    warnSpy.mockRestore();
+  });
+
+  it("chunks large batches of uncached items (>15) into multiple Gemini calls", async () => {
+    mockGenerateContent
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          translations: Array.from({ length: 15 }, (_, i) => ({ id: i, translatedText: `Traducido ${i}` }))
+        })
+      })
+      .mockResolvedValueOnce({
+        text: JSON.stringify({
+          translations: Array.from({ length: 5 }, (_, i) => ({ id: 15 + i, translatedText: `Traducido ${15 + i}` }))
+        })
+      });
+
+    const texts = Array.from({ length: 20 }, (_, i) => `Uncached text ${i}`);
+    const res = await request(app).post("/api/translate").send({
+      targetLang: "es",
+      texts
+    });
+
+    expect(res.status).toBe(200);
+    expect(res.body.translations).toHaveLength(20);
+    expect(res.body.translations[0].translated).toBe("Traducido 0");
+    expect(res.body.translations[19].translated).toBe("Traducido 19");
+    expect(mockGenerateContent).toHaveBeenCalledTimes(2);
   });
 });
 

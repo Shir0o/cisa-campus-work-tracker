@@ -1863,74 +1863,110 @@ ${JSON.stringify(contactsList)}`;
         }
       }
 
-      // If we have uncached items, call Gemini
+      // If we have uncached items, call Gemini in chunks with timeout protection
       if (uncachedItems.length > 0) {
         const langName = normalizedTargetLang === "es" ? "Spanish" : normalizedTargetLang;
-        const prompt = `Translate the following ${uncachedItems.length} text items into ${langName}:\n\n` +
-          JSON.stringify(uncachedItems.map((item) => ({ id: item.id, text: item.text })));
+        const CHUNK_SIZE = 15;
+        const AI_TIMEOUT_MS = 15000;
+        const resultMap = new Map<number, string>();
+        const toSaveInFirestore: Array<{ hash: string; text: string; translated: string }> = [];
 
-        const response = await getAiClient().models.generateContent({
-          model: "gemini-3.5-flash",
-          contents: prompt,
-          config: {
-            systemInstruction: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
+        // Split uncachedItems into chunks
+        const chunks: Array<Array<{ id: number; hash: string; text: string }>> = [];
+        for (let i = 0; i < uncachedItems.length; i += CHUNK_SIZE) {
+          chunks.push(uncachedItems.slice(i, i + CHUNK_SIZE));
+        }
+
+        for (const chunk of chunks) {
+          try {
+            const prompt = `Translate the following ${chunk.length} text items into ${langName}:\n\n` +
+              JSON.stringify(chunk.map((item) => ({ id: item.id, text: item.text })));
+
+            const generatePromise = getAiClient().models.generateContent({
+              model: "gemini-3.5-flash",
+              contents: prompt,
+              config: {
+                systemInstruction: `You are an expert translator for a campus ministry community web and mobile app. Translate each text item accurately, idiomatically, and naturally into the target language (${langName}).
 CRITICAL RULES:
 1. Preserve all Markdown formatting intact (*, **, #, -, 1., [text](url), etc.).
 2. Preserve user mentions (@name or @User), emails, URLs, and phone numbers untouched.
 3. Preserve emojis and special characters.
 4. Return a JSON object with a 'translations' array matching the input 'id' and the 'translatedText'.`,
-            responseMimeType: "application/json",
-            responseSchema: {
-              type: Type.OBJECT,
-              properties: {
-                translations: {
-                  type: Type.ARRAY,
-                  items: {
-                    type: Type.OBJECT,
-                    properties: {
-                      id: { type: Type.INTEGER },
-                      translatedText: { type: Type.STRING }
-                    },
-                    required: ["id", "translatedText"]
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: Type.OBJECT,
+                  properties: {
+                    translations: {
+                      type: Type.ARRAY,
+                      items: {
+                        type: Type.OBJECT,
+                        properties: {
+                          id: { type: Type.INTEGER },
+                          translatedText: { type: Type.STRING }
+                        },
+                        required: ["id", "translatedText"]
+                      }
+                    }
+                  },
+                  required: ["translations"]
+                }
+              }
+            });
+
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              const timer = setTimeout(() => reject(new Error("Translation AI timeout after 15s")), AI_TIMEOUT_MS);
+              generatePromise.finally(() => clearTimeout(timer)).catch(() => {});
+            });
+
+            const response = await Promise.race([generatePromise, timeoutPromise]);
+
+            if (response?.text) {
+              const parsed = JSON.parse(response.text.trim());
+              if (parsed.translations && Array.isArray(parsed.translations)) {
+                for (const item of parsed.translations) {
+                  if (typeof item.id === "number" && typeof item.translatedText === "string") {
+                    resultMap.set(item.id, item.translatedText);
                   }
                 }
-              },
-              required: ["translations"]
+              }
+            }
+
+            for (const item of chunk) {
+              const translatedText = resultMap.get(item.id) ?? item.text;
+              cacheMap.set(item.hash, translatedText);
+              if (resultMap.has(item.id)) {
+                toSaveInFirestore.push({ hash: item.hash, text: item.text, translated: translatedText });
+              }
+            }
+          } catch (chunkError) {
+            console.warn("[Translation Service] AI translation chunk failed or timed out, falling back to original text:", chunkError);
+            for (const item of chunk) {
+              cacheMap.set(item.hash, item.text);
             }
           }
-        });
-
-        if (!response.text) {
-          throw new Error("No response returned from the Gemini API.");
         }
 
-        const parsed = JSON.parse(response.text.trim());
-        const resultMap = new Map<number, string>();
-        if (parsed.translations && Array.isArray(parsed.translations)) {
-          for (const item of parsed.translations) {
-            if (typeof item.id === "number" && typeof item.translatedText === "string") {
-              resultMap.set(item.id, item.translatedText);
+        // Store new successful translations in Firestore using batch write
+        if (toSaveInFirestore.length > 0) {
+          try {
+            const batch = db.batch();
+            const now = new Date().toISOString();
+            for (const item of toSaveInFirestore) {
+              const docRef = db.collection("translations").doc(item.hash);
+              batch.set(docRef, {
+                hash: item.hash,
+                sourceText: item.text,
+                translatedText: item.translated,
+                targetLang: normalizedTargetLang,
+                sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
+                createdAt: now,
+              });
             }
+            await batch.commit();
+          } catch (dbErr) {
+            console.warn("[Translation Service] Failed to save translations to Firestore cache:", dbErr);
           }
         }
-
-        // Store new translations in Firestore using batch write
-        const batch = db.batch();
-        const now = new Date().toISOString();
-        for (const item of uncachedItems) {
-          const translatedText = resultMap.get(item.id) ?? item.text;
-          cacheMap.set(item.hash, translatedText);
-          const docRef = db.collection("translations").doc(item.hash);
-          batch.set(docRef, {
-            hash: item.hash,
-            sourceText: item.text,
-            translatedText: translatedText,
-            targetLang: normalizedTargetLang,
-            sourceLang: typeof sourceLang === "string" ? sourceLang.slice(0, 10) : "auto",
-            createdAt: now,
-          });
-        }
-        await batch.commit();
       }
 
       // Map back to output preserving exact original array ordering

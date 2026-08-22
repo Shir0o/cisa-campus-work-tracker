@@ -134,4 +134,29 @@ describe('mobile translator client', () => {
     setCachedTranslation('Subscribe string', 'Otra cadena', 'es');
     expect(cb).toHaveBeenCalledTimes(1);
   });
+
+  it('deduplicates in-flight translation requests into a single network call', async () => {
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: 'es',
+        translations: [
+          { original: 'Duplicated Mobile String', translated: 'Cadena móvil duplicada', hash: 'h1', cached: false },
+        ],
+      }),
+    } as any);
+
+    const [t1, t2, t3] = await Promise.all([
+      translateText('Duplicated Mobile String', 'es'),
+      translateText('Duplicated Mobile String', 'es'),
+      translateText('Duplicated Mobile String', 'es'),
+    ]);
+
+    expect(t1).toBe('Cadena móvil duplicada');
+    expect(t2).toBe('Cadena móvil duplicada');
+    expect(t3).toBe('Cadena móvil duplicada');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockRestore();
+  });
 });
