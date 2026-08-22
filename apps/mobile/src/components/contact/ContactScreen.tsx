@@ -34,6 +34,7 @@ import {
   type ThreadKind,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { Translate } from '../Translate';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
@@ -589,9 +590,10 @@ function Details({
       {!!contact.notes && (
         <View style={{ backgroundColor: c.card.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
           <Kicker>First impression</Kicker>
-          <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}>
-            {contact.notes}
-          </Text>
+          <Translate
+            text={contact.notes}
+            style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}
+          />
         </View>
       )}
 
