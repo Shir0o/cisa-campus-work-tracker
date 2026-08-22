@@ -1,8 +1,38 @@
 [
   {
+    "number": 465,
+    "title": "[Feedback] idea: the overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/22/2026, 12:36:16 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/HXAfOVAQJBKjbFe7izkz/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 464,
+    "title": "[Feedback] thought: maybe answered or archived prayers can disappear from home",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/22/2026, 12:33:00 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text maybe answered or archived prayers can disappear from home ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2PDr11B3Uqp6B0OMLneW/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 463,
+    "title": "[Feedback] idea: a way to update prayer status on contact detail page",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/22/2026, 12:31:24 AM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text a way to update prayer status on contact detail page ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/lyMRWdk9nBAYJWKtqShX/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
     "number": 422,
     "title": "Phase 5: Translation Batch Prefetching, Mobile App Parity & Offline Caching",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement"
     ],
@@ -11,7 +41,7 @@
   {
     "number": 421,
     "title": "Phase 4: Dynamic UGC Translation Integration across Prayers, People, Messages & Notes",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement"
     ],
@@ -20,7 +50,7 @@
   {
     "number": 420,
     "title": "Phase 3: Static UI Strings Localization (i18n) for Shell, Modals & Navigation",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement"
     ],
@@ -29,7 +59,7 @@
   {
     "number": 419,
     "title": "Phase 2: Client Translation Engine, Multi-Tier Caching & Language Preference Toggle",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement"
     ],
@@ -857,16 +887,6 @@
       "feedback"
     ],
     "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/12/2026, 5:23:56 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/board - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text refine the flow of opening a card (which jumps to full screen contact detail) and then closing the details (which triggers the skeleton loaders again) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
-  },
-  {
-    "number": 257,
-    "title": "[Feedback] Something's off: once opened, the page switching to other pages do not work anymore (overlayed by the people popup)",
-    "state": "closed",
-    "labels": [
-      "bug",
-      "feedback"
-    ],
-    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/12/2026, 5:23:03 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text once opened, the page switching to other pages do not work anymore (overlayed by the people popup) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* > [!NOTE] > A screenshot is attached to this feedback item in the application admin panel."
   },
   {
     "number": 257,

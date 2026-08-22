@@ -1,10 +1,112 @@
 [
   {
+    "id": 5219243445,
+    "number": 465,
+    "title": "[Feedback] idea: the overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T00:36:16Z",
+    "updated_at": "2026-08-22T00:36:16Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/22/2026, 12:36:16 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/HXAfOVAQJBKjbFe7izkz/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/465",
+    "is_pull_request": false
+  },
+  {
+    "id": 5219230722,
+    "number": 464,
+    "title": "[Feedback] thought: maybe answered or archived prayers can disappear from home",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T00:33:00Z",
+    "updated_at": "2026-08-22T00:33:00Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/22/2026, 12:33:00 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmaybe answered or archived prayers can disappear from home\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2PDr11B3Uqp6B0OMLneW/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/464",
+    "is_pull_request": false
+  },
+  {
+    "id": 5219224575,
+    "number": 463,
+    "title": "[Feedback] idea: a way to update prayer status on contact detail page",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T00:31:24Z",
+    "updated_at": "2026-08-22T00:31:24Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/22/2026, 12:31:24 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\na way to update prayer status on contact detail page\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/lyMRWdk9nBAYJWKtqShX/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/463",
+    "is_pull_request": false
+  },
+  {
     "id": 5210754513,
     "number": 422,
     "title": "Phase 5: Translation Batch Prefetching, Mobile App Parity & Offline Caching",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -21,8 +123,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-21T05:23:59Z",
-    "updated_at": "2026-08-21T05:23:59Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T23:40:53Z",
+    "closed_at": "2026-08-21T23:40:53Z",
     "body": "Follow-up to #351 (Phase 5):\n\n### Summary\nAdd intelligent viewport/list prefetching, offline translation fallback, and mobile app parity (`apps/mobile`).\n\n### Scope\n- **Batch Prefetching:**\n  - Prefetch visible list items upon feed load (e.g. 20 prayers at once in a single `/api/translate` call).\n  - Background warming of cache for frequently viewed contacts and pinned notes.\n- **Mobile Parity (`apps/mobile`):**\n  - Integrate translation service in React Native mobile views (Today, Prayers, Messages, People).\n  - Use AsyncStorage for mobile L2 cache.\n- **Offline & Fallback Polish:**\n  - Graceful fallback to original text on network failure or rate limits with retry indicators.\n\n### Acceptance Criteria\n- Lists load with minimal perceived translation delay via batch prefetching.\n- Mobile client supports full Spanish mode with cached translations.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/422",
     "is_pull_request": false
@@ -31,8 +133,8 @@
     "id": 5210754084,
     "number": 421,
     "title": "Phase 4: Dynamic UGC Translation Integration across Prayers, People, Messages & Notes",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -49,8 +151,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-21T05:23:53Z",
-    "updated_at": "2026-08-21T05:23:53Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T23:40:52Z",
+    "closed_at": "2026-08-21T23:40:52Z",
     "body": "Follow-up to #351 (Phase 4):\n\n### Summary\nWire the translation hook and `<Translate />` component into dynamic User-Generated Content (UGC) across the application.\n\n### Scope\n- **Prayers & Testimonies:**\n  - `PrayerList.tsx`, `AnsweredList.tsx`, and mobile `PrayerListMobile.tsx`.\n  - Translate prayer burdens, prayer titles, update notes, and answered testimonies.\n- **People & Directory:**\n  - `ContactDetailsModal.tsx`, `Directory.tsx`, and `History.tsx`.\n  - Translate contact notes, interaction log summaries, and next step reminders.\n- **Messages & Chat:**\n  - `Messages.tsx`, `chat.ts`, and mobile chat threads.\n  - Live translation of incoming chat messages with reactive subscription.\n- **Coordination Notes & The Board:**\n  - `CoordinationNotes.tsx`, `EmbedCoordinationDoc.tsx`.\n  - Markdown-aware translation preserving headings, checklists, links, and code blocks.\n- **Original Content Switcher:**\n  - Add an inline 'Ver original' / 'Show original' toggle for translated user cards.\n\n### Acceptance Criteria\n- User-entered text in any section translates seamlessly when Spanish is active.\n- Clicking 'Ver original' toggles back to the raw source text.\n- Comprehensive unit tests across components.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/421",
     "is_pull_request": false
@@ -59,8 +161,8 @@
     "id": 5210753521,
     "number": 420,
     "title": "Phase 3: Static UI Strings Localization (i18n) for Shell, Modals & Navigation",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -77,8 +179,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-21T05:23:47Z",
-    "updated_at": "2026-08-21T05:23:47Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T23:40:51Z",
+    "closed_at": "2026-08-21T23:40:51Z",
     "body": "Follow-up to #351 (Phase 3):\n\n### Summary\nExtract and localize all static UI strings (navigation tabs, buttons, modal headers, empty states, system alerts, and notifications) into an English/Spanish dictionary.\n\n### Scope\n- **UI Localization Dictionary (`src/locales/es.json` / `src/locales/en.json`):**\n  - Navigation items: Coordination Notes, People, The Journey, On our hearts, History, Settings, More menu.\n  - Action buttons: 'Add someone', 'Log a visit', 'Smart Import', 'Quick Add', 'Export CSV', 'Save', 'Cancel'.\n  - Modal titles, empty state descriptions, error messages, and form labels.\n- **Integration:**\n  - Lightweight dictionary helper `t(key, fallback)` integrated with layout and language preference context.\n  - Zero-latency, deterministic rendering for all chrome and static controls.\n\n### Acceptance Criteria\n- When Spanish is toggled on, all shell controls and UI buttons switch instantly to Spanish.\n- Unit tests verify all dictionary keys exist and render correctly.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/420",
     "is_pull_request": false
@@ -87,8 +189,8 @@
     "id": 5210753168,
     "number": 419,
     "title": "Phase 2: Client Translation Engine, Multi-Tier Caching & Language Preference Toggle",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -105,8 +207,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-21T05:23:42Z",
-    "updated_at": "2026-08-21T05:23:42Z",
-    "closed_at": null,
+    "updated_at": "2026-08-21T23:40:54Z",
+    "closed_at": "2026-08-21T23:40:54Z",
     "body": "Follow-up to #351 (Phase 2):\n\n### Summary\nImplement the client-side translation engine, reactive hooks, multi-tier caching (L1 React state / memory + L2 IndexedDB / localStorage), and user language preference toggle.\n\n### Scope\n- **Translation Client Core (`src/lib/translator.ts`):**\n  - Content hashing (SHA-256 / Murmur3) matching backend.\n  - L1 (in-memory LRU) + L2 (IndexedDB / localStorage) client cache.\n  - Request batcher & debouncer (50ms queue) calling `POST /api/translate`.\n- **React Hooks & Primitives:**\n  - `useTranslate(text, options)` hook.\n  - `<Translate text={...} />` component with loading skeleton and error fallback.\n- **Language Preference & UI Controls:**\n  - Add `language?: 'en' | 'es'` to `userPreferences` schema and Firestore subscription.\n  - Language toggle selector in `TopNav.tsx`, `MobileNav.tsx`, and `Settings.tsx`.\n\n### Acceptance Criteria\n- Seamless synchronous lookup for already-cached translations with zero layout shift.\n- Language toggle flips app preference and reactivity triggers live re-rendering.\n- Full unit test coverage.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/419",
     "is_pull_request": false
@@ -2889,40 +2991,6 @@
     "closed_at": "2026-08-13T21:49:06Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/12/2026, 5:23:56 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/board\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nrefine the flow of opening a card (which jumps to full screen contact detail) and then closing the details (which triggers the skeleton loaders again)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/258",
-    "is_pull_request": false
-  },
-  {
-    "id": 5133521925,
-    "number": 257,
-    "title": "[Feedback] Something's off: once opened, the page switching to other pages do not work anymore (overlayed by the people popup)",
-    "state": "closed",
-    "label": "CLOSED",
-    "user": {
-      "login": "Shir0o",
-      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
-      "html_url": "https://github.com/Shir0o"
-    },
-    "labels": [
-      {
-        "id": 10804686520,
-        "name": "bug",
-        "color": "d73a4a",
-        "description": "Something isn't working"
-      },
-      {
-        "id": 11254011262,
-        "name": "feedback",
-        "color": "ededed",
-        "description": null
-      }
-    ],
-    "assignees": [],
-    "comments": 2,
-    "created_at": "2026-08-12T17:23:03Z",
-    "updated_at": "2026-08-19T05:56:39Z",
-    "closed_at": "2026-08-13T21:49:05Z",
-    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/12/2026, 5:23:03 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nonce opened, the page switching to other pages do not work anymore (overlayed by the people popup)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n> [!NOTE]\n> A screenshot is attached to this feedback item in the application admin panel.",
-    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/257",
     "is_pull_request": false
   },
   {
