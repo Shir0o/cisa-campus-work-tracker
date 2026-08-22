@@ -141,7 +141,7 @@ export default function MyDayMobile({
 }: MyDayMobileProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
-  const firstName = user?.displayName?.split(" ")[0] || t('common.you');
+  const firstName = user?.displayName?.split(" ")[0] || t('myDay.friend');
 
   const myLeaders = useMemo(() => {
     if (rawMyLeaders.length > 0) return rawMyLeaders;

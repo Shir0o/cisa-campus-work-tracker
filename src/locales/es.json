@@ -288,6 +288,7 @@
   },
   "myDay": {
     "good_morning": "Buenos días, {name}.",
+    "friend": "amigo",
     "caring_for": "Estás cuidando a {people} personas esta temporada: {tasks} cosas por atender, {prayers} oraciones por sostener.",
     "the_board": "El tablero",
     "pray_together": "Oren juntos",
@@ -612,6 +613,7 @@
     "the_journey": "El Viaje",
     "walk_the_board": "Recorrer el tablero",
     "open_search": "Abrir búsqueda",
+    "search_or_jump": "Buscar o ir a…",
     "conversation": "Conversación",
     "learning": "Aprendizaje",
     "record": "Registro",
@@ -662,6 +664,7 @@
     "share_dynamic_cards": "Comparte tarjetas dinámicas de la base de datos en el chat",
     "loading_items": "Cargando elementos...",
     "contact": "Contacto",
+    "contact_singular": "contacto",
     "todo": "Tarea",
     "event": "Evento",
     "interaction": "Interacción",

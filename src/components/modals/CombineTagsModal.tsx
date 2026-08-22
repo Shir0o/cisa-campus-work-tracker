@@ -108,7 +108,7 @@ export default function CombineTagsModal({
           ) : (
             <>
               <p className="text-sm text-on-surface-variant mb-4">
-                {t('modals.contacts_would_change').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact') : t('modals.contacts'))}
+                {t('modals.contacts_would_change').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact_singular') : t('modals.contacts'))}
               </p>
               <div className="space-y-3">
                 {changes.slice(0, 100).map((row) => (
@@ -155,7 +155,7 @@ export default function CombineTagsModal({
               ? t('modals.applying')
               : changes.length === 0
                 ? t('modals.nothing_to_combine')
-                : t('modals.combine_n_contacts').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact') : t('modals.contacts'))}
+                : t('modals.combine_n_contacts').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact_singular') : t('modals.contacts'))}
           </button>
         </div>
       </div>

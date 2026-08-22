@@ -752,7 +752,7 @@ export default function GlobalSearch() {
               setSearchOpen(true);
             }}
             className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
-            placeholder={t('search.open_search')}
+            placeholder={t('search.search_or_jump')}
             aria-label={t('nav.search')}
           />
           {!searchOpen ? (

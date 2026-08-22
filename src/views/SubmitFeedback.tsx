@@ -26,6 +26,7 @@ export default function SubmitFeedback() {
 
   const activeMeta = kindMeta(kind);
   const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
+  const { translatedText: translatedRole } = useTranslate(roleLabel(role));
   const firstName = (user?.displayName || '').trim().split(/\s+/)[0] || t('common.you');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -212,7 +213,7 @@ export default function SubmitFeedback() {
                   className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
                 />
                 <div className="flex justify-between items-center mt-2 px-1 text-xs text-on-surface-variant">
-                  <span>{user?.displayName || t('common.you')} · <Translate text={roleLabel(role)} /></span>
+                  <span>{user?.displayName || t('common.you')} · {translatedRole}</span>
                   <span>{t('feedback.cmd_to_send')} · {message.length} {t('feedback.characters')}</span>
                 </div>
               </div>
