@@ -6,9 +6,12 @@ import {
   Navigate,
   useNavigate,
   useLocation,
+  useParams,
   Link,
 } from "react-router-dom";
+import { doc, onSnapshot } from "firebase/firestore";
 import { cn } from "./lib/utils";
+import { db } from "./lib/firebase";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
 import ImpersonateModal from "./components/layout/ImpersonateModal";
 import TopNav from "./components/layout/TopNav";
@@ -270,6 +273,8 @@ function RoleGuard({ minRole, children }: { minRole: AppRole; children: React.Re
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { contactId } = useParams();
   const isMessagesPage = location.pathname === "/messages";
   const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
@@ -285,20 +290,76 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [selectedContact, setSelectedContact] = React.useState<Contact | null>(
     null,
   );
+  const previousIdentityKey = React.useRef(effectiveIdentityKey);
+
+  // Contact detail is now a real URL route (`/people/:contactId`), so the
+  // browser back button and top-nav links always leave the detail page. The
+  // route is the source of truth; this state is only the loaded contact object.
+  React.useEffect(() => {
+    if (!contactId) {
+      setSelectedContact(null);
+      return;
+    }
+    const ref = doc(db, "contacts", contactId);
+    const unsubscribe = onSnapshot(ref, (snap) => {
+      const exists =
+        typeof snap.exists === "function" ? snap.exists() : Boolean(snap.data?.());
+      if (exists) {
+        setSelectedContact({
+          id: contactId,
+          ...(snap.data?.() || {}),
+        } as Contact);
+      } else {
+        setSelectedContact(null);
+      }
+    });
+    return unsubscribe;
+  }, [contactId, effectiveIdentityKey]);
+
+  const openSelectedContact = (contact: Contact | null) => {
+    if (!contact) {
+      const from = (location.state as { from?: string } | null)?.from;
+      if (from && from !== location.pathname) {
+        navigate(from);
+      } else if (location.pathname.startsWith("/people/")) {
+        navigate(-1);
+      } else {
+        setSelectedContact(null);
+      }
+      return;
+    }
+    setSelectedContact(contact);
+    navigate(`/people/${contact.id}`, {
+      state: { from: location.pathname },
+    });
+  };
 
   // Opening a person swaps the view for the full-page detail; remember where
   // the list was scrolled so "back" lands where you tapped (same pattern as the
   // design's `openContactFor` / `backFromContact`).
-  usePreserveScroll(!!selectedContact);
+  usePreserveScroll(!!(selectedContact && contactId));
 
   // Navigating to another page leaves the open person detail behind (#257): the
   // detail replaces `children` in <main>, and DashboardLayout is reused across
   // routes, so an uncleared selection would keep the person on screen even after
   // the sidebar/topbar navigates elsewhere. The same goes for an identity
   // change ("See it as they do"): the detail reads the previous viewer's scope.
+  // With the URL route in place, this now only needs to clear on non-contact
+  // routes; the `/people/:contactId` effect owns the contact route's lifecycle.
+  // An identity change while looking at a person closes that page so the next
+  // viewer lands back on their own home instead of inheriting the old scope.
   React.useEffect(() => {
-    setSelectedContact(null);
-  }, [location.pathname, effectiveIdentityKey]);
+    if (previousIdentityKey.current !== effectiveIdentityKey) {
+      previousIdentityKey.current = effectiveIdentityKey;
+      if (contactId) {
+        setSelectedContact(null);
+        const from = (location.state as { from?: string } | null)?.from;
+        navigate(from && from !== location.pathname ? from : defaultRouteForRole(role));
+      }
+      return;
+    }
+    if (!contactId) setSelectedContact(null);
+  }, [location.pathname, location.state, effectiveIdentityKey, contactId, role, navigate]);
 
   // Session 7 (#370): record which screen was opened. This is local-only,
   // anonymous usage shape data for the owner's "what is the app costing"
@@ -325,8 +386,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         openLogInteraction: () => setIsLogInteractionOpen(true),
         openSmartImport: () => setIsSmartImportOpen(true),
         selectedContact,
-        setSelectedContact: (contact: Contact | null) =>
-          setSelectedContact(contact),
+        setSelectedContact: openSelectedContact,
         searchOpen,
         setSearchOpen,
       }}
@@ -349,10 +409,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           >
             {/* People detail is a full page on desktop (the design's ContactDetail),
                 not a popup — it replaces the current view inside the shell. */}
-            {selectedContact ? (
+            {selectedContact && contactId ? (
               <ContactDetailsModal
                 isOpen
-                onClose={() => setSelectedContact(null)}
+                onClose={() => openSelectedContact(null)}
                 contact={selectedContact}
               />
             ) : (
@@ -524,6 +584,20 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                <Route
+                  path="/people/:contactId"
+                  element={
+                    <ProtectedRoute>
+                      <RoleGuard minRole="viewer">
+                        <DashboardLayout>
+                          {null}
+                        </DashboardLayout>
+                      </RoleGuard>
+                    </ProtectedRoute>
+                  }
+                />
+
 
                 <Route
                   path="/history"

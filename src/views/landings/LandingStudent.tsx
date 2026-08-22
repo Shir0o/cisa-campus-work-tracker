@@ -32,7 +32,10 @@ export default function LandingStudent() {
   }, [uid]);
 
   const activePersonalPrayers = useMemo(
-    () => personalPrayers.filter((p) => p.status !== "archived"),
+    () =>
+      personalPrayers.filter(
+        (p) => p.status !== "answered" && p.status !== "archived",
+      ),
     [personalPrayers],
   );
 

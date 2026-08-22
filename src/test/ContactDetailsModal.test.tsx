@@ -1038,6 +1038,40 @@ describe('ContactDetailsModal Component', () => {
     expect(screen.getByText('First')).toBeInTheDocument();
   });
 
+  it('lets an operator mark a prayer answered or archived from the Prayer tab (#463)', async () => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, s: any) => {
+      if (q?.path === 'prayers') {
+        s({
+          docs: [
+            { id: 'prayer-1', data: () => ({ contactId: 'contact-abc', burden: 'Pray for finals', status: 'pending', date: new Date().toISOString() }) },
+          ],
+        });
+      } else {
+        s({ docs: [] });
+      }
+      return vi.fn();
+    });
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /^Prayer\s*\d*$/ }));
+    expect(screen.getByText('Pray for finals')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Answered' }));
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ status: 'answered', answeredAt: expect.any(String) }),
+      );
+      expect(logActivity).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'marked a prayer burden as answered for',
+          targetId: 'contact-abc',
+        }),
+      );
+    });
+  });
+
+
   // ── Edit form edge cases ──────────────────────────────────────────
 
   it('splits a single-word name and applies capitalize on the last name', async () => {
