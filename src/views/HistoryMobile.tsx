@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 import { Filter, X, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Contact } from '../types';
@@ -74,6 +75,7 @@ export default function HistoryMobile({
   dayInfo,
   firstName,
 }: HistoryMobileProps) {
+  const { t } = useLanguage();
   const [filterOpen, setFilterOpen] = useState(false);
 
   const activeCount = (kind !== 'all' ? 1 : 0) + (who !== 'all' ? 1 : 0);
@@ -87,7 +89,7 @@ export default function HistoryMobile({
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1">
           {format(new Date(), 'EEEE, MMMM d')}
         </div>
-        <h1 className="font-serif text-[32px] leading-tight text-on-surface">Looking back</h1>
+        <h1 className="font-serif text-[32px] leading-tight text-on-surface">{t('history.looking_back')}</h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 hism-state">
           The small, faithful work of these days — <b className="font-semibold text-on-surface">{activities.length} moments</b> across the team, touching <b className="font-semibold text-on-surface">{peopleRemembered}</b> of the people in our care.
         </p>
@@ -103,7 +105,7 @@ export default function HistoryMobile({
           )}
         >
           <Filter className="w-4 h-4" />
-          <span>Filter history</span>
+          <span>{t('history.filter_history')}</span>
           {activeCount > 0 && (
             <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-on-primary font-semibold  hism-count animate-in zoom-in duration-200">
               {activeCount}
@@ -221,7 +223,7 @@ export default function HistoryMobile({
             <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0 ibxs-grab" />
             <div className="flex items-center justify-between px-5 pt-1 ibxs-head">
               <div className="ibxs-headtext">
-                <h3 className="font-serif text-lg text-on-surface ibxs-title">Filter history</h3>
+                <h3 className="font-serif text-lg text-on-surface ibxs-title">{t('history.filter_history')}</h3>
                 <p className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
                   Narrow down logged moments by kind or who.
                 </p>
@@ -229,7 +231,7 @@ export default function HistoryMobile({
               <button
                 onClick={() => setFilterOpen(false)}
                 className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
-                aria-label="Close"
+                aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -253,7 +255,7 @@ export default function HistoryMobile({
                           : "bg-surface border-outline-variant/60 text-on-surface-variant hover:bg-surface-variant"
                       )}
                     >
-                      {k.label}
+                      {t('history.' + k.id)}
                     </button>
                   ))}
                 </div>
@@ -270,7 +272,7 @@ export default function HistoryMobile({
                     onChange={(e) => setWho(e.target.value)}
                     className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant"
                   >
-                    <option value="all">Whole team</option>
+                    <option value="all">{t('history.whole_team')}</option>
                     {staff.map((name) => (
                       <option key={name} value={name}>
                         {name}

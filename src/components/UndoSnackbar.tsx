@@ -4,6 +4,8 @@
 import { motion, AnimatePresence } from "motion/react";
 import { X } from "lucide-react";
 import type { UndoSnack } from "../hooks/useUndoSnack";
+import { useLanguage } from "./LanguageProvider";
+import { Translate } from "./Translate";
 
 export function UndoSnackbar({
   undoSnack,
@@ -12,6 +14,8 @@ export function UndoSnackbar({
   undoSnack: UndoSnack | null;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <AnimatePresence>
       {undoSnack && (
@@ -23,7 +27,7 @@ export function UndoSnackbar({
             className="pointer-events-auto bg-surface-container-highest/95 backdrop-blur-xl border border-outline-variant rounded-2xl shadow-2xl px-5 py-3.5 flex items-center justify-between gap-4 w-full ring-1 ring-white/10"
           >
             <span className="text-sm font-medium text-on-surface">
-              {undoSnack.message}
+              <Translate text={undoSnack.message} />
             </span>
             <div className="flex items-center gap-3 shrink-0">
               <button
@@ -33,12 +37,12 @@ export function UndoSnackbar({
                 }}
                 className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-medium hover:opacity-90 active:scale-95 transition-all"
               >
-                Undo
+                {t('actions.undo')}
               </button>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
-                aria-label="Close snackbar"
+                aria-label={t('common.close_snackbar')}
               >
                 <X className="w-4 h-4" />
               </button>

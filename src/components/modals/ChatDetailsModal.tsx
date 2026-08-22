@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, getDoc, doc, onSnapshot } from 'fire
 import { db } from '../../lib/firebase';
 import { AppUser, ChatRoom, Contact } from '../../types';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { inviteToGroup, leaveGroup, deleteChatRoom, canRemoveConvForEveryone } from '../../services/chat';
 import { ConvHides } from '../../lib/convHides';
 import { getUserInitials } from '../../lib/utils';
@@ -19,6 +20,7 @@ interface ChatDetailsModalProps {
 
 export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }: ChatDetailsModalProps) {
   const { user: currentUser, role: userRole } = useAuth();
+  const { t } = useLanguage();
   const { setSelectedContact } = useLayout();
   const [members, setMembers] = useState<AppUser[]>([]);
   const [allUsers, setAllUsers] = useState<AppUser[]>([]);
@@ -106,7 +108,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
         room.id,
         selectedInviteUids,
         invitedNames,
-        currentUser.displayName || 'Member'
+        currentUser.displayName || t('modals.member')
       );
       setSelectedInviteUids([]);
       setShowInviteSection(false);
@@ -122,7 +124,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
     if (!confirm('Are you sure you want to leave this group?')) return;
     setLoading(true);
     try {
-      await leaveGroup(room.id, { uid: currentUser.uid, displayName: currentUser.displayName || 'Member' });
+      await leaveGroup(room.id, { uid: currentUser.uid, displayName: currentUser.displayName || t('modals.member') });
       onLeftGroup();
       onClose();
     } catch (err) {
@@ -171,10 +173,10 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
             <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between bg-surface-container-low shrink-0">
               <div>
                 <h3 className="font-serif text-xl text-on-surface">
-                  {room.type === 'group' ? 'Group Details' : 'Conversation Details'}
+                  {room.type === 'group' ? t('modals.group_details') : t('modals.conversation_details')}
                 </h3>
                 <p className="text-xs text-on-surface-variant mt-0.5">
-                  {room.type === 'group' ? `${room.memberIds.length} members` : 'Direct chat info'}
+                  {room.type === 'group' ? t('modals.members_count').replace('{n}', String(room.memberIds.length)) : t('modals.direct_chat_info')}
                 </p>
               </div>
               <button
@@ -190,7 +192,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
               {loadingMembers ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-2 text-on-surface-variant">
                   <Loader2 className="w-8 h-8 animate-spin text-accent" />
-                  <span className="text-xs">Loading info...</span>
+                  <span className="text-xs">{t('modals.loading_info')}</span>
                 </div>
               ) : room.type === 'direct' && otherMember ? (
                 /* DIRECT CHAT VIEW */
@@ -213,7 +215,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                       {otherMember.email}
                     </p>
                     <span className="inline-block text-[11px] font-semibold   bg-stage-accent-soft text-stage-accent rounded-full px-2.5 py-0.5 mt-2">
-                      Role: {otherMember.role}
+                      {t('modals.role')}: {otherMember.role}
                     </span>
                   </div>
 
@@ -224,7 +226,7 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                         className="w-full py-3 px-4 rounded-xl bg-primary text-on-primary font-semibold text-sm  hover:bg-primary/95 transition-all flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <User className="w-4 h-4" />
-                        View Directory Contact Profile
+                        {t('modals.view_directory_profile')}
                       </button>
                     </div>
                   )}
@@ -234,15 +236,15 @@ export default function ChatDetailsModal({ isOpen, onClose, room, onLeftGroup }:
                 <div className="space-y-4">
                   {/* Group Name Card */}
                   <div className="p-4 rounded-3xl bg-surface border border-outline-variant/50 flex flex-col gap-1">
-                    <span className="text-[10px] font-semibold text-on-surface-variant  ">Group Name</span>
+                    <span className="text-[10px] font-semibold text-on-surface-variant  ">{t('modals.group_name')}</span>
                     <span className="font-serif text-lg text-on-surface">{room.name}</span>
-                    <span className="text-[11px] text-on-surface-variant">Created by {room.createdByName}</span>
+                    <span className="text-[11px] text-on-surface-variant">{t('modals.created_by')} {room.createdByName}</span>
                   </div>
 
                   {/* Members Section */}
                   <div className="space-y-2.5">
                     <h4 className="text-xs font-semibold text-on-surface-variant px-1  ">
-                      Members List ({members.length})
+                      {t('modals.members_list')} ({members.length})
                     </h4>
                     <div className="space-y-2 max-h-[220px] overflow-y-auto p-0.5">
                       {members.map(m => (

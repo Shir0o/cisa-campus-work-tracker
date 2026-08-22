@@ -3,6 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Send, ArrowRight, Loader2 } from 'lucide-react';
 import { handleFirestoreError, OperationType, logActivity } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { Translate } from '../components/Translate';
+import { useTranslate } from '../hooks/useTranslate';
 import { useNavigate } from 'react-router-dom';
 import { roleLabel } from '../lib/permissions';
 import { FEEDBACK_KINDS, kindMeta, kindToType, TONE_CLASSES } from '../lib/feedbackKinds';
@@ -14,6 +17,7 @@ const MAX_PAYLOAD_LENGTH = 600000;
 
 export default function SubmitFeedback() {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
@@ -21,7 +25,8 @@ export default function SubmitFeedback() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   const activeMeta = kindMeta(kind);
-  const firstName = (user?.displayName || '').trim().split(/\s+/)[0] || 'friend';
+  const { translatedText: activePlaceholder } = useTranslate(activeMeta.placeholder);
+  const firstName = (user?.displayName || '').trim().split(/\s+/)[0] || t('common.you');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,9 +145,9 @@ export default function SubmitFeedback() {
   return (
     <PageContainer variant="reading" className="max-w-2xl space-y-6" id="submit-feedback-page">
       <div>
-        <h1 className="font-serif page-title font-medium tracking-tight text-on-background">Leave a note</h1>
+        <h1 className="font-serif page-title font-medium tracking-tight text-on-background">{t('feedback.leave_a_note')}</h1>
         <p className="text-sm text-on-surface-variant max-w-prose">
-          Ideas, friction, appreciation — all welcome. Your note goes straight to the team.
+          {t('feedback.all_welcome')} {t('feedback.goes_to_team')}
         </p>
       </div>
 
@@ -160,7 +165,7 @@ export default function SubmitFeedback() {
               {/* Kind selection */}
               <div>
                 <label className="block text-sm font-semibold text-on-surface mb-3">
-                  What kind of note is it?
+                  {t('feedback.what_kind_of_note')}
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   {FEEDBACK_KINDS.map((k) => {
@@ -182,7 +187,7 @@ export default function SubmitFeedback() {
                         <div className={`p-2 rounded-xl shrink-0 ${on ? tone.chip : 'bg-surface-container text-on-surface-variant'}`}>
                           <Icon className="w-5 h-5" />
                         </div>
-                        <span className="font-semibold text-sm">{k.label}</span>
+                        <span className="font-semibold text-sm"><Translate text={k.label} /></span>
                       </button>
                     );
                   })}
@@ -192,7 +197,7 @@ export default function SubmitFeedback() {
               {/* Message Entry */}
               <div>
                 <label htmlFor="form-message" className="block text-sm font-semibold text-on-surface mb-1.5">
-                  Tell us more
+                  {t('feedback.tell_us_more')}
                 </label>
                 <textarea
                   id="form-message"
@@ -203,12 +208,12 @@ export default function SubmitFeedback() {
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyDown}
                   maxLength={5000}
-                  placeholder={activeMeta.placeholder}
+                  placeholder={activePlaceholder}
                   className="w-full bg-surface border border-outline-variant rounded-2xl p-4 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:ring-2 focus:ring-primary focus:outline-none transition-shadow resize-none disabled:opacity-60"
                 />
                 <div className="flex justify-between items-center mt-2 px-1 text-xs text-on-surface-variant">
-                  <span>{user?.displayName || 'You'} · {roleLabel(role)}</span>
-                  <span>⌘↵ to send · {message.length} characters</span>
+                  <span>{user?.displayName || t('common.you')} · <Translate text={roleLabel(role)} /></span>
+                  <span>{t('feedback.cmd_to_send')} · {message.length} {t('feedback.characters')}</span>
                 </div>
               </div>
 
@@ -220,7 +225,7 @@ export default function SubmitFeedback() {
                   onClick={() => navigate(-1)}
                   className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors disabled:opacity-40 disabled:cursor-default"
                 >
-                  Back
+                  {t('actions.back')}
                 </button>
                 <button
                   type="submit"
@@ -230,12 +235,12 @@ export default function SubmitFeedback() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Sending…</span>
+                      <span>{t('feedback.sending')}</span>
                     </>
                   ) : (
                     <>
                       <Send className="w-4 h-4" />
-                      <span>Send</span>
+                      <span>{t('feedback.send')}</span>
                     </>
                   )}
                 </button>
@@ -254,10 +259,9 @@ export default function SubmitFeedback() {
               ✦
             </div>
             <div className="space-y-2">
-              <h3 className="font-serif text-2xl font-medium text-on-surface">We got your note.</h3>
+              <h3 className="font-serif text-2xl font-medium text-on-surface">{t('feedback.we_got_your_note')}</h3>
               <p className="text-sm text-on-surface-variant max-w-md leading-relaxed mx-auto">
-                Thank you for taking the time, {firstName}. Your note has been saved and our
-                administrators will read it soon.
+                {t('feedback.saved_body').replace('{name}', firstName)}
               </p>
             </div>
 
@@ -266,13 +270,13 @@ export default function SubmitFeedback() {
                 onClick={() => setIsSubmitted(false)}
                 className="py-2.5 px-6 border border-outline text-on-surface bg-transparent font-semibold rounded-full text-xs hover:bg-surface-variant transition-colors"
               >
-                Send another
+                {t('feedback.send_another')}
               </button>
               <button
                 onClick={() => navigate('/')}
                 className="py-2.5 px-6 bg-primary text-on-primary font-semibold rounded-full text-xs flex items-center gap-2 hover:opacity-95 justify-center transition-all"
               >
-                Go home
+                {t('feedback.go_home')}
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

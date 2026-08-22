@@ -3,6 +3,8 @@ import { Sparkles, RotateCcw } from 'lucide-react';
 import { useSeason, SEASON_ORDER, SEASONS } from '../../lib/seasons';
 import { useAuth } from '../AuthProvider';
 import { cn } from '../../lib/utils';
+import { useLanguage } from '../LanguageProvider';
+import { Translate } from '../Translate';
 
 // The "Spring · '26" strip under the brand. Shows the active season everywhere;
 // for staff (managers+) it opens a small popover to override the season + toggle
@@ -16,6 +18,7 @@ export default function SeasonChip({
 }) {
   const season = useSeason();
   const { isManager } = useAuth();
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -38,8 +41,8 @@ export default function SeasonChip({
   const chip = (
     <span className="inline-flex items-center gap-1.5 text-xs text-on-surface-variant">
       <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-      {season.label}
-      {season.clubRush && <span className="text-accent font-medium">· Club rush</span>}
+      <Translate text={season.label} />
+      {season.clubRush && <span className="text-accent font-medium">{t('season.club_rush')}</span>}
     </span>
   );
 
@@ -55,7 +58,7 @@ export default function SeasonChip({
           setOpen((o) => !o);
         }}
         className="inline-flex items-center gap-1 rounded-full hover:opacity-80 transition-opacity cursor-pointer"
-        title="Season & club rush"
+        title={t('season.title')}
       >
         {chip}
       </button>
@@ -67,7 +70,7 @@ export default function SeasonChip({
         >
           <div>
             <div className="text-xs font-medium text-on-surface-variant px-1 mb-1.5">
-              Tagging sign-ups for
+              {t('season.tagging_signups_for')}
             </div>
             <div className="flex flex-wrap gap-1.5">
               {SEASON_ORDER.map((id) => (
@@ -81,8 +84,8 @@ export default function SeasonChip({
                       : 'border-outline-variant text-on-surface hover:bg-surface-variant',
                   )}
                 >
-                  {SEASONS[id].label}
-                  {id === season.autoId ? ' · now' : ''}
+                  <Translate text={SEASONS[id].label} />
+                  {id === season.autoId ? t('season.now_suffix') : ''}
                 </button>
               ))}
             </div>
@@ -91,7 +94,7 @@ export default function SeasonChip({
                 onClick={() => season.resetSeason()}
                 className="inline-flex items-center gap-1 text-[11px] text-on-surface-variant hover:text-on-surface mt-2 px-1 cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" /> Back to the current term
+                <RotateCcw className="w-3 h-3" /> {t('season.back_to_current_term')}
               </button>
             )}
           </div>
@@ -101,7 +104,7 @@ export default function SeasonChip({
             className="w-full flex items-center justify-between rounded-xl bg-surface-container-high border border-outline/30 px-3 py-2 cursor-pointer"
           >
             <span className="inline-flex items-center gap-2 text-xs font-medium text-on-surface">
-              <Sparkles className="w-3.5 h-3.5" /> Club rush
+              <Sparkles className="w-3.5 h-3.5" /> {t('season.club_rush')}
             </span>
             <span
               className={cn(
@@ -118,7 +121,7 @@ export default function SeasonChip({
             </span>
           </button>
           <p className="text-[10px] text-on-surface-variant px-1 leading-snug">
-            Turn on during the busy intake weeks — new sign-ups get a "Club rush" tag.
+            {t('season.club_rush_help')}
           </p>
         </div>
       )}

@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
 import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
+import { useLanguage } from '../components/LanguageProvider';
 
 interface TeamMember {
   uid: string;
@@ -81,6 +82,7 @@ export default function CoordinationNotesMobile({
   NotesSectionComponent,
   SearchBarComponent,
 }: CoordinationNotesMobileProps) {
+  const { t } = useLanguage();
   const [mReading, setMReading] = useState(false);
   const [mEditing, setMEditing] = useState(false);
 
@@ -106,7 +108,7 @@ export default function CoordinationNotesMobile({
             className="inline-flex items-center gap-1 text-sm font-semibold text-on-surface-variant hover:text-on-surface bdm-back"
           >
             <ChevronLeft className="w-5 h-5 bdm-back-ico" />
-            <span>Pages</span>
+            <span>{t('coordination.pages')}</span>
           </button>
           {canEdit && (
             <button
@@ -121,12 +123,12 @@ export default function CoordinationNotesMobile({
               {mEditing ? (
                 <>
                   <Check className="w-3.5 h-3.5" />
-                  <span>Done</span>
+                  <span>{t('coordination.done')}</span>
                 </>
               ) : (
                 <>
                   <Edit3 className="w-3.5 h-3.5" />
-                  <span>Edit</span>
+                  <span>{t('coordination.edit')}</span>
                 </>
               )}
             </button>
@@ -187,7 +189,7 @@ export default function CoordinationNotesMobile({
       {/* Pages Section */}
       <section className="px-5 mt-5 bdm-pages">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface font-semibold">Pages</h2>
+          <h2 className="font-serif text-xl text-on-surface font-semibold">{t('coordination.pages')}</h2>
           {canEdit && (
             <button
               onClick={() => {
@@ -201,7 +203,7 @@ export default function CoordinationNotesMobile({
               className="inline-flex items-center gap-1 text-xs font-semibold text-accent hover:underline dash-sec-link"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>New page</span>
+              <span>{t('coordination.new_page')}</span>
             </button>
           )}
         </div>

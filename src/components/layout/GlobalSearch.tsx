@@ -32,6 +32,7 @@ import { useCommand, subscribeCommands, getCommands, shortcutLabel } from '../..
 import { useFrecency, rankByFrecency, Frecency } from '../../lib/frecency';
 import { useLayout } from '../../App';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
 import { hasMinRole, AppRole, navItemsForRole, navExternalFor } from '../../lib/permissions';
 import { motion, AnimatePresence } from 'motion/react';
@@ -74,6 +75,7 @@ export default function GlobalSearch() {
   const { setSelectedContact, openNewContact, openLogInteraction, searchOpen, setSearchOpen } =
     useLayout();
   const { isAdmin, isManager, role } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const isStaff = isManager; // Trainee+ (manager/admin)
@@ -230,7 +232,7 @@ export default function GlobalSearch() {
   const destinations = useMemo(() => {
     const items = navItemsForRole(role).map((item) => ({
       key: `dest:${item.href}`,
-      label: item.href === '/' ? (isAdmin ? 'My Day' : 'Home') : item.label,
+      label: item.href === '/' ? (isAdmin ? t('search.my_day') : t('search.home')) : item.label,
       href: item.href,
       tone: 'violet' as Tone,
       icon: Compass,
@@ -289,8 +291,8 @@ export default function GlobalSearch() {
   const quickActions = [
     {
       key: 'qa-new',
-      label: 'New contact',
-      sub: 'Add a new person',
+      label: t('search.new_contact'),
+      sub: t('search.add_new_person'),
       icon: UserPlus,
       tone: 'accent' as Tone,
       show: isOperator,
@@ -302,8 +304,8 @@ export default function GlobalSearch() {
     },
     {
       key: 'qa-log',
-      label: 'Log a visit',
-      sub: 'Record a conversation',
+      label: t('search.log_visit'),
+      sub: t('search.record_conversation'),
       icon: Coffee,
       tone: 'amber' as Tone,
       show: isOperator,
@@ -315,8 +317,8 @@ export default function GlobalSearch() {
     },
     {
       key: 'qa-signup',
-      label: 'Sign-up form (for someone new)',
-      sub: 'So someone new can ask to hear from us.',
+      label: t('search.signup_form'),
+      sub: t('search.signup_form_sub'),
       icon: Globe,
       tone: 'teal' as Tone,
       show: true,
@@ -324,8 +326,8 @@ export default function GlobalSearch() {
     },
     {
       key: 'qa-journey',
-      label: 'The Journey',
-      sub: 'Walk the board',
+      label: t('search.the_journey'),
+      sub: t('search.walk_the_board'),
       icon: Compass,
       tone: 'violet' as Tone,
       show: isStaff,
@@ -387,7 +389,7 @@ export default function GlobalSearch() {
   useCommand({
     id: 'search.open',
     scope: 'global',
-    description: 'Open search',
+    description: t('search.open_search'),
     shortcut: { key: 'k', mod: true },
     hidden: true,
     handler: () => setSearchOpen(true),
@@ -522,7 +524,7 @@ export default function GlobalSearch() {
       {!hasQ ? (
         <>
           <div>
-            <GroupLabel>Go to</GroupLabel>
+            <GroupLabel>{t('search.go_to')}</GroupLabel>
             {destinations.map((d) => (
               <Row
                 key={d.key}
@@ -541,7 +543,7 @@ export default function GlobalSearch() {
           </div>
           {recentPeople.length > 0 && (
             <div>
-              <GroupLabel>Recent people</GroupLabel>
+              <GroupLabel>{t('search.recent_people')}</GroupLabel>
               {recentPeople.map((c) => (
                 <Row
                   key={c.id}
@@ -556,7 +558,7 @@ export default function GlobalSearch() {
             </div>
           )}
           <div>
-            <GroupLabel>Quick actions</GroupLabel>
+            <GroupLabel>{t('search.quick_actions')}</GroupLabel>
             {quickActions.map((a, i) => (
               <Row
                 key={a.key}
@@ -578,7 +580,7 @@ export default function GlobalSearch() {
           </div>
           {shortcutCommands.length > 0 && (
             <div>
-              <GroupLabel>Shortcuts</GroupLabel>
+              <GroupLabel>{t('search.shortcuts')}</GroupLabel>
               {shortcutCommands.map((c) => (
                 <Row
                   key={c.id}
@@ -599,13 +601,13 @@ export default function GlobalSearch() {
         </>
       ) : !hasResults ? (
         <div className="px-3 py-10 text-center text-[13.5px] text-on-surface-variant italic">
-          Nothing came up for &ldquo;{q}&rdquo;
+          {t('search.nothing_came_up').replace('{q}', q)}
         </div>
       ) : (
         <>
           {destResults.length > 0 && (
             <div>
-              <GroupLabel>Go to</GroupLabel>
+              <GroupLabel>{t('search.go_to')}</GroupLabel>
               {destResults.map((d) => (
                 <Row
                   key={d.key}
@@ -621,7 +623,7 @@ export default function GlobalSearch() {
 
           {peopleResults.length > 0 && (
             <div>
-              <GroupLabel>People</GroupLabel>
+              <GroupLabel>{t('search.people')}</GroupLabel>
               {peopleResults.map((c) => (
                 <Row
                   key={c.id}
@@ -638,7 +640,7 @@ export default function GlobalSearch() {
 
           {convResults.length > 0 && (
             <div>
-              <GroupLabel>Conversations</GroupLabel>
+              <GroupLabel>{t('search.conversations')}</GroupLabel>
               {convResults.map((i) => {
                 const c = contacts.find((x) => x.id === i.contactId);
                 const name = c?.name || i.contactName || '';
@@ -648,7 +650,7 @@ export default function GlobalSearch() {
                     navKey={`i:${i.id}`}
                     tone="amber"
                     icon={MessageSquare}
-                    title={snippet(i.content) || 'Conversation'}
+                    title={snippet(i.content) || t('search.conversation')}
                     sub={[name, relTime(i.createdAt)].filter(Boolean).join(' · ') || undefined}
                     onClick={() => openContactById(i.contactId)}
                   />
@@ -659,7 +661,7 @@ export default function GlobalSearch() {
 
           {boardResults.length > 0 && (
             <div>
-              <GroupLabel>Coordination Notes</GroupLabel>
+              <GroupLabel>{t('search.coordination_notes')}</GroupLabel>
               {boardResults.map((n) => (
                 <Row
                   key={n.id}
@@ -667,7 +669,7 @@ export default function GlobalSearch() {
                   tone="teal"
                   icon={FileText}
                   title={n.title}
-                  sub={[n.type === 'learning' ? 'Learning' : 'Record', n.series]
+                  sub={[n.type === 'learning' ? t('search.learning') : t('search.record'), n.series]
                     .filter(Boolean)
                     .join(' · ')}
                   onClick={() => go('/coordination')}
@@ -694,14 +696,14 @@ export default function GlobalSearch() {
                     inclHistory ? 'bg-primary' : 'bg-outline',
                   )}
                 />
-                Search history too
+                {t('search.search_history_too')}
               </button>
             </div>
           )}
 
           {historyResults.length > 0 && (
             <div>
-              <GroupLabel>History</GroupLabel>
+              <GroupLabel>{t('search.history')}</GroupLabel>
               {historyResults.map((a) => (
                 <Row
                   key={a.id}
@@ -709,7 +711,7 @@ export default function GlobalSearch() {
                   tone="violet"
                   icon={Clock}
                   dim
-                  title={snippet(a.description || a.action) || 'A moment'}
+                  title={snippet(a.description || a.action) || t('search.a_moment')}
                   sub={[a.userName, relTime(a.createdAt)].filter(Boolean).join(' · ') || undefined}
                   onClick={() => go('/history')}
                 />
@@ -750,8 +752,8 @@ export default function GlobalSearch() {
               setSearchOpen(true);
             }}
             className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
-            placeholder="Search or jump to…"
-            aria-label="Search"
+            placeholder={t('search.open_search')}
+            aria-label={t('nav.search')}
           />
           {!searchOpen ? (
             <div className="absolute right-3 flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md text-[10px] font-medium text-on-surface-variant pointer-events-none">
@@ -768,7 +770,7 @@ export default function GlobalSearch() {
                   desktopInputRef.current?.focus();
                 }}
                 className="absolute right-2.5 p-1 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                aria-label="Clear search"
+                aria-label={t('search.clear_search')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -790,7 +792,7 @@ export default function GlobalSearch() {
               </div>
               <div className="px-4 py-2 border-t border-outline-variant/60 bg-surface-container-highest/40 text-center">
                 <p className="text-[11px] text-on-surface-variant">
-                  <kbd className="font-sans">⌘K</kbd> anywhere · ↑↓ navigate · ↵ open
+                  <kbd className="font-sans">⌘K</kbd> {t('search.anywhere_navigate_open')}
                 </p>
               </div>
             </motion.div>
@@ -817,15 +819,15 @@ export default function GlobalSearch() {
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   className="flex-1 h-full bg-transparent outline-none text-base text-on-surface placeholder:text-on-surface-variant/70"
-                  placeholder="Search people, conversations, notes…"
-                  aria-label="Search"
+                  placeholder={t('search.people_conversations_notes')}
+                  aria-label={t('nav.search')}
                 />
                 {q && (
                   <button
                     type="button"
                     onClick={() => setQ('')}
                     className="p-1 rounded-full hover:bg-surface-container-high text-on-surface-variant"
-                    aria-label="Clear search"
+                    aria-label={t('search.clear_search')}
                   >
                     <X className="w-4 h-4" />
                   </button>

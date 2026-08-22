@@ -35,6 +35,7 @@ import { format, parseISO, isValid } from 'date-fns';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import AttendanceMobile from './AttendanceMobile';
+import { useLanguage } from '../components/LanguageProvider';
 
 const DAY_MS = 86_400_000;
 
@@ -98,6 +99,7 @@ const SectionHead = ({ title, sub }: { title: string; sub?: string }) => (
 
 export default function Attendance() {
   const { user, isAdmin } = useAuth();
+  const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const gatheringTypes = useGatheringTypes();
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -175,13 +177,13 @@ export default function Attendance() {
   const handleExport = () => {
     if (contacts.length === 0 || events.length === 0) return;
 
-    const headers = ['Name', 'Role', ...events.map((e) => `${e.name} (${e.date})`)];
+    const headers = [t('attendance.csv_name'), t('attendance.csv_role'), ...events.map((e) => `${e.name} (${e.date})`)];
     const rows = contacts.map((c) => [
       c.name,
       c.role,
       ...events.map((e) => {
         const s = c.attendance?.[e.id];
-        return s === true ? 'Present' : s === 'late' ? 'Late' : s === 'absent' ? 'Absent' : 'None';
+        return s === true ? t('attendance.present') : s === 'late' ? t('attendance.late') : s === 'absent' ? t('attendance.absent') : t('attendance.none');
       }),
     ]);
 
@@ -202,7 +204,7 @@ export default function Attendance() {
     if (
       !isAdmin ||
       !window.confirm(
-        `Remove the gathering "${eventName}"? This also clears who was marked present or absent for it.`,
+        t('attendance.remove_gathering_confirm').replace('{name}', eventName),
       )
     )
       return;
@@ -232,9 +234,9 @@ export default function Attendance() {
 
       const event = events.find((e) => e.id === eventId);
       const label = (v: boolean | 'late' | 'absent' | undefined) =>
-        v === true ? 'Present' : v === 'late' ? 'Late' : v === 'absent' ? 'Absent' : 'None';
+        v === true ? t('attendance.present') : v === 'late' ? t('attendance.late') : v === 'absent' ? t('attendance.absent') : t('attendance.none');
 
-      const userName = user?.displayName || user?.email?.split('@')[0] || 'Unknown User';
+      const userName = user?.displayName || user?.email?.split('@')[0] || t('attendance.unknown_user');
       const userUid = user?.uid || null;
 
       const updateData: Record<string, unknown> = {
@@ -391,7 +393,7 @@ export default function Attendance() {
             source={{ interactionId: todoFor.event.id, interactionTitle: todoFor.event.name }}
             team={team}
             meUid={user?.uid ?? ''}
-            meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+            meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
             onClose={() => setTodoFor(null)}
           />
         )}
@@ -411,7 +413,7 @@ export default function Attendance() {
         <header className="flex flex-col sm:flex-row sm:items-end gap-4 sm:gap-6">
           <div className="flex-1">
             <p className="text-sm text-on-surface-variant">{format(new Date(), 'EEEE, MMMM d')}</p>
-            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">Gatherings</h1>
+            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface mt-1">{t('nav.gatherings')}</h1>
             <p className="text-base text-on-surface-variant leading-relaxed mt-3 max-w-2xl">
               We've come together{' '}
               <b className="text-on-surface font-semibold">
@@ -528,12 +530,12 @@ export default function Attendance() {
         {/* ── When we met ── */}
         <section className="mt-12">
           <SectionHead
-            title="When we met"
-            sub="Tap a gathering to see who came — and mark anyone you remember."
+            title={t('attendance.when_we_met')}
+            sub={t('attendance.tap_gathering_sub')}
           />
 
           <div className="flex flex-wrap items-center gap-2 mb-4">
-            {['All', ...gatheringTypes.map((t) => t.name)].map((t) => (
+            {[t('attendance.all'), ...gatheringTypes.map((x) => x.name)].map((t) => (
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
@@ -552,7 +554,7 @@ export default function Attendance() {
                 onClick={() => setIsManageTypesOpen(true)}
                 className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
               >
-                <Settings2 className="w-3.5 h-3.5" /> Manage kinds
+                <Settings2 className="w-3.5 h-3.5" /> {t('attendance.manage_kinds')}
               </button>
             )}
           </div>
@@ -587,7 +589,7 @@ export default function Attendance() {
                       <div className="min-w-0 flex-1">
                         <div className="font-semibold text-on-surface truncate">{s.name}</div>
                         <div className="text-sm text-on-surface-variant truncate">
-                          {s.type || 'A time together'}
+                          {s.type || t('attendance.a_time_together')}
                         </div>
                       </div>
                       <div className="hidden sm:flex items-center -space-x-2 mr-1">
@@ -598,7 +600,7 @@ export default function Attendance() {
                         ))}
                       </div>
                       <div className="text-sm text-on-surface-variant whitespace-nowrap shrink-0">
-                        <b className="text-on-surface font-semibold">{present.length}</b> came
+                        <b className="text-on-surface font-semibold">{present.length}</b> {t('attendance.came')}
                       </div>
                       <ChevronDown
                         className={cn(
@@ -615,7 +617,7 @@ export default function Attendance() {
                             setEditingEvent(s);
                           }}
                           className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-surface-variant hover:text-on-surface transition-all shrink-0"
-                          title="Edit gathering"
+                          title={t('attendance.edit_gathering')}
                         >
                           <Pencil className="w-3.5 h-3.5" />
                         </span>
@@ -629,7 +631,7 @@ export default function Attendance() {
                             handleDeleteEvent(s.id, s.name);
                           }}
                           className="p-1.5 rounded-full text-on-surface-variant opacity-0 group-hover/header:opacity-100 hover:bg-error-container hover:text-on-error-container transition-all shrink-0"
-                          title="Remove gathering"
+                          title={t('attendance.remove_gathering')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </span>
@@ -640,21 +642,21 @@ export default function Attendance() {
                       <div className="px-5 pb-5 border-t border-outline-variant/40 pt-4">
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-on-surface-variant mb-4">
                           <span className="inline-flex items-center gap-1.5">
-                            <i className="w-2 h-2 rounded-full bg-primary inline-block" /> here
+                            <i className="w-2 h-2 rounded-full bg-primary inline-block" /> {t('attendance.here')}
                           </span>
                           <span className="inline-flex items-center gap-1.5">
-                            <i className="w-2 h-2 rounded-full bg-outline inline-block" /> missed
+                            <i className="w-2 h-2 rounded-full bg-outline inline-block" /> {t('attendance.missed')}
                           </span>
-                          <span className="italic">Tap a name to update who was there.</span>
+                          <span className="italic">{t('attendance.tap_name_to_update')}</span>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                           <div>
                             <div className="text-xs font-semibold text-on-surface   mb-2">
-                              Attended <span className="text-on-surface-variant">{present.length}</span>
+                              {t('attendance.attended_header')} <span className="text-on-surface-variant">{present.length}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {present.length === 0 && (
-                                <span className="text-sm text-on-surface-variant italic">No one marked yet.</span>
+                                <span className="text-sm text-on-surface-variant italic">{t('attendance.no_one_marked_yet')}</span>
                               )}
                               {present.map((c) => (
                                 <button
@@ -670,11 +672,11 @@ export default function Attendance() {
                           </div>
                           <div>
                             <div className="text-xs font-semibold text-on-surface-variant   mb-2">
-                              We missed <span>{absent.length}</span>
+                              {t('attendance.we_missed')} <span>{absent.length}</span>
                             </div>
                             <div className="flex flex-wrap gap-2">
                               {absent.length === 0 && (
-                                <span className="text-sm text-on-surface-variant italic">Everyone came.</span>
+                                <span className="text-sm text-on-surface-variant italic">{t('attendance.everyone_came_period')}</span>
                               )}
                               {absent.map((c) => (
                                 <span
@@ -684,15 +686,15 @@ export default function Attendance() {
                                   <button
                                     onClick={() => cycleAttendance(c, s.id)}
                                     className="inline-flex items-center gap-2"
-                                    title="Tap to mark present"
+                                    title={t('attendance.tap_to_mark_present')}
                                   >
                                     <Avatar contact={c} size="sm" />
                                     <span className="text-sm">{c.name}</span>
                                   </button>
                                   <button
                                     onClick={() => openTodoFor(c, s)}
-                                    title={`Make a to-do to check on ${c.name}`}
-                                    aria-label={`Make a to-do for ${c.name}`}
+                                    title={t('attendance.make_a_todo_check_on').replace('{name}', c.name)}
+                                    aria-label={t('attendance.make_a_todo_for').replace('{name}', c.name)}
                                     className="p-1.5 rounded-full hover:bg-surface-variant hover:text-accent transition-colors"
                                   >
                                     <CheckSquare className="w-3.5 h-3.5" />
@@ -713,8 +715,8 @@ export default function Attendance() {
               <CalendarDays className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
               <p className="text-sm text-on-surface-variant">
                 {events.length === 0
-                  ? 'No gatherings recorded yet. Log your first one to start keeping the record.'
-                  : 'No gatherings of this kind yet.'}
+                  ? t('attendance.no_gatherings_recorded')
+                  : t('attendance.no_gatherings_of_kind')}
               </p>
             </div>
           )}
@@ -723,7 +725,7 @@ export default function Attendance() {
         {/* ── Coming up ── */}
         {upcoming.length > 0 && (
           <section className="mt-12">
-            <SectionHead title="Coming up" sub="What we can invite people to next." />
+            <SectionHead title={t('attendance.coming_up')} sub={t('attendance.coming_up_sub')} />
             <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
               {upcoming.map(({ ev, ms }, i) => {
                 const d = new Date(ms);
@@ -796,7 +798,7 @@ export default function Attendance() {
           source={{ interactionId: todoFor.event.id, interactionTitle: todoFor.event.name }}
           team={team}
           meUid={user?.uid ?? ''}
-          meName={user?.displayName || user?.email?.split('@')[0] || 'Someone'}
+          meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
           onClose={() => setTodoFor(null)}
         />
       )}

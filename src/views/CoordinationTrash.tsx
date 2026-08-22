@@ -1,6 +1,6 @@
 // Trash for The Board (board_docs) — soft-deleted pages, admin-only (matches
 // board_docs' delete rule). Restore brings a page back to the main Pages
-// list; "Delete Forever" is the old permanent hard-delete, now only reachable
+// list; "{t('coordinationTrash.delete_forever')}" is the old permanent hard-delete, now only reachable
 // from here. Web's counterpart to apps/mobile/app/coordination/trash.tsx —
 // previously Trash only existed on mobile, so a page deleted from the web
 // editor had no web-side way to be recovered.
@@ -13,10 +13,12 @@ import { useAuth } from '../components/AuthProvider';
 import { dayNum, weekdayShort, type BoardDoc } from '../lib/board';
 import { deleteBoardDoc, purgeExpiredTrash, restoreBoardDoc } from '../lib/data/board';
 import PageContainer from '../components/layout/PageContainer';
+import { useLanguage } from '../components/LanguageProvider';
 import { Skeleton } from '../components/ui/Skeleton';
 
 export default function CoordinationTrash() {
   const { isAdmin } = useAuth();
+  const { t } = useLanguage();
   const [docs, setDocs] = useState<BoardDoc[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,14 +46,14 @@ export default function CoordinationTrash() {
   }, [isAdmin]);
 
   const confirmPurge = (d: BoardDoc) => {
-    if (!window.confirm(`Permanently delete "${d.title}"? This can't be undone.`)) return;
+    if (!window.confirm(t('coordinationTrash.confirm_purge').replace('{title}', d.title))) return;
     deleteBoardDoc(d).catch((e) => handleFirestoreError(e, OperationType.DELETE, 'board_docs'));
   };
 
   if (!isAdmin) {
     return (
       <PageContainer variant="reading" className="text-center py-16">
-        <p className="text-on-surface-variant">Not available.</p>
+        <p className="text-on-surface-variant">{t('coordinationTrash.not_available')}</p>
       </PageContainer>
     );
   }
@@ -63,10 +65,10 @@ export default function CoordinationTrash() {
           to="/coordination"
           className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-on-surface transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" /> Coordination Notes
+          <ArrowLeft className="w-4 h-4" /> {t('coordinationTrash.coordination_notes')}
         </Link>
-        <h1 className="text-2xl sm:text-3xl font-regular tracking-tight text-on-background">Trash</h1>
-        <p className="text-sm text-on-surface-variant">Deleted pages, kept here until restored or removed for good.</p>
+        <h1 className="text-2xl sm:text-3xl font-regular tracking-tight text-on-background">{t('coordinationTrash.title')}</h1>
+        <p className="text-sm text-on-surface-variant">{t('coordinationTrash.subtitle')}</p>
       </div>
 
       {loading ? (
@@ -77,7 +79,7 @@ export default function CoordinationTrash() {
       ) : docs.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
           <Trash2 className="w-10 h-10 text-on-surface-variant/40" />
-          <p className="text-on-surface-variant">Trash is empty.</p>
+          <p className="text-on-surface-variant">{t('coordinationTrash.trash_is_empty')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -101,7 +103,7 @@ export default function CoordinationTrash() {
                   <RotateCcw className="w-3.5 h-3.5" /> Restore
                 </button>
                 <button onClick={() => confirmPurge(d)} className="text-sm font-semibold text-error hover:opacity-80">
-                  Delete Forever
+                  {t('coordinationTrash.delete_forever')}
                 </button>
               </div>
             </div>

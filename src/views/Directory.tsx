@@ -160,7 +160,9 @@ export default function Directory() {
   // people page remounted (e.g. after closing a contact detail).
   const contactsLoadedRef = useRef(false);
   const stagesLoadedRef = useRef(false);
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
+  const peopleCountLabel = (n: number) =>
+    n === 0 ? t('directory.no_one_yet') : n === 1 ? t('directory.one_person') : t('directory.n_people').replace('{n}', String(n));
 
   // Warm translation cache for visible contact notes when Spanish is active.
   useEffect(() => {
@@ -493,7 +495,7 @@ export default function Directory() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Are you sure you want to remove ${selectedIds.size} ${selectedIds.size === 1 ? 'person' : 'people'}?`)) return;
+    if (!confirm(t('directory.confirm_remove').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people')))) return;
 
     try {
       const batch = writeBatch(db);
@@ -552,22 +554,20 @@ export default function Directory() {
       {/* ── Header: serif title + prose summary ── */}
       <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="font-serif page-title text-on-surface">People</h1>
+          <h1 className="font-serif page-title text-on-surface">{t('directory.title')}</h1>
           <p className="text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
             <b className="text-on-surface font-semibold">
-              {userContacts.length} {userContacts.length === 1 ? 'person' : 'people'}
+              {userContacts.length} {userContacts.length === 1 ? t('directory.person') : t('directory.people')}
             </b>{' '}
-            in your care
+            {t('directory.in_your_care')}
             {newCount > 0 && (
               <>
-                {' '}— <span className="text-on-surface font-medium">{newCount}</span> new in the
-                last two weeks
+                {' '}— <span className="text-on-surface font-medium">{newCount}</span> {t('directory.new_in_last_two_weeks')}
               </>
             )}
             {overdueCount > 0 && (
               <>
-                , and <span className="text-on-surface font-medium">{overdueCount}</span> you
-                haven't connected with in over a week
+                , and <span className="text-on-surface font-medium">{overdueCount}</span> {t('directory.you_havent_connected')}
               </>
             )}
             .
@@ -577,21 +577,21 @@ export default function Directory() {
           <button
             onClick={() => setIsCombineTagsOpen(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant text-sm font-medium hover:bg-surface-variant transition-colors shrink-0"
-            title="Combine duplicate/season tag variants with a dry-run preview"
+            title={t('directory.combine_tags')}
           >
-            <Combine className="w-4 h-4" /> Combine tags
+            <Combine className="w-4 h-4" /> {t('directory.combine_tags')}
           </button>
           <button
             onClick={() => openSmartImport()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-accent-line bg-primary/10 text-accent text-sm font-medium hover:bg-primary/20 transition-colors shrink-0"
           >
-            <Sparkles className="w-4 h-4 text-accent" /> Smart Import
+            <Sparkles className="w-4 h-4 text-accent" /> {t('directory.smart_import')}
           </button>
           <button
             onClick={() => openNewContact()}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-on-primary text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
           >
-            <Plus className="w-4 h-4" /> Add someone
+            <Plus className="w-4 h-4" /> {t('actions.add_someone')}
           </button>
         </div>
       </header>
@@ -602,7 +602,7 @@ export default function Directory() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
           <input
             type="text"
-            placeholder="Find someone by name…"
+            placeholder={t('directory.find_someone')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full h-11 pl-10 pr-4 rounded-full border border-outline-variant bg-surface focus:border-primary outline-none text-sm transition-colors"
@@ -619,7 +619,7 @@ export default function Directory() {
             )}
           >
             <Filter className="w-4 h-4" />
-            Filters
+            {t('directory.filters')}
             {hasActiveFilters && <span className="w-1.5 h-1.5 rounded-full bg-primary" />}
           </button>
 
@@ -637,48 +637,48 @@ export default function Directory() {
                   className="absolute top-13 right-0 mt-2 z-40 bg-surface-container-high border border-outline-variant rounded-3xl shadow-xl p-4 min-w-[240px] max-w-[calc(100vw-2rem)] space-y-4"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-on-surface">Narrow it down</span>
+                    <span className="text-sm font-medium text-on-surface">{t('directory.narrow_it_down')}</span>
                     {hasActiveFilters && (
                       <button
                         onClick={clearFilters}
                         className="text-xs font-medium text-accent hover:underline"
                       >
-                        Clear all
+                        {t('directory.clear_all')}
                       </button>
                     )}
                   </div>
 
                   <div className="space-y-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">Stage</label>
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.stage')}</label>
                       <select
                         value={filterStage}
                         onChange={(e) => setFilterStage(e.target.value)}
                         className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
                       >
-                        {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? 'All stages' : s}</option>)}
+                        {filterStages.map(s => <option key={s} value={s}>{s === 'All' ? t('directory.all_stages') : s}</option>)}
                       </select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">Group</label>
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.group')}</label>
                       <select
                         value={filterRole}
                         onChange={(e) => setFilterRole(e.target.value)}
                         className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
                       >
-                        {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? 'All groups' : r}</option>)}
+                        {filterRoles.map(r => <option key={r} value={r}>{r === 'All' ? t('directory.all_groups') : r}</option>)}
                       </select>
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-medium text-on-surface-variant px-1">Spiritual background</label>
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.spiritual_background')}</label>
                       <select
                         value={filterSpiritualBackground}
                         onChange={(e) => setFilterSpiritualBackground(e.target.value)}
                         className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
                       >
-                        {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? 'All backgrounds' : sb}</option>)}
+                        {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? t('directory.all_backgrounds') : sb}</option>)}
                       </select>
                     </div>
                   </div>
@@ -722,14 +722,14 @@ export default function Directory() {
           </span>
           <span className="text-sm text-on-surface-variant">
             {selectedIds.size > 0
-              ? `${selectedIds.size} selected`
+              ? t('directory.selected_count').replace('{n}', String(selectedIds.size))
               : !seesAllPeople(role)
                 ? filteredContacts.length === userContacts.length
-                  ? `${peopleCount(filteredContacts.length)} — everyone you added, or were named on`
-                  : `${filteredContacts.length} of the ${userContacts.length} people you added or were named on`
+                  ? `${peopleCountLabel(filteredContacts.length)} — ${t('directory.everyone_you_added')}`
+                  : t('directory.of_people_added').replace('{shown}', String(filteredContacts.length)).replace('{total}', String(userContacts.length))
                 : filteredContacts.length === userContacts.length
-                  ? peopleCount(filteredContacts.length)
-                  : `${peopleCount(filteredContacts.length)} of ${userContacts.length}`}
+                  ? peopleCountLabel(filteredContacts.length)
+                  : t('directory.of_people').replace('{shown}', String(filteredContacts.length)).replace('{total}', String(userContacts.length))}
           </span>
         </label>
 
@@ -747,30 +747,30 @@ export default function Directory() {
                   setIsStageModalOpen(true);
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
-                title="Change stage for selected"
+                title={t('directory.change_stage_for_selected')}
               >
-                <Kanban className="w-4 h-4" /> Stage
+                <Kanban className="w-4 h-4" /> {t('directory.stage')}
               </button>
               <button
                 onClick={() => setIsTagModalOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
-                title="Tag selected"
+                title={t('directory.tag_selected')}
               >
-                <Tag className="w-4 h-4" /> Tag
+                <Tag className="w-4 h-4" /> {t('directory.tag')}
               </button>
               <button
                 onClick={handleBulkEmail}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-on-surface-variant hover:bg-surface-variant transition-colors"
-                title="Email selected"
+                title={t('directory.email_selected')}
               >
-                <Mail className="w-4 h-4" /> Email
+                <Mail className="w-4 h-4" /> {t('directory.email')}
               </button>
               <button
                 onClick={handleBulkDelete}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm text-error hover:bg-error/10 transition-colors"
-                title="Remove selected"
+                title={t('directory.remove_selected')}
               >
-                <Trash2 className="w-4 h-4" /> Remove
+                <Trash2 className="w-4 h-4" /> {t('directory.remove')}
               </button>
             </motion.div>
           )}
@@ -783,8 +783,8 @@ export default function Directory() {
           <div className="w-14 h-14 rounded-full bg-surface-variant flex items-center justify-center mb-4">
             <Search className="w-7 h-7 text-on-surface-variant opacity-40" />
           </div>
-          <h3 className="font-serif text-xl text-on-surface mb-1">No one matches that just yet</h3>
-          <p className="text-sm text-on-surface-variant">Try a different search or clear your filters.</p>
+          <h3 className="font-serif text-xl text-on-surface mb-1">{t('directory.no_matches_title')}</h3>
+          <p className="text-sm text-on-surface-variant">{t('directory.no_matches_body')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
@@ -824,7 +824,7 @@ export default function Directory() {
                         ? "bg-primary border-primary opacity-100"
                         : "border-outline opacity-40 group-hover:opacity-100 hover:border-primary"
                     )}
-                    title={selected ? 'Deselect' : 'Select'}
+                    title={selected ? t('directory.deselect') : t('directory.select')}
                   >
                     {selected && <Check className="w-3 h-3 text-on-primary" strokeWidth={3} />}
                   </button>
@@ -841,7 +841,7 @@ export default function Directory() {
                           isStage ? "bg-[var(--tone-soft)] text-[var(--tone)]" : "bg-surface-variant text-on-surface-variant"
                         )}
                       >
-                        {isStage ? contact.stage : 'Unassigned'}
+                        {isStage ? contact.stage : t('directory.unassigned')}
                       </span>
                     </div>
                     {sub && (
@@ -853,14 +853,14 @@ export default function Directory() {
                         overdue ? "text-stage-amber font-medium" : "text-on-surface-variant"
                       )}>
                         {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0" aria-hidden />}
-                        {connectedLabel(days)}
+                        <Translate text={connectedLabel(days)} />
                       </div>
                     ) : (
-                      <div className="text-sm text-on-surface-variant/70 italic mt-1">No contact logged yet.</div>
+                      <div className="text-sm text-on-surface-variant/70 italic mt-1">{t('directory.no_contact_logged')}</div>
                     )}
                     {note && (
                       <p className="text-sm text-on-surface-variant leading-relaxed mt-2">
-                        <span className="text-on-surface-variant/70">Lately:</span> <Translate text={truncate(note, 120)} />
+                        <span className="text-on-surface-variant/70">{t('directory.lately')}</span> <Translate text={truncate(note, 120)} />
                       </p>
                     )}
                     {tags.length > 0 && (
@@ -885,13 +885,13 @@ export default function Directory() {
                       onClick={(e) => e.stopPropagation()}
                       className="self-start hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors shrink-0"
                     >
-                      <Mail className="w-3.5 h-3.5" /> Email
+                      <Mail className="w-3.5 h-3.5" /> {t('directory.email')}
                     </a>
                   )}
 
                   <RowActions
                     className="self-start"
-                    label={`More for ${contact.name}`}
+                    label={`${t('directory.more_for')} ${contact.name}`}
                     items={buildContactRowActions({
                       contact,
                       onOpen: () => setSelectedContact(contact),
@@ -936,15 +936,15 @@ export default function Directory() {
               className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
             >
               <div className="p-6 border-b border-outline-variant">
-                <h2 className="font-serif text-2xl text-on-surface">Change stage</h2>
+                <h2 className="font-serif text-2xl text-on-surface">{t('directory.change_stage')}</h2>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  For {selectedIds.size} selected {selectedIds.size === 1 ? 'person' : 'people'}
+                  {t('directory.for_selected').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people'))}
                 </p>
               </div>
 
               <form onSubmit={handleBulkStage} className="p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant px-1">Stage</label>
+                  <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.stage')}</label>
                   <select
                     required
                     data-testid="bulk-stage-select"
@@ -999,15 +999,15 @@ export default function Directory() {
               className="relative w-full max-w-sm bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant"
             >
               <div className="p-6 border-b border-outline-variant">
-                <h2 className="font-serif text-2xl text-on-surface">Add a tag</h2>
+                <h2 className="font-serif text-2xl text-on-surface">{t('directory.add_a_tag')}</h2>
                 <p className="text-sm text-on-surface-variant mt-1">
-                  For {selectedIds.size} selected {selectedIds.size === 1 ? 'person' : 'people'}
+                  {t('directory.for_selected').replace('{n}', String(selectedIds.size)).replace('{count}', selectedIds.size === 1 ? t('directory.person') : t('directory.people'))}
                 </p>
               </div>
 
               <form onSubmit={handleBulkTag} className="p-6 space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-sm font-medium text-on-surface-variant px-1">Tag</label>
+                  <label className="text-sm font-medium text-on-surface-variant px-1">{t('directory.tag')}</label>
                   <input
                     required
                     autoFocus
@@ -1015,7 +1015,7 @@ export default function Directory() {
                     value={newTag}
                     onChange={e => setNewTag(e.target.value)}
                     className="w-full h-12 px-4 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none transition-colors text-on-surface"
-                    placeholder="e.g. leader-track"
+                    placeholder={t('directory.tag_placeholder')}
                   />
                 </div>
 

@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { cn } from "../lib/utils";
 import { Activity, Contact } from "../types";
+import { useLanguage } from "./LanguageProvider";
+import { Translate } from "./Translate";
 import {
   Phone,
   Mail,
@@ -23,6 +25,7 @@ export function ActivityItem({
   contacts,
   onOpenContact,
 }: ActivityItemProps) {
+  const { t } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -64,29 +67,29 @@ export function ActivityItem({
               {activity.action === "logged an interaction for" ||
               activity.action === "logged a batch interaction for"
                 ? activity.type === "call"
-                  ? "called"
+                  ? t('activity.called')
                   : activity.type === "email"
-                    ? "emailed"
+                    ? t('activity.emailed')
                     : activity.type === "event"
-                      ? "had a meeting with"
+                      ? t('activity.had_a_meeting_with')
                       : activity.type === "comment"
-                        ? "left a note for"
-                        : "interacted with"
+                        ? t('activity.left_a_note_for')
+                        : t('activity.interacted_with')
                 : activity.action === "updated an interaction for"
-                  ? "updated an interaction for"
+                  ? t('activity.updated_an_interaction_for')
                   : activity.action.startsWith("updated") &&
                       activity.action !== "updated an interaction for" &&
                       activity.type === "edit" &&
                       activity.description
-                  ? `updated the ${activity.description
+                  ? `${t('activity.updated_the')} ${activity.description
                       .split("\n")
                       .map((line) => {
                         const field = line.includes(":") ? line.split(":")[0].trim() : line.trim();
-                        if (field.toLowerCase() === "notes updated") return "Notes";
+                        if (field.toLowerCase() === "notes updated") return t('activity.notes');
                         return field.charAt(0).toUpperCase() + field.slice(1).toLowerCase();
                       })
                       .filter((v, i, a) => v && a.indexOf(v) === i)
-                      .join(", ")} for`
+                      .join(", ")} ${t('activity.for')}`
                   : activity.action}
             </span>{" "}
             <button
@@ -110,7 +113,7 @@ export function ActivityItem({
 
         {activity.description && activity.type !== "edit" && (
           <div className="mt-2 p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/30 text-[13px] leading-relaxed text-on-surface-variant italic">
-            "{activity.description}"
+            <Translate text={activity.description} />
           </div>
         )}
       </div>

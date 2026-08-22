@@ -6,6 +6,7 @@ import { isTrainee, fullTimerOf } from '../../lib/walking';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { useSeason } from '../../lib/seasons';
 import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage, MET_VIA } from '../../types';
@@ -19,6 +20,7 @@ interface NewContactModalProps {
 
 export default function NewContactModal({ isOpen, onClose, initialStage }: NewContactModalProps) {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   if (role === 'viewer') return null;
   const [loading, setLoading] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
@@ -235,13 +237,13 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                 </div>
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="text-xl font-semibold text-on-surface">New Contact</h2>
+                    <h2 className="text-xl font-semibold text-on-surface">{t('modals.new_contact')}</h2>
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-stage-accent-soft text-stage-accent text-[11px] font-semibold">
                       <span className="w-1.5 h-1.5 rounded-full bg-stage-accent" />
                       {season.label}{season.clubRush ? ' · club rush' : ''}
                     </span>
                   </div>
-                  <p className="text-sm text-on-surface-variant font-medium">Tagged for this season's cohort</p>
+                  <p className="text-sm text-on-surface-variant font-medium">{t('modals.tagged_for_season')}</p>
                 </div>
               </div>
               <button 
@@ -268,7 +270,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       onChange={e => setFormData(f => ({ ...f, firstName: e.target.value }))}
                       onBlur={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                       className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                      placeholder="First name is plenty"
+                      placeholder={t('modals.first_name_placeholder')}
                     />
                   </div>
 
@@ -365,7 +367,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                         onChange={e => setFormData(f => ({ ...f, metVia: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
                       >
-                        <option value="">How we met...</option>
+                        <option value="">{t('modals.how_we_met_placeholder')}</option>
                         {MET_VIA.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
@@ -405,12 +407,12 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                         <Calendar className="w-3.5 h-3.5" /> WHERE THEY'RE AT
                       </label>
                       <select
-                        aria-label="Stage"
+                        aria-label={t('modals.stage')}
                         value={formData.stage}
                         onChange={e => setFormData(f => ({ ...f, stage: e.target.value }))}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
                       >
-                        <option value="Unassigned">Unassigned</option>
+                        <option value="Unassigned">{t('modals.unassigned')}</option>
                         {stages.map(s => (
                       <option key={s.id} value={s.label}>{s.label}</option>
                     ))}
@@ -446,11 +448,11 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     }
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
                   >
-                    <option value="">Select background...</option>
-                    <option value="Christian">Christian</option>
-                    <option value="Catholic">Catholic</option>
-                    <option value="Other">Other Religion / Background</option>
-                    <option value="None">None</option>
+                    <option value="">{t('modals.select_background')}</option>
+                    <option value="Christian">{t('modals.christian')}</option>
+                    <option value="Catholic">{t('modals.catholic')}</option>
+                    <option value="Other">{t('modals.other_religion')}</option>
+                    <option value="None">{t('modals.none')}</option>
                   </select>
                 </div>
 
@@ -487,9 +489,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
               className="flex-[2] h-11 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed text-sm"
             >
               {loading ? (
-                <span className="animate-pulse">Adding Contact...</span>
+                <span className="animate-pulse">{t('modals.adding_contact')}</span>
               ) : (
-                'Add Contact'
+                t('modals.add_contact')
               )}
             </button>
           </div>

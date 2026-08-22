@@ -26,6 +26,7 @@ import { applyContactActivityToBatch } from '../../lib/contactActivity';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import { UsageStats } from '../../lib/usageStats';
 import { format } from 'date-fns';
 
@@ -36,6 +37,7 @@ interface LogInteractionModalProps {
 
 export default function LogInteractionModal({ isOpen, onClose }: LogInteractionModalProps) {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   if (role === 'viewer') return null;
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -222,10 +224,10 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
   };
 
   const interactionTypes = [
-    { id: 'chat', label: 'Message', icon: MessageSquare, color: 'text-accent bg-primary/10' },
-    { id: 'email', label: 'Email', icon: Send, color: 'text-secondary bg-secondary/10' },
-    { id: 'call', label: 'Call', icon: Phone, color: 'text-tertiary bg-tertiary/10' },
-    { id: 'meeting', label: 'Meeting', icon: Coffee, color: 'text-success bg-success/10' },
+    { id: 'chat', label: t('modals.message'), icon: MessageSquare, color: 'text-accent bg-primary/10' },
+    { id: 'email', label: t('directory.email'), icon: Send, color: 'text-secondary bg-secondary/10' },
+    { id: 'call', label: t('modals.call'), icon: Phone, color: 'text-tertiary bg-tertiary/10' },
+    { id: 'meeting', label: t('modals.meeting'), icon: Coffee, color: 'text-success bg-success/10' },
   ];
 
   return (
@@ -252,8 +254,8 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   <HeartHandshake className="w-6 h-6" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-semibold text-on-surface">Log Interaction</h2>
-                  <p className="text-xs text-on-surface-variant font-medium">Record activities for multiple contacts at once</p>
+                  <h2 className="text-2xl font-semibold text-on-surface">{t('modals.log_interaction')}</h2>
+                  <p className="text-xs text-on-surface-variant font-medium">{t('modals.record_activities_multiple')}</p>
                 </div>
               </div>
               <button 
@@ -311,11 +313,11 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   {loading ? (
                     <div className="flex flex-col items-center justify-center h-full p-8 opacity-40">
                       <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                      <p className="text-xs font-semibold  ">Loading Contacts...</p>
+                      <p className="text-xs font-semibold  ">{t('modals.loading_contacts')}</p>
                     </div>
                   ) : filteredContacts.length === 0 ? (
                     <div className="p-8 text-center opacity-50">
-                      <p className="text-sm">No contacts matching "{searchQuery}"</p>
+                      <p className="text-sm">{t('modals.no_contacts_matching').replace('{q}', searchQuery)}</p>
                     </div>
                   ) : (
                     <div className="space-y-0.5">
@@ -368,7 +370,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
               <div className="w-full lg:w-1/2 flex flex-col min-h-0 bg-surface-container p-6 space-y-6 overflow-y-auto no-scrollbar">
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 mb-3 block">Interaction Type</label>
+                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 mb-3 block">{t('modals.interaction_type')}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {interactionTypes.map(t => {
                         const Icon = t.icon;
@@ -395,7 +397,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 block">Date</label>
+                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 block">{t('modals.date')}</label>
                     <div className="relative">
                       <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
                       <input 
@@ -408,11 +410,11 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 block">Notes / Content</label>
+                    <label className="text-[10px] font-semibold   text-on-surface-variant px-1 block">{t('modals.notes_content')}</label>
                     <textarea 
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="What was discussed? Any takeaways or follow-ups?"
+                      placeholder={t('modals.what_discussed')}
                       className="w-full h-32 bg-surface-container-low border border-outline/20 rounded-2xl p-4 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none leading-relaxed placeholder:text-on-surface-variant/30 "
                     />
                   </div>
@@ -423,20 +425,20 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                       onClick={addTask}
                       className="w-full py-3 border border-dashed border-outline/30 rounded-2xl text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low transition-all flex items-center justify-center gap-2"
                     >
-                      <Plus className="w-4 h-4" /> Add Follow-Up Task
+                      <Plus className="w-4 h-4" /> {t('modals.add_follow_up_task')}
                     </button>
                   ) : (
                     <div className="space-y-3 bg-surface-container-low p-4 rounded-3xl border border-primary/20">
                       <div className="flex items-center justify-between px-1">
                         <label className="text-[10px] font-semibold   text-accent flex items-center gap-1.5">
-                          Follow-Up Tasks
+                          {t('modals.follow_up_tasks')}
                         </label>
                         <button
                           type="button"
                           onClick={addTask}
                           className="text-[10px] font-semibold text-on-surface-variant flex items-center gap-1 hover:text-on-surface transition-colors"
                         >
-                          <Plus className="w-3 h-3"/> Add Manual
+                          <Plus className="w-3 h-3"/> {t('modals.add_manual')}
                         </button>
                       </div>
                       <div className="space-y-2">
@@ -446,7 +448,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                               type="text"
                               value={task.title || ''}
                               onChange={(e) => handleTaskChange(i, 'title', e.target.value)}
-                              placeholder="Task description"
+                              placeholder={t('modals.task_description')}
                               className="flex-1 bg-transparent border-none focus:ring-0 text-sm text-on-surface px-2 py-1"
                             />
                             <input
@@ -476,9 +478,9 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                     >
                       <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
                       <div>
-                        <p className="text-[10px] font-semibold text-accent   mb-1">Batch Recognition</p>
+                        <p className="text-[10px] font-semibold text-accent   mb-1">{t('modals.batch_recognition')}</p>
                         <p className="text-[11px] text-on-surface-variant leading-relaxed">
-                          This interaction will be logged for <strong>{selectedContactIds.size} contacts</strong>. Each will have their own activity entry and updated "Last Seen" date.
+                          {t('modals.this_interaction_will_be_logged').replace('{n}', String(selectedContactIds.size))}
                         </p>
                       </div>
                     </motion.div>
@@ -490,7 +492,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                     onClick={onClose}
                     className="px-6 h-12 rounded-2xl font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors text-sm"
                   >
-                    Cancel
+                    {t('modals.cancel')}
                   </button>
                   <button 
                     disabled={selectedContactIds.size === 0 || !notes.trim() || isSubmitting}
@@ -502,7 +504,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
                     ) : (
                       <>
                         <Check className="w-4 h-4" />
-                        Log Interaction
+                        {t('modals.log_interaction')}
                       </>
                     )}
                   </button>

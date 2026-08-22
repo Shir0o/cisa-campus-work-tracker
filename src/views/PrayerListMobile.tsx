@@ -6,6 +6,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
 import { getContactGrade } from '../lib/prayers';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 
 type Status = PrayerRecord['status'];
 
@@ -107,6 +108,7 @@ export default function PrayerListMobile({
   onMakeTodo,
 }: PrayerListMobileProps) {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   // Suggestions for bottom sheet
@@ -151,7 +153,7 @@ export default function PrayerListMobile({
           >
             <div className="flex items-center gap-2">
               <Plus className="w-4 h-4" />
-              <span>Hold someone in prayer</span>
+              <span>{t('prayers.hold_someone_in_prayer')}</span>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-full bg-surface text-accent font-semibold  prm-choose-n">
               {entries.length}
@@ -163,13 +165,13 @@ export default function PrayerListMobile({
       {/* ── Toggle buttons ── */}
       <div className="px-5 mt-4 flex border-b border-outline-variant/35 ans-toggle">
         <button className="flex-1 py-3 text-center text-sm font-semibold border-b-2 border-primary text-accent ans-toggle-opt on">
-          On our hearts
+          {t('nav.prayers')}
         </button>
         <button
           onClick={() => navigate('/answered')}
           className="flex-1 py-3 text-center text-sm font-semibold text-on-surface-variant hover:text-on-surface ans-toggle-opt"
         >
-          Answered
+          {t('prayers.status_answered')}
         </button>
       </div>
 
@@ -187,7 +189,7 @@ export default function PrayerListMobile({
                   : 'bg-surface text-on-surface-variant border-outline-variant hover:text-on-surface',
               )}
             >
-              {v === 'all' ? 'All' : v === 'brothers' ? 'Brothers' : 'Sisters'}
+              {v === 'all' ? t('prayers.all') : v === 'brothers' ? t('prayers.brothers') : t('prayers.sisters')}
             </button>
           ))}
         </div>
@@ -197,7 +199,7 @@ export default function PrayerListMobile({
       <div className="mt-4 px-5 flex flex-col gap-4 prt-list">
         {entries.length === 0 && (
           <div className="py-12 text-center text-sm italic text-on-surface-variant bg-surface/40 rounded-2xl border border-dashed border-outline-variant/30 pr-picker-empty shadow-inner">
-            No one here yet — tap "Hold someone in prayer" to start.
+            {t('prayers.no_one_here_yet')}
           </div>
         )}
 
@@ -232,15 +234,15 @@ export default function PrayerListMobile({
             <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0 ibxs-grab" />
             <div className="flex items-center justify-between px-5 pt-1 ibxs-head">
               <div className="ibxs-headtext">
-                <h3 className="font-serif text-lg text-on-surface ibxs-title">Hold someone in prayer</h3>
+                <h3 className="font-serif text-lg text-on-surface ibxs-title">{t('prayers.hold_someone_in_prayer')}</h3>
                 <p className="text-xs text-on-surface-variant mt-0.5 ibxs-meta">
-                  Anyone from the roster — they'll show up in this week's walk.
+                  {t('prayers.anyone_from_roster')}
                 </p>
               </div>
               <button
                 onClick={() => setPickerOpen(false)}
                 className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
-                aria-label="Close"
+                aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -318,6 +320,7 @@ function PrayerThreadCard({
   isOperator,
   onMakeTodo,
 }: PrayerThreadCardProps) {
+  const { t } = useLanguage();
   const [showEarlier, setShowEarlier] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -333,10 +336,10 @@ function PrayerThreadCard({
 
   // carry summary reduced to one tone-coded label for the mobile header
   const carry = ongoingCount > 0
-    ? { label: `${ongoingCount} ongoing`, tone: 'accent' }
+    ? { label: t('prayers.ongoing_count').replace('{n}', String(ongoingCount)), tone: 'accent' }
     : prayers.length === 0
-    ? { label: 'No prayers yet', tone: 'muted' }
-    : { label: 'All answered', tone: 'rest' };
+    ? { label: t('prayers.no_prayers_yet'), tone: 'muted' }
+    : { label: t('prayers.all_answered'), tone: 'rest' };
 
   return (
     <article className="bg-surface border border-outline-variant/45 rounded-3xl p-4  flex flex-col gap-3 prt-card prt-card--m relative">
@@ -370,20 +373,20 @@ function PrayerThreadCard({
                 onClick={onRemove}
                 className="px-2 py-1 rounded-lg bg-error-container text-on-error-container text-xs font-semibold border border-error/20 prt-remove-yes"
               >
-                Remove
+                {t('actions.remove')}
               </button>
               <button
                 onClick={() => setConfirmRemove(false)}
                 className="px-2 py-1 rounded-lg bg-surface-container border border-outline text-xs font-semibold prt-remove-no"
               >
-                Keep
+                {t('prayers.keep')}
               </button>
             </div>
           ) : (
             <button
               onClick={() => setConfirmRemove(true)}
               className="p-1 rounded-full text-on-surface-variant hover:bg-surface-variant shrink-0 self-start prt-remove"
-              title={`Remove ${firstName} from prayer list`}
+              title={t('prayers.remove_from_prayer_list').replace('{name}', firstName)}
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -393,7 +396,7 @@ function PrayerThreadCard({
 
       {/* This week */}
       <div className="mt-2 prt-week">
-        <SectionEyebrow label="This week" />
+        <SectionEyebrow label={t('prayers.this_week')} />
         {weekItem ? (
           <PrayerItemMobile
             prayer={weekItem}
@@ -415,7 +418,7 @@ function PrayerThreadCard({
           />
         ) : (
           <div className="text-xs text-on-surface-variant/65 italic pl-3.5 py-1">
-            No prayer recorded for this week
+            {t('prayers.no_prayer_this_week')}
           </div>
         )}
       </div>
@@ -423,7 +426,7 @@ function PrayerThreadCard({
       {/* Last week */}
       {lastItem && (
         <div className="mt-3">
-          <SectionEyebrow label="Last week" nudge={needsMark ? 'Needs an update' : undefined} />
+          <SectionEyebrow label={t('prayers.last_week')} nudge={needsMark ? t('prayers.needs_update') : undefined} />
           <PrayerItemMobile
             prayer={lastItem}
             variant="last"
@@ -453,7 +456,7 @@ function PrayerThreadCard({
               ▶
             </span>
             <span className="font-sans text-[11px]   text-on-surface-variant group-hover:text-on-surface transition-colors">
-              {showEarlier ? 'Hide' : 'Earlier'} — {earlier.length} {earlier.length === 1 ? 'prayer' : 'prayers'}
+              {showEarlier ? t('prayers.hide') : t('prayers.earlier')} — {earlier.length} {earlier.length === 1 ? t('prayers.prayer') : t('prayers.prayers')}
             </span>
             <span className="flex-1 h-px bg-outline-variant" />
           </button>
@@ -517,6 +520,7 @@ function PrayerItemMobile({
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
 }) {
+  const { t } = useLanguage();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [draft, setDraft] = useState(prayer.burden);
@@ -571,10 +575,10 @@ function PrayerItemMobile({
         {!editing && onMakeTodo && (
           <button
             onClick={() => onMakeTodo(prayer)}
-            title="Make a to-do from this prayer"
+            title={t('prayers.make_todo_from_prayer')}
             className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors"
           >
-            Make a to-do
+            {t('prayers.make_a_todo')}
           </button>
         )}
       </div>
@@ -603,7 +607,7 @@ function PrayerItemMobile({
               disabled={!draft.trim() || saving}
               className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? t('prayers.saving') : t('actions.save')}
             </button>
           </div>
         </div>
@@ -644,7 +648,7 @@ function PrayerItemMobile({
       {answering && (
         <div className="mt-2.5 p-3 bg-surface-variant/30 rounded-xl border border-outline-variant/60">
           <label className="block text-[10px]   font-semibold text-on-surface-variant mb-1">
-            How was it answered?
+            {t('prayers.how_was_it_answered')}
           </label>
           <textarea
             className="w-full p-2.5 rounded-xl bg-surface border border-outline-variant focus:border-primary outline-none text-xs text-on-surface resize-none"
@@ -652,7 +656,7 @@ function PrayerItemMobile({
             rows={2}
             value={howDraft}
             onChange={(e) => setHowDraft(e.target.value)}
-            placeholder="A sentence on how God answered — the testimony."
+            placeholder={t('prayers.answer_placeholder')}
           />
           <div className="mt-2 flex justify-end gap-2">
             <button
@@ -660,7 +664,7 @@ function PrayerItemMobile({
               className="px-3 py-1 rounded-full text-[11px] text-on-surface-variant hover:bg-surface-variant"
               onClick={() => setAnswering(false)}
             >
-              Skip
+              {t('prayers.skip')}
             </button>
             <button
               type="button"
@@ -670,7 +674,7 @@ function PrayerItemMobile({
                 setAnswering(false);
               }}
             >
-              Save
+              {t('actions.save')}
             </button>
           </div>
         </div>
@@ -680,7 +684,7 @@ function PrayerItemMobile({
       {isOperator && (
         <div className="mt-3.5 flex flex-col gap-1.5 prt-mark">
           <span className="text-[10.5px]   text-on-surface-variant/75 prt-mark-label">
-            {variant === 'last' && needsMark ? 'Where did it land?' : 'Mark status'}
+            {variant === 'last' && needsMark ? t('prayers.where_did_it_land') : t('prayers.mark_status')}
           </span>
           <div className={cn(
             "relative border rounded-xl bg-surface-container-low transition-all prt-mark-select",
@@ -707,7 +711,7 @@ function PrayerItemMobile({
               }}
               className="w-full h-11 pl-3.5 pr-9 bg-transparent outline-none border-0 text-sm font-semibold appearance-none cursor-pointer text-on-surface-variant/90"
             >
-              <option value="">Not yet marked</option>
+              <option value="">{t('prayers.not_yet_marked')}</option>
               {MARK_OPTIONS.map((o) => (
                 <option key={o} value={o}>
                   {STATUS_LABEL[o]}
@@ -734,15 +738,16 @@ function AddThisWeekMobile({
   defaultOpen?: boolean;
   onAdd: (text: string) => Promise<boolean>;
 }) {
+  const { t: translate } = useLanguage();
   const [open, setOpen] = useState(!!defaultOpen);
   const [saving, setSaving] = useState(false);
   const [val, setVal] = useState('');
 
   const save = async () => {
-    const t = val.trim();
-    if (!t) return;
+    const textValue = val.trim();
+    if (!textValue) return;
     setSaving(true);
-    const ok = await onAdd(t);
+    const ok = await onAdd(textValue);
     setSaving(false);
     if (ok) {
       setVal('');
@@ -769,7 +774,7 @@ function AddThisWeekMobile({
         rows={3}
         value={val}
         onChange={(e) => setVal(e.target.value)}
-        placeholder={`What are we praying for ${firstName} this week?`}
+        placeholder={translate('prayers.what_praying_for').replace('{name}', firstName)}
         className="w-full p-2.5 rounded-xl bg-surface-container-low border border-outline-variant focus:border-primary outline-none text-sm text-on-surface resize-none"
       />
       <div className="flex gap-2 justify-end">
@@ -787,7 +792,7 @@ function AddThisWeekMobile({
           disabled={!val.trim() || saving}
           className="px-3.5 py-1.5 bg-primary text-on-primary rounded-full text-xs font-semibold disabled:opacity-50"
         >
-          {saving ? 'Adding…' : 'Add prayer'}
+          {saving ? translate('prayers.adding') : translate('prayers.add_prayer')}
         </button>
       </div>
     </div>

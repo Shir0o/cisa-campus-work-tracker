@@ -25,6 +25,7 @@ import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../componen
 import AttentionFeed from '../components/landing/AttentionFeed';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 
 interface MyTask {
   id: string;
@@ -97,7 +98,7 @@ function DuePresetPills({
               : "border-outline-variant text-on-surface hover:bg-surface-variant",
           )}
         >
-          {p.label}
+          <Translate text={p.label} />
         </button>
       ))}
     </div>
@@ -139,7 +140,8 @@ export default function MyDayMobile({
   onOpenPrayer = () => {},
 }: MyDayMobileProps) {
   const { user } = useAuth();
-  const firstName = user?.displayName?.split(" ")[0] || "friend";
+  const { t } = useLanguage();
+  const firstName = user?.displayName?.split(" ")[0] || t('common.you');
 
   const myLeaders = useMemo(() => {
     if (rawMyLeaders.length > 0) return rawMyLeaders;
@@ -228,23 +230,23 @@ export default function MyDayMobile({
           {format(new Date(), "EEEE, MMMM d")}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface mdm-greet">
-          Good morning, {firstName}.
+          {t('myDay.good_morning').replace('{name}', firstName)}
         </h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 mdm-line">
-          You're caring for <b className="font-semibold text-on-surface">{myLeaders.length}</b> people this season — <b className="font-semibold text-on-surface">{leftToDo}</b> things to tend, <b className="font-semibold text-on-surface">{prayersCount}</b> prayers to hold.
+          {t('myDay.caring_for').replace('{people}', String(myLeaders.length)).replace('{tasks}', String(leftToDo)).replace('{prayers}', String(prayersCount))}
         </p>
         <div className="flex gap-2.5 mt-4 mdm-actions">
           <button
             onClick={onOpenBoard}
             className="flex-1 inline-flex items-center justify-center gap-2 h-[46px] rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-on-surface active:bg-surface-variant/60 transition-colors mdm-action"
           >
-            <ClipboardList className="w-4 h-4" /> The board
+            <ClipboardList className="w-4 h-4" /> {t('myDay.the_board')}
           </button>
           <button
             onClick={onOpenPrayer}
             className="flex-1 inline-flex items-center justify-center gap-2 h-[46px] rounded-xl border border-outline-variant bg-surface text-sm font-semibold text-on-surface active:bg-surface-variant/60 transition-colors mdm-action"
           >
-            <HeartHandshake className="w-4 h-4" /> Pray together
+            <HeartHandshake className="w-4 h-4" /> {t('myDay.pray_together')}
           </button>
         </div>
       </header>
@@ -260,7 +262,7 @@ export default function MyDayMobile({
               <Heart className="w-[17px] h-[17px] fill-current" />
             </div>
             <span className="text-[14.5px] leading-snug text-on-surface-variant flex-1 mdm-nudge-txt">
-              It's been <b className="font-semibold text-on-surface">{Math.max(1, Math.round(staleLeader.days / 7))} {Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? "week" : "weeks"}</b> since you sat with {staleLeader.contact.name.split(" ")[0]}. Maybe today.
+              {t('myDay.its_been').replace('{weeks}', String(Math.max(1, Math.round(staleLeader.days / 7)))).replace('{unit}', Math.max(1, Math.round(staleLeader.days / 7)) === 1 ? t('myDay.week') : t('myDay.weeks')).replace('{name}', staleLeader.contact.name.split(' ')[0])}
             </span>
             <ChevronRight className="w-5 h-5 text-accent shrink-0 mdm-nudge-chev" />
           </button>
@@ -277,20 +279,20 @@ export default function MyDayMobile({
       {/* ── On the horizon checklist ── */}
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between gap-2 mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface dash-sec-title">On the horizon</h2>
+          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.on_the_horizon')}</h2>
           <div className="flex items-center gap-2">
             <span className="text-xs text-on-surface-variant dash-sec-sub">
-              {leftToDo > 0 ? `${leftToDo} small things this week.` : "All clear."}
+              {leftToDo > 0 ? t('myDay.small_things_this_week').replace('{n}', String(leftToDo)) : t('myDay.all_clear')}
             </span>
             {hasCompleted && (
               <button
                 onClick={onToggleHideCompleted}
-                title={hideCompleted ? "Show completed tasks" : "Hide completed tasks"}
+                title={hideCompleted ? t('myDay.show_completed_tasks') : t('myDay.hide_completed_tasks')}
                 aria-pressed={hideCompleted}
                 className="text-xs font-semibold text-on-surface-variant inline-flex items-center gap-1 dash-sec-link"
               >
                 {hideCompleted ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                {hideCompleted ? "Show done" : "Hide done"}
+                {hideCompleted ? t('myDay.show_done') : t('myDay.hide_done')}
               </button>
             )}
           </div>
@@ -319,12 +321,12 @@ export default function MyDayMobile({
                   />
                   {todo.sourceDocTitle && (
                     <div className="text-xs text-on-surface-variant mt-1">
-                      From {todo.sourceDocTitle}
+                      {t('myDay.from')} {todo.sourceDocTitle}
                     </div>
                   )}
                   {!todo.sourceDocTitle && todo.sourceInteractionId && todo.sourceInteractionTitle && (
                     <div className="text-xs text-on-surface-variant mt-1">
-                      From {todo.sourceInteractionTitle}
+                      {t('myDay.from')} {todo.sourceInteractionTitle}
                     </div>
                   )}
                 </div>
@@ -362,21 +364,21 @@ export default function MyDayMobile({
                         onClick={() => onDeletePersonalTask(todo.id)}
                         className="text-xs text-error font-medium inline-flex items-center gap-1"
                       >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                        <Trash2 className="w-3.5 h-3.5" /> {t('actions.delete')}
                       </button>
                       <div className="flex gap-2">
                         <button
                           onClick={() => setEditingTaskId(null)}
                           className="px-3 py-1.5 rounded-full text-xs text-on-surface hover:bg-surface-variant"
                         >
-                          Cancel
+                          {t('actions.cancel')}
                         </button>
                         <button
                           onClick={() => saveTaskEdit(todo)}
                           disabled={!editTaskText.trim()}
                           className="px-3 py-1.5 rounded-full text-xs bg-primary text-on-primary font-semibold disabled:opacity-50"
                         >
-                          Save
+                          {t('actions.save')}
                         </button>
                       </div>
                     </div>
@@ -400,7 +402,7 @@ export default function MyDayMobile({
                       />
                       {todo.dueDate && (
                         <div className="text-xs text-on-surface-variant mt-1">
-                          Due: {format(new Date(todo.dueDate), "MMM d")}
+                          {t('myDay.due_colon')} {format(new Date(todo.dueDate), "MMM d")}
                         </div>
                       )}
                     </div>
@@ -416,7 +418,7 @@ export default function MyDayMobile({
               <input
                 autoFocus
                 className="w-full px-3 py-2 bg-surface-container border border-outline rounded-xl text-base focus:border-primary outline-none"
-                placeholder="What needs doing?"
+                placeholder={t('myDay.what_needs_doing')}
                 value={newTaskText}
                 onChange={(e) => setNewTaskText(e.target.value)}
                 onKeyDown={(e) => {
@@ -424,7 +426,7 @@ export default function MyDayMobile({
                   if (e.key === "Escape") setAddingTask(false);
                 }}
               />
-              <div className="text-xs text-on-surface-variant mt-1 font-semibold">Due</div>
+              <div className="text-xs text-on-surface-variant mt-1 font-semibold">{t('myDay.due')}</div>
               <DuePresetPills
                 value={newTaskDuePreset}
                 onPick={(key, days) => {
@@ -437,14 +439,14 @@ export default function MyDayMobile({
                   onClick={() => setAddingTask(false)}
                   className="px-3 py-1.5 rounded-full text-xs text-on-surface hover:bg-surface-variant"
                 >
-                  Cancel
+                  {t('actions.cancel')}
                 </button>
                 <button
                   onClick={commitNewTask}
                   disabled={!newTaskText.trim()}
                   className="px-3 py-1.5 rounded-full text-xs bg-primary text-on-primary font-semibold disabled:opacity-50"
                 >
-                  Add
+                  {t('actions.add')}
                 </button>
               </div>
             </div>
@@ -453,7 +455,7 @@ export default function MyDayMobile({
               onClick={() => setAddingTask(true)}
               className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
-              <Plus className="w-4 h-4" /> Add a task
+              <Plus className="w-4 h-4" /> {t('myDay.add_a_task')}
             </button>
           )}
         </div>
@@ -462,12 +464,12 @@ export default function MyDayMobile({
       {/* ── Your sheep — native list style ── */}
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your sheep</h2>
+          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.your_sheep')}</h2>
           <button
             onClick={() => setPickerOpen(true)}
             className="text-xs font-semibold text-accent inline-flex items-center gap-1 dash-sec-link"
           >
-            <Pencil className="w-3 h-3" /> Your contacts
+            <Pencil className="w-3 h-3" /> {t('myDay.your_contacts')}
           </button>
         </div>
 
@@ -495,7 +497,7 @@ export default function MyDayMobile({
                           </span>
                         )}
                         <span className={cn("text-xs text-on-surface-variant/70 mdm-person-since", overdue && "over text-error font-medium")}>
-                          {!Number.isFinite(days) ? "Not connected yet" : days === 0 ? "Connected today" : days === 1 ? "Last connected yesterday" : `Last connected ${days} days ago`}
+                          {!Number.isFinite(days) ? t('myDay.not_connected_yet') : days === 0 ? t('myDay.connected_today') : days === 1 ? t('myDay.last_connected_yesterday') : t('myDay.last_connected_days_ago').replace('{n}', String(days))}
                         </span>
                       </div>
                     </div>
@@ -506,7 +508,7 @@ export default function MyDayMobile({
                       onMessage(contact);
                     }}
                     className="ml-3 p-2.5 bg-accent-soft text-accent rounded-xl active:scale-95 transition-all mdm-person-msg"
-                    aria-label={`Message ${contact.name}`}
+                    aria-label={`${t('myDay.message')} ${contact.name}`}
                   >
                     <MessageSquare className="w-4 h-4" />
                   </button>
@@ -516,7 +518,7 @@ export default function MyDayMobile({
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-4 bg-surface rounded-2xl border border-outline-variant/40 text-center">
-            No contacts in your care yet.
+            {t('myDay.no_contacts_in_care')}
           </p>
         )}
       </section>
@@ -524,8 +526,8 @@ export default function MyDayMobile({
       {/* ── Your week — featured gathering huddle + rest of week ── */}
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your week</h2>
-          <span className="text-xs text-accent font-semibold dash-sec-link">Calendar</span>
+          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.your_week')}</h2>
+          <span className="text-xs text-accent font-semibold dash-sec-link">{t('myDay.calendar')}</span>
         </div>
 
         {featuredEvent ? (
@@ -535,14 +537,14 @@ export default function MyDayMobile({
               <div className="text-[11px] font-semibold   text-accent md-huddle-eyebrow">
                 {isValid(new Date(featuredEvent.ev.date))
                   ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
-                  : "This week"}{" "}
+                  : t('myDay.this_week')}{" "}
                 {featuredEvent.ev.location ? `· ${featuredEvent.ev.location}` : ""}
               </div>
               <h3 className="font-serif text-xl text-on-surface mt-1.5 md-huddle-title">
                 {featuredEvent.ev.name}
               </h3>
               <p className="text-xs text-on-surface-variant mt-2 leading-relaxed md-huddle-lead">
-                A good chance to be present with the people in your care.
+                {t('myDay.good_chance')}
               </p>
               <div className="flex flex-wrap gap-2 mt-3 md-focus">
                 {featuredEvent.ev.type && (
@@ -571,7 +573,7 @@ export default function MyDayMobile({
                       <div className="min-w-0 flex-1">
                         <div className="font-medium text-on-surface truncate">{ev.name}</div>
                         <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate">
-                          {ev.location || "No location set"}
+                          {ev.location || t('myDay.no_location_set')}
                         </div>
                       </div>
                     </div>
@@ -582,7 +584,7 @@ export default function MyDayMobile({
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-4 bg-surface rounded-2xl border border-outline-variant/40 text-center">
-            Nothing on the calendar this week.
+            {t('myDay.nothing_on_calendar')}
           </p>
         )}
       </section>
@@ -590,19 +592,19 @@ export default function MyDayMobile({
       {/* ── Your prayers ── */}
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
-          <h2 className="font-serif text-xl text-on-surface dash-sec-title">Your prayers</h2>
+          <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.your_prayers')}</h2>
           <button
             onClick={() => setPickerOpen(true)}
             className="text-xs font-semibold text-accent inline-flex items-center gap-1 dash-sec-link"
           >
-            <Pencil className="w-3 h-3" /> Your contacts
+            <Pencil className="w-3 h-3" /> {t('myDay.your_contacts')}
           </button>
         </div>
 
         <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  flex flex-col divide-y divide-outline-variant/30">
           {contactPrayers.length === 0 && activePersonalPrayers.length === 0 && (
             <p className="text-sm text-on-surface-variant py-4 text-center">
-              No prayers held currently.
+              {t('myDay.no_prayers_held')}
             </p>
           )}
 
@@ -645,7 +647,7 @@ export default function MyDayMobile({
                 onClick={() => setAddPP(false)}
                 className="mt-2 w-full py-2 text-center text-xs text-on-surface-variant hover:bg-surface-variant rounded-xl"
               >
-                Cancel
+                {t('actions.cancel')}
               </button>
             </div>
           ) : (
@@ -653,7 +655,7 @@ export default function MyDayMobile({
               onClick={() => setAddPP(true)}
               className="w-full py-2.5 text-left text-sm text-accent font-medium inline-flex items-center gap-1.5 active:text-accent-hover myd-addpp-link"
             >
-              <Plus className="w-4 h-4" /> Add a personal prayer
+              <Plus className="w-4 h-4" /> {t('myDay.add_a_personal_prayer')}
             </button>
           )}
         </div>
@@ -661,12 +663,12 @@ export default function MyDayMobile({
 
       {/* ── Mobile Figures Footer ── */}
       <div className="mt-10 px-5 pt-5 border-t border-outline-variant/30 flex flex-wrap gap-x-8 gap-y-4 mdm-figures">
-        <Figure n={myLeaders.length} label="contacts" />
-        <Figure n={prayersCount} label="prayers" />
-        <Figure n={leftToDo} label="tasks" />
-        <Figure n={thisWeek.length} label="gatherings" />
+        <Figure n={myLeaders.length} label={t('myDay.contacts_label')} />
+        <Figure n={prayersCount} label={t('myDay.prayers_label')} />
+        <Figure n={leftToDo} label={t('myDay.tasks_label')} />
+        <Figure n={thisWeek.length} label={t('myDay.gatherings_label')} />
         <span className="text-[13px] text-on-surface-variant/70 italic w-full mt-2">
-          Numbers are just a way of noticing people.
+          {t('myDay.numbers_notice')}
         </span>
       </div>
 
@@ -682,20 +684,17 @@ export default function MyDayMobile({
           >
             <div className="w-10 h-1 rounded-full bg-outline/20 mx-auto my-3 shrink-0" />
             <div className="flex items-center justify-between px-5 pt-1">
-              <h3 className="font-serif text-lg text-on-surface myd-picker-title">Your personal contacts</h3>
+              <h3 className="font-serif text-lg text-on-surface myd-picker-title">{t('myDay.your_personal_contacts')}</h3>
               <button
                 onClick={() => setPickerOpen(false)}
                 className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors"
-                aria-label="Close"
+                aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <p className="px-5 mt-1.5 mb-3 text-xs text-on-surface-variant/90 leading-relaxed myd-picker-desc">
-              Prayers and reminders for these contacts appear in your day. Everyone is still
-              visible on the People page. The chip next to a name is that person's current
-              step from their contact record — “Lead” is the first step in The Journey, not
-              something this picker decides.
+              {t('myDay.picker_desc')}
             </p>
             <div className="overflow-y-auto px-4 pb-8 flex flex-col gap-0.5 myd-picker-list">
               {pickerContacts.map((c) => {

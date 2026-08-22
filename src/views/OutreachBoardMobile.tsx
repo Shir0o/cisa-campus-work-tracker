@@ -4,6 +4,7 @@ import { cn } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { Avatar } from '../components/landing/primitives';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 
 type Touch = { ms: number; note: string };
 type TouchMap = Map<string, Touch>;
@@ -94,6 +95,7 @@ export default function OutreachBoardMobile({
   isAdmin,
   onAddContact,
 }: OutreachBoardMobileProps) {
+  const { t } = useLanguage();
   // Let's create a combined list of stages where "Unassigned" is the first stage if there are unassigned contacts.
   // In the desktop board, unassigned contacts appear in a column. On mobile, we can add it as the first tab!
   const hasUnassigned = unmappedContacts.length > 0;
@@ -154,7 +156,7 @@ export default function OutreachBoardMobile({
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 jrn-eyebrow">
           the journey
         </div>
-        <h1 className="font-serif text-[32px] leading-tight text-on-surface jrn-h1">Stages</h1>
+        <h1 className="font-serif text-[32px] leading-tight text-on-surface jrn-h1">{t('outreach.stages')}</h1>
         <p className="text-[14.5px] text-on-surface-variant/90 leading-relaxed mt-2 jrnm-state">
           <b className="font-semibold text-on-surface">{contacts.length} students</b>, moving from a first hello toward a church family.
         </p>
@@ -253,10 +255,10 @@ export default function OutreachBoardMobile({
                     {days != null ? (
                       <div className={cn("text-xs text-on-surface-variant mt-1.5 flex items-center gap-1.5 jrnm-p-since", overdue && "text-stage-amber font-medium is-overdue")}>
                         {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0 jrn-since-dot" aria-hidden />}
-                        {connectedLabel(days)}
+                        {!Number.isFinite(days) ? '' : days === 0 ? t('myDay.connected_today') : days === 1 ? t('myDay.last_connected_yesterday') : t('myDay.last_connected_days_ago').replace('{n}', String(days))}
                       </div>
                     ) : (
-                      <div className="text-xs text-on-surface-variant mt-1.5 italic jrnm-p-since">No contact logged.</div>
+                      <div className="text-xs text-on-surface-variant mt-1.5 italic jrnm-p-since">{t('outreach.no_contact_logged')}</div>
                     )}
                     {note && (
                       <p className="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed opacity-95">
@@ -285,8 +287,8 @@ export default function OutreachBoardMobile({
           className="mt-4 w-full py-3.5 text-center text-sm bg-surface border border-outline-variant/70 text-accent font-semibold rounded-2xl active:brightness-95 transition-all  jrnm-add"
         >
           {stage.id === 'uncategorized' || (stages[0] && stage.label === stages[0].label)
-            ? "Welcome someone new"
-            : `Add to ${stage.label}`}
+            ? t('outreach.welcome_someone_new')
+            : t('outreach.add_to').replace('{stage}', stage.label)}
         </button>
       </section>
 
@@ -313,7 +315,7 @@ export default function OutreachBoardMobile({
               <button
                 onClick={() => setMovingContact(null)}
                 className="p-1.5 rounded-full text-on-surface-variant hover:bg-surface-variant transition-colors modal-x"
-                aria-label="Close"
+                aria-label={t('actions.close')}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -343,7 +345,7 @@ export default function OutreachBoardMobile({
                         <div className="font-medium text-[15px] jrnm-move-name">{s.label}</div>
                       </div>
                       {here ? (
-                        <span className="text-xs font-semibold   text-[var(--tone)] jrnm-move-here">here now</span>
+                        <span className="text-xs font-semibold   text-[var(--tone)] jrnm-move-here">{t('outreach.here_now')}</span>
                       ) : (
                         <ChevronRight className="w-4 h-4 text-on-surface-variant/40" />
                       )}

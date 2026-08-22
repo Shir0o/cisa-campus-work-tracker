@@ -12,6 +12,8 @@ import { cn, ntfWhen } from '../../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 
 import { showWebPushNotification } from '../../lib/webPush';
+import { useLanguage } from '../LanguageProvider';
+import { Translate } from '../Translate';
 
 type Tone = 'accent' | 'violet' | 'amber' | 'teal' | 'sage';
 
@@ -85,6 +87,7 @@ export function groupNotificationsIntoStacks(items: Notification[]): NtfFeedItem
 
 export default function NotificationCenter() {
   const { role, effectiveUserId } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -268,7 +271,7 @@ export default function NotificationCenter() {
             ? 'bg-accent-soft text-accent border-accent-line'
             : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
         )}
-        aria-label={unreadCount ? `${unreadCount} new notifications` : 'Notifications'}
+        aria-label={unreadCount ? t('notifications.new_notifications').replace('{n}', String(unreadCount)) : t('notifications.notifications')}
       >
         <Bell className={cn('w-[17px] h-[17px] transition-transform duration-300', isOpen && 'rotate-[15deg]')} />
         {unreadCount > 0 && (
@@ -287,7 +290,7 @@ export default function NotificationCenter() {
             exit={{ y: -6, scale: 0.985 }}
             transition={{ duration: 0.16, ease: [0.2, 0.8, 0.2, 1] }}
             role="dialog"
-            aria-label="Notifications"
+            aria-label={t('notifications.notifications')}
             className={cn(
               'absolute right-0 top-[calc(100%+12px)] z-50',
               'w-96 max-w-[calc(100vw-28px)]',
@@ -338,7 +341,7 @@ export default function NotificationCenter() {
                 <>
                   {unread.length > 0 && (
                     <NtfGroup
-                      label="Worth a look"
+                      label={t('notifications.worth_a_look')}
                       items={unread}
                       onSelect={handleSelectNotification}
                       onSetAside={setAside}
@@ -347,7 +350,7 @@ export default function NotificationCenter() {
                   )}
                   {read.length > 0 && (
                     <NtfGroup
-                      label="Earlier"
+                      label={t('notifications.earlier')}
                       items={read}
                       onSelect={handleSelectNotification}
                       onSetAside={setAside}
@@ -365,7 +368,7 @@ export default function NotificationCenter() {
                 onClick={() => { setIsOpen(false); navigate(isStaff ? '/history' : '/prayer'); }}
                 className="flex-none flex items-center justify-center gap-[7px] p-[13px] bg-surface border-t border-outline-variant text-accent text-[13px] font-semibold hover:bg-accent-soft transition-colors"
               >
-                {isStaff ? 'See the whole record in History' : 'Open Prayer'}
+                {isStaff ? t('notifications.see_whole_record') : t('notifications.open_prayer')}
                 <ArrowRight className="w-[14px] h-[14px]" />
               </button>
             )}
@@ -391,6 +394,7 @@ function NtfGroup({
   onSetAsideStack: (notifs: Notification[]) => void;
   bordered?: boolean;
 }) {
+  const { t } = useLanguage();
   const feedItems = groupNotificationsIntoStacks(items);
 
   return (
@@ -437,6 +441,7 @@ function NtfStack({
   onSetAside: (id: string) => void;
   onSetAsideStack: (notifs: Notification[]) => void;
 }) {
+  const { t } = useLanguage();
   const [expanded, setExpanded] = useState(false);
   const latest = notifs[0];
   const count = notifs.length;
@@ -452,7 +457,7 @@ function NtfStack({
         role="button"
         tabIndex={0}
         aria-expanded={expanded}
-        aria-label={`${count} notifications on ${latest.title}`}
+        aria-label={t('notifications.notifications_on').replace('{n}', String(count)).replace('{title}', latest.title)}
         onKeyDown={e => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -478,7 +483,7 @@ function NtfStack({
               'text-[14px] leading-[1.35]',
               anyUnread ? 'font-semibold text-on-surface' : 'font-medium text-on-surface-variant'
             )}>
-              {latest.title}
+              <Translate text={latest.title} />
             </span>
             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-accent-soft text-accent leading-none">
               {count} updates
@@ -499,7 +504,7 @@ function NtfStack({
                 setExpanded(exp => !exp);
               }}
             >
-              {expanded ? 'Hide updates' : `Show all ${count}`}
+              {expanded ? t('notifications.hide_updates') : t('notifications.show_all').replace('{n}', String(count))}
               <ChevronDown className={cn('w-3 h-3 transition-transform duration-150', expanded && 'rotate-180')} />
             </button>
           </div>
@@ -513,8 +518,8 @@ function NtfStack({
         {/* Set-aside entire stack button */}
         <button
           className="absolute top-[11px] right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover/stack:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all"
-          title="Set stack aside"
-          aria-label="Set stack aside"
+          title={t('notifications.set_stack_aside')}
+          aria-label={t('notifications.set_stack_aside')}
           onClick={e => {
             e.stopPropagation();
             onSetAsideStack(notifs);
@@ -553,6 +558,7 @@ function NtfItem({
   onSetAside: (id: string) => void;
   isChild?: boolean;
 }) {
+  const { t } = useLanguage();
   const tone: Tone = notif.tone ?? typeToTone(notif.type);
 
   return (
@@ -587,13 +593,13 @@ function NtfItem({
             ? 'font-medium text-on-surface-variant'
             : 'font-semibold text-on-surface',
         )}>
-          {notif.title}
+          <Translate text={notif.title} />
         </div>
         <div className={cn(
           'text-on-surface-variant leading-[1.5] mt-0.5 [text-wrap:pretty]',
           isChild ? 'text-[12px]' : 'text-[13px]',
         )}>
-          {notif.message || (notif as any).body}
+          <Translate text={notif.message || (notif as any).body} />
         </div>
         <div className="text-[11.5px] text-outline mt-1.5">
           {ntfWhen(notif.createdAt)}
@@ -614,8 +620,8 @@ function NtfItem({
           "absolute right-3 w-[22px] h-[22px] grid place-items-center rounded-[6px] bg-surface-container text-outline opacity-0 group-hover:opacity-100 hover:text-on-surface hover:bg-surface-container-high transition-all",
           isChild ? "top-[9px]" : "top-[11px]"
         )}
-        title="Set aside"
-        aria-label="Set aside"
+        title={t('notifications.set_aside')}
+        aria-label={t('notifications.set_aside')}
         onClick={e => { e.stopPropagation(); onSetAside(notif.id); }}
       >
         <X className="w-[13px] h-[13px]" />

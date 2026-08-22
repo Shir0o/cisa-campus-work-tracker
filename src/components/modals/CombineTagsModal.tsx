@@ -4,6 +4,7 @@ import { X, Check, Combine } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity } from '../../lib/firebase';
 import { planTagCombining } from '../../lib/tags';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
 import type { Contact } from '../../types';
 
 interface CombineTagsModalProps {
@@ -25,6 +26,7 @@ export default function CombineTagsModal({
   onApplied,
 }: CombineTagsModalProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [applying, setApplying] = useState(false);
 
   const changes = useMemo(
@@ -44,7 +46,7 @@ export default function CombineTagsModal({
           tags: row.to,
           updatedAt: now,
           updatedBy: user?.uid,
-          updatedByName: user?.displayName || user?.email?.split('@')[0] || 'Unknown User',
+          updatedByName: user?.displayName || user?.email?.split('@')[0] || t('modals.unknown_user'),
         });
 
         logActivity({
@@ -78,17 +80,17 @@ export default function CombineTagsModal({
         <div className="p-6 border-b border-outline-variant flex items-start justify-between gap-4">
           <div>
             <h2 className="font-serif text-2xl text-on-surface flex items-center gap-2">
-              <Combine className="w-5 h-5 text-primary" /> Combine tags
+              <Combine className="w-5 h-5 text-primary" /> {t('modals.combine_tags')}
             </h2>
             <p className="text-sm text-on-surface-variant mt-1">
-              Dry-run preview — no changes are saved until you confirm.
+              {t('modals.dry_run_preview')}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
             className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
-            aria-label="Close"
+            aria-label={t('modals.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -98,15 +100,15 @@ export default function CombineTagsModal({
           {changes.length === 0 ? (
             <div className="py-10 text-center">
               <Check className="w-10 h-10 text-primary mx-auto mb-3" />
-              <p className="font-medium text-on-surface">No duplicate or overlapping tags found.</p>
+              <p className="font-medium text-on-surface">{t('modals.no_duplicate_tags')}</p>
               <p className="text-sm text-on-surface-variant mt-1">
-                Season variants like “Fall '26” and “Fall 2026” would be combined here.
+                {t('modals.season_variants')}
               </p>
             </div>
           ) : (
             <>
               <p className="text-sm text-on-surface-variant mb-4">
-                {changes.length} {changes.length === 1 ? 'contact' : 'contacts'} would have their tags combined.
+                {t('modals.contacts_would_change').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact') : t('modals.contacts'))}
               </p>
               <div className="space-y-3">
                 {changes.slice(0, 100).map((row) => (
@@ -116,11 +118,11 @@ export default function CombineTagsModal({
                   >
                     <p className="font-medium text-on-surface">{row.name}</p>
                     <p className="text-sm text-on-surface-variant mt-1">
-                      <span className="text-on-surface-variant/70">Before:</span>{' '}
+                      <span className="text-on-surface-variant/70">{t('modals.before')}</span>{' '}
                       {row.from.length > 0 ? row.from.join(', ') : '—'}
                     </p>
                     <p className="text-sm text-on-surface-variant mt-0.5">
-                      <span className="text-on-surface-variant/70">After:</span>{' '}
+                      <span className="text-on-surface-variant/70">{t('modals.after')}</span>{' '}
                       {row.to.length > 0 ? row.to.join(', ') : '—'}
                     </p>
                   </div>
@@ -128,7 +130,7 @@ export default function CombineTagsModal({
               </div>
               {changes.length > 100 && (
                 <p className="text-sm text-on-surface-variant mt-4">
-                  …and {changes.length - 100} more.
+                  {t('modals.and_more').replace('{n}', String(changes.length - 100))}
                 </p>
               )}
             </>
@@ -141,7 +143,7 @@ export default function CombineTagsModal({
             onClick={onClose}
             className="flex-1 h-12 rounded-full font-medium text-on-surface-variant hover:bg-surface-variant transition-colors"
           >
-            Cancel
+            {t('modals.cancel')}
           </button>
           <button
             type="button"
@@ -150,10 +152,10 @@ export default function CombineTagsModal({
             className="flex-1 h-12 bg-primary text-on-primary rounded-full font-medium hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {applying
-              ? 'Applying…'
+              ? t('modals.applying')
               : changes.length === 0
-                ? 'Nothing to combine'
-                : `Combine ${changes.length} ${changes.length === 1 ? 'contact' : 'contacts'}`}
+                ? t('modals.nothing_to_combine')
+                : t('modals.combine_n_contacts').replace('{n}', String(changes.length)).replace('{count}', changes.length === 1 ? t('modals.contact') : t('modals.contacts'))}
           </button>
         </div>
       </div>
