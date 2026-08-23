@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { Skeleton } from '../components/ui/Skeleton';
 import PageContainer from '../components/layout/PageContainer';
+import { useLanguage } from '../components/LanguageProvider';
+import { Translate } from '../components/Translate';
 
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
@@ -62,10 +64,10 @@ ${item.message}
   return `${gitHubRepoUrl}/issues/new?${params.toString()}`;
 };
 
-const extractIssueNumber = (url?: string) => {
+const extractIssueNumber = (url?: string, fallback = 'Issue') => {
   if (!url) return '';
   const match = url.match(/\/issues\/(\d+)/);
-  return match ? `#${match[1]}` : 'Issue';
+  return match ? `#${match[1]}` : fallback;
 };
 
 const resolveIssueUrl = (input: string) => {
@@ -79,6 +81,7 @@ const resolveIssueUrl = (input: string) => {
 };
 
 export default function FeedbackList() {
+  const { t } = useLanguage();
   const { isAdmin, user } = useAuth();
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   const hasAccess = isAdmin || isMe;
@@ -163,7 +166,7 @@ export default function FeedbackList() {
       }
     } catch (error) {
       console.error('Failed to update feedback via backend:', error);
-      alert('Failed to update feedback. Please try again.');
+      alert(t('feedbackList.failed_to_update'));
     }
   };
 
@@ -176,7 +179,7 @@ export default function FeedbackList() {
   };
 
   const handleDeleteFeedback = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this feedback item? This action is permanent.')) return;
+    if (!window.confirm(t('feedbackList.confirm_delete'))) return;
     try {
       const docRef = doc(db, 'feedback', id);
       await deleteDoc(docRef);
@@ -201,7 +204,7 @@ export default function FeedbackList() {
   };
 
   const handleUnlink = async (id: string) => {
-    if (!window.confirm('Are you sure you want to unlink this GitHub issue?')) return;
+    if (!window.confirm(t('feedbackList.confirm_unlink'))) return;
     await updateFeedbackBackend(id, { githubIssueUrl: null });
   };
 
@@ -214,10 +217,9 @@ export default function FeedbackList() {
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="text-2xl font-semibold mb-4 text-on-background">Access Denied</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-on-background">{t('feedbackList.access_denied')}</h2>
           <p className="text-on-surface-variant leading-relaxed mb-6">
-            You must be a Full-timer to view and manage user feedback submissions.
-            If you believe this is an error, please get in touch with a Full-timer.
+            {t('feedbackList.access_denied_body')}
           </p>
         </div>
       </div>
@@ -254,21 +256,21 @@ export default function FeedbackList() {
         return (
           <span className="flex items-center gap-1.5 py-1 px-3 bg-green-500/10 text-green-700 dark:text-green-400 font-semibold text-xs rounded-full">
             <CheckCircle className="w-3.5 h-3.5" />
-            Resolved
+            {t('feedbackList.resolved')}
           </span>
         );
       case 'in_progress':
         return (
           <span className="flex items-center gap-1.5 py-1 px-3 bg-amber-500/10 text-amber-700 dark:text-amber-400 font-semibold text-xs rounded-full">
             <RefreshCw className="w-3.5 h-3.5 animate-spin" style={{ animationDuration: '4s' }} />
-            In Progress
+            {t('feedbackList.in_progress')}
           </span>
         );
       default:
         return (
           <span className="flex items-center gap-1.5 py-1 px-3 bg-blue-500/10 text-blue-700 dark:text-blue-400 font-semibold text-xs rounded-full">
             <Clock className="w-3.5 h-3.5" />
-            New
+            {t('feedbackList.new')}
           </span>
         );
     }
@@ -294,22 +296,22 @@ export default function FeedbackList() {
       {/* Header and overview */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-regular tracking-tight text-on-background">User Feedback</h1>
-          <p className="text-sm text-on-surface-variant">Review bug reports and feature requests submitted by CISA Campus Work Tracker users.</p>
+          <h1 className="text-2xl sm:text-3xl font-regular tracking-tight text-on-background">{t('feedbackList.title')}</h1>
+          <p className="text-sm text-on-surface-variant">{t('feedbackList.subtitle')}</p>
         </div>
         
         {/* Metric counts */}
         <div className="flex gap-3">
           <div className="bg-surface-container border border-outline-variant rounded-2xl py-2 px-4  text-center min-w-[90px]">
-            <p className="text-[10px] font-semibold text-on-surface-variant  ">Total</p>
+            <p className="text-[10px] font-semibold text-on-surface-variant  ">{t('feedbackList.total')}</p>
             <p className="text-xl font-semibold text-on-surface">{feedback.length}</p>
           </div>
           <div className="bg-error-container/15 border border-error-container/20 rounded-2xl py-2 px-4  text-center min-w-[90px]">
-            <p className="text-[10px] font-semibold text-error  ">Bugs</p>
+            <p className="text-[10px] font-semibold text-error  ">{t('feedbackList.bugs')}</p>
             <p className="text-xl font-semibold text-error">{feedback.filter(f => f.type === 'bug').length}</p>
           </div>
           <div className="bg-primary-container/15 border border-primary-container/20 rounded-2xl py-2 px-4  text-center min-w-[90px]">
-            <p className="text-[10px] font-semibold text-accent  ">Requests</p>
+            <p className="text-[10px] font-semibold text-accent  ">{t('feedbackList.requests')}</p>
             <p className="text-xl font-semibold text-accent">{feedback.filter(f => f.type === 'enhancement').length}</p>
           </div>
         </div>
@@ -329,7 +331,7 @@ export default function FeedbackList() {
                   : 'text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
-              All Items
+              {t('feedbackList.all_items')}
             </button>
             {FEEDBACK_KINDS.map((k) => {
               const Icon = k.icon;
@@ -345,7 +347,7 @@ export default function FeedbackList() {
                   }`}
                 >
                   <Icon className="w-3.5 h-3.5" />
-                  {k.label} ({kindCount(k.id)})
+                  {t(`feedbackList.kind_${k.id}`)} ({kindCount(k.id)})
                 </button>
               );
             })}
@@ -359,7 +361,7 @@ export default function FeedbackList() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search feedback, user..."
+                placeholder={t('feedbackList.search_placeholder')}
                 className="w-full bg-surface border border-outline-variant rounded-full pl-10 pr-4 py-2 text-xs focus:ring-2 focus:ring-primary focus:outline-none transition-all placeholder:text-on-surface-variant/50 text-on-surface h-10"
               />
             </div>
@@ -371,11 +373,11 @@ export default function FeedbackList() {
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
               >
-                <option value="unresolved">Unresolved Only (Default)</option>
-                <option value="all">All Statuses</option>
-                <option value="new">New Only</option>
-                <option value="in_progress">In Progress Only</option>
-                <option value="resolved">Resolved Only</option>
+                <option value="unresolved">{t('feedbackList.unresolved_only')}</option>
+                <option value="all">{t('feedbackList.all_statuses')}</option>
+                <option value="new">{t('feedbackList.new_only')}</option>
+                <option value="in_progress">{t('feedbackList.in_progress_only')}</option>
+                <option value="resolved">{t('feedbackList.resolved_only')}</option>
               </select>
             </div>
 
@@ -386,9 +388,9 @@ export default function FeedbackList() {
                 onChange={(e) => setArchiveFilter(e.target.value as any)}
                 className="bg-surface border border-outline-variant text-on-surface rounded-full py-2 px-4 text-xs focus:ring-2 focus:ring-primary focus:outline-none h-10"
               >
-                <option value="active">Active Only</option>
-                <option value="archived">Archived Only</option>
-                <option value="all">All Feedback</option>
+                <option value="active">{t('feedbackList.active_only')}</option>
+                <option value="archived">{t('feedbackList.archived_only')}</option>
+                <option value="all">{t('feedbackList.all_feedback')}</option>
               </select>
             </div>
           </div>
@@ -405,8 +407,8 @@ export default function FeedbackList() {
       ) : filteredFeedback.length === 0 ? (
         <div className="bg-surface-container border border-outline-variant border-dashed rounded-3xl p-16 text-center">
           <Archive className="w-12 h-12 text-on-surface-variant/40 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-on-surface mb-1">No feedback found</h3>
-          <p className="text-xs text-on-surface-variant">There are no feedback submissions that match your query.</p>
+          <h3 className="text-lg font-semibold text-on-surface mb-1">{t('feedbackList.no_feedback_found')}</h3>
+          <p className="text-xs text-on-surface-variant">{t('feedbackList.no_feedback_matches')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
@@ -440,7 +442,7 @@ export default function FeedbackList() {
                     <div className="flex flex-wrap items-center gap-3 text-xs text-on-surface-variant">
                       <span className={`flex items-center gap-1 text-xs font-semibold py-0.5 px-2 rounded-md ${tone.chip}`}>
                         <KindIcon className="w-3 h-3" />
-                        {meta.label}
+                        {t(`feedbackList.kind_${k}`)}
                       </span>
                       <span>•</span>
                       <span>{getFormattedDate(item.createdAt)}</span>
@@ -453,7 +455,7 @@ export default function FeedbackList() {
                       <div className="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl p-1.5 ">
                         <input
                           type="text"
-                          placeholder="Paste issue URL or #number..."
+                          placeholder={t('feedbackList.link_placeholder')}
                           value={linkInput}
                           onChange={(e) => setLinkInput(e.target.value)}
                           className="bg-transparent text-[11px] text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none w-48 px-1.5"
@@ -467,13 +469,13 @@ export default function FeedbackList() {
                           onClick={() => handleSaveLink(item.id)}
                           className="px-2 py-1 bg-primary text-on-primary rounded-lg text-[10px] font-semibold border-none cursor-pointer"
                         >
-                          Link
+                          {t('feedbackList.link')}
                         </button>
                         <button
                           onClick={() => setIsLinkingId(null)}
                           className="px-2 py-1 bg-surface-container-high text-on-surface-variant rounded-lg text-[10px] font-semibold border-none cursor-pointer"
                         >
-                          Cancel
+                          {t('actions.cancel')}
                         </button>
                       </div>
                     ) : (
@@ -485,10 +487,10 @@ export default function FeedbackList() {
                               target="_blank"
                               rel="noopener noreferrer"
                               className="flex items-center gap-1.5 py-1 px-3 bg-neutral-500/10 text-neutral-700 dark:text-neutral-400 hover:bg-neutral-500/20 font-semibold text-xs rounded-full transition-all"
-                              title="View GitHub Issue"
+                              title={t('feedbackList.view_github_issue')}
                             >
                               <Github className="w-3.5 h-3.5" />
-                              {extractIssueNumber(item.githubIssueUrl)}
+                              {extractIssueNumber(item.githubIssueUrl, t('feedbackList.issue_number_fallback'))}
                             </a>
                             <button
                               onClick={() => {
@@ -496,14 +498,14 @@ export default function FeedbackList() {
                                 setLinkInput(item.githubIssueUrl || '');
                               }}
                               className="p-1 text-on-surface-variant hover:text-accent rounded-full transition-colors border-none cursor-pointer"
-                              title="Edit GitHub Link"
+                              title={t('feedbackList.edit_github_link')}
                             >
                               <Link className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleUnlink(item.id)}
                               className="p-1 text-on-surface-variant hover:text-error rounded-full transition-colors border-none cursor-pointer"
-                              title="Unlink GitHub Issue"
+                              title={t('feedbackList.unlink_github_title')}
                             >
                               <Unlink className="w-3.5 h-3.5" />
                             </button>
@@ -512,17 +514,17 @@ export default function FeedbackList() {
                           <div className="flex items-center gap-1.5">
                             <span
                               className="text-[10px] font-semibold text-on-surface-variant/60  "
-                              title="No GitHub issue was auto-created for this item — the server-side GitHub integration may not be configured. Use Create Issue or Link to attach one manually."
+                              title={t('feedbackList.not_auto_synced_title')}
                             >
-                              Not auto-synced
+                              {t('feedbackList.not_auto_synced')}
                             </span>
                             <button
                               onClick={() => handleCreateGitHubIssue(item)}
                               className="flex items-center gap-1.5 py-1 px-3 bg-primary/10 text-accent hover:bg-primary/20 font-semibold text-xs rounded-full transition-all border-none cursor-pointer"
-                              title="Create prefilled GitHub Issue"
+                              title={t('feedbackList.create_issue_title')}
                             >
                               <Github className="w-3.5 h-3.5" />
-                              Create Issue
+                              {t('feedbackList.create_issue')}
                             </button>
                             <button
                               onClick={() => {
@@ -530,7 +532,7 @@ export default function FeedbackList() {
                                 setLinkInput('');
                               }}
                               className="p-1 text-on-surface-variant hover:text-accent rounded-full transition-colors border-none cursor-pointer"
-                              title="Link existing GitHub Issue"
+                              title={t('feedbackList.link_existing_title')}
                             >
                               <Link className="w-3.5 h-3.5" />
                             </button>
@@ -542,14 +544,14 @@ export default function FeedbackList() {
                         {/* Select update actions */}
                         <div className="relative">
                           <select
-                            aria-label="Update status"
+                            aria-label={t('feedbackList.update_status_label')}
                             value={item.status}
                             onChange={(e) => handleUpdateStatus(item.id, e.target.value as any)}
                             className="bg-surface border border-outline-variant text-on-surface rounded-lg py-1 px-2.5 text-[11px] font-semibold focus:outline-none focus:ring-1 focus:ring-primary h-8"
                           >
-                            <option value="new">Mark New</option>
-                            <option value="in_progress">In Progress</option>
-                            <option value="resolved">Resolved</option>
+                            <option value="new">{t('feedbackList.mark_new')}</option>
+                            <option value="in_progress">{t('feedbackList.in_progress')}</option>
+                            <option value="resolved">{t('feedbackList.resolved')}</option>
                           </select>
                         </div>
 
@@ -560,7 +562,7 @@ export default function FeedbackList() {
                               ? 'text-accent hover:bg-primary-container/20'
                               : 'text-on-surface-variant hover:text-accent hover:bg-primary/10'
                           }`}
-                          title={item.archived ? "Restore from Archive" : "Archive Feedback"}
+                          title={item.archived ? t('feedbackList.restore_from_archive') : t('feedbackList.archive_feedback')}
                         >
                           <Archive className="w-4 h-4" />
                         </button>
@@ -568,7 +570,7 @@ export default function FeedbackList() {
                         <button
                           onClick={() => handleDeleteFeedback(item.id)}
                           className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container/10 rounded-full transition-colors border-none cursor-pointer"
-                          title="Delete Feedback"
+                          title={t('feedbackList.delete_feedback')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -579,7 +581,7 @@ export default function FeedbackList() {
 
                 {/* Feedback Message Content */}
                 <div className="bg-surface/50 border border-outline-variant/40 rounded-3xl p-4 text-sm text-on-surface leading-relaxed pl-2 whitespace-pre-wrap font-sans">
-                  {item.message}
+                  <Translate text={item.message} />
                 </div>
 
                 {/* Captured Diagnostics metadata */}
@@ -587,7 +589,7 @@ export default function FeedbackList() {
                   <div className="flex flex-col gap-1.5 text-xs text-on-surface-variant/80 border-t border-outline-variant/30 pt-3 pl-2 font-mono">
                     {item.url && (
                       <div className="flex items-center gap-1.5 truncate">
-                        <span className="font-semibold text-on-surface">URL:</span>
+                        <span className="font-semibold text-on-surface">{t('feedbackList.url_label')}</span>
                         <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:underline text-accent truncate">
                           {item.url}
                         </a>
@@ -596,12 +598,12 @@ export default function FeedbackList() {
                     <div className="flex flex-wrap gap-x-4 gap-y-1">
                       {item.viewport && (
                         <div>
-                          <span className="font-semibold text-on-surface">Viewport:</span> {item.viewport}
+                          <span className="font-semibold text-on-surface">{t('feedbackList.viewport_label')}</span> {item.viewport}
                         </div>
                       )}
                       {item.userAgent && (
                         <div className="truncate max-w-md" title={item.userAgent}>
-                          <span className="font-semibold text-on-surface">User Agent:</span> {item.userAgent}
+                          <span className="font-semibold text-on-surface">{t('feedbackList.user_agent_label')}</span> {item.userAgent}
                         </div>
                       )}
                     </div>
@@ -611,21 +613,21 @@ export default function FeedbackList() {
                 {item.screenshot && (
                   <details className="text-xs text-on-surface-variant pl-2 cursor-pointer mt-3">
                     <summary className="font-semibold select-none hover:text-accent list-item">
-                      View Screenshot
+                      {t('feedbackList.view_screenshot')}
                     </summary>
                     <div className="mt-2 border border-outline-variant rounded-xl overflow-hidden max-w-lg bg-surface  relative group">
                       <img
                         src={item.screenshot}
-                        alt="Captured Screenshot"
+                        alt={t('feedbackList.captured_screenshot_alt')}
                         className="w-full object-contain max-h-[400px] cursor-zoom-in transition-transform group-hover:scale-[1.01]"
                         onClick={() => setEnlargedImage(item.screenshot)}
-                        title="Click to enlarge screenshot"
+                        title={t('feedbackList.click_to_enlarge_title')}
                       />
                       <div
                         onClick={() => setEnlargedImage(item.screenshot)}
                         className="absolute bottom-2 right-2 px-2.5 py-1 bg-surface/90 text-on-surface text-[11px] font-medium rounded-lg border border-outline-variant/50  backdrop-blur-xs flex items-center gap-1.5 opacity-90 group-hover:opacity-100 transition-opacity cursor-pointer"
                       >
-                        <ZoomIn className="w-3.5 h-3.5" /> Click to enlarge
+                        <ZoomIn className="w-3.5 h-3.5" /> {t('feedbackList.click_to_enlarge')}
                       </div>
                     </div>
                   </details>
@@ -646,7 +648,7 @@ export default function FeedbackList() {
             exit={{ opacity: 0 }}
             onClick={() => setEnlargedImage(null)}
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm p-4 md:p-8 flex items-center justify-center cursor-zoom-out"
-            aria-label="Enlarged screenshot view"
+            aria-label={t('feedbackList.enlarged_screenshot_aria')}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -657,14 +659,14 @@ export default function FeedbackList() {
             >
               <button
                 onClick={() => setEnlargedImage(null)}
-                aria-label="Close enlarged screenshot"
+                aria-label={t('feedbackList.close_enlarged_screenshot')}
                 className="absolute top-4 right-4 p-2 bg-surface/90 text-on-surface rounded-full hover:bg-surface border border-outline-variant/40 shadow-md transition-all z-10 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
               <img
                 src={enlargedImage}
-                alt="Enlarged Screenshot"
+                alt={t('feedbackList.enlarged_screenshot_alt')}
                 className="max-w-full max-h-[85vh] object-contain rounded-xl"
               />
             </motion.div>
