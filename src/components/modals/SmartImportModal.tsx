@@ -20,6 +20,8 @@ import { motion } from 'motion/react';
 import { collection, addDoc, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, logActivity, auth } from '../../lib/firebase';
 import { useAuth } from '../AuthProvider';
+import { useLanguage } from '../LanguageProvider';
+import { Translate } from '../Translate';
 import {
   ParsedContactItem,
   ParsedInteractionItem,
@@ -47,6 +49,7 @@ We met with team leaders to map out Welcome Week. Focus areas:
 
 export default function SmartImportModal({ isOpen, onClose, onImportComplete }: SmartImportModalProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [step, setStep] = useState<Step>('input');
   const [inputText, setInputText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
   const handleParse = async () => {
     if (!inputText.trim()) {
-      setError('Please paste or type text to import.');
+      setError(t('modals.smartImport.paste_error'));
       return;
     }
 
@@ -120,9 +123,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           }
         } catch {
           if (response.status === 404) {
-            errorMsg = 'Smart Import endpoint not found (HTTP 404). Please ensure the backend server is deployed.';
+            errorMsg = t('modals.smartImport.endpoint_not_found');
           } else if (response.status === 524 || response.status === 504) {
-            errorMsg = 'AI Smart Import request timed out (HTTP 524). Please try pasting a smaller chunk of text.';
+            errorMsg = t('modals.smartImport.timeout_error');
           }
         }
         throw new Error(errorMsg);
@@ -130,7 +133,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
       const resData = await response.json();
       if (!resData.success) {
-        throw new Error(resData.error || 'Failed to parse text with AI');
+        throw new Error(resData.error || t('modals.smartImport.parse_failed'));
       }
 
       const data: SmartImportParsedData = resData.data || { contacts: [], interactions: [], discussions: [] };
@@ -143,7 +146,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
       setStep('preview');
     } catch (err: any) {
       console.error('Smart Import Parse Error:', err);
-      setError(err.message || 'Error communicating with AI parser.');
+      setError(err.message || t('modals.smartImport.error_communicating'));
       setStep('input');
     }
   };
@@ -161,7 +164,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
   const handleConfirmImport = async () => {
     if (totalSelected === 0) {
-      setError('Please select at least one item to import.');
+      setError(t('modals.smartImport.select_at_least_one'));
       return;
     }
 
@@ -204,7 +207,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
 
       const resData = await response.json();
       if (!resData.success) {
-        throw new Error(resData.error || 'Failed to save imported items to database');
+        throw new Error(resData.error || t('modals.smartImport.failed_to_save'));
       }
 
       const summary = resData.summary || { contactsCount: 0, interactionsCount: 0, discussionsCount: 0 };
@@ -216,7 +219,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
       }
     } catch (err: any) {
       console.error('Smart Import Commit Error:', err);
-      setError(err.message || 'Failed to save imported items to database.');
+      setError(err.message || t('modals.smartImport.failed_to_save'));
       setStep('preview');
     }
   };
@@ -236,16 +239,16 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               <Wand2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="font-serif text-xl font-semibold">Smart Text Import</h2>
+              <h2 className="font-serif text-xl font-semibold">{t('modals.smartImport.modal_title')}</h2>
               <p className="text-xs text-on-surface-variant">
-                Paste notes, emails, or chat logs — Gemini AI parses contacts, 1-on-1s, and discussions with a dry-run review.
+                {t('modals.smartImport.subtitle')}
               </p>
             </div>
           </div>
           <button
             onClick={handleClose}
             className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-variant rounded-full transition-colors"
-            aria-label="Close modal"
+            aria-label={t('modals.smartImport.close_modal')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -265,32 +268,32 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <label className="text-sm font-semibold text-on-surface">
-                  Paste unstructured text below
+                  {t('modals.smartImport.paste_unstructured')}
                 </label>
                 <button
                   onClick={() => setInputText(SAMPLE_TEXT)}
                   className="text-xs text-accent hover:underline flex items-center gap-1 font-medium"
                 >
-                  <Sparkles className="w-3.5 h-3.5" /> Load sample text
+                  <Sparkles className="w-3.5 h-3.5" /> {t('modals.smartImport.load_sample')}
                 </button>
               </div>
 
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Paste roster lists, email exchanges, text message logs, or meeting notes here..."
+                placeholder={t('modals.smartImport.paste_placeholder')}
                 rows={10}
                 className="w-full p-4 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary focus:ring-1 focus:ring-primary outline-none text-sm font-mono leading-relaxed resize-y"
               />
 
               <div className="p-4 rounded-xl bg-surface-container-high border border-outline-variant text-xs text-on-surface-variant space-y-1">
                 <p className="font-semibold text-on-surface flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-accent" /> What Gemini AI extracts:
+                  <Sparkles className="w-4 h-4 text-accent" /> {t('modals.smartImport.what_extracts')}
                 </p>
                 <ul className="list-disc list-inside space-y-1 pl-1">
-                  <li><b>Contacts:</b> Names, emails, phones, stages, tags, spiritual background, & matching existing contacts.</li>
-                  <li><b>Interactions:</b> Dates, 1-on-1 conversation notes, call/coffee type, & contact linkages.</li>
-                  <li><b>Discussions:</b> Group meeting notes, strategy topics, board documents, & audience settings.</li>
+                  <li><b>{t('modals.smartImport.contacts')}:</b> {t('modals.smartImport.contacts_desc')}</li>
+                  <li><b>{t('modals.smartImport.interactions')}:</b> {t('modals.smartImport.interactions_desc')}</li>
+                  <li><b>{t('modals.smartImport.discussions')}:</b> {t('modals.smartImport.discussions_desc')}</li>
                 </ul>
               </div>
             </div>
@@ -303,9 +306,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 <Loader2 className="w-12 h-12 text-accent animate-spin" />
                 <Sparkles className="w-5 h-5 text-accent absolute" />
               </div>
-              <h3 className="font-serif text-lg font-medium">Parsing text with Gemini AI...</h3>
+              <h3 className="font-serif text-lg font-medium">{t('modals.smartImport.parsing')}</h3>
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
-                Extracting people, conversation logs, and discussion documents into a dry-run preview for your confirmation.
+                {t('modals.smartImport.parsing_desc')}
               </p>
             </div>
           )}
@@ -317,13 +320,13 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               <div className="flex flex-wrap items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-high border border-outline-variant">
                 <div className="flex items-center gap-4 text-sm font-medium">
                   <span className="flex items-center gap-1.5 text-accent">
-                    <User className="w-4 h-4" /> {parsedContacts.length} Contacts
+                    <User className="w-4 h-4" /> {parsedContacts.length} {t('modals.smartImport.contacts')}
                   </span>
                   <span className="flex items-center gap-1.5 text-secondary">
-                    <MessageSquare className="w-4 h-4" /> {parsedInteractions.length} Interactions
+                    <MessageSquare className="w-4 h-4" /> {parsedInteractions.length} {t('modals.smartImport.interactions')}
                   </span>
                   <span className="flex items-center gap-1.5 text-tertiary">
-                    <FileText className="w-4 h-4" /> {parsedDiscussions.length} Discussions
+                    <FileText className="w-4 h-4" /> {parsedDiscussions.length} {t('modals.smartImport.discussions')}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -331,13 +334,13 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                     onClick={() => toggleSelectAll(true)}
                     className="px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-medium hover:bg-surface-variant transition-colors"
                   >
-                    Select All
+                    {t('modals.smartImport.select_all')}
                   </button>
                   <button
                     onClick={() => toggleSelectAll(false)}
                     className="px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-medium hover:bg-surface-variant transition-colors"
                   >
-                    Deselect All
+                    {t('modals.smartImport.deselect_all')}
                   </button>
                 </div>
               </div>
@@ -352,7 +355,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  All Items ({parsedContacts.length + parsedInteractions.length + parsedDiscussions.length})
+                  {t('modals.smartImport.all_items')} ({parsedContacts.length + parsedInteractions.length + parsedDiscussions.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('contacts')}
@@ -362,7 +365,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  Contacts ({parsedContacts.length})
+                  {t('modals.smartImport.contacts')} ({parsedContacts.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('interactions')}
@@ -372,7 +375,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  Interactions ({parsedInteractions.length})
+                  {t('modals.smartImport.interactions')} ({parsedInteractions.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('discussions')}
@@ -382,7 +385,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                       : 'border-transparent text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  Discussions ({parsedDiscussions.length})
+                  {t('modals.smartImport.discussions')} ({parsedDiscussions.length})
                 </button>
               </div>
 
@@ -392,7 +395,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {(activeTab === 'all' || activeTab === 'contacts') && parsedContacts.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
-                      <User className="w-3.5 h-3.5 text-accent" /> Contacts ({parsedContacts.length})
+                      <User className="w-3.5 h-3.5 text-accent" /> {t('modals.smartImport.contacts')} ({parsedContacts.length})
                     </h4>
                     {parsedContacts.map((contact) => {
                       const itemKey = `c_${contact.tempId}`;
@@ -430,27 +433,27 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   <span className="font-semibold text-sm text-on-surface">{contact.name}</span>
                                   {contact.matchedContactId ? (
                                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                                      Matches existing: {contact.matchedContactName || contact.matchedContactId}
+                                      {t('modals.smartImport.matches_existing').replace('{name}', contact.matchedContactName || contact.matchedContactId)}
                                     </span>
                                   ) : (
                                     <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                                      New Contact
+                                      {t('modals.smartImport.new_contact')}
                                     </span>
                                   )}
                                   <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-on-surface-variant capitalize">
-                                    Stage: {contact.stage || 'lead'}
+                                    {t('modals.smartImport.stage')}: {contact.stage || t('modals.smartImport.lead')}
                                   </span>
                                 </div>
 
                                 <div className="text-xs text-on-surface-variant mt-1 space-x-3">
-                                  {contact.email && <span>Email: {contact.email}</span>}
-                                  {contact.phone && <span>Phone: {contact.phone}</span>}
-                                  {contact.role && <span>Role: {contact.role}</span>}
+                                  {contact.email && <span>{t('modals.smartImport.email')}: {contact.email}</span>}
+                                  {contact.phone && <span>{t('modals.smartImport.phone')}: {contact.phone}</span>}
+                                  {contact.role && <span>{t('modals.smartImport.role')}: {contact.role}</span>}
                                 </div>
 
                                 {contact.notes && (
                                   <p className="text-xs text-on-surface-variant/80 mt-1 italic line-clamp-2">
-                                    "{contact.notes}"
+                                    "<Translate text={contact.notes} />"
                                   </p>
                                 )}
                               </div>
@@ -463,7 +466,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   setParsedContacts((prev) => prev.filter((c) => c.tempId !== contact.tempId))
                                 }
                                 className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                                title="Delete item"
+                                title={t('modals.smartImport.delete_item')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -471,7 +474,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 type="button"
                                 onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
                                 className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                                title="Edit item details"
+                                title={t('modals.smartImport.edit_item_details')}
                               >
                                 {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
                               </button>
@@ -482,7 +485,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                           {isEditing && (
                             <div className="mt-4 pt-4 border-t border-outline-variant grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Name</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.name')}</label>
                                 <input
                                   type="text"
                                   value={contact.name}
@@ -497,7 +500,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 />
                               </div>
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Email</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.email')}</label>
                                 <input
                                   type="email"
                                   value={contact.email || ''}
@@ -512,7 +515,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 />
                               </div>
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Phone</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.phone')}</label>
                                 <input
                                   type="text"
                                   value={contact.phone || ''}
@@ -527,7 +530,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 />
                               </div>
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Stage</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.stage')}</label>
                                 <select
                                   value={contact.stage || 'lead'}
                                   onChange={(e) =>
@@ -539,11 +542,11 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   }
                                   className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
                                 >
-                                  <option value="lead">Lead</option>
-                                  <option value="contact">Contact</option>
-                                  <option value="follow-up">Follow-up</option>
-                                  <option value="connected">Connected</option>
-                                  <option value="active">Active</option>
+                                  <option value="lead">{t('modals.smartImport.lead')}</option>
+                                  <option value="contact">{t('modals.smartImport.contact')}</option>
+                                  <option value="follow-up">{t('modals.smartImport.follow_up')}</option>
+                                  <option value="connected">{t('modals.smartImport.connected')}</option>
+                                  <option value="active">{t('modals.smartImport.active')}</option>
                                 </select>
                               </div>
                             </div>
@@ -558,7 +561,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {(activeTab === 'all' || activeTab === 'interactions') && parsedInteractions.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
-                      <MessageSquare className="w-3.5 h-3.5 text-secondary" /> Interactions / 1-on-1s ({parsedInteractions.length})
+                      <MessageSquare className="w-3.5 h-3.5 text-secondary" /> {t('modals.smartImport.interactions_section')} ({parsedInteractions.length})
                     </h4>
                     {parsedInteractions.map((interaction) => {
                       const itemKey = `i_${interaction.tempId}`;
@@ -594,10 +597,10 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold text-sm text-on-surface">
-                                    {interaction.contactName || 'Unlinked Interaction'}
+                                    {interaction.contactName || t('modals.smartImport.unlinked_interaction')}
                                   </span>
                                   <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-on-surface-variant capitalize">
-                                    Type: {interaction.type || 'note'}
+                                    {t('modals.smartImport.type')}: {interaction.type || t('modals.smartImport.note')}
                                   </span>
                                   {interaction.dateTime && (
                                     <span className="text-xs text-on-surface-variant font-mono">
@@ -607,7 +610,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 </div>
 
                                 <p className="text-xs text-on-surface mt-1 leading-relaxed whitespace-pre-wrap">
-                                  {interaction.content}
+                                  <Translate text={interaction.content} />
                                 </p>
                               </div>
                             </div>
@@ -619,7 +622,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   setParsedInteractions((prev) => prev.filter((i) => i.tempId !== interaction.tempId))
                                 }
                                 className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                                title="Delete item"
+                                title={t('modals.smartImport.delete_item')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -627,7 +630,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 type="button"
                                 onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
                                 className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                                title="Edit item details"
+                                title={t('modals.smartImport.edit_item_details')}
                               >
                                 {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
                               </button>
@@ -639,7 +642,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                             <div className="mt-4 pt-4 border-t border-outline-variant space-y-3 text-xs">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">Contact Name</label>
+                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.contact_name')}</label>
                                   <input
                                     type="text"
                                     value={interaction.contactName || ''}
@@ -654,7 +657,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">Type</label>
+                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.type')}</label>
                                   <select
                                     value={interaction.type || 'note'}
                                     onChange={(e) =>
@@ -666,16 +669,16 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                     }
                                     className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
                                   >
-                                    <option value="coffee">Coffee</option>
-                                    <option value="call">Call</option>
-                                    <option value="text">Text</option>
-                                    <option value="meeting">Meeting</option>
-                                    <option value="note">Note</option>
+                                    <option value="coffee">{t('modals.smartImport.coffee')}</option>
+                                    <option value="call">{t('modals.smartImport.call')}</option>
+                                    <option value="text">{t('modals.smartImport.text')}</option>
+                                    <option value="meeting">{t('modals.smartImport.meeting')}</option>
+                                    <option value="note">{t('modals.smartImport.note')}</option>
                                   </select>
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Content / Summary</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.content_summary')}</label>
                                 <textarea
                                   value={interaction.content}
                                   onChange={(e) =>
@@ -701,7 +704,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 {(activeTab === 'all' || activeTab === 'discussions') && parsedDiscussions.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="text-xs font-semibold   text-on-surface-variant flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-tertiary" /> Discussions / Board Notes ({parsedDiscussions.length})
+                      <FileText className="w-3.5 h-3.5 text-tertiary" /> {t('modals.smartImport.discussions_section')} ({parsedDiscussions.length})
                     </h4>
                     {parsedDiscussions.map((discussion) => {
                       const itemKey = `d_${discussion.tempId}`;
@@ -738,12 +741,12 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="font-semibold text-sm text-on-surface">{discussion.title}</span>
                                   <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-on-surface-variant capitalize">
-                                    Audience: {discussion.audience || 'team'}
+                                    {t('modals.smartImport.audience')}: {discussion.audience || t('modals.smartImport.team')}
                                   </span>
                                 </div>
 
                                 <p className="text-xs text-on-surface-variant/90 mt-1 line-clamp-3 font-mono">
-                                  {discussion.content}
+                                  <Translate text={discussion.content} />
                                 </p>
                               </div>
                             </div>
@@ -755,7 +758,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   setParsedDiscussions((prev) => prev.filter((d) => d.tempId !== discussion.tempId))
                                 }
                                 className="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors"
-                                title="Delete item"
+                                title={t('modals.smartImport.delete_item')}
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -763,7 +766,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                 type="button"
                                 onClick={() => setEditingItemKey(isEditing ? null : itemKey)}
                                 className="p-1.5 text-on-surface-variant hover:text-on-surface rounded-lg hover:bg-surface-variant transition-colors"
-                                title="Edit item details"
+                                title={t('modals.smartImport.edit_item_details')}
                               >
                                 {isEditing ? <ChevronUp className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
                               </button>
@@ -775,7 +778,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                             <div className="mt-4 pt-4 border-t border-outline-variant space-y-3 text-xs">
                               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">Title</label>
+                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.title')}</label>
                                   <input
                                     type="text"
                                     value={discussion.title}
@@ -790,7 +793,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                   />
                                 </div>
                                 <div>
-                                  <label className="block text-on-surface-variant mb-1 font-medium">Audience</label>
+                                  <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.audience')}</label>
                                   <select
                                     value={discussion.audience || 'team'}
                                     onChange={(e) =>
@@ -804,14 +807,14 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                                     }
                                     className="w-full p-2 rounded-lg border border-outline-variant bg-surface text-on-surface cursor-pointer"
                                   >
-                                    <option value="team">Team (Full-timers)</option>
-                                    <option value="trainees">Trainees</option>
-                                    <option value="everyone">Everyone</option>
+                                    <option value="team">{t('modals.smartImport.team')}</option>
+                                    <option value="trainees">{t('modals.smartImport.trainees')}</option>
+                                    <option value="everyone">{t('modals.smartImport.everyone')}</option>
                                   </select>
                                 </div>
                               </div>
                               <div>
-                                <label className="block text-on-surface-variant mb-1 font-medium">Markdown Content</label>
+                                <label className="block text-on-surface-variant mb-1 font-medium">{t('modals.smartImport.markdown_content')}</label>
                                 <textarea
                                   value={discussion.content}
                                   onChange={(e) =>
@@ -840,9 +843,9 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
           {step === 'importing' && (
             <div className="py-16 text-center space-y-4">
               <Loader2 className="w-12 h-12 text-accent animate-spin mx-auto" />
-              <h3 className="font-serif text-lg font-medium">Writing items to database...</h3>
+              <h3 className="font-serif text-lg font-medium">{t('modals.smartImport.writing')}</h3>
               <p className="text-sm text-on-surface-variant">
-                Saving confirmed contacts, interaction logs, and discussion docs into Firestore.
+                {t('modals.smartImport.writing_desc')}
               </p>
             </div>
           )}
@@ -853,16 +856,16 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
               <div className="w-16 h-16 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto">
                 <Check className="w-8 h-8" />
               </div>
-              <h3 className="font-serif text-2xl font-semibold">Import Completed!</h3>
+              <h3 className="font-serif text-2xl font-semibold">{t('modals.smartImport.import_completed')}</h3>
               <p className="text-sm text-on-surface-variant max-w-md mx-auto">
-                Successfully added {importSummary.contactsCount} contacts, logged {importSummary.interactionsCount} interactions, and created {importSummary.discussionsCount} discussion docs.
+                {t('modals.smartImport.success_summary').replace('{contacts}', String(importSummary.contactsCount)).replace('{interactions}', String(importSummary.interactionsCount)).replace('{discussions}', String(importSummary.discussionsCount))}
               </p>
               <div className="pt-4">
                 <button
                   onClick={handleClose}
                   className="px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity"
                 >
-                  Done
+                  {t('modals.smartImport.done')}
                 </button>
               </div>
             </div>
@@ -877,14 +880,14 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 onClick={() => setStep('input')}
                 className="px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
               >
-                Back to text
+                {t('modals.smartImport.back_to_text')}
               </button>
             ) : (
               <button
                 onClick={handleClose}
                 className="px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors"
               >
-                Cancel
+                {t('modals.smartImport.cancel')}
               </button>
             )}
 
@@ -894,7 +897,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 disabled={!inputText.trim()}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                <Wand2 className="w-4 h-4" /> Parse with Gemini AI
+                <Wand2 className="w-4 h-4" /> {t('modals.smartImport.parse_with_gemini')}
               </button>
             )}
 
@@ -904,7 +907,7 @@ export default function SmartImportModal({ isOpen, onClose, onImportComplete }: 
                 disabled={totalSelected === 0}
                 className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                <Check className="w-4 h-4" /> Confirm & Import ({totalSelected} Selected)
+                <Check className="w-4 h-4" /> {t('modals.smartImport.confirm_import').replace('{n}', String(totalSelected))}
               </button>
             )}
           </div>
