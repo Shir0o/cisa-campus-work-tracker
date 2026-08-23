@@ -30,6 +30,7 @@ export function FtPrayerLogScreen() {
 
 function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <Pressable
       onPress={onPress}
@@ -46,7 +47,7 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
       })}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: prayed ? c.card.tones.pray.text : c.card.ink2 }}>
-        {prayed ? 'Prayed ✓' : 'I prayed'}
+        {prayed ? t('mobile.prayer.prayed_short') : t('mobile.prayer.i_prayed_short')}
       </Text>
     </Pressable>
   );
@@ -55,7 +56,7 @@ function PrayedPill({ prayed, onPress }: { prayed: boolean; onPress: () => void 
 function FtPrayerLog() {
   const { c, font, fs } = useV2Theme();
   const { uid, user } = useAuth();
-  const { language } = useLanguage();
+  const { language, t } = useLanguage();
   const router = useRouter();
   const data = useFtHomeData(uid, user?.displayName ?? null);
   // `prayedToday` reads a store outside React, so nudge a render on tap.
@@ -87,22 +88,22 @@ function FtPrayerLog() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
-        title="Prayer log"
-        note={`${rows.length} ${rows.length === 1 ? 'prayer' : 'prayers'} we're carrying`}
+        title={t('mobile.prayer.log_title')}
+        note={(rows.length === 1 ? t('mobile.prayer.log_note_one') : t('mobile.prayer.log_note_many')).replace('{count}', String(rows.length))}
         onBack={back}
       >
         {rows.length === 0 && (
           <Text style={{ fontFamily: font.semi, fontSize: fs(14), color: c.room.ink3, paddingVertical: 20 }}>
-            Nothing open right now.
+            {t('mobile.prayer.nothing_open')}
           </Text>
         )}
         {rows.map((row) => (
           <V2PersonRow
             key={row.id}
-            name={row.who ?? 'Someone'}
+            name={row.who ?? t('mobile.prayer.someone')}
             colorSeed={row.contactId ?? row.id}
             sub={<Translate text={row.burden} />}
-            note={[row.asked ? 'They asked the team' : null, row.heavy ? 'Weighs heavy' : null]
+            note={[row.asked ? t('mobile.prayer.they_asked_the_team') : null, row.heavy ? t('mobile.prayer.weighs_heavy') : null]
               .filter(Boolean)
               .join(' · ')}
             onPress={row.contactId ? () => open(row) : undefined}

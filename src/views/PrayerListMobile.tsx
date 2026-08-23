@@ -44,13 +44,6 @@ const THIS_WEEK_END = THIS_WEEK_START + 7 * 24 * 3600 * 1000;
 const prayerMs = (p: PrayerRecord) => new Date(p.date).getTime();
 const EARLIER_CAP = 4;
 
-const STATUS_LABEL: Record<Status, string> = {
-  pending: 'Unmarked',
-  ongoing: 'Ongoing',
-  answered: 'Answered',
-  unanswered: 'Archived',
-};
-
 const STATUS_TONE: Record<Status, string> = {
   pending: 'text-on-surface-variant',
   ongoing: 'text-stage-accent',
@@ -125,17 +118,17 @@ export default function PrayerListMobile({
       {/* ── Mobile Hero ── */}
       <header className="px-5 pt-8 pb-6 bg-surface border-b border-outline-variant/30 prm-hero">
         <div className="text-xs   text-on-surface-variant/80 font-semibold mb-1 prm-eyebrow">
-          Prayer
+          {t('nav.prayer')}
         </div>
         <h1 className="font-serif text-[32px] leading-tight text-on-surface prm-title">
-          Who we're carrying
+          {t('prayers.who_we_are_carrying')}
         </h1>
         <p className="text-[15px] text-on-surface-variant/90 leading-relaxed mt-2 prm-line">
-          <b className="font-semibold text-on-surface">{answeredThisYear}</b> {answeredThisYear === 1 ? "prayer" : "prayers"} answered this year
+          <b className="font-semibold text-on-surface">{answeredThisYear}</b> {answeredThisYear === 1 ? t('prayers.answered_this_year_one') : t('prayers.answered_this_year_many')}
           {awaiting > 0 ? (
             <>
               {" · "}
-              <b className="font-semibold text-on-surface">{awaiting}</b> from last week {awaiting === 1 ? "needs" : "need"} an update.
+              <b className="font-semibold text-on-surface">{awaiting}</b> {awaiting === 1 ? t('prayers.awaiting_update_one') : t('prayers.awaiting_update_many')}.
             </>
           ) : (
             "."
@@ -171,7 +164,7 @@ export default function PrayerListMobile({
           onClick={() => navigate('/answered')}
           className="flex-1 py-3 text-center text-sm font-semibold text-on-surface-variant hover:text-on-surface ans-toggle-opt"
         >
-          {t('prayers.status_answered')}
+          {t('answered.title')}
         </button>
       </div>
 
@@ -254,7 +247,7 @@ export default function PrayerListMobile({
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Search anyone to hold in prayer…"
+                  placeholder={t('prayers.search_anyone_to_hold')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-9 pr-4 h-11 bg-surface-container border border-outline rounded-xl text-sm focus:border-primary outline-none transition-all text-on-surface"
@@ -264,7 +257,7 @@ export default function PrayerListMobile({
               <div className="flex flex-col gap-1.5 prm-picker">
                 {allAddable.length === 0 && (
                   <div className="text-center py-6 text-xs text-on-surface-variant italic">
-                    {searchQuery ? "No one matches that." : "Everyone's already here."}
+                    {searchQuery ? t('prayers.no_one_matches_that') : t('prayers.everyone_already_here')}
                   </div>
                 )}
                 {allAddable.map((c) => (
@@ -475,10 +468,10 @@ function PrayerThreadCard({
               ))}
               {earlier.length > EARLIER_CAP && (
                 <div className="text-[12px] text-on-surface-variant pt-2 pl-1">
-                  {earlier.length - EARLIER_CAP} older{' '}
-                  {earlier.length - EARLIER_CAP === 1 ? 'prayer' : 'prayers'} —{' '}
+                  {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
+                  {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
                   <button onClick={onOpenProfile} className="text-accent font-semibold hover:underline">
-                    see {firstName}&rsquo;s full history
+                    {t('prayers.see_full_history').replace('{name}', firstName)}
                   </button>
                 </div>
               )}
@@ -557,11 +550,11 @@ function PrayerItemMobile({
         <span className="text-[12px] text-on-surface-variant/80">{formatDate(prayer.date)}</span>
         {prayer.status !== 'pending' ? (
           <span className={cn('text-[10px]   font-semibold', STATUS_TONE[prayer.status])}>
-            {STATUS_LABEL[prayer.status]}
+            {t('prayers.status_' + prayer.status)}
           </span>
         ) : variant !== 'week' ? (
           <span className="text-[10px]   font-semibold text-on-surface-variant/70">
-            Unmarked
+            {t('prayers.status_pending')}
           </span>
         ) : null}
         {!editing && isOperator && (
@@ -569,7 +562,7 @@ function PrayerItemMobile({
             onClick={startEdit}
             className="text-xs text-on-surface-variant/80 hover:text-accent transition-colors ml-auto prt-prayer-edit prt-prayer-edit--m"
           >
-            Edit
+            {t('actions.edit')}
           </button>
         )}
         {!editing && onMakeTodo && (
@@ -600,7 +593,7 @@ function PrayerItemMobile({
               }}
               className="px-3.5 py-1.5 rounded-full text-xs text-on-surface-variant hover:text-on-surface"
             >
-              Cancel
+              {t('actions.cancel')}
             </button>
             <button
               onClick={save}
@@ -622,7 +615,7 @@ function PrayerItemMobile({
         <div className="mt-2.5 text-xs bg-success/5 border border-success/15 rounded-xl p-3 max-w-full">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-success  ">
-              Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+              {t('prayers.status_answered')}{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
             {isOperator && (
               <button
@@ -632,7 +625,7 @@ function PrayerItemMobile({
                 }}
                 className="text-[10px] text-on-surface-variant/80 hover:text-accent font-semibold"
               >
-                Edit Testimony
+                {t('prayers.edit_testimony')}
               </button>
             )}
           </div>
@@ -714,7 +707,7 @@ function PrayerItemMobile({
               <option value="">{t('prayers.not_yet_marked')}</option>
               {MARK_OPTIONS.map((o) => (
                 <option key={o} value={o}>
-                  {STATUS_LABEL[o]}
+                  {t('prayers.status_' + o)}
                 </option>
               ))}
             </select>
@@ -762,7 +755,7 @@ function AddThisWeekMobile({
         className="w-full flex items-center justify-center gap-2 px-4 py-3 border border-dashed border-outline-variant hover:border-primary text-xs font-semibold rounded-xl text-on-surface-variant/95 transition-colors prt-week-add"
       >
         <Plus className="w-3.5 h-3.5" />
-        <span>Write what we're holding for {firstName} this week</span>
+        <span>{translate('prayers.write_what_holding_mobile').replace('{name}', firstName)}</span>
       </button>
     );
   }

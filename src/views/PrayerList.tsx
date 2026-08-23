@@ -53,13 +53,6 @@ type Status = PrayerRecord['status']; // 'pending' | 'answered' | 'ongoing' | 'u
 
 // The three marks you can set; the unmarked default is 'pending'.
 const MARK_ORDER: Status[] = ['ongoing', 'answered', 'unanswered'];
-const STATUS_LABEL: Record<Status, string> = {
-  pending: 'Unmarked',
-  ongoing: 'Ongoing',
-  answered: 'Answered',
-  unanswered: 'Archived',
-};
-
 // Warm tone for a status label (text only).
 const STATUS_TONE: Record<Status, string> = {
   pending: 'text-on-surface-variant',
@@ -499,7 +492,7 @@ export default function PrayerList() {
             text={todoFor.prayer.burden}
             contactId={todoFor.contact.id}
             contactName={todoFor.contact.name}
-            source={{ interactionId: todoFor.prayer.id, interactionTitle: `Prayer for ${todoFor.contact.name.split(' ')[0]}` }}
+            source={{ interactionId: todoFor.prayer.id, interactionTitle: t('prayers.prayer_for_name').replace('{name}', todoFor.contact.name.split(' ')[0]) }}
             team={team}
             meUid={user?.uid ?? ''}
             meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
@@ -515,18 +508,18 @@ export default function PrayerList() {
       {/* Header */}
       <header className="ans-head">
         <div className="ans-eyebrow">
-          <span className="ans-lit" /> On our hearts
+          <span className="ans-lit" /> {t('answered.on_our_hearts')}
         </div>
         <div className="ans-head-row">
           <div>
             <h1 className="ans-h1">{t('nav.prayers')}</h1>
             <p className="ans-sub text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
               <span className="text-success font-medium">{answeredThisYear}</span>{' '}
-              {answeredThisYear === 1 ? 'prayer' : 'prayers'} answered this year.
+              {answeredThisYear === 1 ? t('prayers.answered_this_year_one') : t('prayers.answered_this_year_many')}.
               {awaiting > 0 && (
                 <span className="text-on-surface-variant/70">
                   {' '}
-                  {awaiting} from last week {awaiting === 1 ? 'still needs' : 'still need'} an update below.
+                  {awaiting} {awaiting === 1 ? t('prayers.awaiting_update_one_below') : t('prayers.awaiting_update_many_below')}
                 </span>
               )}
             </p>
@@ -535,7 +528,7 @@ export default function PrayerList() {
         <div className="ans-toggle">
           <button className="ans-toggle-opt on">{t('nav.prayers')}</button>
           <button className="ans-toggle-opt" onClick={() => navigate('/answered')}>
-            Answered
+            {t('answered.title')}
           </button>
         </div>
       </header>
@@ -609,7 +602,9 @@ export default function PrayerList() {
             {searchQuery
               ? t('prayers.no_matches')
               : genderFilter !== 'all'
-                ? `No ${genderFilter} to hold yet`
+                ? genderFilter === 'brothers'
+                  ? t('prayers.no_brothers_to_hold_yet')
+                  : t('prayers.no_sisters_to_hold_yet')
                 : t('prayers.no_one_to_hold')}
           </h3>
           <p className="text-sm text-on-surface-variant">
@@ -662,7 +657,7 @@ export default function PrayerList() {
           text={todoFor.prayer.burden}
           contactId={todoFor.contact.id}
           contactName={todoFor.contact.name}
-          source={{ interactionId: todoFor.prayer.id, interactionTitle: `Prayer for ${todoFor.contact.name.split(' ')[0]}` }}
+          source={{ interactionId: todoFor.prayer.id, interactionTitle: t('prayers.prayer_for_name').replace('{name}', todoFor.contact.name.split(' ')[0]) }}
           team={team}
           meUid={user?.uid ?? ''}
           meName={user?.displayName || user?.email?.split('@')[0] || t('prayers.someone')}
@@ -749,7 +744,7 @@ function PrayerThread({
             </div>
           </div>
           <RowActions
-            label={`More for ${contact.name}`}
+            label={t('prayers.more_for_name').replace('{name}', contact.name)}
             items={buildContactRowActions({
               contact,
               onOpen: onOpenProfile,
@@ -845,10 +840,10 @@ function PrayerThread({
               ))}
               {earlier.length > EARLIER_CAP && (
                 <div className="text-[13px] text-on-surface-variant pt-3 pl-1">
-                  {earlier.length - EARLIER_CAP} older{' '}
-                  {earlier.length - EARLIER_CAP === 1 ? 'prayer' : 'prayers'} —{' '}
+                  {earlier.length - EARLIER_CAP} {t('prayers.older')}{' '}
+                  {earlier.length - EARLIER_CAP === 1 ? t('prayers.prayer') : t('prayers.prayers')} —{' '}
                   <button onClick={onOpenProfile} className="text-accent hover:underline">
-                    see {firstName}&rsquo;s full history
+                    {t('prayers.see_full_history').replace('{name}', firstName)}
                   </button>
                 </div>
               )}
@@ -967,12 +962,12 @@ function PrayerItem({
           </span>
         ) : variant !== 'week' ? (
           <span className="text-[10.5px]   font-semibold text-on-surface-variant/70">
-            Unmarked
+            {t('prayers.status_pending')}
           </span>
         ) : null}
         {!editing && isOperator && (
           <button onClick={startEdit} className="text-[13px] text-on-surface-variant hover:text-accent transition-colors ml-auto">
-            Edit
+            {t('actions.edit')}
           </button>
         )}
         {!editing && onMakeTodo && (
@@ -1010,7 +1005,7 @@ function PrayerItem({
               }}
               className="px-4 py-1.5 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
             >
-              Cancel
+              {t('actions.cancel')}
             </button>
           </div>
         </div>
@@ -1025,14 +1020,14 @@ function PrayerItem({
         <div className="mt-2 text-sm bg-success/5 border border-success/15 rounded-xl p-3 max-w-xl">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold text-success  ">
-              Answered{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
+              {t('prayers.status_answered')}{prayer.answeredAt ? ` · ${prayer.answeredAt}` : ""}
             </span>
             {isOperator && (
               <button
                 onClick={openAnswerComposer}
                 className="text-[11px] text-on-surface-variant hover:text-accent font-medium"
               >
-                Edit Testimony
+                {t('prayers.edit_testimony')}
               </button>
             )}
           </div>
@@ -1092,7 +1087,9 @@ function PrayerItem({
           >
             <ImageIcon className="w-4 h-4" />
             {totalAnswerPhotos
-              ? `${totalAnswerPhotos} ${totalAnswerPhotos === 1 ? 'photo' : 'photos'} — add another`
+              ? t('prayers.photo_count_add_another')
+                  .replace('{count}', String(totalAnswerPhotos))
+                  .replace('{unit}', totalAnswerPhotos === 1 ? t('prayers.photo') : t('prayers.photos'))
               : t('prayers.add_photo_optional')}
           </button>
           <input
@@ -1115,7 +1112,7 @@ function PrayerItem({
                   />
                   <button
                     onClick={() => setAnswerPhotos((x) => x.filter((y) => y.path !== ph.path))}
-                    aria-label={`Remove ${ph.name || 'photo'}`}
+                    aria-label={t('prayers.remove_photo').replace('{name}', ph.name || t('prayers.photo'))}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors"
                   >
                     <X className="w-3 h-3" />
@@ -1131,7 +1128,7 @@ function PrayerItem({
                   />
                   <button
                     onClick={() => setNewPhotoFiles((x) => x.filter((_, j) => j !== i))}
-                    aria-label={`Remove ${f.name}`}
+                    aria-label={t('prayers.remove_photo').replace('{name}', f.name)}
                     className="absolute -top-1.5 -right-1.5 w-5 h-5 grid place-items-center rounded-full bg-surface border border-outline-variant text-on-surface-variant hover:text-error transition-colors"
                   >
                     <X className="w-3 h-3" />
@@ -1146,7 +1143,7 @@ function PrayerItem({
               className="px-3 py-1 rounded-full text-xs text-on-surface-variant hover:bg-surface-variant"
               onClick={() => setAnswering(false)}
             >
-              Skip
+              {t('prayers.skip')}
             </button>
             <button
               type="button"
@@ -1194,7 +1191,7 @@ function PrayerItem({
                     : 'border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline',
                 )}
               >
-                {STATUS_LABEL[s]}
+                {t('prayers.status_' + s)}
               </button>
             ))}
           </div>
@@ -1268,7 +1265,7 @@ function AddThisWeek({
           }}
           className="px-4 py-1.5 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
         >
-          Cancel
+          {translate('actions.cancel')}
         </button>
       </div>
     </div>
@@ -1388,7 +1385,9 @@ function PickHeldModal({
 
         <div className="p-4 border-t border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
           <span className="text-xs text-on-surface-variant">
-            {sel.length} {sel.length === 1 ? 'person' : 'people'} on our hearts
+            {t('prayers.people_on_our_hearts')
+              .replace('{count}', String(sel.length))
+              .replace('{unit}', sel.length === 1 ? t('prayers.person') : t('prayers.people'))}
             {changed > 0 && (
               <span className="text-accent font-medium">
                 {added.length > 0 ? ` · +${added.length}` : ''}
@@ -1400,14 +1399,14 @@ function PickHeldModal({
             onClick={onClose}
             className="ml-auto px-4 py-2 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
           >
-            Cancel
+            {t('actions.cancel')}
           </button>
           <button
             onClick={() => onApply(added, removed)}
             disabled={!changed}
             className="px-5 py-2 rounded-full bg-primary text-on-primary text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
           >
-            Save
+            {t('actions.save')}
           </button>
         </div>
       </div>

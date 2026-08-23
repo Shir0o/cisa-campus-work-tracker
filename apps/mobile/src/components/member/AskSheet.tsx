@@ -4,6 +4,7 @@
 import React from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Sheet } from '../ui';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 
@@ -25,6 +26,7 @@ function Body({
   onClose: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const [body, setBody] = React.useState('');
   return (
     <View style={{ paddingHorizontal: 20, paddingBottom: 24, gap: 14 }}>
@@ -78,7 +80,7 @@ function Body({
         onPress={onClose}
         style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>Not now</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink3 }}>{t('mobile.prayer.not_now')}</Text>
       </Pressable>
     </View>
   );
@@ -96,14 +98,15 @@ export function AskSheet({
   onSend: (body: string) => void;
 }) {
   const { c, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <Sheet visible={visible} onClose={onClose} {...v2SheetChrome(c)}>
       <Room room="queue">
         <Body
-          title="Ask the team to pray"
-          sub="However much you want to say. It goes to the people who care for you — not on any wall."
-          placeholder="What's going on?"
-          cta="Send it"
+          title={t('mobile.prayer.ask_sheet_title')}
+          sub={t('mobile.prayer.ask_sheet_sub')}
+          placeholder={t('mobile.prayer.ask_sheet_placeholder')}
+          cta={t('mobile.prayer.ask_sheet_cta')}
           multiline
           onSubmit={onSend}
           onClose={onClose}
@@ -125,14 +128,15 @@ export function OnYourHeartSheet({
   onAdd: (title: string) => void;
 }) {
   const { c, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <Sheet visible={visible} onClose={onClose} {...v2SheetChrome(c)}>
       <Room room="queue">
         <Body
-          title="Who's on your heart?"
-          sub="Just between you and God — nobody on the team sees this list."
-          placeholder="Daniel — midterms are wrecking him"
-          cta="Add them"
+          title={t('mobile.prayer.heart_sheet_title')}
+          sub={t('mobile.prayer.heart_sheet_sub')}
+          placeholder={t('mobile.prayer.heart_sheet_placeholder')}
+          cta={t('mobile.prayer.heart_sheet_cta')}
           multiline={false}
           onSubmit={onAdd}
           onClose={onClose}
