@@ -26,6 +26,7 @@ import {
   type Touch,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { roomForRole, useV2Theme, v2SheetChrome } from '../../theme/v2';
 import { Room, V2Empty, V2Input, V2Screen, V2TextArea } from '../v2/Widget';
 import { SkeletonList } from '../skeleton/SkeletonList';
@@ -681,6 +682,7 @@ function OutreachLogSheet({
 function Outreach() {
   const { c, font, fs } = useV2Theme();
   const { uid, user, role } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const me = uid || '';
   const userName = user?.displayName || 'Someone';
@@ -744,9 +746,9 @@ function Outreach() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
-        title="Gospel"
-        note={last ? `Last out: ${outreachWhen(last.date)}` : 'Nothing written down yet'}
-        action={canLog ? { label: 'Log a gospel outing', onPress: () => setSheet({ mode: 'log' }) } : undefined}
+        title={t('mobile.outreach.gospel')}
+        note={last ? `Last out: ${outreachWhen(last.date)}` : t('mobile.outreach.nothing_written_down')}
+        action={canLog ? { label: t('mobile.outreach.log_a_gospel_outing'), onPress: () => setSheet({ mode: 'log' }) } : undefined}
         onBack={back}
       >
         <View style={{ marginTop: 10 }}>
@@ -770,7 +772,7 @@ function Outreach() {
 
         {pending.length > 0 && (
           <>
-            <Kicker label="People we met, not yet reached" sub="A number given is a door held open. It doesn't stay open long." />
+            <Kicker label={t('mobile.outreach.people_we_met_not_yet_reached')} sub={t('mobile.outreach.door_held_open')} />
             <View style={{ gap: 10 }}>
               {pending.map((p, i) => (
                 <PendingRow key={`${p.record.id}-${p.name.id || p.name.name}-${i}`} item={p} me={me} isAdmin={isAdmin} onTake={take} onNudge={nudge} onOpen={openContact} userById={userById} />
@@ -785,7 +787,7 @@ function Outreach() {
           <>
             {thisMonth.length > 0 && (
               <>
-                <Kicker label="This month" sub="Tap to read it back." />
+                <Kicker label={t('mobile.outreach.this_month')} sub={t('mobile.outreach.tap_to_read_it_back')} />
                 <View style={{ gap: 10 }}>
                   {thisMonth.map((o) => (
                     <OutreachCard
@@ -807,7 +809,7 @@ function Outreach() {
 
             {earlier.length > 0 && (
               <>
-                <Kicker label="Earlier months" />
+                <Kicker label={t('mobile.outreach.earlier_months')} />
                 <View style={{ gap: 10 }}>
                   {earlier.map((o) => (
                     <OutreachCard

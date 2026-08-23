@@ -9,8 +9,9 @@ import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
-import { FT_MORE, FT_MORE_FOOT, FT_MORE_INTRO, roleLabel } from '@cisa/core';
+import { FT_MORE, roleLabel } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
@@ -26,8 +27,24 @@ export function FtMoreScreen() {
 function FtMore() {
   const { c, font, radius, fs } = useV2Theme();
   const { user, role, isOwner } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const { open: openImpersonateSheet } = useImpersonateSheet();
+
+  const moreLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      journey: t('mobile.nav.the_journey'),
+      gatherings: t('nav.gatherings'),
+      prayers: t('mobile.nav.prayer_log'),
+      board: t('mobile.nav.the_board'),
+      outreach: t('nav.outreach'),
+      signup: t('mobile.nav.sign_up_form'),
+      tutorial: t('mobile.nav.how_this_works'),
+      settings: t('mobile.nav.settings'),
+    };
+    return labels[key] ?? key;
+  };
+
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
@@ -65,7 +82,7 @@ function FtMore() {
               marginTop: 8,
             }}
           >
-            {FT_MORE_INTRO}
+            {t('mobile.ft_more.intro')}
           </Text>
         </View>
 
@@ -85,7 +102,7 @@ function FtMore() {
               })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
-                {item.label}
+                {moreLabel(item.key)}
               </Text>
               {/* Drawn, not a glyph — v2's rule about text marks in tinted blocks. */}
               <View
@@ -114,7 +131,7 @@ function FtMore() {
               })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
-                See it as they do
+                {t('mobile.ft_more.see_it_as_they_do')}
               </Text>
               <View
                 style={{
@@ -139,7 +156,7 @@ function FtMore() {
             marginTop: 22,
           }}
         >
-          {FT_MORE_FOOT}
+          {t('mobile.ft_more.foot')}
         </Text>
       </ScrollView>
     </SafeAreaView>

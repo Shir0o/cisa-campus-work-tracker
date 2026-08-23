@@ -14,6 +14,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { memberAgo, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useMemberPrayerData } from '../../lib/useMemberPrayerData';
 import { useV2Theme } from '../../theme/v2';
 import { Translate } from '../Translate';
@@ -41,6 +42,7 @@ function CarryButton({
   onPress: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <Pressable
       onPress={() => !carried && onPress()}
@@ -61,7 +63,7 @@ function CarryButton({
       <Text
         style={{ fontFamily: font.bold, fontSize: fs(13.5), color: carried ? c.widget.ink3 : c.card.deep }}
       >
-        {carried ? 'Prayed today ✓' : label}
+        {carried ? t('mobile.prayer.prayed_today') : label}
       </Text>
     </Pressable>
   );
@@ -125,6 +127,7 @@ function InlineLink({ label, onPress }: { label: string; onPress: () => void }) 
 function MemberPrayer({ role }: { role: MemberRole }) {
   const { c, font, radius, shadow, fs } = useV2Theme();
   const { uid, user } = useAuth();
+  const { t } = useLanguage();
   const data = useMemberPrayerData(uid, user?.displayName ?? null, role);
   const [sheet, setSheet] = React.useState<'ask' | 'heart' | null>(null);
   const [toast, setToast] = React.useState<string | null>(null);
@@ -134,8 +137,8 @@ function MemberPrayer({ role }: { role: MemberRole }) {
       <>
         <MemberScreen loading={data.loading} error={data.error}>
           <MemberHead
-            greeting="Prayer"
-            intro="A window into what the team is holding. Yours to carry too — this page is only for reading."
+            greeting={t('mobile.prayer.greeting')}
+            intro={t('mobile.prayer.community_intro')}
             showDate={false}
           />
           <View style={{ gap: 10 }}>
@@ -143,14 +146,14 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               <Text
                 style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
               >
-                Nothing open right now.
+                {t('mobile.prayer.nothing_open')}
               </Text>
             )}
             {data.holding.map((row) => (
               <PrayerCard key={row.prayerId} title={<Translate text={row.burden} />} meta={`For ${row.who}`}>
                 <CarryButton
                   carried={data.carriedToday(row.prayerId)}
-                  label="I'm praying for this"
+                  label={t('mobile.prayer.im_praying_for_this')}
                   onPress={() => {
                     data.markCarried(row.prayerId);
                     setToast('Thank you for carrying that.');
@@ -159,7 +162,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </PrayerCard>
             ))}
           </View>
-          <MemberFoot>Names, not cases. Thank you for holding them.</MemberFoot>
+          <MemberFoot>{t('mobile.prayer.names_not_cases')}</MemberFoot>
         </MemberScreen>
         {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
       </>
@@ -170,8 +173,8 @@ function MemberPrayer({ role }: { role: MemberRole }) {
     <>
       <MemberScreen loading={data.loading} error={data.error}>
         <MemberHead
-          greeting="Prayer"
-          intro="Something you'd like prayed for, and the people on your own heart."
+          greeting={t('mobile.prayer.greeting')}
+          intro={t('mobile.prayer.student_intro')}
           showDate={false}
         />
 
@@ -189,7 +192,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
           })}
         >
           <Text style={{ fontFamily: font.extra, fontSize: fs(16.5), color: c.widget.onDeep }}>
-            Ask the team to pray
+            {t('mobile.prayer.ask_team_to_pray')}
           </Text>
           <Text
             style={{
@@ -201,13 +204,13 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               marginTop: 3,
             }}
           >
-            The team will see it — nobody else
+            {t('mobile.prayer.the_team_will_see')}
           </Text>
         </Pressable>
 
         {data.asks.open.length > 0 && (
           <View>
-            <Sech label="What you've asked" count={data.asks.open.length} />
+            <Sech label={t('mobile.prayer.what_youve_asked')} count={data.asks.open.length} />
             <View style={{ gap: 10 }}>
               {data.asks.open.map((ask) => (
                 <PrayerCard
@@ -216,7 +219,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
                   meta={`The team is praying · ${memberAgo(ask.createdAt)}`}
                 >
                   <InlineLink
-                    label="God answered this →"
+                    label={t('mobile.prayer.god_answered')}
                     onPress={() => {
                       void data.markAskAnswered(ask.id);
                       setToast('Thank God. Marked answered.');
@@ -229,7 +232,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
         )}
 
         <View>
-          <Sech label="People on your heart" count={data.onYourHeart.open.length} />
+          <Sech label={t('mobile.prayer.people_on_your_heart')} count={data.onYourHeart.open.length} />
           <Text
             style={{
               fontFamily: font.medium,
@@ -240,14 +243,14 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               marginBottom: 10,
             }}
           >
-            Just between you and God. Nobody on the team sees this.
+            {t('mobile.prayer.just_between_you')}
           </Text>
           <View style={{ gap: 10 }}>
             {data.onYourHeart.open.length === 0 && (
               <Text
                 style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}
               >
-                Nobody yet — add the first person below.
+                {t('mobile.prayer.nobody_yet')}
               </Text>
             )}
             {data.onYourHeart.open.map((p) => (
@@ -255,14 +258,14 @@ function MemberPrayer({ role }: { role: MemberRole }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <CarryButton
                     carried={data.carriedToday(p.id)}
-                    label="I prayed just now"
+                    label={t('mobile.prayer.i_prayed_just_now')}
                     onPress={() => {
                       data.markCarried(p.id);
                       setToast('Thank you for carrying that.');
                     }}
                   />
                   <InlineLink
-                    label="Answered"
+                    label={t('mobile.prayer.answered')}
                     onPress={() => {
                       void data.markHeartAnswered(p.id);
                       setToast('Answered — kept for looking back.');
@@ -286,26 +289,26 @@ function MemberPrayer({ role }: { role: MemberRole }) {
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(14.5), color: c.room.ink2 }}>
-              Add someone
+              {t('mobile.prayer.add_someone')}
             </Text>
           </Pressable>
         </View>
 
         {(data.onYourHeart.answered.length > 0 || data.asks.answered.length > 0) && (
           <View>
-            <Sech label="Looking back" />
+            <Sech label={t('mobile.prayer.looking_back')} />
             <View style={{ gap: 10 }}>
               {data.asks.answered.map((a) => (
-                <PrayerCard key={a.id} title={<Translate text={a.body} />} meta="Answered" quiet />
+                <PrayerCard key={a.id} title={<Translate text={a.body} />} meta={t('mobile.prayer.answered')} quiet />
               ))}
               {data.onYourHeart.answered.map((p) => (
-                <PrayerCard key={p.id} title={<Translate text={p.title} />} meta="Answered" quiet />
+                <PrayerCard key={p.id} title={<Translate text={p.title} />} meta={t('mobile.prayer.answered')} quiet />
               ))}
             </View>
           </View>
         )}
 
-        <MemberFoot>Small, honest prayers, kept up over time.</MemberFoot>
+        <MemberFoot>{t('mobile.prayer.small_honest_prayers')}</MemberFoot>
       </MemberScreen>
 
       <AskSheet

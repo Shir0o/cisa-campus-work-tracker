@@ -18,6 +18,7 @@ import {
   type ChatRoom,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { deleteChatRoom, hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
@@ -48,6 +49,7 @@ function ConversationRow({
   unread: boolean;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const router = useRouter();
   const kind = chatKindNote(room);
   // A DM wears the person's own stable colour; the two kinds of room-for-many
@@ -96,7 +98,7 @@ function ConversationRow({
         <Translate
           numberOfLines={1}
           style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink2, marginTop: 2 }}
-          text={preview || 'No messages yet'}
+          text={preview || t('mobile.messages.no_messages')}
         />
         {!!kind && (
           <Text style={{ fontFamily: font.semi, fontSize: fs(11.5), color: c.card.ink3, marginTop: 3 }}>{kind}</Text>
@@ -117,6 +119,7 @@ function Messages() {
   const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { uid, role } = useAuth();
+  const { t } = useLanguage();
   const data = useMessagesData();
 
   // "Delete for me" hides the room from this user's list only — anyone can do
@@ -137,14 +140,14 @@ function Messages() {
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen
-        title="Messages"
+        title={t('mobile.messages.title')}
         note={messagesScreenNote(data.rooms.length, data.unreadCount)}
         onBack={isPushedScreen(role, 'messages') ? back : undefined}
       >
         <Text
           style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.room.ink3, marginBottom: 6 }}
         >
-          The conversations you're part of — students, the team, and what gets announced.
+          {t('mobile.messages.the_conversations_youre_part_of')}
         </Text>
 
         {data.loading ? (
@@ -152,7 +155,7 @@ function Messages() {
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : data.rooms.length === 0 ? (
-          <V2Empty>No conversations yet.</V2Empty>
+          <V2Empty>{t('mobile.messages.no_conversations')}</V2Empty>
         ) : (
           data.rooms.map((room) => {
             const canDeleteForEveryone = canRemoveConvForEveryone(room, uid, role === 'admin');

@@ -23,6 +23,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { canPostToRoom, chatKindNote, getRoomName, memberSenderName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { deleteChatMessage } from '../../lib/data/chat';
 import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -38,6 +39,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
   const { colors } = useTheme();
   const router = useRouter();
   const { uid, role } = useAuth();
+  const { t } = useLanguage();
   const data = useChatThreadData(roomId ?? '');
   const [text, setText] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; text: string } | null>(null);
@@ -63,14 +65,14 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', marginRight: 4, opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>{t('mobile.common.back')}</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
             style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.room.ink }}
           >
-            {name || 'Loading…'}
+            {name || t('mobile.common.loading')}
           </Text>
           {!!data.room && !!chatKindNote(data.room) && (
             <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
@@ -107,7 +109,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink }}>{name}</Text>
                 <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
-                  Tap to view profile →
+                  {t('mobile.messages.tap_to_view_profile')}
                 </Text>
               </View>
             </Pressable>
@@ -128,7 +130,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                 paddingVertical: 24,
               }}
             >
-              Nothing here yet. Send one to start it off.
+              {t('mobile.messages.nothing_here_yet')}
             </Text>
           ) : (
             data.dayGroups.map((group) => (
@@ -227,7 +229,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
             <TextInput
               value={text}
               onChangeText={setText}
-              placeholder="Write a message…"
+              placeholder={t('mobile.messages.write_a_message')}
               placeholderTextColor={c.room.ink3}
               multiline
               style={{
@@ -265,14 +267,14 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                   color: text.trim() ? c.card.onPrimary : c.room.ink3,
                 }}
               >
-                Send
+                {t('mobile.common.send')}
               </Text>
             </Pressable>
           </View>
         ) : (
           <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
             <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.room.ink3, textAlign: 'center' }}>
-              Only full-timers post into announcements.
+              {t('mobile.messages.only_full_timers_post')}
             </Text>
           </View>
         )}
@@ -298,7 +300,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
               gap: 12,
             }}
           >
-            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.room.ink }}>Delete message?</Text>
+            <Text style={{ fontFamily: font.extra, fontSize: fs(16), color: c.room.ink }}>{t('mobile.messages.delete_message')}</Text>
             <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.room.ink2 }} numberOfLines={2}>
               "{deleteTarget.text}"
             </Text>
@@ -307,7 +309,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                 onPress={() => setDeleteTarget(null)}
                 style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: c.room.chip }}
               >
-                <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>Cancel</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>{t('mobile.common.cancel')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -317,7 +319,7 @@ export function ChatThreadScreen({ roomId: propRoomId }: { roomId?: string } = {
                 }}
                 style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.error }}
               >
-                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>Delete</Text>
+                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>{t('mobile.common.delete')}</Text>
               </Pressable>
             </View>
           </View>
