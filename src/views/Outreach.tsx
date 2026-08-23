@@ -29,6 +29,8 @@ import { addThreadMessage, subscribeAllThreads } from '../lib/threads';
 import { canLogOutreach } from '../lib/permissions';
 import { cn, getUserInitials } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
+import { Translate } from '../components/Translate';
 import { Contact } from '../types';
 import PageContainer from '../components/layout/PageContainer';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
@@ -79,21 +81,21 @@ const MO_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
 const otDayNum = (s: string) => parseInt(s.slice(8, 10), 10);
 const otMonth = (s: string) => MO_SHORT[parseInt(s.slice(5, 7), 10) - 1] ?? '';
 const outreachDaysSince = (dateStr: string) => Math.round((Date.now() - new Date(dateStr + 'T12:00:00Z').getTime()) / DAY_MS);
-const otWhen = (s: string) => {
+const otWhen = (s: string, t: (key: string, fallback?: string) => string) => {
   const n = outreachDaysSince(s);
-  if (n <= 0) return 'today';
-  if (n === 1) return 'yesterday';
-  if (n < 21) return `${n} days ago`;
+  if (n <= 0) return t('outreach.today');
+  if (n === 1) return t('outreach.yesterday');
+  if (n < 21) return t('outreach.days_ago').replace('{n}', String(n));
   return `${otMonth(s)} ${otDayNum(s)}`;
 };
 const otFirst = (n: string) => (n || '').split(' ')[0];
-const otAnd = (a: string[]) =>
-  a.length <= 1 ? a[0] || '' : a.length === 2 ? `${a[0]} and ${a[1]}` : `${a.slice(0, -1).join(', ')} and ${a[a.length - 1]}`;
-const otHandedLine = (h?: OutreachRecord['handed']) =>
+const otAnd = (a: string[], t: (key: string, fallback?: string) => string) =>
+  a.length <= 1 ? a[0] || '' : a.length === 2 ? `${a[0]} ${t('outreach.and')} ${a[1]}` : `${a.slice(0, -1).join(', ')} ${t('outreach.and')} ${a[a.length - 1]}`;
+const otHandedLine = (h: OutreachRecord['handed'] | undefined, t: (key: string, fallback?: string) => string) =>
   [
-    h && h.bibles ? `${h.bibles} Bibles` : null,
-    h && h.tracts ? `${h.tracts} tracts` : null,
-    h && h.booklets ? `${h.booklets} booklets` : null,
+    h && h.bibles ? `${h.bibles} ${t('outreach.bibles')}` : null,
+    h && h.tracts ? `${h.tracts} ${t('outreach.tracts')}` : null,
+    h && h.booklets ? `${h.booklets} ${t('outreach.booklets')}` : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -280,6 +282,7 @@ function PendingRow({
   contactById: (id?: string | null) => Contact | undefined;
   userById: (id?: string | null) => AppUser | undefined;
 }) {
+  const { t } = useLanguage();
   const { o, n, days } = item;
   const who = userById(n.spokeWith);
   const mine = n.takenBy ? n.takenBy === me : n.spokeWith === me;
@@ -293,26 +296,26 @@ function PendingRow({
           <div className="flex items-baseline gap-2 flex-wrap">
             <span className="font-semibold text-on-surface">{n.name}</span>
             <span className={cn('text-xs', cold ? 'text-warning' : 'text-on-surface-variant')}>
-              {days <= 0 ? 'met today' : days === 1 ? 'met yesterday' : `${days} days waiting`}
+              {days <= 0 ? t('outreach.met_today') : days === 1 ? t('outreach.met_yesterday') : t('outreach.days_waiting').replace('{n}', String(days))}
             </span>
           </div>
           <p className="text-sm text-on-surface-variant mt-0.5">
-            {n.contact || 'no number written down'} · met at {o.where}
-            {n.note && <> · {n.note}</>}
+            {n.contact || t('outreach.no_number_written')} · {t('outreach.met_at').replace('{where}', o.where)}
+            {n.note && <> · <Translate text={n.note} /></>}
           </p>
           <p className="text-xs text-on-surface-variant mt-0.5">
-            {(who?.displayName || n.spokeWith) && <>{who?.displayName || n.spokeWith} spoke with {otFirst(n.name)}</>}
+            {(who?.displayName || n.spokeWith) && <>{who?.displayName || n.spokeWith} {t('outreach.spoke_with').replace('{name}', otFirst(n.name))}</>}
             {n.takenBy && (
               <>
                 {' '}
-                · <b>{n.takenBy === me ? "you're" : `${otFirst(userById(n.takenBy)?.displayName || n.takenBy)} is`} following up</b>
+                · <b>{n.takenBy === me ? t('outreach.youre_following_up') : t('outreach.is_following_up').replace('{name}', otFirst(userById(n.takenBy)?.displayName || n.takenBy))}</b>
               </>
             )}
           </p>
         </div>
         <RowActions
           className="shrink-0"
-          label={`More for ${n.name}`}
+          label={t('outreach.more_for').replace('{name}', n.name)}
           items={buildContactRowActions({
             contact: contact || {
               id: '',
@@ -340,17 +343,17 @@ function PendingRow({
       <div className="flex gap-2 flex-wrap">
         {isAdmin && n.spokeWith !== me && !n.takenBy && (
           <button className={BTN_SM_GHOST} onClick={() => onNudge(o, n)}>
-            Remind {otFirst(who?.displayName || n.spokeWith || 'them')}
+            {t('outreach.remind').replace('{name}', otFirst(who?.displayName || n.spokeWith || t('outreach.them')))}
           </button>
         )}
         {isAdmin && !n.takenBy && (
           <button className={BTN_SM_PRIMARY} onClick={() => onTake(o, n)}>
-            I'll take this
+            {t('outreach.ill_take_this')}
           </button>
         )}
         {contact && (
           <button className={BTN_SM_PRIMARY} onClick={() => onOpenContact(contact)}>
-            {mine ? 'Ring them' : 'Open'}
+            {mine ? t('outreach.ring_them') : t('outreach.open')}
           </button>
         )}
       </div>
@@ -384,6 +387,7 @@ function OutreachCard({
   contactById: (id?: string | null) => Contact | undefined;
   userById: (id?: string | null) => AppUser | undefined;
 }) {
+  const { t } = useLanguage();
   const [confirm, setConfirm] = useState(false);
   const names = item.names || [];
   const reached = names.filter((n) => outreachReached(item, n, touches)).length;
@@ -399,17 +403,17 @@ function OutreachCard({
         <div className="min-w-0 flex-1">
           <h3 className="font-serif text-[19px] font-medium text-on-surface leading-snug">{item.where}</h3>
           <div className="flex items-center gap-2 flex-wrap text-[13px] text-on-surface-variant mt-1">
-            <span>{otWhen(item.date)}</span>
+            <span>{otWhen(item.date, t)}</span>
             <span>·</span>
-            <span>{went.length + (item.others || 0)} of us went</span>
-            {otHandedLine(item.handed) && (
+            <span>{t('outreach.of_us_went').replace('{n}', String(went.length + (item.others || 0)))}</span>
+            {otHandedLine(item.handed, t) && (
               <>
                 <span>·</span>
-                <span>{otHandedLine(item.handed)}</span>
+                <span>{otHandedLine(item.handed, t)}</span>
               </>
             )}
           </div>
-          {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2">{item.how.split('\n')[0]}</p>}
+          {!open && item.how && <p className="mt-2 text-sm text-on-surface-variant line-clamp-2"><Translate text={item.how.split('\n')[0]} /></p>}
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="flex">
@@ -425,11 +429,11 @@ function OutreachCard({
           <div className="flex gap-1.5 items-center">
             {names.length > 0 ? (
               <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-semibold bg-stage-accent-soft text-stage-accent whitespace-nowrap">
-                {names.length} {names.length === 1 ? 'name' : 'names'}
-                {reached > 0 && <span className="border-l border-current opacity-65 pl-1.5 font-medium">{reached} reached</span>}
+                {names.length} {names.length === 1 ? t('outreach.name') : t('outreach.names')}
+                {reached > 0 && <span className="border-l border-current opacity-65 pl-1.5 font-medium">{reached} {t('outreach.reached')}</span>}
               </span>
             ) : (
-              <span className="inline-flex h-5 px-2 rounded-full text-[11px] font-medium italic bg-surface-container-high text-on-surface-variant">no names</span>
+              <span className="inline-flex h-5 px-2 rounded-full text-[11px] font-medium italic bg-surface-container-high text-on-surface-variant">{t('outreach.no_names')}</span>
             )}
             {nPhotos > 0 && (
               <span className="inline-flex items-center gap-1 h-5 px-2 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface-variant">
@@ -445,21 +449,21 @@ function OutreachCard({
       {open && (
         <div className="px-4 sm:px-5 pb-4 pt-3 border-t border-outline-variant space-y-4">
           <div>
-            <div className="text-[11px]   text-on-surface-variant mb-1.5">How it went</div>
+            <div className="text-[11px]   text-on-surface-variant mb-1.5">{t('outreach.how_it_went')}</div>
             {item.how ? (
               item.how.split('\n').filter(Boolean).map((p, i) => (
                 <p key={i} className="text-[15px] leading-relaxed text-on-surface">
-                  {p}
+                  <Translate text={p} />
                 </p>
               ))
             ) : (
-              <p className="text-sm italic text-on-surface-variant">Nothing written down yet.</p>
+              <p className="text-sm italic text-on-surface-variant">{t('outreach.nothing_written_down_yet')}</p>
             )}
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div>
-              <div className="text-[11px]   text-on-surface-variant mb-1.5">Who went</div>
+              <div className="text-[11px]   text-on-surface-variant mb-1.5">{t('outreach.who_went')}</div>
               <div className="flex flex-wrap gap-2">
                 {went.map((id) => (
                   <span key={id} className="inline-flex items-center gap-2 text-sm text-on-surface-variant">
@@ -467,22 +471,22 @@ function OutreachCard({
                     {userById(id)?.displayName || id}
                   </span>
                 ))}
-                {item.others > 0 && <span className="text-sm italic text-on-surface-variant">and {item.others} others from church</span>}
+                {item.others > 0 && <span className="text-sm italic text-on-surface-variant">{t('outreach.and_others_from_church').replace('{n}', String(item.others))}</span>}
               </div>
             </div>
             <div>
-              <div className="text-[11px]   text-on-surface-variant mb-1.5">What we handed out</div>
+              <div className="text-[11px]   text-on-surface-variant mb-1.5">{t('outreach.what_we_handed_out')}</div>
               <div className="flex gap-4 flex-wrap">
                 {(
                   [
-                    ['bibles', 'Bibles'],
-                    ['tracts', 'tracts'],
-                    ['booklets', 'booklets'],
+                    ['bibles', 'outreach.bibles'],
+                    ['tracts', 'outreach.tracts'],
+                    ['booklets', 'outreach.booklets'],
                   ] as const
                 ).map(([k, label]) => (
                   <span key={k} className="text-sm text-on-surface-variant">
                     <b className="font-serif text-xl font-medium text-on-surface mr-1.5">{item.handed?.[k] || 0}</b>
-                    {label}
+                    {t(label)}
                   </span>
                 ))}
               </div>
@@ -490,9 +494,9 @@ function OutreachCard({
           </div>
 
           <div>
-            <div className="text-[11px]   text-on-surface-variant mb-1.5">Who left us their number</div>
+            <div className="text-[11px]   text-on-surface-variant mb-1.5">{t('outreach.who_left_us_their_number')}</div>
             {names.length === 0 ? (
-              <p className="text-sm italic text-on-surface-variant">Nobody, this time. It still counted.</p>
+              <p className="text-sm italic text-on-surface-variant">{t('outreach.nobody_this_time')}</p>
             ) : (
               <div className="flex flex-col gap-1.5">
                 {names.map((n) => {
@@ -509,16 +513,16 @@ function OutreachCard({
                         <span className="block text-sm font-medium text-on-surface">{n.name}</span>
                         <span className="block text-xs text-on-surface-variant truncate">
                           {n.contact}
-                          {n.note && <> · {n.note}</>}
+                          {n.note && <> · <Translate text={n.note} /></>}
                         </span>
                       </span>
                       <span className={cn('text-xs shrink-0 inline-flex items-center gap-1', done ? 'text-success' : 'text-on-surface-variant')}>
                         {done ? (
                           <>
-                            <Check className="w-3 h-3" /> reached
+                            <Check className="w-3 h-3" /> {t('outreach.reached')}
                           </>
                         ) : (
-                          'still waiting'
+                          t('outreach.still_waiting')
                         )}
                       </span>
                     </button>
@@ -531,21 +535,21 @@ function OutreachCard({
           {isAdmin && (
             <div className="flex items-center gap-4 pt-1">
               <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-on-surface" onClick={onEdit}>
-                <Pencil className="w-3 h-3" /> Edit this one
+                <Pencil className="w-3 h-3" /> {t('outreach.edit_this_one')}
               </button>
               {confirm ? (
                 <span className="inline-flex items-center gap-2 text-xs text-on-surface-variant">
-                  Remove it from the record?
+                  {t('outreach.remove_it_from_record')}
                   <button className={cn(BTN_SM, 'bg-error text-on-error')} onClick={onRemove}>
-                    Remove
+                    {t('outreach.remove')}
                   </button>
                   <button className={BTN_SM_GHOST} onClick={() => setConfirm(false)}>
-                    Keep
+                    {t('outreach.keep')}
                   </button>
                 </span>
               ) : (
                 <button className="inline-flex items-center gap-1 text-xs font-medium text-on-surface-variant hover:text-error" onClick={() => setConfirm(true)}>
-                  <Trash2 className="w-3 h-3" /> Remove
+                  <Trash2 className="w-3 h-3" /> {t('outreach.remove')}
                 </button>
               )}
             </div>
@@ -576,6 +580,7 @@ function LogOutreachModal({
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const { t } = useLanguage();
   const editing = !!item;
   const [date, setDate] = useState(item ? item.date : new Date().toISOString().slice(0, 10));
   const [where, setWhere] = useState(item ? item.where : '');
@@ -659,7 +664,7 @@ function LogOutreachModal({
           targetName: where.trim(),
           targetType: 'event',
           type: 'create',
-          description: names.length ? `${names.length} ${names.length === 1 ? 'person' : 'people'} left their number: ${otAnd(names.map((n) => n.name))}.` : 'No names written down.',
+          description: names.length ? `${names.length} ${names.length === 1 ? 'person' : 'people'} left their number: ${otAnd(names.map((n) => n.name), t)}.` : 'No names written down.',
         });
       }
       onSaved();
@@ -682,8 +687,8 @@ function LogOutreachModal({
               <BookOpen className="w-4 h-4" />
             </span>
             <div>
-              <div className="text-lg font-semibold text-on-surface">{editing ? 'Edit a gospel outing' : 'Log a gospel outing'}</div>
-              <div className="text-sm text-on-surface-variant">{editing ? 'Fix the record — nothing here notifies anyone.' : 'Write it down tonight, while the names still have faces.'}</div>
+              <div className="text-lg font-semibold text-on-surface">{editing ? t('outreach.edit_gospel_outing') : t('outreach.log_gospel_outing')}</div>
+              <div className="text-sm text-on-surface-variant">{editing ? t('outreach.edit_gospel_outing_sub') : t('outreach.log_gospel_outing_sub')}</div>
             </div>
           </div>
           <button className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant cursor-pointer" onClick={onClose}>
@@ -694,17 +699,17 @@ function LogOutreachModal({
         <div className="overflow-y-auto custom-scrollbar flex-1 p-6 space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-xs font-semibold text-on-surface-variant   px-1">When</span>
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.when')}</span>
               <input type="date" className={cn(INPUT, 'mt-1.5')} value={date} onChange={(e) => setDate(e.target.value)} />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold text-on-surface-variant   px-1">Where</span>
-              <input className={cn(INPUT, 'mt-1.5')} value={where} placeholder="e.g. Cedar Park — the north lawn" onChange={(e) => setWhere(e.target.value)} />
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.where')}</span>
+              <input className={cn(INPUT, 'mt-1.5')} value={where} placeholder={t('outreach.where_placeholder')} onChange={(e) => setWhere(e.target.value)} />
             </label>
           </div>
 
           <div>
-            <span className="text-xs font-semibold text-on-surface-variant   px-1">Who went</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.who_went')}</span>
             <div className="flex flex-wrap gap-2 mt-2">
               {goers.map((u) => (
                 <button
@@ -720,54 +725,54 @@ function LogOutreachModal({
               ))}
             </div>
             <div className="flex items-center gap-2 mt-2 text-sm text-on-surface-variant">
-              <span>plus</span>
+              <span>{t('outreach.plus')}</span>
               <input className={cn(INPUT, 'w-16 text-center')} value={others} onChange={(e) => setOthers(e.target.value)} placeholder="0" />
-              <span>others from church</span>
+              <span>{t('outreach.others_from_church')}</span>
             </div>
           </div>
 
           <div>
-            <span className="text-xs font-semibold text-on-surface-variant   px-1">What we handed out</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.what_we_handed_out')}</span>
             <div className="flex gap-4 flex-wrap mt-2">
               {(
                 [
-                  ['bibles', 'Bibles'],
-                  ['tracts', 'Tracts'],
-                  ['booklets', 'Booklets'],
+                  ['bibles', 'outreach.bibles'],
+                  ['tracts', 'outreach.tracts'],
+                  ['booklets', 'outreach.booklets'],
                 ] as const
               ).map(([k, label]) => (
                 <label key={k} className="flex items-center gap-2 text-sm text-on-surface-variant">
                   <input className={cn(INPUT, 'w-16 text-center')} value={handed[k]} onChange={(e) => setHanded((h) => ({ ...h, [k]: e.target.value }))} placeholder="0" />
-                  {label}
+                  {t(label)}
                 </label>
               ))}
             </div>
           </div>
 
           <label className="block">
-            <span className="text-xs font-semibold text-on-surface-variant   px-1">How it went</span>
+            <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.how_it_went')}</span>
             <textarea
               className="mt-1.5 w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface resize-none"
               rows={5}
               value={how}
               onChange={(e) => setHow(e.target.value)}
-              placeholder="Where you set up, who preached, what people asked — what you'd want to remember next month."
+              placeholder={t('outreach.how_placeholder')}
             />
           </label>
 
           {!editing && (
             <div>
-              <span className="text-xs font-semibold text-on-surface-variant   px-1">Who left us their number</span>
+              <span className="text-xs font-semibold text-on-surface-variant   px-1">{t('outreach.who_left_us_their_number')}</span>
               <div className="flex flex-col gap-3 mt-2">
                 {rows.map((r) => (
                   <div key={r.key} className="rounded-2xl border border-outline-variant bg-surface-container-high p-3 space-y-2">
                     <div className="flex gap-2 flex-wrap">
-                      <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.name} placeholder="Their name" onChange={(e) => setRow(r.key, { name: e.target.value })} />
-                      <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.contact} placeholder="Number or email" onChange={(e) => setRow(r.key, { contact: e.target.value })} />
+                      <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.name} placeholder={t('outreach.their_name')} onChange={(e) => setRow(r.key, { name: e.target.value })} />
+                      <input className={cn(INPUT, 'flex-1 min-w-[120px]')} value={r.contact} placeholder={t('outreach.number_or_email')} onChange={(e) => setRow(r.key, { contact: e.target.value })} />
                       <select className={cn(INPUT, 'appearance-none cursor-pointer flex-1 min-w-[160px]')} value={r.spokeWith} onChange={(e) => setRow(r.key, { spokeWith: e.target.value })}>
                         {goers.map((u) => (
                           <option key={u.uid} value={u.uid}>
-                            {u.displayName} spoke with them
+                            {u.displayName} {t('outreach.spoke_with_them')}
                           </option>
                         ))}
                       </select>
@@ -777,16 +782,16 @@ function LogOutreachModal({
                         </button>
                       )}
                     </div>
-                    <input className={INPUT} value={r.note} placeholder="What they said, what they took" onChange={(e) => setRow(r.key, { note: e.target.value })} />
+                    <input className={INPUT} value={r.note} placeholder={t('outreach.what_they_said')} onChange={(e) => setRow(r.key, { note: e.target.value })} />
                   </div>
                 ))}
               </div>
               <button className="inline-flex items-center gap-1 text-sm font-semibold text-accent mt-3 cursor-pointer hover:underline" onClick={() => setRows((rs) => rs.concat({ key: nextKey.current++, name: '', contact: '', spokeWith: me, note: '' }))}>
-                <Plus className="w-3 h-3" /> Another name
+                <Plus className="w-3 h-3" /> {t('outreach.another_name')}
               </button>
               {filled.length > 0 && (
                 <p className="text-xs text-on-surface-variant mt-2">
-                  {filled.length} {filled.length === 1 ? 'person joins' : 'people join'} the app tonight — and {filled.length === 1 ? 'lands' : 'land'} on the list of people to reach tomorrow.
+                  {t('outreach.person_joins_app').replace('{n}', String(filled.length))}
                 </p>
               )}
             </div>
@@ -794,12 +799,12 @@ function LogOutreachModal({
         </div>
 
         <div className="px-6 py-4 border-t border-outline-variant shrink-0 flex items-center gap-3 bg-surface-container-low/50">
-          <span className="flex-1 text-sm text-on-surface-variant">{where.trim() ? 'The names become real contacts tonight.' : 'Say where you went.'}</span>
+          <span className="flex-1 text-sm text-on-surface-variant">{where.trim() ? t('outreach.names_become_contacts') : t('outreach.say_where_you_went')}</span>
           <button className={BTN_GHOST} onClick={onClose}>
-            Cancel
+            {t('outreach.cancel')}
           </button>
           <button className={BTN_PRIMARY} disabled={!where.trim() || saving} onClick={submit}>
-            {saving ? 'Saving…' : editing ? 'Save changes' : 'Log the outing'}
+            {saving ? t('outreach.saving') : editing ? t('outreach.save_changes') : t('outreach.log_the_outing')}
           </button>
         </div>
       </div>
@@ -810,6 +815,7 @@ function LogOutreachModal({
 // ── the page ───────────────────────────────────────────────────────────────
 export default function Outreach() {
   const { user, role } = useAuth();
+  const { t } = useLanguage();
   const me = user?.uid || '';
   const userName = user?.displayName || 'Someone';
   // Outreach is full-timer + community: both see and log (canLog); only the
@@ -836,7 +842,7 @@ export default function Outreach() {
         { title: `Ring ${otFirst(n.name)} — met at ${o.where}`, assigneeId: me, dueDate: dueTomorrow(), contactId: n.contactId, contactName: n.name },
         { uid: me, name: userName },
       );
-      showToast(`${otFirst(n.name)} is yours — it's on your list for tomorrow.`);
+      showToast(t('outreach.yours_for_tomorrow').replace('{name}', otFirst(n.name)));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, `outreach/${o.id}`);
     }
@@ -850,7 +856,7 @@ export default function Outreach() {
         { to: n.spokeWith, contactName: n.name },
       );
     }
-    showToast(`Sent ${otFirst(userById(n.spokeWith)?.displayName || n.spokeWith)} a reminder about ${otFirst(n.name)}.`);
+    showToast(t('outreach.sent_reminder').replace('{person}', otFirst(userById(n.spokeWith)?.displayName || n.spokeWith)).replace('{name}', otFirst(n.name)));
   };
 
   const remove = async (o: OutreachRecord) => {
@@ -910,31 +916,31 @@ export default function Outreach() {
     <PageContainer variant="wide">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-xs font-medium   text-on-surface-variant">Once a month, out in the open</div>
-          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-on-surface mt-1">Gospel</h1>
+          <div className="text-xs font-medium   text-on-surface-variant">{t('outreach.once_a_month_out_in_the_open')}</div>
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium text-on-surface mt-1">{t('outreach.gospel')}</h1>
           <p className="text-on-surface-variant mt-2 max-w-2xl">
             {last ? (
               <>
-                Last time out was <b className="text-on-surface">{otWhen(last.date)}</b> at {last.where}.{' '}
+                {t('outreach.last_time_out').replace('{when}', otWhen(last.date, t)).replace('{where}', last.where)}{' '}
                 {pending.length > 0 ? (
                   <>
                     <b className="text-on-surface">
-                      {pending.length} {pending.length === 1 ? 'person' : 'people'}
+                      {(pending.length === 1 ? t('outreach.pending_people') : t('outreach.pending_people_plural')).replace('{n}', String(pending.length))}
                     </b>{' '}
-                    left us a number and {pending.length === 1 ? "hasn't" : "haven't"} heard back yet — that's the whole job this week.
+                    {pending.length === 1 ? t('outreach.pending_left_singular') : t('outreach.pending_left_plural')}
                   </>
                 ) : (
-                  <>Everyone who left us a number has heard from someone. That's rare, and worth saying out loud.</>
+                  <>{t('outreach.everyone_heard_back')}</>
                 )}
               </>
             ) : (
-              <>Nothing written down yet. Log a month once you're home — the names are the part that matters.</>
+              <>{t('outreach.nothing_written_header')}</>
             )}
           </p>
         </div>
         {canLog && (
           <button className={BTN_PRIMARY} onClick={() => setLogOpen(true)}>
-            <Plus className="w-4 h-4" /> Log a gospel outing
+            <Plus className="w-4 h-4" /> {t('outreach.log_a_gospel_outing')}
           </button>
         )}
       </div>
@@ -942,8 +948,8 @@ export default function Outreach() {
       {pending.length > 0 && (
         <section className="mt-8">
           <div className="flex items-baseline gap-3 mb-3">
-            <h2 className="font-semibold text-lg text-on-surface">People we met, not yet reached</h2>
-            <span className="text-sm text-on-surface-variant">A number given is a door held open. It doesn't stay open long.</span>
+            <h2 className="font-semibold text-lg text-on-surface">{t('outreach.people_not_yet_reached')}</h2>
+            <span className="text-sm text-on-surface-variant">{t('outreach.door_held_open')}</span>
           </div>
           <div className="flex flex-col gap-2.5">
             {pending.map((p) => (
@@ -960,17 +966,17 @@ export default function Outreach() {
         </div>
       ) : (
         <>
-          <Group title="This month" sub="Tap to read it back." list={thisMonth} />
-          <Group title="Earlier months" list={earlier} />
+          <Group title={t('outreach.this_month')} sub={t('outreach.tap_to_read_it_back')} list={thisMonth} />
+          <Group title={t('outreach.earlier_months')} list={earlier} />
 
           {thisMonth.length === 0 && earlier.length === 0 && (
             <div className="mt-8 rounded-2xl border border-outline-variant bg-surface-container p-6">
               <p className="text-on-surface-variant">
-                Nothing here yet. A gospel outing gets written down after you're home — where you went, who came, what you handed out, and every name that came back with you.
+                {t('outreach.nothing_here_yet')}
               </p>
               {canLog && (
                 <button className={cn(BTN_PRIMARY, 'mt-4')} onClick={() => setLogOpen(true)}>
-                  <Plus className="w-4 h-4" /> Log a gospel outing
+                  <Plus className="w-4 h-4" /> {t('outreach.log_a_gospel_outing')}
                 </button>
               )}
             </div>
@@ -979,9 +985,9 @@ export default function Outreach() {
           <div className="bg-surface rounded-3xl border border-outline-variant/60 px-6 py-5 flex flex-wrap items-end gap-x-8 gap-y-3 mt-8">
             {(
               [
-                [stats.months, 'months out'],
-                [stats.names, 'names came back with us'],
-                [stats.bibles, 'Bibles into hands'],
+                [stats.months, t('outreach.months_out')],
+                [stats.names, t('outreach.names_came_back_with_us')],
+                [stats.bibles, t('outreach.bibles_into_hands')],
               ] as const
             ).map(([n, l]) => (
               <div key={l} className="flex items-baseline gap-2">
@@ -989,7 +995,7 @@ export default function Outreach() {
                 <span className="text-sm text-on-surface-variant">{l}</span>
               </div>
             ))}
-            <span className="text-xs text-on-surface-variant max-w-[240px] ml-auto">Counted only so nobody waits by a phone that never rings.</span>
+            <span className="text-xs text-on-surface-variant max-w-[240px] ml-auto">{t('outreach.counted_so_nobody_waits')}</span>
           </div>
         </>
       )}
@@ -1004,7 +1010,7 @@ export default function Outreach() {
           onClose={() => setLogOpen(false)}
           onSaved={() => {
             setLogOpen(false);
-            showToast('Logged — the names are real people now.');
+            showToast(t('outreach.logged_names_real_people'));
           }}
         />
       )}
@@ -1018,7 +1024,7 @@ export default function Outreach() {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
-            showToast('Record updated.');
+            showToast(t('outreach.record_updated'));
           }}
         />
       )}
