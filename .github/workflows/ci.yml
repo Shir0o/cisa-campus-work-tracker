@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
 
   mobile-test:
     name: Mobile Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     defaults:
       run:
