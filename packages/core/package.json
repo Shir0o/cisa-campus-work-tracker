@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "date-fns": "^4.1.0",
-    "firebase": "^12.12.1"
+    "firebase": "^12.17.1"
   },
   "devDependencies": {
     "typescript": "~5.8.2",
