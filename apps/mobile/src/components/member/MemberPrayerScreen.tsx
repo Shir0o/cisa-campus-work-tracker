@@ -150,13 +150,13 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </Text>
             )}
             {data.holding.map((row) => (
-              <PrayerCard key={row.prayerId} title={<Translate text={row.burden} />} meta={`For ${row.who}`}>
+              <PrayerCard key={row.prayerId} title={<Translate text={row.burden} />} meta={t('mobile.prayer.for_name').replace('{name}', row.who)}>
                 <CarryButton
                   carried={data.carriedToday(row.prayerId)}
                   label={t('mobile.prayer.im_praying_for_this')}
                   onPress={() => {
                     data.markCarried(row.prayerId);
-                    setToast('Thank you for carrying that.');
+                    setToast(t('mobile.prayer.thank_you_for_carrying'));
                   }}
                 />
               </PrayerCard>
@@ -216,13 +216,13 @@ function MemberPrayer({ role }: { role: MemberRole }) {
                 <PrayerCard
                   key={ask.id}
                   title={<Translate text={ask.body} />}
-                  meta={`The team is praying · ${memberAgo(ask.createdAt)}`}
+                  meta={t('mobile.prayer.the_team_is_praying').replace('{time}', memberAgo(ask.createdAt))}
                 >
                   <InlineLink
                     label={t('mobile.prayer.god_answered')}
                     onPress={() => {
                       void data.markAskAnswered(ask.id);
-                      setToast('Thank God. Marked answered.');
+                      setToast(t('mobile.prayer.thank_god_marked_answered'));
                     }}
                   />
                 </PrayerCard>
@@ -254,21 +254,21 @@ function MemberPrayer({ role }: { role: MemberRole }) {
               </Text>
             )}
             {data.onYourHeart.open.map((p) => (
-              <PrayerCard key={p.id} title={<Translate text={p.title} />} meta={`Since ${memberAgo(p.date)}`}>
+              <PrayerCard key={p.id} title={<Translate text={p.title} />} meta={t('mobile.prayer.since').replace('{time}', memberAgo(p.date))}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <CarryButton
                     carried={data.carriedToday(p.id)}
                     label={t('mobile.prayer.i_prayed_just_now')}
                     onPress={() => {
                       data.markCarried(p.id);
-                      setToast('Thank you for carrying that.');
+                      setToast(t('mobile.prayer.thank_you_for_carrying'));
                     }}
                   />
                   <InlineLink
                     label={t('mobile.prayer.answered')}
                     onPress={() => {
                       void data.markHeartAnswered(p.id);
-                      setToast('Answered — kept for looking back.');
+                      setToast(t('mobile.prayer.answered_kept_for_looking_back'));
                     }}
                   />
                 </View>
@@ -317,7 +317,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
         onSend={(body) => {
           void data.askTheTeam(body);
           setSheet(null);
-          setToast("Sent. They're praying with you.");
+          setToast(t('mobile.prayer.sent_theyre_praying_with_you'));
         }}
       />
       <OnYourHeartSheet
@@ -326,7 +326,7 @@ function MemberPrayer({ role }: { role: MemberRole }) {
         onAdd={(title) => {
           void data.addToYourHeart(title);
           setSheet(null);
-          setToast('Added — held in prayer.');
+          setToast(t('mobile.prayer.added_held_in_prayer'));
         }}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}

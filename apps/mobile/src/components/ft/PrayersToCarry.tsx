@@ -13,6 +13,7 @@
 import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { FT_WIDGET_ROWS, type FtCarryRow } from '@cisa/core';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { WidgetEmpty, WidgetRow, Widget } from '../v2/Widget';
 import { Translate } from '../Translate';
@@ -31,19 +32,20 @@ export function PrayersToCarry({
   onOpenPrayers: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const shown = rows.slice(0, FT_WIDGET_ROWS);
   return (
     // Everything below sits on `.ftw.deep`'s violet, so it wears that block's
     // own ink (#f2eef8) rather than the `pray` tone pill's — which is a dark
     // violet meant for a pale band and disappears here.
     <Widget
-      label="Prayers to carry"
+      label={t('mobile.prayer.prayers_to_carry')}
       count={rows.length}
       tone="deep"
-      link="The whole prayer log →"
+      link={t('mobile.prayer.whole_prayer_log')}
       onLink={onOpenPrayers}
     >
-      {shown.length === 0 && <WidgetEmpty>Nothing open right now.</WidgetEmpty>}
+      {shown.length === 0 && <WidgetEmpty>{t('mobile.prayer.nothing_open')}</WidgetEmpty>}
       {shown.map((row, i) => {
         const prayed = prayedToday(row.id);
         return (
@@ -67,8 +69,8 @@ export function PrayersToCarry({
               }}
             >
               {[
-                row.who ? (row.asked ? `${row.who} asked` : `For ${row.who}`) : null,
-                row.heavy ? 'weighs heavy' : null,
+                row.who ? (row.asked ? `${row.who} ${t('mobile.prayer.asked')}` : t('mobile.prayer.for_name').replace('{name}', row.who)) : null,
+                row.heavy ? t('mobile.prayer.weighs_heavy') : null,
               ]
                 .filter(Boolean)
                 .join(' · ')}
@@ -99,7 +101,7 @@ export function PrayersToCarry({
                     color: prayed ? c.card.onGreen : c.widget.onDeep,
                   }}
                 >
-                  {prayed ? 'Prayed today ✓' : 'I prayed just now'}
+                  {prayed ? t('mobile.prayer.prayed_today') : t('mobile.prayer.i_prayed_just_now')}
                 </Text>
               </Pressable>
               {row.asked && (
@@ -114,7 +116,7 @@ export function PrayersToCarry({
                   })}
                 >
                   <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.widget.onDeep }}>
-                    God answered this
+                    {t('mobile.prayer.god_answered_this')}
                   </Text>
                 </Pressable>
               )}
