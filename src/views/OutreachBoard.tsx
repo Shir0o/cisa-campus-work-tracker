@@ -38,6 +38,7 @@ import { cn, getUserInitials } from '../lib/utils';
 import { Contact, Stage } from '../types';
 import { useLayout } from '../App';
 import { useAuth } from '../components/AuthProvider';
+import { useLanguage } from '../components/LanguageProvider';
 import { Translate } from '../components/Translate';
 import { journeyContacts } from '../lib/permissions';
 import {
@@ -69,8 +70,8 @@ const parseMs = (s?: string | null): number | null => {
   return Number.isNaN(t) ? null : t;
 };
 const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
-const connectedLabel = (d: number) =>
-  d === 0 ? 'Connected today' : d === 1 ? 'Last connected yesterday' : `Last connected ${d} days ago`;
+const connectedLabel = (d: number, t: (key: string) => string) =>
+  d === 0 ? t('outreachBoard.connected_today') : d === 1 ? t('outreachBoard.last_connected_yesterday') : t('outreachBoard.last_connected_days').replace('{n}', String(d));
 const truncate = (s: string | undefined, n: number) =>
   s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, '') + '…' : s || '';
 
@@ -78,14 +79,14 @@ type Touch = { ms: number; note: string };
 type TouchMap = Map<string, Touch>;
 
 // Warm one-line captions for the four default stages (display-only; no schema).
-const STAGE_CAPTION: Record<string, string> = {
-  'first contact': "We've only just met — a name, a face, a first hello.",
-  'second contact': 'Following up — a coffee, a text, learning who they are.',
-  regular: 'Part of the rhythm now, around most weeks.',
-  church: 'Finding a church family to belong to.',
+const STAGE_CAPTION_KEY: Record<string, string> = {
+  'first contact': 'first_contact',
+  'second contact': 'second_contact',
+  regular: 'regular',
+  church: 'church',
 };
-const captionFor = (label?: string) =>
-  (label && STAGE_CAPTION[label.trim().toLowerCase()]) || '';
+const captionKeyFor = (label?: string) =>
+  (label && STAGE_CAPTION_KEY[label.trim().toLowerCase()]) || undefined;
 
 export type ToneKey = 'slate' | 'clay' | 'ochre' | 'sage' | 'teal' | 'indigo' | 'plum' | 'rose';
 
@@ -142,8 +143,8 @@ export type Tone = ToneKey;
 const toneFor = (color: string | undefined, index: number = 0): ToneKey =>
   toneKeyFor(color, index);
 
-const peopleCount = (n: number) =>
-  n === 0 ? 'no one yet' : n === 1 ? '1 person' : `${n} people`;
+const peopleCount = (n: number, t: (key: string) => string) =>
+  n === 0 ? t('outreachBoard.no_one_yet') : n === 1 ? t('outreachBoard.one_person') : t('outreachBoard.n_people').replace('{n}', String(n));
 
 function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md' }) {
   const dim = size === 'sm' ? 'w-8 h-8 text-xs' : 'w-11 h-11 text-sm';
@@ -180,6 +181,7 @@ export function __resetOutreachBoardStageCache() {
 }
 
 export default function OutreachBoard() {
+  const { t } = useLanguage();
   const { setSelectedContact, openNewContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const { isAdmin, user, role } = useAuth();
@@ -714,19 +716,19 @@ export default function OutreachBoard() {
         {/* Header — the journey, in prose */}
         <div className="px-4 py-5 sm:px-6 lg:px-8 border-b border-outline-variant/40 flex flex-col lg:flex-row lg:items-end justify-between shrink-0 bg-surface/60 backdrop-blur-md sticky top-0 z-20 gap-4">
           <div className="min-w-0">
-            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">The Journey</h1>
+            <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">{t('nav.the_journey')}</h1>
             <p className="text-sm sm:text-base text-on-surface-variant leading-relaxed mt-2 max-w-2xl">
               <b className="text-on-surface font-semibold">
-                {filteredContacts.length} {filteredContacts.length === 1 ? 'person' : 'people'}
+                {filteredContacts.length} {filteredContacts.length === 1 ? t('outreachBoard.person') : t('outreachBoard.people')}
               </b>{' '}
-              in our care
+              {t('outreachBoard.in_our_care')}
               {stages.length > 0 && (
                 <>
                   {' — '}
                   {breakdownParts.map((p, i) => (
                     <React.Fragment key={p.key}>
                       <span className="text-on-surface font-medium">{p.count}</span>{' '}
-                      {p.label}
+                      {p.label === 'not yet placed' ? t('outreachBoard.not_yet_placed') : p.label}
                       {i < breakdownParts.length - 1 ? ', ' : '.'}
                     </React.Fragment>
                   ))}
@@ -741,7 +743,7 @@ export default function OutreachBoard() {
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-sm font-medium text-on-surface hover:bg-surface-variant transition-colors shrink-0"
               >
                 <Settings2 className="w-4 h-4" />
-                Shape the journey
+                {t('outreachBoard.shape_the_journey')}
               </button>
             )}
             <div className="relative flex-1 sm:flex-initial">
@@ -751,7 +753,7 @@ export default function OutreachBoard() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm w-full sm:w-56"
-                placeholder="Find someone…"
+                placeholder={t('outreachBoard.find_someone')}
               />
             </div>
             <div className="relative">
@@ -775,7 +777,7 @@ export default function OutreachBoard() {
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       className="absolute top-12 right-0 z-40 bg-surface-container-high border border-outline-variant rounded-2xl shadow-xl p-3 min-w-[180px] space-y-2"
                     >
-                      <p className="text-[11px] font-medium   text-on-surface-variant px-2">Filter by role</p>
+                      <p className="text-[11px] font-medium   text-on-surface-variant px-2">{t('outreachBoard.filter_by_role')}</p>
                       <div className="space-y-1">
                         {filterRoles.map(role => (
                           <button
@@ -789,7 +791,7 @@ export default function OutreachBoard() {
                               filterRole === role ? "bg-primary text-on-primary" : "text-on-surface-variant hover:bg-surface-variant"
                             )}
                           >
-                            {role}
+                            {role === 'All' ? t('outreachBoard.all') : role}
                           </button>
                         ))}
                       </div>
@@ -811,7 +813,7 @@ export default function OutreachBoard() {
                     key="uncategorized"
                     stageInfo={{
                       id: 'uncategorized',
-                      label: 'Unassigned',
+                      label: t('outreachBoard.unassigned'),
                       color: 'bg-surface-variant',
                       order: -1
                     }}
@@ -845,9 +847,9 @@ export default function OutreachBoard() {
             ) : !loading && (
               <div className="flex-1 flex flex-col items-center justify-center py-20 text-center">
                 <Settings2 className="w-12 h-12 text-on-surface-variant opacity-20 mb-4" />
-                <h3 className="font-serif text-xl text-on-surface">The journey hasn't been mapped yet</h3>
+                <h3 className="font-serif text-xl text-on-surface">{t('outreachBoard.not_mapped_title')}</h3>
                 <p className="text-sm text-on-surface-variant mt-1 max-w-sm">
-                  {isAdmin ? 'Shape the steps of the journey — from a first hello toward a church home.' : 'The steps of the journey haven\'t been set up yet.'}
+                  {isAdmin ? t('outreachBoard.not_mapped_admin_body') : t('outreachBoard.not_mapped_viewer_body')}
                 </p>
               </div>
             )}
@@ -877,14 +879,14 @@ export default function OutreachBoard() {
                       <Settings2 className="w-5 h-5" />
                     </div>
                     <div>
-                      <h2 className="font-serif text-xl text-on-surface">{editingStage ? 'Rename this step' : 'Shape the journey'}</h2>
-                      <p className="text-xs text-on-surface-variant">{editingStage ? 'Give the step a new name or colour' : 'Add a step to the journey'}</p>
+                      <h2 className="font-serif text-xl text-on-surface">{editingStage ? t('outreachBoard.rename_step_title') : t('outreachBoard.shape_the_journey')}</h2>
+                      <p className="text-xs text-on-surface-variant">{editingStage ? t('outreachBoard.rename_step_subtitle') : t('outreachBoard.add_step_subtitle')}</p>
                     </div>
                   </div>
                   <button
                     onClick={() => setShowAddStage(false)}
                     className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                    aria-label="Close"
+                    aria-label={t('actions.close')}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -893,7 +895,7 @@ export default function OutreachBoard() {
                 <form onSubmit={handleAddStage} className="p-6 space-y-6">
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-on-surface-variant px-1">
-                      Step name
+                      {t('outreachBoard.step_name')}
                     </label>
                     <input
                       required
@@ -902,13 +904,13 @@ export default function OutreachBoard() {
                       value={newStageName}
                       onChange={e => setNewStageName(e.target.value)}
                       className="w-full h-12 px-4 rounded-xl bg-surface-container-highest border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-on-surface"
-                      placeholder="e.g. Following up"
+                      placeholder={t('outreachBoard.step_name_placeholder')}
                     />
                   </div>
 
                   <div className="space-y-1.5">
                     <label className="text-sm font-medium text-on-surface-variant px-1">
-                      Colour
+                      {t('outreachBoard.colour')}
                     </label>
                     <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
                       {colors.map(color => (
@@ -933,14 +935,14 @@ export default function OutreachBoard() {
                       onClick={() => setShowAddStage(false)}
                       className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
                     >
-                      Cancel
+                      {t('actions.cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={!newStageName.trim()}
                       className="flex-[2] h-12 bg-primary text-on-primary rounded-xl font-medium    hover:translate-y-[-1px] active:translate-y-[1px] disabled:opacity-50 disabled:translate-y-0 transition-all"
                     >
-                      {editingStage ? 'Save changes' : 'Add this step'}
+                      {editingStage ? t('outreachBoard.save_changes') : t('outreachBoard.add_this_step')}
                     </button>
                   </div>
                 </form>
@@ -967,11 +969,11 @@ export default function OutreachBoard() {
                 className="relative w-full max-w-md bg-surface-container-high rounded-3xl shadow-2xl overflow-hidden border border-outline-variant p-6 space-y-6"
               >
                 <div className="flex items-center justify-between border-b border-outline-variant pb-4">
-                  <h2 className="font-serif text-xl text-on-surface">Remove step: {stageToDeleteModal.stage.label}</h2>
+                  <h2 className="font-serif text-xl text-on-surface">{t('outreachBoard.remove_step_title')} {stageToDeleteModal.stage.label}</h2>
                   <button
                     onClick={() => setStageToDeleteModal(null)}
                     className="p-2 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                    aria-label="Close"
+                    aria-label={t('actions.close')}
                   >
                     <X className="w-5 h-5" />
                   </button>
@@ -979,12 +981,12 @@ export default function OutreachBoard() {
 
                 <form onSubmit={handleConfirmDeleteStageWithReassign} className="space-y-5">
                   <p className="text-sm text-on-surface leading-relaxed">
-                    <b className="font-semibold">{stageToDeleteModal.count} {stageToDeleteModal.count === 1 ? 'person is' : 'people are'}</b> at this step — where do they go?
+                    <b className="font-semibold">{stageToDeleteModal.count} {stageToDeleteModal.count === 1 ? t('outreachBoard.person_is') : t('outreachBoard.people_are')}</b> {t('outreachBoard.at_this_step_where_go')}
                   </p>
 
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-on-surface-variant px-1  ">
-                      Destination step
+                      {t('outreachBoard.destination_step')}
                     </label>
                     <select
                       value={stageToDeleteModal.targetStage}
@@ -1009,14 +1011,14 @@ export default function OutreachBoard() {
                       onClick={() => setStageToDeleteModal(null)}
                       className="flex-1 h-12 rounded-xl font-medium text-on-surface-variant hover:bg-surface-variant transition-all"
                     >
-                      Cancel
+                      {t('actions.cancel')}
                     </button>
                     <button
                       type="submit"
                       disabled={!stageToDeleteModal.targetStage}
                       className="flex-[2] h-12 bg-error text-on-error rounded-xl font-medium   disabled:opacity-50 transition-all"
                     >
-                      Reassign & remove step
+                      {t('outreachBoard.reassign_remove_step')}
                     </button>
                   </div>
                 </form>
@@ -1078,6 +1080,7 @@ function KanbanColumn({
   onDeleteContact,
   onAddContact,
 }: KanbanColumnProps) {
+  const { t } = useLanguage();
   const { setNodeRef, isOver } = useDroppable({
     id: stageInfo.id,
   });
@@ -1092,7 +1095,8 @@ function KanbanColumn({
   });
 
   const [showMenu, setShowMenu] = useState(false);
-  const caption = captionFor(stageInfo.label);
+  const captionKey = captionKeyFor(stageInfo.label);
+  const caption = captionKey ? t(`outreachBoard.stage_captions.${captionKey}`) : '';
 
   return (
     <div
@@ -1109,7 +1113,7 @@ function KanbanColumn({
             <h3 className="font-serif text-[17px] text-on-surface truncate">{stageInfo.label}</h3>
           </div>
           <span className="text-xs font-medium text-[var(--tone)]">
-            {peopleCount(contacts.length)}
+            {peopleCount(contacts.length, t)}
           </span>
           {caption && (
             <p className="text-xs text-on-surface-variant leading-relaxed mt-1.5 max-w-[24ch]">{caption}</p>
@@ -1121,15 +1125,15 @@ function KanbanColumn({
             <button
               {...attributes}
               {...listeners}
-              aria-label={`Reorder ${stageInfo.label}`}
-              title="Drag to reorder"
+              aria-label={`${t('outreachBoard.reorder_stage')} ${stageInfo.label}`}
+              title={t('outreachBoard.drag_to_reorder')}
               className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant cursor-grab active:cursor-grabbing touch-none transition-colors"
             >
               <GripVertical className="w-4 h-4" />
             </button>
             <button
               onClick={() => setShowMenu(!showMenu)}
-              aria-label="Stage options"
+              aria-label={t('outreachBoard.stage_options')}
               className="p-1 rounded-full hover:bg-surface-variant text-on-surface-variant transition-colors"
             >
               <MoreHorizontal className="w-4 h-4" />
@@ -1156,7 +1160,7 @@ function KanbanColumn({
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-surface-variant text-on-surface transition-colors"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-accent" />
-                      Rename step
+                      {t('outreachBoard.rename_step')}
                     </button>
                     <button
                       onClick={() => {
@@ -1166,7 +1170,7 @@ function KanbanColumn({
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-error/10 text-error transition-colors font-medium border-t border-outline-variant/30 mt-1"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
-                      Remove step
+                      {t('outreachBoard.remove_step')}
                     </button>
                   </motion.div>
                 </>
@@ -1198,7 +1202,7 @@ function KanbanColumn({
             />
           )) : (
             <div className="flex items-center justify-center py-10 border-2 border-dashed border-outline-variant/40 rounded-xl m-1">
-              <p className="text-on-surface-variant text-sm italic opacity-70 text-center px-4">No one here just now.</p>
+              <p className="text-on-surface-variant text-sm italic opacity-70 text-center px-4">{t('outreachBoard.no_one_here')}</p>
             </div>
           )}
         </div>
@@ -1210,7 +1214,7 @@ function KanbanColumn({
           onClick={() => onAddContact(stageInfo.label)}
           className="w-full py-2.5 rounded-xl border border-dashed border-outline-variant text-sm font-medium text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
         >
-          {isFirst ? 'Welcome someone new' : `Add to ${stageInfo.label}`}
+          {isFirst ? t('outreachBoard.welcome_someone_new') : t('outreachBoard.add_to').replace('{stage}', stageInfo.label)}
         </button>
       </div>
     </div>
@@ -1268,6 +1272,7 @@ function InternalKanbanCard({
   isOverlay,
   dragListeners
 }: KanbanCardProps & { isOverlay?: boolean, dragListeners?: any }) {
+  const { t } = useLanguage();
   const touch = lastTouchByContact.get(contact.id);
   const contactLastMs = parseMs(contact.lastContactedDate) ?? parseMs(contact.lastSeen);
   const touchMs = touch?.ms;
@@ -1302,28 +1307,28 @@ function InternalKanbanCard({
       {days != null ? (
         <div className={cn("flex items-center gap-1.5 text-[12.5px]", overdue ? "text-stage-amber font-medium" : "text-on-surface-variant")}>
           {overdue && <span className="w-1.5 h-1.5 rounded-full bg-stage-amber shrink-0" aria-hidden />}
-          {connectedLabel(days)}
+          {connectedLabel(days, t)}
         </div>
       ) : (
-        <div className="text-[12.5px] text-on-surface-variant italic">No contact logged yet.</div>
+        <div className="text-[12.5px] text-on-surface-variant italic">{t('outreachBoard.no_contact_logged')}</div>
       )}
 
       {/* Last note */}
       {note && (
         <p className="text-[12.5px] text-on-surface-variant leading-relaxed">
-          <span className="text-on-surface-variant/70">Last:</span> <Translate text={truncate(note, 100)} />
+          <span className="text-on-surface-variant/70">{t('outreachBoard.last')}</span> <Translate text={truncate(note, 100)} />
         </p>
       )}
 
       {/* Tags */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 pt-0.5">
-          {tags.map((t) => (
+          {tags.map((tag) => (
             <span
-              key={t}
+              key={tag}
               className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)]"
             >
-              {t === 'leader-track' ? 'leader track' : t}
+              {tag === 'leader-track' ? t('outreachBoard.leader_track') : tag}
             </span>
           ))}
         </div>
