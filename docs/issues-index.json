@@ -1,8 +1,89 @@
 [
   {
+    "number": 478,
+    "title": "i18n: Localize index.html and manifest metadata for Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "The web app's browser/PWA metadata is still hardcoded English. Tasks: - Localize `<title>`, meta description, and `public/manifest.json` name/short_name/description. - Ideally generate locale-specific metadata at build time or serve bilingual fallback. - Keep the app name/branding consistent with the rest of the product."
+  },
+  {
+    "number": 477,
+    "title": "i18n: Add CI guard to prevent untranslated hardcoded UI strings",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "We still have many files with raw English UI text. Add a lint/CI check to catch new hardcoded user-facing strings so translations don't regress. Tasks: - Add a script that scans JSX text and UI attributes (placeholder, aria-label, title, label, alt) in src and apps/mobile/src. - Allow known exceptions (dynamic data, class names, enums). - Fail CI when a raw English UI string is added without a dictionary key. - Optionally add an ESLint rule or a lightweight custom script."
+  },
+  {
+    "number": 476,
+    "title": "i18n: Add mobile static Spanish dictionary and wire t() in apps/mobile",
+    "state": "open",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "The mobile app currently only has lazy dynamic translation via <Translate>. The static chrome (settings, tabs, screens, buttons) remains English because there is no mobile `t()` / dictionary. Tasks: - Add a mobile `es.json` / `en.json` dictionary (ideally shared with web via packages/core). - Add `t()` to `apps/mobile/src/lib/LanguageProvider.tsx`. - Translate tab labels, settings screen, queue, contact, messages, prayer, outreach, and member screens. - Add more `<Translate>` for user-generated content. - Keep en/es parity."
+  },
+  {
+    "number": 475,
+    "title": "i18n: Translate CoordinationNotes.tsx to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "CoordinationNotes.tsx is the largest remaining web page (~4,000 lines) and still contains many hardcoded English strings. Tasks: - Add `coordination.*` keys for the remaining UI strings. - Wire `t()` through the editor, page list, notes, todos, trash, search, and modals. - Wrap dynamic markdown/notes/titles in `<Translate>`. - Keep en/es dictionary parity."
+  },
+  {
+    "number": 474,
+    "title": "i18n: Translate FeedbackList.tsx to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "FeedbackList.tsx (admin feedback inbox) still has hardcoded English strings for statuses, filters, GitHub issue linking, and empty states. Tasks: - Add `feedbackList.*` keys to en.json/es.json. - Wire `t()` through the admin inbox UI. - Wrap dynamic feedback messages in `<Translate>`. - Keep en/es dictionary parity."
+  },
+  {
+    "number": 473,
+    "title": "i18n: Translate OutreachBoard.tsx to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "OutreachBoard.tsx is the desktop board page and still has hardcoded English UI strings. Tasks: - Add `outreachBoard.*` keys to en.json/es.json. - Wire `t()` through board columns, cards, actions, and empty states. - Wrap dynamic notes/summaries in `<Translate>`. - Keep en/es dictionary parity."
+  },
+  {
+    "number": 472,
+    "title": "i18n: Translate Outreach.tsx to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "Outreach.tsx still has many hardcoded English strings for gospel outing records, stats, edit/log forms, and empty states. Tasks: - Add `outreach.*` keys for the remaining strings. - Wire `t()` through the page, cards, modal, and stats. - Wrap dynamic descriptions/notes in `<Translate>`. - Keep en/es dictionary parity."
+  },
+  {
+    "number": 471,
+    "title": "i18n: Translate SmartImportModal to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "The SmartImportModal is the second-largest untranslated modal (~900 lines). It has hardcoded English strings for parsing states, import previews, contacts/interactions/discussions, and confirmations. Tasks: - Add `modals.smartImport.*` keys to en.json/es.json. - Replace hardcoded labels, placeholders, buttons, and empty states with `t()`. - Wrap dynamic preview text in `<Translate>` where user-generated. - Keep en/es dictionary parity."
+  },
+  {
+    "number": 470,
+    "title": "i18n: Translate ContactDetailsModal to Spanish",
+    "state": "closed",
+    "labels": [
+      "enhancement"
+    ],
+    "body": "The ContactDetailsModal is the largest modal still untranslated (~2,500 lines). It still contains many hardcoded English strings for contact fields, prayers, interactions, access controls, and editing. Tasks: - Add `modals.contactDetails.*` (or similar) keys to en.json/es.json. - Wire `t()` through all static labels, placeholders, titles, and aria labels. - Wrap dynamic fields (notes, prayers, interactions) in `<Translate>` where appropriate. - Keep en/es dictionary parity."
+  },
+  {
     "number": 465,
     "title": "[Feedback] idea: the overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
@@ -12,7 +93,7 @@
   {
     "number": 464,
     "title": "[Feedback] thought: maybe answered or archived prayers can disappear from home",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
@@ -22,7 +103,7 @@
   {
     "number": 463,
     "title": "[Feedback] idea: a way to update prayer status on contact detail page",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"

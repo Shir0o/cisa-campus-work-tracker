@@ -1,10 +1,262 @@
 [
   {
+    "id": 5224254734,
+    "number": 478,
+    "title": "i18n: Localize index.html and manifest metadata for Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:48Z",
+    "updated_at": "2026-08-22T23:36:15Z",
+    "closed_at": "2026-08-22T23:36:15Z",
+    "body": "The web app's browser/PWA metadata is still hardcoded English.\n\nTasks:\n- Localize `<title>`, meta description, and `public/manifest.json` name/short_name/description.\n- Ideally generate locale-specific metadata at build time or serve bilingual fallback.\n- Keep the app name/branding consistent with the rest of the product.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/478",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224254386,
+    "number": 477,
+    "title": "i18n: Add CI guard to prevent untranslated hardcoded UI strings",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:41Z",
+    "updated_at": "2026-08-23T15:40:40Z",
+    "closed_at": "2026-08-23T15:40:40Z",
+    "body": "We still have many files with raw English UI text. Add a lint/CI check to catch new hardcoded user-facing strings so translations don't regress.\n\nTasks:\n- Add a script that scans JSX text and UI attributes (placeholder, aria-label, title, label, alt) in src and apps/mobile/src.\n- Allow known exceptions (dynamic data, class names, enums).\n- Fail CI when a raw English UI string is added without a dictionary key.\n- Optionally add an ESLint rule or a lightweight custom script.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/477",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224253982,
+    "number": 476,
+    "title": "i18n: Add mobile static Spanish dictionary and wire t() in apps/mobile",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:34Z",
+    "updated_at": "2026-08-22T22:36:34Z",
+    "closed_at": null,
+    "body": "The mobile app currently only has lazy dynamic translation via <Translate>. The static chrome (settings, tabs, screens, buttons) remains English because there is no mobile `t()` / dictionary.\n\nTasks:\n- Add a mobile `es.json` / `en.json` dictionary (ideally shared with web via packages/core).\n- Add `t()` to `apps/mobile/src/lib/LanguageProvider.tsx`.\n- Translate tab labels, settings screen, queue, contact, messages, prayer, outreach, and member screens.\n- Add more `<Translate>` for user-generated content.\n- Keep en/es parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/476",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224253628,
+    "number": 475,
+    "title": "i18n: Translate CoordinationNotes.tsx to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:28Z",
+    "updated_at": "2026-08-23T15:40:40Z",
+    "closed_at": "2026-08-23T15:40:39Z",
+    "body": "CoordinationNotes.tsx is the largest remaining web page (~4,000 lines) and still contains many hardcoded English strings.\n\nTasks:\n- Add `coordination.*` keys for the remaining UI strings.\n- Wire `t()` through the editor, page list, notes, todos, trash, search, and modals.\n- Wrap dynamic markdown/notes/titles in `<Translate>`.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/475",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224253068,
+    "number": 474,
+    "title": "i18n: Translate FeedbackList.tsx to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:17Z",
+    "updated_at": "2026-08-23T00:37:26Z",
+    "closed_at": "2026-08-23T00:37:26Z",
+    "body": "FeedbackList.tsx (admin feedback inbox) still has hardcoded English strings for statuses, filters, GitHub issue linking, and empty states.\n\nTasks:\n- Add `feedbackList.*` keys to en.json/es.json.\n- Wire `t()` through the admin inbox UI.\n- Wrap dynamic feedback messages in `<Translate>`.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/474",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224252736,
+    "number": 473,
+    "title": "i18n: Translate OutreachBoard.tsx to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:36:12Z",
+    "updated_at": "2026-08-23T00:37:26Z",
+    "closed_at": "2026-08-23T00:37:26Z",
+    "body": "OutreachBoard.tsx is the desktop board page and still has hardcoded English UI strings.\n\nTasks:\n- Add `outreachBoard.*` keys to en.json/es.json.\n- Wire `t()` through board columns, cards, actions, and empty states.\n- Wrap dynamic notes/summaries in `<Translate>`.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/473",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224252406,
+    "number": 472,
+    "title": "i18n: Translate Outreach.tsx to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-22T22:36:06Z",
+    "updated_at": "2026-08-23T06:44:48Z",
+    "closed_at": "2026-08-23T06:44:48Z",
+    "body": "Outreach.tsx still has many hardcoded English strings for gospel outing records, stats, edit/log forms, and empty states.\n\nTasks:\n- Add `outreach.*` keys for the remaining strings.\n- Wire `t()` through the page, cards, modal, and stats.\n- Wrap dynamic descriptions/notes in `<Translate>`.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/472",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224252071,
+    "number": 471,
+    "title": "i18n: Translate SmartImportModal to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-22T22:35:59Z",
+    "updated_at": "2026-08-23T06:44:47Z",
+    "closed_at": "2026-08-23T06:44:47Z",
+    "body": "The SmartImportModal is the second-largest untranslated modal (~900 lines). It has hardcoded English strings for parsing states, import previews, contacts/interactions/discussions, and confirmations.\n\nTasks:\n- Add `modals.smartImport.*` keys to en.json/es.json.\n- Replace hardcoded labels, placeholders, buttons, and empty states with `t()`.\n- Wrap dynamic preview text in `<Translate>` where user-generated.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/471",
+    "is_pull_request": false
+  },
+  {
+    "id": 5224251745,
+    "number": 470,
+    "title": "i18n: Translate ContactDetailsModal to Spanish",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-22T22:35:53Z",
+    "updated_at": "2026-08-23T15:40:39Z",
+    "closed_at": "2026-08-23T15:40:39Z",
+    "body": "The ContactDetailsModal is the largest modal still untranslated (~2,500 lines). It still contains many hardcoded English strings for contact fields, prayers, interactions, access controls, and editing.\n\nTasks:\n- Add `modals.contactDetails.*` (or similar) keys to en.json/es.json.\n- Wire `t()` through all static labels, placeholders, titles, and aria labels.\n- Wrap dynamic fields (notes, prayers, interactions) in `<Translate>` where appropriate.\n- Keep en/es dictionary parity.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/470",
+    "is_pull_request": false
+  },
+  {
     "id": 5219243445,
     "number": 465,
     "title": "[Feedback] idea: the overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -25,10 +277,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-22T00:36:16Z",
-    "updated_at": "2026-08-22T00:36:16Z",
-    "closed_at": null,
+    "updated_at": "2026-08-23T06:44:54Z",
+    "closed_at": "2026-08-23T06:44:54Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/22/2026, 12:36:16 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe overlay of contact detail sometimes get confusing because the top nav links seem to stop working and user have to click the x btn to close. maybe we can consider actual page change (route url based)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/HXAfOVAQJBKjbFe7izkz/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/465",
     "is_pull_request": false
@@ -37,8 +289,8 @@
     "id": 5219230722,
     "number": 464,
     "title": "[Feedback] thought: maybe answered or archived prayers can disappear from home",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -59,10 +311,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-22T00:33:00Z",
-    "updated_at": "2026-08-22T00:33:00Z",
-    "closed_at": null,
+    "updated_at": "2026-08-23T06:44:52Z",
+    "closed_at": "2026-08-23T06:44:52Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/22/2026, 12:33:00 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmaybe answered or archived prayers can disappear from home\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/2PDr11B3Uqp6B0OMLneW/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/464",
     "is_pull_request": false
@@ -71,8 +323,8 @@
     "id": 5219224575,
     "number": 463,
     "title": "[Feedback] idea: a way to update prayer status on contact detail page",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -93,10 +345,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-22T00:31:24Z",
-    "updated_at": "2026-08-22T00:31:24Z",
-    "closed_at": null,
+    "updated_at": "2026-08-23T06:44:50Z",
+    "closed_at": "2026-08-23T06:44:50Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/22/2026, 12:31:24 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\na way to update prayer status on contact detail page\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/lyMRWdk9nBAYJWKtqShX/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/463",
     "is_pull_request": false
