@@ -152,6 +152,7 @@ import { setTodoDone, deleteTodo, addTodo, updateTodo } from '../lib/todos';
 import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Translate } from '../components/Translate';
+import { useLanguage } from '../components/LanguageProvider';
 import { useTranslate } from '../hooks/useTranslate';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
@@ -163,8 +164,9 @@ export interface TeamMember {
 }
 
 function Avatar({ member, size = 'sm' }: { member?: TeamMember; size?: 'xs' | 'sm' | 'md' }) {
+  const { t } = useLanguage();
   const dim = size === 'md' ? 'w-9 h-9 text-sm' : size === 'xs' ? 'w-6 h-6 text-[10px]' : 'w-7 h-7 text-xs';
-  const name = member?.name || 'Unknown';
+  const name = member?.name || t('coordination.unknown');
   const initials = member ? getUserInitials(name) : '–';
   if (member?.photoURL) {
     return <img src={member.photoURL} alt={name} className={cn(dim, 'rounded-full object-cover shrink-0')} />;
@@ -336,16 +338,17 @@ function AudienceBadge({ audience, size = 'sm' }: { audience: Audience; size?: '
 // Full-timer control to set who a page is open to.
 function AudiencePicker({ audience, onChange }: { audience: Audience; onChange: (a: Audience) => void }) {
   const Icon = AUDIENCE_ICON[BOARD_AUDIENCE[audience].icon];
+  const { t } = useLanguage();
   return (
     <span
       className={cn('inline-flex items-center gap-1 rounded-full pl-2 pr-0.5 py-0.5 text-xs font-medium', AUDIENCE_CHIP[audience])}
-      title="Who can see this page"
+      title={t('coordination.who_can_see_page')}
     >
       <Icon className="w-3 h-3" />
       <select
         value={audience}
         onChange={(e) => onChange(e.target.value as Audience)}
-        aria-label="Page audience"
+        aria-label={t('coordination.page_audience')}
         className="bg-transparent border-0 outline-none text-xs font-medium cursor-pointer pr-0.5"
       >
         {AUDIENCE_ORDER.map((a) => (
@@ -413,6 +416,7 @@ const HeadingWithAnchor = ({
   className: string;
   children: React.ReactNode;
 }) => {
+  const { t } = useLanguage();
   const text = getHeadingText(children);
   const id = slugify(text);
   const Tag = level === 2 ? 'h2' : level === 3 ? 'h3' : 'h4';
@@ -430,8 +434,8 @@ const HeadingWithAnchor = ({
             if (el) el.scrollIntoView({ behavior: 'smooth' });
           }}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-stage-accent hover:text-stage-accent-hover inline-flex items-center"
-          title="Link to this section"
-          aria-label="Link to this section"
+          title={t('coordination.link_to_section')}
+          aria-label={t('coordination.link_to_section')}
         >
           <Link2 className="w-4 h-4" />
         </a>
@@ -517,8 +521,9 @@ function ReadOnlyDoc({
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
   const { translatedText: translatedMarkdown } = useTranslate(d.md || '');
+  const { t } = useLanguage();
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
-  const markdownToRender = d.md ? translatedMarkdown : '_This page is empty._';
+  const markdownToRender = d.md ? translatedMarkdown : t('coordination.this_page_empty');
   return (
     <div className="bdoc-fs-doc flex flex-col min-w-0 bg-surface overflow-y-auto custom-scrollbar">
       {/* head */}
@@ -528,8 +533,8 @@ function ReadOnlyDoc({
             <button
               type="button"
               onClick={onTogglePages}
-              title="Show pages"
-              aria-label="Show pages"
+              title={t('coordination.show_pages')}
+              aria-label={t('coordination.show_pages')}
               className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
             >
               <PanelLeftOpen className="w-[18px] h-[18px]" />
@@ -556,27 +561,27 @@ function ReadOnlyDoc({
             <button
               type="button"
               onClick={onToggleNativeFs}
-              title={nativeFs ? 'Leave the whole screen' : 'Fill the whole screen — hides the browser too'}
-              aria-label={nativeFs ? 'Leave whole screen' : 'Whole screen'}
+              title={nativeFs ? t('coordination.leave_whole_screen') : t('coordination.fill_whole_screen')}
+              aria-label={nativeFs ? t('coordination.leave_whole_screen') : t('coordination.whole_screen')}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium transition-colors',
                 nativeFs ? 'bg-stage-accent/10 border-stage-accent/40 text-stage-accent' : 'text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent'
               )}
             >
               <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{nativeFs ? 'Leave whole screen' : 'Whole screen'}</span>
+              <span className="hidden sm:inline">{nativeFs ? t('coordination.leave_whole_screen') : t('coordination.whole_screen')}</span>
             </button>
           )}
           {onToggleFullscreen && (
             <button
               type="button"
               onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Back to the Board  (Esc)' : 'Open this page full screen'}
-              aria-label={isFullscreen ? 'Close full screen' : 'Open full screen'}
+              title={isFullscreen ? t('coordination.back_to_board') + '  (Esc)' : t('coordination.open_full_screen')}
+              aria-label={isFullscreen ? t('coordination.close_full_screen') : t('coordination.open_full_screen')}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{isFullscreen ? 'Back to Board' : 'Full screen'}</span>
+              <span className="hidden sm:inline">{isFullscreen ? t('coordination.back_to_board') : t('actions.full_screen')}</span>
             </button>
           )}
         </div>
@@ -629,6 +634,7 @@ export function mdExcerpt(md: string): string {
 
 export default function CoordinationNotes() {
   const { isAdmin, user, role } = useAuth();
+  const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
@@ -636,7 +642,7 @@ export default function CoordinationNotes() {
   const canView = canEdit || canViewBoard(role);
   const canSeeNotes = canEdit || canViewBoardNotes(role);
   const uid = user?.uid || '';
-  const meName = user?.displayName || user?.email || 'Someone';
+  const meName = user?.displayName || user?.email || t('coordination.someone');
 
   const [docs, setDocs] = useState<BoardDoc[]>([]);
   const [notes, setNotes] = useState<BoardNote[]>([]);
@@ -942,7 +948,7 @@ export default function CoordinationNotes() {
           document.getElementById('coordination-notes-workspace')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       } else {
-        showToast('That page is no longer here.');
+        showToast(t('coordination.page_no_longer_here'));
       }
     } else if (noteId) {
       setTimeout(() => {
@@ -1134,7 +1140,7 @@ export default function CoordinationNotes() {
         updatedBy: uid,
         updatedByName: meName,
       });
-      showToast(`Page now open to ${BOARD_AUDIENCE[audience].sub}.`);
+      showToast(t('coordination.page_now_open_to').replace('{audience}', BOARD_AUDIENCE[audience].sub));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -1144,7 +1150,7 @@ export default function CoordinationNotes() {
     try {
       await softDeleteBoardDoc(d);
       if (activeId === d.id) setActiveId(null);
-      showUndoSnack('Page moved to Trash', () => restoreBoardDoc(d));
+      showUndoSnack(t('coordination.page_moved_to_trash'), () => restoreBoardDoc(d));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_docs');
     }
@@ -1157,7 +1163,7 @@ export default function CoordinationNotes() {
         await updateDoc(doc(db, 'board_notes', fields.id), {
           type: fields.type,
           series: fields.series,
-          title: fields.title.trim() || 'Untitled note',
+          title: fields.title.trim() || t('coordination.untitled_note'),
           body: fields.body.trim(),
           tags: fields.tags,
           displayMode: fields.displayMode || 'text',
@@ -1165,13 +1171,13 @@ export default function CoordinationNotes() {
           updatedBy: uid,
           updatedByName: meName,
         });
-        showToast('Note updated.');
+        showToast(t('coordination.note_updated'));
       } else {
         const ref = doc(collection(db, 'board_notes'));
         await setDoc(ref, {
           type: fields.type,
           series: fields.series,
-          title: fields.title.trim() || 'Untitled note',
+          title: fields.title.trim() || t('coordination.untitled_note'),
           body: fields.body.trim(),
           date: todayISO(),
           contributorIds: [uid],
@@ -1188,12 +1194,12 @@ export default function CoordinationNotes() {
         logActivity({
           action: fields.type === 'learning' ? 'recorded a learning' : 'saved a record',
           targetId: ref.id,
-          targetName: fields.title || 'Note',
+          targetName: fields.title || t('coordination.note'),
           targetType: 'comment',
           type: 'create',
           description: fields.series,
         } as never);
-        showToast('Note saved.');
+        showToast(t('coordination.note_saved'));
       }
       setNoteForm(null);
     } catch (e) {
@@ -1212,7 +1218,7 @@ export default function CoordinationNotes() {
   const softDeleteNote = async (n: BoardNote) => {
     try {
       await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: serverTimestamp() });
-      showUndoSnack('Note moved to Trash', () => updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null }));
+      showUndoSnack(t('coordination.note_moved_to_trash'), () => updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null }));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
     }
@@ -1221,14 +1227,14 @@ export default function CoordinationNotes() {
   const restoreNote = async (n: BoardNote) => {
     try {
       await updateDoc(doc(db, 'board_notes', n.id), { deletedAt: null });
-      showToast('Note restored from Trash.');
+      showToast(t('coordination.note_restored_from_trash'));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
     }
   };
 
   const removeNoteForever = async (n: BoardNote) => {
-    if (!window.confirm(`Permanently delete "${n.title}" from Trash?`)) return;
+    if (!window.confirm(t('coordination.confirm_delete_note').replace('{title}', n.title))) return;
     try {
       await deleteDoc(doc(db, 'board_notes', n.id));
     } catch (e) {
@@ -1240,7 +1246,7 @@ export default function CoordinationNotes() {
     try {
       const isArchived = !!n.archivedAt;
       await updateDoc(doc(db, 'board_notes', n.id), { archivedAt: isArchived ? null : serverTimestamp() });
-      showToast(isArchived ? 'Note unarchived.' : 'Note archived.');
+      showToast(isArchived ? t('coordination.note_unarchived') : t('coordination.note_archived'));
     } catch (e) {
       handleFirestoreError(e, OperationType.UPDATE, 'board_notes');
     }
@@ -1310,9 +1316,9 @@ export default function CoordinationNotes() {
           <div className="w-16 h-16 bg-error-container text-error rounded-full flex items-center justify-center mb-6">
             <ShieldAlert className="w-8 h-8" />
           </div>
-          <h2 className="font-serif text-2xl mb-3 text-on-background">A space for the team</h2>
+          <h2 className="font-serif text-2xl mb-3 text-on-background">{t('coordination.space_for_team')}</h2>
           <p className="text-on-surface-variant leading-relaxed">
-            This is where the team coordinates. If you think you should be here, ask a full-timer to widen your access.
+            {t('coordination.access_body')}
           </p>
         </div>
       </div>
@@ -1321,35 +1327,32 @@ export default function CoordinationNotes() {
 
   // Header copy by role: editors get the working framing, trainees a read-along
   // note, students a gentler "what's happening" look.
-  const heading = canSeeNotes ? 'Coordination Notes' : "What's happening";
+  const heading = canSeeNotes ? t('coordination.coordination_notes') : t('coordination.whats_happening');
   const intro = canEdit ? (
     <>
-      One <b className="text-on-surface font-medium">page per gathering</b>, kept by date — what you talked through, who's
-      holding what, what you learned. Write it like a doc; nothing important should live in one person's inbox.
+      {t('coordination.page_per_gathering')}
     </>
   ) : canSeeNotes ? (
     <>
-      The team's shared pages, kept by date. Read along to follow what's being planned and learned together — the pages
-      open to <b className="text-on-surface font-medium">staff &amp; trainees</b> are gathered here for you.
+      {t('coordination.read_along_intro')}
     </>
   ) : (
     <>
-      A look at our gatherings — what's coming up, and how each night is shaped. These are the pages the team keeps{' '}
-      <b className="text-on-surface font-medium">open to everyone</b>.
+      {t('coordination.open_to_everyone_intro')}
     </>
   );
 
   const TodoSectionComponent = canEdit ? (
     <section className="px-5 mt-5">
       <SectionHead
-        title="What we're holding"
+        title={t('coordination.what_were_holding')}
         sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
         action={
           <button
             onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
             className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
           >
-            <Plus className="w-4 h-4" /> Add to-do
+            <Plus className="w-4 h-4" /> {t('coordination.add_todo')}
           </button>
         }
       />
@@ -1366,7 +1369,7 @@ export default function CoordinationNotes() {
                 : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
             )}
           >
-            <Users className="w-3.5 h-3.5" /> Everyone
+            <Users className="w-3.5 h-3.5" /> {t('coordination.everyone')}
           </button>
           {team.map((m) => {
             const n = openTodosByUid.get(m.uid) ?? 0;
@@ -1408,7 +1411,7 @@ export default function CoordinationNotes() {
           >
             {showDoneTodos && <Check className="w-2.5 h-2.5" />}
           </span>
-          Show done
+          {t('coordination.show_done')}
         </button>
       </div>
 
@@ -1452,7 +1455,7 @@ export default function CoordinationNotes() {
   const NotesSectionComponent = canSeeNotes ? (
     <section id="board-notes-section" className="px-5 mt-5">
       <SectionHead
-        title="Notes & learnings"
+        title={t('coordination.notes_learnings')}
         sub="Every page becomes a record — running it again? Find last time's notes."
         action={
           canEdit ? (
@@ -1461,13 +1464,13 @@ export default function CoordinationNotes() {
                 onClick={() => setNoteForm({ type: 'record' })}
                 className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
               >
-                <Plus className="w-4 h-4" /> New record
+                <Plus className="w-4 h-4" /> {t('coordination.new_record')}
               </button>
               <button
                 onClick={() => setNoteForm({ type: 'learning' })}
                 className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
               >
-                <NotebookPen className="w-4 h-4" /> New learning
+                <NotebookPen className="w-4 h-4" /> {t('coordination.new_learning')}
               </button>
             </div>
           ) : undefined
@@ -1485,7 +1488,7 @@ export default function CoordinationNotes() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search notes — e.g. “Small Groups”, “Conferences/Trainings”, “welcome”…"
+            placeholder={t('coordination.search_notes_placeholder')}
             className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-9 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
           />
           {q && (
@@ -1496,16 +1499,16 @@ export default function CoordinationNotes() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex bg-surface-container-low border border-outline-variant rounded-xl p-1">
-            {(['active', 'archived', 'trash'] as const).map((t) => (
+            {(['active', 'archived', 'trash'] as const).map((tab) => (
               <button
-                key={t}
-                onClick={() => setNoteTab(t)}
+                key={tab}
+                onClick={() => setNoteTab(tab)}
                 className={cn(
                   'px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors',
-                  noteTab === t ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
+                  noteTab === tab ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
-                {t === 'trash' ? 'Trash' : t === 'archived' ? 'Archive' : 'Active'}
+                {tab === 'trash' ? t('coordination.trash') : tab === 'archived' ? t('coordination.archive') : t('coordination.active')}
               </button>
             ))}
           </div>
@@ -1519,7 +1522,7 @@ export default function CoordinationNotes() {
                   kind === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
-                {k}
+                {k === 'All' ? t('coordination.all') : k === 'Records' ? t('coordination.records') : t('coordination.learnings')}
               </button>
             ))}
           </div>
@@ -1539,7 +1542,7 @@ export default function CoordinationNotes() {
                 : 'bg-surface border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-on-surface',
             )}
           >
-            {s}
+            {s === 'All' ? t('coordination.all') : s}
           </button>
         ))}
       </div>
@@ -1547,11 +1550,11 @@ export default function CoordinationNotes() {
       {/* note cards */}
       {notes.length === 0 ? (
         <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-          No notes yet — wrap a page and save what you learned.
+          {t('coordination.no_notes_yet')}
         </div>
       ) : filteredNotes.length === 0 ? (
         <div className="border border-dashed border-outline-variant rounded-2xl p-8 text-center text-sm text-on-surface-variant italic">
-          No notes match that yet — try a different word, filter, or series.
+          {t('coordination.no_notes_match')}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -1604,7 +1607,7 @@ export default function CoordinationNotes() {
             setIsBoardSearchFocused(true);
           }}
           onFocus={() => setIsBoardSearchFocused(true)}
-          placeholder="Search pages, headings, notes & tasks… (press / or ⌘K)"
+          placeholder={t('coordination.search_board_placeholder')}
           className="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-24 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-all "
         />
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
@@ -1631,14 +1634,14 @@ export default function CoordinationNotes() {
           <div className="flex items-center gap-1 p-2 bg-surface-container-low border-b border-outline-variant shrink-0">
             {(
               [
-                { id: 'all', label: 'All', count: searchResults.length },
+                { id: 'all', label: t('coordination.all'), count: searchResults.length },
                 {
                   id: 'heading',
-                  label: 'Pages & Headings',
+                  label: t('coordination.pages_headings'),
                   count: searchResults.filter((r) => r.kind === 'heading' || r.kind === 'doc').length,
                 },
-                { id: 'note', label: 'Notes', count: searchResults.filter((r) => r.kind === 'note').length },
-                { id: 'task', label: 'Tasks', count: searchResults.filter((r) => r.kind === 'task').length },
+                { id: 'note', label: t('coordination.notes'), count: searchResults.filter((r) => r.kind === 'note').length },
+                { id: 'task', label: t('coordination.tasks'), count: searchResults.filter((r) => r.kind === 'task').length },
               ] as const
             ).map((tab) => (
               <button
@@ -1770,7 +1773,7 @@ export default function CoordinationNotes() {
             onClick={createDoc}
             className="flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 active:scale-[0.98] transition-all shrink-0"
           >
-            <Plus className="w-4 h-4" /> New page
+            <Plus className="w-4 h-4" /> {t('coordination.new_page')}
           </button>
         )}
       </header>
@@ -1788,19 +1791,19 @@ export default function CoordinationNotes() {
               <NotebookPen className="w-7 h-7" />
             </div>
             <h3 className="font-serif text-xl text-on-surface mb-1">
-              {canEdit ? 'No pages yet' : 'Nothing here just yet'}
+              {canEdit ? t('coordination.no_pages_yet') : t('coordination.nothing_here_yet')}
             </h3>
             <p className="text-sm text-on-surface-variant max-w-sm mb-5">
               {canEdit
-                ? "Start this week's first page — give it a title and begin writing. The team can edit it live, together."
-                : 'Check back after the next gathering — the team will share pages here as they plan.'}
+                ? t('coordination.empty_pages_edit')
+                : t('coordination.empty_pages_view')}
             </p>
             {canEdit && (
               <button
                 onClick={createDoc}
                 className="flex items-center gap-2 px-4 py-2.5 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 transition-all"
               >
-                <Plus className="w-4 h-4" /> Start a page
+                <Plus className="w-4 h-4" /> {t('coordination.start_page')}
               </button>
             )}
           </div>
@@ -1820,12 +1823,12 @@ export default function CoordinationNotes() {
               )}
             >
               <div className="flex items-center justify-between px-4 pt-4 pb-3">
-                <span className="font-serif text-[17px] text-on-surface">Pages</span>
+                <span className="font-serif text-[17px] text-on-surface">{t('coordination.pages')}</span>
                 <div className="flex items-center gap-1.5">
                   {canEdit && (
                     <button
                       onClick={createDoc}
-                      title="New page"
+                      title={t('coordination.new_page')}
                       className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
@@ -1834,8 +1837,8 @@ export default function CoordinationNotes() {
                   {isAdmin && (
                     <Link
                       to="/coordination/trash"
-                      title="Trash"
-                      aria-label="Trash"
+                      title={t('coordination.trash')}
+                      aria-label={t('coordination.trash')}
                       className="w-7 h-7 grid place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1843,8 +1846,8 @@ export default function CoordinationNotes() {
                   )}
                   <button
                     onClick={togglePages}
-                    title="Collapse pages"
-                    aria-label="Collapse pages"
+                    title={t('coordination.collapse_pages')}
+                    aria-label={t('coordination.collapse_pages')}
                     className="hidden lg:grid w-7 h-7 place-items-center rounded-lg bg-surface border border-outline text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
                   >
                     <PanelLeftClose className="w-3.5 h-3.5" />
@@ -1859,7 +1862,7 @@ export default function CoordinationNotes() {
                   return (
                     <div key={g} className="lg:mt-1.5 shrink-0 lg:shrink">
                       <div className="hidden lg:block text-[11px] font-semibold   text-on-surface-variant/70 px-2 pt-3 pb-1.5">
-                        {g}
+                        {g === 'Pinned' ? t('coordination.pinned') : g === 'This week' ? t('coordination.this_week') : t('coordination.earlier')}
                       </div>
                       {isPinnedGroup ? (
                         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handlePinnedDragEnd}>
@@ -1965,7 +1968,7 @@ export default function CoordinationNotes() {
               )}
               </div>
             ) : (
-              <div className="grid place-items-center text-sm text-on-surface-variant p-10">Select a page.</div>
+              <div className="grid place-items-center text-sm text-on-surface-variant p-10">{t('coordination.select_page')}</div>
             )}
           </div>
         )}
@@ -1975,14 +1978,14 @@ export default function CoordinationNotes() {
       {canEdit && (
       <section>
         <SectionHead
-          title="What we're holding"
+          title={t('coordination.what_were_holding')}
           sub={`Every to-do the team is holding — ${openTodoCount > 0 ? `${openTodoCount} still open` : 'all clear'}. Highlight a line in a page above, or add one here.`}
           action={
             <button
               onClick={() => setTodoComposer({ mode: 'create', initial: { assigneeId: uid } })}
               className="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-stage-accent transition-colors"
             >
-              <Plus className="w-4 h-4" /> Add to-do
+              <Plus className="w-4 h-4" /> {t('coordination.add_todo')}
             </button>
           }
         />
@@ -1999,7 +2002,7 @@ export default function CoordinationNotes() {
                   : 'bg-surface border-outline-variant/60 text-on-surface-variant hover:border-outline',
               )}
             >
-              <Users className="w-3.5 h-3.5" /> Everyone
+              <Users className="w-3.5 h-3.5" /> {t('coordination.everyone')}
             </button>
             {team.map((m) => {
               const n = openTodosByUid.get(m.uid) ?? 0;
@@ -2041,7 +2044,7 @@ export default function CoordinationNotes() {
             >
               {showDoneTodos && <Check className="w-2.5 h-2.5" />}
             </span>
-            Show done
+            {t('coordination.show_done')}
           </button>
         </div>
 
@@ -2181,6 +2184,7 @@ function DocRow({
   const open = mdOpenTasks(md);
   const isToday = sessionStatus(d.date) === 'today';
   const audience = audienceOf(d);
+  const { t } = useLanguage();
   return (
     <div
       className={cn(
@@ -2205,12 +2209,12 @@ function DocRow({
           <span className="flex items-center gap-2 mt-1">
             {isToday && (
               <span className="text-[10.5px] font-semibold   text-stage-accent bg-stage-accent-soft rounded-full px-2 py-px">
-                Today
+                {t('coordination.today')}
               </span>
             )}
             {open > 0 && canEdit && (
               <span className="text-[11.5px] text-on-surface-variant/80 bg-surface-variant border border-outline-variant rounded-full px-2 py-px">
-                {open} to do
+                {t('coordination.to_do_count').replace('{n}', String(open))}
               </span>
             )}
             {(canEdit || audience !== 'everyone') && <AudienceBadge audience={audience} size="xs" />}
@@ -2222,8 +2226,8 @@ function DocRow({
           <button
             {...dragHandleProps}
             type="button"
-            title="Drag to reorder pinned page"
-            aria-label={`Drag to reorder ${d.title}`}
+            title={t('coordination.drag_reorder')}
+            aria-label={t('coordination.drag_reorder_aria').replace('{title}', d.title)}
             className="p-2 rounded-md text-on-surface-variant/40 opacity-0 group-hover:opacity-100 hover:text-stage-accent cursor-grab active:cursor-grabbing transition-colors"
           >
             <GripVertical className="w-3.5 h-3.5" />
@@ -2235,8 +2239,8 @@ function DocRow({
               e.stopPropagation();
               onTogglePin();
             }}
-            title={d.pinned ? 'Unpin' : 'Pin to top'}
-            aria-label={d.pinned ? 'Unpin' : 'Pin to top'}
+            title={d.pinned ? t('coordination.unpin') : t('coordination.pin_to_top')}
+            aria-label={d.pinned ? t('coordination.unpin') : t('coordination.pin_to_top')}
             className={cn(
               'p-2 rounded-md transition-colors',
               d.pinned ? 'text-stage-accent' : 'text-on-surface-variant/50 opacity-0 group-hover:opacity-100 hover:text-stage-accent',
@@ -2274,6 +2278,7 @@ function NoteComposer({
 }) {
   const [type, setType] = useState<NoteType>('record');
   const [series, setSeries] = useState(seriesOptions[0] || 'Team');
+  const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [body, setBody] = useState(initialText);
   const [saving, setSaving] = useState(false);
@@ -2296,7 +2301,7 @@ function NoteComposer({
     setSaving(true);
     try {
       const ref = doc(collection(db, 'board_notes'));
-      const noteTitle = title.trim() || 'Untitled note';
+      const noteTitle = title.trim() || t('coordination.untitled_note');
       const noteBody = body.trim();
       await setDoc(ref, {
         type,
@@ -2317,7 +2322,7 @@ function NoteComposer({
       logActivity({
         action: type === 'learning' ? 'recorded a learning' : 'saved a record',
         targetId: ref.id,
-        targetName: title || 'Note',
+        targetName: title || t('coordination.note'),
         targetType: 'comment',
         type: 'create',
         description: series,
@@ -2341,7 +2346,7 @@ function NoteComposer({
         className="bg-surface rounded-3xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-sm font-semibold text-on-surface">Make note/learning</h3>
+          <h3 className="font-serif text-sm font-semibold text-on-surface">{t('coordination.make_note_learning')}</h3>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
             <X className="w-4 h-4" />
           </button>
@@ -2358,7 +2363,7 @@ function NoteComposer({
                   type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
-                {k}
+                {k === 'record' ? t('coordination.record').toLowerCase() : t('coordination.learning').toLowerCase()}
               </button>
             ))}
           </div>
@@ -2378,7 +2383,7 @@ function NoteComposer({
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Note title"
+          placeholder={t('coordination.note_title_placeholder')}
           className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
           autoFocus
         />
@@ -2387,7 +2392,7 @@ function NoteComposer({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={3}
-          placeholder="Note content..."
+          placeholder={t('coordination.note_content_placeholder')}
           className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors resize-y leading-relaxed"
         />
 
@@ -2396,14 +2401,14 @@ function NoteComposer({
             onClick={onClose}
             className="px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded-xl hover:bg-surface-container transition-colors"
           >
-            Cancel
+            {t('coordination.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={!title.trim() || saving}
             className="px-3 py-1.5 bg-primary text-on-primary text-xs font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
           >
-            Save Note
+            {t('coordination.save_note')}
           </button>
         </div>
       </div>
@@ -2425,6 +2430,7 @@ function LinkComposer({
 }) {
   const [text, setText] = useState(initialText);
   const [href, setHref] = useState('');
+  const { t } = useLanguage();
 
   const cardRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
@@ -2456,7 +2462,7 @@ function LinkComposer({
         className="bg-surface rounded-3xl border border-outline-variant p-4 flex flex-col space-y-3"
       >
         <div className="flex items-center justify-between">
-          <h3 className="font-serif text-sm font-semibold text-on-surface">Insert link</h3>
+          <h3 className="font-serif text-sm font-semibold text-on-surface">{t('coordination.insert_link')}</h3>
           <button onClick={onClose} className="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
             <X className="w-4 h-4" />
           </button>
@@ -2465,7 +2471,7 @@ function LinkComposer({
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Text to display"
+          placeholder={t('coordination.text_to_display')}
           className="w-full bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-xs text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-stage-accent transition-colors"
           autoFocus
         />
@@ -2484,14 +2490,14 @@ function LinkComposer({
             onClick={onClose}
             className="px-3 py-1.5 border border-outline-variant text-on-surface-variant text-xs font-medium rounded-xl hover:bg-surface-container transition-colors"
           >
-            Cancel
+            {t('coordination.cancel')}
           </button>
           <button
             onClick={handleInsert}
             disabled={!canInsert}
             className="px-3 py-1.5 bg-primary text-on-primary text-xs font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
           >
-            Insert link
+            {t('coordination.insert_link')}
           </button>
         </div>
       </div>
@@ -2548,6 +2554,7 @@ export function DocEditor({
   canNativeFs?: boolean;
 }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
 
   // This component is remounted (key={doc.id}) per page, so a fresh Y.Doc +
   // awareness live for exactly one page's lifetime.
@@ -3062,7 +3069,7 @@ export function DocEditor({
       targetName: taskData.title,
       targetType: 'comment',
       type: 'create',
-      description: `Assigned to ${matchedAssignee?.name || 'Unassigned'}`,
+      description: t('coordination.assigned_to').replace('{name}', matchedAssignee?.name || t('coordination.unassigned')),
     } as never);
   };
 
@@ -3109,8 +3116,8 @@ export function DocEditor({
             <button
               type="button"
               onClick={onTogglePages}
-              title="Show pages"
-              aria-label="Show pages"
+              title={t('coordination.show_pages')}
+              aria-label={t('coordination.show_pages')}
               className="hidden lg:grid w-8 h-8 -ml-1 place-items-center rounded-lg text-on-surface-variant hover:bg-surface-variant hover:text-on-surface transition-colors"
             >
               <PanelLeftOpen className="w-[18px] h-[18px]" />
@@ -3135,40 +3142,40 @@ export function DocEditor({
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => onPromote(d)}
-            title="Keep this page in Notes & learnings — as a record to find again, or a learning to hold onto"
+            title={t('coordination.keep_note_title')}
             className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
           >
-            <Tag className="w-3.5 h-3.5" /> Keep as a note
+            <Tag className="w-3.5 h-3.5" /> {t('coordination.keep_as_note')}
           </button>
           {isFullscreen && onToggleNativeFs && canNativeFs && (
             <button
               type="button"
               onClick={onToggleNativeFs}
-              title={nativeFs ? 'Leave the whole screen' : 'Fill the whole screen — hides the browser too'}
-              aria-label={nativeFs ? 'Leave whole screen' : 'Whole screen'}
+              title={nativeFs ? t('coordination.leave_whole_screen') : t('coordination.fill_whole_screen')}
+              aria-label={nativeFs ? t('coordination.leave_whole_screen') : t('coordination.whole_screen')}
               className={cn(
                 'inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium transition-colors',
                 nativeFs ? 'bg-stage-accent/10 border-stage-accent/40 text-stage-accent' : 'text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent'
               )}
             >
               <Maximize2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{nativeFs ? 'Leave whole screen' : 'Whole screen'}</span>
+              <span className="hidden sm:inline">{nativeFs ? t('coordination.leave_whole_screen') : t('coordination.whole_screen')}</span>
             </button>
           )}
           {onToggleFullscreen && (
             <button
               type="button"
               onClick={onToggleFullscreen}
-              title={isFullscreen ? 'Back to the Board  (Esc)' : 'Open this page full screen'}
-              aria-label={isFullscreen ? 'Close full screen' : 'Open full screen'}
+              title={isFullscreen ? t('coordination.back_to_board') + '  (Esc)' : t('coordination.open_full_screen')}
+              aria-label={isFullscreen ? t('coordination.close_full_screen') : t('coordination.open_full_screen')}
               className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-outline-variant text-xs font-medium text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent transition-colors"
             >
               {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{isFullscreen ? 'Back to Board' : 'Full screen'}</span>
+              <span className="hidden sm:inline">{isFullscreen ? t('coordination.back_to_board') : t('actions.full_screen')}</span>
             </button>
           )}
           {peers.length > 0 && (
-            <div className="flex -space-x-1.5" title={`${peers.length} other${peers.length === 1 ? '' : 's'} editing`}>
+            <div className="flex -space-x-1.5" title={t('coordination.peers_editing').replace('{n}', String(peers.length)).replace('{s}', peers.length === 1 ? '' : 's')}>
               {peers.slice(0, 4).map((p) => (
                 <span
                   key={p.key}
@@ -3184,14 +3191,14 @@ export function DocEditor({
           {rtdb && (
             <span
               className={cn('inline-flex items-center gap-1.5 text-xs', live ? 'text-tertiary' : 'text-on-surface-variant/60')}
-              title={live ? 'Live — edits sync as you type' : 'Connecting…'}
+              title={live ? t('coordination.live_title') : t('coordination.connecting')}
             >
-              <span className={cn('w-1.5 h-1.5 rounded-full', live ? 'bg-tertiary' : 'bg-on-surface-variant/40')} /> Live
+              <span className={cn('w-1.5 h-1.5 rounded-full', live ? 'bg-tertiary' : 'bg-on-surface-variant/40')} /> {t('coordination.live')}
             </span>
           )}
           <button
             onClick={() => onDelete(d)}
-            title="Delete this page"
+            title={t('coordination.delete_page')}
             className="p-1.5 rounded-lg text-on-surface-variant/60 hover:text-error hover:bg-error-container/10 transition-colors"
           >
             <Trash2 className="w-4 h-4" />
@@ -3203,7 +3210,7 @@ export function DocEditor({
       <input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
-        placeholder="Untitled page"
+        placeholder={t('coordination.untitled_page')}
         spellCheck={false}
         className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
       />
@@ -3213,43 +3220,43 @@ export function DocEditor({
         {editor && (
           <>
             <div className="flex items-center gap-0.5">
-              <ToolBtn title="Title" on={editor.isActive('heading', { level: 1 })} onClick={() => chain().toggleHeading({ level: 1 }).run()}>
+              <ToolBtn title={t('coordination.toolbar_title')} on={editor.isActive('heading', { level: 1 })} onClick={() => chain().toggleHeading({ level: 1 }).run()}>
                 <Heading1 className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Heading" on={editor.isActive('heading', { level: 2 })} onClick={() => chain().toggleHeading({ level: 2 }).run()}>
+              <ToolBtn title={t('coordination.toolbar_heading')} on={editor.isActive('heading', { level: 2 })} onClick={() => chain().toggleHeading({ level: 2 }).run()}>
                 <Heading2 className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Body" on={editor.isActive('paragraph')} onClick={() => chain().setParagraph().run()}>
+              <ToolBtn title={t('coordination.toolbar_body')} on={editor.isActive('paragraph')} onClick={() => chain().setParagraph().run()}>
                 <Type className="w-4 h-4" />
               </ToolBtn>
             </div>
             <span className="w-px h-5 bg-outline-variant mx-1.5" />
             <div className="flex items-center gap-0.5">
-              <ToolBtn title="Bold" on={editor.isActive('bold')} onClick={() => chain().toggleBold().run()}>
+              <ToolBtn title={t('coordination.toolbar_bold')} on={editor.isActive('bold')} onClick={() => chain().toggleBold().run()}>
                 <Bold className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Italic" on={editor.isActive('italic')} onClick={() => chain().toggleItalic().run()}>
+              <ToolBtn title={t('coordination.toolbar_italic')} on={editor.isActive('italic')} onClick={() => chain().toggleItalic().run()}>
                 <Italic className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Strikethrough" on={editor.isActive('strike')} onClick={() => chain().toggleStrike().run()}>
+              <ToolBtn title={t('coordination.toolbar_strikethrough')} on={editor.isActive('strike')} onClick={() => chain().toggleStrike().run()}>
                 <Strikethrough className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Link" btnRef={linkBtnRef} on={editor.isActive('link')} onClick={openLinkFromToolbar}>
+              <ToolBtn title={t('coordination.toolbar_link')} btnRef={linkBtnRef} on={editor.isActive('link')} onClick={openLinkFromToolbar}>
                 <Link2 className="w-4 h-4" />
               </ToolBtn>
             </div>
             <span className="w-px h-5 bg-outline-variant mx-1.5" />
             <div className="flex items-center gap-0.5">
-              <ToolBtn title="Bulleted list" on={editor.isActive('bulletList')} onClick={() => chain().toggleBulletList().run()}>
+              <ToolBtn title={t('coordination.toolbar_bulleted_list')} on={editor.isActive('bulletList')} onClick={() => chain().toggleBulletList().run()}>
                 <List className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Numbered list" on={editor.isActive('orderedList')} onClick={() => chain().toggleOrderedList().run()}>
+              <ToolBtn title={t('coordination.toolbar_numbered_list')} on={editor.isActive('orderedList')} onClick={() => chain().toggleOrderedList().run()}>
                 <ListOrdered className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Checklist" on={editor.isActive('taskList')} onClick={() => chain().toggleTaskList().run()}>
+              <ToolBtn title={t('coordination.toolbar_checklist')} on={editor.isActive('taskList')} onClick={() => chain().toggleTaskList().run()}>
                 <ListChecks className="w-4 h-4" />
               </ToolBtn>
-              <ToolBtn title="Quote" on={editor.isActive('blockquote')} onClick={() => chain().toggleBlockquote().run()}>
+              <ToolBtn title={t('coordination.toolbar_quote')} on={editor.isActive('blockquote')} onClick={() => chain().toggleBlockquote().run()}>
                 <Quote className="w-4 h-4" />
               </ToolBtn>
             </div>
@@ -3259,10 +3266,10 @@ export function DocEditor({
           <span className={cn('inline-flex items-center gap-1 text-xs whitespace-nowrap', saved ? 'text-tertiary' : 'text-on-surface-variant/70')}>
             {saved ? (
               <>
-                <Check className="w-3 h-3" /> Saved
+                <Check className="w-3 h-3" /> {t('coordination.saved')}
               </>
             ) : (
-              'Saving…'
+              t('coordination.saving')
             )}
           </span>
           <button
@@ -3274,7 +3281,7 @@ export function DocEditor({
               }
               setShowSource((v) => !v);
             }}
-            title="View Markdown source"
+            title={t('coordination.view_markdown_source')}
             className={cn(
               'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
               showSource
@@ -3282,7 +3289,7 @@ export function DocEditor({
                 : 'bg-surface-variant border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent',
             )}
           >
-            <Code2 className="w-3.5 h-3.5" /> Markdown
+            <Code2 className="w-3.5 h-3.5" /> {t('coordination.markdown')}
           </button>
         </div>
       </div>
@@ -3321,7 +3328,7 @@ export function DocEditor({
               onKeyDown={handleTextareaKeyDown}
               spellCheck={false}
               className="block w-full max-w-[760px] mx-auto px-5 lg:px-8 py-7 min-h-[160px] bg-surface border-0 outline-none resize-none font-code text-[13.5px] leading-[1.7] text-on-surface-variant whitespace-pre-wrap focus:ring-1 focus:ring-primary/20 overflow-hidden"
-              title="Markdown source view"
+              title={t('coordination.markdown_source_view')}
             />
           ) : (
             <EditorContent editor={editor as Editor} />
@@ -3339,9 +3346,9 @@ export function DocEditor({
           <button
             onClick={openTodoFromFab}
             className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
-            title="Make a to-do"
+            title={t('coordination.make_todo')}
           >
-            <CheckSquare className="w-3.5 h-3.5" /> Todo
+            <CheckSquare className="w-3.5 h-3.5" /> {t('coordination.todo')}
           </button>
 
           <div className="w-px h-4 bg-surface/20" />
@@ -3349,9 +3356,9 @@ export function DocEditor({
           <button
             onClick={openNoteFromFab}
             className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
-            title="Make into note/learning"
+            title={t('coordination.make_note')}
           >
-            <Feather className="w-3.5 h-3.5" /> Note/Learning
+            <Feather className="w-3.5 h-3.5" /> {t('coordination.note_learning')}
           </button>
 
           <div className="w-px h-4 bg-surface/20" />
@@ -3359,9 +3366,9 @@ export function DocEditor({
           <button
             onClick={openLinkFromFab}
             className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
-            title="Turn into a link"
+            title={t('coordination.turn_link')}
           >
-            <Link2 className="w-3.5 h-3.5" /> Link
+            <Link2 className="w-3.5 h-3.5" /> {t('coordination.link')}
           </button>
 
           <div className="w-px h-4 bg-surface/20" />
@@ -3370,9 +3377,9 @@ export function DocEditor({
             <button
               onClick={() => setAssignMenuOpen(!assignMenuOpen)}
               className="flex items-center gap-1.5 px-2.5 h-6 rounded-full hover:bg-surface/10 text-xs font-semibold transition-colors"
-              title="Assign to member"
+              title={t('coordination.assign_member')}
             >
-              <AtSign className="w-3.5 h-3.5" /> Assign
+              <AtSign className="w-3.5 h-3.5" /> {t('coordination.assign')}
             </button>
             
             {assignMenuOpen && (
@@ -3484,6 +3491,7 @@ function NoteCard({
   onRemove?: (n: BoardNote) => void;
 }) {
   const isLearning = n.type === 'learning';
+  const { t } = useLanguage();
   const ageDays = Math.round((Date.now() - new Date(n.date).getTime()) / 86400000);
   const oldRecall = ageDays > 300;
   const isListMode = n.displayMode === 'list' || (n.body && n.body.split('\n').some((l) => /^\s*-\s*\[[ xX]\]/.test(l)));
@@ -3504,19 +3512,19 @@ function NoteCard({
             isLearning ? 'bg-stage-amber-soft text-stage-amber' : 'bg-stage-accent-soft text-stage-accent',
           )}
         >
-          {isLearning ? 'Learning' : 'Record'}
+          {isLearning ? t('coordination.learning') : t('coordination.record')}
         </span>
         <span className="inline-flex items-center gap-1 text-on-surface-variant">
           <Tag className="w-3 h-3" /> {n.series}
         </span>
         {n.archivedAt != null && (
           <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold  ">
-            Archived
+            {t('coordination.archived')}
           </span>
         )}
         <span className="ml-auto inline-flex items-center gap-1.5 text-on-surface-variant/70 whitespace-nowrap">
           {oldRecall && (
-            <span className="px-1.5 py-px rounded-full bg-stage-amber-soft text-stage-amber font-semibold text-[10.5px]">1 yr</span>
+            <span className="px-1.5 py-px rounded-full bg-stage-amber-soft text-stage-amber font-semibold text-[10.5px]">{t('coordination.one_year')}</span>
           )}
           {dateLabelOf(n.date)}
         </span>
@@ -3536,7 +3544,7 @@ function NoteCard({
               <button
                 onClick={() => onEdit(n)}
                 className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                title="Edit note"
+                title={t('coordination.edit_note')}
               >
                 <Edit3 className="w-3.5 h-3.5" />
               </button>
@@ -3556,7 +3564,7 @@ function NoteCard({
                   <button
                     onClick={() => onRestore(n)}
                     className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                    title="Restore note"
+                    title={t('coordination.restore_note')}
                   >
                     <RotateCw className="w-3.5 h-3.5" />
                   </button>
@@ -3565,7 +3573,7 @@ function NoteCard({
                   <button
                     onClick={() => onRemoveForever(n)}
                     className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
-                    title="Delete forever"
+                    title={t('coordination.delete_forever')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -3576,7 +3584,7 @@ function NoteCard({
                 <button
                   onClick={() => (onSoftDelete ? onSoftDelete(n) : onRemove?.(n))}
                   className="p-1 text-on-surface-variant/50 hover:text-error transition-colors"
-                  title="Move to Trash"
+                  title={t('coordination.move_to_trash')}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -3642,6 +3650,7 @@ export function NoteForm({
   onSave: (f: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => void;
 }) {
   const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
+  const { t } = useLanguage();
   const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
@@ -3682,7 +3691,7 @@ export function NoteForm({
                   type === k ? 'bg-surface text-on-surface ' : 'text-on-surface-variant hover:text-on-surface',
                 )}
               >
-                {k}
+                {k === 'record' ? t('coordination.record').toLowerCase() : t('coordination.learning').toLowerCase()}
               </button>
             ))}
           </div>
@@ -3707,18 +3716,18 @@ export function NoteForm({
               ? 'bg-stage-accent-soft text-stage-accent border-stage-accent/40'
               : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
           )}
-          title={displayMode === 'list' ? 'Switch to text format' : 'Switch to checklist format'}
+          title={displayMode === 'list' ? t('coordination.switch_to_text_format') : t('coordination.switch_to_checklist_format')}
         >
           {displayMode === 'list' ? <ListChecks className="w-3.5 h-3.5" /> : <Type className="w-3.5 h-3.5" />}
-          <span>{displayMode === 'list' ? 'List format' : 'Text format'}</span>
+          <span>{displayMode === 'list' ? t('coordination.list_format') : t('coordination.text_format')}</span>
         </button>
       </div>
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A short title — what this was about" className={field} />
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('coordination.short_title_placeholder')} className={field} />
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
         rows={4}
-        placeholder={displayMode === 'list' ? "- [ ] First item\n- [ ] Second item" : "What happened, or what you learned…"}
+        placeholder={displayMode === 'list' ? t('coordination.body_placeholder_list') : t('coordination.body_placeholder_text')}
         className={cn(field, 'resize-y leading-relaxed font-sans')}
       />
       <div className="flex gap-2.5 justify-end">
@@ -3726,14 +3735,14 @@ export function NoteForm({
           onClick={onCancel}
           className="px-3.5 py-2 border border-outline-variant text-on-surface-variant text-sm font-medium rounded-xl hover:bg-surface-container transition-colors"
         >
-          Cancel
+          {t('coordination.cancel')}
         </button>
         <button
           onClick={() => onSave({ id: initial?.id, type, series, title, body, tags: [], displayMode })}
           disabled={!title.trim()}
           className="px-3.5 py-2 bg-primary text-on-primary text-sm font-medium rounded-xl hover:opacity-90 disabled:opacity-40 transition-all"
         >
-          {initial?.id ? 'Update note' : type === 'learning' ? 'Save learning' : 'Save record'}
+          {initial?.id ? t('coordination.update_note') : type === 'learning' ? t('coordination.save_learning') : t('coordination.save_record')}
         </button>
       </div>
     </div>
@@ -3767,6 +3776,7 @@ export function SuggestedTaskCard({
   }) => Promise<void>;
 }) {
   const [title, setTitle] = useState(task.title);
+  const { t } = useLanguage();
   const [dueDate, setDueDate] = useState(task.dueDate || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId || meUid || '');
@@ -3787,7 +3797,7 @@ export function SuggestedTaskCard({
       onAdd();
     } catch (err) {
       console.error('Failed to save suggested task: ', err);
-      alert('Failed to save task: ' + (err instanceof Error ? err.message : String(err)));
+      alert(t('coordination.failed_save_task').replace('{message}', err instanceof Error ? err.message : String(err)));
     } finally {
       setSaving(false);
     }
@@ -3800,7 +3810,7 @@ export function SuggestedTaskCard({
           <del className="text-on-surface-variant">{title}</del>
         </span>
         <span className="flex items-center gap-1 text-tertiary font-semibold ml-2">
-          <Check className="w-3.5 h-3.5" /> Added
+          <Check className="w-3.5 h-3.5" /> {t('coordination.added')}
         </span>
       </div>
     );
@@ -3813,19 +3823,19 @@ export function SuggestedTaskCard({
         onChange={(e) => setTitle(e.target.value)}
         rows={2}
         className="w-full text-xs font-semibold text-on-surface bg-transparent border-0 resize-none focus:outline-none focus:ring-0 p-0 leading-snug"
-        placeholder="Task description"
+        placeholder={t('coordination.task_description_placeholder')}
       />
 
       <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
         {/* Assignee */}
         <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Who</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.who')}</label>
           <select
             value={assigneeId}
             onChange={(e) => setAssigneeId(e.target.value)}
             className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
           >
-            <option value="">Unassigned</option>
+            <option value="">{t('coordination.unassigned')}</option>
             {team.map((t) => (
               <option key={t.uid} value={t.uid}>
                 {t.name}
@@ -3836,7 +3846,7 @@ export function SuggestedTaskCard({
 
         {/* Due Date */}
         <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">When</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.when')}</label>
           <input
             type="date"
             value={dueDate}
@@ -3847,13 +3857,13 @@ export function SuggestedTaskCard({
 
         {/* Contact */}
         <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Contact</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.contact')}</label>
           <select
             value={contactId}
             onChange={(e) => setContactId(e.target.value)}
             className="w-full bg-surface border border-outline-variant rounded-lg p-1 text-[11px] text-on-surface focus:outline-none"
           >
-            <option value="">None</option>
+            <option value="">{t('coordination.none')}</option>
             {contacts.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -3864,7 +3874,7 @@ export function SuggestedTaskCard({
 
         {/* Priority */}
         <div className="space-y-1">
-          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">Priority</label>
+          <label className="text-[10px]  font-semibold text-on-surface-variant/60 block">{t('coordination.priority')}</label>
           <div className="flex bg-surface-container border border-outline-variant rounded-lg p-0.5">
             {(['low', 'medium', 'high'] as const).map((p) => (
               <button
@@ -3894,14 +3904,14 @@ export function SuggestedTaskCard({
           onClick={onDismiss}
           className="px-2 py-1 text-on-surface-variant/70 hover:bg-surface-variant rounded text-[11px] font-semibold"
         >
-          Dismiss
+          {t('coordination.dismiss')}
         </button>
         <button
           onClick={saveTask}
           disabled={saving || !title.trim()}
           className="flex items-center gap-1 px-3 py-1 bg-primary text-on-primary rounded-lg text-[11px] font-semibold hover:opacity-90 transition-opacity"
         >
-          {saving ? 'Adding...' : 'Add Task'}
+          {saving ? t('coordination.adding') : t('coordination.add_task')}
         </button>
       </div>
     </div>

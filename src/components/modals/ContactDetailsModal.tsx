@@ -59,6 +59,7 @@ import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { Translate } from "../Translate";
+import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
@@ -78,12 +79,6 @@ interface ContactDetailsModalProps {
 type PrayerStatus = PrayerRecord["status"];
 
 const PRAYER_MARK_ORDER: PrayerStatus[] = ["ongoing", "answered", "unanswered"];
-const PRAYER_STATUS_LABEL: Record<PrayerStatus, string> = {
-  pending: "Unmarked",
-  ongoing: "Ongoing",
-  answered: "Answered",
-  unanswered: "Archived",
-};
 const PRAYER_MARK_ON: Record<PrayerStatus, string> = {
   pending: "",
   ongoing: "bg-stage-accent-soft text-stage-accent border-stage-accent/40",
@@ -100,6 +95,7 @@ function AuditActivityItem({
   isLast: boolean;
   key?: React.Key;
 }) {
+  const { t } = useLanguage();
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -146,29 +142,29 @@ function AuditActivityItem({
             {activity.action === "logged an interaction for" ||
             activity.action === "logged a batch interaction for"
               ? activity.type === "call"
-                ? "called"
+                ? t('modals.contactDetails.audit_called')
                 : activity.type === "email"
-                  ? "emailed"
+                  ? t('modals.contactDetails.audit_emailed')
                   : activity.type === "event"
-                    ? "had a meeting with"
+                    ? t('modals.contactDetails.audit_meeting')
                     : activity.type === "comment"
-                      ? "left a note for"
-                      : "interacted with"
+                      ? t('modals.contactDetails.audit_note')
+                      : t('modals.contactDetails.audit_interacted')
               : activity.action === "updated an interaction for"
-                ? "updated an interaction for"
+                ? t('modals.contactDetails.audit_updated_interaction')
                 : activity.action.startsWith("updated") &&
                     activity.action !== "updated an interaction for" &&
                     activity.type === "edit" &&
                     activity.description
-                ? `updated the ${activity.description
+                ? t('modals.contactDetails.audit_updated_the').replace('{fields}', (activity.description
                     .split("\\n")
                     .map((line: string) => {
                       const field = line.includes(":") ? line.split(":")[0].trim() : line.trim();
-                      if (field.toLowerCase() === "notes updated") return "Notes";
+                      if (field.toLowerCase() === "notes updated") return t('modals.contactDetails.audit_notes');
                       return field.charAt(0).toUpperCase() + field.slice(1).toLowerCase();
                     })
                     .filter((v: string, i: number, a: string[]) => v && a.indexOf(v) === i)
-                    .join(", ")} for`
+                    .join(", ")))
                 : activity.action}
           </span>
           <span className="text-[10px] font-semibold text-on-surface-variant/40 ml-auto   whitespace-nowrap">
@@ -198,6 +194,7 @@ export default function ContactDetailsModal({
   initialInteractionId,
 }: ContactDetailsModalProps) {
   const { user, isAdmin, role } = useAuth();
+  const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -236,13 +233,13 @@ export default function ContactDetailsModal({
       setTeamMembers(
         snap.docs.map((d) => {
           const data = d.data();
-          const name = data.name || data.displayName || data.email || "Staff";
+          const name = data.name || data.displayName || data.email || t('modals.contactDetails.staff_role');
           const parts = name.trim().split(/\s+/);
           const initials = parts.length >= 2 ? `${parts[0][0]}${parts[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
           return {
             id: d.id,
             name,
-            role: data.role === "admin" ? "Full-timer" : data.role === "manager" ? "Trainee" : "Staff",
+            role: data.role === "admin" ? t('modals.contactDetails.full_timer') : data.role === "manager" ? t('modals.contactDetails.trainee') : t('modals.contactDetails.staff_role'),
             initials,
           };
         })
@@ -501,7 +498,7 @@ export default function ContactDetailsModal({
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
         <div className="w-full max-w-md bg-surface-container rounded-[28px] p-6 border border-outline-variant shadow-2xl text-on-surface">
-          <h2 className="font-serif text-xl font-semibold mb-2">Access Restricted</h2>
+          <h2 className="font-serif text-xl font-semibold mb-2">{t('modals.contactDetails.access_restricted')}</h2>
           <p className="text-sm text-on-surface-variant mb-6">
             You do not have permission to view this contact record.
           </p>
@@ -518,7 +515,7 @@ export default function ContactDetailsModal({
     );
   }
 
-  const walkLabel = "Follow-up";
+  const walkLabel = t('modals.contactDetails.follow_up');
   const threadRecipient = walkingRecipient(user?.uid, contact.createdBy || contact.addedBy);
 
   const coCreators = contact.coCreators || [];
@@ -579,9 +576,9 @@ export default function ContactDetailsModal({
     if (!validatePhoneNumber(formData.phone)) {
       const digits = formData.phone.replace(/[^\d]/g, "");
       if (digits.length < 10) {
-        setPhoneError("Phone number too short (need 10 digits)");
+        setPhoneError(t('modals.contactDetails.phone_too_short'));
       } else if (digits.length > 10) {
-        setPhoneError("Phone number too long (need 10 digits)");
+        setPhoneError(t('modals.contactDetails.phone_too_long'));
       } else {
         setPhoneError(null);
       }
@@ -633,7 +630,7 @@ export default function ContactDetailsModal({
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
         updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       };
 
       await updateDoc(contactRef, updateData);
@@ -648,7 +645,7 @@ export default function ContactDetailsModal({
         targetType: "contact",
         type: "edit",
         userName:
-          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
         description: changes.join("\n"),
       } as any);
 
@@ -665,7 +662,7 @@ export default function ContactDetailsModal({
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this contact?")) return;
+    if (!confirm(t('modals.contactDetails.confirm_delete'))) return;
     hasActionRef.current = true;
     setLoading(true);
     try {
@@ -731,7 +728,7 @@ export default function ContactDetailsModal({
       );
       const docRef = await addDoc(interactionsRef, {
         userId: user.uid,
-        userName: user.displayName || user.email?.split("@")[0] || "Anonymous",
+        userName: user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous'),
         userPhoto: user.photoURL || "",
         content: newInteraction.content.trim(),
         dateTime: newInteraction.dateTime,
@@ -739,7 +736,7 @@ export default function ContactDetailsModal({
         createdAt: serverTimestamp(),
       });
 
-      const userName = user.displayName || user.email?.split("@")[0] || "Anonymous";
+      const userName = user.displayName || user.email?.split("@")[0] || t('modals.contactDetails.anonymous');
       const activityPatch = buildContactActivityPatch({
         date: newInteraction.dateTime,
         by: { uid: user.uid, name: userName },
@@ -844,7 +841,7 @@ export default function ContactDetailsModal({
         updatedAt: now,
         updatedBy: user?.uid || "",
         updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
 
       logActivity({
@@ -874,7 +871,7 @@ export default function ContactDetailsModal({
         updatedAt: now,
         updatedBy: user?.uid || "",
         updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       };
       if (status === "answered") {
         patch.answeredAt =
@@ -906,7 +903,7 @@ export default function ContactDetailsModal({
         updatedAt: new Date().toISOString(),
         updatedBy: user?.uid,
         updatedByName:
-          user?.displayName || user?.email?.split("@")[0] || "Unknown User",
+          user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
       logActivity({
         action: `${verb} tag #${tag} ${verb === "removed" ? "from" : "to"}`,
@@ -998,8 +995,8 @@ export default function ContactDetailsModal({
 
   const lastConnectedDate = fmtDate(effectiveLastContactedDate);
   const sinceText = lastConnectedDate
-    ? `Last connected ${lastConnectedDate}`
-    : "Not connected yet";
+    ? t('modals.contactDetails.last_connected').replace('{date}', lastConnectedDate)
+    : t('modals.contactDetails.not_connected_yet');
   const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
   const ownerInfo = teamMembers.find((m) => m.id === ownerId);
   const ownerName = ownerInfo?.name || contact.createdByName || "—";
@@ -1037,7 +1034,7 @@ export default function ContactDetailsModal({
                   >
                     Cancel
                   </button>
-                  <h3 className="font-serif text-base text-on-surface font-semibold">Edit details</h3>
+                  <h3 className="font-serif text-base text-on-surface font-semibold">{t('modals.contactDetails.edit_details')}</h3>
                   <button
                     type="submit"
                     form="edit-contact-form"
@@ -1056,7 +1053,7 @@ export default function ContactDetailsModal({
                       className="cdm-back text-on-surface-variant font-medium text-sm inline-flex items-center gap-1"
                     >
                       <ChevronRight className="w-4.5 h-4.5 rotate-180 cdm-back-ico text-on-surface-variant" />
-                      <span>People</span>
+                      <span>{t('modals.contactDetails.people')}</span>
                     </button>
                     {isAdmin && (
                       <button
@@ -1101,19 +1098,19 @@ export default function ContactDetailsModal({
                     {contact.phone && (
                       <button onClick={callContact}>
                         <span className="cdm-comm-ico"><Phone className="w-4.5 h-4.5" /></span>
-                        <span>Call</span>
+                        <span>{t('modals.contactDetails.call')}</span>
                       </button>
                     )}
                     {contact.phone && (
                       <button onClick={textContact}>
                         <span className="cdm-comm-ico"><MessageSquare className="w-4.5 h-4.5" /></span>
-                        <span>Text</span>
+                        <span>{t('modals.contactDetails.text')}</span>
                       </button>
                     )}
                     {contact.email && (
                       <button onClick={emailContact}>
                         <span className="cdm-comm-ico"><Mail className="w-4.5 h-4.5" /></span>
-                        <span>Email</span>
+                        <span>{t('modals.contactDetails.email')}</span>
                       </button>
                     )}
                   </div>
@@ -1121,10 +1118,10 @@ export default function ContactDetailsModal({
                   {/* Two Primary Actions */}
                   <div className="cdm-primary px-5 pb-5 flex gap-2">
                     <button onClick={startLogInteraction} className="btn bg-primary text-on-primary font-semibold flex items-center justify-center gap-2 flex-1 min-h-[48px] rounded-xl text-sm">
-                      <MessageSquare className="w-4 h-4" /> Log interaction
+                      <MessageSquare className="w-4 h-4" /> {t('modals.contactDetails.log_interaction')}
                     </button>
                     <button onClick={startAddPrayer} className="btn bg-stage-violet-soft text-stage-violet font-semibold flex items-center justify-center gap-2 border border-stage-violet/20 flex-1 min-h-[48px] rounded-xl text-sm">
-                      <Heart className="w-4 h-4" /> Prayer
+                      <Heart className="w-4 h-4" /> {t('modals.contactDetails.prayer')}
                     </button>
                   </div>
                 </div>
@@ -1137,13 +1134,13 @@ export default function ContactDetailsModal({
                 </div>
                 <div className="cd-head-main">
                   <div className="cd-name-row">
-                    <h2 className="cd-name">{isEditing ? "Edit details" : contact.name}</h2>
+                    <h2 className="cd-name">{isEditing ? t('modals.contactDetails.edit_details') : contact.name}</h2>
                     {!isEditing && contact.pronouns && (
                       <span className="cd-pronouns">{contact.pronouns}</span>
                     )}
                     {!isEditing && (
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-surface-variant text-on-surface-variant">
-                        {contact.stage || "Unassigned"}
+                        {contact.stage || t('modals.contactDetails.unassigned')}
                       </span>
                     )}
                   </div>
@@ -1152,7 +1149,7 @@ export default function ContactDetailsModal({
                     <>
                       <div className="cd-since">
                         {sinceText}
-                        {sinceBy && <span className="cd-by">contacted by {sinceBy}</span>}
+                        {sinceBy && <span className="cd-by">{t('modals.contactDetails.contacted_by').replace('{name}', sinceBy)}</span>}
                       </div>
                       <div className="cd-meta">
                         {[
@@ -1160,7 +1157,7 @@ export default function ContactDetailsModal({
                           contact.metVia && (
                             <span className="row"><HeartHandshake className="w-3.5 h-3.5" /> {contact.metVia}</span>
                           ),
-                          fmtDate(contact.createdAt) && `added ${fmtDate(contact.createdAt)}`,
+                          fmtDate(contact.createdAt) && t('modals.contactDetails.added').replace('{date}', fmtDate(contact.createdAt) || ''),
                         ]
                           .filter(Boolean)
                           .map((item, i) => (
@@ -1180,7 +1177,7 @@ export default function ContactDetailsModal({
                           onClick={callContact}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         >
-                          <Phone className="w-3.5 h-3.5" /> Call
+                          <Phone className="w-3.5 h-3.5" /> {t('modals.contactDetails.call')}
                         </button>
                       )}
                       {contact.phone && (
@@ -1188,7 +1185,7 @@ export default function ContactDetailsModal({
                           onClick={textContact}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         >
-                          <MessageSquare className="w-3.5 h-3.5" /> Text
+                          <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.text')}
                         </button>
                       )}
                       {contact.email && (
@@ -1196,26 +1193,26 @@ export default function ContactDetailsModal({
                           onClick={emailContact}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         >
-                          <Mail className="w-3.5 h-3.5" /> Email
+                          <Mail className="w-3.5 h-3.5" /> {t('modals.contactDetails.email')}
                         </button>
                       )}
                       <button
                         onClick={startLogInteraction}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                       >
-                        <MessageSquare className="w-3.5 h-3.5" /> Log interaction
+                        <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.log_interaction')}
                       </button>
                       <button
                         onClick={startAddPrayer}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                       >
-                        <Heart className="w-3.5 h-3.5" /> Add prayer
+                        <Heart className="w-3.5 h-3.5" /> {t('modals.contactDetails.add_prayer')}
                       </button>
                       <button
                         onClick={() => setIsEditing(true)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        title="Edit details"
-                        aria-label="Edit details"
+                        title={t('modals.contactDetails.edit_details')}
+                        aria-label={t('modals.contactDetails.edit_details')}
                       >
                         <Edit3 className="w-3.5 h-3.5" />
                       </button>
@@ -1225,7 +1222,7 @@ export default function ContactDetailsModal({
                 <button
                   onClick={handleClose}
                   className="p-2 hover:bg-surface-container-high rounded-full transition-colors text-on-surface-variant shrink-0"
-                  title="Close"
+                  title={t('modals.contactDetails.close')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1235,12 +1232,12 @@ export default function ContactDetailsModal({
             {/* Content Tab Switcher */}
             {!isEditing && (() => {
               const visibleTabList = [
-                { id: "overview", label: "Overview" },
-                { id: "thread", label: "Follow-up", count: countFor(threadMessages, null) },
-                ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: "Discussion", count: countFor(threadMessages, null, "team") }] : []),
-                { id: "interactions", label: "Interactions", count: interactions.length },
-                { id: "prayer", label: "Prayer", count: prayers.length },
-                ...(canSeeHistory(role) ? [{ id: "history", label: "History" }] : []),
+                { id: "overview", label: t('modals.contactDetails.overview') },
+                { id: "thread", label: t('modals.contactDetails.follow_up'), count: countFor(threadMessages, null) },
+                ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: t('modals.contactDetails.discussion'), count: countFor(threadMessages, null, "team") }] : []),
+                { id: "interactions", label: t('modals.contactDetails.interactions'), count: interactions.length },
+                { id: "prayer", label: t('modals.contactDetails.prayer'), count: prayers.length },
+                ...(canSeeHistory(role) ? [{ id: "history", label: t('modals.contactDetails.history') }] : []),
               ];
 
               return isMobile ? (
@@ -1294,7 +1291,7 @@ export default function ContactDetailsModal({
                     {/* First Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <User className="w-3.5 h-3.5" /> FIRST NAME
+                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.first_name')}
                       </label>
                       <input
                         required
@@ -1307,13 +1304,13 @@ export default function ContactDetailsModal({
                           }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="First name is plenty"
+                        placeholder={t('modals.contactDetails.first_name_placeholder')}
                       />
                     </div>
                     {/* Last Name */}
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <User className="w-3.5 h-3.5" /> LAST NAME
+                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.last_name')}
                       </label>
                       <input
                         type="text"
@@ -1325,13 +1322,13 @@ export default function ContactDetailsModal({
                           }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="e.g. Johnson"
+                        placeholder={t('modals.contactDetails.last_name_placeholder')}
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
-                        <Briefcase className="w-3.5 h-3.5" /> CONTACT GROUP
+                        <Briefcase className="w-3.5 h-3.5" /> {t('modals.contactDetails.contact_group')}
                       </label>
                       <input
                         type="text"
@@ -1340,12 +1337,12 @@ export default function ContactDetailsModal({
                           setFormData((f) => ({ ...f, role: e.target.value }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="e.g. Student, Faculty"
+                        placeholder={t('modals.contactDetails.contact_group_placeholder')}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <HeartHandshake className="w-3.5 h-3.5" /> HOW WE MET
+                        <HeartHandshake className="w-3.5 h-3.5" /> {t('modals.contactDetails.how_we_met')}
                       </label>
                       <select
                         value={formData.metVia}
@@ -1354,7 +1351,7 @@ export default function ContactDetailsModal({
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
                       >
-                        <option value="">How we met...</option>
+                        <option value="">{t('modals.contactDetails.how_we_met_placeholder')}</option>
                         {MET_VIA.map((m) => (
                           <option key={m} value={m}>{m}</option>
                         ))}
@@ -1363,7 +1360,7 @@ export default function ContactDetailsModal({
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MapPin className="w-3.5 h-3.5" /> ADDRESS
+                        <MapPin className="w-3.5 h-3.5" /> {t('modals.contactDetails.address')}
                       </label>
                       <input
                         type="text"
@@ -1375,13 +1372,13 @@ export default function ContactDetailsModal({
                           }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="e.g. Miller Hall, off-campus"
+                        placeholder={t('modals.contactDetails.address_placeholder')}
                       />
                     </div>
 
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Mail className="w-3.5 h-3.5" /> EMAIL
+                        <Mail className="w-3.5 h-3.5" /> {t('modals.contactDetails.email_label')}
                       </label>
                       <input
                         type="email"
@@ -1390,12 +1387,12 @@ export default function ContactDetailsModal({
                           setFormData((f) => ({ ...f, email: e.target.value }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder="alex@campus.edu"
+                        placeholder={t('modals.contactDetails.email_placeholder')}
                       />
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Phone className="w-3.5 h-3.5" /> PHONE
+                        <Phone className="w-3.5 h-3.5" /> {t('modals.contactDetails.phone')}
                       </label>
                       <input
                         type="tel"
@@ -1428,16 +1425,16 @@ export default function ContactDetailsModal({
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1   text-accent">
-                        <Calendar className="w-3.5 h-3.5" /> PIPELINE STAGE
+                        <Calendar className="w-3.5 h-3.5" /> {t('modals.contactDetails.pipeline_stage')}
                       </label>
                       <select
-                        value={stages.some(s => s.label === formData.stage) ? formData.stage : "Unassigned"}
+                        value={stages.some(s => s.label === formData.stage) ? formData.stage : t('modals.contactDetails.unassigned')}
                         onChange={(e) =>
                           setFormData((f) => ({ ...f, stage: e.target.value }))
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none"
                       >
-                        <option value="Unassigned">Unassigned</option>
+                        <option value="Unassigned">{t('modals.contactDetails.unassigned')}</option>
                         {stages.map((s) => (
                           <option key={s.id} value={s.label}>
                             {s.label}
@@ -1448,7 +1445,7 @@ export default function ContactDetailsModal({
 
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        TAGS (COMMA SEPARATED)
+                        {t('modals.contactDetails.tags_comma_separated')}
                       </label>
                       <input
                         type="text"
@@ -1462,14 +1459,14 @@ export default function ContactDetailsModal({
                               .filter(Boolean),
                           }))
                         }
-                        placeholder="e.g. Lead, Fall2023"
+                        placeholder={t('modals.contactDetails.tags_placeholder')}
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                       />
                     </div>
                     {/* Spiritual Background Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <Sparkles className="w-3.5 h-3.5" /> SPIRITUAL BACKGROUND
+                        <Sparkles className="w-3.5 h-3.5" /> {t('modals.contactDetails.spiritual_background')}
                       </label>
                       <select
                         value={formData.spiritualBackground}
@@ -1478,18 +1475,18 @@ export default function ContactDetailsModal({
                         }
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm appearance-none"
                       >
-                        <option value="">Select background...</option>
-                        <option value="Exploring">Exploring Faith</option>
-                        <option value="Christian">Christian</option>
-                        <option value="Catholic">Catholic</option>
-                        <option value="Other">Other Religion / Background</option>
-                        <option value="None">None</option>
+                        <option value="">{t('modals.contactDetails.spiritual_background_placeholder')}</option>
+                        <option value="Exploring">{t('modals.contactDetails.spiritual_exploring')}</option>
+                        <option value="Christian">{t('modals.contactDetails.christian')}</option>
+                        <option value="Catholic">{t('modals.contactDetails.catholic')}</option>
+                        <option value="Other">{t('modals.contactDetails.other_religion')}</option>
+                        <option value="None">{t('modals.contactDetails.none')}</option>
                       </select>
                     </div>
                     {/* Notes Field */}
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MessageSquare className="w-3.5 h-3.5" /> NOTES
+                        <MessageSquare className="w-3.5 h-3.5" /> {t('modals.contactDetails.notes')}
                       </label>
                       <textarea
                         value={formData.notes}
@@ -1497,7 +1494,7 @@ export default function ContactDetailsModal({
                           setFormData((f) => ({ ...f, notes: e.target.value }))
                         }
                         className="w-full min-h-[120px] p-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm resize-none"
-                        placeholder="Add some context about this contact..."
+                        placeholder={t('modals.contactDetails.notes_placeholder')}
                       />
                     </div>
                     {isMobile && (
@@ -1510,9 +1507,9 @@ export default function ContactDetailsModal({
                         >
                           <Trash2 className="w-4 h-4" />
                           {loading ? (
-                            <span className="animate-pulse">Deleting...</span>
+                            <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
                           ) : (
-                            "Delete Contact"
+                            t('modals.contactDetails.delete_contact')
                           )}
                         </button>
                       </div>
@@ -1528,7 +1525,7 @@ export default function ContactDetailsModal({
                     >
                       <div className="cd-sec">
                         <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">What we know</h3>
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.what_we_know')}</h3>
                         </div>
                         <div className="cd-prose">
                           {contact.notes ? (
@@ -1541,8 +1538,8 @@ export default function ContactDetailsModal({
 
                       <div className="cd-sec">
                         <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">Lately</h3>
-                          <span className="cd-sec-sub">Our last few conversations</span>
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.lately')}</h3>
+                          <span className="cd-sec-sub">{t('modals.contactDetails.our_last_few_conversations')}</span>
                         </div>
                         {interactionsLoading ? (
                           <div className="flex gap-3">
@@ -1553,7 +1550,7 @@ export default function ContactDetailsModal({
                             </div>
                           </div>
                         ) : interactions.length === 0 ? (
-                          <div className="cd-empty">No conversations logged yet.</div>
+                          <div className="cd-empty">{t('modals.contactDetails.no_conversations')}</div>
                         ) : (
                           <div className="cd-tl">
                             {sortedInteractions.slice(0, 3).map((i) => (
@@ -1565,7 +1562,7 @@ export default function ContactDetailsModal({
                                 <div className="cd-tl-meta">
                                   {i.dateTime ? new Date(i.dateTime).toLocaleDateString() : ""}
                                   <span className="sep">·</span>
-                                  <span>{i.userName || "Someone"}</span>
+                                  <span>{i.userName || t('modals.contactDetails.someone')}</span>
                                   {i.type && (
                                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-variant text-on-surface-variant">
                                       {i.type}
@@ -1580,12 +1577,12 @@ export default function ContactDetailsModal({
 
                       <div className="cd-sec">
                         <div className="cd-sec-head">
-                          <h3 className="cd-sec-title">Prayers we're holding</h3>
+                          <h3 className="cd-sec-title">{t('modals.contactDetails.prayers_we_re_holding')}</h3>
                         </div>
                         {prayersLoading ? (
                           <Skeleton className="h-20 w-full rounded-2xl" />
                         ) : openPrayers.length === 0 ? (
-                          <div className="cd-empty">Nothing open right now.</div>
+                          <div className="cd-empty">{t('modals.contactDetails.nothing_open')}</div>
                         ) : (
                           <div className="cd-pray">
                             {openPrayers.map((p) => {
@@ -1599,7 +1596,7 @@ export default function ContactDetailsModal({
                                       <Translate showOriginalToggle text={title} />
                                     </strong>
                                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium bg-stage-violet-soft text-stage-violet">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-stage-violet" /> open
+                                      <span className="w-1.5 h-1.5 rounded-full bg-stage-violet" /> {t('modals.contactDetails.open')}
                                     </span>
                                   </div>
                                   {context && (
@@ -1640,7 +1637,7 @@ export default function ContactDetailsModal({
                           ) : (
                             <Plus className="w-3.5 h-3.5" />
                           )}
-                          {isLoggingInteraction ? "Cancel" : "Log interaction"}
+                          {isLoggingInteraction ? t('modals.contactDetails.cancel') : t('modals.contactDetails.log_interaction')}
                         </button>
                       </div>
 
@@ -1657,7 +1654,7 @@ export default function ContactDetailsModal({
                             <div className="grid grid-cols-2 gap-3 pb-3">
                               <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                  <Calendar className="w-3 h-3" /> Date & Time
+                                  <Calendar className="w-3 h-3" /> {t('modals.contactDetails.date_time')}
                                 </label>
                                 <input
                                   required
@@ -1674,7 +1671,7 @@ export default function ContactDetailsModal({
                               </div>
                               <div className="space-y-1">
                                 <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                  <MessageSquare className="w-3 h-3" /> Type
+                                  <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.type')}
                                 </label>
                                 <select
                                   value={newInteraction.type}
@@ -1686,20 +1683,20 @@ export default function ContactDetailsModal({
                                   }
                                   className="w-full h-9 px-3 rounded-lg bg-surface-container border border-outline-variant focus:border-primary outline-none transition-all text-xs"
                                 >
-                                  <option value="chat">Chat / Message</option>
-                                  <option value="call">Phone Call</option>
-                                  <option value="meeting">Meeting</option>
-                                  <option value="email">Email</option>
+                                  <option value="chat">{t('modals.contactDetails.chat_message')}</option>
+                                  <option value="call">{t('modals.contactDetails.phone_call')}</option>
+                                  <option value="meeting">{t('modals.contactDetails.meeting')}</option>
+                                  <option value="email">{t('modals.contactDetails.email')}</option>
                                 </select>
                               </div>
                             </div>
                             <div className="space-y-1">
                               <label className="text-[10px] font-semibold text-on-surface-variant   flex items-center gap-1.5 px-1">
-                                <MessageSquare className="w-3 h-3" /> Content
+                                <MessageSquare className="w-3 h-3" /> {t('modals.contactDetails.content')}
                               </label>
                               <textarea
                                 required
-                                placeholder="Describe the interaction..."
+                                placeholder={t('modals.contactDetails.interaction_placeholder')}
                                 value={newInteraction.content}
                                 onChange={(e) =>
                                   setNewInteraction((prev) => ({
@@ -1780,7 +1777,7 @@ export default function ContactDetailsModal({
                                     <div className="grid grid-cols-2 gap-3">
                                       <div className="space-y-1">
                                         <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                          Date
+                                          {t('modals.contactDetails.date')}
                                         </label>
                                         <input
                                           type="datetime-local"
@@ -1797,7 +1794,7 @@ export default function ContactDetailsModal({
                                       </div>
                                       <div className="space-y-1">
                                         <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                          Type
+                                          {t('modals.contactDetails.type')}
                                         </label>
                                         <select
                                           value={editInteractionData.type}
@@ -1810,24 +1807,24 @@ export default function ContactDetailsModal({
                                           className="w-full h-8 px-2 rounded-md bg-surface border border-outline-variant focus:border-primary outline-none text-xs"
                                         >
                                           <option value="chat">
-                                            Chat / Message
+                                            {t('modals.contactDetails.chat_message')}
                                           </option>
                                           <option value="call">
-                                            Phone Call
+                                            {t('modals.contactDetails.phone_call')}
                                           </option>
                                           <option value="meeting">
-                                            Meeting
+                                            {t('modals.contactDetails.meeting')}
                                           </option>
-                                          <option value="email">Email</option>
+                                          <option value="email">{t('modals.contactDetails.email')}</option>
                                           <option value="interaction">
-                                            Other
+                                            {t('modals.contactDetails.other')}
                                           </option>
                                         </select>
                                       </div>
                                     </div>
                                     <div className="space-y-1">
                                       <label className="text-[10px] font-semibold text-on-surface-variant   px-1">
-                                        Content
+                                        {t('modals.contactDetails.content')}
                                       </label>
                                       <textarea
                                         required
@@ -1862,7 +1859,7 @@ export default function ContactDetailsModal({
                                         {isUpdatingInteraction ? (
                                           <Loader2 className="w-3 h-3 animate-spin" />
                                         ) : (
-                                          "Save"
+                                          t('modals.contactDetails.save')
                                         )}
                                       </button>
                                     </div>
@@ -1908,8 +1905,8 @@ export default function ContactDetailsModal({
                                     <div className="mt-1 flex items-center justify-between gap-2">
                                       <span className="text-[10px] font-semibold text-on-surface-variant/40  ">
                                         {interaction.createdAt
-                                          ? `Logged ${new Date(interaction.createdAt).toLocaleDateString()} at ${new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-                                          : "Logging..."}
+                                          ? t('modals.contactDetails.logged_at').replace('{date}', new Date(interaction.createdAt).toLocaleDateString()).replace('{time}', new Date(interaction.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))
+                                          : t('modals.contactDetails.logging')}
                                       </span>
                                       {(interaction.duration ||
                                         interaction.type) && (
@@ -1942,8 +1939,8 @@ export default function ContactDetailsModal({
                                       >
                                         <Footprints className="w-3.5 h-3.5" />
                                         {countFor(threadMessages, interaction.id) > 0
-                                          ? `Alongside · ${countFor(threadMessages, interaction.id)}`
-                                          : "Think this through together"}
+                                          ? `${t('modals.contactDetails.alongside')} · ${countFor(threadMessages, interaction.id)}`
+                                          : t('modals.contactDetails.think_this_through_together')}
                                       </button>
                                       {openThread === interaction.id && (
                                         <div className="mt-2 pl-3 border-l-2 border-outline-variant/40">
@@ -1973,7 +1970,7 @@ export default function ContactDetailsModal({
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">{walkLabel}</h3>
                         <span className="cd-sec-sub">
-                          {`Comments on ${firstName} — anyone who can see them can weigh in, and reply to a comment.`}
+                          {t('modals.contactDetails.thread_sub').replace('{name}', firstName)}
                         </span>
                       </div>
                       <Thread
@@ -1994,14 +1991,14 @@ export default function ContactDetailsModal({
                     >
                       <div className="cd-sec-head">
                         <h3 className="cd-sec-title">
-                          Prayers we're holding
+                          {t('modals.contactDetails.prayers_we_re_holding')}
                         </h3>
                         <button
                           onClick={() => setIsAddingPrayer(!isAddingPrayer)}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
                         >
                           {isAddingPrayer ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
-                          {isAddingPrayer ? "Cancel" : "Add prayer"}
+                          {isAddingPrayer ? t('modals.contactDetails.cancel') : t('modals.contactDetails.add_prayer')}
                         </button>
                       </div>
 
@@ -2033,10 +2030,10 @@ export default function ContactDetailsModal({
                             </div>
                             <div className="space-y-1">
                               <label className="text-xs font-medium text-on-surface-variant px-1">
-                                More context <span className="text-on-surface-variant/60">(optional)</span>
+                                {t('modals.contactDetails.prayer_context_label')} <span className="text-on-surface-variant/60">{t('modals.contactDetails.optional')}</span>
                               </label>
                               <textarea
-                                placeholder="Any background worth knowing as we pray…"
+                                placeholder={t('modals.contactDetails.prayer_context_placeholder')}
                                 value={newPrayer.context}
                                 onChange={(e) =>
                                   setNewPrayer((p) => ({ ...p, context: e.target.value }))
@@ -2114,14 +2111,14 @@ export default function ContactDetailsModal({
                                       )}
                                     />
                                     {answered
-                                      ? "answered"
+                                      ? t('modals.contactDetails.answered')
                                       : p.status === "unanswered"
-                                        ? "closed"
-                                        : "open"}
+                                        ? t('modals.contactDetails.closed')
+                                        : t('modals.contactDetails.open')}
                                   </span>
                                   {heldDays != null && (
                                     <span className="text-xs text-on-surface-variant/60">
-                                      held {heldDays} {heldDays === 1 ? "day" : "days"}
+                                      {t('modals.contactDetails.held')} {heldDays} {heldDays === 1 ? t('modals.contactDetails.day') : t('modals.contactDetails.days')}
                                     </span>
                                   )}
                                 </div>
@@ -2131,7 +2128,7 @@ export default function ContactDetailsModal({
                                 {canUpdatePrayers && (
                                   <div className="mt-3 flex flex-wrap items-center gap-1.5">
                                     <span className="text-[11px] text-on-surface-variant mr-0.5">
-                                      Mark
+                                      {t('modals.contactDetails.mark')}
                                     </span>
                                     {PRAYER_MARK_ORDER.map((s) => (
                                       <button
@@ -2150,7 +2147,7 @@ export default function ContactDetailsModal({
                                             : "border-outline-variant text-on-surface-variant hover:text-on-surface hover:border-outline",
                                         )}
                                       >
-                                        {PRAYER_STATUS_LABEL[s]}
+                                        {t('modals.contactDetails.' + (s === 'pending' ? 'unmarked' : s === 'ongoing' ? 'ongoing' : s === 'answered' ? 'answered' : 'archived'))}
                                       </button>
                                     ))}
                                   </div>
@@ -2166,7 +2163,7 @@ export default function ContactDetailsModal({
                   {activeTab === "discussion" && (role === "admin" || isAdmin) && (
                     <div className="cd-sec">
                       <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">Discussion</h3>
+                        <h3 className="cd-sec-title">{t('modals.contactDetails.discussion')}</h3>
                         <span className="cd-sec-sub">
                           {`Full-timers only — how the team is thinking about caring for ${firstName}.`}
                         </span>
@@ -2187,7 +2184,7 @@ export default function ContactDetailsModal({
                   {activeTab === "history" && (
                     <div className="cd-sec">
                       <div className="cd-sec-head">
-                        <h3 className="cd-sec-title">Looking back</h3>
+                        <h3 className="cd-sec-title">{t('modals.contactDetails.looking_back')}</h3>
                       </div>
 
                       <div className="space-y-6">
@@ -2236,9 +2233,9 @@ export default function ContactDetailsModal({
                 >
                   <Trash2 className="w-4 h-4" />
                   {loading ? (
-                    <span className="animate-pulse">Deleting...</span>
+                    <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
                   ) : (
-                    "Delete Contact"
+                    t('modals.contactDetails.delete_contact')
                   )}
                 </button>
               </div>
@@ -2260,9 +2257,9 @@ export default function ContactDetailsModal({
                       className="flex-[2] sm:flex-none px-8 h-10 rounded-full bg-primary text-on-primary font-semibold   hover: active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-70"
                     >
                       {loading ? (
-                        <span className="animate-pulse">Saving...</span>
+                        <span className="animate-pulse">{t('modals.contactDetails.saving')}</span>
                       ) : (
-                        "Save Changes"
+                        t('modals.contactDetails.save_changes')
                       )}
                     </button>
                   </>
@@ -2286,9 +2283,9 @@ export default function ContactDetailsModal({
               >
                 <Trash2 className="w-4 h-4" />
                 {loading ? (
-                  <span className="animate-pulse">Deleting...</span>
+                  <span className="animate-pulse">{t('modals.contactDetails.deleting')}</span>
                 ) : (
-                  "Delete Contact"
+                  t('modals.contactDetails.delete_contact')
                 )}
               </button>
             </div>
@@ -2296,7 +2293,7 @@ export default function ContactDetailsModal({
           {!isMobile && (
             <aside className="cd-page-aside">
               <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">How to reach {firstName}</h3>
+                <h3 className="cd-aside-title">{t('modals.contactDetails.how_to_reach').replace('{name}', firstName)}</h3>
                 <div className="cd-kv">
                   {contact.phone && (
                     <div className="cd-kv-row">
@@ -2338,10 +2335,10 @@ export default function ContactDetailsModal({
               </div>
 
               <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">Where they are</h3>
+                <h3 className="cd-aside-title">{t('modals.contactDetails.where_they_are')}</h3>
                 <div className="cd-journey">
                   {sortedStages.length === 0 && (
-                    <span className="text-xs text-on-surface-variant">No steps shaped yet.</span>
+                    <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.no_steps')}</span>
                   )}
                   {sortedStages.map((s, i) => {
                     const state = stageIdx === -1 ? "" : i < stageIdx ? "done" : i === stageIdx ? "on" : "";
@@ -2352,7 +2349,7 @@ export default function ContactDetailsModal({
                           {state === "done" && <span className="pd" />}
                         </span>
                         <span className="cd-step-name">{s.label}</span>
-                        {state === "on" && <span className="cd-step-here">here now</span>}
+                        {state === "on" && <span className="cd-step-here">{t('modals.contactDetails.here_now')}</span>}
                       </div>
                     );
                   })}
@@ -2360,7 +2357,7 @@ export default function ContactDetailsModal({
               </div>
 
               <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">Cared for by</h3>
+                <h3 className="cd-aside-title">{t('modals.contactDetails.cared_for_by')}</h3>
                 <div className="cd-owner">
                   <div className="w-10 h-10 rounded-full bg-primary/15 text-accent text-sm font-semibold grid place-items-center shrink-0">
                     {ownerInfo?.initials || "?"}
@@ -2377,7 +2374,7 @@ export default function ContactDetailsModal({
                         <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(addedByName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
-                        <span>Added by <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
+                        <span>{t('modals.contactDetails.added_by')} <b>{addedByName}</b>{fmtDate(contact.createdAt) ? ` · ${fmtDate(contact.createdAt)}` : ""}</span>
                       </div>
                     )}
                     {sinceBy && (
@@ -2385,7 +2382,7 @@ export default function ContactDetailsModal({
                         <div className="w-6 h-6 rounded-full bg-primary/10 text-accent text-[10px] font-semibold grid place-items-center shrink-0">
                           {(sinceBy.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "?"}
                         </div>
-                        <span>Last contacted by <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
+                        <span>{t('modals.contactDetails.last_contacted_by')} <b>{sinceBy}</b>{fmtDate(contact.lastContactedDate) ? ` · ${fmtDate(contact.lastContactedDate)}` : ""}</span>
                       </div>
                     )}
                   </div>
@@ -2393,11 +2390,11 @@ export default function ContactDetailsModal({
               </div>
 
               <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">Who else can see them</h3>
+                <h3 className="cd-aside-title">{t('modals.contactDetails.who_else_can_see')}</h3>
                 <div className="cd-share">
                   {sharedWith.length === 0 && (
                     <span className="text-xs text-on-surface-variant">
-                      Just {ownerName.split(" ")[0] || "you"} for now.
+                      {t('modals.contactDetails.just_owner_for_now').replace('{name}', ownerName.split(" ")[0] || t('modals.contactDetails.you'))}
                     </span>
                   )}
                   {sharedWith.map((s) => (
@@ -2406,7 +2403,7 @@ export default function ContactDetailsModal({
                       <span className="cd-share-name">{s.name}</span>
                       <span className="cd-share-role">{s.role}</span>
                       {canShare && (
-                        <button className="cd-share-x" onClick={() => removeShare(s.id)} title="Remove access">×</button>
+                        <button className="cd-share-x" onClick={() => removeShare(s.id)} title={t('modals.contactDetails.remove_access')}>×</button>
                       )}
                     </div>
                   ))}
@@ -2419,7 +2416,7 @@ export default function ContactDetailsModal({
                           defaultValue=""
                           onChange={(e) => e.target.value && addShare(e.target.value)}
                         >
-                          <option value="" disabled>Add someone…</option>
+                          <option value="" disabled>{t('modals.contactDetails.add_someone')}</option>
                           {shareOptions.map((s) => (
                             <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
                           ))}
@@ -2436,7 +2433,7 @@ export default function ContactDetailsModal({
                         onClick={() => setSharing(true)}
                         className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start"
                       >
-                        <Plus className="w-3 h-3" /> add someone
+                        <Plus className="w-3 h-3" /> {t('modals.contactDetails.add_someone_lower')}
                       </button>
                     )
                   )}
@@ -2444,10 +2441,10 @@ export default function ContactDetailsModal({
               </div>
 
               <div className="cd-aside-sec">
-                <h3 className="cd-aside-title">Tags</h3>
+                <h3 className="cd-aside-title">{t('modals.contactDetails.tags')}</h3>
                 <div className="cd-tags">
                   {formData.tags.length === 0 && !addingTag && (
-                    <span className="text-xs text-on-surface-variant">None yet</span>
+                    <span className="text-xs text-on-surface-variant">{t('modals.contactDetails.none_yet')}</span>
                   )}
                   {formData.tags.map((tag) => (
                     <span
@@ -2456,7 +2453,7 @@ export default function ContactDetailsModal({
                       className="cd-tag-item inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
                     >
                       {tag}
-                      <button onClick={() => removeTag(tag)} className="cd-tag-x" title="Remove tag">×</button>
+                      <button onClick={() => removeTag(tag)} className="cd-tag-x" title={t('modals.contactDetails.remove_tag')}>×</button>
                     </span>
                   ))}
                   {addingTag ? (
@@ -2467,7 +2464,7 @@ export default function ContactDetailsModal({
                           autoFocus
                           value={tagInput}
                           onChange={(e) => setTagInput(e.target.value)}
-                          placeholder="new tag…"
+                          placeholder={t('modals.contactDetails.new_tag_placeholder')}
                           onKeyDown={(e) => {
                             if (e.key === "Enter") commitTag();
                             if (e.key === "Escape") { setTagInput(""); setAddingTag(false); }
@@ -2504,7 +2501,7 @@ export default function ContactDetailsModal({
                       onClick={() => setAddingTag(true)}
                       className="cd-tag-add inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors"
                     >
-                      <Plus className="w-3 h-3" /> add
+                      <Plus className="w-3 h-3" /> {t('modals.contactDetails.add')}
                     </button>
                   )}
                 </div>

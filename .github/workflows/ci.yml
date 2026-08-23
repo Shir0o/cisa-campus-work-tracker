@@ -13,7 +13,7 @@ concurrency:
 jobs:
   test:
     name: Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
@@ -24,12 +24,13 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
+      - run: npm run check:i18n
       - run: npm run test:coverage
       - run: npm run build
 
   mobile-test:
     name: Mobile Lint & Test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 20
     defaults:
       run:
@@ -53,4 +54,4 @@ jobs:
         working-directory: .
       - run: npm ci
       - run: npm run typecheck
-      - run: npm test
+      - run: npm test -- --runInBand
