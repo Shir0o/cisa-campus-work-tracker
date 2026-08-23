@@ -6,6 +6,7 @@ import { tabsForRole } from '@cisa/core';
 import { Room } from '../../src/components/v2/Widget';
 import { roomForRole, useV2Theme } from '../../src/theme/v2';
 import { useAuth } from '../../src/lib/AuthProvider';
+import { useLanguage } from '../../src/lib/LanguageProvider';
 import { useMessagesData } from '../../src/lib/useMessagesData';
 
 // The shell — one of three, chosen by role, from the design project
@@ -159,18 +160,22 @@ export default function TabsLayout() {
 
 function RoleTabs() {
   const { role } = useAuth();
+  const { t } = useLanguage();
   const messages = useMessagesData();
 
   const tabs = tabsForRole(role);
-  const titleOf = (name: string) => tabs.find((t) => t.name === name)?.title;
+  const titleOf = (name: string) => tabs.find((tab) => tab.name === name)?.title;
+  const mobileTitle = (name: string) =>
+    t(`mobile.nav.${name === 'index' ? 'today' : name}`);
+
   // A tab this role doesn't have drops out of the bar — `href: null` keeps the
   // route reachable by push and by deep link, which is how the drawer and the
   // full-timer's More reach People, The Journey and the rest.
   const slot = (name: string, fallback: string) => {
     const title = titleOf(name);
-    return title ? { title, href: undefined } : { title: fallback, href: null };
+    return title ? { title: mobileTitle(name), href: undefined } : { title: fallback, href: null };
   };
-  const tabNames = tabs.map((t) => t.name);
+  const tabNames = tabs.map((tab) => tab.name);
 
   return (
     <Tabs
@@ -181,20 +186,20 @@ function RoleTabs() {
         headerShown: false,
       }}
     >
-      <Tabs.Screen name="index" options={{ title: titleOf('index') ?? 'Today' }} />
-      <Tabs.Screen name="people" options={slot('people', 'People')} />
-      <Tabs.Screen name="prayer" options={slot('prayer', 'Prayer')} />
+      <Tabs.Screen name="index" options={{ title: mobileTitle('index') }} />
+      <Tabs.Screen name="people" options={slot('people', t('mobile.nav.people'))} />
+      <Tabs.Screen name="prayer" options={slot('prayer', t('mobile.nav.prayer'))} />
       <Tabs.Screen
         name="messages"
         options={{
-          ...slot('messages', 'Messages'),
+          ...slot('messages', t('mobile.nav.messages')),
           tabBarBadge: messages.unreadCount > 0 ? messages.unreadCount : undefined,
         }}
       />
-      <Tabs.Screen name="more" options={slot('more', 'More')} />
+      <Tabs.Screen name="more" options={slot('more', t('mobile.nav.more'))} />
       {/* Nobody has The Journey as a tab: the trainee reaches it from the
           drawer, the full-timer from More. */}
-      <Tabs.Screen name="journey" options={{ title: 'The Journey', href: null }} />
+      <Tabs.Screen name="journey" options={{ title: t('mobile.nav.the_journey'), href: null }} />
     </Tabs>
   );
 }

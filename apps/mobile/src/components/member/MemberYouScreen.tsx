@@ -9,6 +9,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { firstName, roleLabel, type FullTimerSummary, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 import { subscribeFullTimers } from '../../lib/data/users';
@@ -38,6 +39,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
   const { c, font, radius, fs } = useV2Theme();
   const { scheme, setScheme } = useTheme();
   const { uid, user, role: appRole, logOut } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const [fullTimers, setFullTimers] = React.useState<FullTimerSummary[]>([]);
   const [inviteOpen, setInviteOpen] = React.useState(false);
@@ -49,7 +51,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
     [],
   );
 
-  const me = user?.displayName || 'You';
+  const me = user?.displayName || t('mobile.common.you');
 
   const openDm = (ft: FullTimerSummary) => {
     if (!uid) return;
@@ -63,7 +65,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
     <>
       <MemberScreen>
         {showBack && <MemberBack />}
-        <MemberHead greeting="You" showDate={false} />
+        <MemberHead greeting={t('mobile.member.you')} showDate={false} />
 
         <View
           style={{
@@ -86,7 +88,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         </View>
 
         <View>
-          <Sech label={role === 'student' ? 'Who to reach' : 'Your link to the team'} />
+          <Sech label={role === 'student' ? t('mobile.member.who_to_reach') : t('mobile.member.your_link_to_team')} />
           <View style={{ gap: 10 }}>
             {fullTimers.length === 0 && (
               <Text
@@ -114,7 +116,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                     {ft.name}
                   </Text>
                   <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.widget.ink3 }}>
-                    Campus team
+                    {t('mobile.member.campus_team')}
                   </Text>
                 </View>
                 <Pressable
@@ -127,7 +129,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                   })}
                 >
                   <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.card.link }}>
-                    Message →
+                    {t('mobile.member.message')}
                   </Text>
                 </Pressable>
               </View>
@@ -137,7 +139,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
 
         {role === 'community' && (
           <View>
-            <Sech label="Gospel" />
+            <Sech label={t('mobile.member.gospel')} />
             <Pressable
               onPress={() => router.push('/outreach')}
               style={({ pressed }) => ({
@@ -150,19 +152,19 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
               })}
             >
               <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                The monthly park outing
+                {t('mobile.member.the_monthly_park_outing')}
               </Text>
               <Text
                 style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
               >
-                Write down who came back with you — the names are the part that matters
+                {t('mobile.member.write_down_who_came_back')}
               </Text>
             </Pressable>
           </View>
         )}
 
         <View>
-          <Sech label="How this works" />
+          <Sech label={t('mobile.member.how_this_works')} />
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/tutorial')}
@@ -175,16 +177,16 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             })}
           >
             <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-              Read how this works
+              {t('mobile.member.read_how_this_works')}
             </Text>
             <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}>
-              A quick tour of logging, the on-campus window, Later, and whose people you see.
+              {t('mobile.member.a_quick_tour')}
             </Text>
           </Pressable>
         </View>
 
         <View>
-          <Sech label="How it looks" />
+          <Sech label={t('mobile.member.how_it_looks')} />
           {/* Reads and writes ThemeProvider's own scheme — the one source of
               truth for light/dark app-wide, just in v2 clothes here. */}
           <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -215,7 +217,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
                       color: on ? c.widget.ink : c.room.ink2,
                     }}
                   >
-                    {look.label}
+                    {t(`mobile.member.${look.key === 'light' ? 'daylight' : look.key === 'dark' ? 'dark' : 'match_my_phone'}`)}
                   </Text>
                 </Pressable>
               );
@@ -225,7 +227,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
 
         {role === 'student' && (
           <View>
-            <Sech label="Bring someone in" />
+            <Sech label={t('mobile.member.bring_someone_in')} />
             <Pressable
               onPress={() => setInviteOpen(true)}
               style={({ pressed }) => ({
@@ -238,22 +240,22 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
               })}
             >
               <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
-                Invite a friend
+                {t('mobile.member.invite_a_friend')}
               </Text>
               <Text
                 style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
               >
-                An invitation you can send in a text
+                {t('mobile.member.an_invitation_you_can_send')}
               </Text>
             </Pressable>
           </View>
         )}
 
         <View>
-          <Sech label="Account & Session" />
+          <Sech label={t('mobile.member.account_session')} />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Log out"
+            accessibilityLabel={t('mobile.member.log_out')}
             onPress={() => logOut()}
             style={({ pressed }) => ({
               backgroundColor: c.widget.bg,
@@ -268,7 +270,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
-              Log out
+              {t('mobile.member.log_out')}
             </Text>
           </Pressable>
         </View>

@@ -19,6 +19,7 @@ import { SafeAreaView } from '../ui/SafeArea';
 import { useRouter } from 'expo-router';
 import { canPostToRoom, getRoomName, memberSenderName } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useChatThreadData } from '../../lib/useChatThreadData';
 import { useV2Theme } from '../../theme/v2';
 import { MemberRoom } from './MemberScreen';
@@ -35,6 +36,7 @@ export function MemberThreadScreen({ roomId }: { roomId: string }) {
 function MemberThread({ roomId }: { roomId: string }) {
   const { c, font, radius, fs } = useV2Theme();
   const { uid, role } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const data = useChatThreadData(roomId);
   const [text, setText] = React.useState('');
@@ -67,20 +69,20 @@ function MemberThread({ roomId }: { roomId: string }) {
           hitSlop={10}
           style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>← Back</Text>
+          <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.room.ink2 }}>{t('mobile.common.back')}</Text>
         </Pressable>
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text
             numberOfLines={1}
             style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.room.ink }}
           >
-            {name || 'Loading…'}
+            {name || t('mobile.common.loading')}
           </Text>
           {isGroupish && (
             <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.room.ink3 }}>
               {data.room!.type === 'announcement'
-                ? 'Announcement'
-                : `${data.room!.memberIds.length} people`}
+                ? t('mobile.messages.announcement')
+                : `${data.room!.memberIds.length} ${data.room!.memberIds.length === 1 ? t('mobile.messages.person') : t('mobile.messages.people')}`}
             </Text>
           )}
         </View>
@@ -112,7 +114,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 paddingVertical: 24,
               }}
             >
-              Nothing here yet.
+              {t('mobile.messages.nothing_here_yet')}
             </Text>
           ) : (
             data.dayGroups.map((group) => (
@@ -189,7 +191,7 @@ function MemberThread({ roomId }: { roomId: string }) {
             <TextInput
               value={text}
               onChangeText={setText}
-              placeholder="Say it how you'd say it out loud."
+              placeholder={t('mobile.messages.say_it_out_loud')}
               placeholderTextColor={c.card.ink3}
               multiline
               style={{
@@ -219,7 +221,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 opacity: !text.trim() ? 0.45 : pressed ? 0.85 : 1,
               })}
             >
-              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.onPrimary }}>Send</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(15), color: c.card.onPrimary }}>{t('mobile.common.send')}</Text>
             </Pressable>
           </View>
         ) : (
@@ -233,7 +235,7 @@ function MemberThread({ roomId }: { roomId: string }) {
                 textAlign: 'center',
               }}
             >
-              This one's an announcement — you can read it, and replies go to the team directly.
+              {t('mobile.messages.member_announcement_note')}
             </Text>
           </View>
         )}

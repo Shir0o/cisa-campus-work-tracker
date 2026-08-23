@@ -164,7 +164,7 @@ function Settings() {
   const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role, logOut } = useAuth();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const season = useActiveSeason();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
@@ -226,7 +226,7 @@ function Settings() {
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
-      <V2Screen title="Settings" onBack={back}>
+      <V2Screen title={t('mobile.settings.title')} onBack={back}>
         <View
           style={{
             flexDirection: 'row',
@@ -237,10 +237,10 @@ function Settings() {
             backgroundColor: c.card.bg,
           }}
         >
-          <PersonMark name={user?.displayName || 'You'} id={uid} size={52} radius={17} fontSize={17} />
+          <PersonMark name={user?.displayName || t('mobile.common.you')} id={uid} size={52} radius={17} fontSize={17} />
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={{ fontFamily: font.extra, fontSize: fs(17), letterSpacing: -0.4, color: c.card.ink }}>
-              {user?.displayName || 'You'}
+              {user?.displayName || t('mobile.common.you')}
             </Text>
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 2 }}>
               {user?.email || ''}
@@ -267,11 +267,11 @@ function Settings() {
         </Text>
 
         {isManager && (
-          <Section title="Tagging sign-ups">
+          <Section title={t('mobile.settings.tagging_signups')}>
             <View style={{ gap: 10 }}>
               <View>
                 <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>
-                  New sign-ups get
+                  {t('mobile.settings.new_signups_get')}
                 </Text>
                 <Text
                   style={{
@@ -283,7 +283,7 @@ function Settings() {
                   }}
                 >
                   {season.label}
-                  {season.clubRush ? ' · Club rush' : ''}
+                  {season.clubRush ? ` · ${t('mobile.settings.club_rush')}` : ''}
                 </Text>
               </View>
 
@@ -328,7 +328,7 @@ function Settings() {
                   style={{ alignSelf: 'flex-start', paddingVertical: 4 }}
                 >
                   <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.card.ink3 }}>
-                    Back to current term
+                    {t('mobile.settings.back_to_current_term')}
                   </Text>
                 </Pressable>
               )}
@@ -351,10 +351,10 @@ function Settings() {
               >
                 <View style={{ flex: 1, gap: 2 }}>
                   <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
-                    Club rush
+                    {t('mobile.settings.club_rush')}
                   </Text>
                   <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3 }}>
-                    New sign-ups also get a “Club Rush” tag.
+                    {t('mobile.settings.club_rush_sub')}
                   </Text>
                 </View>
                 <View
@@ -382,10 +382,10 @@ function Settings() {
         )}
 
         {hasQueue && (
-          <Section title="When you're on campus">
+          <Section title={t('mobile.settings.when_on_campus')}>
             <View style={{ gap: 10 }}>
               <View>
-                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>The days you're there</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>{t('mobile.settings.the_days_youre_there')}</Text>
                 <Text
                   style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}
                 >
@@ -425,14 +425,14 @@ function Settings() {
 
             <Choice
               scroll
-              label="From"
+              label={t('mobile.settings.from')}
               options={HOURS.filter((h) => h < w.to).map((h) => ({ value: h, label: hourLabel(h) }))}
               value={w.from}
               onPick={(from) => set({ onCampus: { ...w, from } })}
             />
             <Choice
               scroll
-              label="Until"
+              label={t('mobile.settings.until')}
               options={HOURS.filter((h) => h > w.from).map((h) => ({ value: h, label: hourLabel(h) }))}
               value={w.to}
               onPick={(to) => set({ onCampus: { ...w, to } })}
@@ -441,26 +441,26 @@ function Settings() {
         )}
 
         {hasQueue && (
-          <Section title="When to nudge you">
+          <Section title={t('mobile.settings.when_to_nudge')}>
             <Choice
-              label="Someone's gone quiet after"
+              label={t('mobile.settings.someones_gone_quiet_after')}
               sub="How long without a conversation before they turn up in your queue."
               options={[1, 2, 3, 5, 7].map((n) => ({ value: n, label: `${n} ${n === 1 ? 'day' : 'days'}` }))}
               value={prefs.quietDays}
               onPick={(quietDays) => setPref({ quietDays })}
             />
             <Choice
-              label="Quiet people at a time"
+              label={t('mobile.settings.quiet_people_at_a_time')}
               sub="So a long list never lands on you all at once."
               options={[1, 2, 3].map((n) => ({ value: n, label: String(n) }))}
               value={prefs.quietMax}
               onPick={(quietMax) => setPref({ quietMax })}
             />
             <Choice
-              label="Prayers to carry"
+              label={t('mobile.settings.prayers_to_carry')}
               sub="How many of your people's prayers ride in the queue each day."
               options={[
-                { value: 0, label: 'None' },
+                { value: 0, label: t('mobile.common.none') },
                 { value: 1, label: '1' },
                 { value: 3, label: '3' },
                 { value: 5, label: '5' },
@@ -469,13 +469,13 @@ function Settings() {
               onPick={(prayers) => setPref({ prayers })}
             />
             <Choice
-              label="A day holds"
+              label={t('mobile.settings.a_day_holds')}
               sub="Anything past this waits for tomorrow — except a to-do that's actually due. Those are promises."
               options={[
                 { value: 5, label: '5' },
                 { value: 8, label: '8' },
                 { value: 12, label: '12' },
-                { value: 0, label: 'All' },
+                { value: 0, label: t('mobile.common.all') },
               ]}
               value={prefs.dayCap}
               onPick={(dayCap) => setPref({ dayCap })}
@@ -483,7 +483,7 @@ function Settings() {
           </Section>
         )}
 
-        <Section title="Nudges on your phone">
+        <Section title={t('mobile.settings.nudges_on_phone')}>
           <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.card.ink2 }}>
             Turn on notifications to get a nudge when something needs you — a due to-do, a new message, a quiet person.
           </Text>
@@ -501,12 +501,12 @@ function Settings() {
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.onPrimary }}>
-              {notifyBusy ? 'Working…' : 'Turn on notifications'}
+              {notifyBusy ? t('mobile.settings.working') : t('mobile.settings.turn_on_notifications')}
             </Text>
           </Pressable>
         </Section>
 
-        <Section title="How this works">
+        <Section title={t('mobile.settings.how_this_works')}>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push('/tutorial')}
@@ -522,12 +522,12 @@ function Settings() {
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
-              Read how this works
+              {t('mobile.settings.read_how_this_works')}
             </Text>
           </Pressable>
         </Section>
 
-        <Section title="Language">
+        <Section title={t('mobile.settings.language')}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {(['en', 'es'] as const).map((lang) => {
               const active = language === lang;
@@ -549,7 +549,7 @@ function Settings() {
                   }}
                 >
                   <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: active ? c.card.bg : c.card.ink2 }}>
-                    {lang === 'en' ? 'English' : 'Español'}
+                    {lang === 'en' ? t('mobile.settings.english') : t('mobile.settings.spanish')}
                   </Text>
                 </Pressable>
               );
@@ -557,31 +557,31 @@ function Settings() {
           </View>
         </Section>
 
-        <Section title="How it looks">
+        <Section title={t('mobile.settings.how_it_looks')}>
           <Choice
-            label="Daylight or dark"
+            label={t('mobile.settings.daylight_or_dark')}
             sub="Dark is easier at night and on a dim screen — it changes the phone only."
-            options={LOOKS.map((l) => ({ value: l.key, label: l.label }))}
+            options={LOOKS.map((l) => ({ value: l.key, label: t(`mobile.settings.${l.key === 'light' ? 'daylight' : l.key === 'dark' ? 'dark' : 'match_my_phone'}`) }))}
             value={scheme}
             onPick={setScheme}
           />
           <Choice
-            label="Room tint"
+            label={t('mobile.settings.room_tint')}
             sub="Green is the classic trainee room; Navy is the deep night and team paper tone."
-            options={TINTS.map((t) => ({ value: t.key, label: t.label }))}
+            options={TINTS.map((tintOption) => ({ value: tintOption.key, label: t(`mobile.settings.${tintOption.key === 'green' ? 'green_room' : 'navy_room'}`) }))}
             value={tint}
             onPick={setTint}
           />
         </Section>
 
-        <Section title="Account & Session">
+        <Section title={t('mobile.settings.account_session')}>
           <View style={{ gap: 12 }}>
             <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), color: c.card.ink2 }}>
-              Signed in as {user?.email || user?.displayName || 'Campus user'}
+              {t('mobile.settings.signed_in_as').replace('{name}', user?.email || user?.displayName || t('mobile.common.you'))}
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Log out"
+              accessibilityLabel={t('mobile.common.log_out')}
               onPress={() => logOut()}
               style={({ pressed }) => ({
                 minHeight: 48,
@@ -595,14 +595,14 @@ function Settings() {
               })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: '#DC2626' }}>
-                Log out
+                {t('mobile.common.log_out')}
               </Text>
             </Pressable>
           </View>
         </Section>
 
         {hasQueue && (
-          <Section title="Today's queue">
+          <Section title={t('mobile.settings.todays_queue')}>
             <View style={{ gap: 12 }}>
               <Text style={{ fontFamily: font.medium, fontSize: fs(14), lineHeight: fs(21), color: c.card.ink2 }}>
                 You've dealt with {queueState.handledCount}{' '}
@@ -610,7 +610,7 @@ function Settings() {
                 doesn't undo anything you did.
               </Text>
               <SecondaryButton
-                title="Bring back today's queue"
+                title={t('mobile.settings.bring_back_todays_queue')}
                 onPress={() => {
                   queueState.reset();
                   setToast("Today's queue is back.");

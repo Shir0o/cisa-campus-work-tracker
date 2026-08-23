@@ -9,6 +9,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { canRemoveConvForEveryone, memberAgo, firstName, getRoomName, type ChatRoom, type MemberRole } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { deleteChatRoom, hideChatRoomForUser } from '../../lib/data/chat';
 import { useMessagesData } from '../../lib/useMessagesData';
 import { useV2Theme } from '../../theme/v2';
@@ -27,24 +28,25 @@ export function MemberMessagesScreen({ role }: { role: MemberRole }) {
 function MemberMessages({ role }: { role: MemberRole }) {
   const { c, font, radius, fs } = useV2Theme();
   const { uid } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const data = useMessagesData();
 
   const kindLine = (room: ChatRoom) =>
     room.type === 'announcement'
-      ? 'Announcement'
+      ? t('mobile.messages.announcement')
       : room.type === 'group'
-        ? `${room.memberIds.length} people`
+        ? `${room.memberIds.length} ${room.memberIds.length === 1 ? t('mobile.messages.person') : t('mobile.messages.people')}`
         : '';
 
   return (
     <MemberScreen loading={data.loading} error={data.error}>
       <MemberHead
-        greeting="Messages"
+        greeting={t('mobile.messages.title')}
         intro={
           role === 'student'
-            ? 'The team, your group, and what’s announced.'
-            : 'The team, and what’s announced to everyone.'
+            ? t('mobile.messages.member_student_intro')
+            : t('mobile.messages.member_community_intro')
         }
         showDate={false}
       />
@@ -52,7 +54,7 @@ function MemberMessages({ role }: { role: MemberRole }) {
       <View style={{ gap: 10 }}>
         {data.rooms.length === 0 && (
           <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21), color: c.room.ink2 }}>
-            Nothing yet.
+            {t('mobile.member.nothing_yet')}
           </Text>
         )}
         {data.rooms.map((room) => {

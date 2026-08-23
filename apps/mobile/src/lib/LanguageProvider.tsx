@@ -1,12 +1,16 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthProvider';
+import { translate } from './i18n';
 import type { AppLanguage } from './translator';
+
+export type TranslateFunction = (key: string, fallback?: string) => string;
 
 interface LanguageContextType {
   language: AppLanguage;
   setLanguage: (lang: AppLanguage) => void;
   isSpanish: boolean;
+  t: TranslateFunction;
 }
 
 const STORAGE_KEY = 'cisa_language';
@@ -82,13 +86,19 @@ export function LanguageProvider({
     };
   }, []);
 
+  const t = React.useCallback(
+    (key: string, fallback?: string) => translate(key, language, fallback),
+    [language],
+  );
+
   const value = React.useMemo<LanguageContextType>(
     () => ({
       language,
       setLanguage,
       isSpanish: language === 'es',
+      t,
     }),
-    [language, setLanguage],
+    [language, setLanguage, t],
   );
 
   return (
@@ -105,6 +115,7 @@ export function useLanguage() {
       language: 'en' as AppLanguage,
       setLanguage: () => {},
       isSpanish: false,
+      t: (key: string, fallback?: string) => translate(key, 'en', fallback),
     };
   }
   return context;

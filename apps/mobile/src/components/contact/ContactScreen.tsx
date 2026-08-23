@@ -34,6 +34,7 @@ import {
   type ThreadKind,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { Translate } from '../Translate';
 import { useContactDetailData } from '../../lib/useContactDetailData';
 import type { JourneyStage } from '../../lib/useJourneyData';
@@ -76,6 +77,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const { c, font, radius, shadow, fs } = useV2Theme();
   const router = useRouter();
   const { uid, user, role } = useAuth();
+  const { t } = useLanguage();
   const data = useContactDetailData(contactId);
   const queueState = useQueueState(uid ?? null);
 
@@ -113,7 +115,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
       <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
         <BackRow onBack={back} note="" />
         <View style={{ paddingHorizontal: 14 }}>
-          <V2Empty>{data.error || "We can't find this person."}</V2Empty>
+          <V2Empty>{data.error || t('mobile.contact.we_cant_find')}</V2Empty>
         </View>
       </SafeAreaView>
     );
@@ -196,7 +198,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                 hitSlop={8}
                 style={({ pressed }) => ({ paddingVertical: 6, paddingHorizontal: 2, opacity: pressed ? 0.6 : 1 })}
               >
-                <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.link }}>Move a step</Text>
+                <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.link }}>{t('mobile.contact.move_a_step')}</Text>
               </Pressable>
             )}
           </View>
@@ -208,9 +210,9 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           )}
 
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 18 }}>
-            <HeroAction label="Text" disabled={!contact.phone} onPress={() => openMessage(contact.phone)} />
-            <HeroAction label="Call" disabled={!contact.phone} onPress={() => openCall(contact.phone)} />
-            {canWrite && <HeroAction label="Log" dark onPress={() => setSheet('log')} />}
+            <HeroAction label={t('mobile.contact.text')} disabled={!contact.phone} onPress={() => openMessage(contact.phone)} />
+            <HeroAction label={t('mobile.contact.call')} disabled={!contact.phone} onPress={() => openCall(contact.phone)} />
+            {canWrite && <HeroAction label={t('mobile.contact.log')} dark onPress={() => setSheet('log')} />}
           </View>
         </View>
 
@@ -218,9 +220,9 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           value={tab}
           onChange={setTab}
           items={[
-            { id: 'story', label: 'Story', count: story.length },
-            { id: 'prayers', label: 'Prayers', count: openPrayers.length },
-            { id: 'alongside', label: 'Alongside', count: alongside.length },
+            { id: 'story', label: t('mobile.contact.story'), count: story.length },
+            { id: 'prayers', label: t('mobile.contact.prayers'), count: openPrayers.length },
+            { id: 'alongside', label: t('mobile.contact.alongside'), count: alongside.length },
           ]}
         />
 
@@ -230,7 +232,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             {data.interactionsLoading ? (
               <SkeletonList rows={3} avatar={false} style={{ marginTop: 20 }} />
             ) : story.length === 0 ? (
-              <V2Empty>{`Nothing logged with ${first} yet. Even a text counts.`}</V2Empty>
+              <V2Empty>{t('mobile.contact.nothing_logged_yet').replace('{name}', first)}</V2Empty>
             ) : (
               story.map((interaction) => (
                 <StoryCard
@@ -261,7 +263,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
               style={({ pressed }) => ({ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4, opacity: pressed ? 0.6 : 1 })}
             >
               <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.room.ink2 }}>
-                {showDetails ? 'Hide the details' : 'Details, notes, how to reach them'}
+                {showDetails ? t('mobile.contact.hide_the_details') : t('mobile.contact.details_notes_how_to_reach')}
               </Text>
             </Pressable>
 
@@ -277,12 +279,12 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         {/* ── Prayers ──────────────────────────────────────────────────── */}
         {tab === 'prayers' && (
           <View style={{ gap: 10 }}>
-            {canWrite && <PrimaryButton title={`Pray for ${first}`} tone="deep" onPress={() => setSheet('pray')} />}
+            {canWrite && <PrimaryButton title={t('mobile.contact.pray_for').replace('{name}', first)} tone="deep" onPress={() => setSheet('pray')} />}
 
             {data.prayersLoading ? (
               <SkeletonList rows={3} style={{ marginTop: 20 }} />
             ) : data.prayers.length === 0 ? (
-              <V2Empty>Nothing written down yet.</V2Empty>
+              <V2Empty>{t('mobile.contact.nothing_written_down')}</V2Empty>
             ) : null}
 
             {openPrayers.map((prayer) => (
@@ -299,7 +301,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
             {closedPrayers.length > 0 && (
               <>
                 <Kicker onRoom style={{ marginTop: 14, marginHorizontal: 4 }}>
-                  Looking back
+                  {t('mobile.contact.looking_back')}
                 </Kicker>
                 {closedPrayers.map((prayer) => (
                   <PrayerCard key={prayer.id} prayer={prayer} done canWrite={false} />
@@ -314,8 +316,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
           <View style={{ gap: 10 }}>
             <V2Empty>
               {alongside.length === 0
-                ? `Nothing here yet. Ask a question about ${first} — someone will answer.`
-                : `Thinking out loud about ${first}, together.`}
+                ? t('mobile.contact.nothing_here_yet').replace('{name}', first)
+                : t('mobile.contact.thinking_out_loud').replace('{name}', first)}
             </V2Empty>
             {alongside.map((m) => (
               <ThreadMessageRow
@@ -375,6 +377,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
 /** The design's `.m2-ch` on this screen: back, then who's looking after them. */
 function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
   const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 10 }}>
       <Pressable
@@ -389,7 +392,7 @@ function BackRow({ onBack, note }: { onBack: () => void; note: string }) {
           opacity: pressed ? 0.65 : 1,
         })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>← Back</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: c.room.ink2 }}>{t('mobile.contact.back')}</Text>
       </Pressable>
       {!!note && (
         <Text style={{ fontFamily: font.semi, fontSize: fs(12), color: c.room.ink3, marginLeft: 'auto' }} numberOfLines={1}>
@@ -504,6 +507,7 @@ function PrayerCard({
   onAnswered?: () => void;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <View
       style={{
@@ -548,7 +552,7 @@ function PrayerCard({
             })}
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: prayed ? c.card.onDeep : c.card.tones.pray.text }}>
-              {prayed ? 'Prayed ✓' : 'I prayed just now'}
+              {prayed ? t('mobile.contact.prayed') : t('mobile.contact.i_prayed_just_now')}
             </Text>
           </Pressable>
           <Pressable
@@ -564,7 +568,7 @@ function PrayerCard({
               opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink2 }}>Answered</Text>
+            <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: c.card.ink2 }}>{t('mobile.contact.answered')}</Text>
           </Pressable>
         </View>
       )}
@@ -582,6 +586,7 @@ function Details({
   careLine: string;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const knownMs = parseMs(contact.createdAt);
   const tags = contact.tags ?? [];
 
@@ -589,7 +594,7 @@ function Details({
     <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingTop: 6, paddingBottom: 12 }}>
       {!!contact.notes && (
         <View style={{ backgroundColor: c.card.note, borderRadius: radius.badge, padding: 14, marginTop: 14, marginBottom: 4 }}>
-          <Kicker>First impression</Kicker>
+          <Kicker>{t('mobile.contact.first_impression')}</Kicker>
           <Translate
             text={contact.notes}
             style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20.3), color: c.card.noteInk, marginTop: 7 }}
@@ -607,22 +612,22 @@ function Details({
         </View>
       )}
 
-      <DetailRow label="Phone" value={contact.phone} onPress={() => openCall(contact.phone)} />
-      <DetailRow label="Email" value={contact.email} onPress={() => openEmail(contact.email)} />
-      <DetailRow label="Instagram" value={contact.instagram} />
+      <DetailRow label={t('mobile.contact.phone')} value={contact.phone} onPress={() => openCall(contact.phone)} />
+      <DetailRow label={t('mobile.contact.email')} value={contact.email} onPress={() => openEmail(contact.email)} />
+      <DetailRow label={t('mobile.contact.instagram')} value={contact.instagram} />
       {/* "How we met" (#356) — replaces the old "First met / lives" reading of
           the dual-purpose location field. The address stays on `location` for
           the v2 log sheet's "Where you met". */}
-      <DetailRow label="How we met" value={contact.metVia} />
-      <DetailRow label="Address" value={contact.location} />
+      <DetailRow label={t('mobile.contact.how_we_met')} value={contact.metVia} />
+      <DetailRow label={t('mobile.contact.address')} value={contact.location} />
       {/* The two fields the log sheet's "Fill in the rest" adds — the design
           asks that they have somewhere to be read. `role` is this app's
           contact group, which the sheet labels "Part of". */}
-      <DetailRow label="Part of" value={contact.role} />
-      <DetailRow label="Faith, so far" value={contact.spiritualBackground} />
-      <DetailRow label="Goes by" value={contact.pronouns} />
-      <DetailRow label="Known" value={knownMs === null ? null : `${daysSince(knownMs)} days`} />
-      <DetailRow label="Cared for by" value={careLine === 'In your care' ? 'You' : contact.createdByName} />
+      <DetailRow label={t('mobile.contact.part_of')} value={contact.role} />
+      <DetailRow label={t('mobile.contact.faith_so_far')} value={contact.spiritualBackground} />
+      <DetailRow label={t('mobile.contact.goes_by')} value={contact.pronouns} />
+      <DetailRow label={t('mobile.contact.known')} value={knownMs === null ? null : `${daysSince(knownMs)} days`} />
+      <DetailRow label={t('mobile.contact.cared_for_by')} value={careLine === 'In your care' ? t('mobile.common.you') : contact.createdByName} />
     </View>
   );
 }

@@ -23,6 +23,7 @@ import {
   type QueueCard as QueueCardData,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 import { setTodoDone, updateTodo } from '../../lib/data/todos';
 import { addThreadMessage, toggleReaction } from '../../lib/data/threads';
@@ -48,6 +49,7 @@ const tomorrowISO = () => {
 export function QueueScreen() {
   const { c, font, shadow, fs } = useV2Theme();
   const { uid, user, role } = useAuth();
+  const { t } = useLanguage();
   const router = useRouter();
   const data = useTraineeLandingData(uid, user?.displayName ?? null);
 
@@ -103,25 +105,25 @@ export function QueueScreen() {
       const isOnlyCard = queue.length === 1;
       queueState.pushLater(id);
       setIndex(0);
-      if (isOnlyCard) setToast('Moved to later.');
+      if (isOnlyCard) setToast(t('mobile.queue.moved_to_later'));
     },
     markDone: (taskId) => {
       void setTodoDone(taskId, true);
       queueState.handle('todo:' + taskId);
       setIndex(0);
-      setToast('Done. Nice.');
+      setToast(t('mobile.queue.done_nice'));
     },
     pushToTomorrow: (taskId) => {
       void updateTodo(taskId, { dueDate: tomorrowISO() });
       queueState.handle('todo:' + taskId);
       setIndex(0);
-      setToast('Moved to tomorrow.');
+      setToast(t('mobile.queue.moved_to_tomorrow'));
     },
     openBoardDoc: (docId) => {
       // The button is hidden without access, so this only fires if something
       // else routes here — say it plainly rather than pushing a locked screen.
       if (!canBoard) {
-        setToast('That page lives with the team.');
+        setToast(t('mobile.queue.that_page_lives_with_team'));
         return;
       }
       router.push(docId ? `/coordination/${docId}` : '/coordination');
@@ -141,12 +143,12 @@ export function QueueScreen() {
       InboxReads.markRead(uid, 'thread:' + card.msg.id);
       queueState.handle(card.id);
       setIndex(0);
-      setToast(`Sent ${emoji}`);
+      setToast(`${t('mobile.queue.sent')} ${emoji}`);
     },
     text: (card) => {
       const phone = card.contact?.phone?.replace(/[^\d+]/g, '');
       if (phone) void Linking.openURL(`sms:${phone}`);
-      else setToast(`No number saved for ${firstName(card.contact?.name ?? '')}.`);
+      else setToast(t('mobile.queue.no_number_saved').replace('{name}', firstName(card.contact?.name ?? '')));
     },
   };
 
@@ -168,7 +170,7 @@ export function QueueScreen() {
     queueState.handle(card.id);
     setIndex(0);
     setReplyTo(null);
-    setToast('Sent.');
+    setToast(t('mobile.queue.sent'));
   };
 
   // `firstName('')` answers "Someone", so the fallback has to go INSIDE it —

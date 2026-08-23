@@ -7,6 +7,7 @@
 import { useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import ReanimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { useLanguage } from '../../lib/LanguageProvider';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useV2Theme } from '../../theme/v2';
 
@@ -21,6 +22,7 @@ export function SwipeToDelete({
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { colors } = useTheme();
+  const { t } = useLanguage();
   const methodsRef = useRef<SwipeableMethods | null>(null);
   const [confirming, setConfirming] = useState(false);
 
@@ -49,7 +51,7 @@ export function SwipeToDelete({
                 onPress={() => setConfirming(true)}
                 style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.error }}
               >
-                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>Delete</Text>
+                <Text style={{ fontFamily: font.extra, fontSize: fs(13), color: '#fff' }}>{t('mobile.common.delete')}</Text>
               </Pressable>
             ) : (
               <View style={{ flex: 1, backgroundColor: c.room.bg, padding: 5, gap: 4 }}>
@@ -57,7 +59,7 @@ export function SwipeToDelete({
                   style={{ fontFamily: font.semi, fontSize: fs(9), color: c.room.ink3, textAlign: 'center' }}
                   numberOfLines={1}
                 >
-                  {onDeleteForEveryone ? 'Delete conversation?' : 'Delete for me?'}
+                  {onDeleteForEveryone ? t('mobile.messages.delete_conversation') : t('mobile.messages.delete_for_me')}
                 </Text>
                 <View style={{ flexDirection: 'row', flex: 1, gap: 4 }}>
                   <Pressable
@@ -67,7 +69,7 @@ export function SwipeToDelete({
                     }}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: c.room.chip }}
                   >
-                    <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink2 }}>Keep</Text>
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(11), color: c.room.ink2 }}>{t('mobile.messages.keep')}</Text>
                   </Pressable>
                   <Pressable
                     onPress={() => {
@@ -81,7 +83,7 @@ export function SwipeToDelete({
                     }}
                     style={{ flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: colors.error }}
                   >
-                    <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: '#fff' }}>Delete</Text>
+                    <Text style={{ fontFamily: font.extra, fontSize: fs(11), color: '#fff' }}>{t('mobile.common.delete')}</Text>
                   </Pressable>
                 </View>
               </View>
