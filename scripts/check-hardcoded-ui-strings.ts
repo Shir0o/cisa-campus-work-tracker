@@ -9,23 +9,45 @@ import { execSync } from 'node:child_process';
 
 const UI_ATTRIBUTES = new Set(['placeholder', 'aria-label', 'title', 'alt', 'label']);
 
-function getChangedFiles(base: string): string[] {
-  const cmd = `git diff --name-only --diff-filter=ACM ${base}...HEAD`;
+function execOrThrow(cmd: string): string {
+  return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+}
+
+function ensureBaseRef(base: string, baseBranch: string): void {
   try {
-    const out = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-    return out.split('\n').map((s) => s.trim()).filter(Boolean);
+    execSync(`git rev-parse --verify ${base}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
+    return;
   } catch {
-    // Fallback for shallow/merge-base situations: compare against HEAD~1.
-    const out = execSync('git diff --name-only --diff-filter=ACM HEAD~1', { encoding: 'utf8' });
-    return out.split('\n').map((s) => s.trim()).filter(Boolean);
+    // Shallow checkout: fetch just the base branch so a PR diff is available.
+    execSync(`git fetch --no-tags --depth=1 origin ${baseBranch}:refs/remotes/origin/${baseBranch}`, {
+      encoding: 'utf8',
+      stdio: ['pipe', 'pipe', 'ignore'],
+    });
   }
 }
 
-function getBaseRef(): string {
-  if (process.env.GITHUB_BASE_REF) {
-    return `origin/${process.env.GITHUB_BASE_REF}`;
+function getChangedFiles(base: string): string[] {
+  const cmd = `git diff --name-only --diff-filter=ACM ${base}...HEAD`;
+  try {
+    const out = execOrThrow(cmd);
+    return out.split('\n').map((s) => s.trim()).filter(Boolean);
+  } catch {
+    // Local fallback: compare against the previous commit when no remote base exists.
+    try {
+      const out = execOrThrow('git diff --name-only --diff-filter=ACM HEAD~1');
+      return out.split('\n').map((s) => s.trim()).filter(Boolean);
+    } catch {
+      return [];
+    }
   }
-  return process.argv[2] || 'HEAD~1';
+}
+
+function getBaseRef(): { ref: string; branch: string } {
+  const branch = process.env.GITHUB_BASE_REF || 'main';
+  if (process.argv[2]) {
+    return { ref: process.argv[2], branch };
+  }
+  return { ref: `origin/${branch}`, branch };
 }
 
 function looksLikeEnglishText(value: string): boolean {
@@ -67,7 +89,8 @@ function findViolations(line: string, file: string, lineNo: number): string[] {
 }
 
 function run(): void {
-  const base = getBaseRef();
+  const { ref: base, branch } = getBaseRef();
+  ensureBaseRef(base, branch);
   const changedFiles = getChangedFiles(base);
   const targetFiles = changedFiles.filter(
     (f) => (f.startsWith('src/') || f.startsWith('apps/mobile/src/')) && /\.tsx?$/.test(f),
