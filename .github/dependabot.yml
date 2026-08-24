@@ -25,6 +25,8 @@ updates:
     open-pull-requests-limit: 10
     ignore:
       # Pinned to Expo SDK 54 runtime matrix
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "react-native"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "react-native-worklets"
