@@ -48,6 +48,12 @@ vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(),
   setDoc: vi.fn(),
   addDoc: vi.fn(() => Promise.resolve()),
+  getFirestore: vi.fn(() => ({})),
+  writeBatch: vi.fn(() => ({
+    set: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn(() => Promise.resolve()),
+  })),
   serverTimestamp: vi.fn(),
   Timestamp: class MockTimestamp {
     static now() { return new MockTimestamp(); }
@@ -674,7 +680,7 @@ describe('MyDay', () => {
     await waitFor(() => expect(screen.getByText('Your sheep')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /Full calendar/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/attendance');
+    expect(mockNavigate).toHaveBeenCalledWith('/calendar');
     fireEvent.click(screen.getByRole('button', { name: /See everyone/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/directory');
     fireEvent.click(screen.getByRole('button', { name: /Pray together/i }));

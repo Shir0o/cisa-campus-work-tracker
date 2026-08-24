@@ -41,6 +41,24 @@ interface MyTask {
   sourceInteractionTitle?: string | null;
 }
 
+import {
+  CAT_BY_ID,
+  type CalendarEvent,
+  type CategoryId,
+} from "../lib/calendar/calendar";
+
+export interface MobileWeekEventItem {
+  id: string;
+  name: string;
+  date: string;
+  location?: string;
+  type?: string;
+  category?: CategoryId;
+  timeLabel?: string;
+  calEvent?: CalendarEvent;
+  hasConflict?: boolean;
+}
+
 interface MyDayMobileProps {
   contacts: Contact[];
   events: Event[];
@@ -53,7 +71,7 @@ interface MyDayMobileProps {
   personalTasks?: MyTask[];
   contactPrayers?: PrayerRecord[];
   activePersonalPrayers?: any[];
-  thisWeek?: { ev: Event; ms: number }[];
+  thisWeek?: { ev: MobileWeekEventItem; ms: number }[];
   leftToDo?: number;
   prayersCount?: number;
   personalContactIds?: Set<string>;
@@ -74,6 +92,8 @@ interface MyDayMobileProps {
   onMessage?: (contact: Contact) => void;
   onOpenBoard?: () => void;
   onOpenPrayer?: () => void;
+  onOpenCalendar?: () => void;
+  onPickCalEvent?: (ev: CalendarEvent) => void;
 }
 
 // Due-date presets for inline editors
@@ -138,6 +158,8 @@ export default function MyDayMobile({
   onMessage = () => {},
   onOpenBoard = () => {},
   onOpenPrayer = () => {},
+  onOpenCalendar = () => {},
+  onPickCalEvent = () => {},
 }: MyDayMobileProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -159,9 +181,18 @@ export default function MyDayMobile({
     });
   }, [contacts, personalContactIds]);
 
-  const thisWeek = useMemo(() => {
+  const thisWeek = useMemo<{ ev: MobileWeekEventItem; ms: number }[]>(() => {
     if (rawThisWeek.length > 0) return rawThisWeek;
-    return events.map((ev) => ({ ev, ms: ev.date ? new Date(ev.date).getTime() : Date.now() }));
+    return events.map((ev) => ({
+      ev: {
+        id: ev.id,
+        name: ev.name,
+        date: ev.date,
+        location: ev.location,
+        type: ev.type,
+      },
+      ms: ev.date ? new Date(ev.date).getTime() : Date.now(),
+    }));
   }, [rawThisWeek, events]);
 
   const contactPrayers = useMemo(() => {
@@ -527,26 +558,58 @@ export default function MyDayMobile({
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.your_week')}</h2>
-          <span className="text-xs text-accent font-semibold dash-sec-link">{t('myDay.calendar')}</span>
+          <button
+            onClick={onOpenCalendar}
+            className="text-xs text-accent font-semibold dash-sec-link cursor-pointer"
+          >
+            {t('myDay.calendar')}
+          </button>
         </div>
 
         {featuredEvent ? (
           <div className="space-y-3">
             {/* Featured Event Card */}
-            <div className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5  md-huddle">
-              <div className="text-[11px] font-semibold   text-accent md-huddle-eyebrow">
-                {isValid(new Date(featuredEvent.ev.date))
-                  ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
-                  : t('myDay.this_week')}{" "}
-                {featuredEvent.ev.location ? `· ${featuredEvent.ev.location}` : ""}
+            <div
+              onClick={() =>
+                featuredEvent.ev.calEvent
+                  ? onPickCalEvent(featuredEvent.ev.calEvent)
+                  : onOpenCalendar()
+              }
+              className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5 md-huddle cursor-pointer active:scale-[0.99] transition-transform"
+            >
+              <div className="text-[11px] font-semibold text-accent md-huddle-eyebrow flex items-center justify-between">
+                <span>
+                  {isValid(new Date(featuredEvent.ev.date))
+                    ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
+                    : t('myDay.this_week')}
+                  {featuredEvent.ev.location ? ` · ${featuredEvent.ev.location}` : ""}
+                </span>
+                {featuredEvent.ev.hasConflict && (
+                  <span className="text-[10px] font-bold text-error bg-error-container/60 px-2 py-0.5 rounded-full">
+                    Conflict
+                  </span>
+                )}
               </div>
-              <h3 className="font-serif text-xl text-on-surface mt-1.5 md-huddle-title">
-                {featuredEvent.ev.name}
-              </h3>
+              <div className="flex items-center gap-2 mt-1.5">
+                {featuredEvent.ev.category && CAT_BY_ID[featuredEvent.ev.category] && (
+                  <span
+                    className="w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ background: CAT_BY_ID[featuredEvent.ev.category].dot }}
+                  />
+                )}
+                <h3 className="font-serif text-xl text-on-surface md-huddle-title truncate">
+                  {featuredEvent.ev.name}
+                </h3>
+              </div>
               <p className="text-xs text-on-surface-variant mt-2 leading-relaxed md-huddle-lead">
                 {t('myDay.good_chance')}
               </p>
               <div className="flex flex-wrap gap-2 mt-3 md-focus">
+                {featuredEvent.ev.timeLabel && (
+                  <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item font-medium">
+                    {featuredEvent.ev.timeLabel}
+                  </span>
+                )}
                 {featuredEvent.ev.type && (
                   <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item">
                     {featuredEvent.ev.type}
@@ -557,23 +620,43 @@ export default function MyDayMobile({
 
             {/* Rest of week */}
             {restOfWeekEvents.length > 0 && (
-              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30">
+              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4 divide-y divide-outline-variant/30">
                 {restOfWeekEvents.map(({ ev }) => {
                   const d = new Date(ev.date);
                   return (
-                    <div key={ev.id} className="py-3 first:pt-0 last:pb-0 flex items-center gap-3.5">
+                    <div
+                      key={ev.id}
+                      onClick={() =>
+                        ev.calEvent ? onPickCalEvent(ev.calEvent) : onOpenCalendar()
+                      }
+                      className="py-3 first:pt-0 last:pb-0 flex items-center gap-3.5 cursor-pointer active:opacity-70 transition-opacity"
+                    >
                       <div className="text-center shrink-0 w-10">
                         <div className="font-serif text-xl text-on-surface leading-none">
                           {isValid(d) ? format(d, "d") : "–"}
                         </div>
-                        <div className="text-[10px]   text-on-surface-variant/80 mt-0.5">
+                        <div className="text-[10px] text-on-surface-variant/80 mt-0.5">
                           {isValid(d) ? format(d, "MMM") : ""}
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-on-surface truncate">{ev.name}</div>
-                        <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate">
-                          {ev.location || t('myDay.no_location_set')}
+                        <div className="flex items-center gap-1.5">
+                          {ev.category && CAT_BY_ID[ev.category] && (
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ background: CAT_BY_ID[ev.category].dot }}
+                            />
+                          )}
+                          <div className="font-medium text-on-surface truncate">{ev.name}</div>
+                          {ev.hasConflict && (
+                            <span className="text-[9px] font-semibold text-error bg-error-container/60 px-1 py-0.5 rounded-sm">
+                              Conflict
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate flex items-center gap-1">
+                          {ev.timeLabel && <span>{ev.timeLabel} · </span>}
+                          <span>{ev.location || t('myDay.no_location_set')}</span>
                         </div>
                       </div>
                     </div>

@@ -50,6 +50,7 @@
     "google-auth-library": "^11.0.2",
     "googleapis": "^171.4.0",
     "html2canvas-pro": "^2.0.4",
+    "ical.js": "^2.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^13.1.0",
     "react": "^19.0.0",
