@@ -6,6 +6,8 @@ import { dayNum, weekdayShort, type BoardDoc } from '@cisa/core';
 import { Screen, AppText, Card } from '../../src/components/ui';
 import { useTheme } from '../../src/theme/ThemeProvider';
 import { useAuth } from '../../src/lib/AuthProvider';
+import { useLanguage } from '../../src/lib/LanguageProvider';
+import { Translate } from '../../src/components/Translate';
 import { handleFirestoreError, OperationType } from '../../src/lib/firebase';
 import { deleteBoardDoc, purgeExpiredTrash, restoreBoardDoc, subscribeTrashedBoardDocs } from '../../src/lib/data/board';
 
@@ -17,6 +19,7 @@ export default function CoordinationTrash() {
   const router = useRouter();
   const { colors, spacing } = useTheme();
   const { role } = useAuth();
+  const { t } = useLanguage();
   const isAdmin = role === 'admin';
   const [docs, setDocs] = useState<BoardDoc[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,17 +42,21 @@ export default function CoordinationTrash() {
       <Screen>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: spacing.xl, gap: 8 }}>
           <Ionicons name="lock-closed-outline" size={32} color={colors.onSurfaceVariant} />
-          <AppText variant="heading">Not available</AppText>
+          <AppText variant="heading">{t('coordinationTrash.not_available', 'Not available')}</AppText>
         </View>
       </Screen>
     );
   }
 
   const confirmPurge = (d: BoardDoc) => {
-    Alert.alert('Delete forever?', `"${d.title}" will be permanently removed. This can't be undone.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete Forever', style: 'destructive', onPress: () => deleteBoardDoc(d) },
-    ]);
+    Alert.alert(
+      t('mobile.board.delete_forever_title', 'Delete Forever?'),
+      t('coordinationTrash.confirm_purge', `"${d.title}" will be permanently removed. This can't be undone.`).replace('{title}', d.title),
+      [
+        { text: t('mobile.common.cancel', 'Cancel'), style: 'cancel' },
+        { text: t('coordinationTrash.delete_forever', 'Delete Forever'), style: 'destructive', onPress: () => deleteBoardDoc(d) },
+      ],
+    );
   };
 
   return (
@@ -63,23 +70,23 @@ export default function CoordinationTrash() {
       <ScrollView contentContainerStyle={{ padding: spacing.lg, paddingTop: spacing.sm, paddingBottom: 40, gap: spacing.lg }}>
         <View style={{ gap: 4 }}>
           <AppText variant="label" color={colors.primary} style={{ textTransform: 'uppercase' }}>
-            COORDINATION
+            {t('coordinationTrash.coordination_notes', 'COORDINATION')}
           </AppText>
-          <AppText variant="title">Trash</AppText>
+          <AppText variant="title">{t('coordinationTrash.title', 'Trash')}</AppText>
           <AppText variant="body" color={colors.onSurfaceVariant}>
-            Deleted pages, kept here until restored or removed for good.
+            {t('coordinationTrash.subtitle', 'Deleted pages, kept here until restored or removed for good.')}
           </AppText>
         </View>
 
         {loading ? (
           <AppText variant="body" color={colors.onSurfaceVariant} style={{ textAlign: 'center', paddingVertical: 24 }}>
-            Loading…
+            {t('mobile.common.loading', 'Loading…')}
           </AppText>
         ) : docs.length === 0 ? (
           <View style={{ alignItems: 'center', paddingVertical: 40, gap: 12 }}>
             <Ionicons name="trash-outline" size={40} color={colors.onSurfaceVariant} style={{ opacity: 0.4 }} />
             <AppText variant="heading" style={{ textAlign: 'center' }}>
-              Trash is empty
+              {t('coordinationTrash.trash_is_empty', 'Trash is empty')}
             </AppText>
           </View>
         ) : (
@@ -102,14 +109,18 @@ export default function CoordinationTrash() {
                   </View>
                   <View style={{ flex: 1, gap: 6 }}>
                     <AppText variant="heading" numberOfLines={1}>
-                      {doc.title}
+                      <Translate text={doc.title} />
                     </AppText>
                     <View style={{ flexDirection: 'row', gap: 16 }}>
                       <Pressable onPress={() => restoreBoardDoc(doc)}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>Restore</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.primary }}>
+                          {t('coordinationTrash.restore', 'Restore')}
+                        </Text>
                       </Pressable>
                       <Pressable onPress={() => confirmPurge(doc)}>
-                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.error }}>Delete Forever</Text>
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: colors.error }}>
+                          {t('coordinationTrash.delete_forever', 'Delete Forever')}
+                        </Text>
                       </Pressable>
                     </View>
                   </View>

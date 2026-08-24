@@ -951,7 +951,13 @@
     "note_updated": "Note updated.",
     "note_saved": "Note saved.",
     "untitled_note": "Untitled note",
-    "note": "Note"
+    "note": "Note",
+    "audience_team": "Team",
+    "audience_team_sub": "Full-timers",
+    "audience_trainees": "Trainees",
+    "audience_trainees_sub": "Staff & trainees",
+    "audience_everyone": "Open",
+    "audience_everyone_sub": "Anyone in CISA"
   },
   "activity": {
     "called": "called",

@@ -912,7 +912,13 @@
     "note_updated": "Note updated.",
     "note_saved": "Note saved.",
     "untitled_note": "Untitled note",
-    "note": "Note"
+    "note": "Note",
+    "audience_team": "Team",
+    "audience_team_sub": "Full-timers",
+    "audience_trainees": "Trainees",
+    "audience_trainees_sub": "Staff & trainees",
+    "audience_everyone": "Open",
+    "audience_everyone_sub": "Anyone in CISA"
   },
   "activity": {
     "called": "called",
@@ -1547,6 +1553,36 @@
       "intro": "The screens you sometimes need on the move. Everything heavier lives on the desktop.",
       "foot": "Board pages, gatherings and kinds are read-mostly here — edit them at a desk.",
       "see_it_as_they_do": "See it as they do"
+    },
+    "board": {
+      "title": "The Board",
+      "subtitle": "What the team talked through, and what came out of it. Open a page to read it.",
+      "foot": "Pages are written and kept on the desktop site.",
+      "empty": "Nothing open to you right now.",
+      "count_zero": "No pages",
+      "count_one": "1 page",
+      "count_many": "{count} pages",
+      "pinned": "Pinned",
+      "this_week": "This week",
+      "earlier": "Earlier",
+      "audience_team": "Team",
+      "audience_team_sub": "Full-timers",
+      "audience_trainees": "Trainees",
+      "audience_trainees_sub": "Staff & trainees",
+      "audience_everyone": "Open",
+      "audience_everyone_sub": "Anyone in CISA",
+      "leader_leading": "{name} leading",
+      "not_found": "This page couldn't be found.",
+      "not_allowed": "This page isn't open to your role.",
+      "keeper_foot": "{name} keeps this page. Writing happens on the desktop site — here you're reading.",
+      "team_keeper_foot": "The team keeps this page. Writing happens on the desktop site — here you're reading.",
+      "trash_title": "Trash",
+      "trash_subtitle": "Pages deleted in the last 30 days. Restoring puts them back on the Board.",
+      "trash_empty": "Trash is empty.",
+      "restore": "Restore",
+      "delete_forever": "Delete Forever",
+      "delete_forever_title": "Delete Forever?",
+      "delete_forever_message": "This will permanently delete this page. It cannot be recovered."
     }
   }
 }

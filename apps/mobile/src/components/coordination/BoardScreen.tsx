@@ -13,13 +13,14 @@ import {
   AUDIENCE_TONE_KEY,
   BOARD_AUDIENCE,
   audienceOf,
-  boardCountNote,
-  boardRowLine,
   dayNum,
+  firstName,
   weekdayShort,
   type BoardDoc,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
+import { useLanguage } from '../../lib/LanguageProvider';
+import { Translate } from '../Translate';
 import { boardLeaderName, useBoardListData } from '../../lib/useBoardListData';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker } from '../queue/atoms';
@@ -38,8 +39,10 @@ export function BoardScreen() {
 /** The tier a page is open to, as a pill in the room's own palette. */
 export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const audience = audienceOf(doc);
   const tone = c.card.tones[AUDIENCE_TONE_KEY[audience]];
+  const label = t(`mobile.board.audience_${audience}`, BOARD_AUDIENCE[audience].label);
   return (
     <View
       style={{
@@ -50,7 +53,7 @@ export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
       }}
     >
       <Text style={{ fontFamily: font.bold, fontSize: fs(10.5), color: tone.text }}>
-        {BOARD_AUDIENCE[audience].label}
+        {label}
       </Text>
     </View>
   );
@@ -58,8 +61,15 @@ export function AudiencePill({ doc }: { doc: Pick<BoardDoc, 'audience'> }) {
 
 function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | null }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const router = useRouter();
-  const line = boardRowLine(doc, leaderName);
+  const leaderLeading = leaderName
+    ? t('mobile.board.leader_leading', `${firstName(leaderName)} leading`).replace('{name}', firstName(leaderName))
+    : null;
+  const line = [doc.time, doc.place, leaderLeading]
+    .map((s) => (s ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
 
   return (
     <Pressable
@@ -89,7 +99,7 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={{ fontFamily: font.bold, fontSize: fs(15), lineHeight: fs(19), color: c.card.ink }} numberOfLines={2}>
-          {doc.title}
+          <Translate text={doc.title} />
         </Text>
         {!!line && (
           <Text
@@ -107,6 +117,7 @@ function BoardRow({ doc, leaderName }: { doc: BoardDoc; leaderName: string | nul
 
 function Board() {
   const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
   const router = useRouter();
   const data = useBoardListData();
 
@@ -114,13 +125,26 @@ function Board() {
   // — never a tab, so there is always something to go back to.
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
+  const countNote = data.total === 0
+    ? t('mobile.board.count_zero', 'No pages')
+    : data.total === 1
+      ? t('mobile.board.count_one', '1 page')
+      : t('mobile.board.count_many', '{count} pages').replace('{count}', String(data.total));
+
+  const sectionTitle = (rawTitle: string) => {
+    if (rawTitle === 'Pinned') return t('mobile.board.pinned', 'Pinned');
+    if (rawTitle === 'This week') return t('mobile.board.this_week', 'This week');
+    if (rawTitle === 'Earlier') return t('mobile.board.earlier', 'Earlier');
+    return rawTitle;
+  };
+
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
-      <V2Screen title="The Board" note={boardCountNote(data.total)} onBack={back}>
+      <V2Screen title={t('mobile.board.title', 'The Board')} note={countNote} onBack={back}>
         <Text
           style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.room.ink3, marginBottom: 6 }}
         >
-          What the team talked through, and what came out of it. Open a page to read it.
+          {t('mobile.board.subtitle', 'What the team talked through, and what came out of it. Open a page to read it.')}
         </Text>
 
         {data.loading ? (
@@ -128,11 +152,11 @@ function Board() {
         ) : data.error ? (
           <V2Empty>{data.error}</V2Empty>
         ) : data.sections.length === 0 ? (
-          <V2Empty>Nothing open to you right now.</V2Empty>
+          <V2Empty>{t('mobile.board.empty', 'Nothing open to you right now.')}</V2Empty>
         ) : (
           data.sections.map((section) => (
             <View key={section.title} style={{ marginTop: 20 }}>
-              <Kicker onRoom>{section.title}</Kicker>
+              <Kicker onRoom>{sectionTitle(section.title)}</Kicker>
               {section.data.map((doc) => (
                 <BoardRow key={doc.id} doc={doc} leaderName={boardLeaderName(doc, data.names)} />
               ))}
@@ -143,7 +167,7 @@ function Board() {
         <Text
           style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.room.ink3, marginTop: 26 }}
         >
-          Pages are written and kept on the desktop site.
+          {t('mobile.board.foot', 'Pages are written and kept on the desktop site.')}
         </Text>
       </V2Screen>
     </SafeAreaView>
