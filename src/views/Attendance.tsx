@@ -782,7 +782,7 @@ export default function Attendance() {
                     <div className="min-w-0 flex-1">
                       <div className="font-medium text-on-surface truncate">
                         {ev.title || ev.name}
-                        {ev.synced && <span className="cal-mark s">calendar</span>}
+                        {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
                       </div>
                       <div className="text-xs text-on-surface-variant mt-0.5 truncate">
                         {[isValid(d) ? format(d, 'EEEE') : '', ev.time, ev.location].filter(Boolean).join(' · ')}
@@ -799,7 +799,7 @@ export default function Attendance() {
         {/* ── Dates worth knowing about. Not gatherings, so no roster. ── */}
         {calContext.length > 0 && (
           <section className="mt-8">
-            <SectionHead title="Also on the calendar" sub="Not gatherings — just worth knowing." />
+            <SectionHead title={t('calendar.also_on_calendar', 'Also on the calendar')} sub={t('attendance.also_on_calendar_sub', 'Not gatherings — just worth knowing.')} />
             <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
               {calContext.map((it, i) => {
                 const d = new Date(it.date);

@@ -1261,10 +1261,10 @@ function CalendarSyncPanel() {
             onChange={(e) => setEnabled(e.target.checked)}
             className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
           />
-          <span className="font-medium text-on-surface">Read the shared calendar</span>
+          <span className="font-medium text-on-surface">{t('settings.read_shared_calendar', 'Read the shared calendar')}</span>
         </label>
         <p className="cals-note text-xs text-on-surface-variant mt-2 leading-relaxed">
-          Nothing here is ever written back — the calendar has no place to keep a roster. Only full-timers and trainees see anything that comes across.
+          {t('settings.shared_calendar_desc', 'Nothing here is ever written back — the calendar has no place to keep a roster. Only full-timers and trainees see anything that comes across.')}
           {CAL_APP_URL && (
             <>
               {' '}
@@ -1274,7 +1274,7 @@ function CalendarSyncPanel() {
                 rel="noreferrer"
                 className="text-primary hover:underline font-medium inline-flex items-center gap-1"
               >
-                Open the calendar
+                {t('calendar.open_calendar', 'Open the calendar')}
               </a>
             </>
           )}
@@ -1298,10 +1298,10 @@ function CalendarSyncPanel() {
                   value={calMap[cat.id] || ''}
                   onChange={(e) => setMapCategory(cat.id, e.target.value)}
                 >
-                  <option value="">Just a date we should know</option>
+                  <option value="">{t('settings.just_a_date', 'Just a date we should know')}</option>
                   {gatheringTypes.map((k) => (
                     <option key={k.id} value={k.name}>
-                      Becomes a {k.name.toLowerCase()} gathering
+                      {t('settings.becomes_gathering', 'Becomes a {name} gathering', { name: k.name.toLowerCase() })}
                     </option>
                   ))}
                 </select>
@@ -1312,7 +1312,7 @@ function CalendarSyncPanel() {
 
         {isEnabled && (
           <p className="cals-note cals-foot text-xs text-on-surface-variant mt-3 italic">
-            A category left as a date still shows up under “Also on the calendar” — it just never opens a roster. Travel is read as who's away, and named on your day.
+            {t('settings.shared_calendar_footnote', "A category left as a date still shows up under “Also on the calendar” — it just never opens a roster. Travel is read as who's away, and named on your day.")}
           </p>
         )}
       </div>

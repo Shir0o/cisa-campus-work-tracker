@@ -562,7 +562,7 @@ export default function MyDayMobile({
                   {featuredEvent.location ? ` · ${featuredEvent.location}` : ""}
                 </span>
                 {featuredEvent.synced && (
-                  <span className="cal-mark s">calendar</span>
+                  <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1.5">
@@ -608,7 +608,7 @@ export default function MyDayMobile({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
-                          {ev.synced && <span className="cal-mark s">calendar</span>}
+                          {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
                         </div>
                         <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate flex items-center gap-1">
                           {ev.time && <span>{ev.time} · </span>}

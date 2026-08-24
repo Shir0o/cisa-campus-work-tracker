@@ -234,7 +234,7 @@ export default function AttendanceMobile({
                   <div className="min-w-0 flex-1 gthm-up-main">
                     <div className="font-medium text-on-surface truncate tw-title">
                       {ev.title || ev.name}
-                      {ev.synced && <span className="cal-mark s">calendar</span>}
+                      {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
                     </div>
                     <div className="text-xs text-on-surface-variant mt-0.5 truncate tw-meta">
                       {[ev.time, ev.location || ev.type || t('attendance.no_location_set')].filter(Boolean).join(' · ')}
@@ -251,7 +251,7 @@ export default function AttendanceMobile({
       {/* ── Dates worth knowing about ── */}
       {calContext && calContext.length > 0 && (
         <section className="mt-8 px-5 gthm-sec">
-          <h2 className="font-serif text-lg text-on-surface mb-3">Also on the calendar</h2>
+          <h2 className="font-serif text-lg text-on-surface mb-3">{t('calendar.also_on_calendar', 'Also on the calendar')}</h2>
           <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4 divide-y divide-outline-variant/30">
             {calContext.map((it) => {
               const d = new Date(it.date);

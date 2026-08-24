@@ -116,7 +116,23 @@
     "what_people_telling_us": "Lo que la gente nos cuenta",
     "what_people_telling_us_sub": "Comentarios del equipo y la comunidad. Léelos como notas de amigos.",
     "more_account_settings": "Más ajustes de cuenta llegarán con el tiempo.",
-    "signed_in_as": "Sesión iniciada como"
+    "signed_in_as": "Sesión iniciada como",
+    "shared_calendar": "El calendario compartido",
+    "shared_calendar_sub": "Traiga eventos del calendario compartido como reuniones o contexto.",
+    "read_shared_calendar": "Leer el calendario compartido",
+    "shared_calendar_desc": "Nada de aquí se escribe de vuelta: el calendario no guarda listas de asistencia. Solo los misioneros de tiempo completo y aprendices ven lo que se sincroniza.",
+    "shared_calendar_footnote": "Una categoría dejada como fecha aún aparece en “También en el calendario” — simplemente nunca abre una lista de asistencia. Los viajes se leen como ausencias y se muestran en Tu día.",
+    "category": "Categoría",
+    "comes_across_as": "Se muestra como",
+    "next_30_days": "Próximos 30 días",
+    "just_a_date": "Solo una fecha a tener en cuenta",
+    "becomes_gathering": "Se convierte en reunión de {name}",
+    "open_shared_calendar_app": "Abrir la aplicación del calendario compartido en una pestaña nueva"
+  },
+  "calendar": {
+    "badge": "calendario",
+    "also_on_calendar": "También en el calendario",
+    "open_calendar": "Abrir el calendario"
   },
   "privacy": {
     "back_to_app": "Volver a la aplicación",

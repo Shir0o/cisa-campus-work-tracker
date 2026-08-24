@@ -918,7 +918,7 @@ export default function MyDay() {
                     <div className="text-xs font-medium text-white/75 flex items-center gap-2">
                       <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
                       {lead.synced && (
-                        <span className="cal-mark s">calendar</span>
+                        <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2.5 mt-2">
@@ -1207,7 +1207,7 @@ export default function MyDay() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
-                            {ev.synced && <span className="cal-mark s">calendar</span>}
+                            {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
                           </div>
                           <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span>{isValid(rd) ? format(rd, "EEEE") : ""}</span>

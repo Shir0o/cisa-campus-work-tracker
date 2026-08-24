@@ -153,7 +153,7 @@ function calMatchesMonthlyByday(cur: Date, code: string): boolean {
 
 export function expandCalEvent(ev: CalRawEvent, rangeStart: Date, rangeEnd: Date): CalRawEvent[] {
   if (!ev.rrule) {
-    if (calEventEnd(ev) > rangeStart && ev.start < rangeEnd) return [ev];
+    if (calEventEnd(ev) >= rangeStart && rangeEnd > ev.start) return [ev];
     return [];
   }
   const r = ev.rrule;
@@ -413,7 +413,7 @@ export function calGatheringsMerged(
   const own: UnifiedGathering[] = (ownEvents || [])
     .filter((e) => {
       const d = new Date(e.date);
-      return d >= from && d < to;
+      return d >= from && to > d;
     })
     .map((e) => ({
       ...e,
@@ -539,7 +539,7 @@ export function useCalendarSync(staffList: Array<{ name: string; id?: string }> 
       return (ownEvents || [])
         .filter((e) => {
           const d = new Date(e.date);
-          return d >= from && d < to;
+          return d >= from && to > d;
         })
         .map((e) => ({
           ...e,
