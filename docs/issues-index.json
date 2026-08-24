@@ -1,5 +1,35 @@
 [
   {
+    "number": 546,
+    "title": "[Feedback] idea: release notes and number upgrade on eas build (agents md instruction), including summary of key changes since last release (check git history), display these changes in app overlay upon update",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/24/2026, 6:39:49 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text release notes and number upgrade on eas build (agents md instruction), including summary of key changes since last release (check git history), display these changes in app overlay upon update ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/ubKf1JaSOeIjdpxnxJN0/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 545,
+    "title": "[Feedback] idea: a feature for trainees to add questions (like an inbox)",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/24/2026, 6:21:51 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text a feature for trainees to add questions (like an inbox) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/oesj3cSvdBQNkD5e6nJ6/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 544,
+    "title": "[Feedback] idea: can we have a toggle able on/off (by full-timer) for the trainee to have a goal of speaking to x (let's default to 5) number of people for their on campus day?",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/24/2026, 6:20:01 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text can we have a toggle able on/off (by full-timer) for the trainee to have a goal of speaking to x (let's default to 5) number of people for their on campus day? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/W0LXFUw2KvCdtfvtg2yk/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
     "number": 478,
     "title": "i18n: Localize index.html and manifest metadata for Spanish",
     "state": "closed",
@@ -20,7 +50,7 @@
   {
     "number": 476,
     "title": "i18n: Add mobile static Spanish dictionary and wire t() in apps/mobile",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement"
     ],
