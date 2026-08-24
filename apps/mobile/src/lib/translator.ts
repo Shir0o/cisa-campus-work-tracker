@@ -175,6 +175,14 @@ export function setCachedTranslation(text: string, translated: string, targetLan
 }
 
 export async function clearTranslationCache(): Promise<void> {
+  if (batchTimer) {
+    clearTimeout(batchTimer);
+    batchTimer = null;
+  }
+  for (const req of batchQueue) {
+    req.resolve(req.text);
+  }
+  batchQueue = [];
   L1_CACHE.clear();
   SUBSCRIBERS.clear();
   IN_FLIGHT_PROMISES.clear();
@@ -253,7 +261,9 @@ async function flushBatch() {
           token = await auth.currentUser.getIdToken();
         }
       } catch (tokenErr) {
-        console.warn('[Translator] Failed to get Firebase ID token:', tokenErr);
+        if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+          console.warn('[Translator] Failed to get Firebase ID token:', tokenErr);
+        }
       }
 
       const headers: Record<string, string> = {
@@ -290,7 +300,9 @@ async function flushBatch() {
         req.resolve(translated);
       }
     } catch (err) {
-      console.warn('[Translator Mobile] Batch translation failed, falling back to original:', err);
+      if (typeof process === 'undefined' || process.env.NODE_ENV !== 'test') {
+        console.warn('[Translator Mobile] Batch translation failed, falling back to original:', err);
+      }
       for (const req of requests) {
         req.resolve(req.text);
       }
