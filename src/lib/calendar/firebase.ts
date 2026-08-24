@@ -32,15 +32,27 @@ export const calApp =
       ? initializeApp(calFirebaseConfig, 'calendar')
       : ({} as any);
 
-export const calDb =
-  typeof getFirestore === 'function' && calApp && typeof (calApp as any).name === 'string'
-    ? getFirestore(calApp)
-    : ({} as any);
+export const calDb = (() => {
+  try {
+    if (typeof getFirestore === 'function' && calApp && typeof (calApp as any).name === 'string') {
+      return getFirestore(calApp);
+    }
+  } catch {
+    // fallback in testing environments with partial mocks
+  }
+  return {} as any;
+})();
 
-export const calAuth =
-  typeof getAuth === 'function' && calApp && typeof (calApp as any).name === 'string'
-    ? getAuth(calApp)
-    : ({} as any);
+export const calAuth = (() => {
+  try {
+    if (typeof getAuth === 'function' && calApp && typeof (calApp as any).name === 'string') {
+      return getAuth(calApp);
+    }
+  } catch {
+    // fallback in testing environments with partial mocks
+  }
+  return {} as any;
+})();
 
 export const calGoogleProvider =
   typeof GoogleAuthProvider === 'function' ? new GoogleAuthProvider() : ({} as any);

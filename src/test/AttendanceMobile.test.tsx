@@ -161,7 +161,12 @@ describe('AttendanceMobile', () => {
   });
 
   it('renders upcoming events with the RsvpCount component', () => {
-    render(<AttendanceMobile {...baseProps} upcoming={[{ ev: event(), ms: 1000 }]} />);
+    render(
+      <AttendanceMobile
+        {...baseProps}
+        upcoming={[{ id: 'e1', title: 'Worship Night', name: 'Worship Night', type: 'Weekly', date: '2026-08-28', synced: false }]}
+      />
+    );
     expect(screen.getByText('Worship Night')).toBeInTheDocument();
     expect(screen.getByTestId('rsvp-e1')).toBeInTheDocument();
     expect(screen.queryByText('Nothing on the calendar this week.')).not.toBeInTheDocument();

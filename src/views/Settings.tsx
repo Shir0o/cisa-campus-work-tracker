@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { User } from 'firebase/auth';
 import {
   collection,
@@ -50,6 +50,14 @@ import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import { applyWalkingPairs } from '../lib/walking';
 import { saveWalkingPairs, subscribeWalkingPairs } from '../lib/walkingPairs';
+import { useGatheringTypes } from '../lib/gatheringTypes';
+import {
+  useCalendarSync,
+  CAL_CATEGORIES,
+  CAL_APP_URL,
+  calStartOfDay,
+  calAddDays,
+} from '../lib/calendar/calendarSync';
 
 type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -1220,6 +1228,98 @@ function InviteModal({
   );
 }
 
+function CalendarSyncPanel() {
+  const { t } = useLanguage();
+  const gatheringTypes = useGatheringTypes();
+  const { isEnabled, setEnabled, calMap, setMapCategory, getItemsBetween } = useCalendarSync();
+
+  const counts = useMemo(() => {
+    const from = calStartOfDay(new Date());
+    const to = calAddDays(from, 30);
+    const { gatherings, context } = getItemsBetween(from, to);
+    const out: Record<string, number> = {};
+    for (const g of gatherings) {
+      if (g.cat) out[g.cat] = (out[g.cat] || 0) + 1;
+    }
+    for (const c of context) {
+      if (c.cat) out[c.cat] = (out[c.cat] || 0) + 1;
+    }
+    return out;
+  }, [getItemsBetween]);
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.shared_calendar', 'The shared calendar')}
+        sub={t('settings.shared_calendar_sub', 'Bring events from the shared calendar across as gatherings or context.')}
+      />
+      <div className="cals rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+        <label className="cals-toggle flex items-center gap-3 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={isEnabled}
+            onChange={(e) => setEnabled(e.target.checked)}
+            className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
+          />
+          <span className="font-medium text-on-surface">Read the shared calendar</span>
+        </label>
+        <p className="cals-note text-xs text-on-surface-variant mt-2 leading-relaxed">
+          Nothing here is ever written back — the calendar has no place to keep a roster. Only full-timers and trainees see anything that comes across.
+          {CAL_APP_URL && (
+            <>
+              {' '}
+              <a
+                href={CAL_APP_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="text-primary hover:underline font-medium inline-flex items-center gap-1"
+              >
+                Open the calendar
+              </a>
+            </>
+          )}
+        </p>
+
+        {isEnabled && (
+          <div className="cals-rows mt-4 divide-y divide-outline-variant/30">
+            {CAL_CATEGORIES.map((cat) => (
+              <div className="cals-row py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2" key={cat.id}>
+                <div className="cals-cat">
+                  <div className="cals-cat-n font-medium text-sm text-on-surface flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: cat.dot }} />
+                    {cat.label}
+                  </div>
+                  <div className="cals-cat-c text-xs text-on-surface-variant">
+                    {counts[cat.id] ? `${counts[cat.id]} in the next month` : 'nothing coming up'}
+                  </div>
+                </div>
+                <select
+                  className="hist-sel cals-sel text-xs rounded-xl border border-outline-variant/60 bg-surface px-3 py-1.5 text-on-surface"
+                  value={calMap[cat.id] || ''}
+                  onChange={(e) => setMapCategory(cat.id, e.target.value)}
+                >
+                  <option value="">Just a date we should know</option>
+                  {gatheringTypes.map((k) => (
+                    <option key={k.id} value={k.name}>
+                      Becomes a {k.name.toLowerCase()} gathering
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {isEnabled && (
+          <p className="cals-note cals-foot text-xs text-on-surface-variant mt-3 italic">
+            A category left as a date still shows up under “Also on the calendar” — it just never opens a roster. Travel is read as who's away, and named on your day.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -1623,6 +1723,8 @@ export default function Settings() {
           )}
         </section>
       )}
+
+      {(isAdmin || isManager) && <CalendarSyncPanel />}
 
       {sharedTail}
 

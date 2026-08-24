@@ -57,7 +57,6 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
   '/coordination/trash': 'admin',
-  '/calendar': 'viewer',
   'https://shared-calendar-6u6.pages.dev/': 'admin',
 };
 
@@ -93,7 +92,6 @@ export function navExternalFor(role: AppRole | string | null): ExternalNavItem[]
 // the display labels are relabeled. See epic #8.
 export const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Home', minRole: 'viewer' },
-  { href: '/calendar', label: 'Calendar', minRole: 'viewer' },
   { href: '/board', label: 'The Journey', minRole: 'manager' },
   { href: '/directory', label: 'People', minRole: 'operator' },
   { href: '/history', label: 'Looking back', minRole: 'manager' },
@@ -118,7 +116,7 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // is still enforced inside ContactDetailsModal.
   if (path.startsWith('/people/')) return hasMinRole(role, 'viewer');
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/calendar', '/directory', '/board', '/messages', '/feedback'];
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;

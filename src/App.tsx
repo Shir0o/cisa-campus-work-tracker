@@ -57,7 +57,6 @@ const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"
 const Messages = lazyWithRetry(() => import("./views/Messages"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
-const CalendarView = lazyWithRetry(() => import("./views/CalendarView"));
 
 
 interface LayoutContextType {
@@ -528,19 +527,6 @@ export default function App() {
                       <RoleGuard minRole="viewer">
                         <DashboardLayout>
                           <Landing />
-                        </DashboardLayout>
-                      </RoleGuard>
-                    </ProtectedRoute>
-                  }
-                />
-
-                <Route
-                  path="/calendar"
-                  element={
-                    <ProtectedRoute>
-                      <RoleGuard minRole="viewer">
-                        <DashboardLayout>
-                          <CalendarView />
                         </DashboardLayout>
                       </RoleGuard>
                     </ProtectedRoute>

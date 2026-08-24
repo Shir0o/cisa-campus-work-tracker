@@ -680,7 +680,7 @@ describe('MyDay', () => {
     await waitFor(() => expect(screen.getByText('Your sheep')).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /Full calendar/i }));
-    expect(mockNavigate).toHaveBeenCalledWith('/calendar');
+    expect(mockNavigate).toHaveBeenCalledWith('/attendance');
     fireEvent.click(screen.getByRole('button', { name: /See everyone/i }));
     expect(mockNavigate).toHaveBeenCalledWith('/directory');
     fireEvent.click(screen.getByRole('button', { name: /Pray together/i }));

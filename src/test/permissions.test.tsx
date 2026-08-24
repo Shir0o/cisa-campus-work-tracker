@@ -111,10 +111,10 @@ function RoleGuardHarness({ startAt }: { startAt: string }) {
 
 describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
-    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach', '/calendar'],
-    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered', '/calendar'],
-    manager:  ['/', '/directory', '/board', '/messages', '/feedback', '/calendar'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/answered', '/calendar', 'https://shared-calendar-6u6.pages.dev/'],
+    viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach'],
+    operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
+    manager:  ['/', '/directory', '/board', '/messages', '/feedback'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -268,13 +268,12 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/calendar', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
     expect(adminMoreLabels).toEqual([
       'Answered',
-      'Calendar',
       'Gatherings',
       'Gospel',
       'Looking back',

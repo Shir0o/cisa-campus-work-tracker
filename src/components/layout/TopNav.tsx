@@ -48,7 +48,6 @@ import { SIGNUP_TITLE } from './SignupInvite';
 // same way). Fallback to LayoutDashboard for anything unmapped.
 const NAV_ICONS: Record<string, LucideIcon> = {
   '/': Sunrise,
-  '/calendar': CalendarDays,
   '/board': Kanban,
   '/directory': Contact,
   '/history': HistoryIcon,

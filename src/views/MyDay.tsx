@@ -39,22 +39,11 @@ import PageContainer from "../components/layout/PageContainer";
 import { Translate } from "../components/Translate";
 import { useLanguage } from "../components/LanguageProvider";
 import {
-  subscribeCalendarEvents,
-  saveCalendarEvent,
-  removeCalendarEvent,
-} from "../lib/calendar/events";
-import {
-  expandEvents,
-  conflictMap,
-  eventEnd,
-  fmtTime,
-  fmtTimeFull,
-  CAT_BY_ID,
-  type CalendarEvent,
-  type CategoryId,
-} from "../lib/calendar/calendar";
-import { EventDetailsModal } from "../components/calendar/EventDetailsModal";
-import { EventEditorModal, type EditorInitial } from "../components/calendar/EventEditorModal";
+  useCalendarSync,
+  calStartOfDay,
+  calAddDays,
+  type UnifiedGathering,
+} from "../lib/calendar/calendarSync";
 import {
   addTodo,
   updateTodo,
@@ -485,9 +474,6 @@ export default function MyDay() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>([]);
-  const [selectedCalEvent, setSelectedCalEvent] = useState<CalendarEvent | null>(null);
-  const [editingCalEvent, setEditingCalEvent] = useState<EditorInitial | null>(null);
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [tasks, setTasks] = useState<MyTask[]>([]);
   const [touches, setTouches] = useState<{ contactId: string; ms: number; note: string }[]>([]);
@@ -496,6 +482,10 @@ export default function MyDay() {
   const [desktopMessagingApp, setDesktopMessagingApp] = useState<DesktopMessagingApp | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const { getMergedGatherings, getAwaySentence } = useCalendarSync(contacts);
+  const calWeekFrom = useMemo(() => calStartOfDay(new Date()), []);
+  const calWeekTo = useMemo(() => calAddDays(calWeekFrom, 8), [calWeekFrom]);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -615,11 +605,6 @@ export default function MyDay() {
       publish();
     });
 
-    const unsubCalEvents = subscribeCalendarEvents(
-      (evts) => setCalendarEvents(evts),
-      (e) => console.warn("Calendar events subscription warning", e),
-    );
-
     return () => {
       unsubContacts();
       unsubStages();
@@ -627,7 +612,6 @@ export default function MyDay() {
       unsubPrayers();
       unsubInteractions();
       unsubThreads();
-      unsubCalEvents();
     };
   }, []);
 
@@ -734,81 +718,12 @@ export default function MyDay() {
 
   // This week — unified calendar events & gatherings dated within the next 7 days.
   const thisWeek = useMemo(() => {
-    const now = Date.now();
-    const horizon = now + 7 * DAY_MS;
-    const startRange = new Date(now - DAY_MS);
-    const endRange = new Date(horizon);
+    return getMergedGatherings(events, calWeekFrom, calWeekTo);
+  }, [getMergedGatherings, events, calWeekFrom, calWeekTo]);
 
-    const items: {
-      ev: {
-        id: string;
-        name: string;
-        date: string;
-        location?: string;
-        type?: string;
-        category?: CategoryId;
-        timeLabel?: string;
-        calEvent?: CalendarEvent;
-        hasConflict?: boolean;
-      };
-      ms: number;
-    }[] = [];
-
-    // Expanded shared calendar events
-    if (calendarEvents.length > 0) {
-      const expanded = expandEvents(calendarEvents, startRange, endRange);
-      const conflicts = conflictMap(expanded);
-
-      for (const ce of expanded) {
-        const ms = ce.start.getTime();
-        if (ms >= now - DAY_MS && ms <= horizon) {
-          const timeLabel = ce.allDay
-            ? "All Day"
-            : `${fmtTime(ce.start)} – ${fmtTime(eventEnd(ce))}`;
-          items.push({
-            ev: {
-              id: ce.id,
-              name: ce.title,
-              date: ce.start.toISOString(),
-              location: ce.loc,
-              type: ce.cat ? CAT_BY_ID[ce.cat]?.label : undefined,
-              category: ce.cat,
-              timeLabel,
-              calEvent: ce,
-              hasConflict: (conflicts.get(ce.id) || 0) > 0,
-            },
-            ms,
-          });
-        }
-      }
-    }
-
-    // Also include any local gatherings events that aren't duplicates
-    for (const ev of events) {
-      const ms = parseMs(ev.date);
-      if (ms != null && ms >= now - DAY_MS && ms <= horizon) {
-        const exists = items.some(
-          (it) =>
-            it.ev.name.toLowerCase() === ev.name.toLowerCase() &&
-            Math.abs(it.ms - ms) < DAY_MS,
-        );
-        if (!exists) {
-          items.push({
-            ev: {
-              id: ev.id,
-              name: ev.name,
-              date: ev.date,
-              location: ev.location,
-              type: ev.type,
-            },
-            ms,
-          });
-        }
-      }
-    }
-
-    return items.sort((a, b) => a.ms - b.ms);
-  }, [calendarEvents, events]);
+  const awaySentence = useMemo(() => {
+    return getAwaySentence(calWeekFrom, calWeekTo);
+  }, [getAwaySentence, calWeekFrom, calWeekTo]);
 
   // Contact (corporate) prayers — shared prayers on my personal contacts that
   // are still open (not answered or archived), oldest first. #464 keeps home
@@ -884,6 +799,7 @@ export default function MyDay() {
           contactPrayers={contactPrayers}
           activePersonalPrayers={activePersonalPrayers}
           thisWeek={thisWeek}
+          awaySentence={awaySentence}
           leftToDo={leftToDo}
           prayersCount={prayersCount}
           personalContactIds={personalContactIds}
@@ -910,8 +826,7 @@ export default function MyDay() {
           onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
           onOpenBoard={() => navigate("/coordination")}
           onOpenPrayer={() => navigate("/prayer")}
-          onOpenCalendar={() => navigate("/calendar")}
-          onPickCalEvent={(ev) => setSelectedCalEvent(ev)}
+          onOpenCalendar={() => navigate("/attendance")}
         />
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
       </>
@@ -992,33 +907,22 @@ export default function MyDay() {
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
           {/* Next up solid violet card */}
-          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs">
+          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs md-next">
             {thisWeek.length > 0 ? (() => {
-              const [{ ev: lead, ms: leadMs }] = thisWeek;
-              const d = new Date(leadMs);
-              const facts = [lead.type, lead.timeLabel, lead.location].filter(Boolean) as string[];
+              const lead = thisWeek[0];
+              const d = new Date(lead.date);
+              const facts = [lead.type, lead.time, lead.location].filter(Boolean) as string[];
               return (
                 <>
-                  <div
-                    className={lead.calEvent ? "cursor-pointer" : undefined}
-                    onClick={() => lead.calEvent && setSelectedCalEvent(lead.calEvent)}
-                  >
+                  <div>
                     <div className="text-xs font-medium text-white/75 flex items-center gap-2">
                       <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
-                      {lead.hasConflict && (
-                        <span className="text-[10px] font-bold bg-white/20 text-white px-2 py-0.5 rounded-full">
-                          Conflict
-                        </span>
+                      {lead.synced && (
+                        <span className="cal-mark s">calendar</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2.5 mt-2">
-                      {lead.category && CAT_BY_ID[lead.category] && (
-                        <span
-                          className="w-3 h-3 rounded-full shrink-0 border border-white/40"
-                          style={{ background: CAT_BY_ID[lead.category].dot }}
-                        />
-                      )}
-                      <h3 className="text-2xl font-semibold text-white truncate">{lead.name}</h3>
+                      <h3 className="text-2xl font-semibold text-white truncate">{lead.title || lead.name}</h3>
                     </div>
                     <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
                       {t('myDay.good_chance')}
@@ -1278,22 +1182,17 @@ export default function MyDay() {
                 title={t('myDay.your_week')}
                 sub={t('myDay.week_sub')}
                 linkLabel={t('myDay.full_calendar')}
-                onLink={() => navigate("/calendar")}
+                onLink={() => navigate("/attendance")}
               />
               {thisWeek.length > 1 ? (
                 <div className={cardClass}>
-                  {thisWeek.slice(1).map(({ ev, ms }, i) => {
-                    const rd = new Date(ms);
+                  {thisWeek.slice(1).map((ev, i) => {
+                    const rd = new Date(ev.date);
                     return (
                       <div
                         key={ev.id}
-                        onClick={() =>
-                          ev.calEvent
-                            ? setSelectedCalEvent(ev.calEvent)
-                            : navigate("/calendar")
-                        }
                         className={cn(
-                          "flex items-center gap-4 py-4 cursor-pointer hover:bg-surface-variant/40 transition-colors rounded-xl px-2 -mx-2",
+                          "flex items-center gap-4 py-4 px-2 -mx-2 rounded-xl",
                           i > 0 && "border-t border-outline-variant/40",
                         )}
                       >
@@ -1307,22 +1206,12 @@ export default function MyDay() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            {ev.category && CAT_BY_ID[ev.category] && (
-                              <span
-                                className="w-2.5 h-2.5 rounded-full shrink-0"
-                                style={{ background: CAT_BY_ID[ev.category].dot }}
-                              />
-                            )}
-                            <div className="font-medium text-on-surface truncate">{ev.name}</div>
-                            {ev.hasConflict && (
-                              <span className="text-[10px] font-semibold text-error bg-error-container/60 px-1.5 py-0.5 rounded-sm">
-                                Conflict
-                              </span>
-                            )}
+                            <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
+                            {ev.synced && <span className="cal-mark s">calendar</span>}
                           </div>
                           <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
                             <span>{isValid(rd) ? format(rd, "EEEE") : ""}</span>
-                            {ev.timeLabel && <span>· {ev.timeLabel}</span>}
+                            {ev.time && <span>· {ev.time}</span>}
                             {ev.location && <span>· {ev.location}</span>}
                           </div>
                         </div>
@@ -1335,6 +1224,7 @@ export default function MyDay() {
                   {thisWeek.length === 1 ? t('myDay.that_is_everything') : t('myDay.nothing_on_calendar_yet')}
                 </p>
               )}
+              {awaySentence && <p className="md-week-away">{awaySentence}</p>}
             </section>
           </div>
         </div>
@@ -1399,36 +1289,6 @@ export default function MyDay() {
           initialTab={initialTab}
           initialInteractionId={initialInteractionId}
         />
-
-        {selectedCalEvent && (
-          <EventDetailsModal
-            event={selectedCalEvent}
-            allEvents={calendarEvents}
-            onClose={() => setSelectedCalEvent(null)}
-            onEdit={(ev) => {
-              setSelectedCalEvent(null);
-              setEditingCalEvent(ev);
-            }}
-            onDelete={async (id) => {
-              await removeCalendarEvent(id);
-              setSelectedCalEvent(null);
-            }}
-            canEdit={true}
-            onPickConflictEvent={(ev) => setSelectedCalEvent(ev)}
-          />
-        )}
-
-        {editingCalEvent && (
-          <EventEditorModal
-            initial={editingCalEvent}
-            allEvents={calendarEvents}
-            onClose={() => setEditingCalEvent(null)}
-            onSave={async (ev) => {
-              await saveCalendarEvent(ev);
-              setEditingCalEvent(null);
-            }}
-          />
-        )}
 
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
       </motion.div>
