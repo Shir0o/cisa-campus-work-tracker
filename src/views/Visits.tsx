@@ -241,7 +241,13 @@ export default function Visits() {
                         <p className="text-sm text-on-surface-variant leading-relaxed mt-1 max-w-2xl">
                           {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || contact.location}
                           {visit.followUp && (
-                            <> · you said you'd {visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1)}</>
+                            <>
+                              {' · '}
+                              {t('visits.you_said_youd').replace(
+                                '{followUp}',
+                                visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1),
+                              )}
+                            </>
                           )}
                         </p>
                       </div>
@@ -257,7 +263,7 @@ export default function Visits() {
                         onClick={() => openLog(contact.id)}
                         className="px-4 h-9 rounded-full bg-primary text-on-primary text-sm font-medium"
                       >
-                        Log a visit
+                        {t('visits.log_a_visit')}
                       </button>
                     </div>
                   </div>

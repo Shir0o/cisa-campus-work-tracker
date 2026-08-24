@@ -89,7 +89,13 @@ export default function VisitsMobile({
                     <p className="text-[13px] text-on-surface-variant leading-relaxed mt-0.5">
                       {t('visits.last_visit_days_ago').replace('{n}', String(daysAgo))} · {visit.where || contact.location}
                       {visit.followUp && (
-                        <> · you said you'd {visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1)}</>
+                        <>
+                          {' · '}
+                          {t('visits.you_said_youd').replace(
+                            '{followUp}',
+                            visit.followUp.charAt(0).toLowerCase() + visit.followUp.slice(1),
+                          )}
+                        </>
                       )}
                     </p>
                   </div>

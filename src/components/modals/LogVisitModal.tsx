@@ -334,9 +334,7 @@ export default function LogVisitModal({
               <div className="min-w-0">
                 <h2 className="font-serif text-2xl text-on-surface">{editing ? t('modals.edit_a_visit') : t('modals.log_a_visit')}</h2>
                 <p className="text-xs text-on-surface-variant">
-                  {editing
-                    ? 'Fix the record — nothing here notifies anyone.'
-                    : 'Write it down while you still remember the room.'}
+                  {editing ? t('modals.visit_fix_record') : t('modals.visit_write_down')}
                 </p>
               </div>
               <button
@@ -352,7 +350,7 @@ export default function LogVisitModal({
               {/* Who did you see */}
               <div>
                 <label className={label} htmlFor="visit-who">
-                  Who did you see?
+                  {t('modals.who_did_you_see')}
                 </label>
                 <div className="flex flex-wrap items-center gap-2 p-2 bg-surface-container-low border border-outline-variant rounded-2xl">
                   {chosen.map((c) => (
@@ -410,7 +408,7 @@ export default function LogVisitModal({
                           {addingContact ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
                         </span>
                         <span className="text-sm">
-                          Add <strong>{newName}</strong> — someone new
+                          {t('modals.add_someone_new').replace('{name}', newName)}
                         </span>
                         <span className="ml-auto text-xs text-on-surface-variant">{t('modals.starts_a_record')}</span>
                       </button>
@@ -423,7 +421,7 @@ export default function LogVisitModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className={label} htmlFor="visit-date">
-                    When
+                    {t('modals.when')}
                   </label>
                   <input
                     id="visit-date"
@@ -435,12 +433,12 @@ export default function LogVisitModal({
                 </div>
                 <div>
                   <label className={label} htmlFor="visit-where">
-                    Where
+                    {t('modals.where')}
                   </label>
                   <input
                     id="visit-where"
                     value={where}
-                    placeholder="Hall, flat, room"
+                    placeholder={t('modals.where_placeholder')}
                     onChange={(e) => {
                       setWhere(e.target.value);
                       setWhereTouched(true);
@@ -478,13 +476,14 @@ export default function LogVisitModal({
               {/* Why */}
               <div>
                 <label className={label} htmlFor="visit-purpose">
-                  Why you went <span className="normal-case tracking-normal font-normal">(optional)</span>
+                  {t('modals.why_you_went')}{' '}
+                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
                 </label>
                 <input
                   id="visit-purpose"
                   value={purpose}
                   onChange={(e) => setPurpose(e.target.value)}
-                  placeholder="e.g. She's been quiet since her dad's surgery"
+                  placeholder={t('modals.why_placeholder')}
                   className={input}
                 />
               </div>
@@ -492,14 +491,14 @@ export default function LogVisitModal({
               {/* How */}
               <div>
                 <label className={label} htmlFor="visit-how">
-                  How it went
+                  {t('modals.how_it_went')}
                 </label>
                 <textarea
                   id="visit-how"
                   rows={5}
                   value={how}
                   onChange={(e) => setHow(e.target.value)}
-                  placeholder="What you saw, what they said, what you'd want to remember in a month."
+                  placeholder={t('modals.how_placeholder')}
                   className={cn(input, 'resize-y')}
                 />
               </div>
@@ -507,7 +506,8 @@ export default function LogVisitModal({
               {/* Follow-up */}
               <div>
                 <span className={label}>
-                  Anything to follow up? <span className="normal-case tracking-normal font-normal">(optional)</span>
+                  {t('modals.anything_follow_up')}{' '}
+                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
                 </span>
                 <button
                   aria-pressed={followUpOn}
@@ -526,14 +526,16 @@ export default function LogVisitModal({
                     <input
                       value={followUp}
                       onChange={(e) => setFollowUp(e.target.value)}
-                      placeholder="e.g. Ask after her mum on Friday"
+                      placeholder={t('modals.follow_up_placeholder')}
                       aria-label={t('modals.what_to_follow_up')}
                       className={cn(input, 'mt-3')}
                     />
                     {!editing && (
                       <p className="mt-2 text-xs text-on-surface-variant">
-                        Lands as a to-do for{' '}
-                        {staff.find((s) => s.uid === (went[0] || me))?.displayName || 'whoever went'}, due in a week.
+                        {t('modals.lands_as_todo').replace(
+                          '{name}',
+                          staff.find((s) => s.uid === (went[0] || me))?.displayName || t('modals.whoever_went'),
+                        )}
                       </p>
                     )}
                   </>
@@ -544,8 +546,8 @@ export default function LogVisitModal({
               {!editing && (
                 <div>
                   <label className={label} htmlFor="visit-prayer">
-                    A prayer that came out of it{' '}
-                    <span className="normal-case tracking-normal font-normal">(optional)</span>
+                    {t('modals.prayer_came_out')}{' '}
+                    <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
                   </label>
                   <input
                     id="visit-prayer"
@@ -558,7 +560,7 @@ export default function LogVisitModal({
                   />
                   {prayer.trim() && chosen[0] && (
                     <p className="mt-2 text-xs text-on-surface-variant">
-                      Added to {chosen[0].name.split(' ')[0]}'s prayers.
+                      {t('modals.added_to_prayers').replace('{name}', chosen[0].name.split(' ')[0])}
                     </p>
                   )}
                 </div>
@@ -567,7 +569,8 @@ export default function LogVisitModal({
               {/* Photos */}
               <div>
                 <span className={label}>
-                  Photos <span className="normal-case tracking-normal font-normal">(optional)</span>
+                  {t('modals.photos')}{' '}
+                  <span className="normal-case tracking-normal font-normal">{t('modals.optional')}</span>
                 </span>
                 <button
                   onClick={() => fileRef.current?.click()}
@@ -580,8 +583,10 @@ export default function LogVisitModal({
                 >
                   <ImageIcon className="w-4 h-4" />
                   {photoCount
-                    ? `${photoCount} photo${photoCount > 1 ? 's' : ''} — add more`
-                    : 'Drop photos here, or click to choose'}
+                    ? t('modals.photo_add_more')
+                        .replace('{n}', String(photoCount))
+                        .replace('{s}', photoCount > 1 ? 's' : '')
+                    : t('modals.drop_photos')}
                 </button>
                 <input
                   ref={fileRef}
@@ -633,13 +638,13 @@ export default function LogVisitModal({
 
             <div className="p-4 border-t border-outline-variant flex items-center gap-3 bg-surface-container-high/50">
               <span className="text-xs text-on-surface-variant">
-                {ids.length ? '⌘↵ to save' : 'Pick at least one person.'}
+                {ids.length ? t('modals.cmd_save') : t('modals.pick_one_person')}
               </span>
               <button
                 onClick={onClose}
                 className="ml-auto px-4 py-2 rounded-full text-sm text-on-surface-variant hover:text-on-surface transition-colors"
               >
-                Cancel
+                {t('modals.cancel')}
               </button>
               <button
                 onClick={submit}
