@@ -61,7 +61,9 @@
     "whole_screen": "Whole screen",
     "show_pages": "Show pages",
     "open_full_screen": "Open this page full screen",
-    "undo": "Undo"
+    "undo": "Undo",
+    "skip": "Skip",
+    "archive": "Archive"
   },
   "common": {
     "loading": "Loading...",
@@ -520,7 +522,19 @@
     "no_one_matches_that": "No one matches that.",
     "everyone_already_here": "Everyone's already here.",
     "write_what_holding_mobile": "Write what we're holding for {name} this week",
-    "prayer_for_name": "Prayer for {name}"
+    "prayer_for_name": "Prayer for {name}",
+    "for_contact": "for {name}",
+    "personal": "personal",
+    "prayer_log": "Prayer Log",
+    "what_are_you_praying_for": "What are you praying for?",
+    "what_would_you_like_to_pray_for": "What would you like to pray for?",
+    "for_a_contact_optional": "For a contact (optional)",
+    "no_one_in_particular": "— no one in particular",
+    "pill_ongoing": "ongoing",
+    "pill_answered": "answered",
+    "pill_archive": "archive",
+    "day_ago": "1 day ago",
+    "days_ago": "{n} days ago"
   },
   "visits": {
     "where_weve_been": "Where we've been",

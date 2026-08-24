@@ -61,7 +61,9 @@
     "whole_screen": "Pantalla completa",
     "show_pages": "Mostrar páginas",
     "open_full_screen": "Abrir esta página a pantalla completa",
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "skip": "Omitir",
+    "archive": "Archivar"
   },
   "common": {
     "loading": "Cargando...",
@@ -520,7 +522,19 @@
     "no_one_matches_that": "Nadie coincide con eso.",
     "everyone_already_here": "Ya están todos aquí.",
     "write_what_holding_mobile": "Escribe lo que sostenemos para {name} esta semana",
-    "prayer_for_name": "Oración por {name}"
+    "prayer_for_name": "Oración por {name}",
+    "for_contact": "por {name}",
+    "personal": "personal",
+    "prayer_log": "Registro de oración",
+    "what_are_you_praying_for": "¿Por qué estás orando?",
+    "what_would_you_like_to_pray_for": "¿Por qué te gustaría orar?",
+    "for_a_contact_optional": "Para un contacto (opcional)",
+    "no_one_in_particular": "— nadie en particular",
+    "pill_ongoing": "en curso",
+    "pill_answered": "contestada",
+    "pill_archive": "archivar",
+    "day_ago": "hace 1 día",
+    "days_ago": "hace {n} días"
   },
   "visits": {
     "where_weve_been": "Dónde hemos estado",

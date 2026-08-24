@@ -27,9 +27,14 @@ export const connectedLabel = (d: number) =>
 export const truncate = (s: string | undefined, n: number) =>
   s && s.length > n ? s.slice(0, n).replace(/\s+\S*$/, "") + "…" : s || "";
 
-export const agoLabel = (iso?: string | null) => {
+export const agoLabel = (iso?: string | null, t?: (key: string, fallback?: string) => string) => {
   const ms = parseMs(iso);
   const d = ms == null ? 0 : daysSince(ms);
+  if (t) {
+    return d === 1
+      ? t("prayers.day_ago", "1 day ago").replace("{n}", "1")
+      : t("prayers.days_ago", `${d} days ago`).replace("{n}", String(d));
+  }
   return `${d} ${d === 1 ? "day" : "days"} ago`;
 };
 
