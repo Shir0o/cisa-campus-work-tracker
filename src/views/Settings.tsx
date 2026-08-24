@@ -1301,7 +1301,7 @@ function CalendarSyncPanel() {
                   <option value="">{t('settings.just_a_date', 'Just a date we should know')}</option>
                   {gatheringTypes.map((k) => (
                     <option key={k.id} value={k.name}>
-                      {t('settings.becomes_gathering', 'Becomes a {name} gathering', { name: k.name.toLowerCase() })}
+                      {t('settings.becomes_gathering', 'Becomes a {name} gathering').replace('{name}', k.name.toLowerCase())}
                     </option>
                   ))}
                 </select>
