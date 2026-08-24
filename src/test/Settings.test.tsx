@@ -614,7 +614,7 @@ describe('Settings', () => {
       fireEvent.click(screen.getByText('Edit role'));
 
       // Change role select
-      const roleSelect = screen.getByRole('combobox');
+      const roleSelect = screen.getByDisplayValue('Student');
       fireEvent.change(roleSelect, { target: { value: 'viewer' } });
 
       const saveButton = screen.getByRole('button', { name: 'Save' });

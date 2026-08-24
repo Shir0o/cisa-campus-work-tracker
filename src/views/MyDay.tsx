@@ -39,6 +39,12 @@ import PageContainer from "../components/layout/PageContainer";
 import { Translate } from "../components/Translate";
 import { useLanguage } from "../components/LanguageProvider";
 import {
+  useCalendarSync,
+  calStartOfDay,
+  calAddDays,
+  type UnifiedGathering,
+} from "../lib/calendar/calendarSync";
+import {
   addTodo,
   updateTodo,
   setTodoDone,
@@ -477,6 +483,10 @@ export default function MyDay() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const { getMergedGatherings, getAwaySentence } = useCalendarSync(contacts);
+  const calWeekFrom = useMemo(() => calStartOfDay(new Date()), []);
+  const calWeekTo = useMemo(() => calAddDays(calWeekFrom, 8), [calWeekFrom]);
+
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
   const onLoadError = (e: unknown, path: string) => {
@@ -650,16 +660,14 @@ export default function MyDay() {
 
   // The picker shows checked (personal) contacts first, then the rest; both
   // groups alphabetical (#400).
-  const pickerContacts = useMemo(
-    () =>
-      [...contacts].sort((a, b) => {
-        const aChecked = personalContactIds.has(a.id);
-        const bChecked = personalContactIds.has(b.id);
-        if (aChecked !== bChecked) return aChecked ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      }),
-    [contacts, personalContactIds],
-  );
+  const pickerContacts = useMemo(() => {
+    return [...contacts].sort((a, b) => {
+      const aChecked = personalContactIds.has(a.id);
+      const bChecked = personalContactIds.has(b.id);
+      if (aChecked !== bChecked) return aChecked ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }, [contacts, personalContactIds]);
 
   // Leaders I'm caring for — my personal contacts, longest-since-connected first.
   const myLeaders = useMemo(() => {
@@ -708,16 +716,14 @@ export default function MyDay() {
     [activeTasks],
   );
 
-  // This week — events dated within the next 7 days, soonest first.
+  // This week — unified calendar events & gatherings dated within the next 7 days.
   const thisWeek = useMemo(() => {
-    const now = Date.now();
-    const horizon = now + 7 * DAY_MS;
-    return events
-      .map((ev) => ({ ev, ms: parseMs(ev.date) }))
-      .filter((x): x is { ev: Event; ms: number } => x.ms != null)
-      .filter((x) => x.ms >= now - DAY_MS && x.ms <= horizon)
-      .sort((a, b) => a.ms - b.ms || (a.ev.order ?? 0) - (b.ev.order ?? 0));
-  }, [events]);
+    return getMergedGatherings(events, calWeekFrom, calWeekTo);
+  }, [getMergedGatherings, events, calWeekFrom, calWeekTo]);
+
+  const awaySentence = useMemo(() => {
+    return getAwaySentence(calWeekFrom, calWeekTo);
+  }, [getAwaySentence, calWeekFrom, calWeekTo]);
 
   // Contact (corporate) prayers — shared prayers on my personal contacts that
   // are still open (not answered or archived), oldest first. #464 keeps home
@@ -793,6 +799,7 @@ export default function MyDay() {
           contactPrayers={contactPrayers}
           activePersonalPrayers={activePersonalPrayers}
           thisWeek={thisWeek}
+          awaySentence={awaySentence}
           leftToDo={leftToDo}
           prayersCount={prayersCount}
           personalContactIds={personalContactIds}
@@ -819,6 +826,7 @@ export default function MyDay() {
           onMessage={(contact) => openMessage(contact.phone, desktopMessagingApp)}
           onOpenBoard={() => navigate("/coordination")}
           onOpenPrayer={() => navigate("/prayer")}
+          onOpenCalendar={() => navigate("/attendance")}
         />
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
       </>
@@ -899,19 +907,23 @@ export default function MyDay() {
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
           {/* Next up solid violet card */}
-          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs">
+          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs md-next">
             {thisWeek.length > 0 ? (() => {
-              const [{ ev: lead, ms: leadMs }] = thisWeek;
-              const d = new Date(leadMs);
-              const facts = [lead.type, lead.location].filter(Boolean) as string[];
+              const lead = thisWeek[0];
+              const d = new Date(lead.date);
+              const facts = [lead.type, lead.time, lead.location].filter(Boolean) as string[];
               return (
                 <>
                   <div>
-                    <div className="text-xs font-medium text-white/75">
-                      {t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}
-                      {lead.location ? ` · ${lead.location}` : ""}
+                    <div className="text-xs font-medium text-white/75 flex items-center gap-2">
+                      <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
+                      {lead.synced && (
+                        <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
+                      )}
                     </div>
-                    <h3 className="text-2xl font-semibold text-white mt-2">{lead.name}</h3>
+                    <div className="flex items-center gap-2.5 mt-2">
+                      <h3 className="text-2xl font-semibold text-white truncate">{lead.title || lead.name}</h3>
+                    </div>
                     <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
                       {t('myDay.good_chance')}
                     </p>
@@ -1174,13 +1186,13 @@ export default function MyDay() {
               />
               {thisWeek.length > 1 ? (
                 <div className={cardClass}>
-                  {thisWeek.slice(1).map(({ ev, ms }, i) => {
-                    const rd = new Date(ms);
+                  {thisWeek.slice(1).map((ev, i) => {
+                    const rd = new Date(ev.date);
                     return (
                       <div
                         key={ev.id}
                         className={cn(
-                          "flex items-center gap-4 py-4",
+                          "flex items-center gap-4 py-4 px-2 -mx-2 rounded-xl",
                           i > 0 && "border-t border-outline-variant/40",
                         )}
                       >
@@ -1193,10 +1205,14 @@ export default function MyDay() {
                           </div>
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-on-surface truncate">{ev.name}</div>
-                          <div className="text-xs text-on-surface-variant mt-0.5">
-                            {isValid(rd) ? format(rd, "EEEE") : ""}
-                            {ev.location ? ` · ${ev.location}` : ""}
+                          <div className="flex items-center gap-2">
+                            <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
+                            {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                          </div>
+                          <div className="text-xs text-on-surface-variant mt-0.5 flex items-center gap-1.5 flex-wrap">
+                            <span>{isValid(rd) ? format(rd, "EEEE") : ""}</span>
+                            {ev.time && <span>· {ev.time}</span>}
+                            {ev.location && <span>· {ev.location}</span>}
                           </div>
                         </div>
                       </div>
@@ -1208,6 +1224,7 @@ export default function MyDay() {
                   {thisWeek.length === 1 ? t('myDay.that_is_everything') : t('myDay.nothing_on_calendar_yet')}
                 </p>
               )}
+              {awaySentence && <p className="md-week-away">{awaySentence}</p>}
             </section>
           </div>
         </div>
@@ -1272,6 +1289,7 @@ export default function MyDay() {
           initialTab={initialTab}
           initialInteractionId={initialInteractionId}
         />
+
         <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
       </motion.div>
     </PageContainer>

@@ -48,6 +48,12 @@ vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(),
   setDoc: vi.fn(),
   addDoc: vi.fn(() => Promise.resolve()),
+  getFirestore: vi.fn(() => ({})),
+  writeBatch: vi.fn(() => ({
+    set: vi.fn(),
+    delete: vi.fn(),
+    commit: vi.fn(() => Promise.resolve()),
+  })),
   serverTimestamp: vi.fn(),
   Timestamp: class MockTimestamp {
     static now() { return new MockTimestamp(); }

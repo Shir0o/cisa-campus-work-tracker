@@ -116,7 +116,23 @@
     "what_people_telling_us": "What people are telling us",
     "what_people_telling_us_sub": "Feedback from the team and the community. Read it like notes from friends.",
     "more_account_settings": "More account settings will arrive in time.",
-    "signed_in_as": "Signed in as"
+    "signed_in_as": "Signed in as",
+    "shared_calendar": "The shared calendar",
+    "shared_calendar_sub": "Bring events from the shared calendar across as gatherings or context.",
+    "read_shared_calendar": "Read the shared calendar",
+    "shared_calendar_desc": "Nothing here is ever written back — the calendar has no place to keep a roster. Only full-timers and trainees see anything that comes across.",
+    "shared_calendar_footnote": "A category left as a date still shows up under “Also on the calendar” — it just never opens a roster. Travel is read as who's away, and named on your day.",
+    "category": "Category",
+    "comes_across_as": "Comes across as",
+    "next_30_days": "Next 30 days",
+    "just_a_date": "Just a date we should know",
+    "becomes_gathering": "Becomes a {name} gathering",
+    "open_shared_calendar_app": "Open the shared calendar app in a new tab"
+  },
+  "calendar": {
+    "badge": "calendar",
+    "also_on_calendar": "Also on the calendar",
+    "open_calendar": "Open the calendar"
   },
   "privacy": {
     "back_to_app": "Back to Application",

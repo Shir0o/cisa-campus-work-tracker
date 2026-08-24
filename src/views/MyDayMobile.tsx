@@ -26,6 +26,7 @@ import AttentionFeed from '../components/landing/AttentionFeed';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
+import type { UnifiedGathering } from '../lib/calendar/calendarSync';
 
 interface MyTask {
   id: string;
@@ -53,7 +54,8 @@ interface MyDayMobileProps {
   personalTasks?: MyTask[];
   contactPrayers?: PrayerRecord[];
   activePersonalPrayers?: any[];
-  thisWeek?: { ev: Event; ms: number }[];
+  thisWeek?: UnifiedGathering[];
+  awaySentence?: string;
   leftToDo?: number;
   prayersCount?: number;
   personalContactIds?: Set<string>;
@@ -74,6 +76,7 @@ interface MyDayMobileProps {
   onMessage?: (contact: Contact) => void;
   onOpenBoard?: () => void;
   onOpenPrayer?: () => void;
+  onOpenCalendar?: () => void;
 }
 
 // Due-date presets for inline editors
@@ -118,6 +121,7 @@ export default function MyDayMobile({
   contactPrayers: rawContactPrayers = [],
   activePersonalPrayers: rawActivePersonalPrayers = [],
   thisWeek: rawThisWeek = [],
+  awaySentence = '',
   leftToDo: rawLeftToDo = 0,
   prayersCount: rawPrayersCount = 0,
   personalContactIds = new Set(),
@@ -138,6 +142,7 @@ export default function MyDayMobile({
   onMessage = () => {},
   onOpenBoard = () => {},
   onOpenPrayer = () => {},
+  onOpenCalendar = () => {},
 }: MyDayMobileProps) {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -159,9 +164,17 @@ export default function MyDayMobile({
     });
   }, [contacts, personalContactIds]);
 
-  const thisWeek = useMemo(() => {
+  const thisWeek = useMemo<UnifiedGathering[]>(() => {
     if (rawThisWeek.length > 0) return rawThisWeek;
-    return events.map((ev) => ({ ev, ms: ev.date ? new Date(ev.date).getTime() : Date.now() }));
+    return events.map((ev) => ({
+      id: ev.id,
+      title: ev.name,
+      name: ev.name,
+      date: ev.date,
+      location: ev.location,
+      type: ev.type || '',
+      synced: false,
+    }));
   }, [rawThisWeek, events]);
 
   const contactPrayers = useMemo(() => {
@@ -527,29 +540,48 @@ export default function MyDayMobile({
       <section className="mt-8 px-5 dash-sec">
         <div className="flex items-center justify-between mb-3 dash-sec-head">
           <h2 className="font-serif text-xl text-on-surface dash-sec-title">{t('myDay.your_week')}</h2>
-          <span className="text-xs text-accent font-semibold dash-sec-link">{t('myDay.calendar')}</span>
+          <button
+            onClick={onOpenCalendar}
+            className="text-xs text-accent font-semibold dash-sec-link cursor-pointer"
+          >
+            {t('myDay.full_calendar')}
+          </button>
         </div>
 
         {featuredEvent ? (
           <div className="space-y-3">
             {/* Featured Event Card */}
-            <div className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5  md-huddle">
-              <div className="text-[11px] font-semibold   text-accent md-huddle-eyebrow">
-                {isValid(new Date(featuredEvent.ev.date))
-                  ? format(new Date(featuredEvent.ev.date), "EEEE, MMM d")
-                  : t('myDay.this_week')}{" "}
-                {featuredEvent.ev.location ? `· ${featuredEvent.ev.location}` : ""}
+            <div
+              className="bg-stage-accent-soft rounded-3xl border border-primary/20 p-5 md-huddle md-next"
+            >
+              <div className="text-[11px] font-semibold text-accent md-huddle-eyebrow flex items-center justify-between">
+                <span>
+                  {isValid(new Date(featuredEvent.date))
+                    ? format(new Date(featuredEvent.date), "EEEE, MMM d")
+                    : t('myDay.this_week')}
+                  {featuredEvent.location ? ` · ${featuredEvent.location}` : ""}
+                </span>
+                {featuredEvent.synced && (
+                  <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
+                )}
               </div>
-              <h3 className="font-serif text-xl text-on-surface mt-1.5 md-huddle-title">
-                {featuredEvent.ev.name}
-              </h3>
+              <div className="flex items-center gap-2 mt-1.5">
+                <h3 className="font-serif text-xl text-on-surface md-huddle-title truncate">
+                  {featuredEvent.title || featuredEvent.name}
+                </h3>
+              </div>
               <p className="text-xs text-on-surface-variant mt-2 leading-relaxed md-huddle-lead">
                 {t('myDay.good_chance')}
               </p>
               <div className="flex flex-wrap gap-2 mt-3 md-focus">
-                {featuredEvent.ev.type && (
+                {featuredEvent.time && (
+                  <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item font-medium">
+                    {featuredEvent.time}
+                  </span>
+                )}
+                {featuredEvent.type && (
                   <span className="bg-surface rounded-full px-2.5 py-1 text-xs border border-outline-variant/60 text-on-surface-variant/80 md-focus-item">
-                    {featuredEvent.ev.type}
+                    {featuredEvent.type}
                   </span>
                 )}
               </div>
@@ -557,23 +589,30 @@ export default function MyDayMobile({
 
             {/* Rest of week */}
             {restOfWeekEvents.length > 0 && (
-              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30">
-                {restOfWeekEvents.map(({ ev }) => {
+              <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4 divide-y divide-outline-variant/30">
+                {restOfWeekEvents.map((ev) => {
                   const d = new Date(ev.date);
                   return (
-                    <div key={ev.id} className="py-3 first:pt-0 last:pb-0 flex items-center gap-3.5">
+                    <div
+                      key={ev.id}
+                      className="py-3 first:pt-0 last:pb-0 flex items-center gap-3.5"
+                    >
                       <div className="text-center shrink-0 w-10">
                         <div className="font-serif text-xl text-on-surface leading-none">
                           {isValid(d) ? format(d, "d") : "–"}
                         </div>
-                        <div className="text-[10px]   text-on-surface-variant/80 mt-0.5">
+                        <div className="text-[10px] text-on-surface-variant/80 mt-0.5">
                           {isValid(d) ? format(d, "MMM") : ""}
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-medium text-on-surface truncate">{ev.name}</div>
-                        <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate">
-                          {ev.location || t('myDay.no_location_set')}
+                        <div className="flex items-center gap-1.5">
+                          <div className="font-medium text-on-surface truncate">{ev.title || ev.name}</div>
+                          {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                        </div>
+                        <div className="text-xs text-on-surface-variant/85 mt-0.5 truncate flex items-center gap-1">
+                          {ev.time && <span>{ev.time} · </span>}
+                          <span>{ev.location || ev.type || t('myDay.no_location_set')}</span>
                         </div>
                       </div>
                     </div>
@@ -581,6 +620,7 @@ export default function MyDayMobile({
                 })}
               </div>
             )}
+            {awaySentence && <p className="md-week-away">{awaySentence}</p>}
           </div>
         ) : (
           <p className="text-sm text-on-surface-variant py-4 bg-surface rounded-2xl border border-outline-variant/40 text-center">

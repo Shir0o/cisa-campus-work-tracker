@@ -7,12 +7,14 @@ import { Avatar } from '../components/landing/primitives';
 import { openMessage } from '../lib/messaging';
 import type { TodoPerson } from '../lib/todos';
 import { useLanguage } from '../components/LanguageProvider';
+import type { UnifiedGathering, CalContextItem } from '../lib/calendar/calendarSync';
 
 interface AttendanceMobileProps {
   contacts: Contact[];
   events: Event[];
   sessions: Event[];
-  upcoming: { ev: Event; ms: number }[];
+  upcoming: UnifiedGathering[];
+  calContext?: CalContextItem[];
   missed: { contact: Contact; since: number; lastSeen: Event }[];
   avgPer: number;
   activeFilter: string;
@@ -36,6 +38,7 @@ export default function AttendanceMobile({
   events,
   sessions,
   upcoming,
+  calContext,
   missed,
   avgPer,
   activeFilter,
@@ -210,37 +213,70 @@ export default function AttendanceMobile({
       {/* ── Coming up (Calendar) ── */}
       <section className="mt-8 px-5 gthm-sec">
         <h2 className="font-serif text-lg text-on-surface mb-3">{t('attendance.coming_up')}</h2>
-        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4  divide-y divide-outline-variant/30 gthm-up">
+        <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4 divide-y divide-outline-variant/30 gthm-up">
           {upcoming.length === 0 ? (
             <p className="text-sm text-on-surface-variant py-4 text-center">
               Nothing on the calendar this week.
             </p>
           ) : (
-            upcoming.map(({ ev }) => {
-              const d = ev.date ? new Date(ev.date + 'T12:00:00') : null;
+            upcoming.map((ev) => {
+              const d = new Date(ev.date);
               return (
                 <div key={ev.id} className="py-3.5 first:pt-0 last:pb-0 flex items-center gap-3.5 gthm-uprow">
                   <div className="text-center shrink-0 w-10 tw-date">
                     <div className="font-serif text-xl text-on-surface leading-none d">
-                      {d && isValid(d) ? format(d, 'd') : '–'}
+                      {isValid(d) ? format(d, 'd') : '–'}
                     </div>
-                    <div className="text-[10px]   text-on-surface-variant/80 mt-0.5 m">
-                      {d && isValid(d) ? format(d, 'MMM') : ''}
+                    <div className="text-[10px] text-on-surface-variant/80 mt-0.5 m">
+                      {isValid(d) ? format(d, 'MMM') : ''}
                     </div>
                   </div>
                   <div className="min-w-0 flex-1 gthm-up-main">
-                    <div className="font-medium text-on-surface truncate tw-title">{ev.name}</div>
+                    <div className="font-medium text-on-surface truncate tw-title">
+                      {ev.title || ev.name}
+                      {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                    </div>
                     <div className="text-xs text-on-surface-variant mt-0.5 truncate tw-meta">
-                      {ev.location || t('attendance.no_location_set')}
+                      {[ev.time, ev.location || ev.type || t('attendance.no_location_set')].filter(Boolean).join(' · ')}
                     </div>
                   </div>
-                  <RsvpCountComponent eventId={ev.id} />
+                  {!ev.synced && <RsvpCountComponent eventId={ev.id} />}
                 </div>
               );
             })
           )}
         </div>
       </section>
+
+      {/* ── Dates worth knowing about ── */}
+      {calContext && calContext.length > 0 && (
+        <section className="mt-8 px-5 gthm-sec">
+          <h2 className="font-serif text-lg text-on-surface mb-3">{t('calendar.also_on_calendar', 'Also on the calendar')}</h2>
+          <div className="bg-surface rounded-3xl border border-outline-variant/50 p-4 divide-y divide-outline-variant/30">
+            {calContext.map((it) => {
+              const d = new Date(it.date);
+              return (
+                <div key={it.id} className="py-3.5 first:pt-0 last:pb-0 flex items-center gap-3.5 cal-ctx">
+                  <div className="text-center shrink-0 w-10 tw-date">
+                    <div className="font-serif text-xl text-on-surface leading-none d">
+                      {isValid(d) ? format(d, 'd') : '–'}
+                    </div>
+                    <div className="text-[10px] text-on-surface-variant/80 mt-0.5 m">
+                      {isValid(d) ? format(d, 'MMM') : ''}
+                    </div>
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-on-surface truncate tw-title">{it.title}</div>
+                    <div className="text-xs text-on-surface-variant mt-0.5 truncate tw-meta">
+                      {[it.time, it.catLabel].filter(Boolean).join(' · ')}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Figures ── */}
       <div className="mt-10 px-5 pt-5 border-t border-outline-variant/30 flex flex-wrap gap-x-8 gap-y-4 gthm-figs">

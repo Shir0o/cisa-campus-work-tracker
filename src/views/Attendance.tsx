@@ -36,6 +36,14 @@ import { useMediaQuery } from '../lib/useMediaQuery';
 import { usePreserveScroll } from '../lib/usePreserveScroll';
 import AttendanceMobile from './AttendanceMobile';
 import { useLanguage } from '../components/LanguageProvider';
+import {
+  useCalendarSync,
+  calStartOfDay,
+  calAddDays,
+  canSeeCalendarSync,
+  type UnifiedGathering,
+  type CalContextItem,
+} from '../lib/calendar/calendarSync';
 
 const DAY_MS = 86_400_000;
 
@@ -305,15 +313,40 @@ export default function Attendance() {
     [sessionsNewestFirst, activeFilter],
   );
 
-  // coming up — today or later, soonest first
-  const upcoming = useMemo(() => {
+  // upcoming gatherings — ours, plus the shared calendar's
+  const { role } = useAuth();
+  const calOn = canSeeCalendarSync(role);
+  const { getMergedGatherings, getItemsBetween } = useCalendarSync(contacts);
+  const upFrom = useMemo(() => calStartOfDay(new Date()), []);
+  const upTo = useMemo(() => calAddDays(upFrom, 30), [upFrom]);
+
+  const upcoming: UnifiedGathering[] = useMemo(() => {
+    if (calOn) {
+      return getMergedGatherings(events, upFrom, upTo).slice(0, 4);
+    }
     const now = Date.now() - DAY_MS;
-    return [...events]
-      .map((ev) => ({ ev, ms: evtMs(ev.date) }))
-      .filter((x): x is { ev: Event; ms: number } => x.ms != null && x.ms >= now)
-      .sort((a, b) => a.ms - b.ms)
-      .slice(0, 3);
-  }, [events]);
+    return events
+      .filter((ev) => {
+        const ms = evtMs(ev.date);
+        return ms != null && ms >= now;
+      })
+      .map((ev) => ({
+        id: ev.id,
+        title: ev.name,
+        name: ev.name,
+        type: ev.type || '',
+        date: new Date(ev.date),
+        location: ev.location,
+        attended: [],
+        synced: false,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(0, 4);
+  }, [calOn, getMergedGatherings, events, upFrom, upTo]);
+
+  const calContext: CalContextItem[] = useMemo(() => {
+    return calOn ? getItemsBetween(upFrom, upTo).context.slice(0, 4) : [];
+  }, [calOn, getItemsBetween, upFrom, upTo]);
 
   // quiet figures
   const avgPer = useMemo(() => {
@@ -368,6 +401,7 @@ export default function Attendance() {
           events={events}
           sessions={sessions}
           upcoming={upcoming}
+          calContext={calContext}
           missed={missed}
           avgPer={avgPer}
           activeFilter={activeFilter}
@@ -727,8 +761,8 @@ export default function Attendance() {
           <section className="mt-12">
             <SectionHead title={t('attendance.coming_up')} sub={t('attendance.coming_up_sub')} />
             <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
-              {upcoming.map(({ ev, ms }, i) => {
-                const d = new Date(ms);
+              {upcoming.map((ev, i) => {
+                const d = new Date(ev.date);
                 return (
                   <div
                     key={ev.id}
@@ -741,17 +775,56 @@ export default function Attendance() {
                       <div className="font-serif text-2xl text-on-surface leading-none">
                         {isValid(d) ? format(d, 'd') : '–'}
                       </div>
-                      <div className="text-[11px]   text-on-surface-variant mt-1">
+                      <div className="text-[11px] text-on-surface-variant mt-1">
                         {isValid(d) ? format(d, 'MMM') : ''}
                       </div>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium text-on-surface truncate">{ev.name}</div>
+                      <div className="font-medium text-on-surface truncate">
+                        {ev.title || ev.name}
+                        {ev.synced && <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>}
+                      </div>
                       <div className="text-xs text-on-surface-variant mt-0.5 truncate">
-                        {[isValid(d) ? format(d, 'EEEE') : '', ev.location].filter(Boolean).join(' · ')}
+                        {[isValid(d) ? format(d, 'EEEE') : '', ev.time, ev.location].filter(Boolean).join(' · ')}
                       </div>
                     </div>
-                    <RsvpCount eventId={ev.id} />
+                    {!ev.synced && <RsvpCount eventId={ev.id} />}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* ── Dates worth knowing about. Not gatherings, so no roster. ── */}
+        {calContext.length > 0 && (
+          <section className="mt-8">
+            <SectionHead title={t('calendar.also_on_calendar', 'Also on the calendar')} sub={t('attendance.also_on_calendar_sub', 'Not gatherings — just worth knowing.')} />
+            <div className="bg-surface rounded-2xl border border-outline-variant/60 px-5">
+              {calContext.map((it, i) => {
+                const d = new Date(it.date);
+                return (
+                  <div
+                    key={it.id}
+                    className={cn(
+                      'cal-ctx flex items-center gap-4 py-4',
+                      i > 0 && 'border-t border-outline-variant/40',
+                    )}
+                  >
+                    <div className="text-center w-11 shrink-0">
+                      <div className="font-serif text-2xl text-on-surface leading-none">
+                        {isValid(d) ? format(d, 'd') : '–'}
+                      </div>
+                      <div className="text-[11px] text-on-surface-variant mt-1">
+                        {isValid(d) ? format(d, 'MMM') : ''}
+                      </div>
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="tw-title font-medium text-on-surface truncate">{it.title}</div>
+                      <div className="text-xs text-on-surface-variant mt-0.5 truncate">
+                        {[it.time, it.catLabel].filter(Boolean).join(' · ')}
+                      </div>
+                    </div>
                   </div>
                 );
               })}
