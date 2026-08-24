@@ -363,3 +363,32 @@ export const mdPreview = (md: string | undefined): string => {
 // Count of open ("[ ]") checklist items — for the "x to do" hint.
 export const mdOpenTasks = (md: string | undefined): number =>
   ((md || '').match(/^\s*[-*]\s+\[ \]\s+/gm) || []).length;
+
+// ── Markdown sectioning for incremental translation caching ──────────────────
+// A board page is split into top-level ("# ") sections so a small edit to one
+// section only re-translates that section — the other, unchanged sections keep
+// hitting the existing translation cache instead of re-translating the whole
+// doc. Rejoining on blank lines is semantically identical for markdown.
+export const splitMarkdownByH1 = (md: string | undefined): string[] => {
+  const lines = (md || '').replace(/\r\n/g, '\n').split('\n');
+  const sections: string[] = [];
+  let current: string[] = [];
+  let inFence = false;
+
+  const flush = () => {
+    const text = current.join('\n').trim().replace(/\n{3,}/g, '\n\n');
+    if (text) sections.push(text);
+    current = [];
+  };
+
+  for (const line of lines) {
+    if (/^\s*(```+|~~~+)/.test(line)) inFence = !inFence;
+    if (!inFence && /^#\s/.test(line)) flush();
+    current.push(line);
+  }
+  flush();
+  return sections;
+};
+
+export const joinMarkdownSections = (sections: string[]): string =>
+  sections.filter((s) => s && s.trim()).join('\n\n');

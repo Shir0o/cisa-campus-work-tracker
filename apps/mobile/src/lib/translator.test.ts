@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   translateText,
   translateBatch,
+  translateMarkdown,
   prefetchTranslations,
   getCachedTranslation,
   setCachedTranslation,
@@ -158,5 +159,71 @@ describe('mobile translator client', () => {
     expect(t3).toBe('Cadena móvil duplicada');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     fetchMock.mockRestore();
+  });
+
+  it('translateMarkdown translates each h1 section separately', async () => {
+    const md = '# One\n\nHello.\n\n# Two\n\nWorld.';
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String((init as any)?.body));
+      const texts = body.texts as string[];
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          targetLang: 'es',
+          translations: texts.map((t) => ({
+            original: t,
+            translated: t === '# One\n\nHello.' ? '# Uno\n\nHola.' : '# Dos\n\nMundo.',
+            hash: 'h',
+            cached: false,
+          })),
+        }),
+      } as any;
+    });
+
+    const res = await translateMarkdown(md, 'es');
+    expect(res).toBe('# Uno\n\nHola.\n\n# Dos\n\nMundo.');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    fetchMock.mockRestore();
+  });
+
+  it('translateMarkdown sends only the changed (uncached) sections to the API', async () => {
+    const md = '# One\n\nHello.\n\n# Two\n\nWorld.';
+    setCachedTranslation('# One\n\nHello.', '# Uno\n\nHola.', 'es');
+
+    const fetchMock = jest.spyOn(globalThis, 'fetch').mockImplementation(async (_url, init) => {
+      const body = JSON.parse(String((init as any)?.body));
+      const texts = body.texts as string[];
+      return {
+        ok: true,
+        json: async () => ({
+          success: true,
+          targetLang: 'es',
+          translations: texts.map((t) => ({
+            original: t,
+            translated: '# Dos\n\nMundo.',
+            hash: 'h',
+            cached: false,
+          })),
+        }),
+      } as any;
+    });
+
+    const res = await translateMarkdown(md, 'es');
+    expect(res).toBe('# Uno\n\nHola.\n\n# Dos\n\nMundo.');
+    const call = fetchMock.mock.calls[0];
+    const body = JSON.parse(String((call?.[1] as any)?.body));
+    expect(body.texts).toEqual(['# Two\n\nWorld.']);
+    fetchMock.mockRestore();
+  });
+
+  it('translateMarkdown returns original markdown when language is English or text is empty', async () => {
+    const fetchSpy = jest.spyOn(globalThis, 'fetch');
+
+    expect(await translateMarkdown('# One\n\nHello.', 'en')).toBe('# One\n\nHello.');
+    expect(await translateMarkdown('', 'es')).toBe('');
+    expect(await translateMarkdown('   ', 'es')).toBe('   ');
+    expect(fetchSpy).not.toHaveBeenCalled();
+    fetchSpy.mockRestore();
   });
 });
