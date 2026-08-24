@@ -7,6 +7,7 @@ import { cn } from '../../lib/utils';
 import { RowActions } from '../ui/RowActions';
 import { buildContactRowActions } from '../../lib/rowActions';
 import { UserEntityState } from '../../lib/userEntityState';
+import { useLanguage } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import type { Visit } from '../../types';
 
@@ -113,6 +114,7 @@ export default function VisitCard({
   uid,
 }: VisitCardProps) {
   const [confirming, setConfirming] = useState(false);
+  const { t } = useLanguage();
   const names = visit.contactNames || [];
   const wentNames = visit.wentNames || [];
   const photos = visit.photos || [];
@@ -142,7 +144,7 @@ export default function VisitCard({
             <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[13px] text-on-surface-variant mt-1">
               <span className="inline-flex items-center gap-1.5">
                 <House className="w-3.5 h-3.5 shrink-0" />
-                {visit.where || 'no address noted'}
+                {visit.where || t('visitCard.no_address_noted')}
               </span>
               <span aria-hidden>·</span>
               <span>{visitWhen(visit.date)}</span>
@@ -160,20 +162,26 @@ export default function VisitCard({
             </div>
             <div className="flex items-center gap-1.5 text-on-surface-variant">
               {visit.followUp && (
-                <span title={`Follow-up: ${visit.followUp}`} className="text-stage-teal">
+                <span
+                  title={t('visitCard.follow_up_title').replace('{text}', visit.followUp)}
+                  className="text-stage-teal"
+                >
                   <Check className="w-3.5 h-3.5" />
                 </span>
               )}
               {visit.prayerId && (
                 <span
-                  title={visit.prayerBurden ? `Prayer: ${visit.prayerBurden}` : 'A prayer came out of this'}
+                  title={visit.prayerBurden ? `Prayer: ${visit.prayerBurden}` : t('visitCard.a_prayer_came_out')}
                   className="text-stage-violet"
                 >
                   <HeartHandshake className="w-3.5 h-3.5" />
                 </span>
               )}
               {photos.length > 0 && (
-                <span title={`${photos.length} photos`} className="inline-flex items-center gap-0.5 text-[11px]">
+                <span
+                  title={t('visitCard.photos_title').replace('{n}', String(photos.length))}
+                  className="inline-flex items-center gap-0.5 text-[11px]"
+                >
                   <ImageIcon className="w-3.5 h-3.5" />
                   {photos.length}
                 </span>
@@ -183,11 +191,11 @@ export default function VisitCard({
         </button>
         <div className="absolute top-3 right-3">
           <RowActions
-            label={`More for ${andList(names) || 'this visit'}`}
+            label={t('visitCard.more_for').replace('{name}', andList(names) || t('visitCard.this_visit'))}
             items={buildContactRowActions({
               contact: {
                 id: visit.contactIds[0] || '',
-                name: names[0] || 'This visit',
+                name: names[0] || t('visitCard.a_visit'),
                 role: '',
                 location: '',
                 email: '',
@@ -212,21 +220,21 @@ export default function VisitCard({
       {open && (
         <div className={cn('border-t border-outline-variant space-y-5', compact ? 'p-4' : 'p-5')}>
           {visit.purpose && (
-            <Block label="Why we went">
+            <Block label={t('visitCard.why_we_went')}>
               <Translate as="p" className="text-sm text-on-surface-variant leading-relaxed" text={visit.purpose} />
             </Block>
           )}
 
-          <Block label="How it went">
+          <Block label={t('visitCard.how_it_went')}>
             {visit.how ? (
               <Translate as="p" className="text-[15px] text-on-surface leading-relaxed whitespace-pre-line" text={visit.how} />
             ) : (
-              <p className="text-sm text-on-surface-variant/70 italic">Nothing written down yet.</p>
+              <p className="text-sm text-on-surface-variant/70 italic">{t('visitCard.nothing_written_yet')}</p>
             )}
           </Block>
 
           <div className={cn('grid gap-5', compact ? 'grid-cols-1' : 'sm:grid-cols-2')}>
-            <Block label="Who went">
+            <Block label={t('visitCard.who_went')}>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {wentNames.map((n, i) => (
                   <span key={`${n}-${i}`} className="inline-flex items-center gap-2 text-sm text-on-surface">
@@ -237,7 +245,7 @@ export default function VisitCard({
               </div>
             </Block>
 
-            <Block label="Who we saw">
+            <Block label={t('visitCard.who_we_saw')}>
               <div className="flex flex-wrap gap-x-4 gap-y-2">
                 {names.map((n, i) => (
                   <button
@@ -259,14 +267,14 @@ export default function VisitCard({
                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-stage-teal-soft text-sm text-on-surface">
                   <Check className="w-4 h-4 text-stage-teal shrink-0" />
                   <Translate as="span" className="min-w-0" text={visit.followUp} />
-                  <span className="ml-auto text-xs text-on-surface-variant shrink-0">on someone's plate</span>
+                  <span className="ml-auto text-xs text-on-surface-variant shrink-0">{t('visitCard.on_someones_plate')}</span>
                 </div>
               )}
               {visit.prayerId && (
                 <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-stage-violet-soft text-sm text-on-surface">
                   <HeartHandshake className="w-4 h-4 text-stage-violet shrink-0" />
-                  <Translate as="span" className="min-w-0" text={visit.prayerBurden || 'A prayer came out of this visit'} />
-                  <span className="ml-auto text-xs text-on-surface-variant shrink-0">now on our hearts</span>
+                  <Translate as="span" className="min-w-0" text={visit.prayerBurden || t('visitCard.a_prayer_came_out')} />
+                  <span className="ml-auto text-xs text-on-surface-variant shrink-0">{t('visitCard.now_on_our_hearts')}</span>
                 </div>
               )}
             </div>
@@ -279,14 +287,14 @@ export default function VisitCard({
                   <img
                     key={p.path}
                     src={p.url}
-                    alt={p.name || 'A photo from the visit'}
+                    alt={p.name || t('visitCard.a_photo_from_visit')}
                     className="w-24 h-24 object-cover rounded-xl border border-outline-variant"
                   />
                 ) : (
                   // The file has gone, but the record that there was one hasn't.
                   <span
                     key={p.path}
-                    title={p.name || 'A photo from the visit'}
+                    title={p.name || t('visitCard.a_photo_from_visit')}
                     className="w-24 h-24 grid place-items-center rounded-xl border border-outline-variant bg-surface-container-low text-on-surface-variant/60"
                   >
                     <ImageIcon className="w-5 h-5" />
@@ -301,22 +309,22 @@ export default function VisitCard({
               onClick={onEdit}
               className="inline-flex items-center gap-1.5 text-on-surface-variant hover:text-on-surface transition-colors"
             >
-              <Pencil className="w-3.5 h-3.5" /> Edit this visit
+              <Pencil className="w-3.5 h-3.5" /> {t('visitCard.edit_this_visit')}
             </button>
             {confirming ? (
               <span className="inline-flex items-center gap-3">
-                <span className="text-on-surface-variant">Remove it from the record?</span>
+                <span className="text-on-surface-variant">{t('visitCard.remove_from_record')}</span>
                 <button
                   onClick={() => onRemove(visit)}
                   className="px-3 py-1.5 rounded-full bg-error text-on-error text-xs font-medium"
                 >
-                  Remove
+                  {t('visitCard.remove')}
                 </button>
                 <button
                   onClick={() => setConfirming(false)}
                   className="text-on-surface-variant hover:text-on-surface transition-colors"
                 >
-                  Keep
+                  {t('visitCard.keep')}
                 </button>
               </span>
             ) : (
@@ -324,7 +332,7 @@ export default function VisitCard({
                 onClick={() => setConfirming(true)}
                 className="inline-flex items-center gap-1.5 text-on-surface-variant hover:text-error transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" /> Remove
+                <Trash2 className="w-3.5 h-3.5" /> {t('visitCard.remove')}
               </button>
             )}
           </div>
