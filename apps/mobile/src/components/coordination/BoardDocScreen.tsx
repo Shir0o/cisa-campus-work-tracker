@@ -13,7 +13,7 @@ import { BOARD_AUDIENCE, audienceOf, dateLabelOf, firstName, weekdayOf, type Boa
 import { useAuth } from '../../lib/AuthProvider';
 import { useBoardDocData } from '../../lib/useBoardDocData';
 import { useLanguage } from '../../lib/LanguageProvider';
-import { useTranslate } from '../Translate';
+import { useTranslate, useTranslateMarkdown } from '../Translate';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
 import { AudiencePill } from './BoardScreen';
@@ -31,7 +31,7 @@ export function BoardDocScreen({ docId }: { docId: string }) {
 function DocBody({ doc }: { doc: BoardDoc }) {
   const { c, mode } = useV2Theme();
   const { t } = useLanguage();
-  const { translatedText: translatedMarkdown } = useTranslate(doc.md?.trim() ? doc.md : '');
+  const { translatedText: translatedMarkdown } = useTranslateMarkdown(doc.md?.trim() ? doc.md : '');
   const emptyText = t('coordination.this_page_empty', '_This page is empty._');
   const markdownToRender = doc.md?.trim() ? translatedMarkdown : emptyText;
 

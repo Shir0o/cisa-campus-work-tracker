@@ -1,6 +1,7 @@
 // Pure mobile client translation utility with multi-tier caching (L1 memory + L2 AsyncStorage)
 // and batch request debouncing against POST /api/translate.
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { splitMarkdownByH1, joinMarkdownSections } from '@cisa/core';
 
 export type AppLanguage = 'en' | 'es';
 
@@ -344,6 +345,18 @@ export async function translateBatch(texts: string[], targetLang: string = 'es')
   if (targetLang === 'en') return texts;
 
   return Promise.all(texts.map((t) => translateText(t, targetLang)));
+}
+
+// Translate a markdown doc by h1 sections. Unchanged sections already sit in
+// the translation cache (L1/L2 here, L3 on the server), so only the sections
+// that changed since the last translation are actually sent to the model.
+export async function translateMarkdown(markdown: string, targetLang: string = 'es'): Promise<string> {
+  if (!markdown || !markdown.trim()) return markdown;
+  if (targetLang === 'en') return markdown;
+
+  const sections = splitMarkdownByH1(markdown);
+  const translated = await translateBatch(sections, targetLang);
+  return joinMarkdownSections(translated);
 }
 
 export async function prefetchTranslations(

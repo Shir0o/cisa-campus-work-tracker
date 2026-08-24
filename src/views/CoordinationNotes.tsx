@@ -153,7 +153,7 @@ import { parseSmartDate } from '../lib/dateParser';
 import ContactDetailsModal from '../components/modals/ContactDetailsModal';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
-import { useTranslate } from '../hooks/useTranslate';
+import { useTranslate, useTranslateMarkdown } from '../hooks/useTranslate';
 
 // ── Team (contributor avatars + cursor identities) ────────────────────────────
 export interface TeamMember {
@@ -523,7 +523,7 @@ function ReadOnlyDoc({
   canNativeFs?: boolean;
 }) {
   const st = DOC_STATUS[sessionStatus(d.date)];
-  const { translatedText: translatedMarkdown } = useTranslate(d.md || '');
+  const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
   const { t } = useLanguage();
   const { translatedText: translatedTitle } = useTranslate(d.title || '');
   const markdownToRender = d.md ? translatedMarkdown : t('coordination.this_page_empty');

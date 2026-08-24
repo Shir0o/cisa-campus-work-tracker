@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown } from '../lib/markdown';
+import { mdPreview, mdSummary, mdOpenTasks, htmlToBoardMarkdown, splitMarkdownByH1, joinMarkdownSections } from '../lib/markdown';
 
 describe('markdown helpers', () => {
   describe('mdPreview', () => {
@@ -165,6 +165,65 @@ describe('markdown helpers', () => {
         '| Cell 3 | Cell 4 |';
 
       expect(htmlToBoardMarkdown(htmlTable)).toBe(expectedMarkdown);
+    });
+  });
+
+  describe('splitMarkdownByH1 / joinMarkdownSections', () => {
+    it('splits a doc on h1 headings, keeping each heading with its body', () => {
+      const md = '# Welcome\n\nIntro paragraph.\n\n# Agenda\n\n- Item A\n- Item B\n\n# Close\n\nSee you next week.';
+      expect(splitMarkdownByH1(md)).toEqual([
+        '# Welcome\n\nIntro paragraph.',
+        '# Agenda\n\n- Item A\n- Item B',
+        '# Close\n\nSee you next week.',
+      ]);
+    });
+
+    it('keeps a preamble before the first h1 as its own section', () => {
+      const md = 'Quick note before headings.\n\n# Topic\nBody.';
+      expect(splitMarkdownByH1(md)).toEqual(['Quick note before headings.', '# Topic\nBody.']);
+    });
+
+    it('does not split on h2/h3 — they belong to the current h1 section', () => {
+      const md = '# Main\n\n## Sub A\n\n### Sub B\n\nText.';
+      expect(splitMarkdownByH1(md)).toEqual(['# Main\n\n## Sub A\n\n### Sub B\n\nText.']);
+    });
+
+    it('does not split on a # line inside a fenced code block', () => {
+      const md = '# Title\n\n```md\n# not a heading\n```\n\n# After\n\nBody.';
+      expect(splitMarkdownByH1(md)).toEqual([
+        '# Title\n\n```md\n# not a heading\n```',
+        '# After\n\nBody.',
+      ]);
+    });
+
+    it('returns a single section for a doc with no h1', () => {
+      const md = 'Plain paragraph.\n\nAnother.';
+      expect(splitMarkdownByH1(md)).toEqual(['Plain paragraph.\n\nAnother.']);
+    });
+
+    it('returns [] for empty or whitespace-only input', () => {
+      expect(splitMarkdownByH1('')).toEqual([]);
+      expect(splitMarkdownByH1('   \n\n  ')).toEqual([]);
+      expect(splitMarkdownByH1(undefined as unknown as string)).toEqual([]);
+    });
+
+    it('normalizes surrounding blank lines and trims each section', () => {
+      const md = '\n\n# A\n\n\nBody\n\n\n# B\n\n';
+      expect(splitMarkdownByH1(md)).toEqual(['# A\n\nBody', '# B']);
+    });
+
+    it('joinMarkdownSections rejoins with a blank line between sections', () => {
+      expect(joinMarkdownSections(['# A\nBody', '# B'])).toBe('# A\nBody\n\n# B');
+      expect(joinMarkdownSections(['Only'])).toBe('Only');
+      expect(joinMarkdownSections([])).toBe('');
+      expect(joinMarkdownSections(['A', '', 'B'])).toBe('A\n\nB');
+    });
+
+    it('round-trips a real doc: join(split(md)) reproduces the markdown', () => {
+      const md =
+        '# Weekly Focus\n\n- [ ] Meet freshmen\n- [ ] Call mentor\n\n' +
+        '# Outreach\n\n## Sub\n\nSome **bold** and [link](https://x.com).\n\n> A quote.';
+      expect(joinMarkdownSections(splitMarkdownByH1(md))).toBe(md);
     });
   });
 });

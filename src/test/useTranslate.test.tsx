@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { useTranslate } from "../hooks/useTranslate";
+import { useTranslate, useTranslateMarkdown } from "../hooks/useTranslate";
 import { Translate, OriginalToggle } from "../components/Translate";
 import { LanguageToggle } from "../components/LanguageToggle";
 import { LanguageProvider, useLanguage, useI18n } from "../components/LanguageProvider";
@@ -38,6 +38,37 @@ function TestI18nComponent() {
       <span data-testid="i18n-custom">{t("non.existent", "Fallback Text")}</span>
     </div>
   );
+}
+
+function TestMarkdownComponent({ text }: { text: string }) {
+  const { translatedText, isPending } = useTranslateMarkdown(text);
+  return (
+    <div>
+      <span data-testid="md-pending">{isPending ? "loading" : "done"}</span>
+      <span data-testid="md-translated">{translatedText}</span>
+    </div>
+  );
+}
+
+function mockFetchTranslations(translations: Array<{ original: string; translated: string }>) {
+  const map = new Map(translations.map((t) => [t.original, t.translated]));
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    const body = JSON.parse(String((init as RequestInit)?.body));
+    const texts = body.texts as string[];
+    return {
+      ok: true,
+      json: async () => ({
+        success: true,
+        targetLang: "es",
+        translations: texts.map((t) => ({
+          original: t,
+          translated: map.get(t) ?? t,
+          hash: "h",
+          cached: false,
+        })),
+      }),
+    } as any;
+  });
 }
 
 describe("useTranslate and Translate component", () => {
@@ -325,5 +356,103 @@ describe("useTranslate and Translate component", () => {
     const el = screen.getByTestId("pending-translate");
     expect(el.className).toContain("animate-pulse");
     expect(el.className).toContain("opacity-70");
+  });
+});
+
+describe("useTranslateMarkdown", () => {
+  const MD = "# One\n\nHello.\n\n# Two\n\nWorld.";
+  const ES_MD = "# Uno\n\nHola.\n\n# Dos\n\nMundo.";
+  const SEC1 = "# One\n\nHello.";
+  const SEC2 = "# Two\n\nWorld.";
+  const SEC1_ES = "# Uno\n\nHola.";
+  const SEC2_ES = "# Dos\n\nMundo.";
+
+  beforeEach(() => {
+    localStorage.clear();
+    translator.clearTranslationCache();
+    vi.restoreAllMocks();
+  });
+
+  it("returns original markdown when language is English, without hitting the API", () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+    render(
+      <LanguageProvider defaultLanguage="en">
+        <TestMarkdownComponent text={MD} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("md-translated").textContent).toBe(MD);
+    expect(screen.getByTestId("md-pending").textContent).toBe("done");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("joins cached translations instantly when every section is cached", async () => {
+    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
+    translator.setCachedTranslation(SEC2, SEC2_ES, "es");
+    const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestMarkdownComponent text={MD} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("md-translated").textContent).toBe(ES_MD);
+    expect(screen.getByTestId("md-pending").textContent).toBe("done");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("sends only the uncached sections to the API and mixes in cached ones", async () => {
+    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
+    const fetchSpy = mockFetchTranslations([{ original: SEC2, translated: SEC2_ES }]);
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestMarkdownComponent text={MD} />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("md-translated").textContent).toBe(ES_MD);
+      expect(screen.getByTestId("md-pending").textContent).toBe("done");
+    });
+
+    const call = fetchSpy.mock.calls.find((c) => String(c[0]).includes("/api/translate"));
+    const body = JSON.parse(String((call?.[1] as any)?.body));
+    expect(body.texts).toEqual([SEC2]);
+  });
+
+  it("falls back to original per-section when the API fails", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Offline"));
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestMarkdownComponent text={MD} />
+      </LanguageProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("md-translated").textContent).toBe(MD);
+      expect(screen.getByTestId("md-pending").textContent).toBe("done");
+    });
+  });
+
+  it("updates progressively as a section translation lands via subscriber", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {}));
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestMarkdownComponent text={MD} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("md-pending").textContent).toBe("loading");
+
+    translator.setCachedTranslation(SEC1, SEC1_ES, "es");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("md-translated").textContent).toBe(`${SEC1_ES}\n\n${SEC2}`);
+      expect(screen.getByTestId("md-pending").textContent).toBe("loading");
+    });
   });
 });
