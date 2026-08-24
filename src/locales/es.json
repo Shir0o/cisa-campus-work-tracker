@@ -951,7 +951,13 @@
     "note_updated": "Nota actualizada.",
     "note_saved": "Nota guardada.",
     "untitled_note": "Nota sin título",
-    "note": "Nota"
+    "note": "Nota",
+    "audience_team": "Equipo",
+    "audience_team_sub": "Tiempo completo",
+    "audience_trainees": "Capacitandos",
+    "audience_trainees_sub": "Personal y capacitandos",
+    "audience_everyone": "Abierto",
+    "audience_everyone_sub": "Cualquiera en CISA"
   },
   "activity": {
     "called": "llamó",

@@ -5,6 +5,7 @@ import { BoardDoc, Audience, BOARD_AUDIENCE, docGroup } from '../lib/board';
 import { mdPreview, mdSummary, mdOpenTasks } from '../lib/markdown';
 import { Contact } from '../types';
 import { useLanguage } from '../components/LanguageProvider';
+import { Translate } from '../components/Translate';
 
 interface TeamMember {
   uid: string;
@@ -250,15 +251,15 @@ export default function CoordinationNotesMobile({
                     )}
                   </div>
                   <h3 className="font-serif text-lg text-on-surface font-semibold truncate bdm-card-title">
-                    {d.title}
+                    <Translate text={d.title} />
                   </h3>
                   <p className="text-[13px] text-on-surface-variant truncate mt-1 bdm-card-preview">
-                    {d.summary || mdSummary(d.md)}
+                    <Translate text={d.summary || mdSummary(d.md)} />
                   </p>
                   {openTasksCount > 0 && canEdit && (
                     <div className="flex items-center gap-1 mt-2 text-xs text-accent font-semibold bdm-card-todo">
                       <CheckSquare className="w-3.5 h-3.5" />
-                      <span>{openTasksCount} to do</span>
+                      <span>{t('coordination.to_do_count', '{n} to do').replace('{n}', String(openTasksCount))}</span>
                     </div>
                   )}
                 </div>

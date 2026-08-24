@@ -9,9 +9,11 @@ import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import { useMarkdown } from 'react-native-marked';
-import { BOARD_AUDIENCE, audienceOf, boardKeeperFoot, dateLabelOf, weekdayOf, type BoardDoc } from '@cisa/core';
+import { BOARD_AUDIENCE, audienceOf, dateLabelOf, firstName, weekdayOf, type BoardDoc } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useBoardDocData } from '../../lib/useBoardDocData';
+import { useLanguage } from '../../lib/LanguageProvider';
+import { useTranslate } from '../Translate';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Room, V2Empty, V2Screen } from '../v2/Widget';
 import { AudiencePill } from './BoardScreen';
@@ -27,8 +29,13 @@ export function BoardDocScreen({ docId }: { docId: string }) {
 }
 
 function DocBody({ doc }: { doc: BoardDoc }) {
-  const { c, mode, fs } = useV2Theme();
-  const elements = useMarkdown(doc.md?.trim() ? doc.md : '_This page is empty._', {
+  const { c, mode } = useV2Theme();
+  const { t } = useLanguage();
+  const { translatedText: translatedMarkdown } = useTranslate(doc.md?.trim() ? doc.md : '');
+  const emptyText = t('coordination.this_page_empty', '_This page is empty._');
+  const markdownToRender = doc.md?.trim() ? translatedMarkdown : emptyText;
+
+  const elements = useMarkdown(markdownToRender, {
     colorScheme: mode,
     theme: {
       colors: { text: c.card.ink, link: c.card.link, code: c.card.ink2, border: c.card.line },
@@ -45,19 +52,29 @@ function DocBody({ doc }: { doc: BoardDoc }) {
 
 function BoardDoc({ docId }: { docId: string }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   const router = useRouter();
   const data = useBoardDocData(docId);
   const back = () => (router.canGoBack() ? router.back() : router.replace('/coordination'));
 
-  const title = data.doc ? weekdayOf(data.doc.date) || data.doc.title : 'The Board';
+  const rawTitle = data.doc ? (weekdayOf(data.doc.date) || data.doc.title) : t('mobile.board.title', 'The Board');
+  const { translatedText: translatedTitle } = useTranslate(rawTitle);
+  const title = translatedTitle || rawTitle;
+
+  const audience = data.doc ? audienceOf(data.doc) : 'team';
+  const audienceSub = t(`mobile.board.audience_${audience}_sub`, BOARD_AUDIENCE[audience].sub);
+
+  const keeperFootText = data.keeperName
+    ? t('mobile.board.keeper_foot', `${firstName(data.keeperName)} keeps this page. Writing happens on the desktop site — here you're reading.`).replace('{name}', firstName(data.keeperName))
+    : t('mobile.board.team_keeper_foot', "The team keeps this page. Writing happens on the desktop site — here you're reading.");
 
   return (
     <SafeAreaView edges={['top']} style={{ flex: 1, backgroundColor: c.room.bg }}>
       <V2Screen title={title} note={data.doc ? dateLabelOf(data.doc.date) : undefined} onBack={back}>
         {data.error || (!data.loading && !data.doc) ? (
-          <V2Empty>{data.error || "This page couldn't be found."}</V2Empty>
+          <V2Empty>{data.error || t('mobile.board.not_found', "This page couldn't be found.")}</V2Empty>
         ) : !data.allowed ? (
-          <V2Empty>This page isn't open to your role.</V2Empty>
+          <V2Empty>{t('mobile.board.not_allowed', "This page isn't open to your role.")}</V2Empty>
         ) : data.loading || !data.doc ? (
           <DocSkeleton />
         ) : (
@@ -65,7 +82,7 @@ function BoardDoc({ docId }: { docId: string }) {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 2 }}>
               <AudiencePill doc={data.doc} />
               <Text style={{ fontFamily: font.semi, fontSize: fs(12.5), color: c.room.ink3 }}>
-                {BOARD_AUDIENCE[audienceOf(data.doc)].sub}
+                {audienceSub}
               </Text>
             </View>
 
@@ -84,7 +101,7 @@ function BoardDoc({ docId }: { docId: string }) {
             <Text
               style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.room.ink3, marginTop: 22 }}
             >
-              {boardKeeperFoot(data.keeperName)}
+              {keeperFootText}
             </Text>
           </>
         )}

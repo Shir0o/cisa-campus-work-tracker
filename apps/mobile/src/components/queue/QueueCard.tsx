@@ -14,7 +14,7 @@ import {
   type QueueCard as QueueCardData,
 } from '@cisa/core';
 import { FocusCard } from './FocusCard';
-import { useTranslate } from '../Translate';
+import { Translate, useTranslate } from '../Translate';
 import {
   AboutChip,
   Ask,
@@ -87,7 +87,7 @@ export function QueueCard({
           </>
         }
       >
-        <Lead>{t.title}</Lead>
+        <Lead><Translate text={t.title} /></Lead>
         <Why>
           {t.createdByName
             ? `${firstName(t.createdByName)} put this on the page and put your name on it.`

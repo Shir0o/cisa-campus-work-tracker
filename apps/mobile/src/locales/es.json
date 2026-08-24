@@ -912,7 +912,13 @@
     "note_updated": "Nota actualizada.",
     "note_saved": "Nota guardada.",
     "untitled_note": "Nota sin título",
-    "note": "Nota"
+    "note": "Nota",
+    "audience_team": "Equipo",
+    "audience_team_sub": "Tiempo completo",
+    "audience_trainees": "Capacitandos",
+    "audience_trainees_sub": "Personal y capacitandos",
+    "audience_everyone": "Abierto",
+    "audience_everyone_sub": "Cualquiera en CISA"
   },
   "activity": {
     "called": "llamó",
@@ -1547,6 +1553,36 @@
       "intro": "Las pantallas que a veces necesitas en movimiento. Todo lo más pesado vive en el escritorio.",
       "foot": "Las páginas del tablero, las reuniones y los tipos se leen principalmente aquí: edítalos en un escritorio.",
       "see_it_as_they_do": "Verlo como ellos lo ven"
+    },
+    "board": {
+      "title": "El Tablero",
+      "subtitle": "Lo que el equipo conversó y lo que surgió de ello. Abre una página para leerla.",
+      "foot": "Las páginas se escriben y se mantienen en el sitio web de escritorio.",
+      "empty": "No hay nada abierto para ti en este momento.",
+      "count_zero": "Sin páginas",
+      "count_one": "1 página",
+      "count_many": "{count} páginas",
+      "pinned": "Fijadas",
+      "this_week": "Esta semana",
+      "earlier": "Anteriores",
+      "audience_team": "Equipo",
+      "audience_team_sub": "Tiempo completo",
+      "audience_trainees": "Capacitandos",
+      "audience_trainees_sub": "Personal y capacitandos",
+      "audience_everyone": "Abierto",
+      "audience_everyone_sub": "Cualquiera en CISA",
+      "leader_leading": "{name} dirigiendo",
+      "not_found": "No se pudo encontrar esta página.",
+      "not_allowed": "Esta página no está abierta para tu rol.",
+      "keeper_foot": "{name} mantiene esta página. La escritura se realiza en el sitio web de escritorio; aquí estás leyendo.",
+      "team_keeper_foot": "El equipo mantiene esta página. La escritura se realiza en el sitio web de escritorio; aquí estás leyendo.",
+      "trash_title": "Papelera",
+      "trash_subtitle": "Páginas eliminadas en los últimos 30 días. Restaurarlas las devuelve al Tablero.",
+      "trash_empty": "La papelera está vacía.",
+      "restore": "Restaurar",
+      "delete_forever": "Eliminar definitivamente",
+      "delete_forever_title": "¿Eliminar definitivamente?",
+      "delete_forever_message": "Esto eliminará permanentemente esta página. No se puede recuperar."
     }
   }
 }

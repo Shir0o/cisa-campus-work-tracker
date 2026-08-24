@@ -321,16 +321,19 @@ const AUDIENCE_CHIP: Record<Audience, string> = {
 function AudienceBadge({ audience, size = 'sm' }: { audience: Audience; size?: 'xs' | 'sm' }) {
   const meta = BOARD_AUDIENCE[audience];
   const Icon = AUDIENCE_ICON[meta.icon];
+  const { t } = useLanguage();
+  const label = t(`coordination.audience_${audience}`, meta.label);
+  const sub = t(`coordination.audience_${audience}_sub`, meta.sub);
   return (
     <span
-      title={meta.sub}
+      title={sub}
       className={cn(
         'inline-flex items-center gap-1 rounded-full font-medium whitespace-nowrap',
         AUDIENCE_CHIP[audience],
         size === 'xs' ? 'px-1.5 py-px text-[10.5px]' : 'px-2 py-0.5 text-xs',
       )}
     >
-      <Icon className={size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3'} /> {meta.label}
+      <Icon className={size === 'xs' ? 'w-2.5 h-2.5' : 'w-3 h-3'} /> {label}
     </span>
   );
 }
@@ -353,7 +356,7 @@ function AudiencePicker({ audience, onChange }: { audience: Audience; onChange: 
       >
         {AUDIENCE_ORDER.map((a) => (
           <option key={a} value={a}>
-            {BOARD_AUDIENCE[a].label} · {BOARD_AUDIENCE[a].sub}
+            {t(`coordination.audience_${a}`, BOARD_AUDIENCE[a].label)} · {t(`coordination.audience_${a}_sub`, BOARD_AUDIENCE[a].sub)}
           </option>
         ))}
       </select>
@@ -2202,7 +2205,9 @@ function DocRow({
           </span>
         </span>
         <span className="min-w-0 flex flex-col gap-0.5">
-          <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-12">{d.title}</span>
+          <span className="text-sm font-semibold text-on-surface leading-snug truncate pr-12">
+            <Translate text={d.title} />
+          </span>
           <span className="text-[12.5px] text-on-surface-variant/70 leading-snug line-clamp-2">
             <Translate as="span" text={d.summary || mdSummary(md)} />
           </span>
