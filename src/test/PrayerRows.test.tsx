@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
+import { LanguageProvider } from '../components/LanguageProvider';
 
 const contact = (over: any = {}) => ({ id: 'c1', name: 'Alice Smith', ...over } as any);
 
@@ -332,3 +333,78 @@ describe('AddPersonalPrayer', () => {
     expect(onAdd).not.toHaveBeenCalled();
   });
 });
+
+describe('PrayerRows Spanish translation', () => {
+  it('renders TeamPrayerRow in Spanish', () => {
+    const onUpdateStatus = vi.fn();
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TeamPrayerRow
+          prayer={prayer({ status: 'answered', answer: 'Old testimony', answeredAt: 'Aug 1' })}
+          contact={contact()}
+          first
+          onUpdateStatus={onUpdateStatus}
+          onOpenContact={vi.fn()}
+          onOpenPrayerLog={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+    expect(screen.getByText('por Alice Smith')).toBeInTheDocument();
+    expect(screen.getByText('Registro de oración')).toBeInTheDocument();
+    expect(screen.getByText('en curso')).toBeInTheDocument();
+    expect(screen.getByText('contestada')).toBeInTheDocument();
+    expect(screen.getByText('archivar')).toBeInTheDocument();
+    expect(screen.getByText(/Contestada/)).toBeInTheDocument();
+    expect(screen.getByText('Editar testimonio')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Editar testimonio'));
+    expect(screen.getByText('¿Cómo fue contestada?')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Una frase sobre cómo Dios respondió/)).toBeInTheDocument();
+    expect(screen.getByText('Omitir')).toBeInTheDocument();
+    expect(screen.getByText('Guardar')).toBeInTheDocument();
+  });
+
+  it('renders PersonalPrayerRow in Spanish', () => {
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <PersonalPrayerRow
+          prayer={personal()}
+          first
+          contacts={[contact()]}
+          onUpdate={vi.fn()}
+          onDelete={vi.fn()}
+          onOpenContact={vi.fn()}
+        />
+      </LanguageProvider>
+    );
+    expect(screen.getByText('personal')).toBeInTheDocument();
+    expect(screen.getByText('en curso')).toBeInTheDocument();
+    expect(screen.getByText('contestada')).toBeInTheDocument();
+    expect(screen.getByText('archivar')).toBeInTheDocument();
+
+    // Click to open editor
+    fireEvent.click(screen.getByText('personal'));
+    expect(screen.getByPlaceholderText('¿Por qué estás orando?')).toBeInTheDocument();
+    expect(screen.getByText('Para un contacto (opcional)')).toBeInTheDocument();
+    expect(screen.getByText('— nadie en particular')).toBeInTheDocument();
+    expect(screen.getByText('Eliminar')).toBeInTheDocument();
+    expect(screen.getByText('Cancelar')).toBeInTheDocument();
+    expect(screen.getByText('Guardar')).toBeInTheDocument();
+  });
+
+  it('renders AddPersonalPrayer in Spanish', () => {
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <AddPersonalPrayer contacts={[contact()]} onAdd={vi.fn()} />
+      </LanguageProvider>
+    );
+    expect(screen.getByText('Añadir una oración personal')).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Añadir una oración personal'));
+    expect(screen.getByPlaceholderText('¿Por qué te gustaría orar?')).toBeInTheDocument();
+    expect(screen.getByText('Para un contacto (opcional)')).toBeInTheDocument();
+    expect(screen.getByText('— nadie en particular')).toBeInTheDocument();
+    expect(screen.getByText('Cancelar')).toBeInTheDocument();
+    expect(screen.getByText('Añadir')).toBeInTheDocument();
+  });
+});
+
