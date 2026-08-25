@@ -89,7 +89,9 @@ vi.mock('../lib/messaging', () => ({
 }));
 
 vi.mock('../lib/walking', () => ({
-  fullTimerOf: vi.fn(() => ({ uid: 'u-ft', name: 'Admin Tony' })),
+  isFullTimer: vi.fn(() => false),
+  isTrainee: vi.fn(() => true),
+  fullTimerIds: vi.fn(() => ['u-ft']),
   walkingRecipient: vi.fn(() => null),
 }));
 

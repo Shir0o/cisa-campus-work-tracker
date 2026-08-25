@@ -22,7 +22,7 @@ import {
   splitTasks,
   staleLeaderOf,
   thisWeekEvents,
-  traineesOf,
+  isFullTimer,
   type Contact,
   type Event,
   type InboxItem,
@@ -215,7 +215,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
   );
 
   // "From the team" inbox — full-timers only (inboxItemsFor no-ops otherwise).
-  const isFullTimer = useMemo(() => traineesOf(uid).length > 0, [uid]);
+  const isFT = useMemo(() => isFullTimer(uid), [uid]);
   const inboxItems: InboxItem[] = useMemo(
     () => (uid ? inboxItemsFor(uid, { contacts, interactions, threads }) : []),
     [uid, contacts, interactions, threads],
@@ -250,7 +250,7 @@ export function useMyDayData(uid: string | null, displayName: string | null, fix
     activePersonalPrayers,
     prayersCount,
     personalContactIds,
-    isFullTimer,
+    isFullTimer: isFT,
     inboxItems,
     nameByUid,
     isInboxRead: (id: string) => (uid ? inboxReads.isRead(uid, id) : true),

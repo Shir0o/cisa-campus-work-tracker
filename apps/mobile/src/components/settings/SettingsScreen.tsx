@@ -15,8 +15,6 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
-  caredForBy,
-  fullTimerOf,
   hourLabel,
   onCampusNowLine,
   onCampusSummary,
@@ -180,7 +178,6 @@ function Settings() {
   // three blocks that only feed `buildQueue` don't render for them. Same
   // predicate `roomForRole` uses, so the room and the content can't drift.
   const hasQueue = shellForRole(role) === 'queue';
-  const carer = caredForBy(names[fullTimerOf(uid) ?? '']);
 
   // Settings is a drawer row for the trainee and a More row for the full-timer
   // — never a tab, so there is always somewhere to go back to.
@@ -245,11 +242,6 @@ function Settings() {
             <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink2, marginTop: 2 }}>
               {user?.email || ''}
             </Text>
-            {!!carer && (
-              <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink3, marginTop: 3 }}>
-                {carer}
-              </Text>
-            )}
           </View>
         </View>
 

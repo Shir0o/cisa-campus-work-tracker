@@ -116,14 +116,16 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { LIST: 'LIST' },
 }));
 
-// Mock Firestore just enough for the app-level walking-pairs sync.
+// Mock Firestore just enough for the app-level roster sync (issue #549).
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn((_db: any, collection: string, id: string) => ({ path: `${collection}/${id}`, id })),
   onSnapshot: vi.fn((ref: any, callback: any) => {
     callback(
       ref?.path?.startsWith('contacts/')
         ? { exists: () => true, id: ref.id, data: () => ({ name: 'John Doe' }) }
-        : { data: () => ({ pairs: {} }) },
+        : ref?.path === 'users'
+          ? { docs: [] }
+          : { data: () => ({ pairs: {} }) },
     );
     return vi.fn();
   }),

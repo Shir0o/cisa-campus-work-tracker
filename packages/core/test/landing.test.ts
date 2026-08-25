@@ -62,13 +62,13 @@ describe('traineeMyPeople', () => {
 });
 
 describe('weighedInContactIds', () => {
-  it('collects contact ids the full-timer has messaged on', () => {
+  it('collects contact ids a full-timer has messaged on', () => {
     const threads = [
       message({ contactId: 'a', from: 'ft' }),
       message({ contactId: 'b', from: 'trainee' }),
       message({ contactId: 'c', from: 'ft' }),
     ];
-    expect(weighedInContactIds(threads, 'ft')).toEqual(new Set(['a', 'c']));
+    expect(weighedInContactIds(threads, ['ft'])).toEqual(new Set(['a', 'c']));
   });
 
   it('returns an empty set when there is no full-timer', () => {

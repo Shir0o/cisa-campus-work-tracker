@@ -6,7 +6,7 @@ import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
 import { Contact, Interaction } from "../../types";
 import { SectionHead } from "./primitives";
-import { traineesOf } from "../../lib/walking";
+import { isFullTimer } from "../../lib/walking";
 import { inboxItemsFor, type InboxItem } from "../../lib/inbox";
 import {
   addThreadMessage,
@@ -253,8 +253,8 @@ export default function FromTraineesInbox({
   const [threads, setThreads] = useState<ThreadMessageWithContact[]>([]);
   const [showAll, setShowAll] = useState(false);
 
-  const trainees = useMemo(() => traineesOf(meUid), [meUid]);
-  const hasTrainees = trainees.length > 0;
+  const isFullTimerView = useMemo(() => isFullTimer(meUid), [meUid]);
+  const hasTrainees = isFullTimerView;
 
   useEffect(() => {
     if (!hasTrainees) return;

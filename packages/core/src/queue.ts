@@ -180,8 +180,8 @@ export function conversationsWith(interactions: Interaction[], contactId: string
 
 export interface QueueInput {
   uid: string;
-  /** The full-timer who cares for this trainee, if any. */
-  fullTimer?: string | null;
+  /** Full-timers who may have written to this trainee (roster, no pairing). */
+  fullTimers?: string[];
   contacts: Contact[];
   tasks: Task[];
   threads: ThreadMessageWithContact[];
@@ -225,20 +225,21 @@ export function buildQueue(input: QueueInput, prefs: QueuePrefs = QUEUE_PREF_DEF
     });
   }
 
-  // 2 — anything the full-timer who cares for you sent, still unacknowledged.
-  if (input.fullTimer) {
+  // 2 — anything a full-timer wrote, still unacknowledged. No pairing: accept
+  // from any full-timer and name the writer (#549).
+  if (input.fullTimers && input.fullTimers.length > 0) {
+    const fts = new Set(input.fullTimers);
     const mine = input.threads
       .filter(
         (m) =>
-          m.from === input.fullTimer &&
+          m.from &&
+          fts.has(m.from) &&
           MSG_KINDS.includes(m.kind) &&
           !input.isRead("thread:" + m.id),
       )
       .sort((a, b) => (parseMs(b.at) ?? 0) - (parseMs(a.at) ?? 0));
-    const ftName = firstName(
-      input.threads.find((m) => m.from === input.fullTimer)?.fromName ?? "your full-timer",
-    );
     for (const m of mine) {
+      const ftName = firstName(m.fromName ?? "The team");
       out.push({
         id: "ftmsg:" + m.id,
         kind: "msg",

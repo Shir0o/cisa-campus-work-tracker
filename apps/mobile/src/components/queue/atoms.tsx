@@ -201,7 +201,7 @@ export function Why({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** A message from your full-timer, quoted. */
+/** A message quoted from a thread. */
 export function Quote({ children }: { children: React.ReactNode }) {
   const { c, font, fs } = useV2Theme();
   return (

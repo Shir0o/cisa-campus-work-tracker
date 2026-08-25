@@ -10,6 +10,17 @@ vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
 }));
 
+// Roster under test (#549): the trainee (Sam) and one full-timer.
+vi.mock('../lib/walking', () => ({
+  isFullTimer: (uid?: string | null) => uid === 'b5YPihN2cGRESPRgiTd8sMlNGBz2',
+  isTrainee: (uid?: string | null) => uid === 'JfcxyTTTFuNUYMLQTisyq2ppoy82',
+  fullTimerIds: () => ['b5YPihN2cGRESPRgiTd8sMlNGBz2'],
+  traineeIds: () => ['JfcxyTTTFuNUYMLQTisyq2ppoy82'],
+  applyRoster: () => {},
+  applyWalkingPairs: () => {},
+  walkingRecipient: () => null,
+}));
+
 // Mock Firestore
 vi.mock('firebase/firestore', () => {
   const mockBatch = {

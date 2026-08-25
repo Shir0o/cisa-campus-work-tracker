@@ -8,13 +8,13 @@ import type { Contact } from "../types";
 
 vi.mock("../components/AuthProvider", () => ({ useAuth: vi.fn() }));
 
-// Independent of the real seed: ft1 walks with t1.
+// Independent of the real seed: ft1 is a full-timer, t1 a trainee.
 vi.mock("../lib/walking", () => ({
-  FT_TRAINEES: { ft1: ["t1"] },
-  FT_OF: { t1: "ft1" },
-  traineesOf: (uid?: string) => (uid === "ft1" ? ["t1"] : []),
-  isTrainee: (uid?: string) => uid === "t1",
-  fullTimerOf: (uid?: string) => (uid === "t1" ? "ft1" : null),
+  isFullTimer: (uid?: string | null) => uid === "ft1",
+  isTrainee: (uid?: string | null) => uid === "t1",
+  fullTimerIds: () => ["ft1"],
+  traineeIds: () => ["t1"],
+  fullTimerOf: (uid?: string | null) => null,
 }));
 
 vi.mock("../lib/threads", () => ({

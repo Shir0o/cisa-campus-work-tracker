@@ -34,8 +34,8 @@ import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions"
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { UsageStats } from "./lib/usageStats";
-import { applyWalkingPairs } from "./lib/walking";
-import { subscribeWalkingPairs } from "./lib/walkingPairs";
+import { applyRoster } from "./lib/walking";
+import { collection } from "firebase/firestore";
 
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
@@ -471,8 +471,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   );
 }
 
-function WalkingPairsSync() {
-  React.useEffect(() => subscribeWalkingPairs(applyWalkingPairs), []);
+function RosterSync() {
+  // Feed the full-timer/trainee roster from the users collection so the pure
+  // lib functions (inbox, attention) know who is a full-timer (issue #549).
+  React.useEffect(
+    () =>
+      onSnapshot(collection(db, "users"), (snap) => {
+        applyRoster(snap.docs.map((d) => ({ uid: d.id, role: d.data().role })));
+      }),
+    [],
+  );
   return null;
 }
 
@@ -483,7 +491,7 @@ export default function App() {
         <Router>
           <AuthProvider>
             <LanguageProvider>
-              <WalkingPairsSync />
+              <RosterSync />
               <Routes>
                 <Route
                   path="/signup"

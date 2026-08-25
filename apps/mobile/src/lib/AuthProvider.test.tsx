@@ -23,11 +23,10 @@ jest.mock('firebase/auth', () => ({
   },
 }));
 
-// The walking-pairs sync is exercised in AuthProvider via a subscription; mock
+// The roster sync is exercised in AuthProvider via a subscription; mock
 // the Firestore wrapper so tests don't need a real Firestore instance.
-jest.mock('./data/walkingPairs', () => ({
-  subscribeWalkingPairs: jest.fn(() => jest.fn()),
-  saveWalkingPairs: jest.fn(),
+jest.mock('./data/users', () => ({
+  subscribeUsers: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('firebase/firestore', () => ({

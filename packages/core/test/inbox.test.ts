@@ -1,10 +1,18 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { inboxItemsFor, traineeWaitingItems } from '../src/inbox';
+import { applyRoster } from '../src/walking';
 import type { Contact, Interaction } from '../src/types';
 import type { ThreadMessageWithContact } from '../src/threads';
 
 const FT = 'b5YPihN2cGRESPRgiTd8sMlNGBz2';
 const TRAINEE = 'JfcxyTTTFuNUYMLQTisyq2ppoy82';
+
+beforeEach(() => {
+  applyRoster([
+    { uid: FT, role: 'admin' },
+    { uid: TRAINEE, role: 'manager' },
+  ]);
+});
 
 const contacts = [
   { id: 'c1', createdBy: TRAINEE, createdAt: '2026-07-01T10:00:00Z', reviewed: false },

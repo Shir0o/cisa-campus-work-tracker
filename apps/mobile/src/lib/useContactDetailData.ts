@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   personalContactIdsOf,
-  traineesOf,
+  isTrainee,
   walkingRecipient,
   type Contact,
   type PrayerRecord,
@@ -110,8 +110,8 @@ export function useContactDetailData(contactId: string) {
   // "Alongside" tab label + who gets pinged on the bell when the viewer
   // posts a thread message — mirrors ContactDetailsModal's inline derivations.
   const viewerWalksWithAdder = useMemo(
-    () => !!contact?.createdBy && traineesOf(uid).includes(contact.createdBy),
-    [contact?.createdBy, uid],
+    () => !!contact?.createdBy && isTrainee(contact.createdBy),
+    [contact?.createdBy],
   );
   const walkLabel =
     viewerWalksWithAdder && contact?.createdByName ? `Alongside ${contact.createdByName.split(' ')[0]}` : 'Alongside';
