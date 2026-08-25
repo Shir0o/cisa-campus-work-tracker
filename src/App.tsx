@@ -30,6 +30,7 @@ import SmartImportModal from "./components/modals/SmartImportModal";
 import Toaster from "./components/Toaster";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import FeedbackFAB from "./components/FeedbackFAB";
+import { ReleaseSheet } from "./components/release/ReleaseSheet";
 import { canAccessRoute, defaultRouteForRole, AppRole } from "./lib/permissions";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
@@ -158,6 +159,16 @@ function EmailPasswordForm() {
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isApproved, loading, signIn, logOut } = useAuth();
+  const [signInError, setSignInError] = React.useState<string | null>(null);
+
+  const handleSignIn = async () => {
+    setSignInError(null);
+    try {
+      await signIn();
+    } catch (e: any) {
+      setSignInError(e?.message || 'Google sign-in failed. Please try again.');
+    }
+  };
 
   if (loading) {
     if (!user) {
@@ -201,7 +212,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             Please sign in with your Google account to continue.
           </p>
           <button
-            onClick={signIn}
+            onClick={handleSignIn}
             className="w-full py-4 bg-primary text-on-primary rounded-full font-semibold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all"
           >
             <img
@@ -211,6 +222,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
             />
             Sign in with Google
           </button>
+
+          {signInError && (
+            <p className="mt-3 text-sm text-error px-1" role="alert">
+              {signInError}
+            </p>
+          )}
 
           <div className="flex items-center gap-3 my-6">
             <div className="flex-1 h-px bg-outline-variant" />
@@ -465,6 +482,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         />
 
         <FeedbackFAB />
+        <ReleaseSheet />
         <Toaster />
       </div>
     </LayoutContext.Provider>

@@ -265,7 +265,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      // Storage-partitioned browsers (Safari ITP, Chrome partitioned) can't read
+      // the cross-origin auth helper's initial state, so the popup fails with
+      // "Unable to process request due to missing initial state" even though the
+      // popup itself opened. Surface that as an actionable message instead of a
+      // silently dead popup; the same-origin __/auth proxy (#557) is the fix on
+      // the deploy side. Email/password remains on the same screen.
+      const code = error?.code ?? '';
+      if (
+        code === 'auth/missing-initial-state' ||
+        /initial state|storage/.test(error?.message ?? '')
+      ) {
+        throw new Error(
+          'Google sign-in could not complete in this browser (its storage is partitioned). Please use email/password below, or try a different browser.',
+        );
+      }
+      if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+        throw new Error('Sign-in was cancelled. Try again when you\'re ready.');
+      }
+      throw error;
+    }
   };
 
   const signInWithEmail = async (email: string, password: string) => {

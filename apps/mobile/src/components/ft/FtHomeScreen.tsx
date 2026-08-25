@@ -26,6 +26,7 @@ import { useFtHomeData } from '../../lib/useFtHomeData';
 import { useV2Theme } from '../../theme/v2';
 import { LogSheet } from '../log/LogSheet';
 import { Snackbar } from '../ui';
+import { M2Release } from '../release/M2Release';
 import { PersonMark } from '../queue/atoms';
 import { Room } from '../v2/Widget';
 import { FtGlance } from './FtGlance';
@@ -105,7 +106,7 @@ function QuickTile({
 
 function FtHome() {
   const { c, font, fs } = useV2Theme();
-  const { uid, user } = useAuth();
+  const { uid, user, role } = useAuth();
   const router = useRouter();
   const data = useFtHomeData(uid, user?.displayName ?? null);
 
@@ -360,6 +361,9 @@ function FtHome() {
         }}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
+      {/* What changed since you last opened this (#546). Full-timers have no
+          on-campus window of their own, so nothing is passed to the gate. */}
+      <M2Release role={role} />
     </SafeAreaView>
   );
 }
