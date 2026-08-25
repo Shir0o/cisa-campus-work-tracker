@@ -3,7 +3,6 @@ import { addDoc, collection, updateDoc } from 'firebase/firestore';
 import {
   addPrayerBurden,
   isTeamPrayer,
-  reconcilePrayerOrder,
   updatePrayerStatus,
   getContactGrade,
   isContactBrother,
@@ -85,28 +84,6 @@ describe('isTeamPrayer', () => {
   });
 });
 
-describe('reconcilePrayerOrder', () => {
-  it('keeps a card in place even when the needs-attention sort reorders under it', () => {
-    // Marking a last-week prayer flips "needs attention" off, which re-sorts
-    // the page; the remembered order must win so the card stays put (#268).
-    expect(reconcilePrayerOrder(['c1', 'c2'], ['c2', 'c1'])).toEqual(['c1', 'c2']);
-  });
-
-  it('inserts new people at the top and drops people who left the page', () => {
-    expect(reconcilePrayerOrder(['c1', 'c2'], ['c3', 'c1', 'c2'])).toEqual(['c3', 'c1', 'c2']);
-    expect(reconcilePrayerOrder(['c1', 'c2', 'c3'], ['c1', 'c3'])).toEqual(['c1', 'c3']);
-  });
-
-  it('seeds the order on first render', () => {
-    expect(reconcilePrayerOrder([], ['c2', 'c1'])).toEqual(['c2', 'c1']);
-  });
-
-  it('returns the same array reference when nothing changed', () => {
-    const prev = ['c1', 'c2'];
-    expect(reconcilePrayerOrder(prev, ['c1', 'c2'])).toBe(prev);
-  });
-});
-
 describe('getContactGrade', () => {
   it('prefers direct year field', () => {
     expect(getContactGrade({ year: 'Freshman', tags: ['Senior'] })).toBe('Freshman');
@@ -159,46 +136,49 @@ describe('sortPrayerEntries', () => {
     ms: number;
     status?: string;
   }
-  const getMs = (p: TestPrayer) => p.ms;
 
-  it('puts contacts needing attention first', () => {
+  it('sorts by last name, then first name', () => {
     const entries: { contact: { name: string }; prayers: TestPrayer[] }[] = [
-      { contact: { name: 'Bob' }, prayers: [{ ms: 200, status: 'answered' }] },
-      { contact: { name: 'Alice' }, prayers: [{ ms: 100, status: 'pending' }] },
+      { contact: { name: 'Alice Smith' }, prayers: [{ ms: 0 }] },
+      { contact: { name: 'Zoe Johnson' }, prayers: [{ ms: 0 }] },
+      { contact: { name: 'Bob Adams' }, prayers: [{ ms: 0 }] },
+      { contact: { name: 'Carol Adams' }, prayers: [{ ms: 0 }] },
     ];
-    const sorted = sortPrayerEntries(
-      entries,
-      (prayers) => prayers.some((p) => p.status === 'pending'),
-      getMs
-    );
-    expect(sorted.map((e) => e.contact.name)).toEqual(['Alice', 'Bob']);
+    const sorted = sortPrayerEntries(entries);
+    // Last name dominates (Adams first even though "Alice" sorts early), then
+    // first name breaks ties within a family (Bob before Carol).
+    expect(sorted.map((e) => e.contact.name)).toEqual([
+      'Bob Adams',
+      'Carol Adams',
+      'Zoe Johnson',
+      'Alice Smith',
+    ]);
   });
 
-  it('sorts by most recent prayer timestamp second', () => {
+  it('is case-insensitive and unaffected by prayer recency', () => {
     const entries = [
-      { contact: { name: 'Older' }, prayers: [{ ms: 100, status: 'answered' }] },
-      { contact: { name: 'Newer' }, prayers: [{ ms: 500, status: 'answered' }] },
+      { contact: { name: 'amy adams' }, prayers: [{ ms: 0 }] },
+      { contact: { name: 'Zoe Baker' }, prayers: [{ ms: 500 }] },
+      { contact: { name: 'Ann Adams' }, prayers: [{ ms: 100 }] },
     ];
-    const sorted = sortPrayerEntries(
-      entries,
-      () => false,
-      getMs
-    );
-    expect(sorted.map((e) => e.contact.name)).toEqual(['Newer', 'Older']);
+    const sorted = sortPrayerEntries(entries);
+    // Adams (Amy then Ann, compared case-insensitively) before Baker (Zoe);
+    // recency is ignored.
+    expect(sorted.map((e) => e.contact.name)).toEqual([
+      'amy adams',
+      'Ann Adams',
+      'Zoe Baker',
+    ]);
   });
 
-  it('breaks ties alphabetically by contact name and handles empty prayers without NaN', () => {
+  it('does not mutate the input array', () => {
     const entries = [
-      { contact: { name: 'Charlie' }, prayers: [] },
-      { contact: { name: 'Alice' }, prayers: [] },
-      { contact: { name: 'Bob' }, prayers: [] },
+      { contact: { name: 'Bob Smith' }, prayers: [] },
+      { contact: { name: 'Alice Johnson' }, prayers: [] },
     ];
-    const sorted = sortPrayerEntries(
-      entries,
-      () => false,
-      getMs
-    );
-    expect(sorted.map((e) => e.contact.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    const before = entries.map((e) => e.contact.name);
+    sortPrayerEntries(entries);
+    expect(entries.map((e) => e.contact.name)).toEqual(before);
   });
 });
 

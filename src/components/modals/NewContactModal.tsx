@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, MapPin, HeartHandshake, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
@@ -10,6 +10,7 @@ import { useLanguage } from '../LanguageProvider';
 import { useSeason } from '../../lib/seasons';
 import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage, MET_VIA } from '../../types';
+import { inferGenderFromName, genderTag } from '../../lib/gender';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -33,10 +34,14 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     email: '',
     phone: '',
     stage: '',
+    gender: '',
     tags: [] as string[],
     notes: '',
     spiritualBackground: ''
   });
+  // Once the staffer touches the Gender field, stop re-inferring it from the
+  // first name on every keystroke — their explicit choice wins.
+  const genderManuallySet = useRef(false);
   const [stages, setStages] = useState<Stage[]>([]);
   const [showMore, setShowMore] = useState(false);
   const season = useSeason();
@@ -111,6 +116,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
 
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      // Auto-tag gender from the first name (editable above), and surface it as
+      // an "M"/"F" tag so the prayer page's brother/sister filter works.
+      const autoGenderTag = genderTag(formData.gender);
       const contactData = {
         name: fullName,
         role: formData.role,
@@ -119,9 +127,10 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
+        gender: formData.gender,
         // Stamp the active season cohort (+ "Club Rush" during intake) alongside
         // any tags the staffer typed, so the contact is findable by cohort later.
-        tags: Array.from(new Set([...formData.tags, ...season.tags])),
+        tags: Array.from(new Set([...formData.tags, ...season.tags, ...(autoGenderTag ? [autoGenderTag] : [])])),
         notes: formData.notes,
         spiritualBackground: formData.spiritualBackground,
         initials: getInitials(formData.firstName, formData.lastName),
@@ -144,6 +153,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
+        formData.gender ? `Gender: ${formData.gender}` : '',
         formData.tags.length > 0 ? `Tags: ${formData.tags.join(', ')}` : '',
         formData.notes ? `Notes: ${formData.notes}` : ''
       ].filter(Boolean).join('\n');
@@ -203,6 +213,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         email: '',
         phone: '',
         stage: formData.stage,
+        gender: '',
         tags: [],
         notes: '',
         spiritualBackground: ''
@@ -270,7 +281,19 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       required
                       type="text"
                       value={formData.firstName}
-                      onChange={e => setFormData(f => ({ ...f, firstName: e.target.value }))}
+                      onChange={e => {
+                        const name = e.target.value;
+                        setFormData(f => {
+                          const next = { ...f, firstName: name };
+                          // Auto-tag gender from the first name until the
+                          // staffer overrides it manually.
+                          if (!genderManuallySet.current) {
+                            const inferred = inferGenderFromName(name);
+                            if (inferred) next.gender = inferred;
+                          }
+                          return next;
+                        });
+                      }}
                       onBlur={e => setFormData(f => ({ ...f, firstName: capitalize(e.target.value) }))}
                       className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                       placeholder={t('modals.first_name_placeholder')}
@@ -359,6 +382,24 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                         placeholder="e.g. Student, Faculty"
                       />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                        <User className="w-3.5 h-3.5" /> GENDER (M/F)
+                      </label>
+                      <select
+                        value={formData.gender}
+                        onChange={e => {
+                          genderManuallySet.current = true;
+                          setFormData(f => ({ ...f, gender: e.target.value }));
+                        }}
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
+                      >
+                        <option value="">Auto (from name)</option>
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                      </select>
                     </div>
 
                     <div className="space-y-1.5">

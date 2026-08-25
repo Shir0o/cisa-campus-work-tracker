@@ -283,6 +283,7 @@ export default function ContactDetailsModal({
     email: "",
     phone: "",
     stage: "",
+    gender: "",
     tags: [] as string[],
     notes: "",
     spiritualBackground: "",
@@ -351,6 +352,7 @@ export default function ContactDetailsModal({
         email: contact.email || "",
         phone: contact.phone || "",
         stage: contact.stage || "",
+        gender: contact.gender || "",
         tags: contact.tags || [],
         notes: contact.notes || "",
         spiritualBackground: contact.spiritualBackground || "",
@@ -613,7 +615,16 @@ export default function ContactDetailsModal({
         changes.push(`stage: "${contact.stage}" → "${formData.stage}"`);
       if (formData.spiritualBackground !== contact.spiritualBackground)
         changes.push(`spiritualBackground: "${contact.spiritualBackground || ''}" → "${formData.spiritualBackground}"`);
+      if (formData.gender !== contact.gender)
+        changes.push(`gender: "${contact.gender || ''}" → "${formData.gender || ''}"`);
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
+
+      // Keep an "M"/"F" tag in sync with the gender field so the prayer page's
+      // brother/sister filter stays consistent even when gender is corrected.
+      const genderTagValue = formData.gender === "M" || formData.gender === "F" ? formData.gender : "";
+      const tags = genderTagValue
+        ? Array.from(new Set([...formData.tags.filter((t) => t !== "M" && t !== "F"), genderTagValue]))
+        : formData.tags.filter((t) => t !== "M" && t !== "F");
 
       const updateData: any = {
         name: fullName,
@@ -624,7 +635,8 @@ export default function ContactDetailsModal({
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
-        tags: formData.tags,
+        gender: formData.gender,
+        tags,
         notes: formData.notes,
         spiritualBackground: formData.spiritualBackground,
         updatedAt: new Date().toISOString(),
@@ -1339,6 +1351,22 @@ export default function ContactDetailsModal({
                         className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
                         placeholder={t('modals.contactDetails.contact_group_placeholder')}
                       />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
+                        <User className="w-3.5 h-3.5" /> {t('modals.contactDetails.gender')}
+                      </label>
+                      <select
+                        value={formData.gender}
+                        onChange={(e) =>
+                          setFormData((f) => ({ ...f, gender: e.target.value }))
+                        }
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
+                      >
+                        <option value="">{t('modals.contactDetails.gender_placeholder')}</option>
+                        <option value="M">M</option>
+                        <option value="F">F</option>
+                      </select>
                     </div>
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
