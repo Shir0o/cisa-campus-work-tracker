@@ -1,5 +1,447 @@
 [
   {
+    "id": 5251004001,
+    "number": 565,
+    "title": "[Feedback] request: unless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:47:30Z",
+    "updated_at": "2026-08-25T21:47:30Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/25/2026, 9:47:29 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nunless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/CqOQK6ltPhULAKBiZWmR/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/565",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250931653,
+    "number": 564,
+    "title": "[Feedback] off: can't add someone else to contact\n\ncisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-C5bi03Jj.js:13\nThe resource <URL> was preloaded using link preload but not used within …",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:37:59Z",
+    "updated_at": "2026-08-25T21:37:59Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:37:59 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/WWFgqU0Cc7hIROZ9yvfT\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ncan't add someone else to contact\n\ncisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-C5bi03Jj.js:13\nThe resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is p\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/DNcgBGFp0ISFMjUIE6ZA/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/564",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250893795,
+    "number": 563,
+    "title": "[Feedback] thought: I need something to propagate to the other full-timers (as a full-timer) of the questions trainee asked in person (to take down and to propagate)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:33:05Z",
+    "updated_at": "2026-08-25T21:33:05Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 9:33:05 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nI need something to propagate to the other full-timers (as a full-timer) of the questions trainee asked in person (to take down and to propagate)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/RPPtDjwhCzCiZAyAgMZg/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/563",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250792567,
+    "number": 562,
+    "title": "[Feedback] thought: expand the filter for the contact to select added today, added this week, added this month",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:20:45Z",
+    "updated_at": "2026-08-25T21:20:45Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 9:20:45 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nexpand the filter for the contact to select added today, added this week, added this month\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/JhMOKdpiaX6gJwWFQ8hX/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/562",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250787302,
+    "number": 561,
+    "title": "[Feedback] idea: is the \"new\" auto tag not working? it should add the tag when the person was added within the past week",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:20:08Z",
+    "updated_at": "2026-08-25T21:20:08Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/25/2026, 9:20:08 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/Z33hAF79eRJThh5hPOW4\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nis the \"new\" auto tag not working? it should add the tag when the person was added within the past week\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ntopc32A5rExpLKT8gJw/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/561",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250764878,
+    "number": 560,
+    "title": "[Feedback] off: mobile contact detail keep crashing (pixel 10 pro)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:17:35Z",
+    "updated_at": "2026-08-25T21:17:35Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:17:34 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/settings\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmobile contact detail keep crashing (pixel 10 pro)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/XGqj7FqtJRBka53cyiI1/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/560",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250697245,
+    "number": 559,
+    "title": "[Feedback] off: the see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:09:37Z",
+    "updated_at": "2026-08-25T21:09:37Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:09:36 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/U3eQF6WTtLsgOXwAxoFb/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/559",
+    "is_pull_request": false
+  },
+  {
+    "id": 5250675474,
+    "number": 558,
+    "title": "[Feedback] off: why is there invalid date?",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T21:07:11Z",
+    "updated_at": "2026-08-25T21:07:11Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:07:11 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nwhy is there invalid date?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/MzdwBXuOMseIyd7EXwaN/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/558",
+    "is_pull_request": false
+  },
+  {
+    "id": 5249740510,
+    "number": 557,
+    "title": "[Feedback] thought: safari error?",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T19:26:22Z",
+    "updated_at": "2026-08-25T19:26:22Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 7:26:21 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nsafari error?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/53a8xG6DKZwDMnSocwwm/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/557",
+    "is_pull_request": false
+  },
+  {
+    "id": 5248085127,
+    "number": 554,
+    "title": "[Feedback] thought: maybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T16:17:06Z",
+    "updated_at": "2026-08-25T16:17:06Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 4:17:06 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmaybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/ObfilEL0yJCnsnz6rdqJ/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/554",
+    "is_pull_request": false
+  },
+  {
+    "id": 5248067895,
+    "number": 553,
+    "title": "[Feedback] thought: the on our heart page layout seems boring on wide screen",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T16:15:17Z",
+    "updated_at": "2026-08-25T16:15:17Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 4:15:16 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe on our heart page layout seems boring on wide screen\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Hf6g7h7gQTMeiJW78keg/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/553",
+    "is_pull_request": false
+  },
+  {
+    "id": 5242592590,
+    "number": 551,
+    "title": "[Feedback] idea: Pray together — walk through the people on your heart one at a time, not as a list",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T06:01:34Z",
+    "updated_at": "2026-08-25T14:53:50Z",
+    "closed_at": "2026-08-25T14:53:50Z",
+    "body": "### The idea\n\n\"On our hearts\" is a list. The design reference adds a way to **pray through it** — one person at a time, full-screen, so you can actually pray instead of scroll. The `pray_together` button on My Day today just navigates to `/prayer`; this makes that promise real.\n\nDesign reference: **`Prayer Session - preview.html`** in the design kit (the one-at-a-time session flow, keyboard + thumb).\n\n### What it should do\n\n- A **\"Pray together\"** launch on the On-our-hearts page (a quiet card above the held list: *\"Pray through them one at a time\"*), shown only when there's someone with an open prayer.\n- Tapping it opens a **full-screen session** — one card per person, in the page's held order:\n  - their name, avatar, tags;\n  - the open prayers for that person (the burden + \"asked N days ago\");\n  - **\"I prayed for {first}\"** marks it and advances (device-local, per day — the app has no shared \"who prayed\" in Firestore).\n- Progress bar (\"N of M\"), **Back / Skip**, keyboard (`space`/`enter` = prayed & next, `←`/`→` move, `esc` leave).\n- An **end-of-session recap**: \"You prayed for N of M\" with the people you carried, then **Go through again** / **Close**.\n\n### Scope\n\n- Desktop On-our-hearts page only, matching the design reference (the mobile prayer page already has its own carry flow).\n- Device-local per-day marking, consistent with the mobile \"I prayed just now\" pattern — no new Firestore field, no shared \"who prayed\" (deliberate, per the repo's existing decision).\n\n### Not this\n\nNo statuses, no testimonies, no editing, no shared team recap, no metrics, no reminders.\n\n_Reported from the design review of the `Prayer Session - preview.html` artifact._",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/551",
+    "is_pull_request": false
+  },
+  {
+    "id": 5242036279,
+    "number": 549,
+    "title": "A trainee is not paired to one full-timer — every full-timer stands over every trainee (drop the \"your full-timer\" model)",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-25T04:23:00Z",
+    "updated_at": "2026-08-25T05:50:25Z",
+    "closed_at": "2026-08-25T05:50:25Z",
+    "body": "### The design decision (answered 24 Aug 2026, in the design reference)\n\n> **A full-timer is not caring for particular trainees. Every full-timer stands over every trainee.**\n\nThe one-to-one pairing is **gone** — no `FT_OF[me]`, no \"your full-timer\", no per-trainee assignment anywhere in the UI. A trainee's work is seen and answered by the **whole team** of full-timers.\n\nWhy it outranks everything else: the current open feedback (#544 the on-campus goal, #545 questions that aren't about a person) both read from this layer. Until the pairing is removed, those features silently inherit \"one carer\" semantics the team has already abandoned.\n\n### What that means here (production)\n\n- `src/lib/walking.ts` still holds `FT_TRAINEES` / `FT_OF`, and `fullTimerOf(uid)` gates the trainee's view of who writes to them.\n- `src/lib/attention.ts:152` — a trainee's attention feed only surfaces messages from `fullTimerOf(uid)`.\n- `src/lib/inbox.ts:120` — `traineeWaitingItems` filters `m.from !== ft`; unpaired trainees get an empty cockpit.\n- `src/views/landings/LandingTrainee.tsx:229-232` — \"What's waiting on you — your full-timer's nudges/questions\" reads `fullTimerOf(uid)`.\n- `src/lib/firstRun.ts:140` — first-run asks \"Ask your full-timer something real\".\n- `src/components/modals/NewContactModal.tsx:172` and `LogInteractionModal.tsx:177` — the \"who connected\" default resolves through `fullTimerOf`.\n- `src/views/Settings.tsx:1676-1698` — the \"Walking together\" block still pairs each trainee with one full-timer.\n\n### The correction, per the design reference\n\n1. **The pairing stops meaning a relationship.** Keep one predicate — *is this person a full-timer* — and one set: *the trainees*. `FT_TRAINEES[uid]` currently doubles as \"am I an ft\" in several gates; those should read a plain `isFullTimer(uid)` instead, so removing the pairing doesn't quietly switch features off.\n2. **A message is from a person, so it says that person's name.** \"the full-timer who cares for you\" → **\"Mei wrote to you\"**. A trainee's queue and \"What's waiting on you\" should accept a note from **any** full-timer and name the writer. Where no one person is meant, say **\"the team\"** — never \"your full-timer\".\n3. **The oversight inbox widens to every full-timer.** `inboxItemsFor` already surfaces the whole team's activity; that becomes the rule everywhere, not an exception in one feed.\n4. **Settings → \"Who's caring for whom\" / the \"Walking together\" pairing UI is superseded** — the app no longer holds a pairing, so the manager should be removed or archived, not kept as a live control that re-creates the model.\n5. **Gospel partners are untouched** — trainee↔trainee pairing for a term is a different thing.\n\nThe design reference has this fully built (see its \"NO PAIRING\" section, cache-bust `?v=ft1`): `isFullTimer(uid)` / `isTrainee(uid)` / `fullTimerIds()` / `traineeIds()` read the STAFF roster, every gate is switched off the pairing, and a word is named after its writer. This issue asks to port that correction.\n",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/549",
+    "is_pull_request": false
+  },
+  {
     "id": 5238212736,
     "number": 546,
     "title": "[Feedback] idea: release notes and number upgrade on eas build (agents md instruction), including summary of key changes since last release (check git history), display these changes in app overlay upon update",
@@ -37,8 +479,8 @@
     "id": 5238060531,
     "number": 545,
     "title": "[Feedback] idea: a feature for trainees to add questions (like an inbox)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -61,8 +503,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-24T18:21:52Z",
-    "updated_at": "2026-08-24T18:21:52Z",
-    "closed_at": null,
+    "updated_at": "2026-08-25T04:14:09Z",
+    "closed_at": "2026-08-25T04:14:09Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/24/2026, 6:21:51 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\na feature for trainees to add questions (like an inbox)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/oesj3cSvdBQNkD5e6nJ6/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/545",
     "is_pull_request": false

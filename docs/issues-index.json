@@ -1,5 +1,135 @@
 [
   {
+    "number": 565,
+    "title": "[Feedback] request: unless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** request - **Date:** 8/25/2026, 9:47:29 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text unless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/CqOQK6ltPhULAKBiZWmR/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 564,
+    "title": "[Feedback] off: can't add someone else to contact\n\ncisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-C5bi03Jj.js:13\nThe resource <URL> was preloaded using link preload but not used within …",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/25/2026, 9:37:59 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/people/WWFgqU0Cc7hIROZ9yvfT - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text can't add someone else to contact cisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist. cisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist. index-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions. (anonymous) @ index-C5bi03Jj.js:13 The resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is p ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/DNcgBGFp0ISFMjUIE6ZA/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 563,
+    "title": "[Feedback] thought: I need something to propagate to the other full-timers (as a full-timer) of the questions trainee asked in person (to take down and to propagate)",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/25/2026, 9:33:05 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text I need something to propagate to the other full-timers (as a full-timer) of the questions trainee asked in person (to take down and to propagate) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/RPPtDjwhCzCiZAyAgMZg/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 562,
+    "title": "[Feedback] thought: expand the filter for the contact to select added today, added this week, added this month",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/25/2026, 9:20:45 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text expand the filter for the contact to select added today, added this week, added this month ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/JhMOKdpiaX6gJwWFQ8hX/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 561,
+    "title": "[Feedback] idea: is the \"new\" auto tag not working? it should add the tag when the person was added within the past week",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** idea - **Date:** 8/25/2026, 9:20:08 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/people/Z33hAF79eRJThh5hPOW4 - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text is the \"new\" auto tag not working? it should add the tag when the person was added within the past week ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ntopc32A5rExpLKT8gJw/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 560,
+    "title": "[Feedback] off: mobile contact detail keep crashing (pixel 10 pro)",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/25/2026, 9:17:34 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/settings - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text mobile contact detail keep crashing (pixel 10 pro) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/XGqj7FqtJRBka53cyiI1/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 559,
+    "title": "[Feedback] off: the see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/25/2026, 9:09:36 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/directory - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/U3eQF6WTtLsgOXwAxoFb/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 558,
+    "title": "[Feedback] off: why is there invalid date?",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/25/2026, 9:07:11 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text why is there invalid date? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/MzdwBXuOMseIyd7EXwaN/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 557,
+    "title": "[Feedback] thought: safari error?",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/25/2026, 7:26:21 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1152x630 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text safari error? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/53a8xG6DKZwDMnSocwwm/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 554,
+    "title": "[Feedback] thought: maybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/25/2026, 4:17:06 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text maybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/ObfilEL0yJCnsnz6rdqJ/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 553,
+    "title": "[Feedback] thought: the on our heart page layout seems boring on wide screen",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/25/2026, 4:15:16 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the on our heart page layout seems boring on wide screen ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Hf6g7h7gQTMeiJW78keg/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 551,
+    "title": "[Feedback] idea: Pray together — walk through the people on your heart one at a time, not as a list",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### The idea \"On our hearts\" is a list. The design reference adds a way to **pray through it** — one person at a time, full-screen, so you can actually pray instead of scroll. The `pray_together` button on My Day today just navigates to `/prayer`; this makes that promise real. Design reference: **`Prayer Session - preview.html`** in the design kit (the one-at-a-time session flow, keyboard + thumb). ### What it should do - A **\"Pray together\"** launch on the On-our-hearts page (a quiet card above the held list: *\"Pray through them one at a time\"*), shown only when there's someone with an open prayer. - Tapping it opens a **full-screen session** — one card per person, in the page's held order: - their name, avatar, tags; - the open prayers for that person (the burden + \"asked N days ago\"); - **\"I prayed for {first}\"** marks it and advances (device-local, per day — the app has no shared \"who prayed\" in Firestore). - Progress bar (\"N of M\"), **Back / Skip**, keyboard (`space`/`enter` = prayed & next, `←`/`→` move, `esc` leave). - An **end-of-session recap**: \"You prayed for N of M\" with the people you carried, then **Go through again** / **Close**. ### Scope - Desktop On-our-hearts page only, matching the design reference (the mobile prayer page already has its own carry flow). - Device-local per-day marking, consistent with the mobile \"I prayed just now\" pattern — no new Firestore field, no shared \"who prayed\" (deliberate, per the repo's existing decision). ### Not this No statuses, no testimonies, no editing, no shared team recap, no metrics, no reminders. _Reported from the design review of the `Prayer Session - preview.html` artifact._"
+  },
+  {
+    "number": 549,
+    "title": "A trainee is not paired to one full-timer — every full-timer stands over every trainee (drop the \"your full-timer\" model)",
+    "state": "closed",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### The design decision (answered 24 Aug 2026, in the design reference) > **A full-timer is not caring for particular trainees. Every full-timer stands over every trainee.** The one-to-one pairing is **gone** — no `FT_OF[me]`, no \"your full-timer\", no per-trainee assignment anywhere in the UI. A trainee's work is seen and answered by the **whole team** of full-timers. Why it outranks everything else: the current open feedback (#544 the on-campus goal, #545 questions that aren't about a person) both read from this layer. Until the pairing is removed, those features silently inherit \"one carer\" semantics the team has already abandoned. ### What that means here (production) - `src/lib/walking.ts` still holds `FT_TRAINEES` / `FT_OF`, and `fullTimerOf(uid)` gates the trainee's view of who writes to them. - `src/lib/attention.ts:152` — a trainee's attention feed only surfaces messages from `fullTimerOf(uid)`. - `src/lib/inbox.ts:120` — `traineeWaitingItems` filters `m.from !== ft`; unpaired trainees get an empty cockpit. - `src/views/landings/LandingTrainee.tsx:229-232` — \"What's waiting on you — your full-timer's nudges/questions\" reads `fullTimerOf(uid)`. - `src/lib/firstRun.ts:140` — first-run asks \"Ask your full-timer something real\". - `src/components/modals/NewContactModal.tsx:172` and `LogInteractionModal.tsx:177` — the \"who connected\" default resolves through `fullTimerOf`. - `src/views/Settings.tsx:1676-1698` — the \"Walking together\" block still pairs each trainee with one full-timer. ### The correction, per the design reference 1. **The pairing stops meaning a relationship.** Keep one predicate — *is this person a full-timer* — and one set: *the trainees*. `FT_TRAINEES[uid]` currently doubles as \"am I an ft\" in several gates; those should read a plain `isFullTimer(uid)` instead, so removing the pairing doesn't quietly switch features off. 2. **A message is from a person, so it says that person's name.** \"the full-timer who cares for you\" → **\"Mei wrote to you\"**. A trainee's queue and \"What's waiting on you\" should accept a note from **any** full-timer and name the writer. Where no one person is meant, say **\"the team\"** — never \"your full-timer\". 3. **The oversight inbox widens to every full-timer.** `inboxItemsFor` already surfaces the whole team's activity; that becomes the rule everywhere, not an exception in one feed. 4. **Settings → \"Who's caring for whom\" / the \"Walking together\" pairing UI is superseded** — the app no longer holds a pairing, so the manager should be removed or archived, not kept as a live control that re-creates the model. 5. **Gospel partners are untouched** — trainee↔trainee pairing for a term is a different thing. The design reference has this fully built (see its \"NO PAIRING\" section, cache-bust `?v=ft1`): `isFullTimer(uid)` / `isTrainee(uid)` / `fullTimerIds()` / `traineeIds()` read the STAFF roster, every gate is switched off the pairing, and a word is named after its writer. This issue asks to port that correction."
+  },
+  {
     "number": 546,
     "title": "[Feedback] idea: release notes and number upgrade on eas build (agents md instruction), including summary of key changes since last release (check git history), display these changes in app overlay upon update",
     "state": "open",
@@ -12,7 +142,7 @@
   {
     "number": 545,
     "title": "[Feedback] idea: a feature for trainees to add questions (like an inbox)",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
