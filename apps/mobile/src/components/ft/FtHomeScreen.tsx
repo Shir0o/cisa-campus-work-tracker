@@ -37,6 +37,7 @@ import { HomesOpen } from './HomesOpen';
 import { WeekAhead } from './WeekAhead';
 import { FtNoteSheet, type FtNoteTarget } from './FtNoteSheet';
 import { FtTodoSheet } from './FtTodoSheet';
+import { AskStack } from './AskStack';
 import { FtHomeSkeleton } from '../skeleton/FtHomeSkeleton';
 
 /** The room provider has to sit ABOVE everything that reads useV2Theme() —
@@ -256,6 +257,18 @@ function FtHome() {
             onScan={(row) => data.markScanned(row.item.id, row.unread)}
           />
         )}
+
+        <AskStack
+          stacks={data.askStacks}
+          unread={data.askUnread}
+          nameByUid={data.nameByUid}
+          uid={uid ?? ''}
+          onAnswer={(parentId, owner, body) => {
+            data.answerAsk(parentId, owner, body);
+          }}
+          onScan={(id) => data.markAskScanned(id)}
+          onToast={setToast}
+        />
 
         <GoneQuiet
           quiet={data.quiet}

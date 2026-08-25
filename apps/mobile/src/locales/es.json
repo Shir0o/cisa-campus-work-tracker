@@ -1400,6 +1400,16 @@
       "menu": "Menú",
       "foot": "La cola es la app. Todo lo demás vive aquí."
     },
+    "ask": {
+      "title": "Pregunta al equipo",
+      "placeholder": "¿Qué quieres preguntar? Dilo como lo dirías en voz alta.",
+      "anyone_can_answer": "Cada colaborador a tiempo completo lo ve. Cualquiera de ellos puede responder.",
+      "ask": "Preguntar",
+      "empty": "Todavía no has preguntado nada. Las preguntas que no pertenecen a la página de nadie — cómo empezar una conversación en la mesa del club, qué decir cuando estás atascado — viven aquí.",
+      "questions_for_team": "Preguntas para el equipo",
+      "send": "Enviar",
+      "scanned": "Visto"
+    },
     "messages": {
       "title": "Mensajes",
       "no_conversations": "Aún no hay conversaciones.",

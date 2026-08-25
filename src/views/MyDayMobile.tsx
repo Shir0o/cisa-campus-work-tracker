@@ -23,6 +23,7 @@ import { cn } from '../lib/utils';
 import { Avatar, StageChip, SectionHead, Figure } from '../components/landing/primitives';
 import { TeamPrayerRow, PersonalPrayerRow, AddPersonalPrayer } from '../components/landing/PrayerRows';
 import AttentionFeed from '../components/landing/AttentionFeed';
+import AskStack from '../components/landing/AskStack';
 import { duePresetToISO, DUE_PRESETS, presetForDue, DuePresetKey } from '../lib/todos';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
@@ -279,6 +280,13 @@ export default function MyDayMobile({
             </span>
             <ChevronRight className="w-5 h-5 text-accent shrink-0 mdm-nudge-chev" />
           </button>
+        </div>
+      )}
+
+      {/* ── Questions for the team — person-less trainee questions (#545) ── */}
+      {uid && (
+        <div className="px-5 mt-2">
+          <AskStack mobile={true} />
         </div>
       )}
 

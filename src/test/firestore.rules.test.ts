@@ -1237,6 +1237,120 @@ describeRules('Firestore Security Rules', () => {
     });
   });
 
+  describe('Ask the team — person-less questions', () => {
+    const seedAskUsers = async () => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'trainee1'), { role: 'manager', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'ft1'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'ft2'), { role: 'admin', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'student1'), { role: 'operator', approved: true });
+      });
+    };
+    const newAsk = (over: Record<string, unknown> = {}) => ({
+      parentId: null,
+      owner: 'trainee1',
+      from: 'trainee1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'How do I start a conversation at the club table?',
+      at: new Date().toISOString(),
+      reactions: [],
+      ...over,
+    });
+    const seedAsk = async (id: string, over: Record<string, unknown> = {}) => {
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'asks', id), newAsk(over));
+      });
+    };
+
+    it('ASK1: a trainee can ask a person-less question', async () => {
+      await seedAskUsers();
+      const db = getFirestore({ uid: 'trainee1' });
+      await assertSucceeds(setDoc(doc(db, 'asks', 'ask1'), newAsk()));
+    });
+
+    it('ASK2: nobody can file a question in someone else\'s name', async () => {
+      await seedAskUsers();
+      const db = getFirestore({ uid: 'ft1' });
+      await assertFails(setDoc(doc(db, 'asks', 'ask2'), newAsk({ from: 'trainee1' })));
+    });
+
+    it('ASK3: a student cannot ask the team', async () => {
+      await seedAskUsers();
+      const db = getFirestore({ uid: 'student1' });
+      await assertFails(setDoc(doc(db, 'asks', 'ask3'), newAsk({ from: 'student1', owner: 'student1' })));
+    });
+
+    it('ASK4: an empty or oversized body is rejected', async () => {
+      await seedAskUsers();
+      const db = getFirestore({ uid: 'trainee1' });
+      await assertFails(setDoc(doc(db, 'asks', 'ask4'), newAsk({ body: '' })));
+      await assertFails(
+        setDoc(doc(db, 'asks', 'ask5'), newAsk({ body: 'a'.repeat(6000) })),
+      );
+    });
+
+    it('ASK5: a full-timer answers a question, stamped with the asker\'s owner', async () => {
+      await seedAskUsers();
+      await seedAsk('ask6');
+      const db = getFirestore({ uid: 'ft1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'asks', 'ask6a'), {
+          parentId: 'ask6',
+          owner: 'trainee1',
+          from: 'ft1',
+          fromName: 'Mei',
+          kind: 'comment',
+          body: 'Three tries, spread out.',
+          at: new Date().toISOString(),
+          reactions: [],
+        }),
+      );
+    });
+
+    it('ASK6: a trainee reads their own question and its answers, not others\'', async () => {
+      await seedAskUsers();
+      await seedAsk('ask7');
+      await seedAsk('ask8', { from: 'ft2', owner: 'ft2' });
+      const trainee = getFirestore({ uid: 'trainee1' });
+      // own question (owner === me) — allowed
+      await assertSucceeds(getDoc(doc(trainee, 'asks', 'ask7')));
+      // someone else's question — denied
+      await assertFails(getDoc(doc(trainee, 'asks', 'ask8')));
+      // a full-timer reads everything
+      const ft = getFirestore({ uid: 'ft1' });
+      await assertSucceeds(getDoc(doc(ft, 'asks', 'ask8')));
+    });
+
+    it('ASK7: a full-timer toggles a reaction on an answer', async () => {
+      await seedAskUsers();
+      await seedAsk('ask9');
+      const db = getFirestore({ uid: 'ft1' });
+      await assertSucceeds(
+        updateDoc(doc(db, 'asks', 'ask9'), {
+          reactions: [{ by: 'ft1', emoji: '🙏' }],
+        }),
+      );
+    });
+
+    it('ASK8: body edits stay with the author', async () => {
+      await seedAskUsers();
+      await seedAsk('ask10');
+      // the asker may edit their own body
+      await assertSucceeds(
+        updateDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'ask10'), {
+          body: 'Rephrased.',
+        }),
+      );
+      // another full-timer cannot edit the asker's body
+      await assertFails(
+        updateDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'ask10'), {
+          body: 'Rewritten by someone else.',
+        }),
+      );
+    });
+  });
+
   describe('Walking-together threads', () => {
     const seedThreadUsers = async () => {
       await testEnv.withSecurityRulesDisabled(async (c) => {

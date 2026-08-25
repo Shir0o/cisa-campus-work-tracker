@@ -34,6 +34,7 @@ import { subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/th
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
 import FirstRunCard from "../../components/landing/FirstRunCard";
+import AskTheTeam from "../../components/landing/AskTheTeam";
 
 // One thing the full-timer has put on the trainee's plate: a nudge to follow up
 // or a question awaiting a reply. "Open" jumps into the contact's conversation.
@@ -371,6 +372,9 @@ export default function LandingTrainee() {
           </div>
         </section>
       )}
+
+      {/* ── Ask the team (#545) — questions that aren't about a person ── */}
+      <AskTheTeam meUid={uid} />
 
       {/* ── Your people ── */}
       <section className="mt-12">

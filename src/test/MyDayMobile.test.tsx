@@ -14,6 +14,15 @@ vi.mock('../lib/firebase', () => ({
   logActivity: vi.fn(),
 }));
 
+// AskStack (rendered in the FT mobile shell) subscribes to person-less
+// questions; keep it inert in these layout-focused tests.
+vi.mock('../lib/asks', () => ({
+  subscribeAsks: vi.fn(() => () => {}),
+  askStacksFor: vi.fn(() => []),
+  askWaitedDays: vi.fn(() => 0),
+  addAskReply: vi.fn(),
+}));
+
 describe('MyDayMobile', () => {
   it('renders correctly with no data', () => {
     (useAuth as any).mockReturnValue({

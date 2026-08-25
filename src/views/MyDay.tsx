@@ -88,6 +88,7 @@ import {
 } from "../components/landing/PrayerRows";
 import { ReachCard } from "../components/landing/ReachCard";
 import AttentionFeed from "../components/landing/AttentionFeed";
+import AskStack from "../components/landing/AskStack";
 import FirstRunCard from "../components/landing/FirstRunCard";
 import { UndoSnackbar } from "../components/UndoSnackbar";
 import { useUndoSnack } from "../hooks/useUndoSnack";
@@ -898,6 +899,9 @@ export default function MyDay() {
             </button>
           </div>
         </header>
+
+        {/* ── Questions for the team — person-less trainee questions (#545) ── */}
+        {uid && <AskStack className="mt-8" />}
 
         {/* ── Needs your attention — the unified attention feed ── */}
         {uid && (

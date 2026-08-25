@@ -1,0 +1,90 @@
+// "Ask the team" (#545) — a question that isn't about a person.
+//
+// "How do I start a conversation at the club table?" has nobody to attach to,
+// so it had nowhere to go and got asked in the corridor. These are person-less
+// messages: the same reply recursion and reactions as threads, but with no
+// contact, so the asking and the reading are ONE list and nothing is ever
+// "resolved" — a question with a reply is just a question with a reply. No
+// statuses, no resolve button, no FAQ, no topics.
+//
+// This is the PURE subset shared across platforms. The Firestore CRUD +
+// subscription (`subscribeAsks`, `addAsk`, `addAskReply`, `toggleAskReaction`)
+// lives in `./data/asks.ts` behind an injected `db`, mirroring threads.ts.
+
+import type { ThreadReaction } from "./threads";
+
+export type AskKind = "question" | "comment";
+
+export interface AskMessage {
+  id: string;
+  parentId: string | null; // null = a top-level question; set = an answer to it
+  owner: string; // the asker's uid — stamped on every message so a trainee can
+  // read their own question AND the replies on it (rules can't follow parentId)
+  from: string; // staff uid
+  fromName: string;
+  kind: AskKind;
+  body: string;
+  at: string; // ISO
+  reactions: ThreadReaction[];
+}
+
+/** Top-level questions (answers excluded), newest first. */
+export function askQuestions(messages: AskMessage[]): AskMessage[] {
+  return messages
+    .filter((m) => !m.parentId)
+    .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}
+
+/** A given user's own top-level questions, newest first. */
+export function askQuestionsBy(messages: AskMessage[], uid: string): AskMessage[] {
+  return askQuestions(messages).filter((m) => m.from === uid);
+}
+
+/** The answers under a question, oldest first (the design's parentId recursion). */
+export function askRepliesOf(messages: AskMessage[], parentId: string): AskMessage[] {
+  return messages
+    .filter((m) => m.parentId === parentId)
+    .sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+}
+
+/** Answered = anyone other than the asker has replied. The first full-timer to
+ *  reply takes it off every other full-timer's feed. */
+export function askAnswered(messages: AskMessage[], m: AskMessage): boolean {
+  return messages.some((r) => r.parentId === m.id && r.from !== m.from);
+}
+
+/** Whole days since a message was asked (0 = today). */
+export function askWaitedDays(m: AskMessage): number {
+  return Math.max(0, Math.round((Date.now() - new Date(m.at).getTime()) / 86400000));
+}
+
+/** The waiting said in words, not by sliding into an "Earlier" bucket. */
+export function askWaitedWords(m: AskMessage): string {
+  const d = askWaitedDays(m);
+  return d === 0 ? "asked today" : d === 1 ? "waiting since yesterday" : `waiting ${d} days`;
+}
+
+export interface AskStack {
+  id: string; // "ask:<asker uid>" — one stack per ASKER, since a question has no person
+  from: string;
+  items: AskMessage[]; // unanswered questions from that asker, newest first
+  at: string; // ISO of the newest question
+}
+
+/** The full-timer's side: one stack per asker, unanswered only. An unanswered
+ *  question does NOT age out of the feed — it sits at the top until someone
+ *  replies. Callers mark per-question read state (e.g. `ask:<id>` in InboxReads),
+ *  so `unread` is computed by the surface, not here. */
+export function askStacksFor(messages: AskMessage[], uid: string): AskStack[] {
+  const byAsker = new Map<string, AskMessage[]>();
+  for (const m of askQuestions(messages)) {
+    if (m.from === uid || askAnswered(messages, m)) continue;
+    if (!byAsker.has(m.from)) byAsker.set(m.from, []);
+    byAsker.get(m.from)!.push(m);
+  }
+  const stacks: AskStack[] = [];
+  byAsker.forEach((items, from) => {
+    stacks.push({ id: "ask:" + from, from, items, at: items[0].at });
+  });
+  return stacks.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+}

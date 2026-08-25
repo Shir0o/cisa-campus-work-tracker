@@ -386,6 +386,42 @@ service cloud.firestore {
       allow delete: if isManager();
     }
 
+    // 9a. Ask the team — a trainee's question that isn't about a person (#545).
+    // Person-less thread messages: asks/{id} with a parentId recursion for
+    // answers. A trainee reads their own questions AND the answers on them
+    // (every message carries the asker's `owner` for that); full-timers read
+    // everything and answer from My Day.
+    match /asks/{askId} {
+      function isValidAsk(data) {
+        return data.keys().hasAll(['parentId', 'owner', 'from', 'fromName', 'kind', 'body', 'at', 'reactions']) &&
+               (data.parentId == null || (data.parentId is string && data.parentId.size() <= 128)) &&
+               isValidId(data.owner) && isValidId(data.from) &&
+               data.fromName is string && data.fromName.size() <= 128 &&
+               data.kind in ['question', 'comment'] &&
+               data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
+               data.at is string && data.at.size() <= 40 &&
+               data.reactions is list;
+      }
+
+      // A trainee sees their own question + answers; full-timers (admin) see all.
+      allow get, list: if isApprovedUser() && (resource.data.owner == request.auth.uid || isAdmin());
+      allow create: if isValidId(askId) && isApprovedUser() && isManager() &&
+                      isValidAsk(incoming()) &&
+                      incoming().from == request.auth.uid &&
+                      incoming().reactions.size() == 0;
+      // Reactions: any approved staff may toggle reactions on a message they can
+      // read; body edits stay with the author (kind/from/at/owner are immutable).
+      allow update: if isValidId(askId) && isApprovedUser() && isManager() && (
+                      incoming().diff(existing()).affectedKeys().hasOnly(['reactions'])
+                      || (
+                        incoming().diff(existing()).affectedKeys().hasOnly(['body']) &&
+                        existing().from == request.auth.uid &&
+                        incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
+                      )
+                    );
+      allow delete: if isValidId(askId) && isApprovedUser() && (isManager() || existing().from == request.auth.uid);
+    }
+
     // 9b. Prayer Requests — a Student or Community member asking the team to
     // pray for THEM (mobile v2's member app). Distinct from /prayers, which
     // hangs off a contactId: the asker is a user account, not a contact. The

@@ -94,6 +94,7 @@ describe('the drawer and More lists', () => {
       'People',
       'The Journey',
       'Messages',
+      'Ask the team',
       'Sign-up form',
       'How this works',
       'Your app',
