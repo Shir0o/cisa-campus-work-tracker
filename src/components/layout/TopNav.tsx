@@ -365,7 +365,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                       <span className="inline-block text-[11px] font-medium text-on-surface-variant bg-surface-container px-2 py-0.5 rounded-full">
                         {impersonateTarget ? impersonateTarget.sub : roleLabel(role)}
                       </span>
-                      <SeasonChip className="px-0 mt-0" />
+                      <SeasonChip />
                     </div>
                   </div>
 

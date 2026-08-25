@@ -156,7 +156,7 @@ service cloud.firestore {
                       isValidContact(incoming()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
                         'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
-                        'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
+                        'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
                         'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
                         'lastContactedBy', 'lastContactedById', 'lastContactedDate',

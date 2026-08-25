@@ -72,21 +72,14 @@ export function isTeamPrayer(p: Pick<PrayerRecord, "teamPrayer">): boolean {
 }
 
 /**
- * Keeps the prayer page's card order stable as prayers change underneath it.
- *
- * On load the page sorts "needs attention" cards to the top, but that same
- * sort must not re-order a card the moment its last-week prayer is marked —
- * the reader just marked it, so it must not jump to the bottom out from under
- * them (#268). We remember the order cards first appeared in and only ever add
- * new people (to the top) or drop people who leave the page.
+ * Splits a display name ("First Last" / "First Middle Last") into first and
+ * last parts. A single token is treated as both, so it sorts on itself.
  */
-export function reconcilePrayerOrder(prevOrder: string[], currentIds: string[]): string[] {
-  const current = new Set(currentIds);
-  const kept = prevOrder.filter((id) => current.has(id));
-  const keptSet = new Set(kept);
-  const added = currentIds.filter((id) => !keptSet.has(id));
-  if (added.length === 0 && kept.length === prevOrder.length) return prevOrder;
-  return [...added, ...kept];
+function nameParts(name: string): { first: string; last: string } {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0], last: parts[0] };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1] };
 }
 
 /**
@@ -144,27 +137,24 @@ export function isContactSister(contact: { gender?: string; pronouns?: string; t
 }
 
 /**
- * Sorts prayer list entries deterministically:
- * 1. Needs-attention first (has a pending prayer from before this week).
- * 2. Most recent prayer timestamp (newest prayer first, 0 if none).
- * 3. Tie-breaker by contact name alphabetically.
+ * Sorts prayer list entries alphabetically by last name, then first name
+ * (case-insensitive) — so the "People we're holding" list reads like a roster.
+ * The previous needs-attention/recent-first ordering is gone: this sort is
+ * stable and unaffected by marking a prayer, so no display-order freeze is
+ * needed.
  */
 export function sortPrayerEntries<
   C extends { name: string },
   P
 >(
-  entries: { contact: C; prayers: P[] }[],
-  isPendingBeforeThisWeek: (prayers: P[]) => boolean,
-  getPrayerMs: (prayer: P) => number
+  entries: { contact: C; prayers: P[] }[]
 ): { contact: C; prayers: P[] }[] {
   return [...entries].sort((a, b) => {
-    const aNeeds = isPendingBeforeThisWeek(a.prayers) ? 1 : 0;
-    const bNeeds = isPendingBeforeThisWeek(b.prayers) ? 1 : 0;
-    if (aNeeds !== bNeeds) return bNeeds - aNeeds;
-    const aRecent = a.prayers.length ? Math.max(...a.prayers.map(getPrayerMs)) : 0;
-    const bRecent = b.prayers.length ? Math.max(...b.prayers.map(getPrayerMs)) : 0;
-    if (aRecent !== bRecent) return bRecent - aRecent;
-    return a.contact.name.localeCompare(b.contact.name);
+    const aParts = nameParts(a.contact.name);
+    const bParts = nameParts(b.contact.name);
+    const byLast = aParts.last.localeCompare(bParts.last, undefined, { sensitivity: "base" });
+    if (byLast !== 0) return byLast;
+    return aParts.first.localeCompare(bParts.first, undefined, { sensitivity: "base" });
   });
 }
 

@@ -46,12 +46,16 @@ export default function SeasonChip({
     </span>
   );
 
+  // The root is `flex items-center` so the chip stays vertically centered with
+  // whatever sits beside it (the role pill in the profile dropdown) — without
+  // it the inherited line-height pads the inline button's line box and pushes
+  // the label off the pill's baseline.
   if (!isManager) {
-    return <div className={cn('px-3 mt-0.5', className)}>{chip}</div>;
+    return <div className={cn('flex items-center', className)}>{chip}</div>;
   }
 
   return (
-    <div ref={ref} className={cn('relative px-3 mt-0.5', className)}>
+    <div ref={ref} className={cn('relative flex items-center', className)}>
       <button
         onClick={(e) => {
           e.stopPropagation();
