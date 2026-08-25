@@ -23,6 +23,7 @@ import { useAuth } from '../../lib/AuthProvider';
 import { useMemberHomeData } from '../../lib/useMemberHomeData';
 import { useV2Theme } from '../../theme/v2';
 import { Snackbar } from '../ui';
+import { M2Release } from '../release/M2Release';
 import { MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
 import { NextUp } from './NextUp';
 import { NoteFromTeam } from './NoteFromTeam';
@@ -41,7 +42,7 @@ export function MemberHomeScreen({ role }: { role: MemberRole }) {
 
 function MemberHome({ role }: { role: MemberRole }) {
   const { c, font, radius, fs } = useV2Theme();
-  const { uid, user } = useAuth();
+  const { uid, user, role: appRole } = useAuth();
   const router = useRouter();
   const data = useMemberHomeData(uid, user?.displayName ?? null);
   const [inviteFor, setInviteFor] = React.useState<Event | null>(null);
@@ -171,6 +172,9 @@ function MemberHome({ role }: { role: MemberRole }) {
         onShared={() => setToast('Sent. Hope they come.')}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
+      {/* What changed since you last opened this (#546). Members have no
+          on-campus window of their own, so nothing is passed to the gate. */}
+      <M2Release role={appRole} />
     </>
   );
 }

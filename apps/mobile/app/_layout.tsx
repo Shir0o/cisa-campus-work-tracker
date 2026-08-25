@@ -19,6 +19,7 @@ import { useRoomTint } from '../src/lib/roomTint';
 import { V2RoomTintContext } from '../src/theme/v2';
 import { usePushRegistration } from '../src/lib/usePushRegistration';
 import { ImpersonateLayer } from '../src/components/impersonate/ImpersonateLayer';
+import { initReleaseStore } from '../src/lib/releases';
 
 // Routes reachable while signed out — the public welcome form (a prospective
 // student fills it out themselves, no account needed) plus login itself.
@@ -34,6 +35,11 @@ function RootNavigator() {
   const [tint] = useRoomTint(uid);
   const pathname = usePathname();
   usePushRegistration();
+  // Stamp the last-seen release version before any release sheet mounts, so the
+  // gate reads from a hydrated store (issue #546).
+  useEffect(() => {
+    void initReleaseStore();
+  }, []);
   const [fontsLoaded, fontError] = useFonts({
     // Bento — Lexend only: 400 body / 500 label / 600 structural.
     Lexend_400Regular,

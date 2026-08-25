@@ -9,6 +9,7 @@
 import React from 'react';
 import { Linking, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -43,6 +44,7 @@ import { WeekLookBack } from './WeekLookBack';
 import { DrawerButton, QueueDrawer } from './QueueDrawer';
 import { ReplySheet } from './ReplySheet';
 import { QueueSkeleton } from '../skeleton/QueueSkeleton';
+import { M2Release } from '../release/M2Release';
 
 const tomorrowISO = () => {
   const d = new Date();
@@ -55,6 +57,7 @@ export function QueueScreen() {
   const { uid, user, role } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const data = useTraineeLandingData(uid, user?.displayName ?? null);
 
   const [index, setIndex] = React.useState(0);
@@ -329,7 +332,9 @@ export function QueueScreen() {
         />
       )}
 
-      {/* The floor: who's next, and the one ＋ */}
+      {/* The floor: who's next, and the one ＋. The bottom padding clears the
+          system nav bar (3-button Android), not just the gesture inset — the
+          design's `.m2-bot` is `calc(16px + env(safe-area-inset-bottom))`. */}
       <View
         style={{
           flexDirection: 'row',
@@ -337,7 +342,8 @@ export function QueueScreen() {
           justifyContent: 'space-between',
           gap: 14,
           paddingHorizontal: 18,
-          paddingVertical: 16,
+          paddingTop: 16,
+          paddingBottom: 16 + insets.bottom,
         }}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0 }}>
@@ -429,6 +435,10 @@ export function QueueScreen() {
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
       <QueueDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      {/* What changed since you last opened this (#546) — held while the
+          on-campus window is open, so it never interrupts the two hours you're
+          actually on campus. */}
+      <M2Release role={role} inWindow={onCampus} />
     </SafeAreaView>
   );
 }

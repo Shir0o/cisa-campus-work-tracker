@@ -15,6 +15,16 @@ if (import.meta.env.VITE_FIREBASE_API_KEY) {
 if (import.meta.env.VITE_FIREBASE_PROJECT_ID) {
   finalConfig.projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
 }
+// The auth helper domain can be overridden per environment. Issue #557: this
+// app runs on Cloudflare Pages (NOT Firebase Hosting), and storage-partitioned
+// Chrome/Safari can't read the cross-origin auth helper's initial state, so
+// sign-in fails with "Unable to process request due to missing initial state".
+// The fix is a same-origin `__/auth/*` reverse proxy (functions/__/auth) with
+// `authDomain` pointed at the app's own domain. Override it here per host;
+// the proxy + Google OAuth redirect URI are documented in CLOUDFLARE_DEPLOYMENT.md.
+if (import.meta.env.VITE_FIREBASE_AUTH_DOMAIN) {
+  finalConfig.authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
+}
 if (import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID) {
   (finalConfig as any).firestoreDatabaseId = import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID;
 }
