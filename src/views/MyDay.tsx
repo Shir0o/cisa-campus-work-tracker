@@ -71,6 +71,7 @@ import {
 import { updatePrayerStatus } from "../lib/prayers";
 import { openMessage } from "../lib/messaging";
 import { subscribeAllThreads } from "../lib/threads";
+import { useDayGoal, goalNewToday } from "../lib/goal";
 import {
   parseMs,
   daysSince,
@@ -487,6 +488,11 @@ export default function MyDay() {
   const { getMergedGatherings, getAwaySentence } = useCalendarSync(contacts);
   const calWeekFrom = useMemo(() => calStartOfDay(new Date()), []);
   const calWeekTo = useMemo(() => calAddDays(calWeekFrom, 8), [calWeekFrom]);
+
+  // The day's goal (#544): the full-timer sees the day in aggregate — one
+  // quiet figure, and only when there is one. Never a per-trainee column.
+  const { goal } = useDayGoal();
+  const newPeopleToday = useMemo(() => goalNewToday(contacts), [contacts]);
 
   // Clear state before handleFirestoreError (which throws), so the skeleton always
   // clears and the failure surfaces instead of a stuck/partial view.
@@ -964,6 +970,12 @@ export default function MyDay() {
               <Figure n={prayersCount} label={t('myDay.prayers_to_hold')} />
               <Figure n={leftToDo} label={t('myDay.tasks_to_hold')} />
               <Figure n={thisWeek.length} label={t('myDay.gatherings_this_week')} />
+              {role === 'admin' && goal.on && newPeopleToday > 0 && (
+                <Figure
+                  n={newPeopleToday}
+                  label={t('myDay.new_people_today_across_team', 'new people today, across the team')}
+                />
+              )}
             </div>
             <span className="text-xs text-on-surface-variant/80 italic mt-2">
               {t('myDay.numbers_notice')}

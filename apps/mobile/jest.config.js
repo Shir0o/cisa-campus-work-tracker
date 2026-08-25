@@ -25,11 +25,12 @@ module.exports = {
   },
   transformIgnorePatterns: [
     // The preset's allowlist, extended with the ESM-only packages @cisa/core's
-    // barrel drags in (firebase, @firebase/*, date-fns) and @gorhom/bottom-sheet.
-    // These REPLACE the preset's list: transformIgnorePatterns are OR'd, so a
-    // file is ignored when ANY pattern matches — an appended pattern can't
-    // un-ignore what the preset's already ignores.
-    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|@gorhom|firebase|@firebase|date-fns))',
+    // barrel drags in (firebase, @firebase/*, date-fns), @gorhom/bottom-sheet
+    // and react-native-svg (the on-campus goal ring). These REPLACE the
+    // preset's list: transformIgnorePatterns are OR'd, so a file is ignored
+    // when ANY pattern matches — an appended pattern can't un-ignore what the
+    // preset's already ignores.
+    '/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|@expo|@expo-google-fonts|react-navigation|@react-navigation|@sentry/react-native|native-base|@gorhom|firebase|@firebase|date-fns|react-native-svg))',
     // Keep the preset's exclusion: never transform the reanimated babel plugin.
     '/node_modules/react-native-reanimated/plugin/',
   ],

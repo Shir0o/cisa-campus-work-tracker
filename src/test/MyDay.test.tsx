@@ -183,6 +183,33 @@ describe('MyDay', () => {
     });
   });
 
+  it('shows the day’s goal figure to a full-timer when someone is new today (#544)', async () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'admin' });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText('new people today, across the team')).toBeInTheDocument();
+    });
+  });
+
+  it('never shows the day’s goal figure to a trainee', async () => {
+    (useAuth as any).mockReturnValue({ user: { displayName: 'Test User', uid: 'u-test' }, role: 'manager' });
+    vi.mocked(onSnapshot).mockImplementation(
+      byPath({
+        contacts: [contactDoc('c-new', { name: 'Ana', createdBy: 'u-test', createdAt: new Date().toISOString() })],
+      }),
+    );
+    render(<MyDay />);
+    await waitFor(() => {
+      expect(screen.getByText(/Good (morning|afternoon|evening), Test\./)).toBeInTheDocument();
+    });
+    expect(screen.queryByText('new people today, across the team')).toBeNull();
+  });
+
   it('shows warm empty states when nothing is owned', async () => {
     render(<MyDay />);
     await waitFor(() => {

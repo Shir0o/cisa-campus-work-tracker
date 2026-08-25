@@ -14,6 +14,9 @@ import { SafeAreaView } from '../ui/SafeArea';
 import {
   canAccessRoute,
   firstName,
+  goalCountFor,
+  goalFill,
+  goalShow,
   getUserInitials,
   isOnCampus,
   personColor,
@@ -27,6 +30,7 @@ import { useLanguage } from '../../lib/LanguageProvider';
 import { useTraineeLandingData } from '../../lib/useTraineeLandingData';
 import { setTodoDone, updateTodo } from '../../lib/data/todos';
 import { addThreadMessage, toggleReaction } from '../../lib/data/threads';
+import { useDayGoal } from '../../lib/useDayGoal';
 import { InboxReads } from '../../lib/data/inboxReads';
 import { useV2Theme } from '../../theme/v2';
 import { LogSheet } from '../log/LogSheet';
@@ -75,6 +79,19 @@ export function QueueScreen() {
   const current = queue[at];
 
   const onCampus = isOnCampus(queuePrefs.prefs.onCampus);
+  // The day's goal (#544): a wordless ring in the on-campus strip that fills as
+  // new people go in and vanishes (back to the plain dot) the moment it's met.
+  const { goal } = useDayGoal();
+  const goalCount = goalCountFor(data.contacts, uid);
+  const showGoal = goalShow(goal, goalCount, onCampus);
+  const goalRing = showGoal
+    ? {
+        fill: goalFill(goalCount, goal),
+        label: t('mobile.goal.ring_label')
+          .replace('{count}', String(goalCount))
+          .replace('{goal}', String(goal.count)),
+      }
+    : undefined;
   // The design's due card hides this button rather than offering a door that
   // doesn't open (`api.canBoard !== false` in views/mobile/cards.jsx), and a
   // trainee is exactly who can't open it — canAccessRoute('manager', …) closes
@@ -293,6 +310,7 @@ export function QueueScreen() {
                 <OnCampusStrip
                   window={queuePrefs.prefs.onCampus}
                   onPress={openBlankLog}
+                  goal={goalRing}
                 />
               ) : undefined
             }
