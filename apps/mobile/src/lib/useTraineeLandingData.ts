@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, collectionGroup, limit, onSnapshot, orderBy, query, where } from 'firebase/firestore';
 import {
   buildQueue,
-  fullTimerOf,
+  fullTimerIds,
+  isFullTimer,
   queueDates,
   queueWeek,
   splitPrayers,
@@ -154,17 +155,14 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
     [prayers, myIds, personalPrayers],
   );
 
-  const ft = fullTimerOf(uid);
-  const ftFirst = useMemo(
-    () => (threads.find((m) => m.from === ft)?.fromName || 'your full-timer').split(/\s+/)[0],
-    [threads, ft],
-  );
+  const fts = fullTimerIds();
+  const ftFirst = useMemo(() => 'The team', []);
   const waiting: InboxItem[] = useMemo(() => (uid ? traineeWaitingItems(uid, threads) : []), [uid, threads]);
   const waitingUnread = useMemo(
     () => waiting.filter((it) => !inbox.isRead(uid ?? '', it.id)).length,
     [waiting, inbox, uid],
   );
-  const weighedIn = useMemo(() => weighedInContactIds(threads, ft), [threads, ft]);
+  const weighedIn = useMemo(() => weighedInContactIds(threads, fts), [threads, fts]);
 
   // Mobile v2 — the focus queue. Pure derivation in @cisa/core; the per-day
   // handled/later state comes from AsyncStorage via useQueueState, and how much
@@ -176,7 +174,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       buildQueue(
         {
           uid: uid ?? '',
-          fullTimer: ft,
+          fullTimers: fts,
           contacts,
           tasks,
           threads,
@@ -190,7 +188,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
       ),
     [
       uid,
-      ft,
+      fts,
       contacts,
       tasks,
       threads,
@@ -225,7 +223,7 @@ export function useTraineeLandingData(uid: string | null, displayName: string | 
     week,
     myPeople,
     myContacts: useMemo(() => myPeople.map((p) => p.contact), [myPeople]),
-    ft,
+    ft: fts.length > 0 ? fts[0] : null,
     ftFirst,
     waiting,
     waitingUnread,

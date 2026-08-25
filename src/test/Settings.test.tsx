@@ -256,7 +256,7 @@ describe('Settings', () => {
       expect(screen.getByText('charlie@test.com')).toBeInTheDocument();
     });
 
-    it('lets an admin pair trainees with full-timers and saves to settings/walking', async () => {
+    it('shows the walking-together pairing as archived (no live controls) (#549)', async () => {
       const adminTraineeUsers = [
         {
           id: 'u-admin',
@@ -302,14 +302,9 @@ describe('Settings', () => {
         expect(screen.getByText('Walking together')).toBeInTheDocument();
       });
 
-      const checkbox = screen.getByRole('checkbox', { name: 'Trainee User' });
-      fireEvent.click(checkbox);
-
-      expect(setDoc).toHaveBeenCalledWith(
-        expect.objectContaining({ path: 'settings/walking' }),
-        { pairs: { 'u-admin': ['u-trainee'] } },
-        { merge: true },
-      );
+      // The pairing is archived: no checkbox exists and nothing is written.
+      expect(screen.queryByRole('checkbox', { name: 'Trainee User' })).not.toBeInTheDocument();
+      expect(setDoc).not.toHaveBeenCalled();
     });
   });
 

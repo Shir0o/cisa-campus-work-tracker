@@ -49,7 +49,7 @@ import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import { applyWalkingPairs } from '../lib/walking';
-import { saveWalkingPairs, subscribeWalkingPairs } from '../lib/walkingPairs';
+import { subscribeWalkingPairs } from '../lib/walkingPairs';
 import { useGatheringTypes } from '../lib/gatheringTypes';
 import {
   useCalendarSync,
@@ -1342,7 +1342,6 @@ export default function Settings() {
 
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
   const [removeTarget, setRemoveTarget] = useState<AppUser | null>(null);
-  const [walkingPairs, setWalkingPairs] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     if (!isManager) return;
@@ -1383,10 +1382,7 @@ export default function Settings() {
 
   useEffect(() => {
     if (!isManager) return;
-    return subscribeWalkingPairs((pairs) => {
-      setWalkingPairs(pairs);
-      applyWalkingPairs(pairs);
-    });
+    return subscribeWalkingPairs(applyWalkingPairs);
   }, [isManager]);
 
   const sendInvitation = async (e: React.FormEvent) => {
@@ -1457,19 +1453,6 @@ export default function Settings() {
     }
   };
 
-  const toggleTraineePair = (adminUid: string, traineeUid: string) => {
-    setWalkingPairs((prev) => {
-      const current = prev[adminUid] ?? [];
-      const next = current.includes(traineeUid)
-        ? current.filter((id) => id !== traineeUid)
-        : [...current, traineeUid];
-      const pairs = { ...prev, [adminUid]: next };
-      void saveWalkingPairs(pairs);
-      applyWalkingPairs(pairs);
-      return pairs;
-    });
-  };
-
   const matchesSearch = (u: { email: string; displayName?: string }) =>
     u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (u.displayName?.toLowerCase().includes(searchQuery.toLowerCase()) ?? false);
@@ -1483,8 +1466,6 @@ export default function Settings() {
 
   const pendingUsers = filteredUsers.filter((u) => !u.approved);
   const approvedUsers = filteredUsers.filter((u) => u.approved);
-  const admins = approvedUsers.filter((u) => u.role === 'admin');
-  const trainees = approvedUsers.filter((u) => u.role === 'manager');
 
   const myRole = (role as AppRole) ?? null;
 
@@ -1673,54 +1654,11 @@ export default function Settings() {
         <section className="mt-10">
           <SectionHeader
             title={t('settings.walking_together', 'Walking together')}
-            sub={t('settings.walking_together_sub', 'Pair each trainee with a full-timer who walks alongside them. These pairs drive the trainee’s “your full-timer” and the full-timer’s trainee inbox.')}
+            sub={t('settings.walking_together_archived', 'This pairing no longer exists. Every full-timer stands over every trainee — nobody is assigned a single full-timer, and the app never says “your full-timer”. Kept only as an archived note.')}
           />
-          {admins.length === 0 || trainees.length === 0 ? (
-            <p className="text-sm text-on-surface-variant">
-              Add at least one full-timer and one trainee to start pairing.
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {admins.map((admin) => (
-                <div
-                  key={admin.uid}
-                  className="rounded-3xl border border-outline-variant/40 bg-surface-container p-4"
-                >
-                  <div className="flex items-center gap-3 mb-3">
-                    <Avatar name={admin.displayName || admin.email} photoURL={admin.photoURL} />
-                    <div className="min-w-0">
-                      <div className="font-medium text-on-surface truncate">{admin.displayName || 'Unnamed'}</div>
-                      <div className="text-[13px] text-on-surface-variant truncate">{admin.email}</div>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {trainees.map((trainee) => {
-                      const paired = (walkingPairs[admin.uid] ?? []).includes(trainee.uid);
-                      return (
-                        <label
-                          key={trainee.uid}
-                          className={cn(
-                            "inline-flex items-center gap-2 px-3 py-2 rounded-full border text-sm font-medium cursor-pointer transition-colors",
-                            paired
-                              ? "border-primary bg-primary/10 text-accent"
-                              : "border-outline-variant text-on-surface-variant hover:bg-surface-variant"
-                          )}
-                        >
-                          <input
-                            type="checkbox"
-                            className="sr-only"
-                            checked={paired}
-                            onChange={() => toggleTraineePair(admin.uid, trainee.uid)}
-                          />
-                          {trainee.displayName || trainee.email}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-sm text-on-surface-variant">
+            {t('settings.walking_together_none', 'No pairing to manage — nothing here is used any more.')}
+          </p>
         </section>
       )}
 

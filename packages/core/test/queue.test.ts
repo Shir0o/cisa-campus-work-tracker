@@ -83,7 +83,7 @@ const interaction = (overrides: Partial<Interaction> = {}): Interaction => ({
 
 const input = (overrides: Partial<QueueInput> = {}): QueueInput => ({
   uid: 'me',
-  fullTimer: 'ft',
+  fullTimers: ['ft'],
   contacts: [],
   tasks: [],
   threads: [],

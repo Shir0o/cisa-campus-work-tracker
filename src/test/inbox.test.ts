@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from "vitest";
 import type { Contact, Interaction } from "../types";
 import { inboxItemsFor, traineeWaitingItems, type ThreadMessageWithContact } from "../lib/inbox";
 
-// Control the relationship config so the test is independent of the real seed.
+// Control the roster so the test is independent of the real seed.
 vi.mock("../lib/walking", () => ({
-  FT_TRAINEES: { ft1: ["t1"] },
-  FT_OF: { t1: "ft1" },
-  fullTimerOf: (uid: string) => (uid === "t1" ? "ft1" : null),
+  isFullTimer: (uid?: string | null) => uid === "ft1",
+  isTrainee: (uid?: string | null) => uid === "t1",
+  fullTimerIds: () => ["ft1"],
+  traineeIds: () => ["t1"],
 }));
 
 const contact = (over: Partial<Contact>): Contact =>

@@ -236,8 +236,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
   const todos = useMemo(() => ftTodos(tasks, uid ?? ''), [tasks, uid]);
 
   // ── from the team ─────────────────────────────────────────────────────────
-  // inboxItemsFor no-ops for anyone outside FT_TRAINEES, so an admin who cares
-  // for no trainees simply has no such widget.
+  // inboxItemsFor no-ops for anyone who isn't a full-timer (issue #549).
   const inboxItems: InboxItem[] = useMemo(
     () => (uid ? inboxItemsFor(uid, { contacts, interactions, threads }) : []),
     [uid, contacts, interactions, threads],

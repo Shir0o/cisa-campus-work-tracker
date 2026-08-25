@@ -1,5 +1,5 @@
 import type { Contact, Interaction, Notification } from "../types";
-import { fullTimerOf, FT_TRAINEES } from "./walking";
+import { isFullTimer, fullTimerIds } from "./walking";
 import type { ThreadKind, ThreadMessageWithContact } from "./threads";
 import { bucketFor, type DateBucket } from "../components/landing/dateBuckets";
 import { UserEntityState } from "./userEntityState";
@@ -85,10 +85,10 @@ export function buildAttentionItems(params: {
   const { role, uid, contacts = [], interactions = [], threads = [], tasks = [], notifications = [] } = params;
   const items: AttentionItem[] = [];
 
-  const isFullTimer = role === "admin" || role === "owner" || role === "full_timer" || !!FT_TRAINEES[uid];
-  const isTrainee = role === "trainee";
+  const isFullTimerView = role === "admin" || role === "owner" || role === "full_timer" || isFullTimer(uid);
+  const isTraineeView = role === "trainee";
 
-  if (isFullTimer) {
+  if (isFullTimerView) {
     // 1. Team-added contacts (except full-timer's own)
     for (const c of contacts) {
       if (c.createdBy && c.createdBy !== uid) {
@@ -146,13 +146,14 @@ export function buildAttentionItems(params: {
         }
       }
     }
-  } else if (isTrainee) {
-    // Trainee: full-timer answers/comments/nudges + questions. Team-scope
+  } else if (isTraineeView) {
+    // Trainee: anything a full-timer wrote (answers/comments/nudges + questions).
+    // No pairing — accept from ANY full-timer and name the writer. Team-scope
     // Discussion messages are Full-timer-only and must never reach trainees.
-    const ft = fullTimerOf(uid);
+    const fts = fullTimerIds();
     for (const m of threads) {
       if (m.scope === "team") continue;
-      if (m.from && (m.from === ft || m.kind === "nudge" || m.kind === "question") && m.from !== uid) {
+      if (m.from && fts.includes(m.from) && m.from !== uid) {
         items.push({
           id: "thread:" + m.id,
           type: "thread",

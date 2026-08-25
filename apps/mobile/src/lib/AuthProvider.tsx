@@ -11,7 +11,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
-  applyWalkingPairs,
+  applyRoster,
   isAppOwner,
   canSimulateRole,
   getEffectiveRole,
@@ -22,7 +22,7 @@ import {
   type ImpersonateTarget,
 } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
-import { subscribeWalkingPairs } from './data/walkingPairs';
+import { subscribeUsers } from './data/users';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
@@ -177,9 +177,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Keep the core walking-together map in sync with the admin-managed
-    // settings/walking doc so mobile resolves pairings exactly like web.
-    return subscribeWalkingPairs(applyWalkingPairs);
+    // Feed the full-timer/trainee roster from the users collection so the pure
+    // lib functions know who is a full-timer (issue #549).
+    return subscribeUsers((users) => {
+      applyRoster(users.map((u) => ({ uid: u.uid, role: u.role })));
+    });
   }, []);
 
   const value: AuthContextValue = {

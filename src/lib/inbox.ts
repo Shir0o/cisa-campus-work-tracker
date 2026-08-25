@@ -1,5 +1,5 @@
 import type { Contact, Interaction } from "../types";
-import { FT_TRAINEES, fullTimerOf } from "./walking";
+import { isFullTimer, isTrainee, fullTimerIds } from "./walking";
 import type { ThreadKind, ThreadMessageWithContact } from "./threads";
 
 export type { ThreadMessageWithContact };
@@ -45,7 +45,7 @@ export function inboxItemsFor(
   },
 ): InboxItem[] {
   // Only full-timers get this oversight inbox.
-  if (!FT_TRAINEES[uid]) return [];
+  if (!isFullTimer(uid)) return [];
 
   const items: InboxItem[] = [];
 
@@ -117,13 +117,15 @@ export function traineeWaitingItems(
   uid: string,
   threads: ThreadMessageWithContact[],
 ): InboxItem[] {
-  const ft = fullTimerOf(uid);
-  if (!ft) return [];
+  // A trainee's "what's waiting on you": nudges + questions from ANY full-timer
+  // (no pairing — every full-timer stands over every trainee). Newest-first.
+  if (!isTrainee(uid)) return [];
+  const fts = fullTimerIds();
 
   const items: InboxItem[] = [];
   for (const m of threads) {
     if (m.scope === "team") continue; // Full-timer-only Discussion
-    if (m.from !== ft) continue;
+    if (!fts.includes(m.from ?? "")) continue;
     if (m.kind !== "nudge" && m.kind !== "question") continue;
     const answered = threads.some(
       (r) =>

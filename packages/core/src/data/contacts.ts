@@ -15,7 +15,7 @@ import {
   updateDoc,
   type Firestore,
 } from "firebase/firestore";
-import { fullTimerOf, isTrainee } from "../walking";
+import { isTrainee, fullTimerIds } from "../walking";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
 
@@ -189,15 +189,19 @@ export async function addContact(
       targetId: docRef.id,
     });
 
-    const ft = isTrainee(by.uid) ? fullTimerOf(by.uid) : null;
-    if (ft) {
-      notify({
-        userId: ft,
-        title: `${(by.name || "Your trainee").split(" ")[0]} added ${input.name}`,
-        message: "A new person in your circle — take a look when you can.",
-        type: "assignment",
-        targetId: docRef.id,
-      });
+    // No pairing (#549): when a trainee adds someone, the whole full-timer
+    // team is told, so nothing the team does goes unseen.
+    if (isTrainee(by.uid)) {
+      const who = (by.name || "A trainee").split(" ")[0];
+      for (const ftId of fullTimerIds()) {
+        notify({
+          userId: ftId,
+          title: `${who} added ${input.name}`,
+          message: "A new person in your circle — take a look when you can.",
+          type: "assignment",
+          targetId: docRef.id,
+        });
+      }
     }
   }
 

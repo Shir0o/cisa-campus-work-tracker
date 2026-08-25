@@ -29,7 +29,7 @@ import {
 } from "../../lib/personalPrayers";
 import { updatePrayerStatus } from "../../lib/prayers";
 import { openMessage } from "../../lib/messaging";
-import { fullTimerOf } from "../../lib/walking";
+import { isFullTimer } from "../../lib/walking";
 import { subscribeAllThreads, type ThreadMessageWithContact } from "../../lib/threads";
 import { traineeWaitingItems, type InboxItem } from "../../lib/inbox";
 import { useInboxReads } from "../../lib/inboxReads";
@@ -41,14 +41,14 @@ import AskTheTeam from "../../components/landing/AskTheTeam";
 function WaitingRow({
   item,
   contactName,
-  ftFirst,
+  writerFirst,
   read,
   onOpen,
   onHandled,
 }: {
   item: InboxItem;
   contactName: string;
-  ftFirst: string;
+  writerFirst: string;
   read: boolean;
   onOpen: () => void;
   onHandled: () => void;
@@ -57,8 +57,8 @@ function WaitingRow({
   const Icon = isNudge ? Bell : HelpCircle;
   const cls = isNudge ? "text-warning bg-warning/10" : "text-stage-amber bg-stage-amber-soft";
   const title = isNudge
-    ? `${ftFirst} nudged a follow-up about ${contactName}`
-    : `${ftFirst} asked about ${contactName}`;
+    ? `${writerFirst} nudged a follow-up about ${contactName}`
+    : `${writerFirst} asked about ${contactName}`;
 
   return (
     <div
@@ -226,25 +226,33 @@ export default function LandingTrainee() {
   const myContacts = useMemo(() => myPeople.map((p) => p.contact), [myPeople]);
   const contactById = (id?: string) => contacts.find((c) => c.id === id);
 
-  // What's waiting on you — your full-timer's nudges/questions, newest-first.
-  const ft = fullTimerOf(uid);
-  const ftFirst = useMemo(
-    () => (threads.find((m) => m.from === ft)?.fromName || "your full-timer").split(/\s+/)[0],
-    [threads, ft],
-  );
+  // What's waiting on you — nudges/questions from any full-timer, newest-first.
+  // No pairing (#549): the writer's name is resolved per message, not one
+  // assigned full-timer.
+  const nameByUid = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const t of threads) if (t.from && t.fromName) m[t.from] ??= t.fromName;
+    return m;
+  }, [threads]);
+  const firstOf = (uid?: string | null) => (nameByUid[uid ?? ""] || "The team").split(/\s+/)[0];
+
   const waiting = useMemo(
     () => (uid ? traineeWaitingItems(uid, threads) : []),
     [uid, threads],
   );
   const waitingUnread = waiting.filter((it) => !inbox.isRead(uid ?? "", it.id)).length;
 
-  // Which of your people the full-timer has weighed in on (any thread reply, or
+  // Which of your people a full-timer has weighed in on (any thread reply, or
   // an explicit review) — drives the "weighed in" / "awaiting a look" status.
-  const weighedIn = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of threads) if (ft && m.from === ft) set.add(m.contactId);
-    return set;
-  }, [threads, ft]);
+  const weighedInBy = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const m of threads) {
+      if (m.from && isFullTimer(m.from) && !(m.contactId in map)) {
+        map[m.contactId] = (m.fromName || "The team").split(/\s+/)[0];
+      }
+    }
+    return map;
+  }, [threads]);
 
   const openContact = (
     c: Contact | undefined | null,
@@ -309,8 +317,8 @@ export default function LandingTrainee() {
             {myPeople.length} {myPeople.length === 1 ? "student" : "students"}
           </b>{" "}
           this season.{" "}
-          {ft
-            ? `Here's what ${ftFirst}'s flagged for you, the people you've brought in, and what you're holding in prayer.`
+          {waiting.length > 0
+            ? "Here's what the team's flagged for you, the people you've brought in, and what you're holding in prayer."
             : "Here's your circle, and what you're holding in prayer."}
         </p>
       </header>
@@ -333,7 +341,7 @@ export default function LandingTrainee() {
         <section className="mt-12">
           <SectionHead
             title="What's waiting on you"
-            sub={`A word from ${ftFirst} — things to pick up when you can.`}
+            sub="A word from the team — things to pick up when you can."
             action={
               waitingUnread > 0 ? (
                 <span className="text-xs font-semibold text-accent bg-accent-soft rounded-full px-2.5 py-1">
@@ -350,7 +358,7 @@ export default function LandingTrainee() {
                   key={item.id}
                   item={item}
                   contactName={contact?.name || "someone"}
-                  ftFirst={ftFirst}
+                  writerFirst={firstOf(item.by)}
                   read={inbox.isRead(uid ?? "", item.id)}
                   onOpen={() => {
                     if (contact)
@@ -387,7 +395,7 @@ export default function LandingTrainee() {
         {myPeople.length > 0 ? (
           <div className="flex flex-col gap-3">
             {myPeople.map(({ contact, days, note }) => {
-              const seen = weighedIn.has(contact.id) || !!contact.reviewed;
+              const seen = weighedInBy[contact.id] || !!contact.reviewed;
               return (
                 <ReachCard
                   key={contact.id}
@@ -397,8 +405,8 @@ export default function LandingTrainee() {
                   stages={stages}
                   onOpen={() => openContact(contact)}
                   onMessage={() => openMessage(contact.phone)}
-                  statusNode={
-                    ft ? (
+                   statusNode={
+                    weighedInBy[contact.id] ? (
                       <span
                         className={cn(
                           "inline-flex items-center gap-1.5 text-[11px] font-medium rounded-full px-2 py-0.5",
@@ -407,7 +415,7 @@ export default function LandingTrainee() {
                             : "text-on-surface-variant bg-surface-variant",
                         )}
                       >
-                        {seen ? `${ftFirst} weighed in` : "Awaiting a look"}
+                        {seen ? `${weighedInBy[contact.id]} weighed in` : "Awaiting a look"}
                       </span>
                     ) : undefined
                   }

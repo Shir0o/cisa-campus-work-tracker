@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   buildAttentionItems,
   attentionStacksFor,
@@ -9,6 +9,15 @@ import {
 import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
 import type { Contact, Interaction, Notification } from "../types";
 import type { ThreadMessageWithContact } from "../lib/threads";
+
+// Roster under test (issue #549): u1 is a full-timer, u3 a trainee.
+vi.mock("../lib/walking", () => ({
+  isFullTimer: (uid?: string | null) => uid === "u1",
+  isTrainee: (uid?: string | null) => uid === "u3",
+  fullTimerIds: () => ["u1"],
+  traineeIds: () => ["u3"],
+  applyRoster: () => {},
+}));
 
 describe("Attention Data Layer (#330)", () => {
   const uid = "u1";

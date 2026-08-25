@@ -26,10 +26,11 @@ export function traineeMyPeople(
  * "weighed in" / "awaiting a look" status on each of your people. */
 export function weighedInContactIds(
   threads: ThreadMessageWithContact[],
-  fullTimerUid: string | null,
+  fullTimerUids: string[] | null,
 ): Set<string> {
   const set = new Set<string>();
-  if (!fullTimerUid) return set;
-  for (const m of threads) if (m.from === fullTimerUid) set.add(m.contactId);
+  if (!fullTimerUids || fullTimerUids.length === 0) return set;
+  const fts = new Set(fullTimerUids);
+  for (const m of threads) if (m.from && fts.has(m.from)) set.add(m.contactId);
   return set;
 }

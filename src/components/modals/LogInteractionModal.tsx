@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
-import { isTrainee, fullTimerOf } from '../../lib/walking';
+import { isTrainee, fullTimerIds } from '../../lib/walking';
 import { applyContactActivityToBatch } from '../../lib/contactActivity';
 import { Contact, Task } from '../../types';
 import { cn } from '../../lib/utils';
@@ -173,20 +173,22 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
         });
       }
 
-      // Walking together: when a trainee logs time, ping their full-timer's bell.
-      const ft = isTrainee(user?.uid) ? fullTimerOf(user?.uid) : null;
-      if (ft) {
-        const who = (user?.displayName || 'Your trainee').split(' ')[0];
+      // No pairing (#549): when a trainee logs time, the whole full-timer team
+      // is pinged, so nothing the team does goes unseen.
+      if (isTrainee(user?.uid)) {
+        const who = (user?.displayName || 'A trainee').split(' ')[0];
         const snippet = notes.length > 140 ? notes.slice(0, 140).trimEnd() + '…' : notes;
-        for (const contactId of selectedContactIds) {
-          const contact = contacts.find(c => c.id === contactId);
-          await sendNotification({
-            userId: ft,
-            title: `${who} logged time with ${contact?.name || 'someone'}`,
-            message: snippet,
-            type: 'info',
-            targetId: contactId,
-          });
+        for (const ftId of fullTimerIds()) {
+          for (const contactId of selectedContactIds) {
+            const contact = contacts.find(c => c.id === contactId);
+            await sendNotification({
+              userId: ftId,
+              title: `${who} logged time with ${contact?.name || 'someone'}`,
+              message: snippet,
+              type: 'info',
+              targetId: contactId,
+            });
+          }
         }
       }
 
