@@ -215,11 +215,12 @@ export interface SeasonSettings {
   clubRush?: boolean;
 }
 
-// Team-wide walking-together pairs (one doc: settings/walking). The map keys are
-// full-timer uids and values are the trainee uids walking with them. Admin-only
-// writes; readable by the app so both sides can resolve "who walks with me".
-export interface WalkingPairs {
-  pairs: Record<string, string[]>;
+// Team-wide gospel partners (one doc: settings/partners). The map is keyed by
+// term ("Fall 2026") and values are groups of trainee uids who go out as one.
+// Admin-only writes; readable by the app so both sides of a pair resolve
+// "who goes out with me" and creation paths stamp the partner as a co-creator.
+export interface PartnersSettings {
+  byTerm?: Record<string, string[][]>;
 }
 
 export interface PrayerRecord {

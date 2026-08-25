@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { addDoc } from 'firebase/firestore';
 import NewContactModal from '../components/modals/NewContactModal';
 import { useAuth } from '../components/AuthProvider';
+import { applyPartners, partnersTermKey } from '../lib/partners';
 import React from 'react';
 
 // Mock dependencies
@@ -33,20 +34,24 @@ vi.mock('../lib/firebase', () => ({
   sendNotification: vi.fn(),
 }));
 
-vi.mock('../lib/seasons', () => ({
-  useSeason: () => ({
-    autoId: 'summer',
-    activeId: 'summer',
-    active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
-    isAuto: true,
-    clubRush: false,
-    label: "Summer '26",
-    tags: ["Summer '26"],
-    setSeason: vi.fn(),
-    resetSeason: vi.fn(),
-    toggleClubRush: vi.fn(),
-  }),
-}));
+vi.mock('../lib/seasons', async () => {
+  const actual = await vi.importActual<typeof import('../lib/seasons')>('../lib/seasons');
+  return {
+    ...actual,
+    useSeason: () => ({
+      autoId: 'summer',
+      activeId: 'summer',
+      active: { id: 'summer', label: 'Summer', tone: 'amber', blurb: '' },
+      isAuto: true,
+      clubRush: false,
+      label: "Summer '26",
+      tags: ["Summer '26"],
+      setSeason: vi.fn(),
+      resetSeason: vi.fn(),
+      toggleClubRush: vi.fn(),
+    }),
+  };
+});
 
 describe('NewContactModal', () => {
   beforeEach(() => {
@@ -167,6 +172,25 @@ describe('NewContactModal', () => {
 
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
     expect(contactArg?.tags).toEqual(expect.arrayContaining(["Summer '26"]));
+  });
+
+  it('stamps the adder’s partner as a co-creator when they are paired', async () => {
+    const onClose = vi.fn();
+    const mockUserAct = userEvent.setup();
+    applyPartners({ [partnersTermKey()]: [['user-id', 'partner-id']] });
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await mockUserAct.type(firstName, 'John');
+    const submitBtn = screen.getByRole('button', { name: /Add Contact/i });
+    await mockUserAct.click(submitBtn);
+
+    await waitFor(() => {
+      expect(vi.mocked(addDoc)).toHaveBeenCalled();
+    });
+    const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
+    expect(contactArg?.coCreators).toEqual(['partner-id']);
+    applyPartners({});
   });
 
   // ── Viewer role guard ──────────────────────────────────────────────

@@ -16,6 +16,7 @@ import {
   type Firestore,
 } from "firebase/firestore";
 import { isTrainee, fullTimerIds } from "../walking";
+import { stampPartners } from "./partners";
 import type { Touch } from "../myday";
 import type { Contact, Interaction, Stage } from "../types";
 
@@ -172,6 +173,9 @@ export async function addContact(
     hasNewActivity: true,
     attendance: {},
   };
+  // Gospel partners: a person either member of a pair brings in is shared with
+  // the other from the moment they're added (stamped as a co-creator).
+  stampPartners(data, by.uid);
   for (const key of Object.keys(data)) {
     if (data[key] === undefined) {
       delete data[key];

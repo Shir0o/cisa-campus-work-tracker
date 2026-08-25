@@ -29,6 +29,10 @@ jest.mock('./data/users', () => ({
   subscribeUsers: jest.fn(() => jest.fn()),
 }));
 
+jest.mock('./data/partners', () => ({
+  subscribePartners: jest.fn(() => jest.fn()),
+}));
+
 jest.mock('firebase/firestore', () => ({
   getFirestore: jest.fn(),
   doc: jest.fn((_db, coll, id) => ({ path: `${coll}/${id}`, id })),

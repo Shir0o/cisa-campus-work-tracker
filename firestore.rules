@@ -311,6 +311,11 @@ service cloud.firestore {
                data.pairs is map;
       }
 
+      function isValidPartnerSettings(data) {
+        return data.keys().hasOnly(['byTerm']) &&
+               data.byTerm is map;
+      }
+
       function isValidGoalSettings(data) {
         return data.keys().hasOnly(['on', 'count']) &&
                (!('on' in data) || data.on is bool) &&
@@ -320,6 +325,7 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if docId == 'season' && isManager() && isValidSeasonSettings(incoming());
       allow create, update: if docId == 'walking' && isAdmin() && isValidWalkingSettings(incoming());
+      allow create, update: if docId == 'partners' && isAdmin() && isValidPartnerSettings(incoming());
       allow create, update: if docId == 'goal' && isAdmin() && isValidGoalSettings(incoming());
       allow delete: if false;
     }

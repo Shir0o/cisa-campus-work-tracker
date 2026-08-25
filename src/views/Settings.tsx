@@ -42,6 +42,7 @@ import {
   LogOut,
   Minus,
   Plus,
+  X,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,8 +51,19 @@ import { useTheme } from '../components/ThemeProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
-import { applyWalkingPairs } from '../lib/walking';
-import { subscribeWalkingPairs } from '../lib/walkingPairs';
+import {
+  subscribePartners,
+  savePartners,
+  groupsForTerm,
+  partnersTermKey,
+  addToGroup,
+  removeFromGroups,
+  dropGroup,
+  carryOverPartners,
+  clearTerm,
+  type PartnersByTerm,
+} from '../lib/partners';
+import { isRealPerson } from '../lib/permissions';
 import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
 import { useGatheringTypes } from '../lib/gatheringTypes';
 import {
@@ -1408,6 +1420,259 @@ function CalendarSyncPanel() {
   );
 }
 
+// ── Going out together (gospel partners) ───────────────────────────────
+// Two trainees who go out as one, this term. A full-timer arranges the pairs;
+// a person either partner brings in is shared with the other from the moment
+// it's added (`coCreators`). Per term, because partners change each semester.
+
+const pairNames = (ids: string[], byId: Record<string, AppUser>): string => {
+  const names = ids.map((id) => byId[id]?.displayName || 'Unnamed');
+  if (names.length <= 1) return names[0] || '';
+  if (names.length === 2) return `${names[0]} and ${names[1]}`;
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`;
+};
+
+function CarePick({
+  people,
+  empty,
+  cancelLabel,
+  onPick,
+  onCancel,
+}: {
+  people: AppUser[];
+  empty: string;
+  cancelLabel: string;
+  onPick: (uid: string) => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-col gap-1 rounded-2xl border border-outline-variant/40 bg-surface-container-high p-2">
+      {people.length ? (
+        people.map((s) => (
+          <button
+            key={s.uid}
+            type="button"
+            onClick={() => onPick(s.uid)}
+            className="flex items-center gap-2.5 rounded-xl px-2 py-1.5 text-left text-sm text-on-surface hover:bg-surface transition-colors cursor-pointer"
+          >
+            <Avatar name={s.displayName} photoURL={s.photoURL} size="sm" />
+            <span className="truncate">{s.displayName || 'Unnamed'}</span>
+          </button>
+        ))
+      ) : (
+        <span className="text-[13px] text-on-surface-variant px-2 py-1.5">{empty}</span>
+      )}
+      <button
+        type="button"
+        onClick={onCancel}
+        className="self-start rounded-lg px-2 py-1 text-[13px] font-medium text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+      >
+        {cancelLabel}
+      </button>
+    </div>
+  );
+}
+
+function PartnersSection({ users }: { users: AppUser[] }) {
+  const { t } = useLanguage();
+  const [byTerm, setByTerm] = useState<PartnersByTerm>({});
+  const [picking, setPicking] = useState<number | 'new' | null>(null);
+  const [first, setFirst] = useState<string | null>(null);
+
+  useEffect(() => subscribePartners(setByTerm), []);
+
+  const term = partnersTermKey();
+  const trainees = useMemo(() => users.filter((u) => u.role === 'manager' && isRealPerson(u)), [users]);
+  const byId = useMemo(() => {
+    const m: Record<string, AppUser> = {};
+    for (const u of users) m[u.uid] = u;
+    return m;
+  }, [users]);
+  const groups = groupsForTerm(byTerm, term);
+  const partnered = useMemo(() => new Set(groups.flat()), [groups]);
+  const free = useMemo(() => trainees.filter((tr) => !partnered.has(tr.uid)), [trainees, partnered]);
+  const older = useMemo(
+    () => Object.keys(byTerm).filter((k) => k !== term && groupsForTerm(byTerm, k).length > 0),
+    [byTerm, term],
+  );
+
+  const commit = (next: PartnersByTerm) => {
+    setByTerm(next);
+    void savePartners(next);
+  };
+
+  const closePicking = () => {
+    setPicking(null);
+    setFirst(null);
+  };
+
+  const newPair = first ? (
+    <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+      <div className="font-serif text-base text-on-surface mb-1">
+        {t('settings.pairs_who_with', 'Who goes out with {name}?').replace('{name}', byId[first]?.displayName || 'Unnamed')}
+      </div>
+      <CarePick
+        people={free.filter((s) => s.uid !== first)}
+        empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
+        cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
+        onPick={(uid) => {
+          commit(addToGroup(byTerm, term, uid, first));
+          closePicking();
+        }}
+        onCancel={closePicking}
+      />
+    </div>
+  ) : (
+    <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+      <div className="font-serif text-base text-on-surface mb-1">
+        {t('settings.pairs_first_of_two', "Who's the first of the two?")}
+      </div>
+      <CarePick
+        people={free}
+        empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
+        cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
+        onPick={(id) => setFirst(id)}
+        onCancel={closePicking}
+      />
+    </div>
+  );
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.pairs_title', 'Going out together')}
+        sub={t(
+          'settings.pairs_sub',
+          'The two trainees who go out as one, this term. A person either of them brings in is shared with the other automatically.',
+        )}
+      />
+      <div className="flex flex-col gap-3 max-w-2xl">
+        {groups.map((g, i) => {
+          const people = g.map((id) => byId[id]).filter(Boolean);
+          return (
+            <div key={i} className="rounded-3xl border border-outline-variant/40 bg-surface-container p-5">
+              <div className="flex items-start gap-3">
+                <div className="flex -space-x-2">
+                  {people.slice(0, 3).map((p) => (
+                    <Avatar key={p.uid} name={p.displayName} photoURL={p.photoURL} size="md" />
+                  ))}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-serif text-base text-on-surface leading-tight truncate">{pairNames(g, byId)}</div>
+                  <div className="text-[13px] text-on-surface-variant mt-0.5">
+                    {people.length > 2
+                      ? t('settings.pairs_going_as_one', '{n} going out as one').replace('{n}', String(people.length))
+                      : t('settings.pairs_partners_term', 'Partners this term')}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => commit(dropGroup(byTerm, term, i))}
+                  className="shrink-0 rounded-full px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                >
+                  {t('settings.pairs_not_partners', "They're not partners")}
+                </button>
+              </div>
+
+              <div className="mt-4 flex flex-col gap-1.5">
+                {people.map((p) => (
+                  <div key={p.uid} className="flex items-center gap-2.5">
+                    <Avatar name={p.displayName} photoURL={p.photoURL} size="sm" />
+                    <span className="text-sm text-on-surface truncate">{p.displayName || 'Unnamed'}</span>
+                    <span className="text-[12px] text-on-surface-variant">{t('settings.pairs_trainee', 'Trainee')}</span>
+                    <button
+                      type="button"
+                      onClick={() => commit(removeFromGroups(byTerm, term, p.uid))}
+                      aria-label={t('settings.pairs_remove_person', 'Take {name} out of this pair').replace('{name}', p.displayName || '')}
+                      className="ml-auto shrink-0 w-7 h-7 inline-flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {picking === i ? (
+                <CarePick
+                  people={free}
+                  empty={t('settings.pairs_nobody_free', 'Every trainee is already partnered this term.')}
+                  cancelLabel={t('settings.pairs_never_mind', 'Never mind')}
+                  onPick={(id) => {
+                    commit(addToGroup(byTerm, term, id, g[0]));
+                    setPicking(null);
+                  }}
+                  onCancel={() => setPicking(null)}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setPicking(i)}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-[13px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> {t('settings.pairs_someone_alongside', 'Someone alongside them')}
+                </button>
+              )}
+            </div>
+          );
+        })}
+
+        {picking === 'new' ? (
+          newPair
+        ) : (
+          <button
+            type="button"
+            onClick={() => setPicking('new')}
+            className="inline-flex items-center gap-2 self-start rounded-2xl border border-outline-variant/40 bg-surface-container px-4 py-3 text-sm font-medium text-on-surface hover:bg-surface transition-colors cursor-pointer"
+          >
+            <Plus className="w-4 h-4" /> {t('settings.pairs_two_together', 'Two trainees going out together')}
+          </button>
+        )}
+
+        {!!free.length && (
+          <p className="text-[13px] text-on-surface-variant leading-relaxed">
+            {t(
+              'settings.pairs_loose',
+              'Going out on their own this term: {names}. Anyone they bring in stays theirs alone.',
+            ).replace('{names}', pairNames(free.map((f) => f.uid), byId))}
+          </p>
+        )}
+
+        <div className="rounded-3xl border border-outline-variant/40 bg-surface-container-low p-5">
+          <p className="text-[13px] text-on-surface-variant leading-relaxed">
+            {t(
+              'settings.pairs_note',
+              "A person either partner brings in is shared with the other from the moment they're added — neither of them has to remember to. You set the pairs; they live inside them. It's per term, so it doesn't quietly follow anyone into next semester, and it only reaches people added from now on.",
+            )}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {older.map((k) => (
+              <button
+                key={k}
+                type="button"
+                onClick={() => commit(carryOverPartners(byTerm, k, term))}
+                className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+              >
+                {t('settings.pairs_bring_over', 'Bring over {term}').replace('{term}', k)}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => {
+                if (confirm(t('settings.pairs_clear_confirm', "Clear this term's pairs? This can't be undone."))) {
+                  commit(clearTerm(byTerm, term));
+                }
+              }}
+              className="rounded-full border border-outline-variant/40 px-3 py-1.5 text-[12px] font-medium text-on-surface-variant hover:text-on-surface hover:bg-surface transition-colors cursor-pointer"
+            >
+              {t('settings.pairs_clear', "Start this term's pairs over")}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 // ── Main ───────────────────────────────────────────────────────────────
 
 export default function Settings() {
@@ -1466,11 +1731,6 @@ export default function Settings() {
       unsubscribeUsers();
       unsubscribeInvites();
     };
-  }, [isManager]);
-
-  useEffect(() => {
-    if (!isManager) return;
-    return subscribeWalkingPairs(applyWalkingPairs);
   }, [isManager]);
 
   const sendInvitation = async (e: React.FormEvent) => {
@@ -1738,17 +1998,7 @@ export default function Settings() {
         )}
       </section>
 
-      {isAdmin && (
-        <section className="mt-10">
-          <SectionHeader
-            title={t('settings.walking_together', 'Walking together')}
-            sub={t('settings.walking_together_archived', 'This pairing no longer exists. Every full-timer stands over every trainee — nobody is assigned a single full-timer, and the app never says “your full-timer”. Kept only as an archived note.')}
-          />
-          <p className="text-sm text-on-surface-variant">
-            {t('settings.walking_together_none', 'No pairing to manage — nothing here is used any more.')}
-          </p>
-        </section>
-      )}
+      {isAdmin && <PartnersSection users={users} />}
 
       {isAdmin && <DayGoalSection />}
 
