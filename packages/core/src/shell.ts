@@ -86,6 +86,8 @@ export const TRAINEE_DRAWER: ShellLink[] = [
   { key: "people", label: "People", href: "/people" },
   { key: "journey", label: "The Journey", href: "/journey" },
   { key: "messages", label: "Messages", href: "/messages" },
+  // Ask the team (#545) — person-less questions; a full-timer answers from My Day.
+  { key: "ask", label: "Ask the team", href: "/ask" },
   // Not an app login — the form you hand to someone new so the team can keep
   // in touch (the design's navId "*": open to every role). See SIGNUP.md.
   { key: "signup", label: "Sign-up form", href: "/signup" },

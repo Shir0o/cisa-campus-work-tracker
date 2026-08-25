@@ -31,6 +31,8 @@ describe('FtHomeScreen', () => {
       nextGathering: null,
       todos: { today: [], laterThisWeek: [], overdue: [] },
       inboxRows: [],
+      askStacks: [],
+      askUnread: 0,
       quiet: [],
       carryRows: [],
       prayedToday: false,

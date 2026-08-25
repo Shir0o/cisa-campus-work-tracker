@@ -56,6 +56,7 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
       people: t('mobile.nav.people'),
       journey: t('mobile.nav.the_journey'),
       messages: t('mobile.nav.messages'),
+      ask: t('mobile.ask.title', 'Ask the team'),
       signup: t('mobile.nav.sign_up_form'),
       tutorial: t('mobile.nav.how_this_works'),
       settings: t('mobile.nav.your_app'),

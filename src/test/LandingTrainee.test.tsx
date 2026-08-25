@@ -135,6 +135,17 @@ vi.mock('../lib/inboxReads', () => ({
   }),
 }));
 
+vi.mock('../lib/asks', () => ({
+  subscribeMyAsks: vi.fn((_uid, callback) => {
+    callback([]);
+    return () => {};
+  }),
+  askQuestionsBy: vi.fn(() => []),
+  askRepliesOf: vi.fn(() => []),
+  askWaitedDays: vi.fn(() => 0),
+  addAsk: vi.fn().mockResolvedValue(true),
+}));
+
 describe('LandingTrainee component', () => {
   it('renders trainee dashboard with waiting items, contacts, and personal prayers', async () => {
     render(

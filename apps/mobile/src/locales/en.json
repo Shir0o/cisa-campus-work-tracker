@@ -1400,6 +1400,16 @@
       "menu": "Menu",
       "foot": "The queue is the app. Everything else lives here."
     },
+    "ask": {
+      "title": "Ask the team",
+      "placeholder": "What do you want to ask? Say it how you'd say it out loud.",
+      "anyone_can_answer": "Every full-timer sees this. Any of them can answer.",
+      "ask": "Ask",
+      "empty": "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.",
+      "questions_for_team": "Questions for the team",
+      "send": "Send it",
+      "scanned": "Scanned"
+    },
     "messages": {
       "title": "Messages",
       "no_conversations": "No conversations yet.",
