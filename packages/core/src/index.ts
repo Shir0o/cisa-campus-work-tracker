@@ -47,7 +47,7 @@ export * from './data/threads';
 export * from './data/contacts';
 export * from './data/activities';
 export * from './data/seasons';
-export * from './data/walkingPairs';
+export * from './data/partners';
 export * from './data/rsvp';
 export * from './data/users';
 export * from './data/attendance';

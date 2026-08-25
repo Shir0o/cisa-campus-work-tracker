@@ -12,6 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import {
   applyRoster,
+  applyPartners,
   isAppOwner,
   canSimulateRole,
   getEffectiveRole,
@@ -23,6 +24,7 @@ import {
 } from '@cisa/core';
 import { auth, db, signIn } from './firebase';
 import { subscribeUsers } from './data/users';
+import { subscribePartners } from './data/partners';
 
 GoogleSignin.configure({
   webClientId: '914549253362-reeeuatoar4altbcpcevk1r2osru0ssf.apps.googleusercontent.com',
@@ -182,6 +184,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return subscribeUsers((users) => {
       applyRoster(users.map((u) => ({ uid: u.uid, role: u.role })));
     });
+  }, []);
+
+  useEffect(() => {
+    // Feed the gospel-partners arrangement so the mobile quick-add can stamp
+    // the adder's partner as a co-creator without an extra read.
+    return subscribePartners(applyPartners);
   }, []);
 
   const value: AuthContextValue = {

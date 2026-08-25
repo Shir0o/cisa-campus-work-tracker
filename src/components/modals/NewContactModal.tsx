@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, User, Briefcase, MapPin, HeartHandshake, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
+import { stampPartners } from '../../lib/partners';
 import { collection, addDoc, serverTimestamp, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { cn, formatPhoneNumber, validatePhoneNumber } from '../../lib/utils';
 import { useAuth } from '../AuthProvider';
@@ -142,6 +143,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         hasNewActivity: true,
         attendance: {}
       };
+      // Gospel partners: a person either member of a pair brings in is shared
+      // with the other from the moment they're added (stamped as a co-creator).
+      stampPartners(contactData, user?.uid);
 
       const docRef = await addDoc(collection(db, 'contacts'), contactData);
       

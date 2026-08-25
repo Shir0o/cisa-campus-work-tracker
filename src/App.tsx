@@ -36,6 +36,7 @@ import { lazyWithRetry } from "./lib/lazyWithRetry";
 import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
+import { applyPartners, subscribePartners } from "./lib/partners";
 import { collection } from "firebase/firestore";
 
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
@@ -499,6 +500,9 @@ function RosterSync() {
       }),
     [],
   );
+  // Feed the gospel-partners arrangement so contact-creation paths can stamp
+  // the adder's partner as a co-creator without an extra read.
+  React.useEffect(() => subscribePartners(applyPartners), []);
   return null;
 }
 

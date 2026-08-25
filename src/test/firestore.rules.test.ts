@@ -1621,6 +1621,38 @@ describeRules('Firestore Security Rules', () => {
       await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 21 }));
       await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5, evil: true }));
     });
+
+    it('SP1: Anyone (even unauthenticated) can read settings/partners', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'partners'), { byTerm: {} });
+      });
+      const db = getFirestore(); // unauthenticated
+      await assertSucceeds(getDoc(doc(db, 'settings', 'partners')));
+    });
+
+    it('SP2: Admin can write settings/partners', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(
+        setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }),
+      );
+    });
+
+    it('SP3: Manager cannot write settings/partners', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }));
+    });
+
+    it('SP4: Rejects stray keys on settings/partners', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: {}, evil: true }));
+    });
   });
 
   describe('Notifications', () => {

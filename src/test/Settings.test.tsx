@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { onSnapshot, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import Settings from '../views/Settings';
 import { useAuth } from '../components/AuthProvider';
+import { partnersTermKey } from '../lib/partners';
 import React from 'react';
 
 // ── Mocks ──────────────────────────────────────────────────────────────
@@ -151,8 +152,6 @@ function setupManagerSnapshot() {
       callback({ docs: mockUsers });
     } else if (ref?.path === 'invitations') {
       callback({ docs: mockInvitations });
-    } else if (ref?.path === 'settings/walking') {
-      callback({ data: () => ({ pairs: {} }) });
     } else {
       callback({ docs: [] });
     }
@@ -168,14 +167,10 @@ describe('Settings', () => {
     vi.restoreAllMocks();
     // Default: non-manager view
     setupNonManagerAuth();
-    // Default: onSnapshot fires immediately with empty docs (and an empty
-    // walking-pairs doc so manager Settings can mount).
+    // Default: onSnapshot fires immediately with empty docs so manager
+    // Settings can mount (partners/goal subscriptions tolerate empty docs).
     vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-      if (ref?.path === 'settings/walking') {
-        callback({ data: () => ({ pairs: {} }) });
-      } else {
-        callback({ docs: [], size: 0 });
-      }
+      callback({ docs: [], size: 0 });
       return vi.fn();
     });
   });
@@ -255,56 +250,133 @@ describe('Settings', () => {
       });
       expect(screen.getByText('charlie@test.com')).toBeInTheDocument();
     });
+  });
 
-    it('shows the walking-together pairing as archived (no live controls) (#549)', async () => {
-      const adminTraineeUsers = [
-        {
-          id: 'u-admin',
-          data: () => ({
-            uid: 'u-admin',
-            email: 'admin@test.com',
-            displayName: 'Admin User',
-            approved: true,
-            role: 'admin',
-            photoURL: null,
-          }),
-        },
-        {
-          id: 'u-trainee',
-          data: () => ({
-            uid: 'u-trainee',
-            email: 'trainee@test.com',
-            displayName: 'Trainee User',
-            approved: true,
-            role: 'manager',
-            photoURL: null,
-          }),
-        },
-      ];
+  // ── Going out together (gospel partners) ──
 
-      setupManagerAuth();
+  describe('going out together section', () => {
+    const adminTraineeUsers = [
+      {
+        id: 'u-admin',
+        data: () => ({
+          uid: 'u-admin',
+          email: 'admin@test.com',
+          displayName: 'Admin User',
+          approved: true,
+          role: 'admin',
+          photoURL: null,
+        }),
+      },
+      {
+        id: 'u-trainee',
+        data: () => ({
+          uid: 'u-trainee',
+          email: 'trainee@test.com',
+          displayName: 'Trainee User',
+          approved: true,
+          role: 'manager',
+          photoURL: null,
+        }),
+      },
+      {
+        id: 'u-trainee2',
+        data: () => ({
+          uid: 'u-trainee2',
+          email: 'trainee2@test.com',
+          displayName: 'Trainee Two',
+          approved: true,
+          role: 'manager',
+          photoURL: null,
+        }),
+      },
+      {
+        id: 'u-trainee3',
+        data: () => ({
+          uid: 'u-trainee3',
+          email: 'trainee3@test.com',
+          displayName: 'Trainee Three',
+          approved: true,
+          role: 'manager',
+          photoURL: null,
+        }),
+      },
+    ];
+
+    const partnersMock = (byTerm: Record<string, string[][]>) => {
       vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
         if (ref?.path === 'users') {
           callback({ docs: adminTraineeUsers });
         } else if (ref?.path === 'invitations') {
           callback({ docs: [] });
-        } else if (ref?.path === 'settings/walking') {
-          callback({ data: () => ({ pairs: {} }) });
+        } else if (ref?.path === 'settings/partners') {
+          callback({ data: () => ({ byTerm }) });
         } else {
           callback({ docs: [] });
         }
         return vi.fn();
       });
+    };
 
+    it('renders the existing pair and the add-pair button for a full-timer', async () => {
+      const term = partnersTermKey();
+      setupManagerAuth();
+      partnersMock({ [term]: [['u-trainee', 'u-trainee2']] });
       render(<Settings />);
 
       await waitFor(() => {
-        expect(screen.getByText('Walking together')).toBeInTheDocument();
+        expect(screen.getByText('Going out together')).toBeInTheDocument();
       });
+      expect(screen.getByText('Trainee User and Trainee Two')).toBeInTheDocument();
+      expect(screen.getByText('Partners this term')).toBeInTheDocument();
+      expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
+    });
 
-      // The pairing is archived: no checkbox exists and nothing is written.
-      expect(screen.queryByRole('checkbox', { name: 'Trainee User' })).not.toBeInTheDocument();
-      expect(setDoc).not.toHaveBeenCalled();
+    it('hides the section from a trainee', async () => {
+      setupManagerAuth({ isAdmin: false, role: 'manager' });
+      partnersMock({});
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Your team')).toBeInTheDocument();
+      });
+      expect(screen.queryByText('Going out together')).toBeNull();
+    });
+
+    it('pairs two trainees and writes the arrangement', async () => {
+      const term = partnersTermKey();
+      setupManagerAuth();
+      partnersMock({});
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Two trainees going out together')).toBeInTheDocument();
+      });
+      fireEvent.click(screen.getByText('Two trainees going out together'));
+      expect(screen.getByText("Who's the first of the two?")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Trainee User/ }));
+      expect(screen.getByText('Who goes out with Trainee User?')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        { byTerm: { [term]: [['u-trainee', 'u-trainee2']] } },
+        { merge: true },
+      );
+    });
+
+    it('shows who is going out on their own this term', async () => {
+      const term = partnersTermKey();
+      setupManagerAuth();
+      partnersMock({ [term]: [['u-trainee', 'u-trainee2']] });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Going out together')).toBeInTheDocument();
+      });
+      expect(
+        screen.getByText('Going out on their own this term: Trainee Three. Anyone they bring in stays theirs alone.'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -313,9 +385,7 @@ describe('Settings', () => {
   describe("the day's goal section (#544)", () => {
     beforeEach(() => {
       vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
-        if (ref?.path === 'settings/walking') {
-          callback({ data: () => ({ pairs: {} }) });
-        } else if (ref?.path === 'settings/goal') {
+        if (ref?.path === 'settings/goal') {
           callback({ data: () => ({ on: true, count: 5 }) });
         } else {
           callback({ docs: [], size: 0 });
@@ -427,8 +497,6 @@ describe('Settings', () => {
           callback({ docs: mockUsersWithTest });
         } else if (ref?.path === 'invitations') {
           callback({ docs: mockInvitations });
-        } else if (ref?.path === 'settings/walking') {
-          callback({ data: () => ({ pairs: {} }) });
         } else {
           callback({ docs: [] });
         }
@@ -917,8 +985,6 @@ describe('Settings', () => {
           callback({ docs: mockUsers });
         } else if (ref?.path === 'invitations') {
           callback({ docs: mockInvitations });
-        } else if (ref?.path === 'settings/walking') {
-          callback({ data: () => ({ pairs: {} }) });
         } else {
           callback({ docs: [] });
         }
