@@ -1410,6 +1410,9 @@
       "send": "Send it",
       "scanned": "Scanned"
     },
+    "goal": {
+      "ring_label": "You've spoken with {count} of {goal} new people today."
+    },
     "messages": {
       "title": "Messages",
       "no_conversations": "No conversations yet.",

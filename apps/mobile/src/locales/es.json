@@ -1410,6 +1410,9 @@
       "send": "Enviar",
       "scanned": "Visto"
     },
+    "goal": {
+      "ring_label": "Hoy has hablado con {count} de {goal} personas nuevas."
+    },
     "messages": {
       "title": "Mensajes",
       "no_conversations": "Aún no hay conversaciones.",

@@ -15,6 +15,10 @@ jest.mock('../../lib/data/todos', () => ({
   updateTodo: jest.fn(),
 }));
 
+jest.mock('../../lib/useDayGoal', () => ({
+  useDayGoal: () => ({ goal: { on: true, count: 5 }, setOn: jest.fn(), setCount: jest.fn() }),
+}));
+
 jest.mock('../../lib/data/threads', () => ({
   addThreadMessage: jest.fn(),
   toggleReaction: jest.fn(),
@@ -29,6 +33,7 @@ jest.mock('../log/LogSheet', () => ({ LogSheet: () => null }));
 describe('QueueScreen', () => {
   const baseData = {
     loading: true,
+    contacts: [],
     queue: Object.assign([], { held: 0 }),
     queueState: { handled: {}, handledCount: 0, handle: jest.fn(), pushLater: jest.fn() },
     queuePrefs: { prefs: {} },

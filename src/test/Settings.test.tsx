@@ -308,6 +308,64 @@ describe('Settings', () => {
     });
   });
 
+  // ── The day's goal (#544) ──
+
+  describe("the day's goal section (#544)", () => {
+    beforeEach(() => {
+      vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+        if (ref?.path === 'settings/walking') {
+          callback({ data: () => ({ pairs: {} }) });
+        } else if (ref?.path === 'settings/goal') {
+          callback({ data: () => ({ on: true, count: 5 }) });
+        } else {
+          callback({ docs: [], size: 0 });
+        }
+        return vi.fn();
+      });
+    });
+
+    it('renders the toggle and stepper for a full-timer', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText("The day's goal")).toBeInTheDocument();
+        expect(screen.getByText('Give the day a goal')).toBeInTheDocument();
+      });
+      expect(screen.getByText('5')).toBeInTheDocument();
+    });
+
+    it('hides the section from a trainee', async () => {
+      setupManagerAuth({ isAdmin: false, role: 'manager' });
+      render(<Settings />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Your team')).toBeInTheDocument();
+      });
+      expect(screen.queryByText("The day's goal")).toBeNull();
+    });
+
+    it('raising the stepper writes the count, and the toggle writes on/off', async () => {
+      setupManagerAuth();
+      render(<Settings />);
+      await waitFor(() => expect(screen.getByText('5')).toBeInTheDocument());
+
+      fireEvent.click(screen.getByLabelText("Raise the day's goal"));
+      expect(setDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        { count: 6 },
+        { merge: true },
+      );
+
+      fireEvent.click(screen.getByRole('switch'));
+      expect(setDoc).toHaveBeenLastCalledWith(
+        expect.anything(),
+        { on: false },
+        { merge: true },
+      );
+    });
+  });
+
   // ── 5. Search filtering ──
 
   describe('search filtering', () => {

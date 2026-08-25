@@ -1589,6 +1589,38 @@ describeRules('Firestore Security Rules', () => {
         setDoc(doc(db, 'settings', 'walking'), { pairs: { admin1: ['trainee1'] } }),
       );
     });
+
+    it('SG1: Anyone (even unauthenticated) can read settings/goal', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'settings', 'goal'), { on: true, count: 5 });
+      });
+      const db = getFirestore(); // unauthenticated
+      await assertSucceeds(getDoc(doc(db, 'settings', 'goal')));
+    });
+
+    it('SG2: Admin can write the day goal', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertSucceeds(setDoc(doc(db, 'settings', 'goal'), { on: false, count: 7 }));
+    });
+
+    it('SG3: Manager cannot write the day goal', async () => {
+      await seedRoles();
+      const db = getFirestore({ uid: 'manager1' });
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5 }));
+    });
+
+    it('SG4: Rejects a count outside the 1..20 band or stray keys', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+      });
+      const db = getFirestore({ uid: 'admin1' });
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 0 }));
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 21 }));
+      await assertFails(setDoc(doc(db, 'settings', 'goal'), { on: true, count: 5, evil: true }));
+    });
   });
 
   describe('Notifications', () => {

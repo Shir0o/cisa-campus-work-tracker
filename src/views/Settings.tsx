@@ -40,6 +40,8 @@ import {
   KeyRound,
   Command,
   LogOut,
+  Minus,
+  Plus,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,6 +52,7 @@ import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
 import { applyWalkingPairs } from '../lib/walking';
 import { subscribeWalkingPairs } from '../lib/walkingPairs';
+import { useDayGoal, GOAL_MIN, GOAL_MAX } from '../lib/goal';
 import { useGatheringTypes } from '../lib/gatheringTypes';
 import {
   useCalendarSync,
@@ -347,6 +350,91 @@ function LanguageSection() {
 }
 
 
+
+// ── The day's goal (#544) ──────────────────────────────────────────────
+
+function DayGoalSection() {
+  const { t } = useLanguage();
+  const { goal, setOn, setCount } = useDayGoal();
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.day_goal_title', "The day's goal")}
+        sub={t('settings.day_goal_sub', 'A shared aim for an on-campus day — the same number for everyone.')}
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-6 max-w-2xl">
+        <button
+          type="button"
+          onClick={() => setOn(!goal.on)}
+          aria-pressed={goal.on}
+          className="flex items-center justify-between gap-4 text-left cursor-pointer group"
+        >
+          <div className="min-w-0">
+            <h3 className="font-serif text-base text-on-surface leading-tight">
+              {t('settings.day_goal_toggle', 'Give the day a goal')}
+            </h3>
+            <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+              {t('settings.day_goal_toggle_sub', 'Each trainee aims to meet the same number of new people on an on-campus day.')}
+            </p>
+          </div>
+          <span
+            className={cn(
+              'relative inline-flex h-7 w-12 shrink-0 rounded-full transition-colors',
+              goal.on ? 'bg-accent' : 'bg-outline-variant',
+            )}
+            role="switch"
+            aria-checked={goal.on}
+          >
+            <span
+              className={cn(
+                'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform',
+                goal.on ? 'translate-x-[22px]' : 'translate-x-0.5',
+              )}
+            />
+          </span>
+        </button>
+
+        <div className="flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="font-serif text-base text-on-surface leading-tight">
+              {t('settings.day_goal_number', 'How many people')}
+            </h3>
+            <p className="text-[13px] text-on-surface-variant mt-1 leading-relaxed">
+              {t('settings.day_goal_number_sub', "Nobody sees anyone else's count, and if a day ends short the app says nothing.")}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              type="button"
+onClick={() => setCount(goal.count - 1)}
+              disabled={goal.count <= GOAL_MIN}
+              aria-label={t('settings.day_goal_lower', "Lower the day's goal")}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-2xl border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <span
+              className="font-serif text-2xl text-on-surface tabular-nums w-9 text-center"
+              aria-live="polite"
+              aria-label={t('settings.day_goal_value', "The day's goal is {n}").replace('{n}', String(goal.count))}
+            >
+              {goal.count}
+            </span>
+            <button
+              type="button"
+              onClick={() => setCount(goal.count + 1)}
+              disabled={goal.count >= GOAL_MAX}
+              aria-label={t('settings.day_goal_raise', "Raise the day's goal")}
+              className="inline-flex items-center justify-center w-11 h-11 rounded-2xl border border-outline-variant/40 bg-surface-container-high text-on-surface hover:bg-surface hover:border-outline transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-default"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 // ── Integrations: "Quick add by text" (dev) ────────────────────────────
 
@@ -1661,6 +1749,8 @@ export default function Settings() {
           </p>
         </section>
       )}
+
+      {isAdmin && <DayGoalSection />}
 
       {(isAdmin || isManager) && <CalendarSyncPanel />}
 
