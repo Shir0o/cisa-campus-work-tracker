@@ -10,7 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Check, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
+import { Check, HeartHandshake, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
 import { isTeamPrayer, reconcilePrayerOrder, isContactBrother, isContactSister, getContactGrade, sortPrayerEntries } from '../lib/prayers';
@@ -29,6 +29,7 @@ import type { TodoPerson } from '../lib/todos';
 import { useNavigate } from 'react-router-dom';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import PrayerListMobile from './PrayerListMobile';
+import PrayTogetherSession from '../components/prayer/PrayTogetherSession';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
@@ -137,6 +138,8 @@ export default function PrayerList() {
   const [profileContact, setProfileContact] = useState<Contact | null>(null);
   // Whether the "Choose people" picker is open.
   const [picking, setPicking] = useState(false);
+  // Pray-together session (#551) — walked one person at a time.
+  const [sessionOpen, setSessionOpen] = useState(false);
   const { language, t } = useLanguage();
 
   // Warm the translation cache for visible prayer text when Spanish is active.
@@ -350,6 +353,19 @@ export default function PrayerList() {
       .map((id) => byId.get(id))
       .filter((e): e is { contact: Contact; prayers: PrayerRecord[] } => !!e);
   }, [displayOrder, sortedEntries]);
+
+  // Pray-together session: held people with at least one OPEN prayer
+  // (pending/ongoing), in page order. Settled (answered/archived) people stay out.
+  const sessionPeople = useMemo(
+    () =>
+      entries
+        .map((e) => ({
+          contact: e.contact,
+          prayers: e.prayers.filter((p) => p.status === 'pending' || p.status === 'ongoing'),
+        }))
+        .filter((e) => e.prayers.length > 0),
+    [entries],
+  );
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -587,6 +603,22 @@ export default function PrayerList() {
         </div>
       )}
 
+      {/* Pray-together session launch (#551) — desktop only */}
+      {sessionPeople.length > 0 && (
+        <div className="mb-6 flex flex-wrap items-center gap-4 rounded-3xl border border-outline-variant bg-surface p-5">
+          <div className="flex-1 min-w-[240px]">
+            <p className="font-serif text-lg text-on-surface">{t('prayers.session_launch_title')}</p>
+            <p className="text-sm text-on-surface-variant mt-1">{t('prayers.session_launch_body')}</p>
+          </div>
+          <button
+            onClick={() => setSessionOpen(true)}
+            className="inline-flex items-center gap-2 px-5 h-11 rounded-full bg-accent-strong text-white text-sm font-medium hover:opacity-90 transition-opacity shrink-0"
+          >
+            <HeartHandshake className="w-4 h-4" /> {t('prayers.session_launch')}
+          </button>
+        </div>
+      )}
+
       {/* People we're holding */}
       <div className="flex items-center gap-3 mb-4">
         <span className="font-sans text-[11px]   text-on-surface-variant">
@@ -642,6 +674,14 @@ export default function PrayerList() {
         onClose={() => setProfileContact(null)}
         contact={profileContact}
       />
+
+      {sessionOpen && sessionPeople.length > 0 && (
+        <PrayTogetherSession
+          held={sessionPeople}
+          uid={user?.uid ?? null}
+          onClose={() => setSessionOpen(false)}
+        />
+      )}
 
       {picking && (
         <PickHeldModal
