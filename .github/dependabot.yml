@@ -45,6 +45,21 @@ updates:
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "react-test-renderer"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Pinned to Expo SDK 54 versions to prevent cross-SDK EAS build failures
+      - dependency-name: "expo-build-properties"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-updates"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-splash-screen"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "expo-file-system"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@expo/metro-runtime"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-native-screens"
+        update-types: ["version-update:semver-minor"]
+      - dependency-name: "react-native-webview"
+        update-types: ["version-update:semver-major"]
 
   # Core shared package (npm)
   - package-ecosystem: "npm"
