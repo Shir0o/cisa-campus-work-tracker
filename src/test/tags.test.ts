@@ -6,6 +6,7 @@ import {
   TAG_SUGGESTIONS,
   tagToneKey,
   tagStyle,
+  getEffectiveContactTags,
 } from '../lib/tags';
 
 describe('normalizeTag', () => {
@@ -78,11 +79,12 @@ describe('tagToneKey and tagStyle', () => {
     expect(tagToneKey('baptized')).toBe('sage');
   });
 
-  it('returns appropriate tones for student years', () => {
+  it('returns appropriate tones for student years and special tags', () => {
     expect(tagToneKey('Freshman')).toBe('teal');
     expect(tagToneKey('Sophomore')).toBe('indigo');
     expect(tagToneKey('Junior')).toBe('plum');
     expect(tagToneKey('Senior')).toBe('ochre');
+    expect(tagToneKey('new')).toBe('teal');
   });
 
   it('returns a CSS variable style with tone variables', () => {
@@ -91,6 +93,23 @@ describe('tagToneKey and tagStyle', () => {
       '--tone': 'var(--t-sage)',
       '--tone-soft': 'var(--t-sage-soft)',
     });
+  });
+});
+
+describe('getEffectiveContactTags', () => {
+  it('injects new tag when contact was created within 7 days', () => {
+    const recently = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    expect(getEffectiveContactTags(['Freshman'], recently)).toEqual(['new', 'Freshman']);
+  });
+
+  it('does not duplicate new tag if already present', () => {
+    const recently = new Date(Date.now() - 1 * 86_400_000).toISOString();
+    expect(getEffectiveContactTags(['New', 'Senior'], recently)).toEqual(['New', 'Senior']);
+  });
+
+  it('does not inject new tag when contact was created more than 7 days ago', () => {
+    const older = new Date(Date.now() - 10 * 86_400_000).toISOString();
+    expect(getEffectiveContactTags(['Freshman'], older)).toEqual(['Freshman']);
   });
 });
 
