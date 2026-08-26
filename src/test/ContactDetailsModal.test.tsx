@@ -1690,5 +1690,143 @@ describe('ContactDetailsModal Component', () => {
       'Logged later but actually older',
     ]);
   });
+
+  it('renders dynamic "new" tag chip in header when contact was created within the last 7 days (#561)', () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    try {
+      const recentContact = {
+        ...mockContact,
+        id: 'recent-contact-1',
+        tags: ['student', 'small-group'],
+        createdAt: new Date().toISOString(),
+      };
+
+      render(
+        <ContactDetailsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          contact={recentContact}
+        />
+      );
+
+      expect(screen.getByText('new')).toBeInTheDocument();
+      expect(screen.getByText('student')).toBeInTheDocument();
+      expect(screen.getByText('small-group')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    }
+  });
+
+  it('does not render dynamic "new" tag chip when contact was created more than 7 days ago', () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    try {
+      const olderDate = new Date(Date.now() - 14 * 86_400_000).toISOString();
+      const olderContact = {
+        ...mockContact,
+        id: 'older-contact-1',
+        tags: ['student', 'small-group'],
+        createdAt: olderDate,
+      };
+
+      render(
+        <ContactDetailsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          contact={olderContact}
+        />
+      );
+
+      expect(screen.queryByText('new')).not.toBeInTheDocument();
+      expect(screen.getByText('student')).toBeInTheDocument();
+      expect(screen.getByText('small-group')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    }
+  });
+
+  it('does not persist dynamic "new" tag into contact.tags on edit save unless explicitly added', async () => {
+    const original = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockImplementation(() => ({
+        matches: true,
+        media: '',
+        onchange: null,
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        dispatchEvent: vi.fn(),
+      })),
+    });
+
+    try {
+      const recentContact = {
+        ...mockContact,
+        id: 'recent-contact-2',
+        tags: ['freshman'],
+        createdAt: new Date().toISOString(),
+      };
+
+      render(
+        <ContactDetailsModal
+          isOpen={true}
+          onClose={mockOnClose}
+          contact={recentContact}
+        />
+      );
+
+      // Dynamic tag is displayed in header
+      expect(screen.getByText('new')).toBeInTheDocument();
+
+      // Click Edit to open edit form
+      const editBtn = screen.getByRole('button', { name: /^Edit$/ });
+      fireEvent.click(editBtn);
+
+      // Save changes without editing tags
+      const saveBtn = screen.getByRole('button', { name: /^Save$/ });
+      fireEvent.click(saveBtn);
+
+      await waitFor(() => {
+        expect(firestore.updateDoc).toHaveBeenCalledWith(
+          expect.anything(),
+          expect.objectContaining({
+            tags: ['freshman'],
+          })
+        );
+      });
+    } finally {
+      Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
+    }
+  });
 });
+
 
