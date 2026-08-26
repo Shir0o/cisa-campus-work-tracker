@@ -108,6 +108,13 @@ describe('dayInfo', () => {
       new Date(NOW - 10 * DAY_MS).toLocaleDateString(undefined, { month: 'long', day: 'numeric' }),
     );
   });
+
+  it('handles invalid or empty dates gracefully in dayInfo', () => {
+    expect(dayInfo('')).toEqual({ label: '', sub: '' });
+    expect(dayInfo('invalid-date')).toEqual({ label: '', sub: '' });
+    expect(dayInfo(null as any)).toEqual({ label: '', sub: '' });
+    expect(dayInfo(undefined as any)).toEqual({ label: '', sub: '' });
+  });
 });
 
 describe('historyStaff / peopleRemembered', () => {
