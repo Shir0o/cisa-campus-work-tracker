@@ -1,5 +1,75 @@
 [
   {
+    "number": 595,
+    "title": "[Feedback] thought: the needs your attention section on home page is hard to go through because there are so many contacts, what can we do?",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/26/2026, 7:06:56 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/ - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text the needs your attention section on home page is hard to go through because there are so many contacts, what can we do? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/XPsodRZaSOEYf2XTYGTC/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 593,
+    "title": "[Feedback] thought: is the tag auto parsing upon contact add or sign up form working? also add \"Interested\" \"Open\" as static tag suggestions\n(though try to minimize ai cost)",
+    "state": "open",
+    "labels": [
+      "enhancement",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** enhancement - **Kind:** thought - **Date:** 8/26/2026, 7:06:00 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/people/nuhSesIHeu3UiCiVS4NF - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text is the tag auto parsing upon contact add or sign up form working? also add \"Interested\" \"Open\" as static tag suggestions (though try to minimize ai cost) ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Pv8TvV5sg8ZIGno6CC7C/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 592,
+    "title": "[Feedback] off: edit contact detail tags field does not allow comma, maybe let's change it to enter to add into chips",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/26/2026, 7:04:45 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/people/nuhSesIHeu3UiCiVS4NF - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text edit contact detail tags field does not allow comma, maybe let's change it to enter to add into chips ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/yqzXDLafqzY6oFwIhxV9/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 591,
+    "title": "[Feedback] off: questions for the team broken\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-BUkJTFVk.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-BUkJTFVk.js:13\nmessages:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link pr…",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/26/2026, 6:56:58 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text questions for the team broken messages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist. messages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist. index-BUkJTFVk.js:13 asks subscription error FirebaseError: Missing or insufficient permissions. (anonymous) @ index-BUkJTFVk.js:13 messages:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropri ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ml4yrCDuVeHn693lowC7/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 590,
+    "title": "[Feedback] off: mobile notification not working?",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/26/2026, 6:56:36 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text mobile notification not working? ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/neMLQ5pzBfpdOJDhzIuN/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 589,
+    "title": "[Feedback] off: messages load failure\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/26/2026, 6:56:14 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/messages - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text messages load failure messages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist. messages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist. ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/OPef1sTCSlFEksilfV7t/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
+    "number": 588,
+    "title": "[Feedback] off: spanish for coordination page doc still not working\ncoordination:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncoordination:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\ncoordination:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an a…",
+    "state": "open",
+    "labels": [
+      "bug",
+      "feedback"
+    ],
+    "body": "### Feedback Details - **Submitted By:** Tony Wang (yilongwang05@gmail.com) - **Type:** bug - **Kind:** off - **Date:** 8/26/2026, 6:55:53 PM - **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination - **Viewport:** 1536x774 (DPR: 2.5) - **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36 ### Message ```text spanish for coordination page doc still not working coordination:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist. coordination:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist. coordination:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally. ``` --- *Created automatically from CISA Campus Work Tracker user feedback.* ### Screenshot ![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pS7y7cS9Qd2eF5yrraih/screenshot) *(View screenshot directly on GitHub or in app admin panel)*"
+  },
+  {
     "number": 565,
     "title": "[Feedback] request: unless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)",
     "state": "open",
@@ -22,7 +92,7 @@
   {
     "number": 563,
     "title": "[Feedback] thought: I need something to propagate to the other full-timers (as a full-timer) of the questions trainee asked in person (to take down and to propagate)",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
@@ -52,7 +122,7 @@
   {
     "number": 560,
     "title": "[Feedback] off: mobile contact detail keep crashing (pixel 10 pro)",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "bug",
       "feedback"
@@ -82,7 +152,7 @@
   {
     "number": 557,
     "title": "[Feedback] thought: safari error?",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
@@ -132,7 +202,7 @@
   {
     "number": 546,
     "title": "[Feedback] idea: release notes and number upgrade on eas build (agents md instruction), including summary of key changes since last release (check git history), display these changes in app overlay upon update",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
@@ -152,7 +222,7 @@
   {
     "number": 544,
     "title": "[Feedback] idea: can we have a toggle able on/off (by full-timer) for the trainee to have a goal of speaking to x (let's default to 5) number of people for their on campus day?",
-    "state": "open",
+    "state": "closed",
     "labels": [
       "enhancement",
       "feedback"
