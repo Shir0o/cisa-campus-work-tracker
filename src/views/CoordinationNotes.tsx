@@ -3520,7 +3520,7 @@ function NoteCard({
           {isLearning ? t('coordination.learning') : t('coordination.record')}
         </span>
         <span className="inline-flex items-center gap-1 text-on-surface-variant">
-          <Tag className="w-3 h-3" /> {n.series}
+          <Tag className="w-3 h-3" /> <Translate as="span" text={n.series} />
         </span>
         {n.archivedAt != null && (
           <span className="px-1.5 py-0.5 rounded bg-surface-variant text-on-surface-variant text-[10px] font-semibold  ">
@@ -3540,7 +3540,7 @@ function NoteCard({
               <button
                 onClick={() => onToggleDisplayMode(n)}
                 className="p-1 text-on-surface-variant/50 hover:text-accent transition-colors"
-                title={isListMode ? 'Switch to text mode' : 'Switch to checklist mode'}
+                title={isListMode ? t('coordination.switch_text_mode') : t('coordination.switch_checklist_mode')}
               >
                 {isListMode ? <Type className="w-3.5 h-3.5" /> : <ListChecks className="w-3.5 h-3.5" />}
               </button>
@@ -3558,7 +3558,7 @@ function NoteCard({
               <button
                 onClick={() => onToggleArchive(n)}
                 className={cn('p-1 transition-colors', n.archivedAt ? 'text-accent' : 'text-on-surface-variant/50 hover:text-accent')}
-                title={n.archivedAt ? 'Unarchive note' : 'Archive note'}
+                title={n.archivedAt ? t('coordination.unarchive_note') : t('coordination.archive_note')}
               >
                 <Archive className="w-3.5 h-3.5" />
               </button>
@@ -3599,7 +3599,9 @@ function NoteCard({
         )}
       </div>
 
-      <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">{n.title}</h4>
+      <h4 className="font-serif text-lg text-on-surface leading-snug mb-2">
+        <Translate text={n.title} />
+      </h4>
 
       {n.body && (
         isListMode ? (
@@ -3617,14 +3619,16 @@ function NoteCard({
                     className="mt-0.5 w-3.5 h-3.5 rounded border-outline-variant text-accent focus:ring-primary/20 accent-primary"
                   />
                   <span className={cn('leading-normal', isChecked && 'line-through opacity-60')}>
-                    {cleanText}
+                    <Translate text={cleanText} />
                   </span>
                 </label>
               );
             })}
           </div>
         ) : (
-          <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">{n.body}</p>
+          <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-4 mb-3.5">
+            <Translate text={n.body} />
+          </p>
         )
       )}
 

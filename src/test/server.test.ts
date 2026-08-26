@@ -1235,8 +1235,7 @@ describe("POST /api/send-push — failure path", () => {
 
 describe("production static serving", () => {
   it("serves the SPA index.html for unknown client routes", async () => {
-    const originalEnv = process.env.NODE_ENV;
-    process.env.NODE_ENV = "production";
+    vi.stubEnv("NODE_ENV", "production");
     // CI checkouts have no `dist/` build artifact — drop a placeholder so the
     // static-serve branch is exercised regardless of build state.
     const indexPath = path.join(process.cwd(), "dist", "index.html");
@@ -1251,7 +1250,7 @@ describe("production static serving", () => {
       expect(res.status).toBe(200);
       expect(res.headers["content-type"]).toContain("text/html");
     } finally {
-      process.env.NODE_ENV = originalEnv;
+      vi.stubEnv("NODE_ENV", "test");
       if (!hadIndex) {
         fs.rmSync(indexPath, { force: true });
         try {

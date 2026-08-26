@@ -5,6 +5,7 @@ import { onSnapshot, setDoc, deleteDoc, doc, collection, updateDoc, addDoc, wher
 import { remove as dbRemove } from 'firebase/database';
 import CoordinationNotes, { SuggestedTaskCard } from '../views/CoordinationNotes';
 import { useAuth } from '../components/AuthProvider';
+import { LanguageProvider } from '../components/LanguageProvider';
 import { logActivity } from '../lib/firebase';
 
 // ── Auth mock ────────────────────────────────────────────────────────────────
@@ -1216,6 +1217,38 @@ describe('CoordinationNotes', () => {
       // Contributor initials or title should be rendered inside Avatar
       // (also appears in the "What we're carrying" person filter, hence getAllByTitle)
       expect(screen.getAllByTitle('Tony Wang').length).toBeGreaterThan(0);
+    });
+
+    it('renders NoteCard with localized title, checklist items, body, and series', async () => {
+      const customNotes = [
+        {
+          id: 'note-list',
+          data: () => ({
+            type: 'record',
+            series: 'Campus Outreach',
+            title: 'Outreach Checklist',
+            body: '- [ ] Distribute flyers\n- [x] Set up banner',
+            tags: [],
+            displayMode: 'list',
+            date: '2026-03-24',
+            contributorIds: ['u-admin'],
+            createdBy: 'u-admin',
+          }),
+        },
+      ];
+      setupSnapshots({ docs: mockDocs, notes: customNotes, team: mockTeam });
+      render(
+        <LanguageProvider defaultLanguage="es">
+          <CoordinationNotes />
+        </LanguageProvider>
+      );
+
+      await screen.findByText('Outreach Checklist');
+      expect(screen.getByText('Distribute flyers')).toBeInTheDocument();
+      expect(screen.getByText('Set up banner')).toBeInTheDocument();
+      expect(screen.getAllByText('Campus Outreach').length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByTitle('Cambiar al modo de texto')).toBeInTheDocument();
+      expect(screen.getByTitle('Archivar nota')).toBeInTheDocument();
     });
 
     it('toggles NoteForm type and saves note', async () => {
