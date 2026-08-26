@@ -11,12 +11,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Dependabot PRs run on GitHub-hosted runners so they never occupy the single
-  # self-hosted runner; real (non-dependabot) PRs keep the local runner to
-  # themselves and are effectively prioritized.
   test:
     name: Lint & Test
-    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || 'self-hosted' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
@@ -33,7 +30,7 @@ jobs:
 
   mobile-test:
     name: Mobile Lint & Test
-    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || 'self-hosted' }}
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     defaults:
       run:
