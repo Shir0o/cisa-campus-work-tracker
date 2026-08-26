@@ -106,6 +106,18 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
     [data.prayers],
   );
 
+  // The same stage list The Journey uses, including the synthetic Unassigned
+  // row when this contact's stage is blank or no longer exists (#395).
+  const currentContact = data.contact;
+  const moveStages = useMemo<JourneyStage[]>(() => {
+    const list = data.stages.map((s) => ({ id: s.id, label: s.label }));
+    const hasUnassigned = data.stages.some((s) => s.label === 'Unassigned');
+    if (currentContact && !data.stages.some((s) => s.label === currentContact.stage) && !hasUnassigned) {
+      list.unshift({ id: 'uncategorized', label: 'Unassigned' });
+    }
+    return list;
+  }, [data.stages, currentContact]);
+
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const post = (interactionId: string | null) => (input: { kind: ThreadKind; body: string }) =>
     void data.postThreadMessage({ interactionId, ...input });
@@ -133,17 +145,6 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const contact = data.contact;
   const first = firstName(contact.name);
   const lastTime = lastTimeLine(story[0]);
-
-  // The same stage list The Journey uses, including the synthetic Unassigned
-  // row when this contact's stage is blank or no longer exists (#395).
-  const moveStages = useMemo<JourneyStage[]>(() => {
-    const list = data.stages.map((s) => ({ id: s.id, label: s.label }));
-    const hasUnassigned = data.stages.some((s) => s.label === 'Unassigned');
-    if (contact && !data.stages.some((s) => s.label === contact.stage) && !hasUnassigned) {
-      list.unshift({ id: 'uncategorized', label: 'Unassigned' });
-    }
-    return list;
-  }, [data.stages, contact]);
 
   const handleMove = async (_contactId: string, newStageLabel: string) => {
     if (!moving) return;
