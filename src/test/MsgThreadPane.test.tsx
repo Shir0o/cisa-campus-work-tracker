@@ -24,7 +24,7 @@ describe('MsgThreadPane (#563)', () => {
     memberIds: ['u1', 'u2'],
     createdAt: '2026-08-25T10:00:00Z',
     createdById: 'u1',
-    isDirect: false,
+    createdByName: 'Alice Walker',
   };
 
   const parentMsg: ChatMessage = {
