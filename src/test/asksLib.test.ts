@@ -138,6 +138,37 @@ describe('src/lib/asks.ts full coverage', () => {
     expect(received.length).toBe(1);
   });
 
+  it('subscribes with options scoping to owner when non-admin', () => {
+    (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
+      cb({ docs: [] });
+      return () => {};
+    });
+
+    const received: AskMessage[][] = [];
+    subscribeAsks((msgs) => received.push(msgs), undefined, { uid: 't1', isAdmin: false });
+    expect(firestore.where).toHaveBeenCalledWith('owner', '==', 't1');
+    expect(received.length).toBe(1);
+  });
+
+  it('subscribes with options passed as 2nd parameter without onError', () => {
+    (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
+      cb({ docs: [] });
+      return () => {};
+    });
+
+    const received: AskMessage[][] = [];
+    subscribeAsks((msgs) => received.push(msgs), { uid: 't1', isAdmin: false });
+    expect(firestore.where).toHaveBeenCalledWith('owner', '==', 't1');
+    expect(received.length).toBe(1);
+  });
+
+  it('safely handles non-admin subscription without uid by yielding empty array', () => {
+    const received: AskMessage[][] = [];
+    const unsub = subscribeAsks((msgs) => received.push(msgs), { isAdmin: false });
+    expect(received).toEqual([[]]);
+    expect(typeof unsub).toBe('function');
+  });
+
   it('handles error in subscribeAsks and subscribeMyAsks', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     (firestore.onSnapshot as any).mockImplementation((_col: any, _cb: any, errCb: any) => {

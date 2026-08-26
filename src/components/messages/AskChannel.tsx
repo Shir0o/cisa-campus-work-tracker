@@ -51,9 +51,10 @@ export function AskChannelRow({
 
   useEffect(() => {
     if (externalAsks !== undefined) return;
-    const unsub = isFullTimer
-      ? subscribeAsks(setInternalAsks)
-      : subscribeMyAsks(me, setInternalAsks);
+    const unsub = subscribeAsks(setInternalAsks, undefined, {
+      uid: me,
+      isAdmin: isFullTimer,
+    });
     return unsub;
   }, [me, isFullTimer, externalAsks]);
 
@@ -327,9 +328,10 @@ export function AskChannel({
 
   // Subscribe to asks
   useEffect(() => {
-    const unsub = isFullTimer
-      ? subscribeAsks(setAsks)
-      : subscribeMyAsks(me, setAsks);
+    const unsub = subscribeAsks(setAsks, undefined, {
+      uid: me,
+      isAdmin: isFullTimer,
+    });
     return unsub;
   }, [me, isFullTimer]);
 

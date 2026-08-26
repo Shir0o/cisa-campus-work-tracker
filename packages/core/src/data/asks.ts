@@ -33,15 +33,38 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
   reactions: Array.isArray(data.reactions) ? data.reactions : [],
 });
 
-/** Live subscription to every ask-the-team message (questions + answers).
- *  Full-timers read all; the rules deny others listing someone else's asks. */
+export interface SubscribeAsksOptions {
+  uid?: string;
+  isAdmin?: boolean;
+}
+
+/** Live subscription to ask-the-team messages (questions + answers).
+ *  Full-timers (admin) read all; non-admins are scoped by `where("owner", "==", uid)`
+ *  to satisfy firestore.rules. */
 export function subscribeAsks(
   db: Firestore,
   cb: (messages: AskMessage[]) => void,
-  onError?: (e: unknown) => void,
+  onErrorOrOptions?: ((e: unknown) => void) | SubscribeAsksOptions | null,
+  options?: SubscribeAsksOptions,
 ): () => void {
+  const onError = typeof onErrorOrOptions === "function" ? onErrorOrOptions : undefined;
+  const opts =
+    typeof onErrorOrOptions === "object" && onErrorOrOptions !== null
+      ? onErrorOrOptions
+      : options;
+
+  const isAdmin = opts?.isAdmin ?? (opts?.uid ? false : true);
+  const uid = opts?.uid;
+
+  if (!isAdmin && !uid) {
+    cb([]);
+    return () => {};
+  }
+
+  const q = !isAdmin && uid ? query(col(db), where("owner", "==", uid)) : col(db);
+
   return onSnapshot(
-    col(db),
+    q,
     (snap) => cb(snap.docs.map((d) => toAsk(d.id, d.data() as Partial<AskMessage>))),
     (e) => (onError ? onError(e) : console.error("asks subscription error", e)),
   );
@@ -55,11 +78,7 @@ export function subscribeMyAsks(
   cb: (messages: AskMessage[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return onSnapshot(
-    query(col(db), where("owner", "==", uid)),
-    (snap) => cb(snap.docs.map((d) => toAsk(d.id, d.data() as Partial<AskMessage>))),
-    (e) => (onError ? onError(e) : console.error("my-asks subscription error", e)),
-  );
+  return subscribeAsks(db, cb, onError, { uid, isAdmin: false });
 }
 
 export interface AskNotifyPayload {
