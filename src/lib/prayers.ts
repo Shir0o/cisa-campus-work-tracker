@@ -25,6 +25,8 @@ export async function addPrayerBurden(
       updatedBy: by.uid || null,
       updatedByName: by.name || null,
     });
+    // Auto-unhide contact from "On our hearts" page (#565)
+    unhidePrayerContact(contactId);
     return ref?.id ?? null;
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "prayers");
@@ -156,5 +158,23 @@ export function sortPrayerEntries<
     if (byLast !== 0) return byLast;
     return aParts.first.localeCompare(bParts.first, undefined, { sensitivity: "base" });
   });
+}
+
+/**
+ * Remove a contact from the `cisa.prayer.hidden` localStorage set so they
+ * reappear on the "On our hearts" page. Safe to call from any surface — the
+ * Prayer page will pick it up on next mount, and when the page is already
+ * mounted the component also updates its own React state.
+ */
+export function unhidePrayerContact(contactId: string): void {
+  try {
+    const raw = localStorage.getItem('cisa.prayer.hidden');
+    if (!raw) return;
+    const ids: string[] = JSON.parse(raw);
+    const filtered = ids.filter((id) => id !== contactId);
+    if (filtered.length !== ids.length) {
+      localStorage.setItem('cisa.prayer.hidden', JSON.stringify(filtered));
+    }
+  } catch (e) { /* corrupt storage — ignore */ }
 }
 

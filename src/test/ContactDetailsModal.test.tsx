@@ -358,6 +358,37 @@ describe('ContactDetailsModal Component', () => {
     });
   });
 
+  it('auto-unhides contact from the prayer list when a prayer is added (#565)', async () => {
+    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['contact-abc', 'other-contact']));
+
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    // Click Add prayer button in header
+    fireEvent.click(screen.getByRole('button', { name: /^Add prayer$/ }));
+
+    // Fill burden and submit
+    const burdenInput = screen.getByPlaceholderText(/John's family back home/i);
+    fireEvent.change(burdenInput, { target: { value: 'Pray for upcoming exams.' } });
+
+    await waitFor(() => {
+      const currentForm = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+      expect(currentForm.querySelector('button[type="submit"]')).not.toBeDisabled();
+    });
+
+    const form = screen.getByPlaceholderText(/John's family back home/i).closest('form')!;
+    fireEvent.click(form.querySelector('button[type="submit"]')!);
+
+    await waitFor(() => {
+      expect(firestore.addDoc).toHaveBeenCalled();
+    });
+
+    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
+    expect(hidden).not.toContain('contact-abc');
+    expect(hidden).toContain('other-contact');
+
+    localStorage.removeItem('cisa.prayer.hidden');
+  });
+
   it('handles phone number formatting and error display on blur', async () => {
     render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
     

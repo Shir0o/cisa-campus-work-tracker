@@ -4,7 +4,7 @@ import LogVisitModal from '../components/modals/LogVisitModal';
 import { useAuth } from '../components/AuthProvider';
 import { addVisit, attachVisitPhotos, updateVisit } from '../lib/visits';
 import { addTodo, updateTodo } from '../lib/todos';
-import { addPrayerBurden } from '../lib/prayers';
+import { addPrayerBurden, unhidePrayerContact } from '../lib/prayers';
 import { uploadVisitPhotos } from '../lib/visitPhotos';
 import { logActivity } from '../lib/firebase';
 import { addDoc, collection } from 'firebase/firestore';
@@ -48,7 +48,7 @@ vi.mock('../lib/visits', () => ({
 }));
 
 vi.mock('../lib/todos', () => ({ addTodo: vi.fn(() => Promise.resolve('task-1')), updateTodo: vi.fn(() => Promise.resolve()) }));
-vi.mock('../lib/prayers', () => ({ addPrayerBurden: vi.fn(() => Promise.resolve('prayer-1')) }));
+vi.mock('../lib/prayers', () => ({ addPrayerBurden: vi.fn(() => Promise.resolve('prayer-1')), unhidePrayerContact: vi.fn() }));
 vi.mock('../lib/visitPhotos', () => ({
   MAX_PHOTOS_PER_VISIT: 12,
   uploadVisitPhotos: vi.fn(() => Promise.resolve([{ path: 'visits/x/1.jpg', url: 'u', name: 'room.jpg' }])),
@@ -161,7 +161,10 @@ describe('LogVisitModal', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Log the visit/ }));
 
-    await waitFor(() => expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything()));
+    await waitFor(() => {
+      expect(addPrayerBurden).toHaveBeenCalledWith('c1', 'Peace for her dad', expect.anything());
+      expect(unhidePrayerContact).toHaveBeenCalledWith('c1');
+    });
     const input = (addVisit as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
     expect(input.prayerId).toBe('prayer-1');
     // Kept on the visit too, so the card can read it back without going looking.

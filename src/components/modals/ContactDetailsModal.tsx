@@ -58,6 +58,7 @@ import { Skeleton } from "../ui/Skeleton";
 import Thread from "../Thread";
 import { useThreads, countFor } from "../../lib/threads";
 import { traineesOf, walkingRecipient } from "../../lib/walking";
+import { unhidePrayerContact } from "../../lib/prayers";
 import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
@@ -856,6 +857,9 @@ export default function ContactDetailsModal({
         updatedByName:
           user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       });
+
+      // Auto-unhide contact from "On our hearts" page (#565)
+      unhidePrayerContact(contact.id);
 
       logActivity({
         action: "added a prayer burden for",

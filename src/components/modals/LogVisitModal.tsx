@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { addVisit, attachVisitPhotos, initialsOf, updateVisit, type VisitInput } from '../../lib/visits';
 import { db, handleFirestoreError, logActivity, OperationType } from '../../lib/firebase';
-import { addPrayerBurden } from '../../lib/prayers';
+import { addPrayerBurden, unhidePrayerContact } from '../../lib/prayers';
 import { addTodo, updateTodo } from '../../lib/todos';
 import { MAX_PHOTOS_PER_VISIT, uploadVisitPhotos } from '../../lib/visitPhotos';
 import type { AppUser, Contact, Visit, VisitPhoto } from '../../types';
@@ -233,6 +233,8 @@ export default function LogVisitModal({
         }
         if (prayer.trim() && chosen[0]) {
           input.prayerId = await addPrayerBurden(chosen[0].id, prayer.trim(), { uid: me, name: myName });
+          // Auto-unhide from the prayer page so the contact appears (#565)
+          unhidePrayerContact(chosen[0].id);
           // Kept on the visit too, so the card reads the prayer back in its own
           // words rather than only knowing there was one.
           input.prayerBurden = prayer.trim();
