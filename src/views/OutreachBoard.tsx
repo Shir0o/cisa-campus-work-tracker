@@ -184,7 +184,7 @@ export default function OutreachBoard() {
   const { t } = useLanguage();
   const { setSelectedContact, openNewContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
-  const { isAdmin, user, role } = useAuth();
+  const { isAdmin, user, role, effectiveUserId } = useAuth();
   const [stages, setStages] = useState<Stage[]>(cachedStages ?? []);
   useEffect(() => { stagesRef.current = stages; }, [stages]);
   // Issue #211 — drag-to-reorder stages. activeStageId tracks an in-flight
@@ -492,7 +492,8 @@ export default function OutreachBoard() {
   const [filterRole, setFilterRole] = useState<string>('All');
   const [showFilterMenu, setShowFilterMenu] = useState(false);
 
-  const visibleJourneyContacts = journeyContacts(role, user?.uid, boardContacts, 'Fall 2026');
+  const staffId = effectiveUserId || user?.uid;
+  const visibleJourneyContacts = journeyContacts(role, staffId, boardContacts, 'Fall 2026');
 
   const filteredContacts = visibleJourneyContacts.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

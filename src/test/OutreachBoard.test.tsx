@@ -995,4 +995,55 @@ describe('OutreachBoard', () => {
     // No logical change → no batch write.
     expect(writeBatch).not.toHaveBeenCalled();
   });
+
+  it('filters visible contacts by effectiveUserId when impersonating a trainee', async () => {
+    const customContacts = [
+      {
+        id: 'c1',
+        data: () => ({
+          name: 'Alice Chen',
+          initials: 'AC',
+          stage: 'First Contact',
+          email: 'alice@example.com',
+          role: 'Student',
+          location: 'North Campus',
+          tags: ['Freshman'],
+          phone: '',
+          lastSeen: '',
+          createdBy: 'admin-user',
+          coCreators: [],
+        }),
+      },
+      {
+        id: 'c2',
+        data: () => ({
+          name: 'Bob Park',
+          initials: 'BP',
+          stage: 'Regular',
+          email: 'bob@example.com',
+          role: 'Leader',
+          location: '',
+          tags: [],
+          phone: '',
+          lastSeen: '',
+          createdBy: 'trainee-bob',
+          coCreators: [],
+        }),
+      },
+    ];
+
+    setupOnSnapshotWith({ stages: mockStages, contacts: customContacts });
+    (useAuth as any).mockReturnValue({
+      isAdmin: false,
+      user: { uid: 'admin-user' },
+      role: 'manager',
+      effectiveUserId: 'trainee-bob',
+    });
+
+    render(<OutreachBoard />);
+    vi.advanceTimersByTime(900);
+
+    await screen.findByText('Bob Park');
+    expect(screen.queryByText('Alice Chen')).not.toBeInTheDocument();
+  });
 });

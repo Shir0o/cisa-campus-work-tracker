@@ -144,7 +144,7 @@ function Avatar({ contact, size = 'md' }: { contact: Contact; size?: 'sm' | 'md'
 
 export default function Directory() {
   const { openNewContact, setSelectedContact, openSmartImport } = useLayout();
-  const { user, role } = useAuth();
+  const { user, role, effectiveUserId } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stagesData, setStagesData] = useState<Stage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -301,7 +301,8 @@ export default function Directory() {
     return ms != null ? daysSince(ms) : null;
   };
 
-  const userContacts = useMemo(() => visibleContacts(role, user?.uid, contacts), [role, user?.uid, contacts]);
+  const staffId = effectiveUserId || user?.uid;
+  const userContacts = useMemo(() => visibleContacts(role, staffId, contacts), [role, staffId, contacts]);
 
   const filteredContacts = useMemo(() => {
     let result = userContacts;

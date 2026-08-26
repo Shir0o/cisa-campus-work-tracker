@@ -68,6 +68,7 @@ const mockContacts = [
       spiritualBackground: 'None',
       tags: ['Freshman'],
       createdAt: '2026-01-01T00:00:00.000Z',
+      createdBy: 'u-other',
     }),
   },
   {
@@ -82,6 +83,7 @@ const mockContacts = [
       spiritualBackground: 'Christian',
       tags: ['Senior'],
       createdAt: '2026-02-01T00:00:00.000Z',
+      createdBy: 'trainee-123',
     }),
   },
   {
@@ -96,6 +98,7 @@ const mockContacts = [
       spiritualBackground: 'None',
       tags: [],
       createdAt: '2026-03-01T00:00:00.000Z',
+      coCreators: ['trainee-123'],
     }),
   },
 ];
@@ -564,6 +567,22 @@ describe('Directory', () => {
     render(<Directory />);
     await waitFor(() => {
       expect(screen.getByText(/everyone you added, or were named on/)).toBeInTheDocument();
+    });
+  });
+
+  it('enforces simulated trainee permissions when impersonating a trainee', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { uid: 'u-admin-1', email: 'admin@cisa.campus' },
+      role: 'manager',
+      isAdmin: false,
+      effectiveUserId: 'trainee-123',
+    } as any);
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+      expect(screen.getByText('Charlie Brown')).toBeInTheDocument();
+      expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
     });
   });
 

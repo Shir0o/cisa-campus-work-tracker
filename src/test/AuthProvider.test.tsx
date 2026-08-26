@@ -628,5 +628,75 @@ describe('AuthProvider', () => {
       expect(screen.getByText('photoURL: https://example.com/rev.png')).toBeInTheDocument();
     });
   });
+
+  it('updates effectiveUserId when owner impersonates a target or simulates a role', async () => {
+    const adminUser = {
+      uid: 'admin-uid',
+      email: 'admin@cisa.campus',
+      displayName: 'Admin User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(adminUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        role: 'admin',
+        approved: true,
+      }),
+    });
+
+    const ImpersonationSwitchComponent = () => {
+      const { effectiveUserId, setImpersonateTarget, setOwnerViewRole } = useAuth();
+      return (
+        <div>
+          <div data-testid="effective-uid">{effectiveUserId}</div>
+          <button
+            onClick={() =>
+              setImpersonateTarget({
+                key: 'staff:tr-88',
+                name: 'Trainee 88',
+                initials: 'T8',
+                sub: 'Trainee',
+                note: 'The trainee workspace',
+                role: 'manager',
+                persona: { id: 'trainee', staffId: 'tr-88', name: 'Trainee 88', role: 'Trainee', initials: 'T8', first: 'Trainee' },
+              })
+            }
+          >
+            Impersonate Trainee 88
+          </button>
+          <button
+            onClick={() => {
+              setImpersonateTarget(null);
+              setOwnerViewRole('manager');
+            }}
+          >
+            Simulate Trainee Role
+          </button>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <ImpersonationSwitchComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('effective-uid')).toHaveTextContent('admin-uid');
+    });
+
+    fireEvent.click(screen.getByText('Impersonate Trainee 88'));
+    expect(screen.getByTestId('effective-uid')).toHaveTextContent('tr-88');
+
+    fireEvent.click(screen.getByText('Simulate Trainee Role'));
+    expect(screen.getByTestId('effective-uid')).toHaveTextContent('cisa-trainee');
+  });
 });
 

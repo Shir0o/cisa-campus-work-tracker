@@ -193,7 +193,7 @@ export default function ContactDetailsModal({
   initialTab,
   initialInteractionId,
 }: ContactDetailsModalProps) {
-  const { user, isAdmin, role } = useAuth();
+  const { user, isAdmin, role, effectiveUserId } = useAuth();
   const { t } = useLanguage();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [isEditing, setIsEditing] = useState(false);
@@ -495,7 +495,8 @@ export default function ContactDetailsModal({
 
   if (!contact) return null;
 
-  const hasAccess = canSeeContact(role, user?.uid, contact);
+  const currentUid = effectiveUserId || user?.uid;
+  const hasAccess = canSeeContact(role, currentUid, contact);
   if (isOpen && !hasAccess) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
@@ -518,12 +519,12 @@ export default function ContactDetailsModal({
   }
 
   const walkLabel = t('modals.contactDetails.follow_up');
-  const threadRecipient = walkingRecipient(user?.uid, contact.createdBy || contact.addedBy);
+  const threadRecipient = walkingRecipient(currentUid, contact.createdBy || contact.addedBy);
 
   const coCreators = contact.coCreators || [];
   const sharedWith = teamMembers.filter((m) => coCreators.includes(m.id));
   const ownerId = contact.owner || contact.createdBy || contact.addedBy;
-  const canShare = role === "admin" || ownerId === user?.uid;
+  const canShare = role === "admin" || ownerId === currentUid;
   const shareOptions = teamMembers.filter(
     (m) => m.id !== ownerId && !coCreators.includes(m.id)
   );
@@ -1975,7 +1976,7 @@ export default function ContactDetailsModal({
                                           <Thread
                                             contactId={contact.id}
                                             interactionId={interaction.id}
-                                            meStaffId={user?.uid ?? ""}
+                                            meStaffId={currentUid ?? ""}
                                             recipientUid={threadRecipient}
                                             contactName={contact.name}
                                             compact
@@ -2004,7 +2005,7 @@ export default function ContactDetailsModal({
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
-                        meStaffId={user?.uid ?? ""}
+                        meStaffId={currentUid ?? ""}
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                       />
@@ -2199,7 +2200,7 @@ export default function ContactDetailsModal({
                       <Thread
                         contactId={contact.id}
                         interactionId={null}
-                        meStaffId={user?.uid ?? ""}
+                        meStaffId={currentUid ?? ""}
                         recipientUid={threadRecipient}
                         contactName={contact.name}
                         scope="team"
