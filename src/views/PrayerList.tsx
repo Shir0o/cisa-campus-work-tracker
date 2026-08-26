@@ -213,6 +213,19 @@ export default function PrayerList() {
     updatedByName: user?.displayName || user?.email?.split('@')[0],
   });
 
+  // Remove a contact from the hidden set (React state + localStorage).
+  // Extracted so both startHolding and handleAddBurden can reuse it.
+  const unhideContact = (contactId: string) => {
+    setHiddenIds((prev) => {
+      const next = new Set(prev);
+      next.delete(contactId);
+      try {
+        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
+      } catch (e) {}
+      return next;
+    });
+  };
+
   const handleAddBurden = async (contactId: string, burden: string): Promise<boolean> => {
     const text = burden.trim();
     if (!contactId || !text) return false;
@@ -233,6 +246,8 @@ export default function PrayerList() {
         type: 'comment',
         description: text,
       });
+      // Auto-unhide the contact so they appear in the roster (#565)
+      unhideContact(contactId);
       return true;
     } catch (error) {
       console.error('Error adding burden:', error);
@@ -368,14 +383,7 @@ export default function PrayerList() {
 
   const startHolding = (contact: Contact) => {
     setStartedIds((prev) => new Set(prev).add(contact.id));
-    setHiddenIds((prev) => {
-      const next = new Set(prev);
-      next.delete(contact.id);
-      try {
-        localStorage.setItem('cisa.prayer.hidden', JSON.stringify([...next]));
-      } catch (e) {}
-      return next;
-    });
+    unhideContact(contact.id);
     setComposeFor(contact.id);
     setSearchQuery('');
   };

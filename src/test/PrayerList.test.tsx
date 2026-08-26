@@ -725,6 +725,43 @@ describe('PrayerList', () => {
       expect.objectContaining({ id: 'c1', name: 'Alice Johnson' })
     );
   });
+
+  it('auto-unhides a hidden contact when a prayer burden is added for them (#565)', async () => {
+    // Seed localStorage with c1 hidden
+    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1']));
+
+    render(<PrayerList />);
+    await waitFor(() => {
+      // Bob is visible (not hidden), Alice is hidden
+      expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+      expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+    });
+
+    // Search for Alice (she'll appear as a suggestion since she's not held)
+    const searchInput = screen.getByPlaceholderText('Find someone…');
+    fireEvent.change(searchInput, { target: { value: 'Alice' } });
+
+    // Start holding Alice (this unhides her and opens compose)
+    const startBtn = await screen.findByRole('button', { name: /Start holding Alice/i });
+    fireEvent.click(startBtn);
+
+    // Fill in the burden and submit
+    const textarea = await screen.findByPlaceholderText(/What are we praying for Alice this week/i);
+    fireEvent.change(textarea, { target: { value: 'Peace in her studies' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add prayer' }));
+
+    await waitFor(() => {
+      expect(addDoc).toHaveBeenCalled();
+    });
+
+    // Alice is now visible and localStorage no longer contains her ID
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
+    expect(hidden).not.toContain('c1');
+
+    // Clean up
+    localStorage.removeItem('cisa.prayer.hidden');
+  });
 });
 
 

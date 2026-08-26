@@ -8,6 +8,7 @@ import {
   isContactBrother,
   isContactSister,
   sortPrayerEntries,
+  unhidePrayerContact,
 } from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
@@ -33,7 +34,12 @@ beforeEach(() => {
 });
 
 describe('addPrayerBurden', () => {
-  it('starts a burden on the prayer page and hands back its id', async () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('starts a burden on the prayer page, hands back its id, and unhides the contact', async () => {
+    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2']));
     const id = await addPrayerBurden('c1', '  Peace for her dad  ', by);
     expect(id).toBe('p-new');
     expect(collection).toHaveBeenCalledWith({}, 'prayers');
@@ -45,6 +51,8 @@ describe('addPrayerBurden', () => {
       updatedBy: 'u1',
       updatedByName: 'Mei Tanaka',
     });
+    // Verify auto-unhide from localStorage
+    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c2']);
   });
 
   it('writes nothing for an empty burden or a missing person', async () => {
@@ -179,6 +187,34 @@ describe('sortPrayerEntries', () => {
     const before = entries.map((e) => e.contact.name);
     sortPrayerEntries(entries);
     expect(entries.map((e) => e.contact.name)).toEqual(before);
+  });
+});
+
+describe('unhidePrayerContact', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('removes a hidden contact ID from localStorage', () => {
+    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1', 'c2', 'c3']));
+    unhidePrayerContact('c2');
+    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1', 'c3']);
+  });
+
+  it('is a no-op when the contact is not in the hidden set', () => {
+    localStorage.setItem('cisa.prayer.hidden', JSON.stringify(['c1']));
+    unhidePrayerContact('c99');
+    expect(JSON.parse(localStorage.getItem('cisa.prayer.hidden')!)).toEqual(['c1']);
+  });
+
+  it('is a no-op when localStorage has no hidden key', () => {
+    expect(() => unhidePrayerContact('c1')).not.toThrow();
+    expect(localStorage.getItem('cisa.prayer.hidden')).toBeNull();
+  });
+
+  it('handles corrupt JSON gracefully without throwing', () => {
+    localStorage.setItem('cisa.prayer.hidden', '{not-valid-json');
+    expect(() => unhidePrayerContact('c1')).not.toThrow();
   });
 });
 
