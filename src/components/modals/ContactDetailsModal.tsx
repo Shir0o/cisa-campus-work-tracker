@@ -61,7 +61,7 @@ import { traineesOf, walkingRecipient } from "../../lib/walking";
 import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
-import { tagStyle, TAG_SUGGESTIONS } from "../../lib/tags";
+import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
 
@@ -1089,7 +1089,7 @@ export default function ContactDetailsModal({
                           {contact.name}
                         </h2>
                         <div className="cdm-chip-row flex flex-wrap gap-1 mt-1.5">
-                          {contact.tags?.map((t) => (
+                          {getEffectiveContactTags(contact.tags, contact.createdAt).map((t) => (
                             <span
                               key={t}
                               style={tagStyle(t)}
