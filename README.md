@@ -26,3 +26,7 @@ Unit tests are executed via Vitest and coverage thresholds are enforced:
 - Run tests with coverage: `npm run test:coverage`
 
 Coverage thresholds (lines, statements, functions, branches) are defined in `vitest.config.ts` and enforced on every commit/PR in CI. All new code must be accompanied by unit tests, and thresholds must only be adjusted upwards.
+
+## License
+
+This project is licensed under the [Apache 2.0 License](LICENSE).
