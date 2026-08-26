@@ -12,6 +12,9 @@ export {
   askAnswered,
   askWaitedWords,
   askStacksFor,
+  askTakenBy,
+  askVisibleFor,
+  askUnreadFor,
   type AskStack,
 } from '@cisa/core';
 
@@ -40,6 +43,21 @@ export async function addAsk(input: {
 }): Promise<void> {
   try {
     await core.addAsk(db, input);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, 'asks');
+  }
+}
+
+/** Record a question asked in person (#563) on behalf of a trainee. */
+export async function addAskFor(input: {
+  askerId: string;
+  askerName: string;
+  takenBy: string;
+  takenByName: string;
+  body: string;
+}): Promise<void> {
+  try {
+    await core.addAskFor(db, input);
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, 'asks');
   }

@@ -55,6 +55,9 @@ import AttachDataModal from '../components/modals/AttachDataModal';
 import ContactPill from '../components/ui/ContactPill';
 import { Translate } from '../components/Translate';
 import { useTranslate } from '../hooks/useTranslate';
+import { AskChannel, AskChannelRow, ASK_CONV_ID } from '../components/messages/AskChannel';
+import { MsgThreadPane } from '../components/messages/MsgThreadPane';
+import { convTopLevel, convReplyCount, convRepliers, convLastReply } from '../services/chat';
 
 // The Field Notes design's quick reactions (views/messages.jsx).
 const QUICK_REACTS = ["🙏", "❤️", "🌱", "👍", "🙌"];
@@ -131,6 +134,7 @@ export default function Messages() {
   const [threadSearchOpen, setThreadSearchOpen] = useState(false);
   const [threadSearch, setThreadSearch] = useState('');
   const [pinnedOpen, setPinnedOpen] = useState(false);
+  const [threadOf, setThreadOf] = useState<string | null>(null);
 
   // Message ⋯ menu (which message, and whether the confirm step is showing)
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -191,7 +195,11 @@ export default function Messages() {
 
   // 1. Fetch Rooms (Real-time)
   useEffect(() => {
-    if (!effectiveUid) return;
+    if (!effectiveUid) {
+      setRooms([]);
+      setLoadingRooms(false);
+      return;
+    }
 
     setLoadingRooms(true);
     // Only fetch chat rooms where the user is an explicit member
@@ -223,18 +231,19 @@ export default function Messages() {
 
   // Reset active room if the current user is no longer a member of it
   useEffect(() => {
-    if (activeRoomId && rooms.length > 0 && !loadingRooms) {
+    if (activeRoomId && activeRoomId !== ASK_CONV_ID && rooms.length > 0 && !loadingRooms) {
       const exists = rooms.some((r) => r.id === activeRoomId);
       if (!exists) {
         setActiveRoomId(null);
+        setThreadOf(null);
       }
     }
   }, [rooms, activeRoomId, loadingRooms]);
 
   // 2. Fetch Active Room Messages
   useEffect(() => {
-
-    if (!activeRoomId) {
+    setThreadOf(null);
+    if (!activeRoomId || activeRoomId === ASK_CONV_ID) {
       setMessages([]);
       return;
     }
@@ -515,6 +524,8 @@ export default function Messages() {
     if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
     return true;
   });
+  const isStaffRole = userRole === 'admin' || userRole === 'manager' || userRole === 'operator';
+  const topLevelMsgs = useMemo(() => convTopLevel(visibleMsgs), [visibleMsgs]);
   const pinned = messages.filter((m) => m.pinned && !m.deleted);
   const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
 
@@ -601,9 +612,21 @@ export default function Messages() {
 
         {/* Rooms Scroll List */}
         <div className="msgs-list">
+          {isStaffRole && (!roomSearch || "questions for the team".toLowerCase().includes(roomSearch.toLowerCase())) && (
+            <AskChannelRow
+              me={effectiveUid || ''}
+              role={userRole || ''}
+              isFullTimer={isAdmin}
+              active={activeRoomId === ASK_CONV_ID}
+              onClick={() => {
+                setActiveRoomId(ASK_CONV_ID);
+                setThreadOf(null);
+              }}
+            />
+          )}
           {loadingRooms ? (
             <div className="msgs-people-empty">Loading conversations…</div>
-          ) : filteredRooms.length === 0 ? (
+          ) : filteredRooms.length === 0 && (!isStaffRole || !!roomSearch) ? (
             <div className="msgs-people-empty">Nothing here yet.</div>
           ) : (
             filteredRooms.map((room) => {
@@ -763,105 +786,115 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* 2. Right — the thread (the design's msgs-thread) */}
-      <div className={cn(
-        "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
-        activeRoomId ? "flex" : "hidden md:flex"
-      )}>
-        {!activeRoom ? (
-          /* Empty Chat Area Placeholder */
-          <div className="msgs-empty">
-            <div className="w-14 h-14 rounded-2xl bg-primary/10 text-accent flex items-center justify-center mb-1">
-              <MessageSquare className="w-6 h-6" />
-            </div>
-            <div className="ntf-empty-title">Pick a conversation</div>
-            <div className="ntf-empty-sub">Or start a new one — everyone in the app is reachable from here.</div>
-          </div>
-        ) : (
-          <>
-            {/* Active Room Header */}
-            <div className="msgs-thread-head">
-              {isMobile && (
-                <button className="icon-btn" onClick={() => setActiveRoomId(null)}>
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-              )}
-              {activeRoom.type === 'direct' ? (
-                <div className="avatar w-9 h-9 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
-                  {getRoomPhoto(activeRoom) ? (
-                    <img src={getRoomPhoto(activeRoom) || ''} alt={getRoomName(activeRoom)} className="w-full h-full object-cover rounded-full" />
-                  ) : (
-                    getUserInitials(getRoomName(activeRoom))
-                  )}
-                </div>
-              ) : (
-                <span className={cn("msgs-cluster", activeRoom.type === 'announcement' && "broadcast")}>
-                  {activeRoom.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
-                </span>
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="msgs-thread-title">{getRoomName(activeRoom)}</div>
-                <div className="msgs-thread-sub">{threadSub}</div>
+      {/* 2. Right — the thread (the design's msgs-thread) or Ask channel */}
+      {activeRoomId === ASK_CONV_ID ? (
+        <AskChannel
+          me={effectiveUid || ''}
+          meName={impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member')}
+          role={userRole || ''}
+          isFullTimer={isAdmin}
+          isMobile={isMobile}
+          onBack={() => setActiveRoomId(null)}
+        />
+      ) : (
+        <div className={cn(
+          "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
+          activeRoomId ? "flex" : "hidden md:flex"
+        )}>
+          {!activeRoom ? (
+            /* Empty Chat Area Placeholder */
+            <div className="msgs-empty">
+              <div className="w-14 h-14 rounded-2xl bg-primary/10 text-accent flex items-center justify-center mb-1">
+                <MessageSquare className="w-6 h-6" />
               </div>
-              <div className="msgs-thread-actions">
-                {pinned.length > 0 && (
-                  <button className="icon-btn" title="Pinned messages" onClick={() => setPinnedOpen(o => !o)}>
-                    <Pin className="w-4 h-4" />
+              <div className="ntf-empty-title">Pick a conversation</div>
+              <div className="ntf-empty-sub">Or start a new one — everyone in the app is reachable from here.</div>
+            </div>
+          ) : (
+            <>
+              {/* Active Room Header */}
+              <div className="msgs-thread-head">
+                {isMobile && (
+                  <button className="icon-btn" onClick={() => setActiveRoomId(null)}>
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
                 )}
-                <button className="icon-btn" title="Search in conversation" onClick={() => setThreadSearchOpen(o => !o)}>
-                  <Search className="w-4 h-4" />
-                </button>
-                <button className="icon-btn" title="Group details" onClick={() => setChatDetailsOpen(true)}>
-                  <Info className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Thread search */}
-            {threadSearchOpen && (
-              <div className="msgs-thread-search">
-                <Search className="w-3.5 h-3.5 shrink-0" />
-                <input autoFocus placeholder="Search this conversation…" value={threadSearch} onChange={(e) => setThreadSearch(e.target.value)} />
-              </div>
-            )}
-
-            {/* Pinned strip */}
-            {pinnedOpen && pinned.length > 0 && (
-              <div className="msgs-pinned-strip">
-                {pinned.map((m) => (
-                  <div key={m.id} className="msgs-pinned-row" onClick={() => jumpTo(m.id)}>
-                    <Pin className="w-3 h-3 shrink-0" />
-                    <span><b>{m.senderId === effectiveUid ? 'You' : firstName(m.senderName)}:</b> {m.text}</span>
+                {activeRoom.type === 'direct' ? (
+                  <div className="avatar w-9 h-9 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-xs shrink-0">
+                    {getRoomPhoto(activeRoom) ? (
+                      <img src={getRoomPhoto(activeRoom) || ''} alt={getRoomName(activeRoom)} className="w-full h-full object-cover rounded-full" />
+                    ) : (
+                      getUserInitials(getRoomName(activeRoom))
+                    )}
                   </div>
-                ))}
-              </div>
-            )}
-
-            {/* Messages Stream */}
-            <div ref={messagesContainerRef} className="msgs-stream">
-              {hiddenHere.length > 0 && (
-                <div className="msgs-hidden-note">
-                  <span>
-                    {hiddenHere.length === 1
-                      ? "One message is hidden from your view. Everyone else still sees it."
-                      : `${hiddenHere.length} messages are hidden from your view. Everyone else still sees them.`}
+                ) : (
+                  <span className={cn("msgs-cluster", activeRoom.type === 'announcement' && "broadcast")}>
+                    {activeRoom.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
                   </span>
-                  <button onClick={() => effectiveUid && MessageHides.unhideAll(effectiveUid, hiddenHere.map((m) => m.id))}>
-                    {hiddenHere.length === 1 ? "Bring it back" : "Bring them back"}
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="msgs-thread-title">{getRoomName(activeRoom)}</div>
+                  <div className="msgs-thread-sub">{threadSub}</div>
+                </div>
+                <div className="msgs-thread-actions">
+                  {pinned.length > 0 && (
+                    <button className="icon-btn" title="Pinned messages" onClick={() => setPinnedOpen(o => !o)}>
+                      <Pin className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button className="icon-btn" title="Search in conversation" onClick={() => setThreadSearchOpen(o => !o)}>
+                    <Search className="w-4 h-4" />
                   </button>
+                  <button className="icon-btn" title="Group details" onClick={() => setChatDetailsOpen(true)}>
+                    <Info className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Thread search */}
+              {threadSearchOpen && (
+                <div className="msgs-thread-search">
+                  <Search className="w-3.5 h-3.5 shrink-0" />
+                  <input autoFocus placeholder="Search this conversation…" value={threadSearch} onChange={(e) => setThreadSearch(e.target.value)} />
                 </div>
               )}
 
-              {messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
-                  <MessageSquare className="w-10 h-10 text-outline" />
-                  <p className="text-sm">{t('common.empty_messages', 'No messages yet. Send a message to start the conversation!')}</p>
+              {/* Pinned strip */}
+              {pinnedOpen && pinned.length > 0 && (
+                <div className="msgs-pinned-strip">
+                  {pinned.map((m) => (
+                    <div key={m.id} className="msgs-pinned-row" onClick={() => jumpTo(m.id)}>
+                      <Pin className="w-3 h-3 shrink-0" />
+                      <span><b>{m.senderId === effectiveUid ? 'You' : firstName(m.senderName)}:</b> {m.text}</span>
+                    </div>
+                  ))}
                 </div>
-              ) : visibleMsgs.length === 0 && threadSearch ? (
-                <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>
-              ) : (
-                visibleMsgs.map((msg) => {
+              )}
+
+              {/* Messages Stream */}
+              <div ref={messagesContainerRef} className="msgs-stream">
+                {hiddenHere.length > 0 && (
+                  <div className="msgs-hidden-note">
+                    <span>
+                      {hiddenHere.length === 1
+                        ? "One message is hidden from your view. Everyone else still sees it."
+                        : `${hiddenHere.length} messages are hidden from your view. Everyone else still sees them.`}
+                    </span>
+                    <button onClick={() => effectiveUid && MessageHides.unhideAll(effectiveUid, hiddenHere.map((m) => m.id))}>
+                      {hiddenHere.length === 1 ? "Bring it back" : "Bring them back"}
+                    </button>
+                  </div>
+                )}
+
+                {messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-20 text-center gap-2 text-on-surface-variant">
+                    <MessageSquare className="w-10 h-10 text-outline" />
+                    <p className="text-sm">{t('common.empty_messages', 'No messages yet. Send a message to start the conversation!')}</p>
+                  </div>
+                ) : topLevelMsgs.length === 0 && threadSearch ? (
+                  <div className="msgs-people-empty">Nothing matches “{threadSearch}”.</div>
+                ) : (
+                  topLevelMsgs.map((msg) => {
                   const isMe = msg.senderId === effectiveUid;
                   const isSys = msg.type === 'system';
                   const gone = !!msg.deleted;
@@ -986,6 +1019,14 @@ export default function Messages() {
                               <button className="msgb-pin-btn" title={msg.pinned ? "Unpin" : "Pin"} onClick={() => togglePinMessage(activeRoomId!, msg.id, !msg.pinned)}>
                                 <Pin className="w-3 h-3" />
                               </button>
+                              <button
+                                type="button"
+                                className="msgb-pin-btn"
+                                title="Reply in thread"
+                                onClick={() => setThreadOf(msg.id)}
+                              >
+                                <MessageSquare className="w-3 h-3" />
+                              </button>
                               <span className="msgb-menu-wrap">
                                 <button
                                   className="msgb-pin-btn"
@@ -1030,6 +1071,35 @@ export default function Messages() {
                             </div>
                           )}
                         </div>
+                        {!gone && convReplyCount(messages, msg.id) > 0 && (
+                          <button
+                            type="button"
+                            className="msgb-thread has"
+                            onClick={() => setThreadOf(msg.id)}
+                          >
+                            <span className="msgb-thread-who">
+                              {convRepliers(messages, msg.id).slice(0, 3).map((uid, i) => {
+                                const u = usersCache[uid];
+                                return (
+                                  <div
+                                    key={i}
+                                    className="w-5 h-5 rounded-full bg-primary/20 text-accent font-semibold flex items-center justify-center text-[9px] border border-surface shadow-sm"
+                                  >
+                                    {getUserInitials(u?.displayName || uid)}
+                                  </div>
+                                );
+                              })}
+                            </span>
+                            <span className="msgb-thread-l">
+                              {convReplyCount(messages, msg.id) === 1 ? '1 reply' : `${convReplyCount(messages, msg.id)} replies`}
+                            </span>
+                            {convLastReply(messages, msg.id)?.timestamp?.seconds && (
+                              <span className="msgb-thread-when">
+                                last {relTime(new Date(convLastReply(messages, msg.id)!.timestamp.seconds * 1000).toISOString())}
+                              </span>
+                            )}
+                          </button>
+                        )}
                         <div className="msgb-foot">
                           <span className="msgb-when">
                             {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
@@ -1149,6 +1219,45 @@ export default function Messages() {
           </>
         )}
       </div>
+      )}
+
+      {/* Slack-shaped Thread Pane (#563) */}
+      {activeRoom && threadOf && (() => {
+        const parentMsg = messages.find((m) => m.id === threadOf);
+        if (!parentMsg) return null;
+        return (
+          <MsgThreadPane
+            room={activeRoom}
+            parentMsg={parentMsg}
+            allMessages={messages}
+            effectiveUid={effectiveUid}
+            isAdmin={isAdmin}
+            onClose={() => setThreadOf(null)}
+            onReact={(mid, e, cur) => effectiveUid && reactToMessage(activeRoom.id, mid, effectiveUid, e, cur)}
+            onPin={(mid, pin) => togglePinMessage(activeRoom.id, mid, pin)}
+            onRemoveAll={(msg) => handleRemoveAll(msg)}
+            onHide={(mid) => effectiveUid && MessageHides.hide(effectiveUid, mid)}
+            onTodo={(msg) => setTodoFor(msg)}
+            onOpenContact={(contact) => setSelectedContact(contact)}
+            onSendReply={async (text) => {
+              if (!effectiveUid) return;
+              const senderName = impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member');
+              const senderPhoto = impersonateTarget ? '' : (currentUser?.photoURL || '');
+              await sendMessage(
+                activeRoom.id,
+                text,
+                { uid: effectiveUid, displayName: senderName, photoURL: senderPhoto },
+                undefined,
+                activeRoom.memberIds,
+                parentMsg.id
+              );
+            }}
+            roomMembers={roomMembers}
+            canPost={canPostToActiveRoom}
+          />
+        );
+      })()}
+
 
       {/* Modals overlay */}
       <CreateChatModal

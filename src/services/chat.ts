@@ -158,7 +158,8 @@ export async function sendMessage(
   text: string,
   sender: { uid: string; displayName: string; photoURL?: string },
   attachments?: ChatAttachment[],
-  memberIds?: string[]
+  memberIds?: string[],
+  parentId?: string | null
 ): Promise<void> {
   const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
   
@@ -177,12 +178,14 @@ export async function sendMessage(
     timestamp: serverTimestamp(),
     type: 'text',
     attachments: attachments || [],
+    parentId: parentId ?? null,
   });
 
   // Update last message preview in chatRoom
-  const previewText = msgText || (attachments && attachments.length > 0 
+  const basePreview = msgText || (attachments && attachments.length > 0 
     ? `Shared ${attachments[0].type}` 
     : 'New message');
+  const previewText = parentId ? `in a thread: ${basePreview}` : basePreview;
 
   await updateDoc(doc(db, 'chatRooms', roomId), {
     lastMessage: {
@@ -349,5 +352,42 @@ export function canRemoveConvForEveryone(
   if (!room) return false;
   return isAdmin || (!!currentUid && room.createdById === currentUid);
 }
+
+// ── Slack-shaped threads (#563) ─────────────────────────────────────────────
+
+/** Top-level messages in a conversation (replies filtered out). */
+export function convTopLevel(messages: import('../types').ChatMessage[]): import('../types').ChatMessage[] {
+  return messages.filter((m) => !m.parentId);
+}
+
+/** Replies belonging to a parent message, chronological. */
+export function convReplies(messages: import('../types').ChatMessage[], parentId: string): import('../types').ChatMessage[] {
+  return messages.filter((m) => m.parentId === parentId);
+}
+
+/** Total reply count for a message. */
+export function convReplyCount(messages: import('../types').ChatMessage[], parentId: string): number {
+  return convReplies(messages, parentId).length;
+}
+
+/** Unique uids of users who replied to a message, in order of first reply. */
+export function convRepliers(messages: import('../types').ChatMessage[], parentId: string): string[] {
+  const seen = new Set<string>();
+  const repliers: string[] = [];
+  for (const r of convReplies(messages, parentId)) {
+    if (r.senderId && !seen.has(r.senderId)) {
+      seen.add(r.senderId);
+      repliers.push(r.senderId);
+    }
+  }
+  return repliers;
+}
+
+/** The latest reply to a message, if any. */
+export function convLastReply(messages: import('../types').ChatMessage[], parentId: string): import('../types').ChatMessage | undefined {
+  const replies = convReplies(messages, parentId);
+  return replies[replies.length - 1];
+}
+
 
 

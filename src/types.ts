@@ -348,6 +348,8 @@ export interface ChatMessage {
    *  it and the thread shows a gone label instead of the text. Once set it
    *  stays — a conversation never silently rewrites itself. */
   deleted?: { by: string; at: any };
+  /** Slack-shaped thread parentId: null = top-level; set = reply (#563). */
+  parentId?: string | null;
 }
 
 export interface ImpersonateTarget {
