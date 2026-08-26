@@ -854,6 +854,41 @@ describe('ContactDetailsModal Component', () => {
     expect(mockOnClose).toHaveBeenCalled();
   });
 
+  it('enforces effectiveUserId permission boundary when admin impersonates a trainee', () => {
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'admin-uid', displayName: 'Admin User' },
+      isAdmin: false,
+      role: 'manager',
+      effectiveUserId: 'trainee-bob-uid',
+    });
+
+    const contactCreatedByAdmin = {
+      ...mockContact,
+      createdBy: 'admin-uid',
+      coCreators: [],
+    };
+
+    // Because admin is impersonating trainee-bob-uid, admin-created contact should be restricted
+    const { unmount } = render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactCreatedByAdmin} />
+    );
+    expect(screen.getByText('Access Restricted')).toBeInTheDocument();
+    unmount();
+
+    const contactCreatedByTrainee = {
+      ...mockContact,
+      createdBy: 'trainee-bob-uid',
+      coCreators: [],
+    };
+
+    // Trainee-created contact should have full access
+    render(
+      <ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={contactCreatedByTrainee} />
+    );
+    expect(screen.queryByText('Access Restricted')).not.toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
+
   it('renders "contacted by" and "Created by" metadata when present', () => {
     (useAuth as any).mockReturnValue({
       user: { uid: 'user-1', displayName: 'Admin User' },

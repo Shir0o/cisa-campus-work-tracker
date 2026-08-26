@@ -94,7 +94,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const effectiveUserId = (isOwner && impersonateTarget)
     ? meIdFor(impersonateTarget.persona)
-    : (user?.uid || null);
+    : (isOwner && ownerViewRole === 'manager'
+        ? 'cisa-trainee'
+        : isOwner && ownerViewRole === 'operator'
+        ? 'cisa-student'
+        : isOwner && ownerViewRole === 'viewer'
+        ? 'cisa-community'
+        : (user?.uid || null));
 
   const effectiveIdentityKey = (isOwner && impersonateTarget)
     ? identityKey(impersonateTarget.persona, impersonateTarget.role)
