@@ -1,0 +1,297 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import {
+  subscribeAsks,
+  subscribeMyAsks,
+  askQuestions,
+  askQuestionsBy,
+  askRepliesOf,
+  askAnswered,
+  askWaitedDays,
+  askWaitedWords,
+  askStacksFor,
+  askTakenBy,
+  askVisibleFor,
+  askUnreadFor,
+  addAsk,
+  addAskFor,
+  addAskReply,
+  toggleAskReaction,
+  AskMessage,
+} from '../lib/asks';
+import * as firestore from 'firebase/firestore';
+import * as firebaseLib from '../lib/firebase';
+
+vi.mock('../lib/firebase', () => ({
+  db: { _type: 'firestore' },
+  handleFirestoreError: vi.fn(),
+  sendNotification: vi.fn(),
+  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE' },
+}));
+
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn((_db, name) => ({ path: name })),
+  doc: vi.fn((_db, name, id) => ({ path: `${name}/${id}` })),
+  query: vi.fn((c, ..._w) => c),
+  where: vi.fn(),
+  onSnapshot: vi.fn(),
+  addDoc: vi.fn(),
+  runTransaction: vi.fn(),
+}));
+
+describe('src/lib/asks.ts full coverage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const mockMessages: AskMessage[] = [
+    {
+      id: 'q1',
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'Question 1',
+      at: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+      reactions: [{ by: 'u1', emoji: '👍' }],
+    },
+    {
+      id: 'r1',
+      parentId: 'q1',
+      owner: 't1',
+      from: 'ft1',
+      fromName: 'Mei Lin',
+      kind: 'comment',
+      body: 'Answer from Mei',
+      at: new Date(Date.now() - 86400000 * 2).toISOString(),
+      reactions: [],
+    },
+    {
+      id: 'q2',
+      parentId: null,
+      owner: 't2',
+      from: 't2',
+      fromName: 'Ana Lei',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+      kind: 'question',
+      body: 'Question 2 in person',
+      at: new Date().toISOString(), // today
+      reactions: [],
+    },
+    {
+      id: 'q3',
+      parentId: null,
+      owner: 't3',
+      from: 't3',
+      fromName: 'Bob',
+      kind: 'question',
+      body: 'Question 3',
+      at: new Date(Date.now() - 86400000).toISOString(), // yesterday
+      reactions: [],
+    },
+  ];
+
+  it('subscribes to all asks and converts documents', () => {
+    let callback: any;
+    (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
+
+    const received: AskMessage[][] = [];
+    subscribeAsks((msgs) => received.push(msgs));
+
+    callback({
+      docs: [
+        {
+          id: 'doc1',
+          data: () => ({
+            from: 'u1',
+            fromName: 'User 1',
+            body: 'Hello',
+          }),
+        },
+      ],
+    });
+
+    expect(received[0].length).toBe(1);
+    expect(received[0][0].id).toBe('doc1');
+    expect(received[0][0].owner).toBe('u1');
+    expect(received[0][0].parentId).toBeNull();
+  });
+
+  it('subscribes to my asks', () => {
+    let callback: any;
+    (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
+      callback = cb;
+      return () => {};
+    });
+
+    const received: AskMessage[][] = [];
+    subscribeMyAsks('t1', (msgs) => received.push(msgs));
+
+    callback({
+      docs: [],
+    });
+
+    expect(received.length).toBe(1);
+  });
+
+  it('handles error in subscribeAsks and subscribeMyAsks', () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    (firestore.onSnapshot as any).mockImplementation((_col: any, _cb: any, errCb: any) => {
+      errCb(new Error('snapshot err'));
+      return () => {};
+    });
+
+    const customErr = vi.fn();
+    subscribeAsks(vi.fn(), customErr);
+    expect(customErr).toHaveBeenCalled();
+
+    subscribeMyAsks('t1', vi.fn(), customErr);
+    expect(customErr).toHaveBeenCalledTimes(2);
+
+    errorSpy.mockRestore();
+  });
+
+  it('tests pure helpers: askQuestions, askQuestionsBy, askRepliesOf, askAnswered, askWaitedDays, askWaitedWords, askStacksFor', () => {
+    const qs = askQuestions(mockMessages);
+    expect(qs.length).toBe(3);
+
+    const byT1 = askQuestionsBy(mockMessages, 't1');
+    expect(byT1.length).toBe(1);
+
+    const replies = askRepliesOf(mockMessages, 'q1');
+    expect(replies.length).toBe(1);
+
+    expect(askAnswered(mockMessages, mockMessages[0])).toBe(true);
+    expect(askAnswered(mockMessages, mockMessages[2])).toBe(false);
+
+    expect(askWaitedDays(mockMessages[0])).toBe(3);
+    expect(askWaitedWords(mockMessages[0])).toBe('waiting 3 days');
+    expect(askWaitedWords(mockMessages[2])).toBe('asked today');
+    expect(askWaitedWords(mockMessages[3])).toBe('waiting since yesterday');
+
+    const stacks = askStacksFor(mockMessages, 'ft1');
+    expect(stacks.length).toBe(2); // q2 and q3 are unanswered and not by ft1
+  });
+
+  it('adds ask message and handles failure', async () => {
+    (firestore.addDoc as any).mockResolvedValueOnce({ id: 'new_ask' });
+    await addAsk({ from: 't1', fromName: 'Zion', body: 'My question' });
+    expect(firestore.addDoc).toHaveBeenCalled();
+
+    (firestore.addDoc as any).mockRejectedValueOnce(new Error('write fail'));
+    await addAsk({ from: 't1', fromName: 'Zion', body: 'My question' });
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      firebaseLib.OperationType.CREATE,
+      'asks'
+    );
+  });
+
+  it('adds in-person askFor message and handles failure', async () => {
+    (firestore.addDoc as any).mockResolvedValueOnce({ id: 'new_ask_for' });
+    await addAskFor({
+      askerId: 't1',
+      askerName: 'Zion',
+      takenBy: 'ft1',
+      takenByName: 'Mei',
+      body: 'Verbal question',
+    });
+    expect(firestore.addDoc).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        owner: 't1',
+        from: 't1',
+        takenBy: 'ft1',
+        takenByName: 'Mei',
+      })
+    );
+
+    (firestore.addDoc as any).mockRejectedValueOnce(new Error('write fail'));
+    await addAskFor({
+      askerId: 't1',
+      askerName: 'Zion',
+      takenBy: 'ft1',
+      takenByName: 'Mei',
+      body: 'Verbal question',
+    });
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
+  });
+
+  it('adds ask reply with notification truncation and handles failure', async () => {
+    const longBody = 'A'.repeat(200);
+    (firestore.addDoc as any).mockResolvedValueOnce({ id: 'new_reply' });
+    await addAskReply(
+      'q1',
+      { from: 'ft1', fromName: 'Mei Lin', body: longBody },
+      't1',
+      't1'
+    );
+
+    expect(firebaseLib.sendNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 't1',
+        title: 'Mei answered your question',
+        message: expect.stringMatching(/…$/),
+      })
+    );
+
+    (firestore.addDoc as any).mockRejectedValueOnce(new Error('write fail'));
+    await addAskReply(
+      'q1',
+      { from: 'ft1', fromName: 'Mei Lin', body: 'Short' },
+      't1'
+    );
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
+  });
+
+  it('toggles ask reaction through transaction', async () => {
+    let transactionRunner: any;
+    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
+      transactionRunner = fn;
+      return fn({
+        get: vi.fn().mockResolvedValue({
+          exists: () => true,
+          data: () => ({ reactions: [{ by: 'u1', emoji: '👍' }] }),
+        }),
+        update: vi.fn(),
+      });
+    });
+
+    // Remove existing reaction
+    await toggleAskReaction('q1', 'u1', '👍');
+    expect(firestore.runTransaction).toHaveBeenCalled();
+
+    // Add new reaction
+    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
+      return fn({
+        get: vi.fn().mockResolvedValue({
+          exists: () => true,
+          data: () => ({ reactions: [] }),
+        }),
+        update: vi.fn(),
+      });
+    });
+    await toggleAskReaction('q1', 'u2', '❤️');
+    expect(firestore.runTransaction).toHaveBeenCalled();
+
+    // Non-existent doc
+    (firestore.runTransaction as any).mockImplementation((_db: any, fn: any) => {
+      return fn({
+        get: vi.fn().mockResolvedValue({
+          exists: () => false,
+        }),
+        update: vi.fn(),
+      });
+    });
+    await toggleAskReaction('q1', 'u2', '❤️');
+
+    // Error in transaction
+    (firestore.runTransaction as any).mockRejectedValueOnce(new Error('tx fail'));
+    await toggleAskReaction('q1', 'u2', '❤️');
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
+  });
+});

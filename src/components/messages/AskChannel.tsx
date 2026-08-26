@@ -338,7 +338,8 @@ export function AskChannel({
     if (!isFullTimer) return;
     const q = query(collection(db, 'users'));
     const unsub = onSnapshot(q, (snap) => {
-      const all = snap.docs.map((d) => ({ uid: d.id, ...d.data() } as AppUser));
+      const docs = snap?.docs || [];
+      const all = docs.map((d) => ({ uid: d.id, ...d.data() } as AppUser));
       const filtered = all.filter((u) => {
         const isTraineeRole = u.role === 'manager' || u.role === 'operator';
         const notBot = !(u.email || '').startsWith('cisa-');

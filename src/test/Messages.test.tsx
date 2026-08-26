@@ -1643,6 +1643,43 @@ describe('Messages View Component', () => {
         Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
       }
     });
+
+    it('opens the Questions for the team channel from the sidebar rail (#563)', async () => {
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      const askRow = screen.getByText('Questions for the team');
+      expect(askRow).toBeInTheDocument();
+      fireEvent.click(askRow);
+
+      await waitFor(() => {
+        expect(screen.getByText('Someone asked me')).toBeInTheDocument();
+      });
+    });
+
+    it('opens Slack-style message thread when Reply in thread is clicked (#563)', async () => {
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      await waitFor(() => expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument());
+
+      // Look for Reply in thread button
+      const threadBtns = screen.getAllByTitle('Reply in thread');
+      if (threadBtns.length > 0) {
+        fireEvent.click(threadBtns[0]);
+        await waitFor(() => {
+          expect(screen.getByText('Thread')).toBeInTheDocument();
+        });
+      }
+    });
   });
 });
+
 

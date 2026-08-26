@@ -237,5 +237,90 @@ describe('AskChannel Components (#563)', () => {
         expect(onToast).toHaveBeenCalledWith('Written down for Ana — every full-timer can see it.');
       });
     });
+
+    it('allows full-timer to switch to My own question mode and post', async () => {
+      const addAskSpy = vi.spyOn(asksLib, 'addAsk').mockResolvedValue(undefined as any);
+      const onToast = vi.fn();
+
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: any) => {
+        cb(mockQuestions);
+        return () => {};
+      });
+
+      render(
+        <AskChannel
+          me="ft1"
+          meName="Mei Lin"
+          role="admin"
+          isFullTimer={true}
+          isMobile={false}
+          onToast={onToast}
+        />
+      );
+
+      // Switch to "My own question"
+      fireEvent.click(screen.getByText('My own question'));
+      const input = screen.getByPlaceholderText('Ask the team something real…');
+      fireEvent.change(input, { target: { value: 'When is staff retreat?' } });
+      fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(addAskSpy).toHaveBeenCalledWith({
+          from: 'ft1',
+          fromName: 'Mei Lin',
+          body: 'When is staff retreat?',
+        });
+        expect(onToast).toHaveBeenCalledWith('Asked the team.');
+      });
+    });
+
+    it('renders trainee view and allows trainee to post and open question thread', async () => {
+      const onBack = vi.fn();
+
+      vi.spyOn(asksLib, 'subscribeMyAsks').mockImplementation((_uid: any, cb: any) => {
+        cb(mockQuestions);
+        return () => {};
+      });
+
+      render(
+        <AskChannel
+          me="t1"
+          meName="Zion Park"
+          role="operator"
+          isFullTimer={false}
+          isMobile={true}
+          onBack={onBack}
+        />
+      );
+
+      expect(screen.getByText('Questions for the team')).toBeInTheDocument();
+      // Click back button
+      const buttons = screen.getAllByRole('button');
+      const backBtn = buttons.find((b) => b.className.includes('icon-btn'));
+      if (backBtn) fireEvent.click(backBtn);
+      expect(onBack).toHaveBeenCalled();
+
+      // Click on 1 answer button to open thread
+      fireEvent.click(screen.getByText('1 answer'));
+      expect(screen.getByText('The answers')).toBeInTheDocument();
+    });
+
+    it('tests pure ask helper functions', () => {
+      expect(asksLib.askTakenBy(mockQuestions[0])).toEqual({ uid: 'ft1', name: 'Mei Lin' });
+      expect(asksLib.askTakenBy(mockQuestions[1])).toBeNull();
+
+      const visibleFt = asksLib.askVisibleFor(mockQuestions, 'ft1', true);
+      expect(visibleFt.length).toBe(2);
+
+      const visibleTrainee = asksLib.askVisibleFor(mockQuestions, 't1', false);
+      expect(visibleTrainee.length).toBe(1);
+      expect(visibleTrainee[0].id).toBe('q1');
+
+      const unreadFt = asksLib.askUnreadFor(mockQuestions, 'ft1', true, () => false);
+      expect(unreadFt).toBe(1); // q2 is unanswered
+
+      const unreadTrainee = asksLib.askUnreadFor(mockQuestions, 't1', false, () => false);
+      expect(unreadTrainee).toBe(1); // q1 has answer
+    });
   });
 });
