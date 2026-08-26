@@ -195,9 +195,13 @@ export default function AskStack({
   const [asks, setAsks] = useState<AskMessage[]>([]);
   const inbox = useInboxReads();
 
-  useEffect(() => subscribeAsks(setAsks), []);
-
   const isFullTimer = role === "admin";
+
+  useEffect(() => {
+    if (!isFullTimer) return;
+    return subscribeAsks(setAsks, undefined, { uid, isAdmin: isFullTimer });
+  }, [isFullTimer, uid]);
+
   const stacks = useMemo(
     () => (isFullTimer ? askStacksFor(asks, uid) : []),
     [asks, uid, isFullTimer],

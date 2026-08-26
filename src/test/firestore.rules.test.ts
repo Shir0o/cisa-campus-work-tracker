@@ -1354,6 +1354,20 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(getDoc(doc(ft, 'asks', 'ask8')));
     });
 
+    it('ASK6b: non-admin list queries on asks require owner filter (#564)', async () => {
+      await seedAskUsers();
+      await seedAsk('ask7', { owner: 'trainee1', from: 'trainee1' });
+      await seedAsk('ask8', { owner: 'ft2', from: 'ft2' });
+      const trainee = getFirestore({ uid: 'trainee1' });
+      // unfiltered query by non-admin is denied by firestore.rules
+      await assertFails(getDocs(query(collection(trainee, 'asks'))));
+      // scoped query by owner succeeds
+      await assertSucceeds(getDocs(query(collection(trainee, 'asks'), where('owner', '==', 'trainee1'))));
+      // full-timer unfiltered query succeeds
+      const ft = getFirestore({ uid: 'ft1' });
+      await assertSucceeds(getDocs(query(collection(ft, 'asks'))));
+    });
+
     it('ASK7: a full-timer toggles a reaction on an answer', async () => {
       await seedAskUsers();
       await seedAsk('ask9');

@@ -4,7 +4,7 @@ import * as core from '@cisa/core';
 import type { AskMessage } from '@cisa/core';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
 
-export type { AskMessage } from '@cisa/core';
+export type { AskMessage, SubscribeAsksOptions } from '@cisa/core';
 export {
   askQuestions,
   askQuestionsBy,
@@ -18,12 +18,14 @@ export {
   type AskStack,
 } from '@cisa/core';
 
-/** Live subscription to every ask-the-team message (full-timers). */
+/** Live subscription to ask-the-team messages (questions + answers).
+ *  Full-timers read all; non-admins are scoped by `where("owner", "==", uid)`. */
 export function subscribeAsks(
   cb: (messages: AskMessage[]) => void,
-  onError?: (e: unknown) => void,
+  onErrorOrOptions?: ((e: unknown) => void) | core.SubscribeAsksOptions | null,
+  options?: core.SubscribeAsksOptions,
 ): () => void {
-  return core.subscribeAsks(db, cb, onError);
+  return core.subscribeAsks(db, cb, onErrorOrOptions as never, options);
 }
 
 /** Live subscription to my own ask-the-team messages (a trainee). */
