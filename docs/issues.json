@@ -105,8 +105,8 @@
     "id": 5250792567,
     "number": 562,
     "title": "[Feedback] thought: expand the filter for the contact to select added today, added this week, added this month",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -129,8 +129,8 @@
     "assignees": [],
     "comments": 0,
     "created_at": "2026-08-25T21:20:45Z",
-    "updated_at": "2026-08-25T21:20:45Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T14:56:49Z",
+    "closed_at": "2026-08-26T14:56:49Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 9:20:45 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nexpand the filter for the contact to select added today, added this week, added this month\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/JhMOKdpiaX6gJwWFQ8hX/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/562",
     "is_pull_request": false
