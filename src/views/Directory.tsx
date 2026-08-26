@@ -37,7 +37,7 @@ import CombineTagsModal from '../components/modals/CombineTagsModal';
 import { RowActions } from '../components/ui/RowActions';
 import { buildContactRowActions } from '../lib/rowActions';
 import { UserEntityState } from '../lib/userEntityState';
-import { normalizeTag, normalizeTagList, tagStyle } from '../lib/tags';
+import { normalizeTag, normalizeTagList, tagStyle, getEffectiveContactTags } from '../lib/tags';
 import { subscribeAllThreads } from '../lib/threads';
 import { Translate } from '../components/Translate';
 
@@ -271,6 +271,7 @@ export default function Directory() {
   const [filterStage, setFilterStage] = useState<string>('All');
   const [filterRole, setFilterRole] = useState<string>('All');
   const [filterSpiritualBackground, setFilterSpiritualBackground] = useState<string>('All');
+  const [filterAddedWhen, setFilterAddedWhen] = useState<'all' | 'today' | 'week' | 'month'>('all');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagModalOpen, setIsTagModalOpen] = useState(false);
   const [isStageModalOpen, setIsStageModalOpen] = useState(false);
@@ -308,15 +309,18 @@ export default function Directory() {
     // Search
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      result = result.filter(c =>
-        c.name.toLowerCase().includes(lowerQuery) ||
-        c.email.toLowerCase().includes(lowerQuery) ||
-        c.role.toLowerCase().includes(lowerQuery) ||
-        (c.metVia && c.metVia.toLowerCase().includes(lowerQuery)) ||
-        (c.location && c.location.toLowerCase().includes(lowerQuery)) ||
-        (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
-        (c.tags && c.tags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery)))
-      );
+      result = result.filter(c => {
+        const effectiveTags = getEffectiveContactTags(c.tags, c.createdAt);
+        return (
+          c.name.toLowerCase().includes(lowerQuery) ||
+          c.email.toLowerCase().includes(lowerQuery) ||
+          c.role.toLowerCase().includes(lowerQuery) ||
+          (c.metVia && c.metVia.toLowerCase().includes(lowerQuery)) ||
+          (c.location && c.location.toLowerCase().includes(lowerQuery)) ||
+          (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
+          effectiveTags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery))
+        );
+      });
     }
 
     // Filter by Stage
@@ -334,16 +338,30 @@ export default function Directory() {
       result = result.filter(c => c.spiritualBackground === filterSpiritualBackground);
     }
 
+    // Filter by Added When
+    if (filterAddedWhen !== 'all') {
+      result = result.filter(c => {
+        const ms = parseMs(c.createdAt);
+        if (ms == null) return false;
+        const d = daysSince(ms);
+        if (filterAddedWhen === 'today') return d === 0;
+        if (filterAddedWhen === 'week') return d <= 7;
+        if (filterAddedWhen === 'month') return d <= 30;
+        return true;
+      });
+    }
+
     // Filter by Tags (compare normalized values so compact season variants like
-    // "Fall2025" match the displayed "Fall 2025" chip).
+    // "Fall2025" match the displayed "Fall 2025" chip, including dynamic '#new').
     if (selectedTags.length > 0) {
-      result = result.filter(c =>
-        c.tags && selectedTags.every(tag => (c.tags || []).some(t => normalizeTag(t).toLowerCase() === tag.toLowerCase()))
-      );
+      result = result.filter(c => {
+        const effectiveTags = getEffectiveContactTags(c.tags, c.createdAt);
+        return selectedTags.every(tag => effectiveTags.some(t => normalizeTag(t).toLowerCase() === tag.toLowerCase()));
+      });
     }
 
     return result;
-  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, selectedTags]);
+  }, [userContacts, searchQuery, filterStage, filterRole, filterSpiritualBackground, filterAddedWhen, selectedTags]);
 
   // Stage color per stage label.
   const stageColorByLabel = useMemo(() => {
@@ -432,7 +450,7 @@ export default function Directory() {
   // blank option in the dropdown — drop them (#359).
   const filterRoles = useMemo(() => ['All', ...new Set(userContacts.map(c => c.role).filter(Boolean))], [userContacts]);
   const filterSpiritualBackgrounds = useMemo(() => ['All', ...new Set(userContacts.map(c => c.spiritualBackground).filter(Boolean))], [userContacts]);
-  const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => c.tags || [])), [userContacts]);
+  const allTags = useMemo(() => normalizeTagList(userContacts.flatMap(c => getEffectiveContactTags(c.tags, c.createdAt))), [userContacts]);
 
   const newCount = useMemo(
     () => userContacts.filter(c => {
@@ -460,10 +478,11 @@ export default function Directory() {
     setFilterStage('All');
     setFilterRole('All');
     setFilterSpiritualBackground('All');
+    setFilterAddedWhen('all');
     setSelectedTags([]);
   };
 
-  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || selectedTags.length > 0;
+  const hasActiveFilters = searchQuery !== '' || filterStage !== 'All' || filterRole !== 'All' || filterSpiritualBackground !== 'All' || filterAddedWhen !== 'all' || selectedTags.length > 0;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === filteredContacts.length) {
@@ -681,6 +700,20 @@ export default function Directory() {
                         {filterSpiritualBackgrounds.map(sb => <option key={sb} value={sb}>{sb === 'All' ? t('directory.all_backgrounds') : sb}</option>)}
                       </select>
                     </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-medium text-on-surface-variant px-1">{t('directory.added_when')}</label>
+                      <select
+                        value={filterAddedWhen}
+                        onChange={(e) => setFilterAddedWhen(e.target.value as 'all' | 'today' | 'week' | 'month')}
+                        className="w-full h-10 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary cursor-pointer"
+                      >
+                        <option value="all">{t('directory.all_time')}</option>
+                        <option value="today">{t('directory.added_today')}</option>
+                        <option value="week">{t('directory.added_this_week')}</option>
+                        <option value="month">{t('directory.added_this_month')}</option>
+                      </select>
+                    </div>
                   </div>
                 </motion.div>
               </>
@@ -801,7 +834,7 @@ export default function Directory() {
             const overdue = days != null && days >= 7;
             const note = (touch?.note || contact.notes || '').trim();
             const sub = [contact.role, contact.metVia].filter(Boolean).join(' · ');
-            const tags = normalizeTagList(contact.tags);
+            const tags = getEffectiveContactTags(contact.tags, contact.createdAt);
             const selected = selectedIds.has(contact.id);
 
             return (

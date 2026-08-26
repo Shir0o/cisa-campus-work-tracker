@@ -72,3 +72,34 @@ export function planTagCombining(
 
   return rows;
 }
+
+const DAY_MS = 86_400_000;
+const parseMs = (s?: any): number | null => {
+  if (!s) return null;
+  if (typeof s?.toMillis === 'function') return s.toMillis();
+  if (typeof s?.toDate === 'function') return s.toDate().getTime();
+  if (typeof s?.seconds === 'number') return s.seconds * 1000;
+  if (typeof s === 'number') return Number.isNaN(s) ? null : s;
+  const t = new Date(s).getTime();
+  return Number.isNaN(t) ? null : t;
+};
+const daysSince = (ms: number) => Math.max(0, Math.floor((Date.now() - ms) / DAY_MS));
+
+/**
+ * Returns effective tags for a contact, normalizing user-assigned tags and
+ * dynamically injecting 'new' if the contact was added within the last 7 days.
+ */
+export function getEffectiveContactTags(
+  tags?: string[] | null,
+  createdAt?: any,
+): string[] {
+  const normalized = normalizeTagList(tags);
+  const ms = parseMs(createdAt);
+  if (ms != null && daysSince(ms) <= 7) {
+    if (!normalized.some((t) => t.toLowerCase() === 'new')) {
+      return ['new', ...normalized];
+    }
+  }
+  return normalized;
+}
+

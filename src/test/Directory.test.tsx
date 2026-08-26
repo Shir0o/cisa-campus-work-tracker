@@ -248,7 +248,106 @@ describe('Directory', () => {
 
     // Clicking again toggles filter off
     fireEvent.click(tagChip);
+    expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
     expect(screen.getByText('Bob Smith')).toBeInTheDocument();
+  });
+
+  it('filters contacts by Added When (today, week, month)', async () => {
+    const today = new Date().toISOString();
+    const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000).toISOString();
+    const twentyDaysAgo = new Date(Date.now() - 20 * 86_400_000).toISOString();
+    const twoMonthsAgo = new Date(Date.now() - 60 * 86_400_000).toISOString();
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'c-today', data: () => ({ name: 'Today User', role: 'Student', stage: 'Lead', createdAt: today, tags: [] }) },
+            { id: 'c-week', data: () => ({ name: 'Week User', role: 'Student', stage: 'Lead', createdAt: threeDaysAgo, tags: [] }) },
+            { id: 'c-month', data: () => ({ name: 'Month User', role: 'Student', stage: 'Lead', createdAt: twentyDaysAgo, tags: [] }) },
+            { id: 'c-old', data: () => ({ name: 'Old User', role: 'Student', stage: 'Lead', createdAt: twoMonthsAgo, tags: [] }) },
+          ],
+          size: 4,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Today User')).toBeInTheDocument();
+      expect(screen.getByText('Week User')).toBeInTheDocument();
+      expect(screen.getByText('Month User')).toBeInTheDocument();
+      expect(screen.getByText('Old User')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByText('Filters'));
+    const addedSelect = screen.getByText('Added').nextElementSibling as HTMLSelectElement;
+
+    // Filter by Added today
+    fireEvent.change(addedSelect, { target: { value: 'today' } });
+    expect(screen.getByText('Today User')).toBeInTheDocument();
+    expect(screen.queryByText('Week User')).not.toBeInTheDocument();
+    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
+
+    // Filter by Added this week
+    fireEvent.change(addedSelect, { target: { value: 'week' } });
+    expect(screen.getByText('Today User')).toBeInTheDocument();
+    expect(screen.getByText('Week User')).toBeInTheDocument();
+    expect(screen.queryByText('Month User')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
+
+    // Filter by Added this month
+    fireEvent.change(addedSelect, { target: { value: 'month' } });
+    expect(screen.getByText('Today User')).toBeInTheDocument();
+    expect(screen.getByText('Week User')).toBeInTheDocument();
+    expect(screen.getByText('Month User')).toBeInTheDocument();
+    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
+
+    // Clear filters
+    fireEvent.click(screen.getByText('Clear all'));
+    expect(screen.getByText('Old User')).toBeInTheDocument();
+  });
+
+  it('renders dynamic new tag for contacts created within past week and allows filtering by new tag', async () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const fortyDaysAgo = new Date(Date.now() - 40 * 86_400_000).toISOString();
+
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            { id: 'c-fresh', data: () => ({ name: 'Fresh User', role: 'Student', stage: 'Lead', createdAt: twoDaysAgo, tags: ['Freshman'] }) },
+            { id: 'c-old', data: () => ({ name: 'Old User', role: 'Student', stage: 'Lead', createdAt: fortyDaysAgo, tags: ['Senior'] }) },
+          ],
+          size: 2,
+        });
+      } else if (ref?.path === 'stages') {
+        callback({ docs: mockStages, size: 2 });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Fresh User')).toBeInTheDocument();
+    });
+
+    // Tag chip for 'new' should be present in tag chips
+    const newTagChip = screen.getByRole('button', { name: 'new' });
+    expect(newTagChip).toBeInTheDocument();
+
+    // Clicking 'new' tag chip should filter down to fresh contacts
+    fireEvent.click(newTagChip);
+    expect(screen.getByText('Fresh User')).toBeInTheDocument();
+    expect(screen.queryByText('Old User')).not.toBeInTheDocument();
   });
 
   it('normalizes compact season tags in the people tag chips', async () => {
