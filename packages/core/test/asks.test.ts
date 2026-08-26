@@ -7,6 +7,9 @@ import {
   askWaitedDays,
   askWaitedWords,
   askStacksFor,
+  askTakenBy,
+  askVisibleFor,
+  askUnreadFor,
   type AskMessage,
 } from '../src/asks';
 
@@ -129,5 +132,60 @@ describe('askStacksFor', () => {
     expect(stacks.map((s) => s.from)).toEqual(['t1', 't2']);
     expect(stacks[0].items.map((i) => i.id)).toEqual(['q2', 'q1']);
     expect(stacks[0].id).toBe('ask:t1');
+  });
+});
+
+describe('askTakenBy', () => {
+  it('returns null if takenBy is not set', () => {
+    expect(askTakenBy(msg({ id: 'q1' }))).toBeNull();
+  });
+
+  it('returns uid and name when takenBy is present', () => {
+    const m = msg({ id: 'q2', takenBy: 'ft1', takenByName: 'Mei Lin' });
+    expect(askTakenBy(m)).toEqual({ uid: 'ft1', name: 'Mei Lin' });
+  });
+
+  it('falls back to uid if takenByName is missing', () => {
+    const m = msg({ id: 'q3', takenBy: 'ft2' });
+    expect(askTakenBy(m)).toEqual({ uid: 'ft2', name: 'ft2' });
+  });
+});
+
+describe('askVisibleFor', () => {
+  const m1 = msg({ id: 'q1', from: 't1', at: hoursAgo(3) });
+  const m2 = msg({ id: 'q2', from: 't2', at: hoursAgo(2) });
+  const m3 = msg({ id: 'q3', from: 't1', at: hoursAgo(1) });
+  const all = [m1, m2, m3];
+
+  it('returns all top-level questions for full-timers, newest first', () => {
+    const res = askVisibleFor(all, 'ft1', true);
+    expect(res.map((x) => x.id)).toEqual(['q3', 'q2', 'q1']);
+  });
+
+  it('returns only own questions for trainees, newest first', () => {
+    const res = askVisibleFor(all, 't1', false);
+    expect(res.map((x) => x.id)).toEqual(['q3', 'q1']);
+  });
+});
+
+describe('askUnreadFor', () => {
+  const q1 = msg({ id: 'q1', from: 't1' });
+  const q2 = msg({ id: 'q2', from: 't2' });
+  const r1 = msg({ id: 'r1', parentId: 'q1', from: 'ft1', kind: 'comment' });
+  const all = [q1, q2, r1];
+
+  it('counts unanswered questions from others that are unread for full-timers', () => {
+    const read = new Set(['ask:q1']);
+    const isRead = (key: string) => read.has(key);
+    // q1 is answered by ft1, q2 is unanswered and unread -> 1 unread
+    expect(askUnreadFor(all, 'ft1', true, isRead)).toBe(1);
+  });
+
+  it('counts unread replies from others for trainees', () => {
+    const isRead = (key: string) => key === 'ask:other';
+    // t1 owns q1, r1 is a reply from ft1 on q1 and not in read set -> 1 unread
+    expect(askUnreadFor(all, 't1', false, isRead)).toBe(1);
+    // if read set contains r1 -> 0 unread
+    expect(askUnreadFor(all, 't1', false, (k) => k === 'ask:r1')).toBe(0);
   });
 });

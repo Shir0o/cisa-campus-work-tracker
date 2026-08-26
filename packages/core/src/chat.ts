@@ -214,3 +214,40 @@ export function chatKindNote(room: ChatRoom): string {
 export function messagesScreenNote(total: number, unread: number): string {
   return unread > 0 ? `${unread} new` : String(total);
 }
+
+// ── Slack-shaped threads (#563) ─────────────────────────────────────────────
+
+/** Top-level messages in a conversation (replies filtered out). */
+export function convTopLevel(messages: ChatMessage[]): ChatMessage[] {
+  return messages.filter((m) => !m.parentId);
+}
+
+/** Replies belonging to a parent message, chronological. */
+export function convReplies(messages: ChatMessage[], parentId: string): ChatMessage[] {
+  return messages.filter((m) => m.parentId === parentId);
+}
+
+/** Total reply count for a message. */
+export function convReplyCount(messages: ChatMessage[], parentId: string): number {
+  return convReplies(messages, parentId).length;
+}
+
+/** Unique uids of users who replied to a message, in order of first reply. */
+export function convRepliers(messages: ChatMessage[], parentId: string): string[] {
+  const seen = new Set<string>();
+  const repliers: string[] = [];
+  for (const r of convReplies(messages, parentId)) {
+    if (r.senderId && !seen.has(r.senderId)) {
+      seen.add(r.senderId);
+      repliers.push(r.senderId);
+    }
+  }
+  return repliers;
+}
+
+/** The latest reply to a message, if any. */
+export function convLastReply(messages: ChatMessage[], parentId: string): ChatMessage | undefined {
+  const replies = convReplies(messages, parentId);
+  return replies[replies.length - 1];
+}
+

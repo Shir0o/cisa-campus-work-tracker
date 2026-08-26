@@ -25,6 +25,8 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
   owner: data.owner ?? data.from ?? "",
   from: data.from ?? "",
   fromName: data.fromName ?? "",
+  takenBy: data.takenBy ?? null,
+  takenByName: data.takenByName ?? null,
   kind: (data.kind as AskKind) ?? "question",
   body: data.body ?? "",
   at: data.at ?? new Date().toISOString(),
@@ -90,6 +92,34 @@ export async function addAsk(
     reactions: [],
   });
 }
+
+export interface AskForInput {
+  askerId: string;
+  askerName: string;
+  takenBy: string;
+  takenByName: string;
+  body: string;
+}
+
+/** Record a question asked in person (#563) on behalf of a trainee. */
+export async function addAskFor(
+  db: Firestore,
+  input: AskForInput,
+): Promise<void> {
+  await addDoc(col(db), {
+    parentId: null,
+    owner: input.askerId,
+    from: input.askerId,
+    fromName: input.askerName,
+    takenBy: input.takenBy,
+    takenByName: input.takenByName,
+    kind: "question" as AskKind,
+    body: input.body.trim(),
+    at: new Date().toISOString(),
+    reactions: [],
+  });
+}
+
 
 /** Answer a question. `notifyTo`, when set (the asker's uid), calls `onNotify`
  *  with the bell payload — the first full-timer to reply takes it off every

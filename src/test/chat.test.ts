@@ -230,7 +230,8 @@ describe('chat.ts services', () => {
         senderPhoto: 'p1',
         timestamp: 'SERVER_TS',
         type: 'text',
-        attachments: []
+        attachments: [],
+        parentId: null,
       });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1', {
@@ -286,7 +287,8 @@ describe('chat.ts services', () => {
         senderPhoto: '',
         timestamp: 'SERVER_TS',
         type: 'text',
-        attachments: [attachment]
+        attachments: [attachment],
+        parentId: null,
       });
 
       expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1', {
@@ -306,6 +308,38 @@ describe('chat.ts services', () => {
         type: 'info',
         targetId: 'r1',
         link: '/messages/r1',
+      });
+    });
+
+    it('sends reply in thread with parentId and updates room preview with thread prefix (#563)', async () => {
+      await sendMessage(
+        'r1',
+        'reply in thread',
+        { uid: 'u1', displayName: 'User One' },
+        undefined,
+        ['u1', 'u2'],
+        'parent-msg-1'
+      );
+
+      expect(mockAddDoc).toHaveBeenCalledWith('col:chatRooms/r1/messages', {
+        roomId: 'r1',
+        text: 'reply in thread',
+        senderId: 'u1',
+        senderName: 'User One',
+        senderPhoto: '',
+        timestamp: 'SERVER_TS',
+        type: 'text',
+        attachments: [],
+        parentId: 'parent-msg-1',
+      });
+
+      expect(mockUpdateDoc).toHaveBeenCalledWith('doc:chatRooms/r1', {
+        lastMessage: {
+          text: 'in a thread: reply in thread',
+          senderId: 'u1',
+          senderName: 'User One',
+          timestamp: 'SERVER_TS',
+        },
       });
     });
   });

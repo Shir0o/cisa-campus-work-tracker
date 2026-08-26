@@ -22,6 +22,9 @@ vi.mock('../App', () => ({
 // Mock Firebase
 vi.mock('../lib/firebase', () => ({
   db: 'mock-db',
+  handleFirestoreError: vi.fn(),
+  sendNotification: vi.fn(),
+  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE' },
 }));
 
 // Mock Todos
@@ -30,6 +33,22 @@ vi.mock('../lib/todos', async (importOriginal) => {
   return {
     ...actual,
     setTodoDone: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+// Mock Asks
+vi.mock('../lib/asks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/asks')>();
+  return {
+    ...actual,
+    subscribeAsks: vi.fn((cb: any) => {
+      cb([]);
+      return () => {};
+    }),
+    subscribeMyAsks: vi.fn((_uid: any, cb: any) => {
+      cb([]);
+      return () => {};
+    }),
   };
 });
 
@@ -62,14 +81,18 @@ vi.mock('firebase/firestore', () => {
 });
 
 // Mock Chat Service
-vi.mock('../services/chat', () => ({
-  sendMessage: vi.fn().mockResolvedValue(undefined),
-  reactToMessage: vi.fn().mockResolvedValue(undefined),
-  togglePinMessage: vi.fn().mockResolvedValue(undefined),
-  removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
-  deleteChatRoom: vi.fn().mockResolvedValue(undefined),
-  canRemoveConvForEveryone: vi.fn().mockImplementation((r: any, uid: any, isAdmin: any) => Boolean(isAdmin || (r && r.createdById === uid))),
-}));
+vi.mock('../services/chat', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../services/chat')>();
+  return {
+    ...actual,
+    sendMessage: vi.fn().mockResolvedValue(undefined),
+    reactToMessage: vi.fn().mockResolvedValue(undefined),
+    togglePinMessage: vi.fn().mockResolvedValue(undefined),
+    removeMessageForEveryone: vi.fn().mockResolvedValue(undefined),
+    deleteChatRoom: vi.fn().mockResolvedValue(undefined),
+    canRemoveConvForEveryone: vi.fn().mockImplementation((r: any, uid: any, isAdmin: any) => Boolean(isAdmin || (r && r.createdById === uid))),
+  };
+});
 
 // Mock modals to support full callback interaction
 vi.mock('../components/modals/CreateChatModal', () => ({

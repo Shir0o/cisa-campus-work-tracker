@@ -4246,4 +4246,170 @@ body.msgs-fullscreen .msgs-rail { display: none; }
   font-size: 14px;
 }
 
+/* ── Threads in Messages, Slack-shaped (#563, Aug 2026) ──────────────────────
+   A message can carry replies; the stream keeps only top-level messages and the
+   replies live in a pane beside them, so answering something never pushes the
+   room along. "Questions for the team" is the same shape over the ask channel. */
+.msgb-thread {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 5px 10px 5px 6px;
+  border: 0;
+  background: none;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--accent);
+  text-align: left;
+}
+.msgb-thread:hover { background: var(--hover); }
+.msgb-thread-who { display: flex; align-items: center; }
+.msgb-thread-who .avatar, .msgb-thread-who > div {
+  width: 20px;
+  height: 20px;
+  font-size: 9.5px;
+  margin-right: -6px;
+  box-shadow: 0 0 0 2px var(--panel);
+}
+.msgb-thread-l { font-weight: 500; }
+.msgb-thread-when { color: var(--text-mute); }
+.msgs-item-inthread { color: var(--text-mute); }
+
+.msgs-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-left: 1px solid var(--border-soft);
+  background: var(--panel);
+}
+.msgs-pane-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-soft);
+  flex: none;
+}
+.msgs-pane-title { font-size: 15px; font-weight: 600; }
+.msgs-pane-sub {
+  font-size: 12.5px;
+  color: var(--text-mute);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.msgs-pane-head > div { min-width: 0; }
+.msgs-pane-stream {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.msgs-pane-count, .msgs-pane-none {
+  font-size: 12.5px;
+  color: var(--text-mute);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.msgs-pane-count::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--border-soft);
+}
+.msgs-pane .msgb-col { max-width: 100%; }
+.msgs-pane-composer { padding: 12px 20px; }
+
+/* The channel of person-less questions */
+.msgs-cluster.ask { background: var(--accent-soft); color: var(--accent); }
+.aska .msgb-name { display: flex; align-items: center; gap: 8px; }
+.aska-role { font-weight: 400; font-size: 11.5px; color: var(--text-mute); }
+.aska-pen { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--text-mute); }
+.aska-waiting { font-size: 11.5px; color: var(--amber, var(--text-mute)); }
+.aska.open .msgb-bubble { box-shadow: inset 0 0 0 1px var(--accent-line); }
+.aska-plain .msgb-col { max-width: 100%; }
+.aska-plain.is-reply .msgb-bubble { background: var(--panel-2); }
+.aska-modes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.aska-modes .msgs-pill { white-space: nowrap; }
+.aska-who { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.aska-who-l { font-size: 12.5px; color: var(--text-mute); }
+.aska-whobtn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 12px 0 6px;
+  border: 1px solid var(--border-soft);
+  background: var(--panel);
+  border-radius: 100vh;
+  font: inherit;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.aska-whobtn:hover { color: var(--text); }
+.aska-whobtn.on { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.aska-whobtn .avatar, .aska-whobtn > div { width: 24px; height: 24px; font-size: 10px; }
+.aska-note { margin: 8px 0 0; font-size: 12px; color: var(--text-mute); }
+
+@media (min-width: 1200px) {
+  .page.msgs:has(.msgs-pane) {
+    grid-template-columns: 336px minmax(0, 1fr) 372px;
+  }
+}
+@media (min-width: 721px) {
+  .msgs-pane {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+  }
+}
+@media (min-width: 861px) and (max-width: 1199px) {
+  .page.msgs { position: relative; }
+  .msgs-pane {
+    position: absolute;
+    top: var(--page-pad-top);
+    bottom: var(--page-pad-x);
+    right: var(--page-pad-x);
+    width: min(420px, 72%);
+    z-index: 8;
+    box-shadow: var(--shadow-pop);
+  }
+}
+@media (max-width: 860px) {
+  .page.msgs { position: relative; }
+  .msgs-pane {
+    position: absolute;
+    top: var(--page-pad-top);
+    right: var(--page-pad-x);
+    bottom: var(--page-pad-x);
+    left: var(--page-pad-x);
+    z-index: 9;
+  }
+}
+@media (max-width: 720px) {
+  .msgs-pane {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    border-radius: 0;
+    border: 0;
+  }
+  .msgs-pane-head { padding: 12px 16px; }
+  .msgs-pane-stream { padding: 16px; }
+  .msgs-pane-composer { padding: 10px 16px calc(10px + env(safe-area-inset-bottom)); }
+  .aska-composer { padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+}
+
+
 

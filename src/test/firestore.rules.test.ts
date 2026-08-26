@@ -1269,10 +1269,42 @@ describeRules('Firestore Security Rules', () => {
       await assertSucceeds(setDoc(doc(db, 'asks', 'ask1'), newAsk()));
     });
 
-    it('ASK2: nobody can file a question in someone else\'s name', async () => {
+    it('ASK2: nobody can file a question in someone else\'s name without takenBy', async () => {
       await seedAskUsers();
       const db = getFirestore({ uid: 'ft1' });
       await assertFails(setDoc(doc(db, 'asks', 'ask2'), newAsk({ from: 'trainee1' })));
+    });
+
+    it('ASK2b: a full-timer can write down a question on behalf of a trainee with takenBy (#563)', async () => {
+      await seedAskUsers();
+      const ftDb = getFirestore({ uid: 'ft1' });
+      // Admin filing on behalf of trainee1 with takenBy: 'ft1' succeeds
+      await assertSucceeds(
+        setDoc(
+          doc(ftDb, 'asks', 'ask2b'),
+          newAsk({
+            from: 'trainee1',
+            owner: 'trainee1',
+            fromName: 'Zion Park',
+            takenBy: 'ft1',
+            takenByName: 'Mei Lin',
+          }),
+        ),
+      );
+
+      // Trainee cannot file on behalf of someone else even with takenBy
+      const traineeDb = getFirestore({ uid: 'trainee1' });
+      await assertFails(
+        setDoc(
+          doc(traineeDb, 'asks', 'ask2c'),
+          newAsk({
+            from: 'trainee2',
+            owner: 'trainee2',
+            fromName: 'Other Trainee',
+            takenBy: 'trainee1',
+          }),
+        ),
+      );
     });
 
     it('ASK3: a student cannot ask the team', async () => {

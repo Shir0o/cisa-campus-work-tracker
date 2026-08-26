@@ -410,6 +410,8 @@ service cloud.firestore {
                (data.parentId == null || (data.parentId is string && data.parentId.size() <= 128)) &&
                isValidId(data.owner) && isValidId(data.from) &&
                data.fromName is string && data.fromName.size() <= 128 &&
+               (!('takenBy' in data) || data.takenBy == null || (data.takenBy is string && isValidId(data.takenBy))) &&
+               (!('takenByName' in data) || data.takenByName == null || (data.takenByName is string && data.takenByName.size() <= 128)) &&
                data.kind in ['question', 'comment'] &&
                data.body is string && data.body.size() > 0 && data.body.size() <= 5000 &&
                data.at is string && data.at.size() <= 40 &&
@@ -420,7 +422,10 @@ service cloud.firestore {
       allow get, list: if isApprovedUser() && (resource.data.owner == request.auth.uid || isAdmin());
       allow create: if isValidId(askId) && isApprovedUser() && isManager() &&
                       isValidAsk(incoming()) &&
-                      incoming().from == request.auth.uid &&
+                      (
+                        incoming().from == request.auth.uid ||
+                        (isAdmin() && incoming().get('takenBy', null) == request.auth.uid)
+                      ) &&
                       incoming().reactions.size() == 0;
       // Reactions: any approved staff may toggle reactions on a message they can
       // read; body edits stay with the author (kind/from/at/owner are immutable).

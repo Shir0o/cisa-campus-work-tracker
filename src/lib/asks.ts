@@ -30,6 +30,8 @@ export interface AskMessage {
   // read their own question AND the replies on it (rules can't follow parentId)
   from: string; // staff uid
   fromName: string;
+  takenBy?: string | null; // uid of the full-timer who wrote down the in-person question (#563)
+  takenByName?: string | null;
   kind: AskKind;
   body: string;
   at: string; // ISO
@@ -45,6 +47,8 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
   owner: data.owner ?? data.from ?? "",
   from: data.from ?? "",
   fromName: data.fromName ?? "",
+  takenBy: data.takenBy ?? null,
+  takenByName: data.takenByName ?? null,
   kind: (data.kind as AskKind) ?? "question",
   body: data.body ?? "",
   at: data.at ?? new Date().toISOString(),
@@ -143,6 +147,38 @@ export function askStacksFor(messages: AskMessage[], uid: string): AskStack[] {
   return stacks.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
+/** Who recorded this question in person, if it was asked out loud (#563). */
+export function askTakenBy(m: AskMessage): { uid: string; name: string } | null {
+  return m.takenBy ? { uid: m.takenBy, name: m.takenByName || m.takenBy } : null;
+}
+
+/** A full-timer reads every question; anyone else reads their own (#563). */
+export function askVisibleFor(
+  messages: AskMessage[],
+  uid: string,
+  isFullTimer: boolean,
+): AskMessage[] {
+  return isFullTimer ? askQuestions(messages) : askQuestionsBy(messages, uid);
+}
+
+/** Unread question count for the Messages channel header row (#563). */
+export function askUnreadFor(
+  messages: AskMessage[],
+  uid: string,
+  isFullTimer: boolean,
+  isRead: (key: string) => boolean,
+): number {
+  const mine = askVisibleFor(messages, uid, isFullTimer);
+  if (isFullTimer) {
+    return mine.filter(
+      (m) => m.from !== uid && !askAnswered(messages, m) && !isRead("ask:" + m.id),
+    ).length;
+  }
+  return mine.filter((m) =>
+    askRepliesOf(messages, m.id).some((r) => r.from !== uid && !isRead("ask:" + r.id)),
+  ).length;
+}
+
 /** Ask a question. */
 export async function addAsk(input: {
   from: string;
@@ -164,6 +200,36 @@ export async function addAsk(input: {
     handleFirestoreError(e, OperationType.CREATE, "asks");
   }
 }
+
+export interface AskForInput {
+  askerId: string;
+  askerName: string;
+  takenBy: string;
+  takenByName: string;
+  body: string;
+}
+
+/** Record a question asked in person (#563) on behalf of a trainee. */
+export async function addAskFor(input: AskForInput): Promise<void> {
+  const body = input.body.trim();
+  try {
+    await addDoc(col(), {
+      parentId: null,
+      owner: input.askerId,
+      from: input.askerId,
+      fromName: input.askerName,
+      takenBy: input.takenBy,
+      takenByName: input.takenByName,
+      kind: "question" as AskKind,
+      body,
+      at: new Date().toISOString(),
+      reactions: [],
+    });
+  } catch (e) {
+    handleFirestoreError(e, OperationType.CREATE, "asks");
+  }
+}
+
 
 /** Answer a question; pings the asker's bell when `notifyTo` is set. */
 export async function addAskReply(

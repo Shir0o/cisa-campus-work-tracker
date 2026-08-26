@@ -19,6 +19,11 @@ import {
   chatRowPreview,
   chatKindNote,
   messagesScreenNote,
+  convTopLevel,
+  convReplies,
+  convReplyCount,
+  convRepliers,
+  convLastReply,
   type ChatUserSummary,
 } from '../src/chat';
 import type { AppUser, ChatMessage, ChatRoom } from '../src/types';
@@ -321,5 +326,39 @@ describe('mobile v2 Messages copy', () => {
     expect(messagesScreenNote(0, 0)).toBe('0');
   });
 });
+
+describe('Slack-shaped threads (#563)', () => {
+  const root1 = message({ id: 'm1', text: 'Root message 1' });
+  const root2 = message({ id: 'm2', text: 'Root message 2' });
+  const reply1_1 = message({ id: 'r1_1', parentId: 'm1', senderId: 'user1', text: 'Reply 1' });
+  const reply1_2 = message({ id: 'r1_2', parentId: 'm1', senderId: 'user2', text: 'Reply 2' });
+  const reply1_3 = message({ id: 'r1_3', parentId: 'm1', senderId: 'user1', text: 'Reply 3' });
+  const all = [root1, root2, reply1_1, reply1_2, reply1_3];
+
+  it('convTopLevel returns only messages with no parentId', () => {
+    expect(convTopLevel(all).map((m) => m.id)).toEqual(['m1', 'm2']);
+  });
+
+  it('convReplies returns replies for the specific parentId', () => {
+    expect(convReplies(all, 'm1').map((r) => r.id)).toEqual(['r1_1', 'r1_2', 'r1_3']);
+    expect(convReplies(all, 'm2')).toEqual([]);
+  });
+
+  it('convReplyCount returns count of replies', () => {
+    expect(convReplyCount(all, 'm1')).toBe(3);
+    expect(convReplyCount(all, 'm2')).toBe(0);
+  });
+
+  it('convRepliers returns unique user IDs who replied in order', () => {
+    expect(convRepliers(all, 'm1')).toEqual(['user1', 'user2']);
+    expect(convRepliers(all, 'm2')).toEqual([]);
+  });
+
+  it('convLastReply returns the latest reply for a message', () => {
+    expect(convLastReply(all, 'm1')?.id).toBe('r1_3');
+    expect(convLastReply(all, 'm2')).toBeUndefined();
+  });
+});
+
 
 
