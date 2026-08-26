@@ -174,8 +174,10 @@ export interface DayInfo {
   sub: string;
 }
 
-export const dayInfo = (iso: string, now: number = Date.now()): DayInfo => {
+export const dayInfo = (iso: string | null | undefined, now: number = Date.now()): DayInfo => {
+  if (!iso) return { label: "", sub: "" };
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { label: "", sub: "" };
   const nowD = new Date(now);
   const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
   const diff = Math.round((startOf(nowD) - startOf(d)) / 86_400_000);

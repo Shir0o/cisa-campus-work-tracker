@@ -95,6 +95,14 @@ describe('relTime', () => {
     const out = relTime('2020-06-03T00:00:00Z');
     expect(out).toContain('2020');
   });
+
+  it('handles invalid, empty, or missing inputs in relTime gracefully', () => {
+    expect(relTime('')).toBe('');
+    expect(relTime(null as any)).toBe('');
+    expect(relTime(undefined as any)).toBe('');
+    expect(relTime('invalid-date')).toBe('');
+    expect(relTime('not a date string')).toBe('');
+  });
 });
 
 describe('ntfWhen', () => {
@@ -115,6 +123,13 @@ describe('ntfWhen', () => {
 
   it('falls back to relTime for past dates', () => {
     expect(ntfWhen(pastIso(5 * 60_000))).toBe('5m ago');
+  });
+
+  it('handles invalid, empty, or missing inputs in ntfWhen gracefully', () => {
+    expect(ntfWhen('')).toBe('');
+    expect(ntfWhen(null as any)).toBe('');
+    expect(ntfWhen(undefined as any)).toBe('');
+    expect(ntfWhen('invalid-date')).toBe('');
   });
 });
 

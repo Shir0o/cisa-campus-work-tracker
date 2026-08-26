@@ -223,8 +223,10 @@ const humanize = (a: Hist): Humanized => {
 // Day markers use the shared date-bucket cut-offs for the Today/Yesterday
 // boundary, then fall back to finer per-day labels so the stream keeps its
 // per-day rhythm instead of collapsing into week buckets.
-const dayInfo = (iso: string) => {
+const dayInfo = (iso: string | null | undefined) => {
+  if (!iso) return { label: "", sub: "" };
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return { label: "", sub: "" };
   const md = d.toLocaleDateString(undefined, { month: "long", day: "numeric" });
   const bucket = bucketFor(iso);
   if (bucket === "today" || bucket === "yesterday") {
