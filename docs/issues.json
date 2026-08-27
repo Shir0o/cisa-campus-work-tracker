@@ -1,8 +1,208 @@
 [
   {
-    "id": 5260547422,
-    "number": 595,
-    "title": "[Feedback] thought: the needs your attention section on home page is hard to go through because there are so many contacts, what can we do?",
+    "id": 5272974850,
+    "number": 632,
+    "title": "E2E: Integration and CI Verification Suite (#628)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11252226735,
+        "name": "testing",
+        "color": "0E8A16",
+        "description": "Test coverage & test infra"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T23:13:59Z",
+    "updated_at": "2026-08-27T23:13:59Z",
+    "closed_at": null,
+    "body": "## Parent\n\nPart of #628\n\n## What to build\n\nIntegrates all new and existing Playwright E2E specs into a single, cohesive, deterministic CI test harness executing against the Firebase emulator with zero cloud secrets.\n\n## Acceptance criteria\n\n- [ ] All new and existing E2E specs pass cleanly in the emulator environment\n- [ ] Test execution is deterministic without race conditions or memory leaks\n- [ ] Updated E2E documentation and execution scripts in `e2e/README.md` and `package.json`\n\n## Blocked by\n\n- #629\n- #630\n- #631",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/632",
+    "is_pull_request": false
+  },
+  {
+    "id": 5272974616,
+    "number": 631,
+    "title": "E2E: Cross-Role Journey Progression & Action Vocabulary (#628)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11252226735,
+        "name": "testing",
+        "color": "0E8A16",
+        "description": "Test coverage & test infra"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T23:13:56Z",
+    "updated_at": "2026-08-27T23:13:56Z",
+    "closed_at": null,
+    "body": "## Parent\n\nPart of #628\n\n## What to build\n\nVertical end-to-end tests exercising complete contact lifecycle workflows across multiple roles. Verifies creating contacts via Quick Capture, advancing them across Journey pipeline stages, applying tags, and asserting consistent action vocabulary across all 4 role views.\n\n## Acceptance criteria\n\n- [ ] Contacts created through Quick Capture correctly persist initial tags and stage\n- [ ] Stage transitions and status changes reflect across Journey boards in real time\n- [ ] Verified across Full-timer, Trainee, and Student permissions\n- [ ] All assertions execute deterministically via `npm run test:e2e:emulator`\n\n## Blocked by\n\nNone (can start immediately)",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/631",
+    "is_pull_request": false
+  },
+  {
+    "id": 5272974261,
+    "number": 630,
+    "title": "E2E: Walking-Together Contact Threads & Team Confidentiality (#628)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11252226735,
+        "name": "testing",
+        "color": "0E8A16",
+        "description": "Test coverage & test infra"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T23:13:53Z",
+    "updated_at": "2026-08-27T23:13:53Z",
+    "closed_at": null,
+    "body": "## Parent\n\nPart of #628\n\n## What to build\n\nVertical end-to-end tests validating pastoral walking-together conversations. Full-timers can post conversation notes and team-scoped coordination discussions on contact profiles, Trainees can view permitted contact threads, and team-scoped confidential discussions remain strictly hidden from non-admin roles.\n\n## Acceptance criteria\n\n- [ ] Full-timer can post conversation notes and thread updates on a contact profile\n- [ ] Trainees and non-admin staff can view general threads without encountering Firestore permission-denied errors\n- [ ] Team-scoped confidential notes remain hidden from non-admin accounts\n- [ ] All assertions execute deterministically via `npm run test:e2e:emulator`\n\n## Blocked by\n\nNone (can start immediately)",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/630",
+    "is_pull_request": false
+  },
+  {
+    "id": 5272973960,
+    "number": 629,
+    "title": "E2E: Administrative Settings & Gospel Partner Assignments (#628)",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11252226735,
+        "name": "testing",
+        "color": "0E8A16",
+        "description": "Test coverage & test infra"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T23:13:49Z",
+    "updated_at": "2026-08-27T23:13:49Z",
+    "closed_at": null,
+    "body": "## Parent\n\nPart of #628\n\n## What to build\n\nEnd-to-end browser tests verifying administrative settings and gospel partner assignment workflows. Full-timers can manage semester partner configurations and member roles in Settings, while non-admin roles (Trainees, Students, Community) are strictly gated from viewing or mutating administrative configuration.\n\n## Acceptance criteria\n\n- [ ] Full-timer admin can access Settings, navigate partner configuration, and manage member assignments\n- [ ] Trainee, Student, and Community roles are restricted from mutating administrative partner settings\n- [ ] All assertions execute deterministically via `npm run test:e2e:emulator` with zero console/permission errors\n\n## Blocked by\n\nNone (can start immediately)",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/629",
+    "is_pull_request": false
+  },
+  {
+    "id": 5272968742,
+    "number": 628,
+    "title": "E2E Test Suite Expansion for Closed User Stories and Workflows",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11252226735,
+        "name": "testing",
+        "color": "0E8A16",
+        "description": "Test coverage & test infra"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T23:12:57Z",
+    "updated_at": "2026-08-27T23:12:57Z",
+    "closed_at": null,
+    "body": "## Problem Statement\n\nWhile core permission routes and individual messaging flows have basic E2E smoke tests, multiple critical user stories and workflows from closed epics (such as Settings administrative management & gospel partner pairings, Walking-Together thread discussions, notification stacking/attention feeds, and role-scoped contact interactions) lack dedicated, deterministic End-to-End test coverage. Without automated E2E validation against real browser interactions and the Firebase emulator, regression risks remain high when updating Firestore security rules, client-side data queries, and role-based UI gating.\n\n## Solution\n\nImplement an expanded, automated Playwright E2E test suite running against the local Firebase emulator (with zero secrets required) that systematically validates un-implemented user stories across the application lifecycle:\n1. **Administrative Settings & Gospel Partner Management**: Verify full-timer admin configuration, semester partner assignments, and permission restrictions preventing non-admins from altering team structures.\n2. **Walking-Together Threads & Confidentiality**: Verify role-scoped thread visibility, conversation replies, and exclusion of team-scoped discussions from unauthorized roles.\n3. **Cross-Role Contact Management & Action Vocabulary**: Verify creating, updating, tagging, and progressing contacts through journey stages without permission failures.\n4. **Attention Feeds & Multi-Persona Impersonation**: Verify live state reactivity, attention feed actions (done/read states), and clean role simulation for staff oversight.\n\n## User Stories\n\n1. As a Full-timer Admin, I want to navigate to Settings and manage gospel partner assignments for the semester, so that partners are correctly paired in the database.\n2. As a Trainee Manager, I want Settings to hide or disable administrative configuration panels, so that I do not inadvertently modify system-wide settings.\n3. As a Student Operator, I want attempting to access restricted administrative routes to redirect cleanly to authorized views, so that unauthorized data access is prevented.\n4. As a Full-timer Admin, I want to open a contact's Walking-Together thread and post a team-scoped discussion item, so that sensitive coordination notes are shared only with full-time staff.\n5. As a Trainee Manager, I want to view general walking-together thread entries for assigned contacts while restricted notes remain hidden, so that I have pastoral context without permission violations.\n6. As a Full-timer Admin, I want to simulate Trainee, Student, and Community views using \\\"See as their view\\\", so that I can audit permissions and user experiences across all 4 tiers without logging out.\n7. As a Trainee, I want to create a new contact via Quick Capture and verify that initial tags and stages are correctly persisted, so that new students are immediately tracked.\n8. As a Student Operator, I want to view my assigned contacts and mark interactions or attendance, so that gathering records remain accurate.\n9. As a Community Member, I want to access public prayer and gathering details without encountering missing-permission errors or broken UI skeletons.\n10. As a Full-timer Admin, I want to review submitted user feedback and manage triage items in the admin feedback dashboard, so that community suggestions are acted upon.\n11. As a Developer, I want to execute `npm run test:e2e:emulator` locally without requiring cloud API secrets, so that the entire user story regression suite can be verified before pushing PRs.\n12. As a DevOps Engineer, I want the E2E test suite to run reliably and deterministically on CI, so that broken user story workflows block merges to `main`.\n\n## Implementation Decisions\n\n- **Emulator First Architecture**: Tests will run against the local Firebase Auth and Firestore emulators with pre-seeded standard test accounts (`fulltimer`, `trainee`, `student`, `community`).\n- **High-Level User Interaction Seams**: Tests will interact strictly through top-level user surfaces (navigation links, buttons, form inputs, modal dialogs, and text assertions) rather than internal React hook state or component props.\n- **Role Matrix Verification**: Tests will exercise authorization boundaries across all 4 role tiers (`admin`, `manager`, `operator`, `viewer`).\n- **Safe State Isolation**: Each spec file will operate with clean test runs, leveraging the browser context isolation provided by Playwright.\n\n## Testing Decisions\n\n- **External Behavior Focus**: All assertions test user-visible outcomes (URL transitions, rendered cards, status badges, error toast absences) and security rule rejection behavior.\n- **Target Modules Tested**:\n  - `e2e/settings-partner-management.spec.ts` (Administrative settings, gospel partners, role access).\n  - `e2e/walking-together-threads.spec.ts` (Contact thread conversations, team confidentiality, multi-role views).\n  - Expanded coverage in existing `e2e/quick-capture.spec.ts`, `e2e/the-journey-board.spec.ts`, and `e2e/feedback-submission.spec.ts`.\n- **Prior Art**: `e2e/asks-questions-for-team.spec.ts` and `e2e/permissions.spec.ts`.\n\n## Out of Scope\n\n- Modifying the underlying React application code or Firestore security rules unless a genuine bug/regression is uncovered by the tests.\n- Cloud Storage bucket file uploads in tests (handled via emulator unit testing).\n\n## Further Notes\n\n- Run locally via `npm run test:e2e:emulator`.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/628",
+    "is_pull_request": false
+  },
+  {
+    "id": 5264055254,
+    "number": 611,
+    "title": "[Feedback] request: make a distinguishing between someone asked directly or recorded by a full-timer of someone's question",
     "state": "open",
     "label": "OPEN",
     "user": {
@@ -26,9 +226,287 @@
     ],
     "assignees": [],
     "comments": 0,
-    "created_at": "2026-08-26T19:06:56Z",
-    "updated_at": "2026-08-26T19:06:56Z",
+    "created_at": "2026-08-27T04:59:01Z",
+    "updated_at": "2026-08-27T04:59:01Z",
     "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/27/2026, 4:59:01 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmake a distinguishing between someone asked directly or recorded by a full-timer of someone's question\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/zYrK1pbBJa86V2M9xA1v/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/611",
+    "is_pull_request": false
+  },
+  {
+    "id": 5264045717,
+    "number": 610,
+    "title": "[Feedback] off: feedback btn overlap on messages page with send message button",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T04:57:08Z",
+    "updated_at": "2026-08-27T23:12:21Z",
+    "closed_at": "2026-08-27T23:12:21Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/27/2026, 4:57:08 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nfeedback btn overlap on messages page with send message button\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/mJpP0CqJTGrrVtKrAElU/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/610",
+    "is_pull_request": false
+  },
+  {
+    "id": 5263730099,
+    "number": 609,
+    "title": "[Feedback] off: the screenshot to github may not be working?",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-27T03:56:52Z",
+    "updated_at": "2026-08-27T23:41:06Z",
+    "closed_at": "2026-08-27T23:41:06Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/27/2026, 3:56:52 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe screenshot to github may not be working?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/oxRiCTzYz6KTbsgT1Lfg/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/609",
+    "is_pull_request": false
+  },
+  {
+    "id": 5263729238,
+    "number": 608,
+    "title": "[Feedback] off: In training -> should be trainee",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T03:56:42Z",
+    "updated_at": "2026-08-27T23:57:26Z",
+    "closed_at": "2026-08-27T23:57:26Z",
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/27/2026, 3:56:41 AM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nIn training -> should be trainee\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/91NUk9IaKNOxih580ZYm/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/608",
+    "is_pull_request": false
+  },
+  {
+    "id": 5263522743,
+    "number": 605,
+    "title": "Fix Firestore security rules CI test suite failures blocking automated rules deployment",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T03:18:35Z",
+    "updated_at": "2026-08-27T03:52:10Z",
+    "closed_at": "2026-08-27T03:52:10Z",
+    "body": "## Problem Statement\n\nAutomated continuous deployment of Firestore security rules (`Deploy Firestore Rules` GitHub Actions workflow) is currently blocked at the `test-rules` pre-deploy gate. When the workflow executes the rules test suite against the Firestore emulator, the job fails with exit code 1 due to 3 failing test cases:\n\n1. `Settings (season) > SP2: Admin can write settings/partners` fails with `FirebaseError: Function setDoc() called with invalid data. Nested arrays are not supported (found in document settings/partners)`.\n2. `Settings (season) > SP3: Manager cannot write settings/partners` fails with the same nested array validation error from the Firebase client SDK.\n3. `Walking-together threads > collection-group thread lists hide team-scope from non-admins` fails with `AssertionError: expected [ 'team4' ] to not include 'team4'`.\n\nBecause the CI pipeline gates rule deployment on a 100% passing test suite (`needs: test-rules`), no updated Firestore rules or database indexes can be automatically released to production upon merging to `main`. This leads to silent divergence between git-committed security rules and live database rules, causing runtime `permission-denied` errors on newly introduced collections.\n\n## Solution\n\nResolve the test suite failures in the Firestore security rules test runner and ensure all test payloads comply with Cloud Firestore client SDK requirements:\n1. Update the gospel partners settings test cases (`SP2` and `SP3`) to use valid Firestore map data structures for partner groups rather than nested multidimensional arrays (`string[][]`), which are rejected by the Firestore SDK client-side.\n2. Align the collection-group thread scoping rules test to correctly verify team-scope isolation between Full-timer admins and non-admin staff.\n3. Ensure the automated `Deploy Firestore Rules` workflow passes the `test-rules` gate and reliably publishes compiled rules and composite indexes to `sac-campus-hub` on merge to `main`.\n\n## User Stories\n\n1. As a full-timer admin, I want the automated rules deployment pipeline to remain green on every merge to main, so that database security rules stay in sync with the codebase without manual intervention.\n2. As a software developer, I want the Firestore rules test suite to run without client-side SDK payload validation errors, so that CI can accurately test security boundary enforcement.\n3. As a full-timer admin, I want gospel partner assignments to be saved with supported Firestore data structures, so that writing to settings/partners never throws nested array exceptions.\n4. As a full-timer admin, I want only admins to be permitted to update settings/partners in Firestore, so that trainees or unauthorized members cannot overwrite semester partner pairings.\n5. As a trainee manager, I want attempts to write to settings/partners to be rejected by Firestore security rules, so that administrative settings remain tamper-proof.\n6. As a full-timer admin, I want team-scope Discussion messages in walking-together threads to remain hidden from non-admin staff in collection-group queries, so that sensitive team discussions remain confidential.\n7. As a student operator, I want general walking-together thread messages to remain visible across my contacts while team-scope discussions are excluded, so that I have context without seeing restricted administrative notes.\n8. As a DevOps engineer, I want the CI pipeline to run emulator-based rules verification on PRs and on main, so that regressions in security rules are caught before deployment.\n9. As an unapproved user, I want collection-group queries on threads to be rejected by security rules, so that unverified accounts cannot view member communications.\n10. As a software developer, I want emulator test cases to reflect real client query patterns, so that tests accurately validate production behavior.\n\n## Implementation Decisions\n\n- **Settings Partners Test Data Structure**:\n  - The Firestore JavaScript SDK explicitly rejects nested multidimensional arrays (e.g., `[['uid1', 'uid2']]`).\n  - In security rules, `isValidPartnerSettings` only validates that `byTerm` is a map.\n  - The test payloads for `SP2` and `SP3` will be updated to store partner groups as an array of group objects or a map of groups (e.g., `{ byTerm: { 'Fall 2026': ['trainee1', 'trainee2'] } }` or `{ byTerm: { 'Fall 2026': { 'pair1': ['trainee1', 'trainee2'] } } }`) so they pass client-side SDK validation and exercise the security rule permission checks (`admin` succeeds, `manager` fails, stray keys fail).\n\n- **Collection-Group Thread Scoping Test Alignment**:\n  - In Cloud Firestore, collection-group queries without query constraints evaluate rules based on available document metadata.\n  - The test case for collection-group thread visibility will be adjusted to properly reflect authorized query filtering for non-admin staff, ensuring that team-scoped discussion messages are appropriately partitioned and assertions match Firestore security rule semantics.\n\n- **Automated Pipeline Gate Integrity**:\n  - Preserve the existing `test-rules` dependency in the GitHub Actions deployment workflow to guarantee no rules are deployed if any test fails.\n  - Maintain keyless Workload Identity Federation (WIF) credentials for the deployment job.\n\n## Testing Decisions\n\n- **Test Boundaries**:\n  - Test only external security rule behavior using the official `@firebase/rules-unit-testing` harness against the local Firestore emulator.\n  - Test role authorization levels (`admin`, `manager`, `operator`, `viewer`, and unauthenticated/unapproved).\n  - Test data shape validation, forbidden field rejection, and query scoping.\n- **Modules Tested**:\n  - `src/test/firestore.rules.test.ts` (Firestore emulator rules test suite).\n  - `.github/workflows/deploy-firestore-rules.yml` (CI workflow execution).\n- **Prior Art**:\n  - Existing suite of 128 emulator tests in `src/test/firestore.rules.test.ts`.\n\n## Out of Scope\n\n- Changes to Cloud Storage security rules (`storage.rules`) or Realtime Database rules (`database.rules.json`).\n- Changes to the frontend React UI or mobile components.\n- Enabling Cloud Storage bucket on GCP (handled separately in Firebase Console).\n\n## Further Notes\n\n- Once this spec is implemented, all 128+ tests in `src/test/firestore.rules.test.ts` will pass, unblocking the `Deploy Firestore Rules` workflow and ensuring all future Firestore security rule additions deploy automatically.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/605",
+    "is_pull_request": false
+  },
+  {
+    "id": 5262760469,
+    "number": 603,
+    "title": "Fix Firestore permission-denied errors on Questions for the Team channel during role simulation and for non-staff roles",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686520,
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "id": 11970671140,
+        "name": "ready-for-agent",
+        "color": "0E8A16",
+        "description": "Ready for automated agent processing"
+      }
+    ],
+    "assignees": [],
+    "comments": 0,
+    "created_at": "2026-08-27T00:52:00Z",
+    "updated_at": "2026-08-27T02:34:17Z",
+    "closed_at": "2026-08-27T02:34:17Z",
+    "body": "## Problem Statement\n\nWhen Full-timers use the \"See as their view\" role preview feature (or when Trainees/Full-timers navigate to Messages > \"Questions for the team\"), snapshot subscriptions and question submissions on `/asks` fail with `FirebaseError: [code=permission-denied]: Missing or insufficient permissions.`. This breaks the in-app question channel for trainees and full-timers in preview mode. In addition, non-staff roles (such as Students) are improperly shown the channel entry point in the messaging rail despite having no permissions in Firestore rules to create questions.\n\n## Solution\n\n1. Ensure the Messages channel and Ask Channel always bind Firestore subscriptions and document creation to the user's real authenticated account identity, while continuing to simulate UI roles, display names, and preview personas for UI rendering.\n2. Restrict visibility of the \"Questions for the team\" channel row so only authorized staff roles (Full-timers and Trainees) see and interact with it, preventing permission-denied errors for student and community roles.\n\n## User Stories\n\n1. As a Full-timer testing the app via \"See as their view\" as a Trainee, I want to view the \"Questions for the team\" channel without permission errors, so that I can verify what questions trainees have asked.\n2. As a Full-timer testing the app via \"See as their view\" as a Trainee, I want to submit a new question to the team, so that I can test the asking experience without receiving a Firestore permission denied error.\n3. As a Trainee, I want to open the \"Questions for the team\" channel in Messages, so that I can see my pending questions and any answers received from full-timers.\n4. As a Trainee, I want to submit a question about campus work or ministry, so that any Full-timer can see and answer it.\n5. As a Full-timer, I want to view all open questions from all trainees in the \"Questions for the team\" channel, so that our team can answer them promptly.\n6. As a Full-timer, I want to reply to a trainee's question in the thread pane, so that the answer is shared with the asker and clears the team's waiting queue.\n7. As a Full-timer, I want to record an in-person question on behalf of a trainee, so that in-person conversations are captured for the rest of the team.\n8. As a Student member, I want the Messages navigation rail to display only conversations relevant to my role (such as direct and group chats), so that I am not exposed to staff-only oversight channels that reject my access.\n9. As a Community member, I want to see only conversations permitted for my account, so that my view is clean and free of inaccessible channels.\n10. As a Full-timer previewing a Student or Community role, I want the Messages channel list to accurately reflect the restricted member view, so that I can verify member experiences without encountering background listener errors.\n\n## Implementation Decisions\n\n- **Auth Identity vs. Preview Persona Seam:** When interacting with Firestore collections protected by ownership security rules (`resource.data.owner == request.auth.uid` or `incoming().from == request.auth.uid`), data access layers must use the real authenticated Firebase user ID for query filters and document ownership fields, while UI presentation layers use the active impersonation/preview persona for display names and role-based interface gating.\n- **Role-Gating for Team Asks Channel:** The \"Questions for the team\" channel row in the messaging interface must be strictly limited to Full-timer and Trainee roles (`admin` and `manager`). Student (`operator`) and Community (`viewer`) roles must not have the channel row rendered.\n- **Subscription Scoping:** Trainees subscribe to questions scoped by their user ID, while Full-timers subscribe across the entire collection. During role simulation by an authorized administrator, the query constraint must continue to align with Firestore rules so security evaluators do not reject unauthenticated or mismatched ownership filters.\n- **Preserve Immutable Audit Fields:** Question creation payload contracts (`owner`, `from`, `parentId`, `kind`, `body`, `at`, `reactions`) remain unchanged, guaranteeing backward compatibility with existing mobile and web consumers.\n\n## Testing Decisions\n\n- **Behavior-Driven Component Testing:** Tests should render the messaging navigation rail and Ask Channel across different simulated and real roles (`admin`, `manager`, `operator`, `viewer`) and assert on DOM visibility, user interactions, and dispatched payload structures without asserting on internal React hook implementation details.\n- **Channel Access Verification:** Verify that `admin` and `manager` roles render the \"Questions for the team\" item, while `operator` and `viewer` roles omit it.\n- **Submission & Subscription Verification:** Verify that submitting a question passes the user's authenticating ID to the document creation service and that errors are cleanly intercepted without throwing uncaught promises.\n- **Prior Art:** Existing tests in the test suite covering messaging channels, impersonation scopes, and Firestore security rules.\n\n## Out of Scope\n\n- Altering the backend Firestore security rules structure for `/asks` or lowering access boundaries.\n- Modifying trainee landing page widgets or mobile Ask the team screens that are functioning as intended.\n- Adding new role tiers or changing existing role hierarchy definitions.\n\n## Further Notes\n\n- Resolves the runtime error where `handleFirestoreError` threw an uncaught exception on `POST /asks` and background listeners failed on `onSnapshot`.",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/603",
+    "is_pull_request": false
+  },
+  {
+    "id": 5261656094,
+    "number": 600,
+    "title": "[Feedback] thought: Freshman",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-26T21:34:04Z",
+    "updated_at": "2026-08-26T23:31:49Z",
+    "closed_at": "2026-08-26T23:31:49Z",
+    "body": "### Feedback Details\n- **Submitted By:** Sarah Carvajal (sarahcarvajal13@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/26/2026, 9:34:03 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/SancnngbEviMUNihoggs\n- **Viewport:** 402x714 (DPR: 3)\n- **User Agent:** Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.6 Mobile/15E148 Safari/604.1\n\n### Message\n```text\nFreshman\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/LWgN9I7BF6GpMIZbD7gO/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/600",
+    "is_pull_request": false
+  },
+  {
+    "id": 5260987264,
+    "number": 597,
+    "title": "[Feedback] idea: Bible studies in this app?",
+    "state": "open",
+    "label": "OPEN",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 1,
+    "created_at": "2026-08-26T20:03:37Z",
+    "updated_at": "2026-08-26T23:32:05Z",
+    "closed_at": null,
+    "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/26/2026, 8:03:37 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nBible studies in this app?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/RIXuoHbi811oZGvtOjEl/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
+    "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/597",
+    "is_pull_request": false
+  },
+  {
+    "id": 5260547422,
+    "number": 595,
+    "title": "[Feedback] thought: the needs your attention section on home page is hard to go through because there are so many contacts, what can we do?",
+    "state": "closed",
+    "label": "CLOSED",
+    "user": {
+      "login": "Shir0o",
+      "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
+      "html_url": "https://github.com/Shir0o"
+    },
+    "labels": [
+      {
+        "id": 10804686544,
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "id": 11254011262,
+        "name": "feedback",
+        "color": "ededed",
+        "description": null
+      }
+    ],
+    "assignees": [],
+    "comments": 2,
+    "created_at": "2026-08-26T19:06:56Z",
+    "updated_at": "2026-08-27T18:43:34Z",
+    "closed_at": "2026-08-27T18:43:34Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/26/2026, 7:06:56 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe needs your attention section on home page is hard to go through because there are so many contacts, what can we do?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/XPsodRZaSOEYf2XTYGTC/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/595",
     "is_pull_request": false
@@ -37,8 +515,8 @@
     "id": 5260539753,
     "number": 593,
     "title": "[Feedback] thought: is the tag auto parsing upon contact add or sign up form working? also add \"Interested\" \"Open\" as static tag suggestions\n(though try to minimize ai cost)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -59,10 +537,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 2,
     "created_at": "2026-08-26T19:06:01Z",
-    "updated_at": "2026-08-26T19:06:01Z",
-    "closed_at": null,
+    "updated_at": "2026-08-27T03:31:29Z",
+    "closed_at": "2026-08-27T03:31:29Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/26/2026, 7:06:00 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/nuhSesIHeu3UiCiVS4NF\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nis the tag auto parsing upon contact add or sign up form working? also add \"Interested\" \"Open\" as static tag suggestions\n(though try to minimize ai cost)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Pv8TvV5sg8ZIGno6CC7C/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/593",
     "is_pull_request": false
@@ -71,8 +549,8 @@
     "id": 5260529616,
     "number": 592,
     "title": "[Feedback] off: edit contact detail tags field does not allow comma, maybe let's change it to enter to add into chips",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -93,10 +571,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 2,
     "created_at": "2026-08-26T19:04:45Z",
-    "updated_at": "2026-08-26T19:04:45Z",
-    "closed_at": null,
+    "updated_at": "2026-08-27T21:23:41Z",
+    "closed_at": "2026-08-27T21:23:41Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/26/2026, 7:04:45 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/nuhSesIHeu3UiCiVS4NF\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nedit contact detail tags field does not allow comma, maybe let's change it to enter to add into chips\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/yqzXDLafqzY6oFwIhxV9/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/592",
     "is_pull_request": false
@@ -105,8 +583,8 @@
     "id": 5260467502,
     "number": 591,
     "title": "[Feedback] off: questions for the team broken\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-BUkJTFVk.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-BUkJTFVk.js:13\nmessages:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link pr…",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -127,10 +605,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-26T18:56:59Z",
-    "updated_at": "2026-08-26T18:56:59Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T23:31:47Z",
+    "closed_at": "2026-08-26T23:31:47Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/26/2026, 6:56:58 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nquestions for the team broken\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-BUkJTFVk.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-BUkJTFVk.js:13\nmessages:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropri\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ml4yrCDuVeHn693lowC7/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/591",
     "is_pull_request": false
@@ -139,8 +617,8 @@
     "id": 5260464433,
     "number": 590,
     "title": "[Feedback] off: mobile notification not working?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -161,10 +639,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 2,
     "created_at": "2026-08-26T18:56:36Z",
-    "updated_at": "2026-08-26T18:56:36Z",
-    "closed_at": null,
+    "updated_at": "2026-08-27T23:02:44Z",
+    "closed_at": "2026-08-27T23:02:44Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/26/2026, 6:56:36 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmobile notification not working?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/neMLQ5pzBfpdOJDhzIuN/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/590",
     "is_pull_request": false
@@ -173,8 +651,8 @@
     "id": 5260461464,
     "number": 589,
     "title": "[Feedback] off: messages load failure\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -195,10 +673,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-26T18:56:15Z",
-    "updated_at": "2026-08-26T18:56:15Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T23:31:45Z",
+    "closed_at": "2026-08-26T23:31:45Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/26/2026, 6:56:14 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/messages\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmessages load failure\nmessages:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\nmessages:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/OPef1sTCSlFEksilfV7t/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/589",
     "is_pull_request": false
@@ -207,8 +685,8 @@
     "id": 5260458726,
     "number": 588,
     "title": "[Feedback] off: spanish for coordination page doc still not working\ncoordination:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncoordination:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\ncoordination:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an a…",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -229,10 +707,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 2,
     "created_at": "2026-08-26T18:55:54Z",
-    "updated_at": "2026-08-26T18:55:54Z",
-    "closed_at": null,
+    "updated_at": "2026-08-27T18:15:35Z",
+    "closed_at": "2026-08-27T18:15:35Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/26/2026, 6:55:53 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/coordination\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nspanish for coordination page doc still not working\ncoordination:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncoordination:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\ncoordination:1 The resource https://fonts.googleapis.com/css2?family=Lexend:wght@400;500;600&display=swap was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/pS7y7cS9Qd2eF5yrraih/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/588",
     "is_pull_request": false
@@ -241,8 +719,8 @@
     "id": 5251004001,
     "number": 565,
     "title": "[Feedback] request: unless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -265,8 +743,8 @@
     "assignees": [],
     "comments": 1,
     "created_at": "2026-08-25T21:47:30Z",
-    "updated_at": "2026-08-26T17:40:56Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T21:30:28Z",
+    "closed_at": "2026-08-26T21:30:28Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** request\n- **Date:** 8/25/2026, 9:47:29 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nunless added, people don't show up on the on our hearts page (e.g. a contact not selected by the choose people button will not appear, even if someone adds a prayer to that contact)\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/CqOQK6ltPhULAKBiZWmR/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/565",
     "is_pull_request": false
@@ -275,8 +753,8 @@
     "id": 5250931653,
     "number": 564,
     "title": "[Feedback] off: can't add someone else to contact\n\ncisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-C5bi03Jj.js:13\nThe resource <URL> was preloaded using link preload but not used within …",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -297,10 +775,10 @@
       }
     ],
     "assignees": [],
-    "comments": 1,
+    "comments": 2,
     "created_at": "2026-08-25T21:37:59Z",
-    "updated_at": "2026-08-26T17:40:52Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T23:44:56Z",
+    "closed_at": "2026-08-26T23:27:59Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:37:59 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/WWFgqU0Cc7hIROZ9yvfT\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\ncan't add someone else to contact\n\ncisa-campus-work-traker.pages.dev/:1 Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.\ncisa-campus-work-traker.pages.dev/:1 Uncaught (in promise) Error: Could not establish connection. Receiving end does not exist.\nindex-C5bi03Jj.js:13 asks subscription error FirebaseError: Missing or insufficient permissions.\n(anonymous) @ index-C5bi03Jj.js:13\nThe resource <URL> was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is p\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/DNcgBGFp0ISFMjUIE6ZA/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/564",
     "is_pull_request": false
@@ -377,8 +855,8 @@
     "id": 5250787302,
     "number": 561,
     "title": "[Feedback] idea: is the \"new\" auto tag not working? it should add the tag when the person was added within the past week",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -401,8 +879,8 @@
     "assignees": [],
     "comments": 1,
     "created_at": "2026-08-25T21:20:08Z",
-    "updated_at": "2026-08-26T17:40:48Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T21:30:44Z",
+    "closed_at": "2026-08-26T21:30:44Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** idea\n- **Date:** 8/25/2026, 9:20:08 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/people/Z33hAF79eRJThh5hPOW4\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nis the \"new\" auto tag not working? it should add the tag when the person was added within the past week\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Ntopc32A5rExpLKT8gJw/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/561",
     "is_pull_request": false
@@ -445,8 +923,8 @@
     "id": 5250697245,
     "number": 559,
     "title": "[Feedback] off: the see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -469,8 +947,8 @@
     "assignees": [],
     "comments": 1,
     "created_at": "2026-08-25T21:09:37Z",
-    "updated_at": "2026-08-26T17:40:43Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T19:37:43Z",
+    "closed_at": "2026-08-26T19:37:43Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:09:36 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/directory\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe see as their view (seeing a trainee) I can still see people they are not supposed to see (whether because of the feature or because permission loophole which makes them able to see). again, the people that they did not create (or created by their pair) or they have been added to or @, they cannot see\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/U3eQF6WTtLsgOXwAxoFb/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/559",
     "is_pull_request": false
@@ -479,8 +957,8 @@
     "id": 5250675474,
     "number": 558,
     "title": "[Feedback] off: why is there invalid date?",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -503,8 +981,8 @@
     "assignees": [],
     "comments": 1,
     "created_at": "2026-08-25T21:07:11Z",
-    "updated_at": "2026-08-26T17:40:35Z",
-    "closed_at": null,
+    "updated_at": "2026-08-26T19:16:00Z",
+    "closed_at": "2026-08-26T19:16:00Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** bug\n- **Kind:** off\n- **Date:** 8/25/2026, 9:07:11 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/\n- **Viewport:** 1152x630 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nwhy is there invalid date?\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/MzdwBXuOMseIyd7EXwaN/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/558",
     "is_pull_request": false
@@ -547,8 +1025,8 @@
     "id": 5248085127,
     "number": 554,
     "title": "[Feedback] thought: maybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction",
-    "state": "open",
-    "label": "OPEN",
+    "state": "closed",
+    "label": "CLOSED",
     "user": {
       "login": "Shir0o",
       "avatar_url": "https://avatars.githubusercontent.com/u/17852255?v=4",
@@ -569,10 +1047,10 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 2,
     "created_at": "2026-08-25T16:17:06Z",
-    "updated_at": "2026-08-25T16:17:06Z",
-    "closed_at": null,
+    "updated_at": "2026-08-27T00:50:25Z",
+    "closed_at": "2026-08-27T00:50:25Z",
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 4:17:06 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nmaybe some way to indicate if contact has no interaction in the past month give option to remove from prayer list or add interaction\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/ObfilEL0yJCnsnz6rdqJ/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/554",
     "is_pull_request": false
@@ -603,9 +1081,9 @@
       }
     ],
     "assignees": [],
-    "comments": 0,
+    "comments": 1,
     "created_at": "2026-08-25T16:15:17Z",
-    "updated_at": "2026-08-25T16:15:17Z",
+    "updated_at": "2026-08-26T23:31:58Z",
     "closed_at": null,
     "body": "### Feedback Details\n- **Submitted By:** Tony Wang (yilongwang05@gmail.com)\n- **Type:** enhancement\n- **Kind:** thought\n- **Date:** 8/25/2026, 4:15:16 PM\n- **Page URL:** https://cisa-campus-work-traker.pages.dev/prayer\n- **Viewport:** 1536x774 (DPR: 2.5)\n- **User Agent:** Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/151.0.0.0 Safari/537.36\n\n### Message\n```text\nthe on our heart page layout seems boring on wide screen\n```\n\n---\n*Created automatically from CISA Campus Work Tracker user feedback.*\n\n### Screenshot\n![Feedback Screenshot](https://cisa-campus-work-traker.pages.dev//api/feedback/Hf6g7h7gQTMeiJW78keg/screenshot)\n\n*(View screenshot directly on GitHub or in app admin panel)*",
     "html_url": "https://github.com/Shir0o/cisa-campus-work-traker/issues/553",
