@@ -30,6 +30,7 @@ export default defineConfig({
     env: {
       VITE_E2E_MODE: 'true',
       VITE_USE_FIREBASE_EMULATOR: process.env.VITE_USE_FIREBASE_EMULATOR ?? 'true',
+      VITE_FIREBASE_FIRESTORE_DB_ID: process.env.VITE_FIREBASE_FIRESTORE_DB_ID || process.env.FIRESTORE_DATABASE_ID || 'qa-db',
       ...(process.env.VITE_FIREBASE_API_KEY
         ? { VITE_FIREBASE_API_KEY: process.env.VITE_FIREBASE_API_KEY }
         : { VITE_FIREBASE_API_KEY: 'fake-emulator-api-key' }),
