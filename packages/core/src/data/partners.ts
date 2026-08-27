@@ -78,6 +78,33 @@ export function stampPartners<T extends object>(data: T, byUid?: string | null):
 
 const partnersDoc = (db: Firestore) => doc(db, "settings", "partners");
 
+/** Helper to serialize byTerm avoiding Firestore's nested array rejection */
+export function serializeByTerm(byTerm: PartnersByTerm): Record<string, { members: string[] }[]> {
+  const result: Record<string, { members: string[] }[]> = {};
+  for (const [term, groups] of Object.entries(byTerm || {})) {
+    result[term] = (groups || []).map((members) => ({ members }));
+  }
+  return result;
+}
+
+/** Helper to deserialize byTerm from Firestore snapshot */
+export function deserializeByTerm(raw: PartnersSettings["byTerm"] | undefined | null): PartnersByTerm {
+  if (!raw) return {};
+  const result: PartnersByTerm = {};
+  for (const [term, val] of Object.entries(raw)) {
+    if (Array.isArray(val)) {
+      result[term] = cleanPartnerGroups(
+        val.map((item) => {
+          if (Array.isArray(item)) return item;
+          if (item && Array.isArray(item.members)) return item.members;
+          return [];
+        })
+      );
+    }
+  }
+  return result;
+}
+
 /** Live subscription to the team-wide gospel-partners arrangement. */
 export function subscribePartners(
   db: Firestore,
@@ -88,7 +115,7 @@ export function subscribePartners(
     partnersDoc(db),
     (snap) => {
       const data = typeof snap?.data === "function" ? (snap.data() as PartnersSettings | undefined) : undefined;
-      cb(data?.byTerm ?? {});
+      cb(deserializeByTerm(data?.byTerm));
     },
     (e) => (onError ? onError(e) : console.error("partners subscription error", e)),
   );
@@ -96,7 +123,7 @@ export function subscribePartners(
 
 /** Replace the whole arrangement in settings/partners. */
 export async function savePartners(db: Firestore, byTerm: PartnersByTerm): Promise<void> {
-  await setDoc(partnersDoc(db), { byTerm }, { merge: true });
+  await setDoc(partnersDoc(db), { byTerm: serializeByTerm(byTerm) }, { merge: true });
 }
 
 // ── pure arrangement mutations (return a fresh byTerm) ─────────────────────

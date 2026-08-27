@@ -219,8 +219,12 @@ export interface SeasonSettings {
 // term ("Fall 2026") and values are groups of trainee uids who go out as one.
 // Admin-only writes; readable by the app so both sides of a pair resolve
 // "who goes out with me" and creation paths stamp the partner as a co-creator.
+export interface PartnerGroupDoc {
+  members: string[];
+}
+
 export interface PartnersSettings {
-  byTerm?: Record<string, string[][]>;
+  byTerm?: Record<string, PartnerGroupDoc[] | string[][]>;
 }
 
 export interface PrayerRecord {

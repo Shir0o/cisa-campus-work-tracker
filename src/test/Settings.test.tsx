@@ -360,7 +360,7 @@ describe('Settings', () => {
       fireEvent.click(screen.getByRole('button', { name: /Trainee Two/ }));
       expect(setDoc).toHaveBeenCalledWith(
         expect.anything(),
-        { byTerm: { [term]: [['u-trainee', 'u-trainee2']] } },
+        { byTerm: { [term]: [{ members: ['u-trainee', 'u-trainee2'] }] } },
         { merge: true },
       );
     });
