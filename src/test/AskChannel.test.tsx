@@ -126,7 +126,7 @@ describe('AskChannel Components (#563)', () => {
   });
 
   describe('AskMsg and AskMsgPlain', () => {
-    it('renders question with in-person takenBy attribution', () => {
+    it('renders question with in-person takenBy attribution and Trainee badge', () => {
       render(
         <AskMsg
           m={mockQuestions[0]}
@@ -138,6 +138,7 @@ describe('AskChannel Components (#563)', () => {
       );
 
       expect(screen.getByText('Zion Park')).toBeInTheDocument();
+      expect(screen.getByText('Trainee')).toBeInTheDocument();
       expect(screen.getByText('How do you approach people at the club table?')).toBeInTheDocument();
       expect(screen.getByText(/Asked in person · written down by Mei/)).toBeInTheDocument();
       expect(screen.getByText('1 answer')).toBeInTheDocument();

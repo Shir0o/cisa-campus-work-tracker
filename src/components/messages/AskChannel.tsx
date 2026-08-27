@@ -118,7 +118,7 @@ export function AskMsg({ m, allAsks, onOpen, open }: AskMsgProps) {
       </div>
       <div className="msgb-col">
         <div className="msgb-name">
-          {m.fromName || 'Someone'} <span className="aska-role">In training</span>
+          {m.fromName || 'Someone'} <span className="aska-role">Trainee</span>
         </div>
         <div className="msgb-row">
           <div className="msgb-bubble">{m.body}</div>
