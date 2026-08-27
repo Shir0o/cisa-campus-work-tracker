@@ -4,6 +4,13 @@ import App from './App.tsx';
 import './index.css';
 
 if (typeof window !== 'undefined') {
+  window.addEventListener('unhandledrejection', (event) => {
+    const message = event.reason?.message || String(event.reason || '');
+    if (message.includes('Could not establish connection. Receiving end does not exist.')) {
+      event.preventDefault();
+    }
+  });
+
   window.addEventListener('vite:preloadError', (event) => {
     // Prevent default error handling
     event.preventDefault();

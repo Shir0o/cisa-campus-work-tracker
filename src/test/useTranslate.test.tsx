@@ -455,4 +455,60 @@ describe("useTranslateMarkdown", () => {
       expect(screen.getByTestId("md-pending").textContent).toBe("loading");
     });
   });
+
+  it("retains markdown structure including checklists, bold, and subheadings across translations", async () => {
+    const complexMd = "# Agenda\n\n- [ ] Task 1 (@Mei)\n- [x] Task 2\n\n**Important notice**\n\n> Quote line";
+    const complexEs = "# Agenda\n\n- [ ] Tarea 1 (@Mei)\n- [x] Tarea 2\n\n**Aviso importante**\n\n> Línea de cita";
+    translator.setCachedTranslation(complexMd, complexEs, "es");
+
+    render(
+      <LanguageProvider defaultLanguage="es">
+        <TestMarkdownComponent text={complexMd} />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("md-translated").textContent).toBe(complexEs);
+    expect(screen.getByTestId("md-translated").textContent).toContain("- [ ] Tarea 1 (@Mei)");
+    expect(screen.getByTestId("md-translated").textContent).toContain("**Aviso importante**");
+  });
+
+  it("synchronously updates translatedSections when language changes without showing empty string", async () => {
+    translator.setCachedTranslation(MD, ES_MD, "es");
+
+    function LanguageSwitchMarkdownWrapper() {
+      const { language, setLanguage } = useLanguage();
+      const { translatedText } = useTranslateMarkdown(MD);
+      return (
+        <div>
+          <span data-testid="active-lang">{language}</span>
+          <span data-testid="rendered-md">{translatedText}</span>
+          <button onClick={() => setLanguage("es")}>Switch ES</button>
+          <button onClick={() => setLanguage("en")}>Switch EN</button>
+        </div>
+      );
+    }
+
+    render(
+      <LanguageProvider defaultLanguage="en">
+        <LanguageSwitchMarkdownWrapper />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByTestId("rendered-md").textContent).toBe(MD);
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch ES" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-lang").textContent).toBe("es");
+      expect(screen.getByTestId("rendered-md").textContent).toBe(ES_MD);
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Switch EN" }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId("active-lang").textContent).toBe("en");
+      expect(screen.getByTestId("rendered-md").textContent).toBe(MD);
+    });
+  });
 });
+
