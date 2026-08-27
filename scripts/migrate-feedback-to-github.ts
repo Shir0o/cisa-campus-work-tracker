@@ -75,7 +75,8 @@ ${cleanMsg}
 *Created automatically via bulk migration script from CISA Campus Work Tracker.*`;
 
     if (item.screenshot) {
-      const baseUrl = process.env.APP_URL || process.env.VITE_APP_URL || '';
+      const rawBaseUrl = process.env.APP_URL || process.env.VITE_APP_URL || '';
+      const baseUrl = rawBaseUrl.replace(/\/+$/, '');
       if (baseUrl) {
         const imageUrl = `${baseUrl}/api/feedback/${item.id}/screenshot`;
         body += `\n\n### Screenshot\n![Feedback Screenshot](${imageUrl})\n\n*(View screenshot directly on GitHub or in app admin panel)*`;
