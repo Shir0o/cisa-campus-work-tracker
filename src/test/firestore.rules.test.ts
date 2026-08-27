@@ -1506,8 +1506,8 @@ describeRules('Firestore Security Rules', () => {
 
     it('collection-group thread lists hide team-scope from non-admins', async () => {
       await seedThreadUsers();
-      await seedMsg('open4'); // normal thread (no team scope)
-      await seedMsg('team4', { scope: 'team' }); // team-scope thread
+      await seedMsg('open4', { scope: null }); // regular thread
+      await seedMsg('team4', { scope: 'team' }); // full-timer team-scope thread
 
       const adminDb = getFirestore({ uid: 'admin1' });
       const adminSnap = await getDocs(query(collectionGroup(adminDb, 'threads')));
@@ -1517,9 +1517,10 @@ describeRules('Firestore Security Rules', () => {
 
       for (const nonAdminUid of ['operator1', 'manager1']) {
         const nonAdminDb = getFirestore({ uid: nonAdminUid });
-        // Non-admins cannot query team-scoped discussion messages across threads
+        // Non-admins are denied when attempting to query team-scoped messages
         await assertFails(getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', 'team'))));
-        const nonAdminSnap = await getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '!=', 'team')));
+        // Non-admins can query general threads (scope null) and team-scoped messages are excluded
+        const nonAdminSnap = await getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', null)));
         const nonAdminIds = nonAdminSnap.docs.map((d) => d.id);
         expect(nonAdminIds).toContain('open4');
         expect(nonAdminIds).not.toContain('team4');
