@@ -524,7 +524,7 @@ export default function Messages() {
     if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
     return true;
   });
-  const isStaffRole = userRole === 'admin' || userRole === 'manager' || userRole === 'operator';
+  const canSeeAsksChannel = userRole === 'admin' || userRole === 'manager';
   const topLevelMsgs = useMemo(() => convTopLevel(visibleMsgs), [visibleMsgs]);
   const pinned = messages.filter((m) => m.pinned && !m.deleted);
   const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
@@ -612,9 +612,9 @@ export default function Messages() {
 
         {/* Rooms Scroll List */}
         <div className="msgs-list">
-          {isStaffRole && (!roomSearch || "questions for the team".toLowerCase().includes(roomSearch.toLowerCase())) && (
+          {canSeeAsksChannel && (!roomSearch || "questions for the team".toLowerCase().includes(roomSearch.toLowerCase())) && (
             <AskChannelRow
-              me={effectiveUid || ''}
+              me={currentUser?.uid || effectiveUid || ''}
               role={userRole || ''}
               isFullTimer={isAdmin}
               active={activeRoomId === ASK_CONV_ID}
@@ -626,7 +626,7 @@ export default function Messages() {
           )}
           {loadingRooms ? (
             <div className="msgs-people-empty">Loading conversations…</div>
-          ) : filteredRooms.length === 0 && (!isStaffRole || !!roomSearch) ? (
+          ) : filteredRooms.length === 0 && (!canSeeAsksChannel || !!roomSearch) ? (
             <div className="msgs-people-empty">Nothing here yet.</div>
           ) : (
             filteredRooms.map((room) => {
@@ -787,9 +787,9 @@ export default function Messages() {
       </div>
 
       {/* 2. Right — the thread (the design's msgs-thread) or Ask channel */}
-      {activeRoomId === ASK_CONV_ID ? (
+      {activeRoomId === ASK_CONV_ID && canSeeAsksChannel ? (
         <AskChannel
-          me={effectiveUid || ''}
+          me={currentUser?.uid || effectiveUid || ''}
           meName={impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member')}
           role={userRole || ''}
           isFullTimer={isAdmin}

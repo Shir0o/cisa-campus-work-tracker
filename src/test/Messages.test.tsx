@@ -1660,6 +1660,48 @@ describe('Messages View Component', () => {
       });
     });
 
+    it('renders Questions for the team for admin and manager roles, but hides for operator and viewer (#603)', () => {
+      // 1. Admin: visible
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'admin' });
+      const { unmount: u1 } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      expect(screen.getByText('Questions for the team')).toBeInTheDocument();
+      u1();
+
+      // 2. Manager (Trainee): visible
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
+      const { unmount: u2 } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      expect(screen.getByText('Questions for the team')).toBeInTheDocument();
+      u2();
+
+      // 3. Operator (Student): hidden
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
+      const { unmount: u3 } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      expect(screen.queryByText('Questions for the team')).not.toBeInTheDocument();
+      u3();
+
+      // 4. Viewer (Community): hidden
+      (useAuth as any).mockReturnValue({ user: stableUser, role: 'viewer' });
+      const { unmount: u4 } = render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+      expect(screen.queryByText('Questions for the team')).not.toBeInTheDocument();
+      u4();
+    });
+
     it('opens Slack-style message thread when Reply in thread is clicked (#563)', async () => {
       render(
         <MemoryRouter>
@@ -1681,5 +1723,3 @@ describe('Messages View Component', () => {
     });
   });
 });
-
-

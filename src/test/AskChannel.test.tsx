@@ -276,8 +276,9 @@ describe('AskChannel Components (#563)', () => {
 
     it('renders trainee view and allows trainee to post and open question thread', async () => {
       const onBack = vi.fn();
+      const addAskSpy = vi.spyOn(asksLib, 'addAsk').mockResolvedValue(undefined as any);
 
-      vi.spyOn(asksLib, 'subscribeMyAsks').mockImplementation((_uid: any, cb: any) => {
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: any) => {
         cb(mockQuestions);
         return () => {};
       });
@@ -286,7 +287,7 @@ describe('AskChannel Components (#563)', () => {
         <AskChannel
           me="t1"
           meName="Zion Park"
-          role="operator"
+          role="manager"
           isFullTimer={false}
           isMobile={true}
           onBack={onBack}
@@ -299,6 +300,19 @@ describe('AskChannel Components (#563)', () => {
       const backBtn = buttons.find((b) => b.className.includes('icon-btn'));
       if (backBtn) fireEvent.click(backBtn);
       expect(onBack).toHaveBeenCalled();
+
+      // Post a trainee question
+      const input = screen.getByPlaceholderText('Ask the team something real…');
+      fireEvent.change(input, { target: { value: 'How to follow up after club rush?' } });
+      fireEvent.keyDown(input, { key: 'Enter', metaKey: true });
+
+      await waitFor(() => {
+        expect(addAskSpy).toHaveBeenCalledWith({
+          from: 't1',
+          fromName: 'Zion Park',
+          body: 'How to follow up after club rush?',
+        });
+      });
 
       // Click on 1 answer button to open thread
       fireEvent.click(screen.getByText('1 answer'));
