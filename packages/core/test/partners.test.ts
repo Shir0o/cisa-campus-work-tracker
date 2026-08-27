@@ -13,6 +13,8 @@ import {
   dropGroup,
   carryOverPartners,
   clearTerm,
+  serializeByTerm,
+  deserializeByTerm,
 } from '../src/data/partners';
 
 const TERM = () => partnersTermKey(new Date(2026, 8, 1)); // Sep 2026 → "Fall 2026"
@@ -122,5 +124,47 @@ describe('arrangement mutations', () => {
     const next = clearTerm(base, term);
     expect(groupsForTerm(next, term)).toEqual([]);
     expect(groupsForTerm(next, 'Spring 2026')).toEqual([['c', 'd']]);
+  });
+});
+
+describe('serializeByTerm / deserializeByTerm', () => {
+  it('serializes nested arrays into array of objects to comply with Firestore constraints', () => {
+    const input = {
+      'Fall 2026': [['uid1', 'uid2'], ['uid3', 'uid4']],
+    };
+    const serialized = serializeByTerm(input);
+    expect(serialized).toEqual({
+      'Fall 2026': [
+        { members: ['uid1', 'uid2'] },
+        { members: ['uid3', 'uid4'] },
+      ],
+    });
+  });
+
+  it('deserializes array of objects with members into string[][]', () => {
+    const raw = {
+      'Fall 2026': [
+        { members: ['uid1', 'uid2'] },
+        { members: ['uid3', 'uid4'] },
+      ],
+    };
+    expect(deserializeByTerm(raw)).toEqual({
+      'Fall 2026': [['uid1', 'uid2'], ['uid3', 'uid4']],
+    });
+  });
+
+  it('deserializes legacy raw string[][] if present', () => {
+    const raw = {
+      'Fall 2026': [['uid1', 'uid2']],
+    };
+    expect(deserializeByTerm(raw)).toEqual({
+      'Fall 2026': [['uid1', 'uid2']],
+    });
+  });
+
+  it('handles null or undefined input gracefully', () => {
+    expect(deserializeByTerm(null)).toEqual({});
+    expect(deserializeByTerm(undefined)).toEqual({});
+    expect(serializeByTerm({} as any)).toEqual({});
   });
 });

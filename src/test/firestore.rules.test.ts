@@ -1402,6 +1402,7 @@ describeRules('Firestore Security Rules', () => {
       await testEnv.withSecurityRulesDisabled(async (c) => {
         await setDoc(doc(c.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(c.firestore(), 'users', 'manager1'), { role: 'manager', approved: true });
         await setDoc(doc(c.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
         await setDoc(doc(c.firestore(), 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
       });
@@ -1505,15 +1506,24 @@ describeRules('Firestore Security Rules', () => {
 
     it('collection-group thread lists hide team-scope from non-admins', async () => {
       await seedThreadUsers();
-      await seedMsg('team4', { scope: 'team' });
+      await seedMsg('open4'); // normal thread (no team scope)
+      await seedMsg('team4', { scope: 'team' }); // team-scope thread
 
       const adminDb = getFirestore({ uid: 'admin1' });
       const adminSnap = await getDocs(query(collectionGroup(adminDb, 'threads')));
-      expect(adminSnap.docs.map((d) => d.id)).toContain('team4');
+      const adminIds = adminSnap.docs.map((d) => d.id);
+      expect(adminIds).toContain('open4');
+      expect(adminIds).toContain('team4');
 
-      const operatorDb = getFirestore({ uid: 'operator1' });
-      const operatorSnap = await getDocs(query(collectionGroup(operatorDb, 'threads')));
-      expect(operatorSnap.docs.map((d) => d.id)).not.toContain('team4');
+      for (const nonAdminUid of ['operator1', 'manager1']) {
+        const nonAdminDb = getFirestore({ uid: nonAdminUid });
+        // Non-admins cannot query team-scoped discussion messages across threads
+        await assertFails(getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '==', 'team'))));
+        const nonAdminSnap = await getDocs(query(collectionGroup(nonAdminDb, 'threads'), where('scope', '!=', 'team')));
+        const nonAdminIds = nonAdminSnap.docs.map((d) => d.id);
+        expect(nonAdminIds).toContain('open4');
+        expect(nonAdminIds).not.toContain('team4');
+      }
     });
 
     it('lets a full-timer mark a contact reviewed (bool only)', async () => {
@@ -1682,14 +1692,14 @@ describeRules('Firestore Security Rules', () => {
       });
       const db = getFirestore({ uid: 'admin1' });
       await assertSucceeds(
-        setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }),
+        setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [{ members: ['trainee1', 'trainee2'] }] } }),
       );
     });
 
     it('SP3: Manager cannot write settings/partners', async () => {
       await seedRoles();
       const db = getFirestore({ uid: 'manager1' });
-      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [['trainee1', 'trainee2']] } }));
+      await assertFails(setDoc(doc(db, 'settings', 'partners'), { byTerm: { 'Fall 2026': [{ members: ['trainee1', 'trainee2'] }] } }));
     });
 
     it('SP4: Rejects stray keys on settings/partners', async () => {
