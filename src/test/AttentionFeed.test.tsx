@@ -19,7 +19,7 @@ vi.mock("../lib/firebase", () => ({
   auth: { currentUser: { uid: "u1" } },
 }));
 
-describe("AttentionFeed Component (#330)", () => {
+describe("AttentionFeed Component (#330, #595)", () => {
   const uid = "u1";
 
   beforeEach(() => {
@@ -67,7 +67,7 @@ describe("AttentionFeed Component (#330)", () => {
     },
   ];
 
-  it("renders the section with stacks and date headers", () => {
+  it("renders the two-column desktop feed with On you and date headers", () => {
     render(
       <AttentionFeed
         contacts={sampleContacts}
@@ -77,10 +77,10 @@ describe("AttentionFeed Component (#330)", () => {
       />,
     );
 
-    expect(screen.getByText("Needs your attention")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "On you" })).toBeInTheDocument();
     expect(screen.getByText("Alex Johnson")).toBeInTheDocument();
     expect(screen.getByText("Today")).toBeInTheDocument();
-    expect(screen.getByText("1 new")).toBeInTheDocument();
+    expect(screen.getAllByText("1 new").length).toBeGreaterThanOrEqual(1);
   });
 
   it("marks stack done and removes it when 'I followed up' is clicked", () => {
@@ -159,18 +159,19 @@ describe("AttentionFeed Component (#330)", () => {
     );
   });
 
-  it("handles Show more and Show less toggle for > 5 stacks", () => {
-    const manyContacts: Contact[] = Array.from({ length: 8 }, (_, i) => ({
-      id: `c_${i}`,
+  it("handles Show more and Show less toggle for > 5 stacks in onYou and aroundTeam", () => {
+    const manyOwnedContacts: Contact[] = Array.from({ length: 8 }, (_, i) => ({
+      id: `c_owned_${i}`,
       name: `Person ${i}`,
       createdBy: "u3",
+      owner: uid,
       createdAt: new Date().toISOString(),
       reviewed: false,
     })) as Contact[];
 
     render(
       <AttentionFeed
-        contacts={manyContacts}
+        contacts={manyOwnedContacts}
         staffNameMap={{ u3: "Zion" }}
       />,
     );
@@ -181,6 +182,47 @@ describe("AttentionFeed Component (#330)", () => {
     expect(screen.getByText("Show less")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Show less"));
     expect(screen.getByText("Show 3 more people")).toBeInTheDocument();
+  });
+
+  it("renders Around the team column for ambient team touches with quick reactions", () => {
+    const now = Date.now();
+    const teamContact: Contact = {
+      id: "c_ambient",
+      name: "Emerson Ahn",
+      createdBy: "u2",
+      owner: "u2",
+      createdAt: new Date(now - 60000).toISOString(),
+      reviewed: true,
+      stage: "Student",
+    } as Contact;
+
+    const teamInteraction: Interaction = {
+      id: "i_ambient",
+      contactId: "c_ambient",
+      userId: "u2",
+      content: "Shared during prayer time about exam stress.",
+      createdAt: new Date(now).toISOString(),
+      dateTime: new Date(now).toISOString(),
+      type: "small_group",
+      title: "Tuesday small group",
+    } as unknown as Interaction;
+
+
+    render(
+      <AttentionFeed
+        contacts={[teamContact]}
+        interactions={[teamInteraction]}
+        staffNameMap={{ u2: "Caleb" }}
+      />,
+    );
+
+    expect(screen.getByRole("region", { name: "Around the team" })).toBeInTheDocument();
+    expect(screen.getByText("Emerson Ahn")).toBeInTheDocument();
+    expect(screen.getByText("Caleb logged Tuesday small group")).toBeInTheDocument();
+
+    const landedBtn = screen.getByTitle("Tell them it landed");
+    fireEvent.click(landedBtn);
+    expect(screen.getByText("🙏")).toBeInTheDocument();
   });
 
   it("toggles sub-item read state and opens encourage reactions", () => {
@@ -203,3 +245,4 @@ describe("AttentionFeed Component (#330)", () => {
     expect(UserEntityState.isRead(uid, "contact:c1")).toBe(true);
   });
 });
+

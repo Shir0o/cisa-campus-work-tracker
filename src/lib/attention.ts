@@ -291,3 +291,55 @@ export function attentionPhrase(item: AttentionItem, staffNameMap?: Record<strin
   if (item.type === "notification") return item.title || "New notification";
   return `${firstName} logged ${item.title ? `“${item.title.length > 28 ? item.title.slice(0, 28) + "…" : item.title}”` : "time"}`;
 }
+
+export function partitionAttentionStacks(
+  stacks: AttentionStack[],
+  contacts: Contact[],
+  uid: string,
+  role?: string,
+): { onYou: AttentionStack[]; aroundTeam: AttentionStack[] } {
+  const isTraineeView = role === "trainee";
+  const contactMap = new Map<string, Contact>();
+  for (const c of contacts) {
+    contactMap.set(c.id, c);
+  }
+
+  const onYou: AttentionStack[] = [];
+  const aroundTeam: AttentionStack[] = [];
+
+  for (const stack of stacks) {
+    if (isTraineeView) {
+      // For trainees, everything in their attention feed is from a full-timer or assigned to them
+      onYou.push(stack);
+      continue;
+    }
+
+    // Direct items (tasks assigned to user, notifications for user)
+    const hasDirectTaskOrNotif = stack.items.some(
+      (it) => it.type === "task" || it.type === "notification",
+    );
+
+    // Direct question or nudge in thread (where user didn't ask it, someone asked them)
+    const hasThreadAsk = stack.items.some(
+      (it) => it.type === "thread" && (it.kind === "question" || it.kind === "nudge"),
+    );
+
+    // Check contact ownership/assignment
+    const contact = stack.contactId ? contactMap.get(stack.contactId) : undefined;
+    const isOwnedContact =
+      contact &&
+      (contact.owner === uid ||
+        contact.addedBy === uid ||
+        (!contact.owner && contact.createdBy === uid) ||
+        (contact.coCreators && contact.coCreators.includes(uid)));
+
+    if (hasDirectTaskOrNotif || hasThreadAsk || isOwnedContact) {
+      onYou.push(stack);
+    } else {
+      aroundTeam.push(stack);
+    }
+  }
+
+  return { onYou, aroundTeam };
+}
+
