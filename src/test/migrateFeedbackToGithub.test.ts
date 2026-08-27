@@ -88,6 +88,18 @@ describe('migrate-feedback-to-github script', () => {
     expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen/screenshot)');
   });
 
+  it('strips trailing slashes from APP_URL when constructing screenshot markdown URL in migration', async () => {
+    vi.stubEnv('APP_URL', 'https://app.example.com///');
+    const { db } = makeDb([
+      { id: 'f-screen-2', data: () => ({ message: 'Screen test 2', screenshot: 'data:image/jpeg;base64,123', type: 'bug' }) },
+    ]);
+    await migrateFeedbackToGithub(db as any);
+
+    const bodyStr = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string).body;
+    expect(bodyStr).toContain('![Feedback Screenshot](https://app.example.com/api/feedback/f-screen-2/screenshot)');
+    expect(bodyStr).not.toContain('https://app.example.com//api/feedback/');
+  });
+
   it('keeps the full message in the title', async () => {
     const longMsg = 'x'.repeat(120);
     const { db } = makeDb([{ id: 'f1', data: () => ({ message: longMsg, type: 'enhancement' }) }]);

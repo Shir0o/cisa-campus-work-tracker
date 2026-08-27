@@ -314,6 +314,27 @@ describe("POST /api/feedback", () => {
     expect(bodyStr).toContain("/screenshot)");
   });
 
+  it("strips trailing slashes from APP_URL when constructing screenshot markdown URL", async () => {
+    vi.stubEnv("GITHUB_TOKEN", "gh-token");
+    vi.stubEnv("GITHUB_REPO", "org/repo");
+    vi.stubEnv("APP_URL", "https://app.example.com///");
+    fetchMock.mockResolvedValue(
+      new Response(JSON.stringify({ html_url: "https://github.com/org/repo/issues/44", number: 44 }), { status: 201 })
+    );
+
+    const res = await request(app).post("/api/feedback").send({
+      message: "Bug with screenshot trailing slash",
+      kind: "bug",
+      screenshot: "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+    });
+    expect(res.status).toBe(200);
+
+    const [_, init] = fetchMock.mock.calls[0];
+    const bodyStr = JSON.parse((init as RequestInit).body as string).body;
+    expect(bodyStr).toContain("![Feedback Screenshot](https://app.example.com/api/feedback/");
+    expect(bodyStr).not.toContain("https://app.example.com//api/feedback/");
+  });
+
   it("uses the authenticated Firebase user when an Authorization header is present", async () => {
     mockVerifyIdToken.mockResolvedValue({ uid: "uid-1", email: "sarah@example.com", name: "Sarah" });
     const res = await request(app)
