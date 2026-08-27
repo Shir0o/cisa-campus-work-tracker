@@ -80,9 +80,13 @@ vi.mock('../lib/personalPrayers', () => ({
   deletePersonalPrayer: vi.fn().mockResolvedValue(true),
 }));
 
-vi.mock('../lib/prayers', () => ({
-  updatePrayerStatus: vi.fn().mockResolvedValue(true),
-}));
+vi.mock('../lib/prayers', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    updatePrayerStatus: vi.fn().mockResolvedValue(true),
+  };
+});
 
 vi.mock('../lib/messaging', () => ({
   openMessage: vi.fn(),

@@ -122,6 +122,42 @@ describe('TeamPrayerRow', () => {
     expect(onUpdateStatus).toHaveBeenCalled();
   });
 
+  it('renders a subtle stale badge when the contact has had no interaction in >30 days or no interactions', () => {
+    const staleDate = new Date(Date.now() - 40 * 86_400_000).toISOString();
+    const staleContact = contact({ lastContactedDate: staleDate });
+
+    const { rerender } = render(
+      <TeamPrayerRow
+        prayer={prayer()}
+        contact={staleContact}
+        first
+        onUpdateStatus={vi.fn()}
+        onOpenContact={vi.fn()}
+        onOpenPrayerLog={vi.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('stale-badge')).toBeInTheDocument();
+    expect(screen.getByText(/No contact in 40d/i)).toBeInTheDocument();
+
+    // Active contact (< 30 days)
+    const recentDate = new Date(Date.now() - 5 * 86_400_000).toISOString();
+    const activeContact = contact({ lastContactedDate: recentDate });
+
+    rerender(
+      <TeamPrayerRow
+        prayer={prayer()}
+        contact={activeContact}
+        first
+        onUpdateStatus={vi.fn()}
+        onOpenContact={vi.fn()}
+        onOpenPrayerLog={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('stale-badge')).not.toBeInTheDocument();
+  });
+
   it('opens the contact and the prayer log', () => {
     const onOpenContact = vi.fn();
     const onOpenPrayerLog = vi.fn();

@@ -9,6 +9,9 @@ import {
   isContactSister,
   sortPrayerEntries,
   unhidePrayerContact,
+  STALE_INTERACTION_DAYS,
+  getDaysSinceLastInteraction,
+  isContactStale,
 } from '../lib/prayers';
 import { handleFirestoreError } from '../lib/firebase';
 
@@ -215,6 +218,85 @@ describe('unhidePrayerContact', () => {
   it('handles corrupt JSON gracefully without throwing', () => {
     localStorage.setItem('cisa.prayer.hidden', '{not-valid-json');
     expect(() => unhidePrayerContact('c1')).not.toThrow();
+  });
+});
+
+describe('getDaysSinceLastInteraction', () => {
+  const baseNow = new Date('2026-08-26T12:00:00Z').getTime();
+
+  it('returns null when contact has no lastContactedDate and no lastSeen', () => {
+    expect(getDaysSinceLastInteraction({}, baseNow)).toBeNull();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: undefined, lastSeen: undefined }, baseNow)).toBeNull();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: '' }, baseNow)).toBeNull();
+  });
+
+  it('computes days elapsed accurately from lastContactedDate', () => {
+    // 0 days ago (same day)
+    const today = new Date('2026-08-26T08:00:00Z').toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: today }, baseNow)).toBe(0);
+
+    // 1 day ago
+    const oneDayAgo = new Date('2026-08-25T12:00:00Z').toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: oneDayAgo }, baseNow)).toBe(1);
+
+    // 29 days ago
+    const d29 = new Date(baseNow - 29 * 86_400_000).toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: d29 }, baseNow)).toBe(29);
+
+    // 30 days ago
+    const d30 = new Date(baseNow - 30 * 86_400_000).toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: d30 }, baseNow)).toBe(30);
+
+    // 31 days ago
+    const d31 = new Date(baseNow - 31 * 86_400_000).toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: d31 }, baseNow)).toBe(31);
+  });
+
+  it('falls back to lastSeen if lastContactedDate is not present', () => {
+    const d10 = new Date(baseNow - 10 * 86_400_000).toISOString();
+    expect(getDaysSinceLastInteraction({ lastSeen: d10 }, baseNow)).toBe(10);
+  });
+
+  it('prefers lastContactedDate over lastSeen if both are present', () => {
+    const d5 = new Date(baseNow - 5 * 86_400_000).toISOString();
+    const d20 = new Date(baseNow - 20 * 86_400_000).toISOString();
+    expect(getDaysSinceLastInteraction({ lastContactedDate: d5, lastSeen: d20 }, baseNow)).toBe(5);
+  });
+
+  it('handles invalid date strings gracefully returning null', () => {
+    expect(getDaysSinceLastInteraction({ lastContactedDate: 'not-a-date' }, baseNow)).toBeNull();
+  });
+});
+
+describe('isContactStale', () => {
+  const baseNow = new Date('2026-08-26T12:00:00Z').getTime();
+
+  it('is stale (true) if contact has zero recorded interactions', () => {
+    expect(isContactStale({}, STALE_INTERACTION_DAYS, baseNow)).toBe(true);
+    expect(isContactStale({ lastContactedDate: undefined }, STALE_INTERACTION_DAYS, baseNow)).toBe(true);
+  });
+
+  it('checks threshold boundaries (>30 days)', () => {
+    const d29 = new Date(baseNow - 29 * 86_400_000).toISOString();
+    const d30 = new Date(baseNow - 30 * 86_400_000).toISOString();
+    const d31 = new Date(baseNow - 31 * 86_400_000).toISOString();
+
+    // 29 days: not stale
+    expect(isContactStale({ lastContactedDate: d29 }, 30, baseNow)).toBe(false);
+
+    // 30 days: not stale (threshold is >30)
+    expect(isContactStale({ lastContactedDate: d30 }, 30, baseNow)).toBe(false);
+
+    // 31 days: stale
+    expect(isContactStale({ lastContactedDate: d31 }, 30, baseNow)).toBe(true);
+  });
+
+  it('uses STALE_INTERACTION_DAYS default threshold (30)', () => {
+    const d20 = new Date(baseNow - 20 * 86_400_000).toISOString();
+    const d45 = new Date(baseNow - 45 * 86_400_000).toISOString();
+
+    expect(isContactStale({ lastContactedDate: d20 }, undefined, baseNow)).toBe(false);
+    expect(isContactStale({ lastContactedDate: d45 }, undefined, baseNow)).toBe(true);
   });
 });
 

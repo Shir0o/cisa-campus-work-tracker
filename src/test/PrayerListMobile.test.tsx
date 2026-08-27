@@ -3,6 +3,13 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import PrayerListMobile from '../views/PrayerListMobile';
 
+const mockOpenLogInteraction = vi.fn();
+vi.mock('../App', () => ({
+  useLayout: () => ({
+    openLogInteraction: mockOpenLogInteraction,
+  }),
+}));
+
 vi.mock('../lib/firebase', () => ({
   db: {},
   auth: { currentUser: null },
@@ -300,5 +307,44 @@ describe('PrayerListMobile', () => {
     renderWithRouter({ contacts: [], entries: [{ contact: contact(), prayers: [] }] });
     fireEvent.click(screen.getByText('Hold someone in prayer'));
     expect(screen.getByText(/Everyone's already here/)).toBeInTheDocument();
+  });
+
+  it('renders stale badge and quick actions on mobile for stale contacts', () => {
+    mockOpenLogInteraction.mockClear();
+    const staleDate = new Date(Date.now() - 40 * 86_400_000).toISOString();
+    const stalePerson = contact({ lastContactedDate: staleDate });
+    const onStopHolding = vi.fn();
+
+    renderWithRouter({
+      entries: [{ contact: stalePerson, prayers: [prayer()] }],
+      onStopHolding,
+    });
+
+    expect(screen.getByTestId('stale-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('stale-quick-actions')).toBeInTheDocument();
+
+    // Click "Log Interaction"
+    fireEvent.click(screen.getByRole('button', { name: /Log Interaction/i }));
+    expect(mockOpenLogInteraction).toHaveBeenCalledWith('c1');
+
+    // Click "Archive" button in quick actions -> triggers remove confirmation
+    fireEvent.click(screen.getByRole('button', { name: /^Archive$/i }));
+    expect(screen.getByRole('button', { name: /^Remove$/i })).toBeInTheDocument();
+
+    // Confirm remove
+    fireEvent.click(screen.getByRole('button', { name: /^Remove$/i }));
+    expect(onStopHolding).toHaveBeenCalledWith('c1');
+  });
+
+  it('does not render stale badge or quick actions on mobile when contact is active', () => {
+    const recentDate = new Date(Date.now() - 2 * 86_400_000).toISOString();
+    const activePerson = contact({ lastContactedDate: recentDate });
+
+    renderWithRouter({
+      entries: [{ contact: activePerson, prayers: [prayer()] }],
+    });
+
+    expect(screen.queryByTestId('stale-badge')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('stale-quick-actions')).not.toBeInTheDocument();
   });
 });

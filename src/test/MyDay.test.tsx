@@ -96,9 +96,13 @@ vi.mock('../lib/personalPrayers', () => ({
   updatePersonalPrayer: (...a: any[]) => h.updatePersonalPrayer(...a),
   deletePersonalPrayer: (...a: any[]) => h.deletePersonalPrayer(...a),
 }));
-vi.mock('../lib/prayers', () => ({
-  updatePrayerStatus: (...a: any[]) => h.updatePrayerStatus(...a),
-}));
+vi.mock('../lib/prayers', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    updatePrayerStatus: (...a: any[]) => h.updatePrayerStatus(...a),
+  };
+});
 vi.mock('../lib/messaging', () => ({
   openMessage: (...a: any[]) => h.openMessage(...a),
 }));
