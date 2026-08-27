@@ -81,6 +81,8 @@ export function planTagCombining(
 export const TAG_SUGGESTIONS = [
   'Saved',
   'Baptized',
+  'Interested',
+  'Open',
   'Freshman',
   'Sophomore',
   'Junior',
@@ -97,6 +99,7 @@ export function tagToneKey(tag: string): TagToneKey {
   const t = (tag ?? '').toLowerCase().trim();
   if (t === 'new') return 'teal';
   if (t === 'saved' || t === 'baptized') return 'sage';
+  if (t.includes('interested') || t.includes('open')) return 'teal';
   if (t.includes('freshman') || t.includes('1st')) return 'teal';
   if (t.includes('sophomore') || t.includes('2nd')) return 'indigo';
   if (t.includes('junior') || t.includes('3rd')) return 'plum';

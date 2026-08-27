@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeTag, normalizeTagList, planTagCombining, getEffectiveContactTags } from '../src/tags';
+import { normalizeTag, normalizeTagList, planTagCombining, getEffectiveContactTags, TAG_SUGGESTIONS } from '../src/tags';
 
 describe('normalizeTag', () => {
   it('turns short season labels into full year labels', () => {
@@ -57,5 +57,14 @@ describe('getEffectiveContactTags', () => {
   it('does not inject new tag for contacts older than 7 days', () => {
     const older = new Date(Date.now() - 14 * 86_400_000).toISOString();
     expect(getEffectiveContactTags(['Lead'], older)).toEqual(['Lead']);
+  });
+});
+
+describe('TAG_SUGGESTIONS', () => {
+  it('includes Saved, Baptized, Interested, and Open', () => {
+    expect(TAG_SUGGESTIONS).toContain('Saved');
+    expect(TAG_SUGGESTIONS).toContain('Baptized');
+    expect(TAG_SUGGESTIONS).toContain('Interested');
+    expect(TAG_SUGGESTIONS).toContain('Open');
   });
 });

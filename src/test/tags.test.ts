@@ -69,14 +69,21 @@ describe('planTagCombining', () => {
 });
 
 describe('tagToneKey and tagStyle', () => {
-  it('includes Saved in TAG_SUGGESTIONS', () => {
+  it('includes Saved, Baptized, Interested, and Open in TAG_SUGGESTIONS', () => {
     expect(TAG_SUGGESTIONS).toContain('Saved');
     expect(TAG_SUGGESTIONS).toContain('Baptized');
+    expect(TAG_SUGGESTIONS).toContain('Interested');
+    expect(TAG_SUGGESTIONS).toContain('Open');
   });
 
   it('returns sage for Saved and Baptized', () => {
     expect(tagToneKey('Saved')).toBe('sage');
     expect(tagToneKey('baptized')).toBe('sage');
+  });
+
+  it('returns teal for Interested and Open', () => {
+    expect(tagToneKey('Interested')).toBe('teal');
+    expect(tagToneKey('open')).toBe('teal');
   });
 
   it('returns appropriate tones for student years and special tags', () => {
