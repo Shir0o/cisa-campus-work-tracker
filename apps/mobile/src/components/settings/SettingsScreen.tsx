@@ -29,7 +29,13 @@ import { useLanguage } from '../../lib/LanguageProvider';
 import { useActiveSeason } from '../../lib/useActiveSeason';
 import { useFullTimerNames } from '../../lib/useFullTimerNames';
 import { usePeopleData } from '../../lib/usePeopleData';
-import { ensureNotificationPermission, registerForPushToken } from '../../lib/notifications';
+import {
+  ensureNotificationPermission,
+  getNotificationPermissionStatus,
+  registerForPushToken,
+  sendTestLocalNotification,
+} from '../../lib/notifications';
+import { sendPushNotification } from '../../lib/push';
 import { setPushToken } from '../../lib/data/users';
 import { useQueuePrefs, type QueueSettings } from '../../lib/queuePrefs';
 import { useQueueState } from '../../lib/queueState';
@@ -98,23 +104,25 @@ function Choice<T>({
         accessibilityState={{ selected: on }}
         onPress={() => onPick(o.value)}
         onLayout={(e) => {
-          if (!on || shown.current || !scroll) return;
-          shown.current = true;
-          strip.current?.scrollTo({ x: Math.max(0, e.nativeEvent.layout.x - 12), animated: false });
+          if (on && !shown.current) {
+            shown.current = true;
+            const x = Math.max(0, e.nativeEvent.layout.x - 16);
+            setTimeout(() => strip.current?.scrollTo({ x, y: 0, animated: false }), 50);
+          }
         }}
-        style={{
-          minWidth: 46,
-          height: 44,
-          paddingHorizontal: 14,
-          borderRadius: radius.chip,
+        style={({ pressed }) => ({
+          paddingHorizontal: 16,
+          paddingVertical: 10,
+          borderRadius: 999,
           borderWidth: 1.5,
           borderColor: on ? c.card.ink : c.card.border,
           backgroundColor: on ? c.card.ink : c.card.react,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
-        <Text style={{ fontFamily: font.bold, fontSize: fs(13.5), color: on ? c.card.bg : c.card.ink2 }}>{o.label}</Text>
+        <Text style={{ fontFamily: font.bold, fontSize: fs(13), color: on ? c.card.bg : c.card.ink }}>
+          {o.label}
+        </Text>
       </Pressable>
     );
   });
@@ -123,18 +131,20 @@ function Choice<T>({
     <View style={{ gap: 10 }}>
       <View>
         <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.card.ink }}>{label}</Text>
-        {!!sub && (
-          <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}>
+        {sub ? (
+          <Text
+            style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(17), color: c.card.ink3, marginTop: 3 }}
+          >
             {sub}
           </Text>
-        )}
+        ) : null}
       </View>
       {scroll ? (
         <ScrollView
           ref={strip}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8, paddingRight: 4 }}
+          contentContainerStyle={{ gap: 8, paddingRight: 16 }}
         >
           {chips}
         </ScrollView>
@@ -146,54 +156,59 @@ function Choice<T>({
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  const { c, radius, fs } = useV2Theme();
+  const { c, font, radius, fs } = useV2Theme();
   return (
-    <View style={{ gap: 10, marginTop: 20 }}>
-      <Kicker onRoom style={{ marginHorizontal: 4 }}>
-        {title}
-      </Kicker>
-      <View style={{ backgroundColor: c.card.bg, borderRadius: radius.card, padding: 20, gap: 22 }}>{children}</View>
+    <View
+      style={{
+        gap: 16,
+        padding: 16,
+        borderRadius: radius.card,
+        backgroundColor: c.card.bg,
+      }}
+    >
+      <Text style={{ fontFamily: font.bold, fontSize: fs(17), color: c.card.ink }}>{title}</Text>
+      {children}
     </View>
   );
 }
 
 function Settings() {
-  const { c, font, radius, fs } = useV2Theme();
-  const { scheme, setScheme } = useTheme();
   const router = useRouter();
   const { user, uid, role, logOut } = useAuth();
   const { language, setLanguage, t } = useLanguage();
-  const season = useActiveSeason();
+  const { scheme, setScheme } = useTheme();
   const [tint, setTint] = useRoomTint(uid);
   const { prefs, set } = useQueuePrefs(uid);
   const queueState = useQueueState(uid);
+  const { c, font, radius, fs } = useV2Theme();
+  const season = useActiveSeason();
   const people = usePeopleData(uid);
-  const names = useFullTimerNames();
-  const [toast, setToast] = React.useState<string | null>(null);
   const [notifyBusy, setNotifyBusy] = React.useState(false);
+  const [testPushBusy, setTestPushBusy] = React.useState(false);
+  const [permStatus, setPermStatus] = React.useState<string | null>(null);
+  const [toast, setToast] = React.useState<string | null>(null);
+  const [resetConfirm, setResetConfirm] = React.useState(false);
+
+  React.useEffect(() => {
+    getNotificationPermissionStatus().then((status) => {
+      setPermStatus(status);
+    });
+  }, []);
 
   const isManager = role === 'admin' || role === 'manager';
-
-  // The queue is the trainee's home; a full-timer has no queue to tune, so the
-  // three blocks that only feed `buildQueue` don't render for them. Same
-  // predicate `roomForRole` uses, so the room and the content can't drift.
   const hasQueue = shellForRole(role) === 'queue';
 
-  // Settings is a drawer row for the trainee and a More row for the full-timer
-  // — never a tab, so there is always somewhere to go back to.
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
 
   const w = prefs.onCampus;
+
   const toggleDay = (d: number) => {
     const on = w.days.includes(d);
-    // The last day can't be turned off here: an empty window is normalized back
-    // to the default whole, which would silently move the hours too. Turning the
-    // window off entirely isn't a thing v2 offers — it's when you're on campus.
     if (on && w.days.length === 1) {
-      setToast("Keep at least one day — that's when logging gets promoted.");
+      setToast(t('mobile.settings.pick_at_least_one_day'));
       return;
     }
-    set({ onCampus: { ...w, days: on ? w.days.filter((x) => x !== d) : [...w.days, d] } });
+    set({ onCampus: { ...w, days: on ? w.days.filter((x: number) => x !== d) : [...w.days, d] } });
   };
   const setPref = (patch: Partial<QueueSettings>) => set(patch);
 
@@ -202,6 +217,8 @@ function Settings() {
     setNotifyBusy(true);
     try {
       const granted = await ensureNotificationPermission();
+      const status = await getNotificationPermissionStatus();
+      setPermStatus(status);
       if (!granted) {
         setToast('Notifications are off. You can still use the app — this only affects phone nudges.');
         return;
@@ -218,6 +235,56 @@ function Settings() {
       setToast('Could not turn on notifications right now.');
     } finally {
       setNotifyBusy(false);
+    }
+  };
+
+  const handleSendTestNotification = async () => {
+    if (testPushBusy) return;
+    setTestPushBusy(true);
+    try {
+      const status = await getNotificationPermissionStatus();
+      setPermStatus(status);
+      if (status === 'denied') {
+        setToast('Notifications are blocked in system settings. Please enable them in your device settings.');
+        return;
+      }
+      if (status !== 'granted') {
+        const granted = await ensureNotificationPermission();
+        const nextStatus = await getNotificationPermissionStatus();
+        setPermStatus(nextStatus);
+        if (!granted) {
+          setToast('Notification permission was not granted.');
+          return;
+        }
+      }
+
+      // Fire local test notification
+      const localSent = await sendTestLocalNotification();
+
+      // If user is logged in, also try dispatching push test via backend
+      if (uid) {
+        const token = await registerForPushToken();
+        if (token) {
+          await setPushToken(uid, token);
+        }
+        await sendPushNotification({
+          userId: uid,
+          title: 'Test Notification',
+          body: 'Push delivery verified successfully.',
+          data: { type: 'test' },
+        });
+      }
+
+      if (localSent) {
+        setToast('Test notification sent! Check your notification center.');
+      } else {
+        setToast('Test notification dispatched.');
+      }
+    } catch (e) {
+      console.error('Failed to send test notification:', e);
+      setToast('Failed to send test notification.');
+    } finally {
+      setTestPushBusy(false);
     }
   };
 
@@ -479,6 +546,36 @@ function Settings() {
           <Text style={{ fontFamily: font.medium, fontSize: fs(13.5), lineHeight: fs(19), color: c.card.ink2 }}>
             Turn on notifications to get a nudge when something needs you — a due to-do, a new message, a quiet person.
           </Text>
+
+          {permStatus && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                padding: 12,
+                borderRadius: radius.card,
+                backgroundColor: permStatus === 'granted' ? c.card.react : c.card.border,
+              }}
+            >
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: permStatus === 'granted' ? '#22c55e' : '#f59e0b',
+                }}
+              />
+              <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), color: c.card.ink }}>
+                {permStatus === 'granted'
+                  ? t('mobile.settings.notifications_enabled')
+                  : permStatus === 'denied'
+                    ? t('mobile.settings.notifications_disabled')
+                    : 'Notification permission not determined'}
+              </Text>
+            </View>
+          )}
+
           <Pressable
             accessibilityRole="button"
             onPress={enableNotifications}
@@ -494,6 +591,26 @@ function Settings() {
           >
             <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.onPrimary }}>
               {notifyBusy ? t('mobile.settings.working') : t('mobile.settings.turn_on_notifications')}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={handleSendTestNotification}
+            disabled={testPushBusy}
+            style={({ pressed }) => ({
+              minHeight: 48,
+              borderRadius: radius.card,
+              backgroundColor: c.card.react,
+              borderWidth: 1.5,
+              borderColor: c.card.border,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed || testPushBusy ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(14), color: c.card.ink }}>
+              {testPushBusy ? t('mobile.settings.sending_test_notification') : t('mobile.settings.send_test_notification')}
             </Text>
           </Pressable>
         </Section>
