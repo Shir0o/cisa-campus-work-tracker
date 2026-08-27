@@ -12,6 +12,7 @@ import { useSeason } from '../../lib/seasons';
 import { UsageStats } from '../../lib/usageStats';
 import { Contact, Stage, MET_VIA } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
+import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
 
 interface NewContactModalProps {
   isOpen: boolean;
@@ -40,6 +41,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     notes: '',
     spiritualBackground: ''
   });
+  const [tagInput, setTagInput] = useState('');
   // Once the staffer touches the Gender field, stop re-inferring it from the
   // first name on every keystroke — their explicit choice wins.
   const genderManuallySet = useRef(false);
@@ -118,8 +120,9 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     try {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       // Auto-tag gender from the first name (editable above), and surface it as
-      // an "M"/"F" tag so the prayer page's brother/sister filter works.
       const autoGenderTag = genderTag(formData.gender);
+      const typedTags = tagInput.split(',').map((t) => t.trim()).filter(Boolean);
+      const allFormTags = [...formData.tags, ...typedTags];
       const contactData = {
         name: fullName,
         role: formData.role,
@@ -131,7 +134,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         gender: formData.gender,
         // Stamp the active season cohort (+ "Club Rush" during intake) alongside
         // any tags the staffer typed, so the contact is findable by cohort later.
-        tags: Array.from(new Set([...formData.tags, ...season.tags, ...(autoGenderTag ? [autoGenderTag] : [])])),
+        tags: normalizeTagList([...allFormTags, ...season.tags, ...(autoGenderTag ? [autoGenderTag] : [])]),
         notes: formData.notes,
         spiritualBackground: formData.spiritualBackground,
         initials: getInitials(formData.firstName, formData.lastName),
@@ -158,7 +161,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
         formData.gender ? `Gender: ${formData.gender}` : '',
-        formData.tags.length > 0 ? `Tags: ${formData.tags.join(', ')}` : '',
+        allFormTags.length > 0 ? `Tags: ${allFormTags.join(', ')}` : '',
         formData.notes ? `Notes: ${formData.notes}` : ''
       ].filter(Boolean).join('\n');
 
@@ -222,6 +225,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         notes: '',
         spiritualBackground: ''
       });
+      setTagInput('');
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'contacts');
     } finally {
@@ -472,16 +476,59 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                   <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                     <Tag className="w-3.5 h-3.5" /> TAGS (COMMA SEPARATED)
                   </label>
+                  {formData.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-1.5">
+                      {formData.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          style={tagStyle(tag)}
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
+                        >
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => setFormData((f) => ({ ...f, tags: f.tags.filter((t) => t !== tag) }))}
+                            className="hover:opacity-75 cursor-pointer ml-0.5 text-xs font-bold leading-none"
+                            title={t('modals.contactDetails.remove_tag')}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <input
                     type="text"
-                    value={formData.tags.join(', ')}
-                    onChange={e => setFormData(f => ({ 
-                      ...f, 
-                      tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) 
-                    }))}
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
                     placeholder="e.g. Gospel, Fall2023"
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                   />
+                  {(() => {
+                    const availableSuggestions = TAG_SUGGESTIONS.filter(
+                      (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                    );
+                    if (availableSuggestions.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1 mt-1.5 pt-0.5">
+                        {availableSuggestions.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              if (!formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())) {
+                                setFormData((f) => ({ ...f, tags: [...f.tags, s] }));
+                              }
+                            }}
+                            style={tagStyle(s)}
+                            className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity border border-outline-variant/30 cursor-pointer"
+                          >
+                            + {s}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Spiritual Background Field */}

@@ -73,6 +73,19 @@ export function planTagCombining(
   return rows;
 }
 
+export const TAG_SUGGESTIONS = [
+  'Saved',
+  'Baptized',
+  'Interested',
+  'Open',
+  'Freshman',
+  'Sophomore',
+  'Junior',
+  'Senior',
+  'Graduate',
+  'Club Rush',
+];
+
 const DAY_MS = 86_400_000;
 const parseMs = (s?: any): number | null => {
   if (!s) return null;

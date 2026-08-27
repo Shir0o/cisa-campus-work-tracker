@@ -2508,26 +2508,32 @@ export default function ContactDetailsModal({
                           }}
                         />
                       </span>
-                      {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).slice(0, 4).map((s) => (
-                            <button
-                              key={s}
-                              type="button"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                persistTags([...formData.tags, s], "added", s);
-                                setTagInput("");
-                                setAddingTag(false);
-                              }}
-                              style={tagStyle(s)}
-                              className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
-                            >
-                              + {s}
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {(() => {
+                        const available = TAG_SUGGESTIONS.filter(
+                          (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                        );
+                        if (available.length === 0) return null;
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {available.slice(0, 4).map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  persistTags([...formData.tags, s], "added", s);
+                                  setTagInput("");
+                                  setAddingTag(false);
+                                }}
+                                style={tagStyle(s)}
+                                className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity"
+                              >
+                                + {s}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ) : (
                     <button

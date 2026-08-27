@@ -171,7 +171,7 @@ describe('NewContactModal', () => {
     });
 
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
-    expect(contactArg?.tags).toEqual(expect.arrayContaining(["Summer '26"]));
+    expect(contactArg?.tags).toEqual(expect.arrayContaining(['Summer 2026']));
   });
 
   it('stamps the adder’s partner as a co-creator when they are paired', async () => {
@@ -321,6 +321,74 @@ describe('NewContactModal', () => {
 
     await user.click(screen.getByRole('button', { name: /Cancel/i }));
     expect(onClose).toHaveBeenCalled();
+  });
+
+  // ── Tag suggestions and normalization ─────────────────────────────
+
+  it('renders tag suggestion chips and adds tags on click', async () => {
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    // Expand full fields disclosure
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    // Check that "+ Interested" and "+ Open" chips are present
+    const interestedChip = await screen.findByRole('button', { name: /\+ Interested/i });
+    const openChip = await screen.findByRole('button', { name: /\+ Open/i });
+    expect(interestedChip).toBeInTheDocument();
+    expect(openChip).toBeInTheDocument();
+
+    // Click "+ Interested"
+    await user.click(interestedChip);
+
+    // "+ Interested" should now disappear from suggestions
+    expect(screen.queryByRole('button', { name: /\+ Interested/i })).not.toBeInTheDocument();
+
+    // A selected tag chip "Interested" with remove button should appear
+    expect(screen.getByText('Interested')).toBeInTheDocument();
+    expect(screen.getByTitle('Remove tag')).toBeInTheDocument();
+  });
+
+  it('normalizes tags upon submission', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await user.type(firstName, 'Jane');
+
+    // Expand rest of fields
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    // Type a tag variant
+    const tagInput = screen.getByPlaceholderText(/e\.g\. Gospel, Fall2023/i);
+    await user.type(tagInput, "Fall '26, club-rush");
+
+    // Click "+ Open" suggestion
+    const openChip = await screen.findByRole('button', { name: /\+ Open/i });
+    await user.click(openChip);
+
+    // Submit
+    const submitBtn = screen.getByRole('button', { name: /Add Contact/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(onClose).toHaveBeenCalled();
+      expect(vi.mocked(addDoc)).toHaveBeenCalled();
+    });
+
+    const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
+    expect(contactArg?.tags).toContain('Fall 2026');
+    expect(contactArg?.tags).toContain('Club Rush');
+    expect(contactArg?.tags).toContain('Open');
   });
 
   // ── Modal not rendered when closed ─────────────────────────────────
