@@ -161,7 +161,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
         formData.gender ? `Gender: ${formData.gender}` : '',
-        formData.tags.length > 0 ? `Tags: ${formData.tags.join(', ')}` : '',
+        allFormTags.length > 0 ? `Tags: ${allFormTags.join(', ')}` : '',
         formData.notes ? `Notes: ${formData.notes}` : ''
       ].filter(Boolean).join('\n');
 
@@ -504,25 +504,31 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                     placeholder="e.g. Gospel, Fall2023"
                     className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                   />
-                  {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1.5 pt-0.5">
-                      {TAG_SUGGESTIONS.filter((s) => !formData.tags.includes(s)).map((s) => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => {
-                            if (!formData.tags.includes(s)) {
-                              setFormData((f) => ({ ...f, tags: [...f.tags, s] }));
-                            }
-                          }}
-                          style={tagStyle(s)}
-                          className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity border border-outline-variant/30 cursor-pointer"
-                        >
-                          + {s}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {(() => {
+                    const availableSuggestions = TAG_SUGGESTIONS.filter(
+                      (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                    );
+                    if (availableSuggestions.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1 mt-1.5 pt-0.5">
+                        {availableSuggestions.map((s) => (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => {
+                              if (!formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())) {
+                                setFormData((f) => ({ ...f, tags: [...f.tags, s] }));
+                              }
+                            }}
+                            style={tagStyle(s)}
+                            className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity border border-outline-variant/30 cursor-pointer"
+                          >
+                            + {s}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* Spiritual Background Field */}
