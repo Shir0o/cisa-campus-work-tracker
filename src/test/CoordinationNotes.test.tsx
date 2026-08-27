@@ -7,6 +7,8 @@ import CoordinationNotes, { SuggestedTaskCard } from '../views/CoordinationNotes
 import { useAuth } from '../components/AuthProvider';
 import { LanguageProvider } from '../components/LanguageProvider';
 import { logActivity } from '../lib/firebase';
+import * as translator from '../lib/translator';
+import { todayISO } from '../lib/board';
 
 // ── Auth mock ────────────────────────────────────────────────────────────────
 vi.mock('../components/AuthProvider', () => ({
@@ -2261,6 +2263,60 @@ describe('CoordinationNotes', () => {
       const dragBtnA = await screen.findByRole('button', { name: /drag to reorder pinned doc a/i });
       expect(dragBtnA).toBeInTheDocument();
     });
+
+    describe('Spanish translation support for Coordination Doc view and note form', () => {
+      it('renders translated title and markdown in Coordination Doc view when language is Spanish', async () => {
+        (useAuth as any).mockReturnValue(adminAuth);
+        translator.setCachedTranslation('Wednesday care', 'Cuidado de miércoles', 'es');
+        translator.setCachedTranslation('# hi\n\nNotes for team', '# hola\n\nNotas para el equipo', 'es');
+        const docsList = [
+          {
+            id: 'doc-today',
+            data: () => ({
+              title: 'Wednesday care',
+              date: todayISO(),
+              weekday: 'Wednesday',
+              md: '# hi\n\nNotes for team',
+              createdBy: 'u-admin',
+              updatedAt: 'mock-ts',
+            }),
+          },
+        ];
+        setupSnapshots({ docs: docsList as any, notes: [], team: mockTeam as any });
+
+        render(
+          <LanguageProvider defaultLanguage="es">
+            <CoordinationNotes />
+          </LanguageProvider>
+        );
+
+        await waitFor(() => {
+          expect(screen.getByRole('heading', { name: 'Cuidado de miércoles' })).toBeInTheDocument();
+          expect(screen.getByText(/Notas para el equipo/i)).toBeInTheDocument();
+        });
+
+        // Toggle into edit mode
+        const editBtn = screen.getByRole('button', { name: /edit|editar/i });
+        fireEvent.click(editBtn);
+
+        expect(screen.getByPlaceholderText(/untitled page|página sin título/i)).toHaveValue('Cuidado de miércoles');
+
+        // Toggle back to translation view
+        const viewTransBtn = screen.getByRole('button', { name: /ver traducción/i });
+        fireEvent.click(viewTransBtn);
+
+        expect(screen.getByRole('heading', { name: 'Cuidado de miércoles' })).toBeInTheDocument();
+
+        // Promote to note in Spanish prefills translated title and body
+        const promoteBtn = screen.getByRole('button', { name: /keep as a note|guardar como nota/i });
+        fireEvent.click(promoteBtn);
+
+        await waitFor(() => {
+          expect(screen.getByPlaceholderText(/un título corto|short title/i)).toHaveValue('Cuidado de miércoles');
+          expect(screen.getByPlaceholderText(/qué pasó|what happened/i)).toHaveValue('Notas para el equipo');
+        });
+      });
+    });
   });
 
   describe('SuggestedTaskCard', () => {
@@ -2367,4 +2423,6 @@ describe('CoordinationNotes', () => {
       });
     });
   });
+
+
 

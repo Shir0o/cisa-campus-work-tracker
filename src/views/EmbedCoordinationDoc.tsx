@@ -18,6 +18,7 @@ import { useUndoSnack } from '../hooks/useUndoSnack';
 import { UndoSnackbar } from '../components/UndoSnackbar';
 import { useAuth } from '../components/AuthProvider';
 import { useLanguage } from '../components/LanguageProvider';
+import { useTranslate, useTranslateMarkdown } from '../hooks/useTranslate';
 import { DocEditor, NoteForm, guessSeries, mdExcerpt, type TeamMember, type NoteFormInitial } from './CoordinationNotes';
 import { BoardDoc, Audience, NoteType, BOARD_SERIES, todayISO } from '../lib/board';
 import { Contact } from '../types';
@@ -31,7 +32,8 @@ declare global {
 }
 
 export default function EmbedCoordinationDoc() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isSpanish = language === 'es';
   const { docId } = useParams<{ docId: string }>();
   const { user, isAdmin, loading } = useAuth();
   const [signInError, setSignInError] = useState<string | null>(null);
@@ -43,6 +45,15 @@ export default function EmbedCoordinationDoc() {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [noteForm, setNoteForm] = useState<NoteFormInitial | null>(null);
   const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+
+  const { translatedText: translatedDocTitle } = useTranslate(activeDoc?.title);
+  const { translatedText: translatedDocMd } = useTranslateMarkdown(activeDoc?.md);
+
+  const displayDoc = activeDoc
+    ? isSpanish
+      ? { ...activeDoc, title: translatedDocTitle, md: translatedDocMd }
+      : activeDoc
+    : activeDoc;
 
   // People detail is a full page (the design's ContactDetail), not a popup.
   usePreserveScroll(!!(isDetailsModalOpen && selectedContact));
@@ -149,7 +160,9 @@ export default function EmbedCoordinationDoc() {
   // CoordinationNotes.tsx's promoteDoc, minus the live-editing-preview branch
   // (this embed always shows exactly one, already-active doc).
   const onPromote = (d: BoardDoc) => {
-    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(d.md) });
+    const titleToUse = isSpanish ? translatedDocTitle : d.title;
+    const mdToUse = isSpanish ? translatedDocMd : d.md;
+    setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
   };
 
   const addNote = async (fields: { type: NoteType; series: string; title: string; body: string; tags: string[] }) => {
@@ -222,8 +235,8 @@ export default function EmbedCoordinationDoc() {
   return (
     <div style={{ height: '100vh', overflow: 'hidden' }}>
       <DocEditor
-        key={activeDoc.id}
-        doc={activeDoc}
+        key={`${displayDoc.id}-${language}`}
+        doc={displayDoc}
         meUid={user.uid}
         meName={meName}
         pagesCollapsed

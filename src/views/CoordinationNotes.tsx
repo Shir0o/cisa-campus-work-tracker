@@ -83,6 +83,7 @@ import {
   GripVertical,
   Archive,
   Edit3,
+  Languages,
   Maximize2,
   Minimize2,
   Hash,
@@ -637,7 +638,8 @@ export function mdExcerpt(md: string): string {
 
 export default function CoordinationNotes() {
   const { isAdmin, user, role } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isSpanish = language === 'es';
   const isMobile = useMediaQuery("(max-width: 768px)");
   const isMe = user?.email?.toLowerCase() === 'yilongwang05@gmail.com';
   // Full-timers (admins) edit; Trainees + Students read a role-scoped subset.
@@ -1051,6 +1053,13 @@ export default function CoordinationNotes() {
   }, [docs]);
 
   const active = docs.find((d) => d.id === activeId) || null;
+  const { translatedText: translatedActiveTitle } = useTranslate(active?.title);
+  const { translatedText: translatedActiveMarkdown } = useTranslateMarkdown(active?.md);
+  const displayActive = active
+    ? isSpanish
+      ? { ...active, title: translatedActiveTitle, md: translatedActiveMarkdown }
+      : active
+    : null;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -1213,8 +1222,10 @@ export default function CoordinationNotes() {
   // Session 4 — "Keep as a note": promote the open page into Notes & learnings,
   // prefilling the form with its title, an excerpt, and a guessed series.
   const promoteDoc = (d: BoardDoc) => {
+    const titleToUse = isSpanish && d.id === activeId ? translatedActiveTitle : d.title;
     const md = d.id === activeId ? liveActiveMd ?? d.md : d.md;
-    setNoteForm({ type: 'record', series: guessSeries(d.title), title: d.title, body: mdExcerpt(md) });
+    const mdToUse = isSpanish && d.id === activeId ? translatedActiveMarkdown : md;
+    setNoteForm({ type: 'record', series: guessSeries(titleToUse), title: titleToUse, body: mdExcerpt(mdToUse) });
     document.getElementById('board-notes-section')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
   };
 
@@ -1731,7 +1742,7 @@ export default function CoordinationNotes() {
           canEdit={canEdit}
           canSeeNotes={canSeeNotes}
           docs={docs}
-          active={active}
+          active={displayActive || active}
           activeId={activeId}
           setActiveId={setActiveId}
           newDoc={createDoc}
@@ -1932,8 +1943,8 @@ export default function CoordinationNotes() {
               >
               {canEdit ? (
                 <DocEditor
-                  key={active.id}
-                  doc={active}
+                  key={`${active.id}-${language}`}
+                  doc={displayActive || active}
                   meUid={uid}
                   meName={meName}
                   pagesCollapsed={pagesCollapsed}
@@ -1958,8 +1969,8 @@ export default function CoordinationNotes() {
                 />
               ) : (
                 <ReadOnlyDoc
-                  key={active.id}
-                  doc={active}
+                  key={`${active.id}-${language}`}
+                  doc={displayActive || active}
                   pagesCollapsed={pagesCollapsed}
                   onTogglePages={togglePages}
                   isFullscreen={isFullscreen}
@@ -2559,7 +2570,11 @@ export function DocEditor({
   canNativeFs?: boolean;
 }) {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isSpanish = language === 'es';
+  const { translatedText: translatedTitle } = useTranslate(d.title || '');
+  const { translatedText: translatedMarkdown } = useTranslateMarkdown(d.md || '');
+  const [isEditingInSpanish, setIsEditingInSpanish] = useState(false);
 
   // This component is remounted (key={doc.id}) per page, so a fresh Y.Doc +
   // awareness live for exactly one page's lifetime.
@@ -3212,13 +3227,21 @@ export function DocEditor({
       </div>
 
       {/* title */}
-      <input
-        value={title}
-        onChange={(e) => onTitleChange(e.target.value)}
-        placeholder={t('coordination.untitled_page')}
-        spellCheck={false}
-        className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
-      />
+      {isSpanish && !isEditingInSpanish ? (
+        <div className="flex items-center gap-2 px-5 lg:px-8 pt-3 pb-2">
+          <h1 className="bdoc-fs-title font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight">
+            {translatedTitle}
+          </h1>
+        </div>
+      ) : (
+        <input
+          value={title}
+          onChange={(e) => onTitleChange(e.target.value)}
+          placeholder={t('coordination.untitled_page')}
+          spellCheck={false}
+          className="bdoc-fs-title w-full bg-transparent border-0 outline-none font-serif text-[24px] sm:text-[30px] font-medium tracking-tight text-on-surface leading-tight px-5 lg:px-8 pt-3 pb-2 placeholder:text-on-surface-variant/50"
+        />
+      )}
 
       {/* toolbar */}
       <div className="bdoc-fs-toolbar sticky top-0 z-10 flex items-center gap-1 flex-wrap bg-surface border-y border-outline-variant px-4 lg:px-6 py-1.5 mx-1.5">
@@ -3268,6 +3291,28 @@ export function DocEditor({
           </>
         )}
         <div className="ml-auto flex items-center gap-2">
+          {isSpanish && (
+            <button
+              type="button"
+              onClick={() => setIsEditingInSpanish((v) => !v)}
+              className={cn(
+                'inline-flex items-center gap-1.5 text-[12.5px] font-semibold rounded-lg px-2.5 py-1 border transition-colors',
+                isEditingInSpanish
+                  ? 'bg-stage-accent-soft border-stage-accent/40 text-stage-accent'
+                  : 'bg-surface-variant border-outline-variant text-on-surface-variant hover:border-stage-accent/40 hover:text-stage-accent',
+              )}
+            >
+              {isEditingInSpanish ? (
+                <>
+                  <Languages className="w-3.5 h-3.5" /> {t('coordination.view_translation')}
+                </>
+              ) : (
+                <>
+                  <Edit3 className="w-3.5 h-3.5" /> {t('coordination.edit')}
+                </>
+              )}
+            </button>
+          )}
           <span className={cn('inline-flex items-center gap-1 text-xs whitespace-nowrap', saved ? 'text-tertiary' : 'text-on-surface-variant/70')}>
             {saved ? (
               <>
@@ -3308,7 +3353,13 @@ export function DocEditor({
           onMouseUp={refreshSelectionFab}
           onKeyUp={refreshSelectionFab}
         >
-          {showSource ? (
+          {isSpanish && !isEditingInSpanish ? (
+            <div className="px-5 lg:px-8 pb-6 bdoc-prose-viewer">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={READONLY_MD}>
+                {translatedMarkdown || t('coordination.this_page_empty')}
+              </ReactMarkdown>
+            </div>
+          ) : showSource ? (
             <textarea
               ref={textareaRef}
               id="markdown-source-textarea"
@@ -3659,11 +3710,27 @@ export function NoteForm({
   onSave: (f: { id?: string; type: NoteType; series: string; title: string; body: string; tags: string[]; displayMode?: 'text' | 'list' }) => void;
 }) {
   const [type, setType] = useState<NoteType>(initial?.type ?? 'record');
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isSpanish = language === 'es';
   const [series, setSeries] = useState(initial?.series || seriesOptions[0] || 'Team');
   const [title, setTitle] = useState(initial?.title ?? '');
   const [body, setBody] = useState(initial?.body ?? '');
   const [displayMode, setDisplayMode] = useState<'text' | 'list'>(initial?.displayMode ?? 'text');
+
+  const { translatedText: trInitialTitle } = useTranslate(initial?.title);
+  const { translatedText: trInitialBody } = useTranslateMarkdown(initial?.body);
+
+  useEffect(() => {
+    if (isSpanish && initial?.title && trInitialTitle && (title === initial.title || !title)) {
+      setTitle(trInitialTitle);
+    }
+  }, [isSpanish, initial?.title, trInitialTitle]);
+
+  useEffect(() => {
+    if (isSpanish && initial?.body && trInitialBody && (body === initial.body || !body)) {
+      setBody(trInitialBody);
+    }
+  }, [isSpanish, initial?.body, trInitialBody]);
 
   const toggleMode = () => {
     if (displayMode === 'text') {
@@ -3785,7 +3852,16 @@ export function SuggestedTaskCard({
   }) => Promise<void>;
 }) {
   const [title, setTitle] = useState(task.title);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const isSpanish = language === 'es';
+  const { translatedText: trTaskTitle } = useTranslate(task.title);
+
+  useEffect(() => {
+    if (isSpanish && task.title && trTaskTitle && (title === task.title || !title)) {
+      setTitle(trTaskTitle);
+    }
+  }, [isSpanish, task.title, trTaskTitle]);
+
   const [dueDate, setDueDate] = useState(task.dueDate || '');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(task.priority || 'medium');
   const [assigneeId, setAssigneeId] = useState<string>(task.assigneeId || meUid || '');
