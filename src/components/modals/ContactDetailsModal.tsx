@@ -23,6 +23,7 @@ import {
   Instagram,
   Check,
   HeartHandshake,
+  Tag,
 } from "lucide-react";
 import {
   db,
@@ -62,7 +63,7 @@ import { unhidePrayerContact } from "../../lib/prayers";
 import { Translate } from "../Translate";
 import { useLanguage } from "../LanguageProvider";
 import { buildContactActivityPatch } from "../../lib/contactActivity";
-import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags } from "../../lib/tags";
+import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags, normalizeTagList } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
 
@@ -257,6 +258,7 @@ export default function ContactDetailsModal({
   const [submittingPrayer, setSubmittingPrayer] = useState(false);
   const [addingTag, setAddingTag] = useState(false);
   const [tagInput, setTagInput] = useState("");
+  const [editTagInput, setEditTagInput] = useState("");
   const [newInteraction, setNewInteraction] = useState({
     content: "",
     dateTime: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
@@ -358,6 +360,7 @@ export default function ContactDetailsModal({
         notes: contact.notes || "",
         spiritualBackground: contact.spiritualBackground || "",
       });
+      setEditTagInput("");
       setIsEditing(false);
     }
   }, [contact]);
@@ -491,6 +494,7 @@ export default function ContactDetailsModal({
     setIsAddingPrayer(false);
     setAddingTag(false);
     setTagInput("");
+    setEditTagInput("");
     setOpenThread(initialInteractionId ?? null);
   }, [contact?.id, isOpen, initialTab, initialInteractionId]);
 
@@ -621,12 +625,15 @@ export default function ContactDetailsModal({
         changes.push(`gender: "${contact.gender || ''}" → "${formData.gender || ''}"`);
       if (formData.notes !== contact.notes) changes.push(`notes updated`);
 
+      const typedTags = editTagInput.split(",").map((t) => t.trim()).filter(Boolean);
+      const combinedFormTags = normalizeTagList([...formData.tags, ...typedTags]);
+
       // Keep an "M"/"F" tag in sync with the gender field so the prayer page's
       // brother/sister filter stays consistent even when gender is corrected.
       const genderTagValue = formData.gender === "M" || formData.gender === "F" ? formData.gender : "";
       const tags = genderTagValue
-        ? Array.from(new Set([...formData.tags.filter((t) => t !== "M" && t !== "F"), genderTagValue]))
-        : formData.tags.filter((t) => t !== "M" && t !== "F");
+        ? Array.from(new Set([...combinedFormTags.filter((t) => t !== "M" && t !== "F"), genderTagValue]))
+        : combinedFormTags.filter((t) => t !== "M" && t !== "F");
 
       const updateData: any = {
         name: fullName,
@@ -1478,23 +1485,80 @@ export default function ContactDetailsModal({
 
                     <div className="space-y-1.5 md:col-span-2">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        {t('modals.contactDetails.tags_comma_separated')}
+                        <Tag className="w-3.5 h-3.5" /> {t('modals.contactDetails.tags_comma_separated')}
                       </label>
+                      {formData.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {formData.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              style={tagStyle(tag)}
+                              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[var(--tone-soft)] text-[var(--tone)] text-xs font-medium border border-outline-variant/40"
+                            >
+                              {tag}
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormData((f) => ({
+                                    ...f,
+                                    tags: f.tags.filter((t) => t !== tag),
+                                  }))
+                                }
+                                className="hover:opacity-75 cursor-pointer ml-0.5 text-xs font-bold leading-none"
+                                title={t('modals.contactDetails.remove_tag')}
+                              >
+                                ×
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       <input
                         type="text"
-                        value={formData.tags.join(", ")}
-                        onChange={(e) =>
-                          setFormData((f) => ({
-                            ...f,
-                            tags: e.target.value
-                              .split(",")
-                              .map((t) => t.trim())
-                              .filter(Boolean),
-                          }))
-                        }
-                        placeholder={t('modals.contactDetails.tags_placeholder')}
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
+                        value={editTagInput}
+                        onChange={(e) => setEditTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            const raw = editTagInput.trim();
+                            if (raw) {
+                              const newTags = raw.split(",").map((t) => t.trim()).filter(Boolean);
+                              setFormData((f) => ({
+                                ...f,
+                                tags: normalizeTagList([...f.tags, ...newTags]),
+                              }));
+                              setEditTagInput("");
+                            }
+                          }
+                        }}
+                        placeholder="e.g. Gospel, Fall2023"
+                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
                       />
+                      {(() => {
+                        const availableSuggestions = TAG_SUGGESTIONS.filter(
+                          (s) => !formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())
+                        );
+                        if (availableSuggestions.length === 0) return null;
+                        return (
+                          <div className="flex flex-wrap gap-1 mt-1.5 pt-0.5">
+                            {availableSuggestions.map((s) => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => {
+                                  if (!formData.tags.some((t) => t.toLowerCase() === s.toLowerCase())) {
+                                    setFormData((f) => ({ ...f, tags: [...f.tags, s] }));
+                                  }
+                                }}
+                                style={tagStyle(s)}
+                                className="px-2.5 py-1 rounded-full text-xs font-medium bg-[var(--tone-soft)] text-[var(--tone)] hover:opacity-80 transition-opacity border border-outline-variant/30 cursor-pointer"
+                              >
+                                + {s}
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
                     {/* Spiritual Background Field */}
                     <div className="space-y-1.5 md:col-span-2">

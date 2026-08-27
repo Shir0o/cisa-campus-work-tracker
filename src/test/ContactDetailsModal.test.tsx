@@ -1219,14 +1219,14 @@ describe('ContactDetailsModal Component', () => {
     await screen.findByText('John Doe');
 
     fireEvent.click(screen.getByTitle('Edit details'));
-    const tagsInput = screen.getByPlaceholderText('e.g. Lead, Fall2023');
+    const tagsInput = screen.getByPlaceholderText('e.g. Gospel, Fall2023');
     fireEvent.change(tagsInput, { target: { value: 'alpha, beta ,  gamma' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save Changes' }));
 
     await waitFor(() =>
       expect(firestore.updateDoc).toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ tags: ['alpha', 'beta', 'gamma'] }),
+        expect.objectContaining({ tags: expect.arrayContaining(['leadership', 'small-group', 'alpha', 'beta', 'gamma']) }),
       ),
     );
   });
@@ -1827,6 +1827,58 @@ describe('ContactDetailsModal Component', () => {
       Object.defineProperty(window, 'matchMedia', { writable: true, value: original });
     }
   });
+
+  // ── Edit form tags chips (#592) ───────────────────────────────────
+
+  it('allows adding tags via Enter key, suggestions, and removing tags via chips in edit mode', async () => {
+    const user = userEvent.setup();
+    render(<ContactDetailsModal isOpen={true} onClose={mockOnClose} contact={mockContact} />);
+
+    // Open edit mode
+    const editBtn = screen.getByTitle('Edit details');
+    await user.click(editBtn);
+
+    // Verify existing tags rendered as chips with remove button inside edit form
+    const formElement = document.getElementById('edit-contact-form')!;
+    expect(formElement).toHaveTextContent('leadership');
+    expect(formElement).toHaveTextContent('small-group');
+
+    // Remove 'leadership' tag inside edit form
+    const removeButtons = formElement.querySelectorAll('button[title="Remove tag"]');
+    await user.click(removeButtons[0]);
+    expect(formElement).not.toHaveTextContent('leadership');
+
+    // Find the edit tag input
+    const tagInput = screen.getByPlaceholderText(/e\.g\. Gospel, Fall2023/i);
+
+    // Type a new tag and press Enter
+    await user.type(tagInput, 'Alpha{Enter}');
+    expect(formElement).toHaveTextContent('Alpha');
+    expect(tagInput).toHaveValue('');
+
+    // Click a suggestion pill like "+ Interested"
+    const suggestionPill = screen.getByRole('button', { name: /\+ Interested/i });
+    await user.click(suggestionPill);
+    expect(formElement).toHaveTextContent('Interested');
+    expect(screen.queryByRole('button', { name: /\+ Interested/i })).not.toBeInTheDocument();
+
+    // Type a comma-delimited tag in the input and submit form to ensure pending typed tags are normalized
+    await user.type(tagInput, "Fall '26, Fellowship");
+
+    // Save changes
+    const saveBtn = screen.getByRole('button', { name: 'Save Changes' });
+    await user.click(saveBtn);
+
+    await waitFor(() => {
+      expect(firestore.updateDoc).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          tags: expect.arrayContaining(['small-group', 'Alpha', 'Interested', 'Fall 2026', 'Fellowship']),
+        })
+      );
+    });
+  });
 });
+
 
 
