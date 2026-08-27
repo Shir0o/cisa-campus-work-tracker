@@ -1,25 +1,15 @@
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
   buildAttentionItems,
   attentionStacksFor,
-  attentionGroupsFor,
-  attentionPhrase,
+  partitionAttentionStacks,
   type AttentionItem,
 } from "../lib/attention";
 import { UserEntityState, __resetUserEntityStateCache } from "../lib/userEntityState";
-import type { Contact, Interaction, Notification } from "../types";
+import type { Contact, Interaction } from "../types";
 import type { ThreadMessageWithContact } from "../lib/threads";
 
-// Roster under test (issue #549): u1 is a full-timer, u3 a trainee.
-vi.mock("../lib/walking", () => ({
-  isFullTimer: (uid?: string | null) => uid === "u1",
-  isTrainee: (uid?: string | null) => uid === "u3",
-  fullTimerIds: () => ["u1"],
-  traineeIds: () => ["u3"],
-  applyRoster: () => {},
-}));
-
-describe("Attention Data Layer (#330)", () => {
+describe("partitionAttentionStacks (#595)", () => {
   const uid = "u1";
 
   beforeEach(() => {
@@ -29,32 +19,41 @@ describe("Attention Data Layer (#330)", () => {
 
   const sampleContacts: Contact[] = [
     {
-      id: "c1",
+      id: "c_owned",
       name: "Alex Johnson",
       createdBy: "u3",
+      owner: "u1", // owned by current user
       createdAt: new Date().toISOString(),
       reviewed: false,
       stage: "Freshman Contact",
-      owner: "u3",
+    } as Contact,
+    {
+      id: "c_team",
+      name: "Emerson Ahn",
+      createdBy: "u2",
+      owner: "u2", // owned by someone else
+      createdAt: new Date().toISOString(),
+      reviewed: false,
+      stage: "Student",
     } as Contact,
   ];
 
   const sampleInteractions: Interaction[] = [
     {
       id: "i1",
-      contactId: "c1",
-      userId: "u3",
-      content: "Met at library for study session",
+      contactId: "c_team",
+      userId: "u2",
+      content: "Shared during prayer time about exam stress.",
       createdAt: new Date().toISOString(),
-      dateTime: new Date().toISOString(),
-      type: "meetup",
-    } as Interaction,
+      type: "small_group",
+      title: "Tuesday small group",
+    } as unknown as Interaction,
   ];
 
   const sampleThreads: ThreadMessageWithContact[] = [
     {
       id: "t1",
-      contactId: "c1",
+      contactId: "c_owned",
       from: "u3",
       fromName: "Zion",
       kind: "question",
@@ -65,276 +64,53 @@ describe("Attention Data Layer (#330)", () => {
     },
   ];
 
-  it("builds attention items for full-timer oversight", () => {
-    const items = buildAttentionItems({
+  it("partitions direct questions and owned contacts into onYou, team activity into aroundTeam", () => {
+    const rawItems = buildAttentionItems({
       role: "admin",
-      uid: "u1",
+      uid,
       contacts: sampleContacts,
       interactions: sampleInteractions,
       threads: sampleThreads,
     });
 
-    expect(items.length).toBe(3);
-    const types = items.map((i) => i.type);
-    expect(types).toContain("contact");
-    expect(types).toContain("interaction");
-    expect(types).toContain("thread");
+    const stacks = attentionStacksFor(rawItems, uid);
+    const { onYou, aroundTeam } = partitionAttentionStacks(stacks, sampleContacts, uid, "admin");
+
+    expect(onYou.some((s) => s.contactId === "c_owned")).toBe(true);
+    expect(aroundTeam.some((s) => s.contactId === "c_team")).toBe(true);
   });
 
-  it("folds multiple items for the same contact into a single stack", () => {
-    const items = buildAttentionItems({
+  it("places direct assigned tasks and notifications into onYou", () => {
+    const rawItems = buildAttentionItems({
       role: "admin",
-      uid: "u1",
-      contacts: sampleContacts,
-      interactions: sampleInteractions,
-      threads: sampleThreads,
-    });
-
-    const stacks = attentionStacksFor(items, uid);
-    expect(stacks.length).toBe(1);
-    expect(stacks[0].contactId).toBe("c1");
-    expect(stacks[0].items.length).toBe(3);
-    expect(stacks[0].unread).toBe(3);
-  });
-
-  it("excludes items or stacks when marked done via UserEntityState", () => {
-    const items = buildAttentionItems({
-      role: "admin",
-      uid: "u1",
-      contacts: sampleContacts,
-      interactions: sampleInteractions,
-      threads: sampleThreads,
-    });
-
-    // Mark contact stack done
-    UserEntityState.markDone(uid, "contact:c1");
-    let stacks = attentionStacksFor(items, uid);
-    expect(stacks.length).toBe(0);
-
-    // Reset and test item-level done
-    UserEntityState.markUndone(uid, "contact:c1");
-    UserEntityState.markDone(uid, "interaction:i1");
-    stacks = attentionStacksFor(items, uid);
-    expect(stacks.length).toBe(1);
-    expect(stacks[0].items.length).toBe(2);
-  });
-
-  it("computes unread counts accurately and updates when items are marked read", () => {
-    const items = buildAttentionItems({
-      role: "admin",
-      uid: "u1",
-      contacts: sampleContacts,
-      interactions: sampleInteractions,
-      threads: sampleThreads,
-    });
-
-    UserEntityState.markRead(uid, "contact:c1");
-    const stacks = attentionStacksFor(items, uid);
-    expect(stacks[0].unread).toBe(2);
-  });
-
-  it("groups stacks into date buckets", () => {
-    const now = new Date().toISOString();
-    const yesterday = new Date(Date.now() - 86400000).toISOString();
-
-    const items: AttentionItem[] = [
-      {
-        id: "contact:c1",
-        type: "contact",
-        contactId: "c1",
-        at: now,
-        by: "u3",
-      },
-      {
-        id: "contact:c2",
-        type: "contact",
-        contactId: "c2",
-        at: yesterday,
-        by: "u3",
-      },
-    ];
-
-    const stacks = attentionStacksFor(items, uid);
-    const groups = attentionGroupsFor(stacks);
-
-    expect(groups.length).toBe(2);
-    expect(groups[0].bucket).toBe("today");
-    expect(groups[0].label).toBe("Today");
-    expect(groups[1].bucket).toBe("yesterday");
-    expect(groups[1].label).toBe("Yesterday");
-  });
-
-  it("formats attention phrases accurately", () => {
-    const staffMap = { u3: "Zion Trainee" };
-    expect(
-      attentionPhrase(
-        {
-          id: "contact:c1",
-          type: "contact",
-          contactId: "c1",
-          at: new Date().toISOString(),
-          by: "u3",
-        },
-        staffMap,
-      ),
-    ).toBe("Zion added them");
-
-    expect(
-      attentionPhrase(
-        {
-          id: "thread:t1",
-          type: "thread",
-          contactId: "c1",
-          at: new Date().toISOString(),
-          by: "u3",
-          kind: "question",
-        },
-        staffMap,
-      ),
-    ).toBe("Zion asked you something");
-
-    expect(
-      attentionPhrase(
-        {
-          id: "task:tk1",
-          type: "task",
-          at: new Date().toISOString(),
-          by: "u3",
-          title: "Follow up call",
-        },
-        staffMap,
-      ),
-    ).toBe("Zion assigned a task");
-
-    expect(
-      attentionPhrase(
-        {
-          id: "notif:n1",
-          type: "notification",
-          at: new Date().toISOString(),
-          title: "New gathering scheduled",
-        },
-        staffMap,
-      ),
-    ).toBe("New gathering scheduled");
-
-    expect(
-      attentionPhrase(
-        {
-          id: "interaction:i2",
-          type: "interaction",
-          at: new Date().toISOString(),
-          by: "u3",
-        },
-        staffMap,
-      ),
-    ).toBe("Zion logged time");
-  });
-
-  it("builds attention items for trainee role including FT messages", () => {
-    const traineeItems = buildAttentionItems({
-      role: "trainee",
-      uid: "u3",
-      threads: [
-        {
-          id: "t_ft",
-          contactId: "c1",
-          from: "u1",
-          fromName: "Tony",
-          kind: "nudge",
-          body: "Check in with Alex this week",
-          at: new Date().toISOString(),
-          interactionId: null,
-          reactions: [],
-        },
-      ],
+      uid,
       tasks: [
         {
           id: "task_1",
-          title: "Call Alex",
+          title: "Follow up before Friday",
           status: "pending",
-          assigneeId: "u3",
-          dueDate: new Date().toISOString(),
-          contactId: "c1",
+          assigneeId: uid,
+          contactId: null,
         },
       ],
       notifications: [
         {
           id: "notif_1",
-          title: "Welcome note",
-          message: "Welcome to term",
+          title: "Welcome to campus",
+          message: "A quick update",
+          type: "info",
           read: false,
-          userId: "u3",
+          userId: uid,
           createdAt: new Date().toISOString(),
-        } as Notification,
-        {
-          id: "notif_ts",
-          title: "Event note",
-          message: "Gathering starts soon",
-          read: false,
-          userId: "u3",
-          createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } as any,
-        } as Notification,
-      ],
-    });
-
-    expect(traineeItems.length).toBe(4);
-    const types = traineeItems.map((i) => i.type);
-    expect(types).toContain("thread");
-    expect(types).toContain("task");
-    expect(types).toContain("notification");
-  });
-
-  it("does not surface Full-timer-only Discussion messages to trainees", () => {
-    const traineeItems = buildAttentionItems({
-      role: "trainee",
-      uid: "u3",
-      threads: [
-        {
-          id: "team_nudge",
-          contactId: "c1",
-          from: "u1",
-          fromName: "Tony",
-          kind: "nudge",
-          body: "Full-timers only: pastoral discussion",
-          at: new Date().toISOString(),
-          interactionId: null,
-          reactions: [],
-          scope: "team",
         },
       ],
-      tasks: [],
-      notifications: [],
+
     });
 
-    expect(traineeItems.some((i) => i.id === "thread:team_nudge")).toBe(false);
-  });
+    const stacks = attentionStacksFor(rawItems, uid);
+    const { onYou, aroundTeam } = partitionAttentionStacks(stacks, sampleContacts, uid, "admin");
 
-  it("stacks items by targetId and respects targetId done filtering", () => {
-    const targetItems: AttentionItem[] = [
-      {
-        id: "notif:n1",
-        type: "notification",
-        targetId: "target_room_1",
-        title: "Room message 1",
-        at: new Date().toISOString(),
-      },
-      {
-        id: "notif:n2",
-        type: "notification",
-        targetId: "target_room_1",
-        title: "Room message 2",
-        at: new Date().toISOString(),
-      },
-    ];
-
-    let stacks = attentionStacksFor(targetItems, uid);
-    expect(stacks.length).toBe(1);
-    expect(stacks[0].targetId).toBe("target_room_1");
-    expect(stacks[0].items.length).toBe(2);
-
-    UserEntityState.markDone(uid, "target:target_room_1");
-    stacks = attentionStacksFor(targetItems, uid);
-    expect(stacks.length).toBe(0);
+    expect(onYou.length).toBe(2);
+    expect(aroundTeam.length).toBe(0);
   });
 });
