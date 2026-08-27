@@ -96,7 +96,6 @@ export async function scheduleTodoDueNotification(todo: {
   if (IS_WEB || !todo.dueDate) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(todo.dueDate);
   if (!m) return null;
-
   const trigger = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 9, 0, 0);
   if (trigger.getTime() <= Date.now()) return null;
 
@@ -107,3 +106,28 @@ export async function scheduleTodoDueNotification(todo: {
   });
 }
 
+/** Checks the current notification permission status without prompting. */
+export async function getNotificationPermissionStatus(): Promise<Notifications.PermissionStatus | 'unsupported'> {
+  if (IS_WEB) return 'unsupported';
+  const { status } = await Notifications.getPermissionsAsync();
+  return status;
+}
+
+/** Sends an immediate local test notification to verify notification permissions and foreground/banner display. */
+export async function sendTestLocalNotification(): Promise<boolean> {
+  if (IS_WEB) return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Test Notification',
+        body: 'Notifications are working properly on your device.',
+        sound: true,
+      },
+      trigger: null, // immediate
+    });
+    return true;
+  } catch (e) {
+    console.error('Failed to trigger test local notification:', e);
+    return false;
+  }
+}

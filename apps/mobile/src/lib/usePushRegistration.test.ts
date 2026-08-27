@@ -1,11 +1,10 @@
-// The push token is a device-level registration that must land on the REAL
-// signed-in user's doc — never on the effective/impersonated persona doc
-// (e.g. `users/cisa-student`), which firestore.rules rightly denies and which
-// would mis-route notifications to a fake account.
 import { act, renderHook, waitFor } from '@testing-library/react-native';
+import { AppState, type AppStateStatus } from 'react-native';
 import { usePushRegistration } from './usePushRegistration';
 
 type TestState = { uid: string | null; user: { uid: string } | null };
+
+let mockAppStateCallback: ((state: AppStateStatus) => void) | null = null;
 
 jest.mock('./AuthProvider', () => ({
   useAuth: () => (globalThis as unknown as { __cisaPushAuth: TestState }).__cisaPushAuth,
@@ -28,6 +27,17 @@ const authState: TestState = { uid: 'real-uid-1', user: { uid: 'real-uid-1' } };
 describe('usePushRegistration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockAppStateCallback = null;
+    jest.spyOn(AppState, 'addEventListener').mockImplementation((event: string, cb: any) => {
+      if (event === 'change') {
+        mockAppStateCallback = cb;
+      }
+      return {
+        remove: jest.fn(() => {
+          if (mockAppStateCallback === cb) mockAppStateCallback = null;
+        }),
+      } as any;
+    });
     authState.uid = 'real-uid-1';
     authState.user = { uid: 'real-uid-1' };
     (registerForPushToken as jest.Mock).mockResolvedValue('ExponentPushToken[abc123]');
@@ -63,5 +73,23 @@ describe('usePushRegistration', () => {
 
     await act(async () => {});
     expect(setPushToken).not.toHaveBeenCalled();
+  });
+
+  it('re-registers token when AppState transitions to active', async () => {
+    renderHook(() => usePushRegistration());
+
+    await waitFor(() => expect(setPushToken).toHaveBeenCalledTimes(1));
+    expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[abc123]');
+
+    (registerForPushToken as jest.Mock).mockResolvedValue('ExponentPushToken[fresh456]');
+
+    // Simulate app returning to foreground
+    await act(async () => {
+      if (mockAppStateCallback) {
+        mockAppStateCallback('active');
+      }
+    });
+
+    await waitFor(() => expect(setPushToken).toHaveBeenCalledWith('real-uid-1', 'ExponentPushToken[fresh456]'));
   });
 });

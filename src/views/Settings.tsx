@@ -73,6 +73,13 @@ import {
   calStartOfDay,
   calAddDays,
 } from '../lib/calendar/calendarSync';
+import {
+  getWebNotificationPermissionStatus,
+  requestWebNotificationPermission,
+  registerServiceWorker,
+  showWebPushNotification,
+} from '../lib/webPush';
+import { sendPushNotification } from '../lib/push';
 
 type AppRole = 'admin' | 'manager' | 'operator' | 'viewer';
 
@@ -314,6 +321,137 @@ function AppearanceSection({
             </button>
           );
         })}
+      </div>
+    </section>
+  );
+}
+
+// ── Notifications ──────────────────────────────────────────────────────
+
+function NotificationsSection() {
+  const { user } = useAuth();
+  const { t } = useLanguage();
+  const [permStatus, setPermStatus] = useState<NotificationPermission | 'unsupported'>('unsupported');
+  const [testing, setTesting] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPermStatus(getWebNotificationPermissionStatus());
+  }, []);
+
+  const enableNotifications = async () => {
+    const granted = await requestWebNotificationPermission();
+    setPermStatus(getWebNotificationPermissionStatus());
+    if (granted) {
+      setFeedbackMsg(t('settings.notifications_enabled', 'Browser notifications are enabled'));
+      await registerServiceWorker();
+    } else {
+      setFeedbackMsg(t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings'));
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (testing) return;
+    setTesting(true);
+    setFeedbackMsg(null);
+    try {
+      let status = getWebNotificationPermissionStatus();
+      if (status === 'denied') {
+        setFeedbackMsg(t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings'));
+        return;
+      }
+      if (status !== 'granted') {
+        const granted = await requestWebNotificationPermission();
+        status = getWebNotificationPermissionStatus();
+        setPermStatus(status);
+        if (!granted) {
+          setFeedbackMsg(t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings'));
+          return;
+        }
+      }
+
+      await registerServiceWorker();
+      const shown = await showWebPushNotification('Test Notification', {
+        body: 'Web notifications are working properly on your device.',
+      });
+
+      if (user?.uid) {
+        await sendPushNotification({
+          userId: user.uid,
+          title: 'Test Notification',
+          body: 'Web push dispatch verified.',
+          data: { type: 'test' },
+        });
+      }
+
+      if (shown) {
+        setFeedbackMsg('Test notification sent! Check your notification area.');
+      } else {
+        setFeedbackMsg('Notification permission granted, test dispatched.');
+      }
+    } catch (err) {
+      console.error('Failed to send test notification:', err);
+      setFeedbackMsg('Failed to send test notification.');
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.notifications', 'Notifications & Alerts')}
+        sub={t('settings.notifications_sub', 'Configure browser alerts and diagnostic push notifications.')}
+      />
+      <div className="rounded-3xl border border-outline-variant/40 bg-surface-container p-6 flex flex-col gap-4 max-w-2xl">
+        <div className="flex items-center gap-3">
+          <div
+            className={cn(
+              'w-3 h-3 rounded-full shrink-0',
+              permStatus === 'granted'
+                ? 'bg-success'
+                : permStatus === 'denied'
+                  ? 'bg-error'
+                  : 'bg-amber-500',
+            )}
+          />
+          <span className="text-sm font-medium text-on-surface">
+            {permStatus === 'granted'
+              ? t('settings.notifications_enabled', 'Browser notifications are enabled')
+              : permStatus === 'denied'
+                ? t('settings.notifications_disabled', 'Browser notifications are blocked in your browser settings')
+                : permStatus === 'unsupported'
+                  ? t('settings.notifications_unsupported', 'Browser notifications are not supported in this browser')
+                  : 'Notification permission not yet granted'}
+          </span>
+        </div>
+
+        {feedbackMsg && (
+          <p className="text-xs text-on-surface-variant bg-surface-container-high px-3 py-2 rounded-xl border border-outline-variant/30">
+            {feedbackMsg}
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          {permStatus !== 'granted' && permStatus !== 'unsupported' && (
+            <button
+              onClick={enableNotifications}
+              className="px-4 py-2 rounded-2xl bg-primary text-on-primary font-medium text-sm hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              {t('settings.turn_on_web_notifications', 'Enable browser notifications')}
+            </button>
+          )}
+
+          <button
+            onClick={handleSendTest}
+            disabled={testing || permStatus === 'unsupported'}
+            className="px-4 py-2 rounded-2xl bg-surface-container-high border border-outline-variant/50 text-on-surface font-medium text-sm hover:bg-surface-container-highest transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {testing
+              ? t('settings.sending_test_notification', 'Sending test notification…')
+              : t('settings.send_test_web_notification', 'Send test notification')}
+          </button>
+        </div>
       </div>
     </section>
   );
@@ -1857,6 +1995,7 @@ export default function Settings() {
         </section>
 
         <AppearanceSection theme={theme} setTheme={setTheme} />
+        <NotificationsSection />
         <LanguageSection />
 
         {sharedTail}
@@ -1882,6 +2021,7 @@ export default function Settings() {
 
       <AccountSection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
+      <NotificationsSection />
       <LanguageSection />
 
       <section className="mt-10">

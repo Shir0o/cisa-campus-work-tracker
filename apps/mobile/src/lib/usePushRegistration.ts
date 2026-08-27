@@ -1,7 +1,5 @@
-// Silent re-sync of an already-granted permission's push token on sign-in.
-// Never prompts — that's ensureNotificationPermission()'s job, called
-// contextually from a feature that actually needs it (see QuickCaptureSheet).
 import { useEffect } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 import { useAuth } from './AuthProvider';
 import { registerForPushToken } from './notifications';
 import { setPushToken } from './data/users';
@@ -13,14 +11,34 @@ export function usePushRegistration() {
   // firestore.rules and would mis-route the device's notifications.
   const { user } = useAuth();
   const uid = user?.uid ?? null;
+
   useEffect(() => {
     if (!uid) return;
     let cancelled = false;
-    registerForPushToken().then((token) => {
-      if (!cancelled && token) void setPushToken(uid, token);
-    });
+
+    const syncToken = () => {
+      registerForPushToken()
+        .then((token) => {
+          if (!cancelled && token) void setPushToken(uid, token);
+        })
+        .catch((err) => {
+          console.error('Failed to sync push token:', err);
+        });
+    };
+
+    syncToken();
+
+    const handleAppStateChange = (nextState: AppStateStatus) => {
+      if (nextState === 'active') {
+        syncToken();
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppStateChange);
+
     return () => {
       cancelled = true;
+      sub.remove();
     };
   }, [uid]);
 }
