@@ -78,6 +78,45 @@ describe('User Feedback Feature', () => {
       expect(fabBtn).toBeInTheDocument();
     });
 
+    it('positions the FAB above the message composer on the messages page', () => {
+      const originalPathname = window.location.pathname;
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: '/messages' },
+        writable: true,
+      });
+
+      render(<FeedbackFAB />);
+      const fabBtn = document.querySelector('#feedback-fab-btn');
+      expect(fabBtn).toBeInTheDocument();
+      // FAB should have clearance from the bottom message composer / send button
+      expect(fabBtn?.className).toContain('bottom-28');
+      expect(fabBtn?.className).toContain('lg:bottom-28');
+
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: originalPathname },
+        writable: true,
+      });
+    });
+
+    it('positions the FAB at standard bottom offset on non-messages pages', () => {
+      const originalPathname = window.location.pathname;
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: '/directory' },
+        writable: true,
+      });
+
+      render(<FeedbackFAB />);
+      const fabBtn = document.querySelector('#feedback-fab-btn');
+      expect(fabBtn).toBeInTheDocument();
+      expect(fabBtn?.className).toContain('bottom-20');
+      expect(fabBtn?.className).toContain('lg:bottom-6');
+
+      Object.defineProperty(window, 'location', {
+        value: { ...window.location, pathname: originalPathname },
+        writable: true,
+      });
+    });
+
     it('opens the warm panel on FAB click and can enter a note', async () => {
       const userAct = userEvent.setup();
       render(<FeedbackFAB />);
