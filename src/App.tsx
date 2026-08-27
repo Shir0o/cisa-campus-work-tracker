@@ -65,7 +65,7 @@ interface LayoutContextType {
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (value: boolean) => void;
   openNewContact: (initialStage?: string) => void;
-  openLogInteraction: () => void;
+  openLogInteraction: (contactId?: string) => void;
   openSmartImport: () => void;
   selectedContact: Contact | null;
   setSelectedContact: (contact: Contact | null) => void;
@@ -301,6 +301,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     string | undefined
   >(undefined);
   const [isLogInteractionOpen, setIsLogInteractionOpen] = React.useState(false);
+  const [logInteractionContactId, setLogInteractionContactId] = React.useState<
+    string | undefined
+  >(undefined);
   const [isSmartImportOpen, setIsSmartImportOpen] = React.useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
@@ -401,7 +404,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           setNewContactStage(initialStage);
           setIsNewContactModalOpen(true);
         },
-        openLogInteraction: () => setIsLogInteractionOpen(true),
+        openLogInteraction: (contactId?: string) => {
+          setLogInteractionContactId(contactId);
+          setIsLogInteractionOpen(true);
+        },
         openSmartImport: () => setIsSmartImportOpen(true),
         selectedContact,
         setSelectedContact: openSelectedContact,
@@ -467,7 +473,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         <LogInteractionModal
           isOpen={isLogInteractionOpen}
-          onClose={() => setIsLogInteractionOpen(false)}
+          onClose={() => {
+            setIsLogInteractionOpen(false);
+            setLogInteractionContactId(undefined);
+          }}
+          initialContactId={logInteractionContactId}
         />
 
         <SmartImportModal

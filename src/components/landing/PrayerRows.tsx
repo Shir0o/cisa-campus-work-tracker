@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from "react";
-import { ArrowRight, Plus, Trash2 } from "lucide-react";
+import { ArrowRight, Clock, Plus, Trash2 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { Contact, PrayerRecord } from "../../types";
+import { isContactStale, getDaysSinceLastInteraction } from "../../lib/prayers";
 import type { PersonalPrayer, PersonalPrayerStatus } from "../../lib/personalPrayers";
 import { StatusPills, PillTone } from "./primitives";
 import { agoLabel, editInputClass, dueLabelClass } from "./helpers";
@@ -65,13 +66,26 @@ export function TeamPrayerRow({
             <Translate text={prayer.burden} />
           </div>
           {contact && (
-            <button
-              type="button"
-              onClick={() => onOpenContact(contact)}
-              className="text-sm text-accent hover:underline mt-0.5"
-            >
-              {t("prayers.for_contact", "for {name}").replace("{name}", contact.name)}
-            </button>
+            <div className="flex items-center gap-2 flex-wrap mt-0.5">
+              <button
+                type="button"
+                onClick={() => onOpenContact(contact)}
+                className="text-sm text-accent hover:underline"
+              >
+                {t("prayers.for_contact", "for {name}").replace("{name}", contact.name)}
+              </button>
+              {isContactStale(contact) && (
+                <span
+                  data-testid="stale-badge"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20"
+                >
+                  <Clock className="w-3 h-3" />
+                  {getDaysSinceLastInteraction(contact) !== null
+                    ? t('prayers.no_interaction_days', `No contact in ${getDaysSinceLastInteraction(contact)}d`).replace('{n}', String(getDaysSinceLastInteraction(contact)))
+                    : t('prayers.no_interaction_recorded', 'No interactions')}
+                </span>
+              )}
+            </div>
           )}
 
           {!answering && prayer.status === "answered" && (prayer.answer || prayer.answeredAt) && (

@@ -138,6 +138,7 @@ describe('PrayerList', () => {
 
     (useLayout as any).mockReturnValue({
       setSelectedContact: vi.fn(),
+      openLogInteraction: vi.fn(),
     });
   });
 
@@ -762,6 +763,57 @@ describe('PrayerList', () => {
     // Clean up
     localStorage.removeItem('cisa.prayer.hidden');
   });
+
+  it('renders stale badge and quick actions for stale contacts (>30 days or no interaction)', async () => {
+    const mockOpenLog = vi.fn();
+    (useLayout as any).mockReturnValue({
+      setSelectedContact: vi.fn(),
+      openLogInteraction: mockOpenLog,
+    });
+
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Alice and Bob have no interaction dates in mockContacts, so they are stale
+    const staleBadges = screen.getAllByTestId('stale-badge');
+    expect(staleBadges.length).toBeGreaterThanOrEqual(1);
+
+    // Stale quick actions should be visible
+    const staleActionBars = screen.getAllByTestId('stale-quick-actions');
+    expect(staleActionBars.length).toBeGreaterThanOrEqual(1);
+
+    // Click "Log Interaction" button on first stale card
+    const logBtns = screen.getAllByRole('button', { name: /Log Interaction/i });
+    fireEvent.click(logBtns[0]);
+    expect(mockOpenLog).toHaveBeenCalledWith('c1');
+  });
+
+  it('prompts confirmation on clicking Archive and removes contact from prayer list', async () => {
+    localStorage.clear();
+    render(<PrayerList />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Click "Archive from Prayer List"
+    const archiveBtns = screen.getAllByRole('button', { name: /Archive from Prayer List/i });
+    fireEvent.click(archiveBtns[0]);
+
+    // Should now show confirmation prompt with Archive / Keep buttons
+    expect(screen.getByText(/Archive from prayer\?/i)).toBeInTheDocument();
+    const confirmArchiveBtn = screen.getByRole('button', { name: /^Archive$/i });
+    fireEvent.click(confirmArchiveBtn);
+
+    // Alice should now be removed from active view and added to hidden in localStorage
+    await waitFor(() => {
+      expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+    });
+    const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
+    expect(hidden).toContain('c1');
+  });
 });
+
 
 

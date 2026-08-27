@@ -116,3 +116,28 @@ export async function updatePrayerStatus(
   if (answeredAt !== undefined) clean.answeredAt = answeredAt;
   await updateDoc(doc(db, "prayers", prayerId), clean);
 }
+
+export const STALE_INTERACTION_DAYS = 30;
+
+export function getDaysSinceLastInteraction(
+  contact: { lastContactedDate?: string | null; lastSeen?: string | null },
+  now: Date | number = Date.now(),
+): number | null {
+  const rawDate = contact.lastContactedDate || contact.lastSeen;
+  if (!rawDate) return null;
+  const ms = typeof rawDate === 'number' ? rawDate : new Date(rawDate).getTime();
+  if (Number.isNaN(ms)) return null;
+  const nowMs = typeof now === 'number' ? now : now.getTime();
+  const diff = nowMs - ms;
+  return Math.max(0, Math.floor(diff / 86_400_000));
+}
+
+export function isContactStale(
+  contact: { lastContactedDate?: string | null; lastSeen?: string | null },
+  thresholdDays: number = STALE_INTERACTION_DAYS,
+  now: Date | number = Date.now(),
+): boolean {
+  const days = getDaysSinceLastInteraction(contact, now);
+  if (days === null) return true;
+  return days > thresholdDays;
+}

@@ -10,10 +10,18 @@ import {
 } from 'firebase/firestore';
 import { db, logActivity, handleFirestoreError, OperationType } from '../lib/firebase';
 import { Contact, PrayerRecord, VisitPhoto } from '../types';
-import { Check, Image as ImageIcon, Plus, Search, Users, X } from 'lucide-react';
+import { Archive, Check, Clock, Image as ImageIcon, MessageSquare, Plus, Search, Users, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { hasMinRole } from '../lib/permissions';
-import { isTeamPrayer, isContactBrother, isContactSister, getContactGrade, sortPrayerEntries } from '../lib/prayers';
+import {
+  isTeamPrayer,
+  isContactBrother,
+  isContactSister,
+  getContactGrade,
+  sortPrayerEntries,
+  isContactStale,
+  getDaysSinceLastInteraction,
+} from '../lib/prayers';
 import { MAX_ANSWER_PHOTOS, uploadPrayerAnswerPhotos } from '../lib/prayerPhotos';
 import { cn, getUserInitials, isServiceAccountName } from '../lib/utils';
 import { useAuth } from '../components/AuthProvider';
@@ -612,6 +620,7 @@ export default function PrayerList() {
                 onUpdateStatus={handleUpdateStatus}
                 onUpdateBurden={handleUpdateBurden}
                 onOpenProfile={() => openContact(e.contact)}
+                onStopHolding={stopHolding}
                 isOperator={isOperator}
                 onMakeTodo={openTodoFor}
                 meUid={user?.uid ?? ''}
@@ -663,6 +672,7 @@ function PrayerThread({
   onUpdateStatus,
   onUpdateBurden,
   onOpenProfile,
+  onStopHolding,
   isOperator,
   onMakeTodo,
   meUid,
@@ -674,12 +684,18 @@ function PrayerThread({
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
   onUpdateBurden: (prayer: PrayerRecord, text: string) => Promise<boolean>;
   onOpenProfile: () => void;
+  onStopHolding: (contactId: string) => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
   meUid?: string;
 }) {
   const { t } = useLanguage();
+  const { openLogInteraction } = useLayout();
   const [showEarlier, setShowEarlier] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState(false);
+
+  const isStale = isContactStale(contact);
+  const daysSinceInteraction = getDaysSinceLastInteraction(contact);
 
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
   const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
@@ -707,8 +723,21 @@ function PrayerThread({
         >
           <Avatar contact={contact} size="lg" />
           <div className="min-w-0">
-            <div className="font-serif text-lg text-on-surface leading-tight group-hover:text-accent transition-colors truncate">
-              {contact.name}
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="font-serif text-lg text-on-surface leading-tight group-hover:text-accent transition-colors truncate">
+                {contact.name}
+              </div>
+              {isStale && (
+                <span
+                  data-testid="stale-badge"
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-800 dark:text-amber-300 border border-amber-500/20 shrink-0"
+                >
+                  <Clock className="w-3 h-3" />
+                  {daysSinceInteraction !== null
+                    ? t('prayers.no_interaction_days', `No contact in ${daysSinceInteraction}d`).replace('{n}', String(daysSinceInteraction))
+                    : t('prayers.no_interaction_recorded', 'No interactions')}
+                </span>
+              )}
             </div>
             <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
               {[contact.role, getContactGrade(contact), contact.metVia].filter(Boolean).join(' · ') || t('directory.unassigned')}
@@ -746,6 +775,67 @@ function PrayerThread({
           />
         </div>
       </div>
+
+      {/* Stale Contact Quick Actions */}
+      {isStale && isOperator && (
+        <div
+          data-testid="stale-quick-actions"
+          className="mt-3 p-3 bg-surface-container-low/60 rounded-2xl border border-outline-variant/60 flex items-center justify-between gap-3 flex-wrap text-xs"
+        >
+          <div className="text-on-surface-variant font-medium flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <span>
+              {daysSinceInteraction !== null
+                ? t('prayers.no_interaction_days', `No contact in ${daysSinceInteraction}d`).replace('{n}', String(daysSinceInteraction))
+                : t('prayers.no_interaction_recorded', 'No interactions')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={() => openLogInteraction(contact.id)}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-primary/10 hover:bg-primary/15 text-primary text-xs font-semibold transition-colors"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>{t('prayers.log_interaction', 'Log Interaction')}</span>
+            </button>
+
+            {confirmArchive ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-on-surface-variant mr-1">
+                  {t('prayers.archive_confirm_prompt', 'Archive from prayer?')}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onStopHolding(contact.id);
+                    setConfirmArchive(false);
+                  }}
+                  className="px-2.5 py-1 rounded-full bg-error-container text-on-error-container text-xs font-semibold border border-error/20"
+                >
+                  {t('prayers.archive_confirm_button', 'Archive')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmArchive(false)}
+                  className="px-2.5 py-1 rounded-full bg-surface-container border border-outline text-xs font-semibold"
+                >
+                  {t('prayers.keep_in_prayer', 'Keep')}
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmArchive(true)}
+                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-surface-variant hover:bg-surface-variant/80 text-on-surface-variant text-xs font-semibold transition-colors"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                <span>{t('prayers.archive_from_prayer', 'Archive from Prayer List')}</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* This week */}
       <div className="mt-5">

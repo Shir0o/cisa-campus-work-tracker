@@ -33,9 +33,10 @@ import { format } from 'date-fns';
 interface LogInteractionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialContactId?: string;
 }
 
-export default function LogInteractionModal({ isOpen, onClose }: LogInteractionModalProps) {
+export default function LogInteractionModal({ isOpen, onClose, initialContactId }: LogInteractionModalProps) {
   const { user, role } = useAuth();
   const { t } = useLanguage();
   if (role === 'viewer') return null;
@@ -62,6 +63,9 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
       setSearchQuery('');
       return;
     }
+    if (initialContactId) {
+      setSelectedContactIds(new Set([initialContactId]));
+    }
     const q = query(collection(db, 'contacts'), orderBy('name', 'asc'));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Contact[];
@@ -72,7 +76,7 @@ export default function LogInteractionModal({ isOpen, onClose }: LogInteractionM
       handleFirestoreError(error, OperationType.LIST, 'contacts');
     });
     return () => unsubscribe();
-  }, [isOpen]);
+  }, [isOpen, initialContactId]);
 
   const filteredContacts = useMemo(() => {
     const lower = searchQuery.toLowerCase();

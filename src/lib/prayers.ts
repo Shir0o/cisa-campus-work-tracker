@@ -178,3 +178,42 @@ export function unhidePrayerContact(contactId: string): void {
   } catch (e) { /* corrupt storage — ignore */ }
 }
 
+/**
+ * Default threshold in days after which a contact without logged interaction
+ * is considered stale on the prayer list (#554).
+ */
+export const STALE_INTERACTION_DAYS = 30;
+
+/**
+ * Computes the number of days elapsed since a contact's last recorded interaction
+ * (`lastContactedDate` or `lastSeen`). Returns `null` if no valid date exists.
+ */
+export function getDaysSinceLastInteraction(
+  contact: { lastContactedDate?: string | null; lastSeen?: string | null },
+  now: Date | number = Date.now(),
+): number | null {
+  const rawDate = contact.lastContactedDate || contact.lastSeen;
+  if (!rawDate) return null;
+  const ms = typeof rawDate === 'number' ? rawDate : new Date(rawDate).getTime();
+  if (Number.isNaN(ms)) return null;
+  const nowMs = typeof now === 'number' ? now : now.getTime();
+  const diff = nowMs - ms;
+  return Math.max(0, Math.floor(diff / 86_400_000));
+}
+
+/**
+ * Determines whether a contact on the prayer list is stale (#554).
+ * A contact is considered stale if:
+ * 1. They have no recorded interaction date (days === null)
+ * 2. Or their last recorded interaction occurred more than `thresholdDays` ago (> 30 days).
+ */
+export function isContactStale(
+  contact: { lastContactedDate?: string | null; lastSeen?: string | null },
+  thresholdDays: number = STALE_INTERACTION_DAYS,
+  now: Date | number = Date.now(),
+): boolean {
+  const days = getDaysSinceLastInteraction(contact, now);
+  if (days === null) return true;
+  return days > thresholdDays;
+}
+

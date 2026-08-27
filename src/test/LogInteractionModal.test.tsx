@@ -283,4 +283,14 @@ describe('LogInteractionModal Component', () => {
     expect(mockOnClose).not.toHaveBeenCalled();
     errSpy.mockRestore();
   });
+
+  it('pre-selects the contact when initialContactId is provided', async () => {
+    setupOnSnapshot(mockContacts);
+    render(<LogInteractionModal isOpen={true} onClose={mockOnClose} initialContactId="c2" />);
+
+    // Bob Jones should appear both in the roster and the selected contacts chips
+    const bobElements = await screen.findAllByText('Bob Jones');
+    expect(bobElements.length).toBeGreaterThanOrEqual(2);
+  });
 });
+
