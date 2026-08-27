@@ -199,8 +199,8 @@ export default function FeedbackFAB() {
       <button
         id="feedback-fab-btn"
         onClick={() => (isOpen ? close() : openFresh())}
-        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg  active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
-          isMessagesPage ? 'bottom-20 lg:bottom-20 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
+        className={`fixed right-4 z-[100] w-12 h-12 rounded-full shadow-lg active:scale-95 transition-all flex items-center justify-center border-none cursor-pointer ${
+          isMessagesPage ? 'bottom-28 lg:bottom-28 lg:right-6' : 'bottom-20 lg:bottom-6 lg:right-6'
         } ${
           isOpen
             ? 'bg-surface-container-highest text-on-surface-variant'
@@ -236,7 +236,7 @@ export default function FeedbackFAB() {
               aria-modal="true"
               aria-label={t('feedback.leave_note_for_team')}
               className={`fixed right-4 z-[120] w-[calc(100vw-2rem)] max-w-[340px] bg-surface-container border border-outline-variant rounded-2xl shadow-2xl p-5 focus:outline-none ${
-                isMessagesPage ? 'bottom-36 lg:bottom-36 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
+                isMessagesPage ? 'bottom-44 lg:bottom-44 lg:right-6' : 'bottom-36 lg:bottom-20 lg:right-6'
               }`}
             >
               {phase === 'done' ? (
