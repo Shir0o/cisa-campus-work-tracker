@@ -30,7 +30,10 @@ if (import.meta.env.VITE_FIREBASE_FIRESTORE_DB_ID) {
 }
 
 const app = initializeApp(finalConfig);
-export const db = getFirestore(app, (finalConfig as any).firestoreDatabaseId);
+export const db =
+  import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true'
+    ? getFirestore(app)
+    : getFirestore(app, (finalConfig as any).firestoreDatabaseId);
 export const auth = getAuth(app);
 
 if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === 'true') {
