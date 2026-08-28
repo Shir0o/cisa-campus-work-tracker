@@ -47,7 +47,7 @@ function AskItem({ m, replies, me }: { m: AskMessage; replies: AskMessage[]; me:
         style={{
           fontFamily: font.medium,
           fontSize: fs(12),
-          color: org.written ? c.accent : c.card.ink3,
+          color: org.written ? c.card.ask : c.card.ink3,
           marginTop: 6,
         }}
       >
