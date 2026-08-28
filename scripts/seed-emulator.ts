@@ -74,6 +74,17 @@ export async function seedEmulator() {
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
+  // Seed default stages for The Journey board
+  const defaultStages = [
+    { label: 'First Contact', color: 'bg-primary-fixed-dim', order: 0 },
+    { label: 'Second Contact', color: 'bg-primary', order: 1 },
+    { label: 'Regular', color: 'bg-secondary', order: 2 },
+  ];
+  for (const s of defaultStages) {
+    const stageDocRef = db.collection('stages').doc(`stage-${s.order}`);
+    await stageDocRef.set(s, { merge: true });
+  }
+
   // Seed sample contact for walking-together threads and team confidentiality tests
   let fulltimerUid = '';
   let traineeUid = '';
