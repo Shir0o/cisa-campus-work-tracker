@@ -15,6 +15,10 @@ let cache: Record<Role, CredentialInfo> | null = null;
 
 export function credentials(): Record<Role, CredentialInfo> {
   if (cache) return cache;
+  if (process.env.VITE_USE_FIREBASE_EMULATOR === 'true' || process.env.USE_FIREBASE_EMULATOR === 'true') {
+    cache = DEFAULT_CREDENTIALS;
+    return DEFAULT_CREDENTIALS;
+  }
   try {
     const raw = JSON.parse(readFileSync(CREDS_PATH, 'utf8'));
     cache = raw;
@@ -44,4 +48,10 @@ export async function signInAs(page: Page, role: Role) {
   );
   // Wait for the authed app shell (sidebar) to render
   await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
+
+  // Dismiss "A few things are different" ReleaseSheet modal if shown
+  const carryOnBtn = page.getByRole('button', { name: 'Carry on' });
+  if (await carryOnBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await carryOnBtn.click();
+  }
 }

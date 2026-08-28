@@ -17,16 +17,18 @@ process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '12
 process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub';
-const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || 'prod';
+const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID;
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId });
 }
 
 const auth = admin.auth();
-const db = getFirestore(admin.app(), firestoreDatabaseId);
+const db = firestoreDatabaseId && firestoreDatabaseId !== '(default)'
+  ? getFirestore(admin.app(), firestoreDatabaseId)
+  : getFirestore(admin.app());
 
-const KEYS = ['fulltimer', 'trainee', 'student', 'community'] as const;
+const KEYS = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'] as const;
 
 export async function seedEmulator() {
   console.log('Seeding Firebase Emulator Auth & Firestore...');
