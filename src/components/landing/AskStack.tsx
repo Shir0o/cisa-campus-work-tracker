@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { HelpCircle, Check } from "lucide-react";
+import { HelpCircle, Check, MessageSquare, Pencil } from "lucide-react";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
 import { useI18n } from "../LanguageProvider";
@@ -8,6 +8,7 @@ import {
   subscribeAsks,
   askStacksFor,
   askWaitedDays,
+  askOrigin,
   addAskReply,
   type AskMessage,
   type AskStack as AskStackData,
@@ -96,10 +97,24 @@ function AskStackRow({
 
           <div className="mt-1 flex flex-col gap-3">
             {stack.items.map((m) => {
+              const org = askOrigin(m, uid);
               return (
                 <div key={m.id} className="bg-surface-variant/40 rounded-xl p-3">
                   <p className="text-sm text-on-surface whitespace-pre-line leading-relaxed">{m.body}</p>
-                  <p className="text-[11px] text-on-surface-variant/80 mt-1.5">
+                  <div
+                    className={cn(
+                      "flex items-center gap-1.5 mt-1.5 text-xs",
+                      org.written ? "text-accent font-medium" : "text-on-surface-variant/80",
+                    )}
+                  >
+                    {org.written ? (
+                      <Pencil className="w-3 h-3 shrink-0" />
+                    ) : (
+                      <MessageSquare className="w-3 h-3 shrink-0" />
+                    )}
+                    <span>{org.text}</span>
+                  </div>
+                  <p className="text-[11px] text-on-surface-variant/80 mt-1">
                     {t("ask.no_answer_yet", "No answer yet · {words}. It's with the whole team, not one person.").replace(
                       "{words}",
                       waitedWords(m, t),

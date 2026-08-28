@@ -20,6 +20,7 @@ import {
   askVisibleFor,
   askUnreadFor,
   askTakenBy,
+  askOrigin,
   askWaitedWords,
   askRepliesOf,
   askAnswered,
@@ -103,8 +104,8 @@ interface AskMsgProps {
   open: boolean;
 }
 
-export function AskMsg({ m, allAsks, onOpen, open }: AskMsgProps) {
-  const pen = askTakenBy(m);
+export function AskMsg({ m, allAsks, me, onOpen, open }: AskMsgProps) {
+  const org = askOrigin(m, me);
   const replies = askRepliesOf(allAsks, m.id);
   const answered = askAnswered(allAsks, m);
   const last = replies[replies.length - 1];
@@ -123,12 +124,14 @@ export function AskMsg({ m, allAsks, onOpen, open }: AskMsgProps) {
         <div className="msgb-row">
           <div className="msgb-bubble">{m.body}</div>
         </div>
-        {pen && (
-          <div className="aska-pen">
+        <div className={cn("aska-pen", org.written ? "is-written" : "is-direct")}>
+          {org.written ? (
             <Pencil className="w-3 h-3 shrink-0" />
-            Asked in person · written down by {firstName(pen.name)}
-          </div>
-        )}
+          ) : (
+            <MessageSquare className="w-3 h-3 shrink-0" />
+          )}
+          {org.text}
+        </div>
         <div className="msgb-foot">
           <span className="msgb-when">{relTime(m.at)}</span>
           {!answered && (
@@ -172,11 +175,12 @@ export function AskMsg({ m, allAsks, onOpen, open }: AskMsgProps) {
 
 interface AskMsgPlainProps {
   m: AskMessage;
+  me?: string;
   reply?: boolean;
 }
 
-export function AskMsgPlain({ m, reply }: AskMsgPlainProps) {
-  const pen = askTakenBy(m);
+export function AskMsgPlain({ m, me, reply }: AskMsgPlainProps) {
+  const org = reply ? null : askOrigin(m, me);
   return (
     <div className={cn("msgb aska-plain", reply && "is-reply")}>
       <div className="w-7 h-7 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
@@ -187,10 +191,14 @@ export function AskMsgPlain({ m, reply }: AskMsgPlainProps) {
         <div className="msgb-row">
           <div className="msgb-bubble">{m.body}</div>
         </div>
-        {pen && (
-          <div className="aska-pen">
-            <Pencil className="w-3 h-3 shrink-0" />
-            written down by {firstName(pen.name)}
+        {org && (
+          <div className={cn("aska-pen", org.written ? "is-written" : "is-direct")}>
+            {org.written ? (
+              <Pencil className="w-3 h-3 shrink-0" />
+            ) : (
+              <MessageSquare className="w-3 h-3 shrink-0" />
+            )}
+            {org.text}
           </div>
         )}
         <div className="msgb-foot">
@@ -252,14 +260,14 @@ export function AskThreadPane({
         </button>
       </div>
       <div className="msgs-pane-stream">
-        <AskMsgPlain m={q} />
+        <AskMsgPlain m={q} me={me} />
         {replies.length === 0 && (
           <div className="msgs-pane-none">
             No answers yet. The first one clears it for every full-timer.
           </div>
         )}
         {replies.map((r) => (
-          <AskMsgPlain key={r.id} m={r} reply />
+          <AskMsgPlain key={r.id} m={r} me={me} reply />
         ))}
       </div>
       {canAnswer ? (

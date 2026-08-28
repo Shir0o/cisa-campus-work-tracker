@@ -8,9 +8,11 @@ import {
   askWaitedWords,
   askStacksFor,
   askTakenBy,
+  askOrigin,
   askVisibleFor,
   askUnreadFor,
   type AskMessage,
+  type AskOriginResult,
 } from '../src/asks';
 
 const now = Date.now();
@@ -187,5 +189,99 @@ describe('askUnreadFor', () => {
     expect(askUnreadFor(all, 't1', false, isRead)).toBe(1);
     // if read set contains r1 -> 0 unread
     expect(askUnreadFor(all, 't1', false, (k) => k === 'ask:r1')).toBe(0);
+  });
+});
+
+describe('askOrigin', () => {
+  it('handles direct questions viewed by someone else', () => {
+    const m = msg({ id: 'q1', from: 't1', takenBy: null });
+    const res = askOrigin(m, 'ft1');
+    expect(res).toEqual({
+      written: false,
+      pen: null,
+      icon: 'msg',
+      text: 'Asked here, in their own words',
+      short: 'Asked here',
+    });
+  });
+
+  it('handles direct questions viewed by the asker', () => {
+    const m = msg({ id: 'q1', from: 't1', takenBy: null });
+    const res = askOrigin(m, 't1');
+    expect(res).toEqual({
+      written: false,
+      pen: null,
+      icon: 'msg',
+      text: 'You asked this here, in your own words',
+      short: 'You asked this here',
+    });
+  });
+
+  it('handles in-person questions viewed by a third party', () => {
+    const m = msg({
+      id: 'q2',
+      from: 't1',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+    });
+    const res = askOrigin(m, 'ft2');
+    expect(res).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · written down by Mei',
+      short: 'Written down by Mei',
+    });
+  });
+
+  it('handles in-person questions viewed by the full-timer who recorded it', () => {
+    const m = msg({
+      id: 'q2',
+      from: 't1',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+    });
+    const res = askOrigin(m, 'ft1');
+    expect(res).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · written down by you',
+      short: 'Written down by you',
+    });
+  });
+
+  it('handles in-person questions viewed by the asker', () => {
+    const m = msg({
+      id: 'q2',
+      from: 't1',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+    });
+    const res = askOrigin(m, 't1');
+    expect(res).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · Mei wrote it down for you',
+      short: 'Mei wrote it down for you',
+    });
+  });
+
+  it('falls back gracefully when takenByName is missing or empty', () => {
+    const m = msg({
+      id: 'q3',
+      from: 't1',
+      takenBy: 'ft3',
+      takenByName: '',
+    });
+    const res = askOrigin(m, 'other');
+    expect(res).toEqual({
+      written: true,
+      pen: { uid: 'ft3', name: 'ft3' },
+      icon: 'edit',
+      text: 'Asked in person · written down by ft3',
+      short: 'Written down by ft3',
+    });
   });
 });

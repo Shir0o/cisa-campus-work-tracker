@@ -4,7 +4,7 @@ import * as core from '@cisa/core';
 import type { AskMessage } from '@cisa/core';
 import { db, handleFirestoreError, OperationType, sendNotification } from '../firebase';
 
-export type { AskMessage, SubscribeAsksOptions } from '@cisa/core';
+export type { AskMessage, SubscribeAsksOptions, AskOriginResult } from '@cisa/core';
 export {
   askQuestions,
   askQuestionsBy,
@@ -13,6 +13,7 @@ export {
   askWaitedWords,
   askStacksFor,
   askTakenBy,
+  askOrigin,
   askVisibleFor,
   askUnreadFor,
   type AskStack,

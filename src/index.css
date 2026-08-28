@@ -4333,8 +4333,11 @@ body.msgs-fullscreen .msgs-rail { display: none; }
 /* The channel of person-less questions */
 .msgs-cluster.ask { background: var(--accent-soft); color: var(--accent); }
 .aska .msgb-name { display: flex; align-items: center; gap: 8px; }
-.aska-role { font-weight: 400; font-size: 11.5px; color: var(--text-mute); }
 .aska-pen { display: flex; align-items: center; gap: 6px; margin-top: 6px; font-size: 12px; color: var(--text-mute); }
+.aska-pen.is-direct { color: var(--text-mute); }
+.aska-pen.is-written { color: var(--accent); }
+.ask-origin { display: flex; align-items: center; gap: 6px; margin-top: 7px; font-size: 12px; color: var(--text-mute); }
+.ask-origin.is-written { color: var(--accent); }
 .aska-waiting { font-size: 11.5px; color: var(--amber, var(--text-mute)); }
 .aska.open .msgb-bubble { box-shadow: inset 0 0 0 1px var(--accent-line); }
 .aska-plain .msgb-col { max-width: 100%; }

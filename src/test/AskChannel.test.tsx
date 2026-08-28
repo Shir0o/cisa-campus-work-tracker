@@ -131,7 +131,7 @@ describe('AskChannel Components (#563)', () => {
         <AskMsg
           m={mockQuestions[0]}
           allAsks={mockQuestions}
-          me="ft1"
+          me="ft2"
           open={false}
           onOpen={vi.fn()}
         />
@@ -144,9 +144,35 @@ describe('AskChannel Components (#563)', () => {
       expect(screen.getByText('1 answer')).toBeInTheDocument();
     });
 
+    it('renders "written down by you" when the viewer is the recorder', () => {
+      render(
+        <AskMsg
+          m={mockQuestions[0]}
+          allAsks={mockQuestions}
+          me="ft1"
+          open={false}
+          onOpen={vi.fn()}
+        />
+      );
+      expect(screen.getByText(/Asked in person · written down by you/)).toBeInTheDocument();
+    });
+
+    it('renders "Asked here, in their own words" for direct questions', () => {
+      render(
+        <AskMsg
+          m={mockQuestions[1]}
+          allAsks={mockQuestions}
+          me="ft1"
+          open={false}
+          onOpen={vi.fn()}
+        />
+      );
+      expect(screen.getByText('Asked here, in their own words')).toBeInTheDocument();
+    });
+
     it('renders plain message and replies properly', () => {
       render(<AskMsgPlain m={mockQuestions[0]} />);
-      expect(screen.getByText('written down by Mei')).toBeInTheDocument();
+      expect(screen.getByText(/Asked in person · written down by Mei/)).toBeInTheDocument();
     });
   });
 

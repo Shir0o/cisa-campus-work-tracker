@@ -82,6 +82,13 @@ vi.mock("../lib/asks", () => ({
   },
   addAskReply: vi.fn(),
   askWaitedDays: () => 0,
+  askOrigin: (m: any) => ({
+    written: Boolean(m?.takenBy),
+    pen: m?.takenBy ? { uid: m.takenBy, name: m.takenByName || m.takenBy } : null,
+    icon: m?.takenBy ? "edit" : "msg",
+    text: m?.takenBy ? "Asked in person · written down by Mei" : "Asked here, in their own words",
+    short: m?.takenBy ? "Written down by Mei" : "Asked here",
+  }),
 }));
 
 vi.mock("../lib/firebase", () => ({
