@@ -1468,6 +1468,7 @@ export default function ContactDetailsModal({
                         <Calendar className="w-3.5 h-3.5" /> {t('modals.contactDetails.pipeline_stage')}
                       </label>
                       <select
+                        aria-label={t('modals.contactDetails.pipeline_stage')}
                         value={stages.some(s => s.label === formData.stage) ? formData.stage : t('modals.contactDetails.unassigned')}
                         onChange={(e) =>
                           setFormData((f) => ({ ...f, stage: e.target.value }))
