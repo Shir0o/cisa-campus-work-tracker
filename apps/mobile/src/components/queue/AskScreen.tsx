@@ -11,6 +11,7 @@ import {
   askQuestionsBy,
   askRepliesOf,
   askWaitedWords,
+  askOrigin,
   firstName,
   type AskMessage,
 } from '@cisa/core';
@@ -27,6 +28,7 @@ import { PrimaryButton } from '../queue/atoms';
 /** The composer + a question with its inline answers. Reused under the list. */
 function AskItem({ m, replies, me }: { m: AskMessage; replies: AskMessage[]; me: string }) {
   const { c, font, fs } = useV2Theme();
+  const org = askOrigin(m, me);
   const answered = replies.length > 0;
   return (
     <View
@@ -41,8 +43,18 @@ function AskItem({ m, replies, me }: { m: AskMessage; replies: AskMessage[]; me:
       <Text style={{ fontFamily: font.semi, fontSize: fs(15), lineHeight: fs(21), color: c.card.ink }}>
         {m.body}
       </Text>
+      <Text
+        style={{
+          fontFamily: font.medium,
+          fontSize: fs(12),
+          color: org.written ? c.card.ask : c.card.ink3,
+          marginTop: 6,
+        }}
+      >
+        {org.text}
+      </Text>
       {!answered ? (
-        <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.card.ink3, marginTop: 8 }}>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(12.5), lineHeight: fs(18), color: c.card.ink3, marginTop: 6 }}>
           No answer yet · {askWaitedWords(m)}. It's with the whole team, not one person.
         </Text>
       ) : (

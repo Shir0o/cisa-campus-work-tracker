@@ -122,3 +122,44 @@ export function askUnreadFor(
     askRepliesOf(messages, m.id).some((r) => r.from !== uid && !isRead("ask:" + r.id)),
   ).length;
 }
+
+export interface AskOriginResult {
+  written: boolean;
+  pen: { uid: string; name: string } | null;
+  icon: "msg" | "edit";
+  text: string;
+  short: string;
+}
+
+/**
+ * Origin mark for an ask (#611).
+ * Distinguishes whether a trainee asked directly in the app or asked out loud in person
+ * and a full-timer recorded it for them.
+ */
+export function askOrigin(m: AskMessage, viewerId?: string | null): AskOriginResult {
+  const pen = askTakenBy(m);
+  const mine = Boolean(viewerId && m && m.from === viewerId);
+
+  if (!pen) {
+    return {
+      written: false,
+      pen: null,
+      icon: "msg",
+      text: mine ? "You asked this here, in your own words" : "Asked here, in their own words",
+      short: mine ? "You asked this here" : "Asked here",
+    };
+  }
+
+  const first = (pen.name || "Someone").trim().split(" ")[0] || "Someone";
+  const byWhom = viewerId && pen.uid === viewerId ? "you" : first;
+
+  return {
+    written: true,
+    pen,
+    icon: "edit",
+    text: mine
+      ? `Asked in person · ${first} wrote it down for you`
+      : `Asked in person · written down by ${byWhom}`,
+    short: mine ? `${first} wrote it down for you` : `Written down by ${byWhom}`,
+  };
+}

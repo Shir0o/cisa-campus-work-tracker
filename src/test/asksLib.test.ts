@@ -10,6 +10,7 @@ import {
   askWaitedWords,
   askStacksFor,
   askTakenBy,
+  askOrigin,
   askVisibleFor,
   askUnreadFor,
   addAsk,
@@ -325,4 +326,86 @@ describe('src/lib/asks.ts full coverage', () => {
     await toggleAskReaction('q1', 'u2', '❤️');
     expect(firebaseLib.handleFirestoreError).toHaveBeenCalled();
   });
+
+  it('correctly reports askOrigin across different viewers and origin types', () => {
+    const direct: AskMessage = {
+      id: 'd1',
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'Direct question',
+      at: new Date().toISOString(),
+      reactions: [],
+    };
+
+    // Viewed by other
+    expect(askOrigin(direct, 'ft1')).toEqual({
+      written: false,
+      pen: null,
+      icon: 'msg',
+      text: 'Asked here, in their own words',
+      short: 'Asked here',
+    });
+
+    // Viewed by asker
+    expect(askOrigin(direct, 't1')).toEqual({
+      written: false,
+      pen: null,
+      icon: 'msg',
+      text: 'You asked this here, in your own words',
+      short: 'You asked this here',
+    });
+
+    const recorded: AskMessage = {
+      ...direct,
+      id: 'r1',
+      takenBy: 'ft1',
+      takenByName: 'Mei Lin',
+    };
+
+    // Viewed by third party
+    expect(askOrigin(recorded, 'ft2')).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · written down by Mei',
+      short: 'Written down by Mei',
+    });
+
+    // Viewed by recorder
+    expect(askOrigin(recorded, 'ft1')).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · written down by you',
+      short: 'Written down by you',
+    });
+
+    // Viewed by asker
+    expect(askOrigin(recorded, 't1')).toEqual({
+      written: true,
+      pen: { uid: 'ft1', name: 'Mei Lin' },
+      icon: 'edit',
+      text: 'Asked in person · Mei wrote it down for you',
+      short: 'Mei wrote it down for you',
+    });
+
+    // Fallback when takenByName is empty
+    const recordedFallback: AskMessage = {
+      ...direct,
+      id: 'r2',
+      takenBy: 'ft3',
+      takenByName: '',
+    };
+    expect(askOrigin(recordedFallback, 'other')).toEqual({
+      written: true,
+      pen: { uid: 'ft3', name: 'ft3' },
+      icon: 'edit',
+      text: 'Asked in person · written down by ft3',
+      short: 'Written down by ft3',
+    });
+  });
 });
+

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { HelpCircle, Send } from "lucide-react";
+import { HelpCircle, Send, MessageSquare, Pencil } from "lucide-react";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
 import { useI18n } from "../LanguageProvider";
@@ -9,6 +9,7 @@ import {
   askQuestionsBy,
   askRepliesOf,
   askWaitedDays,
+  askOrigin,
   addAsk,
   type AskMessage,
 } from "../../lib/asks";
@@ -28,8 +29,9 @@ function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): strin
       : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
 }
 
-function AskRow({ m, replies }: { m: AskMessage; replies: AskMessage[] }) {
+function AskRow({ m, replies, viewerUid }: { m: AskMessage; replies: AskMessage[]; viewerUid?: string }) {
   const { t } = useI18n();
+  const org = askOrigin(m, viewerUid);
   return (
     <div className="bg-surface rounded-3xl border border-outline-variant/60 p-5">
       <div className="flex gap-3">
@@ -40,7 +42,20 @@ function AskRow({ m, replies }: { m: AskMessage; replies: AskMessage[] }) {
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line">{m.body}</p>
-              <span className="text-[11.5px] text-on-surface-variant">{relTime(m.at)}</span>
+              <div
+                className={cn(
+                  "flex items-center gap-1.5 mt-1.5 text-xs",
+                  org.written ? "text-accent font-medium" : "text-on-surface-variant/80",
+                )}
+              >
+                {org.written ? (
+                  <Pencil className="w-3 h-3 shrink-0" />
+                ) : (
+                  <MessageSquare className="w-3 h-3 shrink-0" />
+                )}
+                <span>{org.text}</span>
+              </div>
+              <span className="text-[11.5px] text-on-surface-variant mt-1 block">{relTime(m.at)}</span>
             </div>
           </div>
 
@@ -139,7 +154,9 @@ export default function AskTheTeam({
             {t("ask.empty", "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.")}
           </p>
         ) : (
-          mine.map((m) => <AskRow key={m.id} m={m} replies={askRepliesOf(asks, m.id)} />)
+          mine.map((m) => (
+            <AskRow key={m.id} m={m} replies={askRepliesOf(asks, m.id)} viewerUid={uid} />
+          ))
         )}
       </div>
     </section>
