@@ -50,8 +50,8 @@ export async function signInAs(page: Page, role: Role) {
   await page.waitForSelector('[aria-label="Main Navigation"]', { timeout: 15_000 });
 
   // Dismiss "A few things are different" ReleaseSheet modal if shown
-  const carryOnBtn = page.getByRole('button', { name: 'Carry on' });
+  const carryOnBtn = page.getByRole('button', { name: /carry on/i });
   if (await carryOnBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await carryOnBtn.click();
+    await carryOnBtn.click().catch(() => {});
   }
 }
