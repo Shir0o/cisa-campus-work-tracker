@@ -17,16 +17,14 @@ process.env.FIRESTORE_EMULATOR_HOST = process.env.FIRESTORE_EMULATOR_HOST || '12
 process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || '127.0.0.1:9099';
 
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub';
-const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID;
+const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DB_ID || 'qa-db';
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId });
 }
 
 const auth = admin.auth();
-const db = firestoreDatabaseId && firestoreDatabaseId !== '(default)'
-  ? getFirestore(admin.app(), firestoreDatabaseId)
-  : getFirestore(admin.app());
+const db = getFirestore(admin.app());
 
 const KEYS = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'] as const;
 
@@ -74,6 +72,81 @@ export async function seedEmulator() {
     dateTime: new Date().toISOString(),
     location: 'Campus Center',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  // Seed sample contact for walking-together threads and team confidentiality tests
+  let fulltimerUid = '';
+  let traineeUid = '';
+  try {
+    fulltimerUid = (await auth.getUserByEmail(DEFAULT_CREDENTIALS.fulltimer.email)).uid;
+    traineeUid = (await auth.getUserByEmail(DEFAULT_CREDENTIALS.trainee.email)).uid;
+  } catch {
+    // fallback
+  }
+
+  const sampleContactRef = db.collection('contacts').doc('e2e-contact-lila');
+  await sampleContactRef.set({
+    name: 'Lila Chen',
+    initials: 'LC',
+    role: 'Undergrad',
+    stage: 'First Contact',
+    tags: ['Freshman', 'Gospel'],
+    notes: 'Met at campus orientation.',
+    createdBy: fulltimerUid || 'fulltimer-uid',
+    createdByName: 'Full-timer Test User',
+    owner: fulltimerUid || 'fulltimer-uid',
+    coCreators: traineeUid ? [traineeUid] : [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge: true });
+
+  const sampleInteractionRef = sampleContactRef.collection('interactions').doc('e2e-int-1');
+  await sampleInteractionRef.set({
+    userId: traineeUid || 'trainee-uid',
+    userName: 'Trainee Test User',
+    content: 'Had a warm coffee conversation discussing campus faith life.',
+    dateTime: new Date().toISOString(),
+    type: 'coffee',
+    createdAt: new Date().toISOString(),
+  }, { merge: true });
+
+  // General walking-together thread message on contact
+  await sampleContactRef.collection('threads').doc('e2e-thread-1').set({
+    interactionId: null,
+    parentId: null,
+    scope: null,
+    from: fulltimerUid || 'fulltimer-uid',
+    fromName: 'Full-timer Test User',
+    kind: 'encouragement',
+    body: 'Great first connection with Lila. Let us follow up this week.',
+    at: new Date().toISOString(),
+    reactions: [],
+  }, { merge: true });
+
+  // General thread message on interaction
+  await sampleContactRef.collection('threads').doc('e2e-thread-2').set({
+    interactionId: 'e2e-int-1',
+    parentId: null,
+    scope: null,
+    from: traineeUid || 'trainee-uid',
+    fromName: 'Trainee Test User',
+    kind: 'question',
+    body: 'Should we invite her to the small group dinner next Tuesday?',
+    at: new Date().toISOString(),
+    reactions: [],
+  }, { merge: true });
+
+  // Confidential full-timer only team discussion
+  await sampleContactRef.collection('threads').doc('e2e-thread-confidential').set({
+    interactionId: null,
+    parentId: null,
+    scope: 'team',
+    from: fulltimerUid || 'fulltimer-uid',
+    fromName: 'Full-timer Test User',
+    kind: 'note',
+    body: 'Confidential Staff Note: Lila mentioned some family challenges back home. Full-timers keep in prayer.',
+    at: new Date().toISOString(),
+    reactions: [],
   }, { merge: true });
 
   console.log('Emulator seeding complete.');
