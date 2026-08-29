@@ -1,7 +1,18 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import MyDayMobile from '../views/MyDayMobile';
 import { useAuth } from '../components/AuthProvider';
+import type { AskMessage } from '../lib/asks';
+
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 vi.mock('../components/AuthProvider', () => ({
   useAuth: vi.fn(),
@@ -15,13 +26,20 @@ vi.mock('../lib/firebase', () => ({
 }));
 
 // AskStack (rendered in the FT mobile shell) subscribes to person-less
-// questions; keep it inert in these layout-focused tests.
-vi.mock('../lib/asks', () => ({
-  subscribeAsks: vi.fn(() => () => {}),
-  askStacksFor: vi.fn(() => []),
+// questions; keep it inert in these layout-focused tests. Per-test overrides
+// use the hoisted `asksMock` so the component and the test see the same fn.
+const asksMock = vi.hoisted(() => ({
+  subscribeAsks: vi.fn<(cb: (m: AskMessage[]) => void) => () => void>(() => () => {}),
+  askStacksFor: vi.fn<(m: AskMessage[], uid: string) => AskStack[]>(() => []),
   askWaitedDays: vi.fn(() => 0),
+  askOrigin: vi.fn(() => ({ written: false, pen: null, icon: 'msg', text: '', short: '' })),
+  askWaitedWords: vi.fn(() => ''),
   addAskReply: vi.fn(),
+  addAsk: vi.fn(),
+  deleteAsk: vi.fn(),
 }));
+vi.mock('../lib/asks', () => asksMock);
+import type { AskStack } from '../lib/asks';
 
 describe('MyDayMobile', () => {
   it('renders correctly with no data', () => {
@@ -656,5 +674,42 @@ describe('MyDayMobile', () => {
     expect(screen.getByText('Never Connected Contact')).toBeInTheDocument();
     expect(screen.getByText('Not connected yet')).toBeInTheDocument();
   });
-});
 
+  it('on the mobile shell, tapping a question navigates to /questions with focusQuestionId (#646)', () => {
+    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { uid: 'ft1', displayName: 'Mei' },
+      effectiveUserId: 'ft1',
+      role: 'admin',
+    });
+    // The mocked askStacksFor returns []; override it to surface one question.
+    const fakeItem: AskMessage = {
+      id: 'q1',
+      parentId: null,
+      owner: 't1',
+      from: 't1',
+      fromName: 'Zion Park',
+      kind: 'question',
+      body: 'How do you start a conversation?',
+      at: '2026-08-25T10:00:00.000Z',
+      reactions: [],
+    };
+    asksMock.askStacksFor.mockReturnValue([
+      {
+        id: 'ask:t1',
+        from: 't1',
+        at: fakeItem.at,
+        items: [fakeItem],
+      },
+    ]);
+    mockNavigate.mockReset();
+    render(
+      <MemoryRouter>
+        <MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} uid="ft1" />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByText(/^Answer Zion/));
+    expect(mockNavigate).toHaveBeenCalledWith('/questions', {
+      state: { focusQuestionId: 'q1' },
+    });
+  });
+});

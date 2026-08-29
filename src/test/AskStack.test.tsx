@@ -1,10 +1,21 @@
+// #646: My Day's "Questions for the team" stack no longer answers inline. The
+// action navigates to the Questions page with focusQuestionId set; the composer
+// lives on that page. Mark-scanned on the stack stays.
 import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import AskStack from "../components/landing/AskStack";
 import { useAuth } from "../components/AuthProvider";
-import { addAskReply } from "../lib/asks";
 import { __resetInboxReadsCache } from "../lib/inboxReads";
 
+const mockNavigate = vi.fn();
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 vi.mock("../components/AuthProvider", () => ({ useAuth: vi.fn() }));
 
 vi.mock("../lib/asks", () => ({
@@ -126,12 +137,20 @@ describe("AskStack (web full-timer)", () => {
       effectiveUserId: "t1",
       role: "manager",
     });
-    const { container } = render(<AskStack />);
+    const { container } = render(
+      <MemoryRouter>
+        <AskStack />
+      </MemoryRouter>,
+    );
     expect(container.querySelector("section")).toBeNull();
   });
 
   it("heads the feed with one stack per asker, excluding answered questions", () => {
-    render(<AskStack />);
+    render(
+      <MemoryRouter>
+        <AskStack />
+      </MemoryRouter>,
+    );
     expect(screen.getByText("Questions for the team")).toBeTruthy();
     // newest asker first
     expect(screen.getByText(/Ana Lei asked the team/)).toBeTruthy();
@@ -139,21 +158,47 @@ describe("AskStack (web full-timer)", () => {
     expect(screen.queryByText(/Rio asked the team/)).toBeNull();
   });
 
-  it("answers a question, pinging the asker", () => {
-    render(<AskStack />);
-    // Second asker's row (Zion) — answer via the inline composer.
-    const answerButtons = screen.getAllByText(/Answer /);
+  it("does not render an inline composer — answering is a pointer to /questions", () => {
+    render(
+      <MemoryRouter>
+        <AskStack />
+      </MemoryRouter>,
+    );
+
+    // The old inline composer is gone. No textarea, no "Send it" button.
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.queryByText(/^Send it$/)).toBeNull();
+
+    // The action is a single button per question that says who it is for.
+    const answerButtons = screen.getAllByText(/^Answer /);
+    expect(answerButtons).toHaveLength(2);
+  });
+
+  it("tapping a question navigates to /questions with focusQuestionId set", () => {
+    mockNavigate.mockReset();
+    render(
+      <MemoryRouter>
+        <AskStack />
+      </MemoryRouter>,
+    );
+
+    // Newest asker first — Ana Lei's q2 is the top row, Zion's q1 is the second.
+    const answerButtons = screen.getAllByText(/^Answer /);
     fireEvent.click(answerButtons[1]);
-    const textarea = screen.getByPlaceholderText(
-      "Answer Zion the way you'd say it out loud.",
+    expect(mockNavigate).toHaveBeenCalledWith("/questions", {
+      state: { focusQuestionId: "q1" },
+    });
+  });
+
+  it("'Mark scanned' still clears the inbox badge without navigating (#646)", () => {
+    mockNavigate.mockReset();
+    render(
+      <MemoryRouter>
+        <AskStack />
+      </MemoryRouter>,
     );
-    fireEvent.change(textarea, { target: { value: "Three tries, spread out." } });
-    fireEvent.click(screen.getByText("Send it"));
-    expect(addAskReply).toHaveBeenCalledWith(
-      "q1",
-      { from: "ft1", fromName: "Mei", body: "Three tries, spread out." },
-      "t1",
-      "t1",
-    );
+
+    fireEvent.click(screen.getAllByText(/Mark scanned/)[0]);
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

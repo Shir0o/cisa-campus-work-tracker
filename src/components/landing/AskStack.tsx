@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { HelpCircle, Check, MessageSquare, Pencil } from "lucide-react";
 import { cn, relTime } from "../../lib/utils";
 import { useAuth } from "../AuthProvider";
@@ -9,7 +10,6 @@ import {
   askStacksFor,
   askWaitedDays,
   askOrigin,
-  addAskReply,
   type AskMessage,
   type AskStack as AskStackData,
 } from "../../lib/asks";
@@ -17,10 +17,12 @@ import { useInboxReads } from "../../lib/inboxReads";
 
 // ── A question with nobody attached (#545) ─────────────────────────────────
 // A trainee's question about the work itself has no person to stack it under,
-// so the stack is keyed by the ASKER. Answering *is* the action — there is no
-// "I followed up" here, nothing to resolve, and the first full-timer to reply
-// takes the row off everyone's feed. An unanswered question does NOT age: it
-// stays here until someone replies, and the waiting is said in words.
+// so the stack is keyed by the ASKER. The first full-timer to answer takes
+// the row off everyone's feed. An unanswered question does NOT age: it stays
+// here until someone replies, and the waiting is said in words. #646 moved
+// answering to the Questions page — the row action is a navigate, not a
+// composer — so the only thing this stack does is show who is waiting and
+// mark a row scanned. Two surfaces, one composer.
 
 function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
   const d = askWaitedDays(m);
@@ -48,25 +50,17 @@ function AskStackRow({
 }) {
   const inbox = useInboxReads();
   const { t } = useI18n();
-  const [openId, setOpenId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
+  const navigate = useNavigate();
 
   const fullName = staffNameMap[stack.from] || stack.items[0].fromName || "Someone";
   const first = fullName.split(/\s+/)[0];
 
-  const answer = (m: AskMessage) => {
-    const body = draft.trim();
-    if (!body) return;
-    void addAskReply(
-      m.id,
-      { from: uid, fromName: meName, body },
-      m.owner,
-      m.owner,
-    );
+  // #646: answering moved to the Questions page. Tapping a question marks it
+  // scanned (so the "X new" badge drops) and navigates with focusQuestionId.
+  // No inline composer, no local draft state — the page owns the answer.
+  const openOnQuestionsPage = (m: AskMessage) => {
     inbox.markRead(uid, "ask:" + m.id);
-    setDraft("");
-    setOpenId(null);
-    onToast?.(t("ask.answered_toast", `Answered ${first}.`).replace("{first}", first));
+    navigate("/questions", { state: { focusQuestionId: m.id } });
   };
 
   const unread = stack.items.filter((m) => !inbox.isRead(uid, "ask:" + m.id)).length;
@@ -120,53 +114,14 @@ function AskStackRow({
                       waitedWords(m, t),
                     )}
                   </p>
-                  {openId === m.id ? (
-                    <div className="mt-2.5">
-                      <textarea
-                        autoFocus
-                        value={draft}
-                        rows={3}
-                        onChange={(e) => setDraft(e.target.value)}
-                        placeholder={t("ask.answer_placeholder", `Answer ${first} the way you'd say it out loud.`).replace("{first}", first)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) answer(m);
-                        }}
-                        className="w-full px-3 py-2 rounded-lg border border-outline-variant bg-surface text-sm text-on-surface focus:border-primary focus:outline-none"
-                      />
-                      <div className="flex items-center gap-2 mt-2">
-                        <button
-                          type="button"
-                          onClick={() => answer(m)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary text-on-primary text-xs font-medium hover:opacity-90 transition-opacity"
-                        >
-                          {t("ask.send_it", "Send it")}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setOpenId(null);
-                            setDraft("");
-                          }}
-                          className="px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                        >
-                          {t("ask.not_now", "Not now")}
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOpenId(m.id);
-                        setDraft("");
-                        inbox.markRead(uid, "ask:" + m.id);
-                      }}
-                      className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
-                    >
-                      <HelpCircle className="w-3.5 h-3.5" />
-                      {t("ask.answer", `Answer ${first}`).replace("{first}", first)}
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => openOnQuestionsPage(m)}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-outline-variant text-xs font-medium text-on-surface hover:bg-surface-variant transition-colors"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5" />
+                    {t("ask.answer", `Answer ${first}`).replace("{first}", first)}
+                  </button>
                 </div>
               );
             })}
@@ -191,8 +146,8 @@ function AskStackRow({
 }
 
 /** "Questions for the team" — full-timer only, heads the My Day attention feed.
- *  One stack per asker; answering *is* the action and the first reply clears
- *  the question for every full-timer. */
+ *  One stack per asker; the action navigates to /questions with focusQuestionId
+ *  (#646), and the composer lives on the Questions page. Mark-scanned stays. */
 export default function AskStack({
   staffNameMap,
   onToast,

@@ -610,8 +610,6 @@
     "no_answer_yet": "No answer yet · {words}. It's with the whole team, not one person.",
     "answer": "Answer {first}",
     "answer_placeholder": "Answer {first} the way you'd say it out loud.",
-    "send_it": "Send it",
-    "not_now": "Not now",
     "answered_toast": "Answered {first}.",
     "mark_scanned": "Mark scanned",
     "title": "Ask the team",

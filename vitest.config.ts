@@ -13,7 +13,7 @@ export default defineConfig({
     // apps/** and packages/** are separate projects with their own test runners
     // (e.g. `cd packages/core && npm test`) — don't pull them into the web app's
     // run or they'd skew its coverage totals.
-    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'apps/**', 'packages/**'],
+    exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**', '.claude/**', 'apps/**', 'packages/**', '.worktrees/**'],
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
