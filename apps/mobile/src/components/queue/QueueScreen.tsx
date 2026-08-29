@@ -43,6 +43,7 @@ import { AllTodayList } from './AllTodayList';
 import { WeekLookBack } from './WeekLookBack';
 import { DrawerButton, QueueDrawer } from './QueueDrawer';
 import { ReplySheet } from './ReplySheet';
+import { FeedbackSheet } from '../feedback/FeedbackSheet';
 import { QueueSkeleton } from '../skeleton/QueueSkeleton';
 import { M2Release } from '../release/M2Release';
 
@@ -64,6 +65,7 @@ export function QueueScreen() {
   const [showAll, setShowAll] = React.useState(false);
   const [showWeek, setShowWeek] = React.useState(false);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
   const [logFor, setLogFor] = React.useState<Contact | null>(null);
   // The to-do behind a follow-up card, so saving the log closes it too.
   const [logTask, setLogTask] = React.useState<string | null>(null);
@@ -434,7 +436,12 @@ export function QueueScreen() {
         onSend={sendReply}
       />
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
-      <QueueDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <QueueDrawer
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        onFeedback={() => setFeedbackOpen(true)}
+      />
+      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
       {/* What changed since you last opened this (#546) — held while the
           on-campus window is open, so it never interrupts the two hours you're
           actually on campus. */}

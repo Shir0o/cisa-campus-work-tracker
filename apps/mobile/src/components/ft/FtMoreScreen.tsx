@@ -15,6 +15,7 @@ import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import { Room } from '../v2/Widget';
 import { useImpersonateSheet } from '../impersonate/ImpersonateLayer';
+import { FeedbackSheet } from '../feedback/FeedbackSheet';
 
 export function FtMoreScreen() {
   return (
@@ -30,6 +31,7 @@ function FtMore() {
   const { t } = useLanguage();
   const router = useRouter();
   const { open: openImpersonateSheet } = useImpersonateSheet();
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
 
   const moreLabel = (key: string) => {
     const labels: Record<string, string> = {
@@ -145,6 +147,34 @@ function FtMore() {
               />
             </Pressable>
           )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('mobile.ft_more.tell_us_how_its_going', "Tell us how it's going")}
+            onPress={() => setFeedbackOpen(true)}
+            style={({ pressed }) => ({
+              flexDirection: 'row',
+              alignItems: 'center',
+              minHeight: 58,
+              paddingHorizontal: 18,
+              borderTopWidth: 1,
+              borderTopColor: c.widget.line,
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(15.5), color: c.widget.ink, flex: 1 }}>
+              {t('mobile.ft_more.tell_us_how_its_going', "Tell us how it's going")}
+            </Text>
+            <View
+              style={{
+                width: 9,
+                height: 9,
+                borderRightWidth: 2,
+                borderTopWidth: 2,
+                borderColor: c.widget.ink3,
+                transform: [{ rotate: '45deg' }],
+              }}
+            />
+          </Pressable>
         </View>
 
         <Text
@@ -159,6 +189,7 @@ function FtMore() {
           {t('mobile.ft_more.foot')}
         </Text>
       </ScrollView>
+      <FeedbackSheet visible={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
     </SafeAreaView>
   );
 }

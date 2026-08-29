@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions } from 'react-native';
+import { View, Text, TextInput, Pressable, ActivityIndicator, Dimensions, Platform } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import { Sheet } from '../ui/Sheet';
 import { useAuth } from '../../lib/AuthProvider';
-import { FEEDBACK_KINDS, kindToType } from '@cisa/core';
+import { useLanguage } from '../../lib/LanguageProvider';
+import { useV2Theme } from '../../theme/v2';
+import { FEEDBACK_KINDS, kindMeta, kindToType } from '@cisa/core';
 import type { FeedbackKind } from '@cisa/core';
 
 interface FeedbackSheetProps {
@@ -12,8 +14,17 @@ interface FeedbackSheetProps {
   targetRef?: React.RefObject<any>;
 }
 
+const getApiUrl = () => {
+  if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL.replace(/\/+$/, '');
+  }
+  return Platform.OS === 'web' ? '' : 'https://cisa-campus-work-traker.pages.dev';
+};
+
 export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProps) {
   const { user } = useAuth();
+  const { t } = useLanguage();
+  const { c, font, radius, fs } = useV2Theme();
   const [kind, setKind] = useState<FeedbackKind>('thought');
   const [message, setMessage] = useState('');
   const [screenshot, setScreenshot] = useState<string>('');
@@ -82,7 +93,8 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/feedback', {
+      const url = `${getApiUrl()}/api/feedback`;
+      const response = await fetch(url, {
         method: 'POST',
         headers,
         body: JSON.stringify(payload),
@@ -110,53 +122,73 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
     onClose();
   };
 
+  const currentPlaceholder = kindMeta(kind).placeholder;
+
   return (
     <Sheet visible={visible} onClose={handleClose}>
-      <View style={{ padding: 16 }}>
-        <Text style={{ fontSize: 20, fontWeight: '600', marginBottom: 4 }}>Leave a note</Text>
-        <Text style={{ fontSize: 13, color: '#666', marginBottom: 16 }}>
-          Ideas, friction, appreciation — all welcome.
+      <View style={{ padding: 18 }}>
+        <Text style={{ fontFamily: font.extra, fontSize: fs(20), color: c.card.ink, marginBottom: 4 }}>
+          {t('mobile.feedback.leave_a_note', "Tell us how it's going")}
+        </Text>
+        <Text style={{ fontFamily: font.medium, fontSize: fs(13), color: c.card.ink3, marginBottom: 16 }}>
+          {t('mobile.feedback.all_welcome', 'An idea, a snag, a thank-you — it goes straight to the team.')}
         </Text>
 
         {submitted ? (
           <View style={{ alignItems: 'center', paddingVertical: 24 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 8 }}>We got your note!</Text>
-            <Text style={{ fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 16 }}>
-              Thank you for sharing your feedback.
+            <Text style={{ fontFamily: font.bold, fontSize: fs(18), color: c.card.ink, marginBottom: 8 }}>
+              {t('feedback.we_got_your_note', 'We got your note!')}
+            </Text>
+            <Text style={{ fontFamily: font.medium, fontSize: fs(14), color: c.card.ink2, textAlign: 'center', marginBottom: 20 }}>
+              {t('feedback.saved_body', 'Thank you for taking the time to share your thoughts with the team.').replace('{name}', user?.displayName ?? 'there')}
             </Text>
             <Pressable
+              accessibilityRole="button"
               onPress={handleClose}
-              style={{
-                backgroundColor: '#5C17E5',
-                paddingVertical: 10,
-                paddingHorizontal: 20,
-                borderRadius: 20,
-              }}
+              style={({ pressed }) => ({
+                backgroundColor: c.card.inverse,
+                paddingVertical: 11,
+                paddingHorizontal: 24,
+                borderRadius: radius.button,
+                opacity: pressed ? 0.75 : 1,
+              })}
             >
-              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Done</Text>
+              <Text style={{ fontFamily: font.bold, color: c.card.onInverse, fontSize: fs(14) }}>
+                {t('common.done', 'Done')}
+              </Text>
             </Pressable>
           </View>
         ) : (
           <View style={{ gap: 16 }}>
             <View>
-              <Text style={{ fontSize: 13, fontWeight: '600', marginBottom: 8 }}>Kind of note</Text>
+              <Text style={{ fontFamily: font.bold, fontSize: fs(12.5), color: c.card.ink2, marginBottom: 8 }}>
+                {t('feedback.kind_of_note', 'What kind of note')}
+              </Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {FEEDBACK_KINDS.map((k) => {
                   const selected = kind === k.id;
                   return (
                     <Pressable
                       key={k.id}
+                      accessibilityRole="button"
                       onPress={() => setKind(k.id)}
-                      style={{
+                      style={({ pressed }) => ({
                         paddingVertical: 8,
-                        paddingHorizontal: 12,
-                        borderRadius: 12,
-                        borderWidth: 1,
-                        borderColor: selected ? '#5C17E5' : '#ccc',
-                        backgroundColor: selected ? '#5C17E5' : '#fff',
-                      }}
+                        paddingHorizontal: 14,
+                        borderRadius: radius.button,
+                        borderWidth: 1.5,
+                        borderColor: selected ? c.card.ink : c.card.line,
+                        backgroundColor: selected ? c.card.inverse : c.card.bg,
+                        opacity: pressed ? 0.75 : 1,
+                      })}
                     >
-                      <Text style={{ color: selected ? '#fff' : '#333', fontSize: 13, fontWeight: '600' }}>
+                      <Text
+                        style={{
+                          fontFamily: selected ? font.bold : font.medium,
+                          color: selected ? c.card.onInverse : c.card.ink,
+                          fontSize: fs(13),
+                        }}
+                      >
                         {k.label}
                       </Text>
                     </Pressable>
@@ -166,54 +198,73 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
             </View>
 
             <View>
-              <Text style={{ fontSize: 13, fontWeight: '600', marginBottom: 6 }}>Message</Text>
               <TextInput
                 multiline
                 numberOfLines={4}
                 value={message}
                 onChangeText={setMessage}
-                placeholder="Tell us what's on your mind..."
+                placeholder={currentPlaceholder}
+                placeholderTextColor={c.card.ink3}
                 style={{
                   borderWidth: 1,
-                  borderColor: '#ccc',
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 14,
-                  minHeight: 90,
+                  borderColor: c.card.line,
+                  borderRadius: radius.tile,
+                  padding: 14,
+                  fontSize: fs(14),
+                  fontFamily: font.medium,
+                  color: c.card.ink,
+                  backgroundColor: c.card.bg,
+                  minHeight: 100,
                   textAlignVertical: 'top',
                 }}
               />
             </View>
 
             {errorMsg && (
-              <Text style={{ color: '#d32f2f', fontSize: 13 }}>{errorMsg}</Text>
+              <Text style={{ fontFamily: font.medium, color: '#DC2626', fontSize: fs(13) }}>{errorMsg}</Text>
             )}
 
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12, marginTop: 4 }}>
               <Pressable
+                accessibilityRole="button"
                 onPress={handleClose}
                 disabled={submitting}
-                style={{ paddingVertical: 10, paddingHorizontal: 16 }}
+                style={({ pressed }) => ({
+                  paddingVertical: 10,
+                  paddingHorizontal: 16,
+                  borderRadius: radius.button,
+                  opacity: pressed ? 0.6 : 1,
+                })}
               >
-                <Text style={{ color: '#666', fontWeight: '600', fontSize: 14 }}>Cancel</Text>
+                <Text style={{ fontFamily: font.bold, color: c.card.ink3, fontSize: fs(14) }}>
+                  {t('common.cancel', 'Not now')}
+                </Text>
               </Pressable>
 
               <Pressable
+                accessibilityRole="button"
                 onPress={handleSubmit}
                 disabled={submitting || !message.trim()}
-                style={{
-                  backgroundColor: submitting || !message.trim() ? '#999' : '#5C17E5',
+                style={({ pressed }) => ({
+                  backgroundColor: submitting || !message.trim() ? c.card.line : c.card.inverse,
                   paddingVertical: 10,
-                  paddingHorizontal: 20,
-                  borderRadius: 20,
+                  paddingHorizontal: 22,
+                  borderRadius: radius.button,
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 8,
-                }}
+                  opacity: pressed ? 0.75 : 1,
+                })}
               >
-                {submitting && <ActivityIndicator color="#fff" size="small" />}
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>
-                  {submitting ? 'Sending…' : 'Send'}
+                {submitting && <ActivityIndicator color={c.card.onInverse} size="small" />}
+                <Text
+                  style={{
+                    fontFamily: font.bold,
+                    color: submitting || !message.trim() ? c.card.ink3 : c.card.onInverse,
+                    fontSize: fs(14),
+                  }}
+                >
+                  {submitting ? t('feedback.sending', 'Sending…') : t('feedback.send', 'Send it')}
                 </Text>
               </Pressable>
             </View>
@@ -223,3 +274,4 @@ export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProp
     </Sheet>
   );
 }
+

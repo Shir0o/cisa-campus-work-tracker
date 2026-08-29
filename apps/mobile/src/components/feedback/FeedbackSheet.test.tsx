@@ -10,6 +10,17 @@ jest.mock('../../lib/AuthProvider', () => ({
   }),
 }));
 
+jest.mock('../../lib/firebase', () => ({
+  auth: {
+    currentUser: {
+      uid: 'm-uid-1',
+      displayName: 'Mobile User',
+      email: 'm@example.com',
+      getIdToken: jest.fn().mockResolvedValue('tok-1'),
+    },
+  },
+}));
+
 jest.mock('react-native-view-shot', () => ({
   captureRef: jest.fn().mockResolvedValue('fake-base64-string'),
 }));
@@ -66,14 +77,14 @@ describe('FeedbackSheet', () => {
       expect(captureRef).toHaveBeenCalled();
     });
 
-    const input = getByPlaceholderText("Tell us what's on your mind...");
+    const input = getByPlaceholderText("What's on your mind?");
     fireEvent.changeText(input, 'Mobile test feedback note');
 
     const sendBtn = getByText('Send');
     fireEvent.press(sendBtn);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/feedback', expect.objectContaining({
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/api/feedback'), expect.objectContaining({
         method: 'POST',
         body: expect.stringContaining('Mobile test feedback note'),
       }));
@@ -83,7 +94,8 @@ describe('FeedbackSheet', () => {
     expect(bodyStr).toContain('data:image/jpeg;base64,fake-base64-string');
 
     await waitFor(() => {
-      expect(getByText('We got your note!')).toBeTruthy();
+      expect(getByText(/We got your note/)).toBeTruthy();
     });
   });
 });
+
