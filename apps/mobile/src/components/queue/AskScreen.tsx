@@ -1,34 +1,50 @@
-// Mobile v2 — "Ask the team" (#545). A trainee's question that isn't about a
-// person. Asking and reading are ONE list: the composer at the top, your
-// questions newest-first under it, each answer inline. Nothing to resolve,
-// nothing to mark — a question with a reply is just a question with a reply.
-// Every full-timer sees every question; any of them can answer, from My Day.
+// Mobile v2 — "Ask the team" (#545, #645). A trainee's question that isn't
+// about a person. Asking and reading are ONE list: the composer at the top,
+// the whole team's questions newest-first under it (staff read every
+// question), each answer inline. Nothing to resolve, nothing to mark — a
+// question with a reply is just a question with a reply. Every staff member
+// sees every question; any full-timer can answer, from My Day.
 import React from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  askQuestionsBy,
+  askQuestions,
   askRepliesOf,
   askWaitedWords,
   askOrigin,
   firstName,
+  roleLabel,
   type AskMessage,
+  type AppUser,
 } from '@cisa/core';
 import { useAuth } from '../../lib/AuthProvider';
 import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import {
   addAsk,
-  subscribeMyAsks,
+  subscribeStaffAsks,
 } from '../../lib/data/asks';
+import { subscribeUsers } from '../../lib/data/users';
 import { V2Screen, V2TextArea, V2Empty } from '../v2/Widget';
 import { PrimaryButton } from '../queue/atoms';
+import { Snackbar } from '../ui/Snackbar';
 
 /** The composer + a question with its inline answers. Reused under the list. */
-function AskItem({ m, replies, me }: { m: AskMessage; replies: AskMessage[]; me: string }) {
+function AskItem({
+  m,
+  replies,
+  me,
+  roleOf,
+}: {
+  m: AskMessage;
+  replies: AskMessage[];
+  me: string;
+  roleOf?: (uid: string) => string | undefined;
+}) {
   const { c, font, fs } = useV2Theme();
   const org = askOrigin(m, me);
+  const role = roleOf ? roleOf(m.from) : undefined;
   const answered = replies.length > 0;
   return (
     <View
@@ -40,6 +56,10 @@ function AskItem({ m, replies, me }: { m: AskMessage; replies: AskMessage[]; me:
         marginTop: 10,
       }}
     >
+      <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3, marginBottom: 4 }}>
+        {m.fromName || 'Someone'}
+        {role ? ` · ${role}` : ''}
+      </Text>
       <Text style={{ fontFamily: font.semi, fontSize: fs(15), lineHeight: fs(21), color: c.card.ink }}>
         {m.body}
       </Text>
@@ -91,19 +111,36 @@ export function AskScreen() {
   const router = useRouter();
   const [asks, setAsks] = React.useState<AskMessage[]>([]);
   const [body, setBody] = React.useState('');
+  const [toast, setToast] = React.useState<string | null>(null);
+  const [staffByUid, setStaffByUid] = React.useState<Record<string, AppUser>>({});
 
   React.useEffect(() => {
     if (!uid) return;
-    return subscribeMyAsks(uid, setAsks);
+    return subscribeStaffAsks(uid, setAsks);
   }, [uid]);
 
-  const mine = React.useMemo(() => (uid ? askQuestionsBy(asks, uid) : []), [asks, uid]);
+  // Staff roster for asker role badges — the team's questions are team-visible,
+  // and who asked matters (full-timer vs trainee).
+  React.useEffect(() => {
+    return subscribeUsers((users) => {
+      const staff: Record<string, AppUser> = {};
+      for (const u of users) {
+        const isStaffRole = u.role === 'admin' || u.role === 'manager';
+        const notBot = !(u.email || '').startsWith('cisa-');
+        if (isStaffRole && notBot && u.approved) staff[u.uid] = u;
+      }
+      setStaffByUid(staff);
+    }, () => {});
+  }, []);
+
+  const questions = React.useMemo(() => (uid ? askQuestions(asks) : []), [asks, uid]);
 
   const send = () => {
     const b = body.trim();
     if (!b || !uid) return;
     void addAsk({ from: uid, fromName: user?.displayName || 'A trainee', body: b });
     setBody('');
+    setToast(t('mobile.ask.toast_asked', 'Asked. The team can see it.'));
   };
 
   return (
@@ -131,17 +168,27 @@ export function AskScreen() {
           </View>
         </View>
 
-        {mine.length === 0 ? (
+        {questions.length === 0 ? (
           <V2Empty>
             {t('mobile.ask.empty', 'Nothing asked yet. The questions that don\'t belong on anyone\'s page — how to start a conversation at the club table, what to say when you\'re stuck — live here.')}
           </V2Empty>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
-            {mine.map((m) => (
-              <AskItem key={m.id} m={m} replies={askRepliesOf(asks, m.id)} me={uid ?? ''} />
+            {questions.map((m) => (
+              <AskItem
+                key={m.id}
+                m={m}
+                replies={askRepliesOf(asks, m.id)}
+                me={uid ?? ''}
+                roleOf={(askerUid) => {
+                  const u = staffByUid[askerUid];
+                  return u ? roleLabel(u.role) : undefined;
+                }}
+              />
             ))}
           </ScrollView>
         )}
+        {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
       </V2Screen>
     </SafeAreaView>
   );

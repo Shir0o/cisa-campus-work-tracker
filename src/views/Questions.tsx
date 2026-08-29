@@ -14,6 +14,7 @@ import { collection, onSnapshot, query } from 'firebase/firestore';
 import { MessageCircleQuestion, Plus, Send, Pencil, Clock, Check, X, CornerUpLeft } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
+import { useI18n } from '../components/LanguageProvider';
 import PageContainer from '../components/layout/PageContainer';
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
 import { AppUser } from '../types';
@@ -55,6 +56,7 @@ interface QuestionCardProps {
 }
 
 function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: QuestionCardProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
@@ -74,7 +76,9 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
       await addAskReply(m.id, { from: me, fromName: meName, body }, m.owner, mine ? null : m.from);
       setDraft('');
       setOpen(false);
-      onToast(mine ? 'Added to your question.' : `Answered ${who}.`);
+      onToast(
+        mine ? t('ask.added_toast', 'Added to your question.') : t('ask.answered_toast', 'Answered {first}.').replace('{first}', who),
+      );
     } finally {
       setSending(false);
     }
@@ -91,13 +95,15 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
         <span className={cn(AVATAR, 'w-7 h-7 text-[10px]')}>{getUserInitials(m.fromName || 'Someone')}</span>
         <span className="text-sm font-semibold text-on-surface">{m.fromName || 'Someone'}</span>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-on-surface-variant bg-surface-container border border-outline-variant rounded-full px-2 py-0.5">
-          Trainee
+          {t('ask.role_trainee', 'Trainee')}
         </span>
         <span className="flex-1" />
         {answered ? (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-success bg-success-container rounded-full px-2.5 py-1">
             <Check className="w-3 h-3" />
-            {replies.length === 1 ? '1 answer' : `${replies.length} answers`}
+            {replies.length === 1
+              ? t('ask.one_answer', '1 answer')
+              : t('ask.n_answers', '{n} answers').replace('{n}', String(replies.length))}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-warning bg-warning-container rounded-full px-2.5 py-1">
@@ -130,18 +136,26 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
       )}
 
       {!canAnswer ? (
-        <p className="text-xs italic text-on-surface-variant">A full-timer will answer this.</p>
+        <p className="text-xs italic text-on-surface-variant">
+          {t('ask.fulltimer_will_answer', 'A full-timer will answer this.')}
+        </p>
       ) : open ? (
         <div>
           <label className="block text-xs font-semibold text-accent mb-1.5" htmlFor={`answer-${m.id}`}>
-            {mine ? 'Add to your question' : `Your answer to ${who}`}
+            {mine
+              ? t('ask.add_to_your_question', 'Add to your question')
+              : t('ask.your_answer_to', 'Your answer to {first}').replace('{first}', who)}
           </label>
           <textarea
             id={`answer-${m.id}`}
             autoFocus
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            placeholder={mine ? 'Add to your question…' : `Answer ${who} the way you'd say it out loud.`}
+            placeholder={
+              mine
+                ? t('ask.add_placeholder', 'Add to your question…')
+                : t('ask.answer_placeholder', "Answer {first} the way you'd say it out loud.").replace('{first}', who)
+            }
             className="w-full min-h-[72px] resize-y rounded-lg bg-surface border border-outline-variant px-3 py-2 text-sm text-on-surface outline-none focus:border-accent-line focus:ring-4 focus:ring-accent-soft"
             onKeyDown={(e) => {
               if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -158,16 +172,20 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
             >
               <Send className="w-3.5 h-3.5" />
-              {mine ? 'Add' : 'Send answer'}
+              {mine ? t('ask.add', 'Add') : t('ask.send_answer', 'Send answer')}
             </button>
             <button
               type="button"
               onClick={() => { setOpen(false); setDraft(''); }}
               className="text-sm text-on-surface-variant hover:text-on-surface"
             >
-              Cancel
+              {t('actions.cancel', 'Cancel')}
             </button>
-            {!mine && <span className="text-xs text-on-surface-variant">Clears it for every full-timer.</span>}
+            {!mine && (
+              <span className="text-xs text-on-surface-variant">
+                {t('ask.clears_for_everyone', 'Clears it for every full-timer.')}
+              </span>
+            )}
           </div>
         </div>
       ) : (
@@ -177,7 +195,9 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
           className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-sm font-semibold text-accent bg-accent-soft border border-accent-line hover:brightness-95"
         >
           <CornerUpLeft className="w-3.5 h-3.5" />
-          {mine ? 'Add to your question' : `Answer ${who}`}
+          {mine
+            ? t('ask.add_to_your_question', 'Add to your question')
+            : t('ask.answer', 'Answer {first}').replace('{first}', who)}
         </button>
       )}
     </article>
@@ -186,13 +206,18 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
 
 export default function Questions() {
   const { user, role, impersonateTarget } = useAuth();
+  const { t } = useI18n();
   // Firestore rules key off the REAL authenticated uid, never the simulated one (#603).
   const me = user?.uid || '';
   const meName = impersonateTarget ? impersonateTarget.name : user?.displayName || 'Member';
   const isFullTimer = role === 'admin';
+  // Staff — full-timer or trainee — read the whole team's archive (#645). The
+  // route is staff-only, so this is always true here; it is named rather than
+  // inlined so the asks API reads the same way it does everywhere else.
+  const isStaff = role === 'admin' || role === 'manager';
 
   const [asks, setAsks] = useState<AskMessage[]>([]);
-  const [filter, setFilter] = useState<Filter>(isFullTimer ? 'waiting' : 'all');
+  const [filter, setFilter] = useState<Filter>('waiting');
   const [askOpen, setAskOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -203,7 +228,7 @@ export default function Questions() {
   const [draft, setDraft] = useState('');
   const [posting, setPosting] = useState(false);
 
-  useEffect(() => subscribeAsks(setAsks, undefined, { uid: me, isAdmin: isFullTimer }), [me, isFullTimer]);
+  useEffect(() => subscribeAsks(setAsks, undefined, { uid: me, isStaff }), [me, isStaff]);
 
   useEffect(() => {
     if (!toast) return;
@@ -227,7 +252,7 @@ export default function Questions() {
     return unsub;
   }, [isFullTimer, askOpen]);
 
-  const questions = useMemo(() => askVisibleFor(asks, me, isFullTimer), [asks, me, isFullTimer]);
+  const questions = useMemo(() => askVisibleFor(asks, me, isStaff), [asks, me, isStaff]);
 
   const counts = useMemo(
     () => ({
@@ -256,10 +281,15 @@ export default function Questions() {
         const trainee = trainees.find((t) => t.uid === forWho);
         const askerName = trainee?.displayName || 'Trainee';
         await addAskFor({ askerId: forWho, askerName, takenBy: me, takenByName: meName, body });
-        setToast(`Written down for ${firstName(askerName)} — every full-timer can see it.`);
+        setToast(
+          t('ask.written_for_toast', 'Written down for {first} — every full-timer can see it.').replace(
+            '{first}',
+            firstName(askerName),
+          ),
+        );
       } else {
         await addAsk({ from: me, fromName: meName, body });
-        setToast('Asked. The team can see it.');
+        setToast(t('ask.asked_toast', 'Asked. The team can see it.'));
       }
       setDraft('');
       setForWho(null);
@@ -270,20 +300,24 @@ export default function Questions() {
   };
 
   const FILTERS: { id: Filter; label: string; n: number }[] = [
-    { id: 'waiting', label: 'Waiting', n: counts.waiting },
-    { id: 'answered', label: 'Answered', n: counts.answered },
-    { id: 'mine', label: 'Asked by me', n: counts.mine },
-    { id: 'all', label: 'All', n: counts.all },
+    { id: 'waiting', label: t('ask.filter_waiting', 'Waiting'), n: counts.waiting },
+    { id: 'answered', label: t('ask.filter_answered', 'Answered'), n: counts.answered },
+    { id: 'mine', label: t('ask.filter_mine', 'Asked by me'), n: counts.mine },
+    { id: 'all', label: t('ask.filter_all', 'All'), n: counts.all },
   ];
 
   return (
     <PageContainer variant="wide">
       <header className="flex flex-wrap items-end gap-4 mb-5">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl lg:text-[26px] font-medium tracking-tight text-on-surface">Questions for the team</h1>
+          <h1 className="text-2xl lg:text-[26px] font-medium tracking-tight text-on-surface">
+            {t('ask.questions_for_team', 'Questions for the team')}
+          </h1>
           <p className="text-sm text-on-surface-variant mt-1.5 max-w-[78ch] text-pretty">
-            Questions that aren't about one person. Nothing here resolves — a question waits until someone answers it,
-            and the first answer clears it for every full-timer.
+            {t(
+              'ask.page_sub',
+              "Questions that aren't about one person. Nothing here resolves — a question waits until someone answers it, and the first answer clears it for every full-timer.",
+            )}
           </p>
         </div>
         <button
@@ -292,7 +326,7 @@ export default function Questions() {
           className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-primary text-on-primary text-sm font-semibold shrink-0"
         >
           {askOpen ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-          {askOpen ? 'Close' : 'Ask the team'}
+          {askOpen ? t('actions.close', 'Close') : t('ask.ask_the_team', 'Ask the team')}
         </button>
       </header>
 
@@ -312,7 +346,9 @@ export default function Questions() {
                       : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
                   )}
                 >
-                  {id === 'own' ? 'My own question' : 'Someone asked me'}
+                  {id === 'own'
+                    ? t('ask.my_own_question', 'My own question')
+                    : t('ask.someone_asked_me', 'Someone asked me')}
                 </button>
               ))}
             </div>
@@ -320,7 +356,7 @@ export default function Questions() {
 
           {isFullTimer && mode === 'for' && (
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="text-xs text-on-surface-variant">Who asked it?</span>
+              <span className="text-xs text-on-surface-variant">{t('ask.who_asked', 'Who asked it?')}</span>
               {trainees.map((s) => (
                 <button
                   key={s.uid}
@@ -345,7 +381,9 @@ export default function Questions() {
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             placeholder={
-              mode === 'for' ? 'In their words, as close as you can remember…' : 'Ask the team something real…'
+              mode === 'for'
+                ? t('ask.for_placeholder', 'In their words, as close as you can remember…')
+                : t('ask.composer_placeholder', "What do you want to ask? Say it how you'd say it out loud.")
             }
             className="w-full min-h-[84px] resize-y rounded-lg bg-surface border border-outline-variant px-3 py-2 text-sm text-on-surface outline-none focus:border-accent-line focus:ring-4 focus:ring-accent-soft"
             onKeyDown={(e) => {
@@ -363,13 +401,13 @@ export default function Questions() {
               className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-on-primary text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
             >
               <Send className="w-3.5 h-3.5" />
-              {mode === 'for' ? 'Write it down' : 'Ask the team'}
+              {mode === 'for' ? t('ask.write_it_down', 'Write it down') : t('ask.ask_the_team', 'Ask the team')}
             </button>
             {mode === 'for' && (
               <span className="text-xs text-on-surface-variant text-pretty">
                 {forWho
-                  ? 'It goes in under their name, marked as asked in person.'
-                  : 'Pick who asked it first — it goes in under their name.'}
+                  ? t('ask.goes_under_their_name', 'It goes in under their name, marked as asked in person.')
+                  : t('ask.pick_who_first', 'Pick who asked it first — it goes in under their name.')}
               </span>
             )}
           </div>
@@ -401,12 +439,14 @@ export default function Questions() {
             <MessageCircleQuestion className="w-5 h-5" />
           </span>
           <div className="text-lg font-medium text-on-surface">
-            {filter === 'waiting' ? 'Nothing waiting' : 'Nothing asked yet'}
+            {filter === 'waiting'
+              ? t('ask.empty_waiting_title', 'Nothing waiting')
+              : t('ask.empty_none_title', 'Nothing asked yet')}
           </div>
           <p className="text-sm text-on-surface-variant max-w-[44ch] text-pretty">
             {filter === 'waiting'
-              ? 'Every question has an answer on it.'
-              : 'A question with no person attached belongs here.'}
+              ? t('ask.empty_waiting_sub', 'Every question has an answer on it.')
+              : t('ask.empty_none_sub', 'A question with no person attached belongs here.')}
           </p>
         </div>
       ) : (

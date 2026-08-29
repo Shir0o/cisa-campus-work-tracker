@@ -188,7 +188,7 @@ export function useFtHomeData(uid: string | null, displayName: string | null) {
     // permission-denied, and neither is worth failing the whole screen over.
     const unsubRequests = subscribeOpenPrayerRequests(setRequests, () => setRequests([]));
     const unsubOffers = subscribeHospitalityOffers(setOffers, () => setOffers([]));
-    const unsubAsks = subscribeAsks(setAsks, () => setAsks([]), { uid: uid ?? undefined, isAdmin: true });
+    const unsubAsks = subscribeAsks(setAsks, () => setAsks([]), { uid: uid ?? undefined, isStaff: true });
     const unsubPrefs = subscribeUserPreferences(uid, (prefs) =>
       setPrefContactIds(prefs.personalContactIds ?? null),
     );

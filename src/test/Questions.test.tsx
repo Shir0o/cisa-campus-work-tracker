@@ -106,7 +106,7 @@ describe('Questions for the team page (#646)', () => {
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 
       fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
-      expect(screen.getByPlaceholderText(/ask the team something real/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/what do you want to ask/i)).toBeInTheDocument();
     });
 
     it('answering a question calls addAskReply, never addAsk', async () => {
@@ -160,7 +160,7 @@ describe('Questions for the team page (#646)', () => {
     it('defaults a full-timer to their own question, not to recording someone else\'s', () => {
       renderPage();
       fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
-      expect(screen.getByPlaceholderText(/ask the team something real/i)).toBeInTheDocument();
+      expect(screen.getByPlaceholderText(/what do you want to ask/i)).toBeInTheDocument();
       expect(screen.queryByText(/who asked it/i)).not.toBeInTheDocument();
     });
   });
@@ -202,11 +202,22 @@ describe('Questions for the team page (#646)', () => {
       });
     });
 
-    it('sees only their own questions and can add to them', () => {
+    it("reads the whole team's archive, not just their own questions (#645)", () => {
       renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^All/ }));
       expect(screen.getByText('How do you approach people at the club table?')).toBeInTheDocument();
-      expect(screen.queryByText('What should I do during campus quiet hour?')).not.toBeInTheDocument();
+      expect(screen.getByText('What should I do during campus quiet hour?')).toBeInTheDocument();
+      // …including the answers a full-timer gave on someone else's question.
+      expect(screen.getByText('Start with something about their day.')).toBeInTheDocument();
+    });
+
+    it('can add to their own question but never answers someone else\'s (#645)', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^All/ }));
       expect(screen.getByRole('button', { name: /add to your question/i })).toBeInTheDocument();
+      // Ana's question is read-only for a fellow trainee.
+      expect(screen.queryByRole('button', { name: /answer ana/i })).not.toBeInTheDocument();
+      expect(screen.getByText('A full-timer will answer this.')).toBeInTheDocument();
     });
 
     it('gets no "Someone asked me" mode — only a full-timer records in person', () => {
@@ -219,10 +230,10 @@ describe('Questions for the team page (#646)', () => {
       const ask = vi.spyOn(asksLib, 'addAsk').mockResolvedValue(undefined);
       renderPage();
       fireEvent.click(screen.getByRole('button', { name: /ask the team/i }));
-      fireEvent.change(screen.getByPlaceholderText(/ask the team something real/i), {
+      fireEvent.change(screen.getByPlaceholderText(/what do you want to ask/i), {
         target: { value: 'Is it okay to text a student first?' },
       });
-      fireEvent.click(screen.getByRole('button', { name: /^Ask the team$/ }));
+      fireEvent.click(screen.getByRole('button', { name: 'Ask the team', exact: true }));
 
       await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
       expect(ask).toHaveBeenCalledWith({

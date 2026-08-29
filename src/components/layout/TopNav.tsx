@@ -93,7 +93,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
     return subscribeAsks(
       (msgs) => setWaitingAsks(askQuestions(msgs).filter((m) => m.from !== user.uid && !askAnswered(msgs, m)).length),
       undefined,
-      { uid: user.uid, isAdmin: true },
+      { uid: user.uid, isStaff: true },
     );
   }, [isAdmin, user?.uid]);
 

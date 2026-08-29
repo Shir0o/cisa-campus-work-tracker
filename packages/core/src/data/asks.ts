@@ -2,8 +2,8 @@
 // injected `db`. Lives at asks/{id}: a person-less question (and its answers)
 // as message-shaped docs, mirroring threads but with no contact and a
 // parentId recursion for answers. A top-level collection (like prayerRequests)
-// is what lets the Full-timer home list every open question in one subscription
-// while a trainee filters to their own.
+// is what lets the Full-timer home list every open question in one subscription;
+// staff (full-timers and trainees) read the whole team's questions team-wide.
 import {
   addDoc,
   collection,
@@ -35,12 +35,13 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
 
 export interface SubscribeAsksOptions {
   uid?: string;
-  isAdmin?: boolean;
+  isStaff?: boolean;
 }
 
 /** Live subscription to ask-the-team messages (questions + answers).
- *  Full-timers (admin) read all; non-admins are scoped by `where("owner", "==", uid)`
- *  to satisfy firestore.rules. */
+ *  Staff (full-timer admin or trainee manager) read the whole collection —
+ *  the team's questions are team-visible (#545). Other roles are scoped by
+ *  `where("owner", "==", uid)` to satisfy firestore.rules. */
 export function subscribeAsks(
   db: Firestore,
   cb: (messages: AskMessage[]) => void,
@@ -53,15 +54,15 @@ export function subscribeAsks(
       ? onErrorOrOptions
       : options;
 
-  const isAdmin = opts?.isAdmin ?? (opts?.uid ? false : true);
+  const isStaff = opts?.isStaff ?? (opts?.uid ? false : true);
   const uid = opts?.uid;
 
-  if (!isAdmin && !uid) {
+  if (!isStaff && !uid) {
     cb([]);
     return () => {};
   }
 
-  const q = !isAdmin && uid ? query(col(db), where("owner", "==", uid)) : col(db);
+  const q = !isStaff && uid ? query(col(db), where("owner", "==", uid)) : col(db);
 
   return onSnapshot(
     q,
@@ -70,15 +71,16 @@ export function subscribeAsks(
   );
 }
 
-/** Live subscription to the ask-the-team messages I own (a trainee's own
- *  questions + their answers). Scoped by `owner` so the list rule passes. */
-export function subscribeMyAsks(
+/** Live subscription to the team-wide ask feed for a staff member (a
+ *  trainee's view of the whole team's questions + answers). Unfiltered —
+ *  staff read everything. */
+export function subscribeStaffAsks(
   db: Firestore,
   uid: string,
   cb: (messages: AskMessage[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return subscribeAsks(db, cb, onError, { uid, isAdmin: false });
+  return subscribeAsks(db, cb, onError, { uid, isStaff: true });
 }
 
 export interface AskNotifyPayload {

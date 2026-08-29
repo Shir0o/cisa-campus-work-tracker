@@ -57,12 +57,13 @@ const toAsk = (id: string, data: Partial<AskMessage>): AskMessage => ({
 
 export interface SubscribeAsksOptions {
   uid?: string;
-  isAdmin?: boolean;
+  isStaff?: boolean;
 }
 
 /** Live subscription to ask-the-team messages (questions + answers).
- *  Full-timers (admin) read all; non-admins are scoped by `where("owner", "==", uid)`
- *  to satisfy firestore.rules. */
+ *  Staff (full-timer admin or trainee manager) read the whole collection —
+ *  the team's questions are team-visible (#645). Other roles are scoped by
+ *  `where("owner", "==", uid)` to satisfy firestore.rules. */
 export function subscribeAsks(
   cb: (messages: AskMessage[]) => void,
   onErrorOrOptions?: ((e: unknown) => void) | SubscribeAsksOptions | null,
@@ -74,15 +75,15 @@ export function subscribeAsks(
       ? onErrorOrOptions
       : options;
 
-  const isAdmin = opts?.isAdmin ?? (opts?.uid ? false : true);
+  const isStaff = opts?.isStaff ?? (opts?.uid ? false : true);
   const uid = opts?.uid;
 
-  if (!isAdmin && !uid) {
+  if (!isStaff && !uid) {
     cb([]);
     return () => {};
   }
 
-  const q = !isAdmin && uid ? query(col(), where("owner", "==", uid)) : col();
+  const q = !isStaff && uid ? query(col(), where("owner", "==", uid)) : col();
 
   try {
     return onSnapshot(
@@ -96,13 +97,15 @@ export function subscribeAsks(
   }
 }
 
-/** Live subscription to my own ask-the-team messages (a trainee). */
-export function subscribeMyAsks(
+/** Live subscription to the team-wide ask feed for a staff member (a
+ *  trainee's view of the whole team's questions + answers). Unfiltered —
+ *  staff read everything. */
+export function subscribeStaffAsks(
   uid: string,
   cb: (messages: AskMessage[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return subscribeAsks(cb, onError, { uid, isAdmin: false });
+  return subscribeAsks(cb, onError, { uid, isStaff: true });
 }
 
 /** Top-level questions (answers excluded), newest first. */
@@ -167,13 +170,14 @@ export function askTakenBy(m: AskMessage): { uid: string; name: string } | null 
   return m.takenBy ? { uid: m.takenBy, name: m.takenByName || m.takenBy } : null;
 }
 
-/** A full-timer reads every question; anyone else reads their own (#563). */
+/** Staff (full-timer admin or trainee manager) read every question; other
+ *  roles read only their own (#645, team-wide archive). */
 export function askVisibleFor(
   messages: AskMessage[],
   uid: string,
-  isFullTimer: boolean,
+  isStaff: boolean,
 ): AskMessage[] {
-  return isFullTimer ? askQuestions(messages) : askQuestionsBy(messages, uid);
+  return isStaff ? askQuestions(messages) : askQuestionsBy(messages, uid);
 }
 
 /** Unread question count for the Messages channel header row (#563). */
@@ -183,7 +187,9 @@ export function askUnreadFor(
   isFullTimer: boolean,
   isRead: (key: string) => boolean,
 ): number {
-  const mine = askVisibleFor(messages, uid, isFullTimer);
+  // Unread semantics differ from visibility: a trainee's unread count is
+  // replies on their OWN questions, never other people's threads.
+  const mine = isFullTimer ? askQuestions(messages) : askQuestionsBy(messages, uid);
   if (isFullTimer) {
     return mine.filter(
       (m) => m.from !== uid && !askAnswered(messages, m) && !isRead("ask:" + m.id),
