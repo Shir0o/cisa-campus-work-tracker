@@ -114,9 +114,9 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // Person detail is now a real URL route so back/top-nav navigation works.
   // Every approved role can open a person page; individual contact visibility
   // is still enforced inside ContactDetailsModal.
-  if (path.startsWith('/people/')) return hasMinRole(role, 'viewer');
+  if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'viewer');
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', '/contact'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;

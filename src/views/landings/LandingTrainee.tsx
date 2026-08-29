@@ -186,10 +186,10 @@ export default function LandingTrainee() {
     [],
   );
 
-  // Your people — the contacts you created, longest-since-seen first.
+  // Your people — the contacts you created or co-created, longest-since-seen first.
   const myPeople = useMemo(() => {
     return contacts
-      .filter((c) => uid && c.createdBy === uid)
+      .filter((c) => uid && (c.createdBy === uid || (c.coCreators && c.coCreators.includes(uid))))
       .map((c) => {
         const contactLastMs = parseMs(c.lastContactedDate) ?? parseMs(c.lastSeen);
         const ms = Number.isFinite(contactLastMs) && (contactLastMs as number) > 0 ? (contactLastMs as number) : parseMs(c.createdAt);

@@ -1,10 +1,9 @@
-// Live data for the native People screen — the full team contact list, split
-// the way the v2 design reads it: the people in my care first, then everyone
-// else. @cisa/core's splitDirectory is the shared behavior oracle.
 import { useEffect, useMemo, useState } from 'react';
 import {
   personalContactIdsOf,
   splitDirectory,
+  visibleContacts,
+  type AppRole,
   type Contact,
   type Stage,
   type Touch,
@@ -15,7 +14,7 @@ import { subscribeUserPreferences } from './data/userPreferences';
 import { useIdentityReset } from './useIdentityReset';
 import { useMinLoading } from './useMinLoading';
 
-export function usePeopleData(uid: string | null) {
+export function usePeopleData(uid: string | null, role?: AppRole | string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
@@ -63,24 +62,29 @@ export function usePeopleData(uid: string | null) {
     };
   }, [uid]);
 
+  const scopedContacts = useMemo(
+    () => visibleContacts(role ?? null, uid, contacts),
+    [role, uid, contacts],
+  );
+
   const personalContactIds = useMemo(
-    () => personalContactIdsOf(prefContactIds, contacts, uid),
-    [prefContactIds, contacts, uid],
+    () => personalContactIdsOf(prefContactIds, scopedContacts, uid),
+    [prefContactIds, scopedContacts, uid],
   );
 
   const { mine, rest } = useMemo(
-    () => splitDirectory(contacts, touches, personalContactIds, search),
-    [contacts, touches, personalContactIds, search],
+    () => splitDirectory(scopedContacts, touches, personalContactIds, search),
+    [scopedContacts, touches, personalContactIds, search],
   );
 
   const shownLoading = useMinLoading(loading);
 
   return {
-    contacts,
+    contacts: scopedContacts,
     stages,
     mine,
     rest,
-    totalCount: contacts.length,
+    totalCount: scopedContacts.length,
     loading: shownLoading,
     error,
     search,

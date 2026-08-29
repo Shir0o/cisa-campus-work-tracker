@@ -60,7 +60,7 @@ function People() {
   const { c } = useV2Theme();
   const router = useRouter();
   const { uid, role } = useAuth();
-  const data = usePeopleData(uid);
+  const data = usePeopleData(uid, role);
   const [showAddSheet, setShowAddSheet] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 

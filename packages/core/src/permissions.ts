@@ -84,8 +84,13 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // operator (student) and manager (trainee) cannot, even though a viewer-level
   // min role would let them through. Keep it explicit here.
   if (path === '/outreach') return role === 'admin' || role === 'viewer';
+  // Contact details on web (/people/...) and mobile (/contact or /contact/...)
+  if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) {
+    const level = ROLE_LEVEL[role as AppRole] ?? -1;
+    return level >= ROLE_LEVEL.viewer;
+  }
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback'];
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', '/contact'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;

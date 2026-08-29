@@ -91,7 +91,7 @@ function Journey() {
   const { c, font, fs } = useV2Theme();
   const router = useRouter();
   const { user, uid, role } = useAuth();
-  const data = useJourneyData(uid);
+  const data = useJourneyData(uid, role);
   const [moving, setMoving] = useState<Contact | null>(null);
 
   // Keep the chosen step in view. The design's note: set scrollLeft directly —
