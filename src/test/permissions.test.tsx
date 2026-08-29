@@ -113,8 +113,8 @@ describe('canAccessRoute()', () => {
   const matrix: Record<string, string[]> = {
     viewer:   ['/attendance', '/prayer', '/settings', '/feedback', '/messages', '/', '/answered', '/outreach'],
     operator: ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/coordination', '/messages', '/answered'],
-    manager:  ['/', '/directory', '/board', '/messages', '/feedback'],
-    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
+    manager:  ['/', '/directory', '/board', '/messages', '/questions', '/feedback'],
+    admin:    ['/attendance', '/prayer', '/settings', '/feedback', '/', '/directory', '/board', '/history', '/outreach', '/visits', '/admin/feedback', '/coordination', '/messages', '/questions', '/answered', 'https://shared-calendar-6u6.pages.dev/'],
   };
 
   for (const [role, allowed] of Object.entries(matrix)) {
@@ -274,7 +274,7 @@ describe('TopNav primary tabs per role', () => {
     expect(primaryNavFor('admin').map((i) => i.href)).toEqual(['/coordination', '/directory', '/prayer']);
     // Everything else lands in the More menu, alphabetically sorted.
     const moreHrefs = moreNavFor('admin').map((i) => i.href);
-    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages']) {
+    for (const href of ['/', '/board', '/history', '/attendance', '/outreach', '/visits', '/answered', '/messages', '/questions']) {
       expect(moreHrefs).toContain(href);
     }
     const adminMoreLabels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
@@ -285,6 +285,7 @@ describe('TopNav primary tabs per role', () => {
       'Looking back',
       'Messages',
       'My Day',
+      'Questions',
       'The Journey',
       'Visits',
     ]);
@@ -492,3 +493,43 @@ describe('Trainee permission helpers (canSeeContact, visibleContacts, journeyCon
   });
 });
 
+// ─── Questions for the team, moved out of Messages (#646/#647) ──────────────
+
+describe('Questions for the team as its own destination', () => {
+  it('is reachable by staff only — Full-timers and Trainees, never Students or Community', () => {
+    expect(canAccessRoute('admin', '/questions')).toBe(true);
+    expect(canAccessRoute('manager', '/questions')).toBe(true);
+    expect(canAccessRoute('operator', '/questions')).toBe(false);
+    expect(canAccessRoute('viewer', '/questions')).toBe(false);
+    expect(canAccessRoute(null, '/questions')).toBe(false);
+  });
+
+  it('is labelled "Questions" — the long form does not fit the 224px More menu', () => {
+    const item = NAV_ITEMS.find((i) => i.href === '/questions');
+    expect(item).toBeDefined();
+    expect(item!.label).toBe('Questions');
+  });
+
+  it('lands in the More menu, not the primary tabs, for a Full-timer', () => {
+    expect(primaryNavFor('admin').map((i) => i.href)).not.toContain('/questions');
+    expect(moreNavFor('admin').map((i) => i.href)).toContain('/questions');
+  });
+
+  it('sits beside Messages in the More menu, which is where Messages already lives', () => {
+    // moreNavFor sorts on the *displayed* label, and '/' displays as "My Day"
+    // for a Full-timer even though its NavItem.label is still "Home".
+    const labels = moreNavFor('admin').map((i) => (i.href === '/' ? 'My Day' : i.label));
+    expect(labels).toContain('Messages');
+    expect(labels).toContain('Questions');
+    // … Messages, My Day, Questions, The Journey …
+    expect(labels.indexOf('Questions')).toBeGreaterThan(labels.indexOf('Messages'));
+    expect([...labels].sort((a, b) => a.localeCompare(b))).toEqual(labels);
+  });
+
+  it('is reachable from a Trainee\'s navigation, whose whole job here is asking', () => {
+    const trainee = [...primaryNavFor('manager'), ...moreNavFor('manager')].map((i) => i.href);
+    expect(trainee).toContain('/questions');
+    // and it does not displace The Journey from their primary tabs
+    expect(primaryNavFor('manager').map((i) => i.href)).toContain('/board');
+  });
+});
