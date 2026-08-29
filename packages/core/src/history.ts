@@ -140,6 +140,9 @@ export const humanize = (a: Hist): Humanized => {
   if (act.startsWith("updated an interaction for")) {
     return { bucket: "talk", lead: "updated a conversation with", showTarget: true };
   }
+  if (act.startsWith("deleted an interaction for")) {
+    return { bucket: "talk", lead: "removed a conversation with", showTarget: true };
+  }
   if (act.startsWith("left a comment on")) {
     return { bucket: "talk", lead: "left a note for", showTarget: true, detail: quote(desc) };
   }

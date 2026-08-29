@@ -20,6 +20,8 @@ export interface ThreadReaction {
 export interface ThreadMessage {
   id: string;
   interactionId: string | null;
+  /** Team-scoped discussion is a Full-timer surface; undefined/null = walking-together thread. */
+  scope?: 'team' | null;
   from: string; // staff uid
   fromName: string;
   kind: ThreadKind;

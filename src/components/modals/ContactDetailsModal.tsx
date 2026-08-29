@@ -66,6 +66,14 @@ import { buildContactActivityPatch } from "../../lib/contactActivity";
 import { tagStyle, TAG_SUGGESTIONS, getEffectiveContactTags, normalizeTagList } from "../../lib/tags";
 import { Frecency, QUICK_CLOSE_THRESHOLD_MS } from "../../lib/frecency";
 import { parseMs } from "../landing/helpers";
+import { useUndoSnack } from "../../hooks/useUndoSnack";
+import { UndoSnackbar } from "../UndoSnackbar";
+import {
+  scheduleInteractionRemoval,
+  cancelInteractionRemoval,
+  subscribeInteractionRemovals,
+  getPendingRemovalIds,
+} from "../../lib/interactionRemoval";
 
 interface ContactDetailsModalProps {
   isOpen: boolean;
@@ -154,7 +162,9 @@ function AuditActivityItem({
                       : t('modals.contactDetails.audit_interacted')
               : activity.action === "updated an interaction for"
                 ? t('modals.contactDetails.audit_updated_interaction')
-                : activity.action.startsWith("updated") &&
+                : activity.action === "deleted an interaction for"
+                  ? t('modals.contactDetails.audit_deleted_interaction')
+                  : activity.action.startsWith("updated") &&
                     activity.action !== "updated an interaction for" &&
                     activity.type === "edit" &&
                     activity.description
@@ -253,6 +263,9 @@ export default function ContactDetailsModal({
   // inline thread is expanded.
   const threadMessages = useThreads(contact?.id);
   const [openThread, setOpenThread] = useState<string | null>(null);
+  const { undoSnack, showUndoSnack, closeUndoSnack } = useUndoSnack();
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
+  useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
   const [isAddingPrayer, setIsAddingPrayer] = useState(false);
   const [newPrayer, setNewPrayer] = useState({ burden: "", context: "" });
   const [submittingPrayer, setSubmittingPrayer] = useState(false);
@@ -533,6 +546,42 @@ export default function ContactDetailsModal({
   const shareOptions = teamMembers.filter(
     (m) => m.id !== ownerId && !coCreators.includes(m.id)
   );
+  const canRemoveInteraction = (interaction: Interaction) =>
+    !interaction.id.startsWith("visit_") &&
+    (currentUid === interaction.userId || hasMinRole(role, "manager"));
+
+  const handleRemoveInteraction = (interaction: Interaction) => {
+    if (!contact) return;
+    const threadCount = countFor(threadMessages, interaction.id);
+    if (threadCount > 0) {
+      const ok = window.confirm(
+        t('modals.contactDetails.remove_interaction_confirm').replace('{count}', String(threadCount)),
+      );
+      if (!ok) return;
+    }
+    // Arm the snackbar's auto-dismiss BEFORE the commit timer (armed inside
+    // scheduleInteractionRemoval), so the Undo offer is always gone by the
+    // moment the delete fires — a late tap can never silently no-op.
+    showUndoSnack(t('modals.contactDetails.interaction_removed'), () =>
+      cancelInteractionRemoval(interaction.id),
+    );
+    scheduleInteractionRemoval(interaction.id, () => {
+      deleteDoc(doc(db, "contacts", contact.id, "interactions", interaction.id))
+        .then(() =>
+          logActivity({
+            action: "deleted an interaction for",
+            targetId: contact.id,
+            targetName: contact.name,
+            targetType: "contact",
+            type: "edit",
+            description: interaction.content.trim(),
+          }),
+        )
+        .catch((e) =>
+          handleFirestoreError(e, OperationType.DELETE, `contacts/${contact.id}/interactions/${interaction.id}`),
+        );
+    });
+  };
 
   const addShare = async (staffId: string) => {
     if (!contact) return;
@@ -996,20 +1045,26 @@ export default function ContactDetailsModal({
       return bMs - aMs;
     });
   }, [interactions]);
+  // Pending removals leave the list the moment Remove is tapped, even though
+  // the Firestore delete only commits after the Undo window.
+  const visibleInteractions = useMemo(
+    () => sortedInteractions.filter((i) => !pendingRemovalIds.includes(i.id)),
+    [sortedInteractions, pendingRemovalIds],
+  );
 
   const latestInteraction = useMemo(() => {
-    if (!interactions || interactions.length === 0) return null;
-    let newest = interactions[0];
+    if (visibleInteractions.length === 0) return null;
+    let newest = visibleInteractions[0];
     let newestMs = parseMs(newest.dateTime || newest.createdAt) ?? -Infinity;
-    for (let i = 1; i < interactions.length; i++) {
-      const ms = parseMs(interactions[i].dateTime || interactions[i].createdAt) ?? -Infinity;
+    for (let i = 1; i < visibleInteractions.length; i++) {
+      const ms = parseMs(visibleInteractions[i].dateTime || visibleInteractions[i].createdAt) ?? -Infinity;
       if (ms > newestMs) {
-        newest = interactions[i];
+        newest = visibleInteractions[i];
         newestMs = ms;
       }
     }
     return newest;
-  }, [interactions]);
+  }, [visibleInteractions]);
 
   const effectiveLastContactedDate =
     latestInteraction?.dateTime ||
@@ -1259,7 +1314,7 @@ export default function ContactDetailsModal({
                 { id: "overview", label: t('modals.contactDetails.overview') },
                 { id: "thread", label: t('modals.contactDetails.follow_up'), count: countFor(threadMessages, null) },
                 ...((role === "admin" || isAdmin) ? [{ id: "discussion", label: t('modals.contactDetails.discussion'), count: countFor(threadMessages, null, "team") }] : []),
-                { id: "interactions", label: t('modals.contactDetails.interactions'), count: interactions.length },
+                { id: "interactions", label: t('modals.contactDetails.interactions'), count: visibleInteractions.length },
                 { id: "prayer", label: t('modals.contactDetails.prayer'), count: prayers.length },
                 ...(canSeeHistory(role) ? [{ id: "history", label: t('modals.contactDetails.history') }] : []),
               ];
@@ -1651,7 +1706,7 @@ export default function ContactDetailsModal({
                           <div className="cd-empty">{t('modals.contactDetails.no_conversations')}</div>
                         ) : (
                           <div className="cd-tl">
-                            {sortedInteractions.slice(0, 3).map((i) => (
+                            {visibleInteractions.slice(0, 3).map((i) => (
                               <div className="cd-tl-item" key={i.id}>
                                 <div className="cd-tl-dot"></div>
                                 <div className="cd-tl-title">
@@ -1847,7 +1902,7 @@ export default function ContactDetailsModal({
                             </p>
                           </div>
                         ) : (
-                          sortedInteractions.map((interaction) => (
+                          visibleInteractions.map((interaction) => (
                             <div
                               key={interaction.id}
                               className="flex gap-3 group"
@@ -1993,6 +2048,14 @@ export default function ContactDetailsModal({
                                             className="text-[10px] font-semibold text-accent hover:text-accent-variant   focus:outline-none"
                                           >
                                             Edit
+                                          </button>
+                                        )}
+                                        {canRemoveInteraction(interaction) && (
+                                          <button
+                                            onClick={() => handleRemoveInteraction(interaction)}
+                                            className="text-[10px] font-semibold text-error hover:opacity-80 focus:outline-none"
+                                          >
+                                            {t('modals.contactDetails.remove_interaction')}
                                           </button>
                                         )}
                                       </div>
@@ -2614,6 +2677,7 @@ export default function ContactDetailsModal({
           )}
         </div>
       )}
+      <UndoSnackbar undoSnack={undoSnack} onClose={closeUndoSnack} />
     </AnimatePresence>
   );
 }

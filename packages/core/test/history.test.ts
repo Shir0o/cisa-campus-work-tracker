@@ -66,6 +66,10 @@ describe('humanize', () => {
       bucket: 'talk',
       lead: 'updated a conversation with',
     });
+    expect(humanize(activity({ action: 'Deleted an interaction for Jane' }))).toMatchObject({
+      bucket: 'talk',
+      lead: 'removed a conversation with',
+    });
     expect(humanize(activity({ action: 'Left a comment on Jane', description: 'checking in' }))).toMatchObject({
       bucket: 'talk',
       lead: 'left a note for',

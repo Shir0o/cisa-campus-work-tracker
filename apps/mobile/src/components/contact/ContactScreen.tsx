@@ -7,8 +7,8 @@
 // per-contact History timeline and the admin edit form have no counterpart here
 // and are desktop work now — see MIGRATION.md. Contact details survive as
 // Story's "Details, notes, how to reach them" disclosure, read-only.
-import { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from '../ui/SafeArea';
 import {
@@ -18,6 +18,7 @@ import {
   countFor,
   daysSince,
   firstName,
+  hasMinRole,
   interactionSnippet,
   isTrainee,
   lastTimeLine,
@@ -41,6 +42,12 @@ import type { JourneyStage } from '../../lib/useJourneyData';
 import { prayerCardId } from '../../lib/useFtHomeData';
 import { useQueueState } from '../../lib/queueState';
 import { moveContactStage } from '../../lib/data/contacts';
+import {
+  scheduleInteractionRemoval,
+  cancelInteractionRemoval,
+  subscribeInteractionRemovals,
+  getPendingRemovalIds,
+} from '../../lib/interactionRemoval';
 import { openCall, openEmail, openMessage } from '../../lib/messaging';
 import { roomForRole, useV2Theme } from '../../theme/v2';
 import { Kicker, PersonMark, PrimaryButton } from '../queue/atoms';
@@ -87,12 +94,18 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const [sheet, setSheet] = useState<'log' | 'pray' | null>(null);
   const [moving, setMoving] = useState<Contact | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [pendingRemovalIds, setPendingRemovalIds] = useState<string[]>(() => getPendingRemovalIds());
+  useEffect(() => subscribeInteractionRemovals(() => setPendingRemovalIds(getPendingRemovalIds())), []);
+  const [removalSnack, setRemovalSnack] = useState<{ message: string; onAction: () => void } | null>(null);
 
   const canWrite = role !== 'viewer';
   const kinds = useMemo(() => composeKindsFor(!isTrainee(uid)), [uid]);
 
   // Newest first, and the newest is what the hero quotes.
-  const story = useMemo(() => [...data.interactions].reverse(), [data.interactions]);
+  const story = useMemo(
+    () => [...data.interactions].filter((i) => !pendingRemovalIds.includes(i.id)).reverse(),
+    [data.interactions, pendingRemovalIds],
+  );
   const lastTouchDays = useMemo(() => {
     const newest = story
       .map((i) => parseMs(i.dateTime) ?? parseMs(i.createdAt))
@@ -121,6 +134,41 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
   const back = () => (router.canGoBack() ? router.back() : router.replace('/'));
   const post = (interactionId: string | null) => (input: { kind: ThreadKind; body: string }) =>
     void data.postThreadMessage({ interactionId, ...input });
+  const canRemoveInteraction = (interaction: Interaction) =>
+    !interaction.id.startsWith('visit_') && (uid === interaction.userId || hasMinRole(role, 'manager'));
+
+  const handleRemoveInteraction = (interaction: Interaction) => {
+    // Match the web gate: team-scoped discussion messages don't count toward
+    // the warning (web's countFor filters them by default scope).
+    const threadCount = countFor(
+      data.threadMessages.filter((m) => m.scope !== 'team'),
+      interaction.id,
+    );
+    const doRemove = () => {
+      scheduleInteractionRemoval(interaction.id, () => {
+        void data.deleteInteraction(interaction);
+      });
+      setRemovalSnack({
+        message: t('mobile.contact.interaction_removed'),
+        onAction: () => {
+          cancelInteractionRemoval(interaction.id);
+          setRemovalSnack(null);
+        },
+      });
+    };
+    if (threadCount > 0) {
+      Alert.alert(
+        t('mobile.contact.remove_interaction'),
+        t('mobile.contact.remove_interaction_confirm').replace('{count}', String(threadCount)),
+        [
+          { text: t('actions.cancel'), style: 'cancel' },
+          { text: t('actions.remove'), style: 'destructive', onPress: doRemove },
+        ],
+      );
+    } else {
+      doRemove();
+    }
+  };
 
   if (data.error || (!data.loading && !data.contact)) {
     return (
@@ -243,6 +291,8 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
                   threadCount={countFor(data.threadMessages, interaction.id)}
                   open={openStoryId === interaction.id}
                   onToggle={() => setOpenStoryId(openStoryId === interaction.id ? null : interaction.id)}
+                  canRemove={canRemoveInteraction(interaction)}
+                  onRemove={() => handleRemoveInteraction(interaction)}
                 >
                   {threadsFor(data.threadMessages, interaction.id).map((m) => (
                     <ThreadMessageRow
@@ -370,6 +420,17 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
         onClose={() => setMoving(null)}
       />
 
+      {removalSnack && (
+        <Snackbar
+          message={removalSnack.message}
+          actionLabel={t('actions.undo')}
+          onAction={removalSnack.onAction}
+          onDismiss={() => setRemovalSnack(null)}
+          // Shorter than the registry's 5s commit window so the Undo offer is
+          // never still visible after the delete has fired.
+          duration={4500}
+        />
+      )}
       {!!toast && <Snackbar message={toast} onDismiss={() => setToast(null)} />}
     </SafeAreaView>
   );
@@ -456,6 +517,8 @@ function StoryCard({
   threadCount,
   open,
   onToggle,
+  canRemove,
+  onRemove,
   children,
 }: {
   interaction: Interaction;
@@ -463,12 +526,29 @@ function StoryCard({
   threadCount: number;
   open: boolean;
   onToggle: () => void;
+  canRemove?: boolean;
+  onRemove?: () => void;
   children: React.ReactNode;
 }) {
   const { c, font, radius, fs } = useV2Theme();
+  const { t } = useLanguage();
   return (
     <View style={{ backgroundColor: c.card.bg, borderRadius: radius.tile, paddingHorizontal: 18, paddingVertical: 16 }}>
-      <Kicker>{storyRowLine(interaction, meUid)}</Kicker>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Kicker>{storyRowLine(interaction, meUid)}</Kicker>
+        </View>
+        {canRemove && (
+          <Pressable
+            onPress={onRemove}
+            accessibilityRole="button"
+            hitSlop={8}
+            style={({ pressed }) => ({ paddingVertical: 4, paddingHorizontal: 2, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text style={{ fontFamily: font.bold, fontSize: fs(12), color: c.card.ink2 }}>{t('actions.remove')}</Text>
+          </Pressable>
+        )}
+      </View>
       <Text style={{ fontFamily: font.medium, fontSize: fs(14.5), lineHeight: fs(21.75), color: c.card.said, marginTop: 10 }}>
         {interaction.content}
       </Text>
