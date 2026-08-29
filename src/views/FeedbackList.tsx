@@ -28,7 +28,7 @@ import { Translate } from '../components/Translate';
 /** Resolve a granular kind, falling back to the legacy `type` for older docs. */
 const resolveKind = (item: Feedback): FeedbackKind => item.kind ?? typeToKind(item.type);
 
-const gitHubRepo = import.meta.env.VITE_GITHUB_REPO || 'Shir0o/cisa-campus-work-traker';
+const gitHubRepo = import.meta.env.VITE_GITHUB_REPO || 'Shir0o/cisa-campus-work-tracker';
 const gitHubRepoUrl = `https://github.com/${gitHubRepo}`;
 
 const getGitHubIssueUrl = (item: Feedback) => {
@@ -75,7 +75,7 @@ const resolveIssueUrl = (input: string) => {
   if (!clean) return '';
   if (/^#?\d+$/.test(clean)) {
     const num = clean.replace('#', '');
-    return `https://github.com/Shir0o/cisa-campus-work-traker/issues/${num}`;
+    return `https://github.com/Shir0o/cisa-campus-work-tracker/issues/${num}`;
   }
   return clean;
 };

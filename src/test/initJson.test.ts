@@ -7,21 +7,21 @@ import { onRequest } from '../../functions/__/firebase/init.json';
 // app's own config so the helper can bootstrap same-origin.
 describe('Cloudflare init.json (functions/__/firebase/init.json.ts)', () => {
   it('serves the project config with the app domain as authDomain', async () => {
-    const response = await onRequest({ request: new Request('https://cisa-campus-work-traker.pages.dev/__/firebase/init.json'), env: {} } as any);
+    const response = await onRequest({ request: new Request('https://cisa-campus-work-tracker.pages.dev/__/firebase/init.json'), env: {} } as any);
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/json');
     const body = await response.json();
     expect(body.projectId).toBe('sac-campus-hub');
-    expect(body.authDomain).toBe('cisa-campus-work-traker.pages.dev');
+    expect(body.authDomain).toBe('cisa-campus-work-tracker.pages.dev');
     expect(body.apiKey).toBeTruthy();
   });
 
   it('honours the auth domain env override (QA host)', async () => {
     const response = await onRequest({
-      request: new Request('https://cisa-campus-work-traker-qa.pages.dev/__/firebase/init.json'),
-      env: { VITE_FIREBASE_AUTH_DOMAIN: 'cisa-campus-work-traker-qa.pages.dev' },
+      request: new Request('https://cisa-campus-work-tracker-qa.pages.dev/__/firebase/init.json'),
+      env: { VITE_FIREBASE_AUTH_DOMAIN: 'cisa-campus-work-tracker-qa.pages.dev' },
     } as any);
     const body = await response.json();
-    expect(body.authDomain).toBe('cisa-campus-work-traker-qa.pages.dev');
+    expect(body.authDomain).toBe('cisa-campus-work-tracker-qa.pages.dev');
   });
 });

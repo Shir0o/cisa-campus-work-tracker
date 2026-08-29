@@ -19,7 +19,7 @@ describe('lazyWithRetry & isDynamicImportError', () => {
     it('identifies dynamic import error messages correctly', () => {
       expect(
         isDynamicImportError(
-          new Error('Failed to fetch dynamically imported module: https://cisa-campus-work-traker.pages.dev/assets/Messages-Bg_e6vmi.js')
+          new Error('Failed to fetch dynamically imported module: https://cisa-campus-work-tracker.pages.dev/assets/Messages-Bg_e6vmi.js')
         )
       ).toBe(true);
 
@@ -67,7 +67,7 @@ describe('lazyWithRetry & isDynamicImportError', () => {
       } as Location);
 
       const importError = new TypeError(
-        'Failed to fetch dynamically imported module: https://cisa-campus-work-traker.pages.dev/assets/Messages-Bg_e6vmi.js'
+        'Failed to fetch dynamically imported module: https://cisa-campus-work-tracker.pages.dev/assets/Messages-Bg_e6vmi.js'
       );
 
       const lazyComponent = lazyWithRetry(() => Promise.reject(importError));
@@ -96,7 +96,7 @@ describe('lazyWithRetry & isDynamicImportError', () => {
       } as Location);
 
       const importError = new TypeError(
-        'Failed to fetch dynamically imported module: https://cisa-campus-work-traker.pages.dev/assets/Messages-Bg_e6vmi.js'
+        'Failed to fetch dynamically imported module: https://cisa-campus-work-tracker.pages.dev/assets/Messages-Bg_e6vmi.js'
       );
 
       const lazyComponent = lazyWithRetry(() => Promise.reject(importError));

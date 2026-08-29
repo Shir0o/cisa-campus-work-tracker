@@ -138,7 +138,7 @@ function EmailPasswordForm() {
       </button>
       <div className="pt-2 text-center flex items-center justify-center gap-3 text-xs text-on-surface-variant">
         <a
-          href="https://shir0o.github.io/cisa-campus-work-traker/privacy.html"
+          href="https://shir0o.github.io/cisa-campus-work-tracker/privacy.html"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent transition-colors underline"
@@ -147,7 +147,7 @@ function EmailPasswordForm() {
         </a>
         <span>&bull;</span>
         <a
-          href="https://shir0o.github.io/cisa-campus-work-traker/support.html"
+          href="https://shir0o.github.io/cisa-campus-work-tracker/support.html"
           target="_blank"
           rel="noopener noreferrer"
           className="hover:text-accent transition-colors underline"

@@ -198,7 +198,7 @@ export async function syncIssuesToDocs(opts?: {
     opts?.repo ||
     process.env.GITHUB_REPO ||
     process.env.VITE_GITHUB_REPO ||
-    'Shir0o/cisa-campus-work-traker';
+    'Shir0o/cisa-campus-work-tracker';
   const token = opts?.token || process.env.GITHUB_TOKEN;
   const outputPath = opts?.outputPath || path.join(process.cwd(), 'docs', 'issues.json');
   const indexOutputPath = opts?.indexOutputPath || path.join(path.dirname(outputPath), 'issues-index.json');

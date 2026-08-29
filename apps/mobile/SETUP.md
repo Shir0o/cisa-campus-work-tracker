@@ -87,7 +87,7 @@ bucket, and Realtime Database are shared with prod.
 - **Backend:** QA Cloud Run service `campus-hub-qa` with
   `FIREBASE_FIRESTORE_DB_ID=qa-db`, so push/quick-add/AI run against QA data.
   Fronted by a Cloudflare Pages QA site
-  (`https://cisa-campus-work-traker-qa.pages.dev`) whose `/api/*` proxy targets
+  (`https://cisa-campus-work-tracker-qa.pages.dev`) whose `/api/*` proxy targets
   the QA backend — see `CLOUDFLARE_DEPLOYMENT.md` for the QA project setup.
 - **Seed data:** `npm run seed:qa` (from the repo root) writes approved
   `/users` docs for the real role accounts — the cisa-* accounts plus the
@@ -126,7 +126,7 @@ distribution link the reviewer installs directly (no local toolchain).
 
 ```bash
 EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID=qa-db \
-EXPO_PUBLIC_API_URL=https://cisa-campus-work-traker-qa.pages.dev \
+EXPO_PUBLIC_API_URL=https://cisa-campus-work-tracker-qa.pages.dev \
 npm start
 ```
 

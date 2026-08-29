@@ -675,7 +675,7 @@ function IntegrationsSection({
   const [result, setResult] = useState<any>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cisa-campus-work-traker.pages.dev';
+  const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cisa-campus-work-tracker.pages.dev';
   const curlCommand = `curl -X POST "${appUrl}/api/quick-add" \\
   -H "Content-Type: application/json" \\
   -d '{"text": "Met Sarah Doe yesterday at Campus Coffee. She is a freshman majoring in biology and can be reached at sarah12@campus.edu or (555) 789-0123. Interested in study group."}'`;

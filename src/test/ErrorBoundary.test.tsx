@@ -68,7 +68,7 @@ describe('ErrorBoundary', () => {
   it('renders dynamic import fallback UI when chunk import fails', () => {
     sessionStorage.setItem('cisa_dynamic_import_reloaded', 'true');
     const chunkError = new TypeError(
-      'Failed to fetch dynamically imported module: https://cisa-campus-work-traker.pages.dev/assets/Messages-Bg_e6vmi.js'
+      'Failed to fetch dynamically imported module: https://cisa-campus-work-tracker.pages.dev/assets/Messages-Bg_e6vmi.js'
     );
 
     render(

@@ -27,7 +27,7 @@ describe('Cloudflare Auth Proxy (functions/__/auth/[[path]].ts)', () => {
     const fetchMock = vi.fn().mockResolvedValue(mockResponse);
     globalThis.fetch = fetchMock;
 
-    const request = new Request('https://cisa-campus-work-traker.pages.dev/__/auth/handler?apiKey=x', {
+    const request = new Request('https://cisa-campus-work-tracker.pages.dev/__/auth/handler?apiKey=x', {
       method: 'GET',
       headers: new Headers({ 'cf-connecting-ip': '1.2.3.4' }),
     });
@@ -44,7 +44,7 @@ describe('Cloudflare Auth Proxy (functions/__/auth/[[path]].ts)', () => {
   it('returns 404 for non-auth paths so a stray path is never mistaken for content', async () => {
     const fetchSpy = vi.fn();
     globalThis.fetch = fetchSpy;
-    const request = new Request('https://cisa-campus-work-traker.pages.dev/__/something-else', {
+    const request = new Request('https://cisa-campus-work-tracker.pages.dev/__/something-else', {
       method: 'GET',
     });
     const response = await onRequest({ request, env: {} } as any);
@@ -64,7 +64,7 @@ describe('Cloudflare Auth Proxy (functions/__/auth/[[path]].ts)', () => {
       new Response(JSON.stringify({ ok: true }), { status: 200, headers: backendHeaders }),
     );
 
-    const request = new Request('https://cisa-campus-work-traker.pages.dev/__/auth/iframe.js', {
+    const request = new Request('https://cisa-campus-work-tracker.pages.dev/__/auth/iframe.js', {
       method: 'GET',
     });
     const response = await onRequest({ request, env: {} } as any);
@@ -78,7 +78,7 @@ describe('Cloudflare Auth Proxy (functions/__/auth/[[path]].ts)', () => {
 
   it('returns 502 with a JSON body when the helper is unreachable', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('offline'));
-    const request = new Request('https://cisa-campus-work-traker.pages.dev/__/auth/handler', {
+    const request = new Request('https://cisa-campus-work-tracker.pages.dev/__/auth/handler', {
       method: 'GET',
     });
     const response = await onRequest({ request, env: {} } as any);

@@ -2,7 +2,9 @@
 
 A web and mobile application for full-time campus ministers, trainees, students, and community partners to track campus ministry contacts, follow-up interactions, prayer burdens, gatherings, and administrative configurations.
 
-## Language
+**CISA Campus Work Tracker**:
+The canonical name of the product — the web app, mobile app, and user-facing copy all use this spelling. The misspelling `traker` is retired: the repo, GitHub, and Cloudflare Pages domains were renamed in 2026-08.
+_Avoid_: Traker, CampusHub, OutreachPro
 
 **Gospel Partners**:
 Two (or three) trainees paired together for a term/semester who go out together on campus. Contacts created by either partner are automatically shared with the other (`coCreators`).

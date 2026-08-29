@@ -1,6 +1,6 @@
 // Same-origin Firebase Auth helper proxy (#557).
 //
-// The web app is hosted on Cloudflare Pages (cisa-campus-work-traker.pages.dev),
+// The web app is hosted on Cloudflare Pages (cisa-campus-work-tracker.pages.dev),
 // NOT Firebase Hosting. Firefox/Safari/Chrome with storage partitioning block
 // the cross-origin auth handler at `sac-campus-hub.firebaseapp.com` from reading
 // the initial-state it needs — the well-known "Unable to process request due to

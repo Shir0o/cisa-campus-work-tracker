@@ -388,7 +388,7 @@ describe('FeedbackList View', () => {
     fireEvent.click(linkButtons[0]);
 
     const input = screen.getByPlaceholderText(/Paste issue URL or #number/i);
-    fireEvent.change(input, { target: { value: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/123' } });
+    fireEvent.change(input, { target: { value: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/123' } });
     
     const saveButton = screen.getByRole('button', { name: 'Link' });
     fireEvent.click(saveButton);
@@ -396,7 +396,7 @@ describe('FeedbackList View', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/feedback/update', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ id: 'f1', githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/123' }),
+        body: JSON.stringify({ id: 'f1', githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/123' }),
       }));
     });
   });
@@ -443,7 +443,7 @@ describe('FeedbackList View', () => {
           kind: 'off',
           status: 'new',
           archived: false,
-          githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/789',
+          githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/789',
           createdAt: '2026-06-15T08:00:00.000Z',
         }),
       },
@@ -508,7 +508,7 @@ describe('FeedbackList View', () => {
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/feedback/update', expect.objectContaining({
         method: 'POST',
-        body: JSON.stringify({ id: 'f1', githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/456' }),
+        body: JSON.stringify({ id: 'f1', githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/456' }),
       }));
     });
   });
@@ -535,7 +535,7 @@ describe('FeedbackList View', () => {
           kind: 'off',
           status: 'new',
           archived: false,
-          githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/789',
+          githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/789',
           createdAt: '2026-06-15T08:00:00.000Z',
         }),
       },

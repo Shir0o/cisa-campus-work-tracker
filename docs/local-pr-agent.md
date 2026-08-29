@@ -15,7 +15,7 @@ docker run --rm -it \
   -e CONFIG__MODEL="gemini/gemini-2.5-flash" \
   -e CONFIG__FALLBACK_MODELS='["gemini/gemini-2.5-flash-lite"]' \
   codiumai/pr-agent:latest \
-  --pr_url https://github.com/Shir0o/cisa-campus-work-traker/pull/512
+  --pr_url https://github.com/Shir0o/cisa-campus-work-tracker/pull/512
 ```
 
 3. Consider the suggestions, update the branch, and push again.
@@ -31,7 +31,7 @@ docker run --rm -it \
   -e CONFIG__MODEL="gemini/gemini-2.5-flash" \
   -e CONFIG__FALLBACK_MODELS='["gemini/gemini-2.5-flash-lite"]' \
   codiumai/pr-agent:latest \
-  --project_url https://github.com/Shir0o/cisa-campus-work-traker \
+  --project_url https://github.com/Shir0o/cisa-campus-work-tracker \
   --branch feat/i18n-contact-coordination-ci-guard
 ```
 

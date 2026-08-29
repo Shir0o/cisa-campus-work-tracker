@@ -467,7 +467,7 @@ describe('User Feedback Feature', () => {
           expect.objectContaining({
             body: JSON.stringify({
               id: 'test-f-1',
-              githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/105'
+              githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/105'
             })
           })
         );
@@ -493,7 +493,7 @@ describe('User Feedback Feature', () => {
                 message: 'Screen flickers on sidebar slide',
                 status: 'in_progress',
                 createdAt: '2026-05-26T18:11:00Z',
-                githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-traker/issues/42',
+                githubIssueUrl: 'https://github.com/Shir0o/cisa-campus-work-tracker/issues/42',
               }),
             });
           },

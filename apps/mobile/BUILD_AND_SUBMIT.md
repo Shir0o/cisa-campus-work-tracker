@@ -54,8 +54,8 @@ npx eas init                      # links the EAS project (already done: app.jso
 
 | Profile   | `EXPO_PUBLIC_API_URL`                        | Firestore DB |
 |-----------|----------------------------------------------|--------------|
-| `qa`      | `https://cisa-campus-work-traker-qa.pages.dev` | `qa-db`    |
-| `production` | `https://cisa-campus-work-traker.pages.dev` | `prod`     |
+| `qa`      | `https://cisa-campus-work-tracker-qa.pages.dev` | `qa-db`    |
+| `production` | `https://cisa-campus-work-tracker.pages.dev` | `prod`     |
 
 > **Note:** `eas.json`'s `submit` block now includes a `qa` profile (empty —
 > fine with a single App Store app), so `--auto-submit` / `eas submit

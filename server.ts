@@ -252,7 +252,7 @@ export async function createApp() {
 
       // 2. Best-effort create GitHub issue if credentials exist
       const githubToken = process.env.GITHUB_TOKEN;
-      const githubRepo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO || "Shir0o/cisa-campus-work-traker";
+      const githubRepo = process.env.GITHUB_REPO || process.env.VITE_GITHUB_REPO || "Shir0o/cisa-campus-work-tracker";
 
       let githubIssueUrl = "";
       if (githubToken && githubRepo) {
@@ -2011,7 +2011,7 @@ CRITICAL RULES:
       endpointUrl: "/api/quick-add",
       webhookUrl: "/api/webhook/sms",
       groupmeWebhookUrl: "/api/webhook/groupme",
-      appUrl: process.env.APP_URL || "https://cisa-campus-work-traker.pages.dev"
+      appUrl: process.env.APP_URL || "https://cisa-campus-work-tracker.pages.dev"
     });
   });
 

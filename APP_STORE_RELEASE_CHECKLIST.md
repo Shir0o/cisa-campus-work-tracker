@@ -41,8 +41,8 @@ TEST ENVIRONMENT NOTES:
 1. The test account is pre-configured with active sample data (contacts, tasks, and attendance records).
 2. No corporate VPN, hardware token, or IP whitelisting is required to log in with these credentials.
 3. User accounts are provisioned exclusively by enterprise workspace administrators. Self-registration and automated public account creation are disabled by design.
-4. Privacy policy is accessible at: https://shir0o.github.io/cisa-campus-work-traker/privacy.html
-5. Support page is accessible at: https://shir0o.github.io/cisa-campus-work-traker/support.html
+4. Privacy policy is accessible at: https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
+5. Support page is accessible at: https://shir0o.github.io/cisa-campus-work-tracker/support.html
 
 CONTACT FOR REVIEW ISSUES:
 If you experience any issues logging in, please contact technical lead at yilongwang05@gmail.com.
@@ -64,7 +64,7 @@ Navigate to **Google Play Console** $\rightarrow$ **Policy and programs** $\righ
 - **Password**: `TestReviewer2026!`
 - **Instructions Text (Copy & Paste)**:
 ```text
-This app requires user authentication. Use the provided demo credentials (reviewer-appstore@yourdomain.com / TestReviewer2026!). The account is pre-populated with test data and does not require VPN or MFA. Accounts are admin-provisioned for enterprise employees. Support URL: https://shir0o.github.io/cisa-campus-work-traker/support.html | Privacy URL: https://shir0o.github.io/cisa-campus-work-traker/privacy.html
+This app requires user authentication. Use the provided demo credentials (reviewer-appstore@yourdomain.com / TestReviewer2026!). The account is pre-populated with test data and does not require VPN or MFA. Accounts are admin-provisioned for enterprise employees. Support URL: https://shir0o.github.io/cisa-campus-work-tracker/support.html | Privacy URL: https://shir0o.github.io/cisa-campus-work-tracker/privacy.html
 ```
 
 ---
@@ -73,8 +73,8 @@ This app requires user authentication. Use the provided demo credentials (review
 
 | Requirement | Implementation Status | Note for Store Reviewers |
 | :--- | :--- | :--- |
-| **Privacy Policy URL** | Implemented (`/privacy`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-traker/privacy.html` and in-app |
-| **Support URL** | Implemented (`/support`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-traker/support.html` and in-app |
+| **Privacy Policy URL** | Implemented (`/privacy`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-tracker/privacy.html` and in-app |
+| **Support URL** | Implemented (`/support`) | Accessible publicly at `https://shir0o.github.io/cisa-campus-work-tracker/support.html` and in-app |
 | **Account Deletion** | Enterprise Admin Provisioned | Stated in review notes: accounts and data removal handled by workspace admin via `yilongwang05@gmail.com` |
 | **IAP / Digital Purchases** | N/A (Internal Enterprise) | Free app for authorized organization users |
 | **IPv6 / SSL** | Supported | Standard HTTPS secure endpoints |

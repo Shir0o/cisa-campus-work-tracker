@@ -14,7 +14,7 @@ export const onRequest: PagesFunction = async (context) => {
   const body = {
     appId: '1:914549253362:web:8a1b1aeca702d3ba0f1c6b',
     apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k',
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'cisa-campus-work-traker.pages.dev',
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'cisa-campus-work-tracker.pages.dev',
     projectId: env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub',
     storageBucket: 'sac-campus-hub.firebasestorage.app',
     messagingSenderId: '914549253362',

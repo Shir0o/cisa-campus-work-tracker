@@ -19,7 +19,7 @@
       },
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
       }
     },
     "qa": {
@@ -29,7 +29,7 @@
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
         "EXPO_PUBLIC_FIREBASE_FIRESTORE_DB_ID": "qa-db",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker-qa.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker-qa.pages.dev"
       }
     },
     "testflight": {
@@ -38,7 +38,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
       }
     },
     "production": {
@@ -48,7 +48,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyDRfV-CsMsfOzNHz3jM_BqrKEeuw4U4W3k",
-        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-traker.pages.dev"
+        "EXPO_PUBLIC_API_URL": "https://cisa-campus-work-tracker.pages.dev"
       }
     }
   },

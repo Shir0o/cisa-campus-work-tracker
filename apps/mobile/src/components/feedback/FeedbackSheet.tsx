@@ -18,7 +18,7 @@ const getApiUrl = () => {
   if (typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_API_URL) {
     return process.env.EXPO_PUBLIC_API_URL.replace(/\/+$/, '');
   }
-  return Platform.OS === 'web' ? '' : 'https://cisa-campus-work-traker.pages.dev';
+  return Platform.OS === 'web' ? '' : 'https://cisa-campus-work-tracker.pages.dev';
 };
 
 export function FeedbackSheet({ visible, onClose, targetRef }: FeedbackSheetProps) {
