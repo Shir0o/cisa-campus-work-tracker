@@ -233,7 +233,7 @@ describe('Questions for the team page (#646)', () => {
       fireEvent.change(screen.getByPlaceholderText(/what do you want to ask/i), {
         target: { value: 'Is it okay to text a student first?' },
       });
-      fireEvent.click(screen.getByRole('button', { name: 'Ask the team', exact: true }));
+      fireEvent.click(screen.getByRole('button', { name: /^Ask the team$/ }));
 
       await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
       expect(ask).toHaveBeenCalledWith({
