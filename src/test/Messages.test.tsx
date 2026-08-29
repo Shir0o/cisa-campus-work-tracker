@@ -1644,62 +1644,21 @@ describe('Messages View Component', () => {
       }
     });
 
-    it('opens the Questions for the team channel from the sidebar rail (#563)', async () => {
-      render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-
-      const askRow = screen.getByText('Questions for the team');
-      expect(askRow).toBeInTheDocument();
-      fireEvent.click(askRow);
-
-      await waitFor(() => {
-        expect(screen.getByText('Someone asked me')).toBeInTheDocument();
-      });
-    });
-
-    it('renders Questions for the team for admin and manager roles, but hides for operator and viewer (#603)', () => {
-      // 1. Admin: visible
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'admin' });
-      const { unmount: u1 } = render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-      expect(screen.getByText('Questions for the team')).toBeInTheDocument();
-      u1();
-
-      // 2. Manager (Trainee): visible
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'manager' });
-      const { unmount: u2 } = render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-      expect(screen.getByText('Questions for the team')).toBeInTheDocument();
-      u2();
-
-      // 3. Operator (Student): hidden
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'operator' });
-      const { unmount: u3 } = render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-      expect(screen.queryByText('Questions for the team')).not.toBeInTheDocument();
-      u3();
-
-      // 4. Viewer (Community): hidden
-      (useAuth as any).mockReturnValue({ user: stableUser, role: 'viewer' });
-      const { unmount: u4 } = render(
-        <MemoryRouter>
-          <Messages />
-        </MemoryRouter>
-      );
-      expect(screen.queryByText('Questions for the team')).not.toBeInTheDocument();
-      u4();
+    it('no longer carries the Questions for the team channel — it moved to /questions (#646)', () => {
+      // The channel row used the chat grammar: selecting it swapped in a composer
+      // that POSTED A NEW QUESTION rather than replying. It is gone from every
+      // role's rail, and so is the trap.
+      for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+        (useAuth as any).mockReturnValue({ user: stableUser, role });
+        const { unmount } = render(
+          <MemoryRouter>
+            <Messages />
+          </MemoryRouter>
+        );
+        expect(screen.queryByText('Questions for the team')).not.toBeInTheDocument();
+        expect(screen.queryByText('Someone asked me')).not.toBeInTheDocument();
+        unmount();
+      }
     });
 
     it('opens Slack-style message thread when Reply in thread is clicked (#563)', async () => {

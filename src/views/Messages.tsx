@@ -55,7 +55,6 @@ import AttachDataModal from '../components/modals/AttachDataModal';
 import ContactPill from '../components/ui/ContactPill';
 import { Translate } from '../components/Translate';
 import { useTranslate } from '../hooks/useTranslate';
-import { AskChannel, AskChannelRow, ASK_CONV_ID } from '../components/messages/AskChannel';
 import { MsgThreadPane } from '../components/messages/MsgThreadPane';
 import { convTopLevel, convReplyCount, convRepliers, convLastReply } from '../services/chat';
 
@@ -231,7 +230,7 @@ export default function Messages() {
 
   // Reset active room if the current user is no longer a member of it
   useEffect(() => {
-    if (activeRoomId && activeRoomId !== ASK_CONV_ID && rooms.length > 0 && !loadingRooms) {
+    if (activeRoomId && rooms.length > 0 && !loadingRooms) {
       const exists = rooms.some((r) => r.id === activeRoomId);
       if (!exists) {
         setActiveRoomId(null);
@@ -243,7 +242,7 @@ export default function Messages() {
   // 2. Fetch Active Room Messages
   useEffect(() => {
     setThreadOf(null);
-    if (!activeRoomId || activeRoomId === ASK_CONV_ID) {
+    if (!activeRoomId) {
       setMessages([]);
       return;
     }
@@ -524,7 +523,6 @@ export default function Messages() {
     if (threadSearch) return (m.text || '').toLowerCase().includes(threadSearch.toLowerCase());
     return true;
   });
-  const canSeeAsksChannel = userRole === 'admin' || userRole === 'manager';
   const topLevelMsgs = useMemo(() => convTopLevel(visibleMsgs), [visibleMsgs]);
   const pinned = messages.filter((m) => m.pinned && !m.deleted);
   const memberFirstNames = roomMembers.map((m) => m.displayName.split(' ')[0]);
@@ -612,21 +610,9 @@ export default function Messages() {
 
         {/* Rooms Scroll List */}
         <div className="msgs-list">
-          {canSeeAsksChannel && (!roomSearch || "questions for the team".toLowerCase().includes(roomSearch.toLowerCase())) && (
-            <AskChannelRow
-              me={currentUser?.uid || effectiveUid || ''}
-              role={userRole || ''}
-              isFullTimer={isAdmin}
-              active={activeRoomId === ASK_CONV_ID}
-              onClick={() => {
-                setActiveRoomId(ASK_CONV_ID);
-                setThreadOf(null);
-              }}
-            />
-          )}
           {loadingRooms ? (
             <div className="msgs-people-empty">Loading conversations…</div>
-          ) : filteredRooms.length === 0 && (!canSeeAsksChannel || !!roomSearch) ? (
+          ) : filteredRooms.length === 0 ? (
             <div className="msgs-people-empty">Nothing here yet.</div>
           ) : (
             filteredRooms.map((room) => {
@@ -786,17 +772,7 @@ export default function Messages() {
         </div>
       </div>
 
-      {/* 2. Right — the thread (the design's msgs-thread) or Ask channel */}
-      {activeRoomId === ASK_CONV_ID && canSeeAsksChannel ? (
-        <AskChannel
-          me={currentUser?.uid || effectiveUid || ''}
-          meName={impersonateTarget ? impersonateTarget.name : (currentUser?.displayName || 'Member')}
-          role={userRole || ''}
-          isFullTimer={isAdmin}
-          isMobile={isMobile}
-          onBack={() => setActiveRoomId(null)}
-        />
-      ) : (
+      {/* 2. Right — the thread (the design's msgs-thread) */}
         <div className={cn(
           "msgs-thread flex flex-col flex-1 h-full bg-surface-container-lowest min-w-0",
           activeRoomId ? "flex" : "hidden md:flex"
@@ -1219,7 +1195,6 @@ export default function Messages() {
           </>
         )}
       </div>
-      )}
 
       {/* Slack-shaped Thread Pane (#563) */}
       {activeRoom && threadOf && (() => {

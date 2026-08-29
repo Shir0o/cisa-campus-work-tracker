@@ -57,6 +57,7 @@ const SubmitFeedback = lazyWithRetry(() => import("./views/SubmitFeedback"));
 const CoordinationNotes = lazyWithRetry(() => import("./views/CoordinationNotes"));
 const CoordinationTrash = lazyWithRetry(() => import("./views/CoordinationTrash"));
 const Messages = lazyWithRetry(() => import("./views/Messages"));
+const Questions = lazyWithRetry(() => import("./views/Questions"));
 const Visits = lazyWithRetry(() => import("./views/Visits"));
 const EmbedCoordinationDoc = lazyWithRetry(() => import("./views/EmbedCoordinationDoc"));
 
@@ -718,6 +719,26 @@ export default function App() {
                           }
                         >
                           <Messages />
+                        </React.Suspense>
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/questions"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <React.Suspense
+                          fallback={
+                            <div className="p-8 space-y-6">
+                              <Skeleton className="h-10 w-64" />
+                              <Skeleton className="h-96 w-full rounded-3xl" />
+                            </div>
+                          }
+                        >
+                          <Questions />
                         </React.Suspense>
                       </DashboardLayout>
                     </ProtectedRoute>

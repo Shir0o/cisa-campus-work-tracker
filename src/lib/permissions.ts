@@ -53,6 +53,9 @@ const ROUTE_MIN_ROLE: Record<string, AppRole> = {
   '/answered': 'viewer',
   '/settings': 'viewer',
   '/messages': 'viewer',
+  // Questions for the team is staff-only on both sides: Trainees ask, Full-timers
+  // answer. Students and Community have no ask surface at all (#603).
+  '/questions': 'manager',
   '/feedback': 'viewer',
   '/admin/feedback': 'admin',
   '/coordination': 'operator',
@@ -102,6 +105,9 @@ export const NAV_ITEMS: NavItem[] = [
   { href: '/answered', label: 'Answered', minRole: 'viewer' },
   { href: '/coordination', label: 'Coordination Notes', minRole: 'operator' },
   { href: '/messages', label: 'Messages', minRole: 'viewer' },
+  // "Questions", not "Questions for the team" — the long form does not fit one
+  // line in the 224px More menu. The page heading keeps the full name.
+  { href: '/questions', label: 'Questions', minRole: 'manager' },
   { href: '/settings', label: 'Settings', minRole: 'viewer' },
 ];
 
@@ -116,7 +122,7 @@ export function canAccessRoute(role: AppRole | string | null, path: string): boo
   // is still enforced inside ContactDetailsModal.
   if (path === '/contact' || path.startsWith('/contact/') || path.startsWith('/people/')) return hasMinRole(role, 'viewer');
   if (role === 'manager') {
-    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/feedback', '/contact'];
+    const allowedTraineeRoutes = ['/', '/directory', '/board', '/messages', '/questions', '/feedback', '/contact'];
     return allowedTraineeRoutes.includes(path);
   }
   const level = ROLE_LEVEL[role as AppRole] ?? -1;

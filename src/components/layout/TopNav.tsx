@@ -12,6 +12,7 @@ import {
   Sun,
   FileText,
   MessageSquare,
+  MessageCircleQuestion,
   LayoutDashboard,
   Settings as SettingsIcon,
   LogOut,
@@ -43,6 +44,7 @@ import { LanguageToggle } from '../LanguageToggle';
 import { useI18n } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
+import { subscribeAsks, askQuestions, askAnswered } from '../../lib/asks';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
 // same way). Fallback to LayoutDashboard for anything unmapped.
@@ -58,6 +60,7 @@ const NAV_ICONS: Record<string, LucideIcon> = {
   '/answered': Sun,
   '/coordination': FileText,
   '/messages': MessageSquare,
+  '/questions': MessageCircleQuestion,
   '/settings': SettingsIcon,
 };
 
@@ -74,6 +77,9 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   const navigate = useNavigate();
 
   const [moreOpen, setMoreOpen] = useState(false);
+  // Questions lives in the More menu now (#646). Folding a destination away costs
+  // discoverability, so the fold leaks: a dot on More, the count on the row.
+  const [waitingAsks, setWaitingAsks] = useState(0);
   const [profileOpen, setProfileOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -81,6 +87,15 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   const primary = primaryNavFor(role);
   const moreItems = moreNavFor(role);
   const externalLinks = navExternalFor(role);
+
+  useEffect(() => {
+    if (!isAdmin || !user?.uid) return;
+    return subscribeAsks(
+      (msgs) => setWaitingAsks(askQuestions(msgs).filter((m) => m.from !== user.uid && !askAnswered(msgs, m)).length),
+      undefined,
+      { uid: user.uid, isStaff: true },
+    );
+  }, [isAdmin, user?.uid]);
 
   // Close "More" / avatar menus on outside click or Escape.
   useEffect(() => {
@@ -202,7 +217,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   setProfileOpen(false);
                 }}
                 className={cn(
-                  'flex items-center gap-2 h-10 px-3 rounded-xl transition-colors text-sm',
+                  'relative flex items-center gap-2 h-10 px-3 rounded-xl transition-colors text-sm',
                   moreOpen || (pathname !== '/' && !primary.some((p) => p.href === pathname))
                     ? 'text-on-surface bg-surface-container-high'
                     : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
@@ -213,6 +228,12 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                 <NavGlyph href={pathname} size={18} className={moreOpen ? 'text-accent' : ''} />
                 <span className="whitespace-nowrap">{t('actions.more', 'More')}</span>
                 <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', moreOpen && 'rotate-180')} />
+                {waitingAsks > 0 && !moreOpen && (
+                  <span
+                    aria-label={`${waitingAsks} questions waiting on an answer`}
+                    className="absolute top-1.5 right-1.5 w-[7px] h-[7px] rounded-full bg-primary ring-2 ring-surface"
+                  />
+                )}
               </button>
 
               <AnimatePresence>
@@ -243,6 +264,11 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                           >
                             <NavGlyph href={href} size={18} />
                             <Translate as="span" className="min-w-0 flex-1" text={label} />
+                            {href === '/questions' && waitingAsks > 0 && (
+                              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-warning bg-warning-container rounded-full px-1.5 py-0.5">
+                                {waitingAsks}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
