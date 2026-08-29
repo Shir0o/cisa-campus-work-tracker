@@ -32,3 +32,7 @@ _Avoid_: Bug ticket, customer support issue, help desk ticket
 **Remove an interaction**:
 Permanently deleting a logged conversation from a contact's Conversations (web) / Story (mobile) log. Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
 _Avoid_: Archive entry, trash a conversation
+
+**Global Search (⌘K)**:
+The desktop topbar search field that opens the do-everything navigation: jump to any destination, find a person, conversation, coordination note, or history entry, and run quick actions — role-filtered and ranked by frecency. ⌘K (Ctrl+K on other keyboards) opens it from anywhere; on mobile a search button opens the same palette full-screen.
+_Avoid_: Command palette, jump bar

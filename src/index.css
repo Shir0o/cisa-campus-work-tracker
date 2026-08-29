@@ -94,6 +94,7 @@
     --hover: rgba(203, 212, 225, 0.4);
     --border: #DEE4ED;
     --border-soft: #ECEFF4;
+    --gs-outline: #9AA8BC; /* Global search field outline — Bento neutral-40 */
     --text: #1A212B;
     --text-dim: #525E6F;
     --text-mute: #728197;
@@ -204,6 +205,7 @@
     --hover: rgba(255, 255, 255, 0.06);
     --border: #3C4959;
     --border-soft: #333E4C;
+    --gs-outline: #3C4959; /* Global search field outline — Bento neutral-40 */
     --text: #F6F8FB;
     --text-dim: #B6C2D3;
     --text-mute: #AEC0D6;
