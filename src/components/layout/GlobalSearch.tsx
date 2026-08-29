@@ -485,7 +485,7 @@ export default function GlobalSearch() {
         onClick={onClick}
         className={cn(
           'w-full flex items-center gap-3 px-2.5 py-2 rounded-xl text-left transition-colors',
-          active ? 'bg-surface-container-highest' : 'hover:bg-surface-container-highest/60',
+          active ? 'bg-surface-container-highest' : 'hover:bg-[rgba(203,212,225,0.2)]',
         )}
       >
         <span
@@ -725,14 +725,11 @@ export default function GlobalSearch() {
 
   return (
     <>
-      {/* ── Desktop: trigger pill + in-place dropdown ── */}
-      <div ref={containerRef} className="relative w-full hidden lg:block">
+      <div ref={containerRef} className="relative w-[300px] hidden lg:block">
         <div
           className={cn(
-            'relative flex items-center w-full h-10 rounded-full transition-all cursor-text border-0 ring-0',
-            searchOpen
-              ? 'bg-surface shadow-lg'
-              : 'bg-surface-container-high hover:bg-surface-container-highest',
+            'relative flex items-center w-full h-10 rounded-2xl transition-shadow cursor-text bg-surface',
+            'shadow-[inset_0_0_0_1px_var(--gs-outline)] hover:shadow-[inset_0_0_0_1px_#525E6F] focus-within:shadow-[inset_0_0_0_2px_var(--color-accent)]',
           )}
           onClick={() => {
             setSearchOpen(true);
@@ -755,13 +752,12 @@ export default function GlobalSearch() {
             placeholder={t('search.search_or_jump')}
             aria-label={t('nav.search')}
           />
-          {!searchOpen ? (
-            <div className="absolute right-3 flex items-center gap-0.5 opacity-60 px-1.5 py-0.5 rounded-md text-[10px] font-medium text-on-surface-variant pointer-events-none">
+          {!q ? (
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 h-5 px-1.5 rounded-sm bg-background border border-outline-variant text-[12px] font-medium text-on-surface-variant pointer-events-none">
               <Command className="w-3 h-3" />
               <span>K</span>
             </div>
           ) : (
-            q && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -774,7 +770,6 @@ export default function GlobalSearch() {
               >
                 <X className="w-4 h-4" />
               </button>
-            )
           )}
         </div>
 
@@ -785,7 +780,7 @@ export default function GlobalSearch() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 4, scale: 0.99 }}
               transition={{ duration: 0.12 }}
-              className="absolute right-0 top-[calc(100%+8px)] w-[420px] max-w-[calc(100vw-2rem)] bg-surface-container-high rounded-2xl shadow-2xl border border-outline-variant overflow-hidden z-50"
+              className="absolute right-0 top-[calc(100%+8px)] w-[420px] max-w-[calc(100vw-2rem)] bg-surface rounded-3xl shadow-[0_8px_16px_rgba(0,0,0,0.16)] border border-outline-variant overflow-hidden z-50"
             >
               <div className="max-h-[min(60vh,440px)] overflow-y-auto custom-scrollbar">
                 {panelBody}

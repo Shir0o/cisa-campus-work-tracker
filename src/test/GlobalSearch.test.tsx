@@ -531,4 +531,54 @@ describe('GlobalSearch', () => {
     expect(h.mockNavigate).toHaveBeenCalledWith('/board', undefined);
     expect(Frecency.getScore('u1', 'dest:/board')).toBeGreaterThan(0);
   });
+
+  // ── visual contract — PICKED shell design (issue #653) ────────────────
+  // The desktop trigger is a Bento SearchBar: fixed 300px, radius-16, always-on
+  // inset outline border, violet focus ring, ⌘K pill while empty.
+
+  it('desktop trigger is a fixed 300px radius-16 field with an always-on inset outline and focus ring', () => {
+    render(<GlobalSearch />);
+    const trigger = screen.getByPlaceholderText('Search or jump to…').parentElement!;
+    const root = trigger.parentElement!;
+
+    expect(root.className).toContain('w-[300px]');
+    expect(trigger.className).toContain('rounded-2xl');
+    expect(trigger.className).toContain('bg-surface');
+    // Border states are inset box-shadows — no layout shift between states.
+    expect(trigger.className).toContain('shadow-[inset_0_0_0_1px_var(--gs-outline)]');
+    expect(trigger.className).toContain('hover:shadow-[inset_0_0_0_1px_#525E6F]');
+    expect(trigger.className).toContain('focus-within:shadow-[inset_0_0_0_2px_var(--color-accent)]');
+  });
+
+  it('shows the ⌘K pill while the query is empty and swaps to the clear × while typing', () => {
+    render(<GlobalSearch />);
+    const trigger = screen.getByPlaceholderText('Search or jump to…').parentElement!;
+
+    // Empty query — hint pill (8px badge radius: app --radius-sm, not 24px
+    // --radius-lg) and no clear button.
+    expect(within(trigger).getByText('K')).toBeInTheDocument();
+    expect(within(trigger).getByText('K').parentElement!.className).toContain('rounded-sm');
+    expect(within(trigger).queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+
+    // Typing — pill yields the slot to the clear button.
+    typeDesktop('alice');
+    expect(within(trigger).queryByText('K')).not.toBeInTheDocument();
+    expect(within(trigger).getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
+
+    // Clearing restores the pill.
+    fireEvent.click(within(trigger).getByRole('button', { name: 'Clear search' }));
+    expect(within(trigger).getByText('K')).toBeInTheDocument();
+  });
+
+  it('dropdown floats on the design elevation shadow over a white radius-24 surface', () => {
+    render(<GlobalSearch />);
+    const dropdown = screen
+      .getByText(/anywhere · ↑↓ navigate · ↵ open/)
+      .closest('div')!.parentElement!;
+
+    expect(dropdown.className).toContain('bg-surface');
+    expect(dropdown.className).toContain('rounded-3xl');
+    expect(dropdown.className).toContain('shadow-[0_8px_16px_rgba(0,0,0,0.16)]');
+    expect(dropdown.className).toContain('border-outline-variant');
+  });
 });

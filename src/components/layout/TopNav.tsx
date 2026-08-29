@@ -312,7 +312,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
           <div className="flex-1" />
 
           {/* Search — ⌘K / Ctrl+K palette lives in GlobalSearch */}
-          <div className="hidden lg:block w-full max-w-[220px] xl:max-w-sm">
+          <div className="hidden lg:block">
             <GlobalSearch />
           </div>
           <button
