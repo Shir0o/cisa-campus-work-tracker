@@ -10,6 +10,7 @@
 // conversations. Here it is a board of cards. There is no ambient input: you
 // answer ON a question, and asking is a panel you open on purpose.
 import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { collection, onSnapshot, query } from 'firebase/firestore';
 import { MessageCircleQuestion, Plus, Send, Pencil, Clock, Check, X, CornerUpLeft, Trash2, AlertTriangle } from 'lucide-react';
 import { db } from '../lib/firebase';
@@ -54,11 +55,16 @@ interface QuestionCardProps {
   meName: string;
   isFullTimer: boolean;
   onToast: (msg: string) => void;
+  // #646: when My Day deep-links to this card, the composer must already be
+  // open on mount. Closing the card clears the focus so the back button does
+  // not return to the focused view.
+  initialOpen?: boolean;
+  onClose?: () => void;
 }
 
-function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: QuestionCardProps) {
+function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpen, onClose }: QuestionCardProps) {
   const { t } = useI18n();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(Boolean(initialOpen));
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -73,12 +79,18 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
   const canDelete = isFullTimer || mine;
   const who = firstName(m.fromName || 'Someone');
 
+  const close = () => {
+    setOpen(false);
+    onClose?.();
+  };
+
   const remove = async () => {
     if (deleting) return;
     setDeleting(true);
     // deleteAsk swallows its own errors (handleFirestoreError), like every other
     // write on this page; on success the subscription drops this card.
     await deleteAsk(m.id);
+    close();
     onToast(t('ask.deleted_toast', 'Question deleted.'));
   };
 
@@ -89,7 +101,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
     try {
       await addAskReply(m.id, { from: me, fromName: meName, body }, m.owner, mine ? null : m.from);
       setDraft('');
-      setOpen(false);
+      close();
       onToast(
         mine ? t('ask.added_toast', 'Added to your question.') : t('ask.answered_toast', 'Answered {first}.').replace('{first}', who),
       );
@@ -239,7 +251,7 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
             </button>
             <button
               type="button"
-              onClick={() => { setOpen(false); setDraft(''); }}
+              onClick={() => { setDraft(''); close(); }}
               className="text-sm text-on-surface-variant hover:text-on-surface"
             >
               {t('actions.cancel', 'Cancel')}
@@ -270,6 +282,18 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
 export default function Questions() {
   const { user, role, impersonateTarget } = useAuth();
   const { t } = useI18n();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // #646: My Day deep-links here with the question it wants answered. Read
+  // either the in-router state (writer) or the ?focus= query (shareable), and
+  // prefer state when both are present so a fresh push wins.
+  const focusedId = (location.state as { focusQuestionId?: string } | null)?.focusQuestionId
+    || searchParams.get('focus');
+  const clearFocus = () => {
+    if (focusedId == null) return;
+    navigate(location.pathname, { replace: true });
+  };
   // Firestore rules key off the REAL authenticated uid, never the simulated one (#603).
   const me = user?.uid || '';
   const meName = impersonateTarget ? impersonateTarget.name : user?.displayName || 'Member';
@@ -523,6 +547,8 @@ export default function Questions() {
               meName={meName}
               isFullTimer={isFullTimer}
               onToast={setToast}
+              initialOpen={focusedId === m.id}
+              onClose={focusedId === m.id ? clearFocus : undefined}
             />
           ))}
         </div>

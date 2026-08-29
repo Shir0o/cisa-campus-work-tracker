@@ -40,9 +40,17 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 let mockAuth: Record<string, unknown> = {};
+const mockNavigate = vi.fn();
 vi.mock('../components/AuthProvider', () => ({
   useAuth: () => mockAuth,
 }));
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
 
 const QUESTIONS: AskMessage[] = [
   {
@@ -82,9 +90,10 @@ const QUESTIONS: AskMessage[] = [
   },
 ];
 
-function renderPage() {
+function renderPage(opts: { initialEntries?: Array<string | { pathname: string; state?: unknown }> } = {}) {
+  mockNavigate.mockClear();
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={opts.initialEntries ?? ['/questions']}>
       <Questions />
     </MemoryRouter>,
   );
@@ -93,13 +102,13 @@ function renderPage() {
 describe('Questions for the team page (#646)', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockNavigate.mockReset();
     mockAuth = { user: { uid: 'ft1', displayName: 'Mei Lin' }, role: 'admin', impersonateTarget: null };
     vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
       cb(QUESTIONS);
       return () => {};
     });
   });
-
   describe('the trap is gone', () => {
     it('has no composer at all until "Ask the team" is opened', () => {
       renderPage();
@@ -311,5 +320,43 @@ describe('Questions for the team page (#646)', () => {
       't1',
       't1',
     );
+  });
+
+
+  describe('deep-link from My Day (#646)', () => {
+    it('opens the focused card composer when location.state carries focusQuestionId', () => {
+      renderPage({
+        initialEntries: [
+          { pathname: '/questions', state: { focusQuestionId: 'q1' } },
+        ],
+      });
+
+      // q1 is on the default Waiting view; the focus must auto-open its composer
+      // and the "Answer" button must no longer be the only affordance.
+      expect(screen.getByLabelText(/your answer to zion/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Answer Zion/ })).toBeNull();
+    });
+
+    it('opens the focused card composer when the URL carries ?focus=qId', () => {
+      renderPage({ initialEntries: ['/questions?focus=q1'] });
+
+      expect(screen.getByLabelText(/your answer to zion/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /^Answer Zion/ })).toBeNull();
+    });
+
+    it('clears the focus on close so the next render shows the default view', () => {
+      renderPage({
+        initialEntries: [
+          { pathname: '/questions', state: { focusQuestionId: 'q1' } },
+        ],
+      });
+
+      // Open is verified above; cancelling should clear the focus.
+      fireEvent.click(screen.getByRole('button', { name: /^Cancel$/ }));
+
+      expect(mockNavigate).toHaveBeenCalledWith('/questions', { replace: true });
+      expect(screen.queryByLabelText(/your answer to zion/i)).toBeNull();
+      expect(screen.getByRole('button', { name: /^Answer Zion/ })).toBeInTheDocument();
+    });
   });
 });

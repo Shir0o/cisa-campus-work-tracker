@@ -610,8 +610,6 @@
     "no_answer_yet": "Aún sin respuesta · {words}. Está con todo el equipo, no con una sola persona.",
     "answer": "Responder a {first}",
     "answer_placeholder": "Responde a {first} como lo dirías en voz alta.",
-    "send_it": "Enviar",
-    "not_now": "Ahora no",
     "answered_toast": "Respondido a {first}.",
     "mark_scanned": "Marcar como visto",
     "title": "Pregunta al equipo",
