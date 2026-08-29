@@ -77,26 +77,17 @@ test.describe('Persona Impersonation & Role Preview (#628)', () => {
     // The "Role Preview" chip bar exposes one chip per role. We assert
     // that the four chips are present (text content is locale-dependent
     // in some builds, so we match by chip label by role).
-    const roleBar = page.getByText(/role preview/i);
-    await expect(roleBar).toBeVisible();
-
-    // Each chip is a `<button>` whose visible text is the role's display
-    // label ("Full-timer", "Trainee", "Student", "Community").
-    await expect(
-      page.getByRole('button', { name: /^full-timer$/i }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /^trainee$/i }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /^student$/i }).first(),
-    ).toBeVisible();
-    await expect(
-      page.getByRole('button', { name: /^community$/i }).first(),
-    ).toBeVisible();
-
-    // Close the modal.
-    await page.keyboard.press('Escape');
+    // Scope the chip check to the "Role Preview" bar (the ancestor div
+    // of the label that also contains a button) so the assertions
+    // cannot pass by matching a same-named element elsewhere on the
+    // page (e.g. the role badge in the profile menu).
+    const rolePreviewLabel = page.getByText(/^role preview:$/i).first();
+    const chipBar = rolePreviewLabel
+      .locator('xpath=ancestor::div[.//button][1]');
+    await expect(chipBar.getByRole('button', { name: /^full-timer$/i })).toBeVisible();
+    await expect(chipBar.getByRole('button', { name: /^trainee$/i })).toBeVisible();
+    await expect(chipBar.getByRole('button', { name: /^student$/i })).toBeVisible();
+    await expect(chipBar.getByRole('button', { name: /^community$/i })).toBeVisible();
   });
 
   test('Selecting the "Trainee" role chip scopes the nav to manager nav and back-to-my-view clears it', async ({ page }) => {
@@ -111,10 +102,19 @@ test.describe('Persona Impersonation & Role Preview (#628)', () => {
     const navLinksBefore = await nav.getByRole('link').allInnerTexts();
     expect(navLinksBefore.some((l) => /coordination notes/i.test(l))).toBe(true);
 
-    // Open the impersonation modal and click the "Trainee" role chip.
+    // Open the impersonation modal and click the "Trainee" role chip in
+    // the "Role Preview" chip bar. Scoping to the chip bar avoids
+    // picking up the role badge in the profile menu or any future
+    // surface that renders the same label. The chip bar is the parent
+    // div that contains both the "Role Preview:" label and the role
+    // chips; we anchor on the label and walk to the closest ancestor
+    // div that also has a button child.
     await page.getByRole('button', { name: EYE_BTN }).click();
     await expect(page.getByRole('heading', { name: EYE_BTN })).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('button', { name: /^trainee$/i }).first().click();
+    const rolePreviewLabel = page.getByText(/^role preview:$/i).first();
+    const chipBar = rolePreviewLabel
+      .locator('xpath=ancestor::div[.//button][1]');
+    await chipBar.getByRole('button', { name: /^trainee$/i }).click();
 
     // The modal is still open; the chip is now visually active and a
     // "Back to my view" button has appeared in the chip bar.
@@ -125,10 +125,7 @@ test.describe('Persona Impersonation & Role Preview (#628)', () => {
     // Close the modal — esc.
     await page.keyboard.press('Escape');
 
-    // The nav now reflects the manager (Trainee) role: the primary tabs
-    // should be Home / People / The Journey. The TopNav uses a `More`
-    // overflow for some destinations, so we look for the three primary
-    // labels anywhere in the nav region.
+    // The nav now reflects the manager (Trainee) role.
     const navLinksAfter = await nav.getByRole('link').allInnerTexts();
     const navAsText = navLinksAfter.join(' | ');
     // The home label flips to "Home" when role != admin. The board link
@@ -138,8 +135,8 @@ test.describe('Persona Impersonation & Role Preview (#628)', () => {
     expect(navAsText).toMatch(/the journey/i);
     expect(navAsText).toMatch(/people/i);
 
-    // The Coordination Notes link is admin-only — it should not be in the
-    // primary nav for the simulated Trainee role.
+    // The Coordination Notes link is admin-only — it should not be in
+    // the primary nav for the simulated Trainee role.
     const hasCoordinationPrimary = navLinksAfter.some((l) =>
       /^coordination notes$/i.test(l),
     );
@@ -169,7 +166,10 @@ test.describe('Persona Impersonation & Role Preview (#628)', () => {
 
     await page.getByRole('button', { name: EYE_BTN }).click();
     await expect(page.getByRole('heading', { name: EYE_BTN })).toBeVisible({ timeout: 5_000 });
-    await page.getByRole('button', { name: /^student$/i }).first().click();
+    const rolePreviewLabel = page.getByText(/^role preview:$/i).first();
+    const chipBar = rolePreviewLabel
+      .locator('xpath=ancestor::div[.//button][1]');
+    await chipBar.getByRole('button', { name: /^student$/i }).click();
     await page.keyboard.press('Escape');
 
     // Operator primary is Home / People / Prayer ("On our hearts").

@@ -133,13 +133,16 @@ test.describe('Quick Capture: NewContactModal (#628)', () => {
       timeout: 10_000,
     });
     await expect(page.getByText(tagged).first()).toBeVisible({ timeout: 10_000 });
-
-    // At least one tag pill renders for the new contact.
-    const tagAppears = await Promise.race([
-      page.getByText('Gospel').first().waitFor({ timeout: 8_000 }).then(() => true).catch(() => false),
-      page.getByText('Fall2026').first().waitFor({ timeout: 8_000 }).then(() => true).catch(() => false),
-    ]);
-    expect(tagAppears, 'tag pill should appear for at least one of the new tags').toBe(true);
+    // The new contact's row must show at least one of the new tags. We
+    // scope the tag check to the same card as the new contact's name so
+    // a pre-existing contact with overlapping tags cannot satisfy the
+    // assertion.
+    const newContactRow = page
+      .locator('div.group')
+      .filter({ has: page.getByText(tagged).first() })
+      .first();
+    const tagInRow = newContactRow.getByText(/^(Gospel|Fall2026)$/).first();
+    await expect(tagInRow).toBeVisible({ timeout: 8_000 });
   });
 
   test('Quick-captured contact survives a reload (Firestore persistence)', async ({ page }) => {
