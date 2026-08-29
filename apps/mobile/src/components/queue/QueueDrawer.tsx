@@ -44,7 +44,15 @@ export function DrawerButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function QueueDrawer({
+  visible,
+  onClose,
+  onFeedback,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onFeedback?: () => void;
+}) {
   const { c, font, shadow, fs } = useV2Theme();
   const { user, uid, role } = useAuth();
   const { t } = useLanguage();
@@ -110,20 +118,43 @@ export function QueueDrawer({ visible, onClose }: { visible: boolean; onClose: (
 
           <View style={{ borderTopWidth: 1, borderTopColor: c.card.line }}>
             {TRAINEE_DRAWER.map((item) => (
-              <Pressable
-                key={item.key}
-                onPress={() => go(item.href)}
-                style={({ pressed }) => ({
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 12,
-                  minHeight: 52,
-                  opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
-                <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>{drawerLabel(item.key)}</Text>
-              </Pressable>
+              <React.Fragment key={item.key}>
+                <Pressable
+                  onPress={() => go(item.href)}
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 12,
+                    minHeight: 52,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
+                  <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>{drawerLabel(item.key)}</Text>
+                </Pressable>
+                {item.key === 'tutorial' && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('mobile.nav.tell_us_how_its_going', "Tell us how it's going")}
+                    onPress={() => {
+                      onClose();
+                      onFeedback?.();
+                    }}
+                    style={({ pressed }) => ({
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 12,
+                      minHeight: 52,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                  >
+                    <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: c.card.ink3 }} />
+                    <Text style={{ fontFamily: font.bold, fontSize: fs(16), color: c.card.ink }}>
+                      {t('mobile.nav.tell_us_how_its_going', "Tell us how it's going")}
+                    </Text>
+                  </Pressable>
+                )}
+              </React.Fragment>
             ))}
           </View>
 

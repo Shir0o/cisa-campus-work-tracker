@@ -1337,6 +1337,7 @@
       "settings": "Ajustes",
       "sign_up_form": "Formulario de inscripción",
       "how_this_works": "Cómo funciona",
+      "tell_us_how_its_going": "Cuéntanos cómo va",
       "your_app": "Tu app",
       "prayer_log": "Registro de oración",
       "the_board": "El Tablero"
@@ -1457,6 +1458,9 @@
       "bring_someone_in": "Trae a alguien",
       "invite_a_friend": "Invita a un amigo",
       "an_invitation_you_can_send": "Una invitación que puedes enviar por mensaje",
+      "tell_the_team": "Dile al equipo",
+      "tell_us_how_its_going": "Cuéntanos cómo va",
+      "tell_us_sub": "Una idea, algo que no funcionó o un agradecimiento",
       "account_session": "Cuenta y sesión",
       "log_out": "Cerrar sesión",
       "messages": "Mensajes",
@@ -1569,7 +1573,8 @@
     "ft_more": {
       "intro": "Las pantallas que a veces necesitas en movimiento. Todo lo más pesado vive en el escritorio.",
       "foot": "Las páginas del tablero, las reuniones y los tipos se leen principalmente aquí: edítalos en un escritorio.",
-      "see_it_as_they_do": "Verlo como ellos lo ven"
+      "see_it_as_they_do": "Verlo como ellos lo ven",
+      "tell_us_how_its_going": "Cuéntanos cómo va"
     },
     "board": {
       "title": "El Tablero",

@@ -23,3 +23,7 @@ _Avoid_: Quota, target metric, daily KPI
 **QA Database (`qa-db`)**:
 The dedicated non-production Firestore database instance in the `sac-campus-hub` project used for E2E tests and staging validation.
 _Avoid_: Test database, sandbox Firestore, staging db
+
+**Feedback Note ("Tell us how it's going")**:
+An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators.
+_Avoid_: Bug ticket, customer support issue, help desk ticket

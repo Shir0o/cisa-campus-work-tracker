@@ -1337,6 +1337,7 @@
       "settings": "Settings",
       "sign_up_form": "Sign-up form",
       "how_this_works": "How this works",
+      "tell_us_how_its_going": "Tell us how it's going",
       "your_app": "Your app",
       "prayer_log": "Prayer log",
       "the_board": "The Board"
@@ -1457,6 +1458,9 @@
       "bring_someone_in": "Bring someone in",
       "invite_a_friend": "Invite a friend",
       "an_invitation_you_can_send": "An invitation you can send in a text",
+      "tell_the_team": "Tell the team",
+      "tell_us_how_its_going": "Tell us how it's going",
+      "tell_us_sub": "An idea, something that felt off, or a thank-you",
       "account_session": "Account & Session",
       "log_out": "Log out",
       "messages": "Messages",
@@ -1569,7 +1573,8 @@
     "ft_more": {
       "intro": "The screens you sometimes need on the move. Everything heavier lives on the desktop.",
       "foot": "Board pages, gatherings and kinds are read-mostly here — edit them at a desk.",
-      "see_it_as_they_do": "See it as they do"
+      "see_it_as_they_do": "See it as they do",
+      "tell_us_how_its_going": "Tell us how it's going"
     },
     "board": {
       "title": "The Board",

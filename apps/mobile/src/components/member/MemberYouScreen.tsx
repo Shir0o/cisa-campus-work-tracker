@@ -18,6 +18,7 @@ import { PersonMark } from '../queue/atoms';
 import { Sech } from '../v2/Widget';
 import { MemberBack, MemberFoot, MemberHead, MemberRoom, MemberScreen } from './MemberScreen';
 import { InviteSheet } from './InviteSheet';
+import { FeedbackSheet } from '../feedback/FeedbackSheet';
 
 const LOOKS: { key: 'light' | 'dark' | 'system'; label: string }[] = [
   { key: 'light', label: 'Daylight' },
@@ -43,6 +44,7 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
   const router = useRouter();
   const [fullTimers, setFullTimers] = React.useState<FullTimerSummary[]>([]);
   const [inviteOpen, setInviteOpen] = React.useState(false);
+  const [feedbackOpen, setFeedbackOpen] = React.useState(false);
 
   // Quiet on error, as the home's own roster read is — this list only names who
   // you can message, and the rest of the screen stands without it.
@@ -252,6 +254,31 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         )}
 
         <View>
+          <Sech label={t('mobile.member.tell_the_team', 'Tell the team')} />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+            onPress={() => setFeedbackOpen(true)}
+            style={({ pressed }) => ({
+              backgroundColor: c.widget.tile,
+              borderRadius: radius.tile,
+              padding: 18,
+              opacity: pressed ? 0.85 : 1,
+              ...c.widget.shadow,
+            })}
+          >
+            <Text style={{ fontFamily: font.extra, fontSize: fs(15.5), color: c.widget.ink }}>
+              {t('mobile.member.tell_us_how_its_going', "Tell us how it's going")}
+            </Text>
+            <Text
+              style={{ fontFamily: font.medium, fontSize: fs(13), color: c.widget.ink3, marginTop: 3 }}
+            >
+              {t('mobile.member.tell_us_sub', 'An idea, something that felt off, or a thank-you')}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View>
           <Sech label={t('mobile.member.account_session')} />
           <Pressable
             accessibilityRole="button"
@@ -289,6 +316,10 @@ function MemberYou({ role, showBack }: { role: MemberRole; showBack?: boolean })
         event={null}
         onClose={() => setInviteOpen(false)}
         onShared={() => setInviteOpen(false)}
+      />
+      <FeedbackSheet
+        visible={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
       />
     </>
   );
