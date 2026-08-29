@@ -652,7 +652,14 @@
     "empty_waiting_title": "Nada esperando",
     "empty_waiting_sub": "Todas las preguntas tienen respuesta.",
     "empty_none_title": "Todavía no hay preguntas",
-    "empty_none_sub": "Una pregunta sin una persona detrás pertenece aquí."
+    "empty_none_sub": "Una pregunta sin una persona detrás pertenece aquí.",
+    "delete_question": "Eliminar pregunta",
+    "delete_confirm": "¿Eliminar esta pregunta?",
+    "delete_confirm_body": "Desaparece del tablero para todo el equipo. Esto no se puede deshacer.",
+    "delete_confirm_body_answers": "Las respuestas también se eliminan, y desaparece del tablero para todo el equipo. Esto no se puede deshacer.",
+    "delete_keep": "Conservarla",
+    "deleted_toast": "Pregunta eliminada.",
+    "delete_aria": "Eliminar esta pregunta"
   },
   "visits": {
     "where_weve_been": "Dónde hemos estado",
