@@ -21,63 +21,25 @@ test.describe('Outreach & Sign-Up Intake Flow', () => {
     expect(new URL(page.url()).pathname).toBe('/outreach');
   });
 
-  test('Public / Visitor can complete the multi-step sign-up welcome intake form', async ({ page }) => {
+  test('Public / Visitor can complete the sign-up intake form', async ({ page }) => {
     await page.goto('/signup');
-    await page.waitForLoadState('domcontentloaded');
 
-    // Verify sign-up form step 1 renders
-    const heading = page.locator('h1, h2, header').first();
-    await expect(heading).toBeVisible();
+    // The intake form renders with its required-field heading
+    await expect(page.getByRole('heading', { name: 'Tell us about you.' })).toBeVisible({ timeout: 15_000 });
 
-    // Fill Step 1 fields
-    const nameField = page.getByPlaceholder(/name|full name/i).first();
-    if (await nameField.isVisible()) {
-      await nameField.fill('Jordan Student');
-    }
+    // Fill every required field via the form's stable ids / chip buttons
+    await page.locator('#signup-name').fill('Jordan Student');
+    await page.getByRole('button', { name: 'Male', exact: true }).click();
+    await page.getByRole('button', { name: 'Freshman', exact: true }).click();
+    await page.locator('#signup-major').fill('Computer Science');
+    await page.locator('#signup-phone').fill('555-123-4567');
+    await page.locator('#signup-email').fill(`jordan.student.${Date.now()}@example.com`);
+    await page.getByRole('button', { name: 'Bible study', exact: true }).click();
 
-    const phoneField = page.getByPlaceholder(/phone|cell/i).first();
-    if (await phoneField.isVisible()) {
-      await phoneField.fill('555-123-4567');
-    }
-
-    const emailField = page.getByPlaceholder(/email/i).first();
-    if (await emailField.isVisible()) {
-      await emailField.fill(`jordan.student.${Date.now()}@example.com`);
-    }
-
-    const majorField = page.locator('#signup-major').or(page.getByPlaceholder(/major/i).first());
-    if (await majorField.isVisible()) {
-      await majorField.fill('Computer Science');
-    }
-
-    // Select gender chip if present
-    const genderChip = page.getByRole('button', { name: /^female$|^male$/i }).first();
-    if (await genderChip.isVisible()) {
-      await genderChip.click();
-    }
-
-    // Select year chip if present
-    const yearChip = page.getByRole('button', { name: /^freshman$|^sophomore$|^junior$|^senior$/i }).first();
-    if (await yearChip.isVisible()) {
-      await yearChip.click();
-    }
-
-    // Select interest chip if present
-    const interestChip = page.getByRole('button', { name: /bible study|home fellowship|outreach/i }).first();
-    if (await interestChip.isVisible()) {
-      await interestChip.click();
-    }
-
-    // Proceed to Step 2 if multi-step Next button exists
-    const nextBtn = page.getByRole('button', { name: /next|continue|step 2/i }).first();
-    if (await nextBtn.isVisible()) {
-      await nextBtn.click();
-    }
-
-    // Submit form if submit button exists
-    const submitBtn = page.getByRole('button', { name: /send it|submit|sign up|finish|done/i }).first();
-    if (await submitBtn.isVisible()) {
-      await submitBtn.click();
-    }
+    // Submit stays disabled until the form is valid, then lands on the success screen
+    const submitBtn = page.getByRole('button', { name: 'Send it' });
+    await expect(submitBtn).toBeEnabled();
+    await submitBtn.click();
+    await expect(page.getByText(/Thank you for signing up, Jordan\./)).toBeVisible({ timeout: 10_000 });
   });
 });

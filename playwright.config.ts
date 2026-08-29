@@ -1,12 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * E2E tests run against the REAL Firebase project (sac-campus-hub) using the
- * seeded email/password test users. No emulator / Java required.
- *
- * Requirements to run locally:
- *   - e2e/.test-credentials.json present (gitignored)
- *   - VITE_FIREBASE_API_KEY set in the environment (real web API key)
+ * Web E2E tests. Default (and CI) mode is the Firebase Local Emulator:
+ * `npm run test:e2e:emulator` boots Auth + Firestore emulators, seeds them via
+ * scripts/seed-emulator.ts, and runs this suite with zero cloud secrets.
+ * VITE_USE_FIREBASE_EMULATOR=false + a real VITE_FIREBASE_API_KEY switches the
+ * dev server started below to the real sac-campus-hub project instead.
  *
  * The dev server is started in E2E mode so window.__e2eSignIn is exposed.
  */
@@ -16,10 +15,12 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: 0,
   workers: 1,
-  reporter: 'list',
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
+    // Retries are off by design (determinism) — keep traces for failures so
+    // the CI report upload is actually useful.
+    trace: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
