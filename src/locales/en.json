@@ -652,7 +652,14 @@
     "empty_waiting_title": "Nothing waiting",
     "empty_waiting_sub": "Every question has an answer on it.",
     "empty_none_title": "Nothing asked yet",
-    "empty_none_sub": "A question with no person attached belongs here."
+    "empty_none_sub": "A question with no person attached belongs here.",
+    "delete_question": "Delete question",
+    "delete_confirm": "Delete this question?",
+    "delete_confirm_body": "It comes off the board for the whole team. This can't be undone.",
+    "delete_confirm_body_answers": "The answers on it go too, and it comes off the board for the whole team. This can't be undone.",
+    "delete_keep": "Keep it",
+    "deleted_toast": "Question deleted.",
+    "delete_aria": "Delete this question"
   },
   "visits": {
     "where_weve_been": "Where we've been",

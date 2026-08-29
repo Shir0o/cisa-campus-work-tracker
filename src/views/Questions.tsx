@@ -11,7 +11,7 @@
 // answer ON a question, and asking is a panel you open on purpose.
 import React, { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query } from 'firebase/firestore';
-import { MessageCircleQuestion, Plus, Send, Pencil, Clock, Check, X, CornerUpLeft } from 'lucide-react';
+import { MessageCircleQuestion, Plus, Send, Pencil, Clock, Check, X, CornerUpLeft, Trash2, AlertTriangle } from 'lucide-react';
 import { db } from '../lib/firebase';
 import { useAuth } from '../components/AuthProvider';
 import { useI18n } from '../components/LanguageProvider';
@@ -29,6 +29,7 @@ import {
   addAsk,
   addAskFor,
   addAskReply,
+  deleteAsk,
 } from '../lib/asks';
 
 type Filter = 'waiting' | 'answered' | 'mine' | 'all';
@@ -60,13 +61,26 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
   const [sending, setSending] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const replies = askRepliesOf(allAsks, m.id);
   const answered = askAnswered(allAsks, m);
   const mine = m.from === me;
   // A trainee can add to their own question; only a full-timer answers someone else's.
   const canAnswer = isFullTimer || mine;
+  // Delete is the asker's (their own question) or a full-timer's (anyone's).
+  const canDelete = isFullTimer || mine;
   const who = firstName(m.fromName || 'Someone');
+
+  const remove = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    // deleteAsk swallows its own errors (handleFirestoreError), like every other
+    // write on this page; on success the subscription drops this card.
+    await deleteAsk(m.id);
+    onToast(t('ask.deleted_toast', 'Question deleted.'));
+  };
 
   const send = async () => {
     const body = draft.trim();
@@ -111,6 +125,22 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
             {askWaitedWords(m)}
           </span>
         )}
+        {canDelete && (
+          <button
+            type="button"
+            aria-label={t('ask.delete_aria', 'Delete this question')}
+            title={t('ask.delete_aria', 'Delete this question')}
+            onClick={() => setConfirmingDelete(true)}
+            className={cn(
+              'grid place-items-center w-7 h-7 rounded-lg transition-colors shrink-0',
+              confirmingDelete
+                ? 'text-error bg-error/10'
+                : 'text-on-surface-variant hover:text-error hover:bg-error/10',
+            )}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       <p className="text-base leading-relaxed text-on-surface mt-3 text-pretty">{m.body}</p>
@@ -135,7 +165,40 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast }: Question
         </div>
       )}
 
-      {!canAnswer ? (
+      {confirmingDelete ? (
+        <div className="rounded-2xl bg-error-container/40 border border-error-container p-4">
+          <div className="flex gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-error shrink-0 mt-0.5" />
+            <p className="text-sm text-on-surface text-pretty">
+              <span className="font-semibold">{t('ask.delete_confirm', 'Delete this question?')}</span>{' '}
+              {replies.length > 0
+                ? t(
+                    'ask.delete_confirm_body_answers',
+                    "The answers on it go too, and it comes off the board for the whole team. This can't be undone.",
+                  )
+                : t('ask.delete_confirm_body', "It comes off the board for the whole team. This can't be undone.")}
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5 mt-3 pl-[26px]">
+            <button
+              type="button"
+              disabled={deleting}
+              onClick={() => void remove()}
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-error text-on-error text-sm font-semibold disabled:opacity-40 disabled:cursor-default"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {t('ask.delete_question', 'Delete question')}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              className="h-8 px-3 rounded-lg border border-outline-variant text-sm font-semibold text-on-surface-variant hover:text-on-surface"
+            >
+              {t('ask.delete_keep', 'Keep it')}
+            </button>
+          </div>
+        </div>
+      ) : !canAnswer ? (
         <p className="text-xs italic text-on-surface-variant">
           {t('ask.fulltimer_will_answer', 'A full-timer will answer this.')}
         </p>

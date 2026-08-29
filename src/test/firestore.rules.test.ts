@@ -1400,6 +1400,33 @@ describeRules('Firestore Security Rules', () => {
         }),
       );
     });
+
+    it('ASK9: the asker deletes their own question and its answers; a full-timer deletes anyone\'s; a fellow trainee cannot', async () => {
+      await seedAskUsers();
+      await testEnv.withSecurityRulesDisabled(async (c) => {
+        await setDoc(doc(c.firestore(), 'users', 'trainee2'), { role: 'manager', approved: true });
+      });
+      // A question with an answer on it — the answer carries the asker's owner.
+      await seedAsk('askDel1');
+      await seedAsk('askDel1a', {
+        parentId: 'askDel1',
+        from: 'ft1',
+        fromName: 'Mei',
+        kind: 'comment',
+        body: 'Three tries, spread out.',
+      });
+
+      // A fellow trainee cannot delete someone else's question.
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'trainee2' }), 'asks', 'askDel1')));
+
+      // The asker takes down the answer in their thread, then the question.
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDel1a')));
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'trainee1' }), 'asks', 'askDel1')));
+
+      // A full-timer deletes a question they did not ask.
+      await seedAsk('askDel2');
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDel2')));
+    });
   });
 
   describe('Walking-together threads', () => {

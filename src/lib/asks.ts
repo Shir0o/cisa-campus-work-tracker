@@ -14,10 +14,12 @@ import {
   addDoc,
   collection,
   doc,
+  getDocs,
   onSnapshot,
   query,
   runTransaction,
   where,
+  writeBatch,
 } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType, sendNotification } from "./firebase";
 
@@ -324,6 +326,22 @@ export async function addAskReply(
     }
   } catch (e) {
     handleFirestoreError(e, OperationType.CREATE, "asks");
+  }
+}
+
+/** Delete a question and every answer on it, in one batch. A full-timer can
+ *  delete anyone's; the asker can delete their own — every message in the
+ *  thread (question and answers) carries the asker's `owner`, so the rules
+ *  let them take the whole thread down. */
+export async function deleteAsk(questionId: string): Promise<void> {
+  try {
+    const replies = await getDocs(query(col(), where("parentId", "==", questionId)));
+    const batch = writeBatch(db);
+    replies.forEach((d) => batch.delete(d.ref));
+    batch.delete(ref(questionId));
+    await batch.commit();
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `asks/${questionId}`);
   }
 }
 

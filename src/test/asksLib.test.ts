@@ -16,6 +16,7 @@ import {
   addAsk,
   addAskFor,
   addAskReply,
+  deleteAsk,
   toggleAskReaction,
   AskMessage,
 } from '../lib/asks';
@@ -26,7 +27,7 @@ vi.mock('../lib/firebase', () => ({
   db: { _type: 'firestore' },
   handleFirestoreError: vi.fn(),
   sendNotification: vi.fn(),
-  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE' },
+  OperationType: { LIST: 'LIST', CREATE: 'CREATE', UPDATE: 'UPDATE', DELETE: 'DELETE' },
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -36,6 +37,8 @@ vi.mock('firebase/firestore', () => ({
   where: vi.fn(),
   onSnapshot: vi.fn(),
   addDoc: vi.fn(),
+  getDocs: vi.fn(),
+  writeBatch: vi.fn(),
   runTransaction: vi.fn(),
 }));
 
@@ -419,6 +422,36 @@ describe('src/lib/asks.ts full coverage', () => {
       text: 'Asked in person · written down by ft3',
       short: 'Written down by ft3',
     });
+  });
+
+  it('deleteAsk removes the question and every answer on it in one batch', async () => {
+    const del = vi.fn();
+    const commit = vi.fn().mockResolvedValue(undefined);
+    (firestore.writeBatch as any).mockReturnValue({ delete: del, commit });
+    (firestore.getDocs as any).mockResolvedValueOnce({
+      forEach: (fn: (d: unknown) => void) => {
+        [{ ref: { path: 'asks/r1' } }, { ref: { path: 'asks/r2' } }].forEach(fn);
+      },
+    });
+
+    await deleteAsk('q1');
+
+    // both replies + the question doc
+    expect(del).toHaveBeenCalledTimes(3);
+    expect(del).toHaveBeenCalledWith({ path: 'asks/r1' });
+    expect(del).toHaveBeenCalledWith({ path: 'asks/r2' });
+    expect(del).toHaveBeenCalledWith({ path: 'asks/q1' });
+    expect(commit).toHaveBeenCalledTimes(1);
+  });
+
+  it('deleteAsk routes a failure through handleFirestoreError', async () => {
+    (firestore.getDocs as any).mockRejectedValueOnce(new Error('nope'));
+    await deleteAsk('q1');
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      firebaseLib.OperationType.DELETE,
+      'asks/q1',
+    );
   });
 });
 

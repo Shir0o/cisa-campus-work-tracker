@@ -439,7 +439,10 @@ service cloud.firestore {
                         incoming().body is string && incoming().body.size() > 0 && incoming().body.size() <= 5000
                       )
                     );
-      allow delete: if isValidId(askId) && isApprovedUser() && (isManager() || existing().from == request.auth.uid);
+      // Delete a question (or an answer in the thread): a full-timer removes
+      // anyone's; the asker removes their own — every message carries their
+      // `owner`, so this covers the answers on it too. A fellow trainee cannot.
+      allow delete: if isValidId(askId) && isApprovedUser() && (isAdmin() || existing().owner == request.auth.uid);
     }
 
     // 9b. Prayer Requests — a Student or Community member asking the team to

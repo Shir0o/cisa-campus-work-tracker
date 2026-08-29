@@ -244,6 +244,48 @@ describe('Questions for the team page (#646)', () => {
     });
   });
 
+  describe('deleting a question', () => {
+    it('a full-timer deletes any question, behind an inline confirm', async () => {
+      const del = vi.spyOn(asksLib, 'deleteAsk').mockResolvedValue(undefined);
+      renderPage();
+
+      // q1 ("How do you approach people…") is on the default Waiting view.
+      fireEvent.click(screen.getByRole('button', { name: 'Delete this question' }));
+      // Confirming is a step, not a click-through — nothing deleted yet.
+      expect(screen.getByText(/delete this question\?/i)).toBeInTheDocument();
+      expect(del).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete question' }));
+      await waitFor(() => expect(del).toHaveBeenCalledWith('q1'));
+      expect(await screen.findByText('Question deleted.')).toBeInTheDocument();
+    });
+
+    it('"Keep it" backs out without deleting', () => {
+      const del = vi.spyOn(asksLib, 'deleteAsk').mockResolvedValue(undefined);
+      renderPage();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete this question' }));
+      fireEvent.click(screen.getByRole('button', { name: /keep it/i }));
+
+      expect(screen.queryByText(/delete this question\?/i)).not.toBeInTheDocument();
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it('a trainee gets the control on their own question only', () => {
+      mockAuth = { user: { uid: 't1', displayName: 'Zion Park' }, role: 'manager', impersonateTarget: null };
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS);
+        return () => {};
+      });
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^All/ }));
+
+      // Their own question (q1) — deletable. Ana's (q2) — not.
+      const controls = screen.getAllByRole('button', { name: 'Delete this question' });
+      expect(controls).toHaveLength(1);
+    });
+  });
+
   it('binds writes to the real account during role simulation (#603)', async () => {
     mockAuth = {
       user: { uid: 'ft1', displayName: 'Mei Lin' },
