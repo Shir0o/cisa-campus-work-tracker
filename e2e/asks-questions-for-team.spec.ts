@@ -24,6 +24,16 @@ async function openAskPanel(page: Page) {
 const OWN_PLACEHOLDER = /What do you want to ask/;
 const FOR_PLACEHOLDER = /In their words, as close as you can remember/;
 
+/** Post an own question and WAIT for the write to commit: the ask panel only
+ *  closes after the Firestore write resolves, so navigating away before that
+ *  would cancel the in-flight write (page unload loses it). */
+async function postOwnQuestion(page: Page, text: string) {
+  const composer = page.getByPlaceholder(OWN_PLACEHOLDER);
+  await composer.fill(text);
+  await composer.press('Meta+Enter');
+  await expect(composer).toBeHidden({ timeout: 10_000 });
+}
+
 test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
   test.describe.configure({ mode: 'serial' });
 
@@ -43,9 +53,7 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     await openQuestions(page);
     await openAskPanel(page);
 
-    const composer = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await composer.fill('E2E Simulated Trainee Question: How do we coordinate campus outreach?');
-    await composer.press('Meta+Enter');
+    await postOwnQuestion(page, 'E2E Simulated Trainee Question: How do we coordinate campus outreach?');
 
     // Writes stay bound to the real authenticated account (#603).
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
@@ -60,12 +68,11 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     await expect(composer).toBeVisible();
 
     const testQuestion = `E2E Trainee Question ${Date.now()}: Where can we get extra flyers?`;
-    await composer.fill(testQuestion);
-    await composer.press('Meta+Enter');
+    await postOwnQuestion(page, testQuestion);
 
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
     await page.getByRole('button', { name: /^All/ }).click();
-    await expect(page.getByText(testQuestion)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('article').filter({ hasText: testQuestion })).toBeVisible({ timeout: 15_000 });
   });
 
   test('Story 5, 6 & 7: Full-timer sees every open question, answers on it, and records an in-person question', async ({ page }) => {
@@ -98,9 +105,12 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
 
     // And their own question.
     await openAskPanel(page);
-    const ownInput = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await ownInput.fill('E2E Full-timer staff question: When is staff prayer this week?');
-    await ownInput.press('Meta+Enter');
+    // The panel keeps its last mode ("Someone asked me" above); switch back to
+    // the own-question composer if it is not showing.
+    if (!(await page.getByPlaceholder(OWN_PLACEHOLDER).isVisible())) {
+      await page.getByRole('button', { name: 'My own question' }).click();
+    }
+    await postOwnQuestion(page, 'E2E Full-timer staff question: When is staff prayer this week?');
     await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
   });
 
@@ -122,10 +132,7 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     await openAskPanel(page);
 
     const ftQuestion = `E2E FT Question ${Date.now()}: Where is the team retreat?`;
-    const ownInput = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await ownInput.fill(ftQuestion);
-    await ownInput.press('Meta+Enter');
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
+    await postOwnQuestion(page, ftQuestion);
 
     await signInAs(page, 'trainee');
     await page.goto('/');
@@ -142,10 +149,7 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     await openAskPanel(page);
 
     const t2Question = `E2E Trainee2 Question ${Date.now()}: How do we handle late students?`;
-    const t2Input = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await t2Input.fill(t2Question);
-    await t2Input.press('Meta+Enter');
-    await expect(page.locator('body')).not.toContainText('Missing or insufficient permissions');
+    await postOwnQuestion(page, t2Question);
 
     // The Full-timer answers ON the question — no thread pane, no ambient composer.
     await signInAs(page, 'fulltimer');
@@ -155,6 +159,9 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     const answerBox = card.getByRole('textbox');
     await answerBox.fill('Say hi when they arrive and catch them after.');
     await card.getByRole('button', { name: 'Send answer' }).click();
+    // The "Answered {first}." toast fires only after the Firestore write
+    // resolves — navigate only then, or the answer is lost with the page.
+    await expect(page.getByText('Answered Caleb.')).toBeVisible({ timeout: 10_000 });
 
     await signInAs(page, 'trainee');
     await page.goto('/');
@@ -169,10 +176,7 @@ test.describe('Questions for the Team E2E - User Stories (#603, #645)', () => {
     await openAskPanel(page);
 
     const ftQuestion = `E2E Readonly Question ${Date.now()}: Any update on the flyer order?`;
-    const ownInput = page.getByPlaceholder(OWN_PLACEHOLDER);
-    await ownInput.fill(ftQuestion);
-    await ownInput.press('Meta+Enter');
-
+    await postOwnQuestion(page, ftQuestion);
     // The trainee reads it, and the card offers no answer control at all.
     await signInAs(page, 'trainee');
     await openQuestions(page);
