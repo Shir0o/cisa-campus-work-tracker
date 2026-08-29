@@ -45,7 +45,7 @@ vi.mock('../lib/asks', async (importOriginal) => {
       cb([]);
       return () => {};
     }),
-    subscribeMyAsks: vi.fn((_uid: any, cb: any) => {
+    subscribeStaffAsks: vi.fn((_uid: any, cb: any) => {
       cb([]);
       return () => {};
     }),

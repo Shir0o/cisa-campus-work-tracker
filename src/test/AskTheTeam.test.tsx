@@ -8,37 +8,70 @@ vi.mock("../components/AuthProvider", () => ({
   useAuth: vi.fn(),
 }));
 
+vi.mock("../lib/firebase", () => ({
+  db: { _type: "firestore" },
+}));
+
+vi.mock("firebase/firestore", () => ({
+  collection: vi.fn((_db, name) => ({ path: name })),
+  query: vi.fn((c) => c),
+  onSnapshot: vi.fn((_q: unknown, cb: (snap: { docs: unknown[] }) => void) => {
+    cb({
+      docs: [
+        {
+          id: "ft1",
+          data: () => ({ role: "admin", approved: true, email: "mei@example.com", displayName: "Mei Lin" }),
+        },
+      ],
+    });
+    return () => {};
+  }),
+}));
+
+const mockMessages = [
+  {
+    id: "q1",
+    parentId: null,
+    owner: "t1",
+    from: "t1",
+    fromName: "Zion Park",
+    kind: "question",
+    body: "How do you start a conversation at the club table?",
+    at: "2026-08-01T10:00:00.000Z",
+    reactions: [],
+  },
+  {
+    id: "q2",
+    parentId: null,
+    owner: "t1",
+    from: "t1",
+    fromName: "Zion Park",
+    takenBy: "ft1",
+    takenByName: "Mei Lin",
+    kind: "question",
+    body: "Question recorded in person",
+    at: "2026-08-02T10:00:00.000Z",
+    reactions: [],
+  },
+  {
+    id: "q3",
+    parentId: null,
+    owner: "ft1",
+    from: "ft1",
+    fromName: "Mei Lin",
+    kind: "question",
+    body: "What do we do about the club table flyers?",
+    at: "2026-08-03T10:00:00.000Z",
+    reactions: [],
+  },
+];
+
 vi.mock("../lib/asks", () => ({
-  subscribeMyAsks: (_uid: string, cb: (m: unknown[]) => void) => {
-    cb([
-      {
-        id: "q1",
-        parentId: null,
-        owner: "t1",
-        from: "t1",
-        fromName: "Zion Park",
-        kind: "question",
-        body: "How do you start a conversation at the club table?",
-        at: "2026-08-01T10:00:00.000Z",
-        reactions: [],
-      },
-      {
-        id: "q2",
-        parentId: null,
-        owner: "t1",
-        from: "t1",
-        fromName: "Zion Park",
-        takenBy: "ft1",
-        takenByName: "Mei Lin",
-        kind: "question",
-        body: "Question recorded in person",
-        at: "2026-08-02T10:00:00.000Z",
-        reactions: [],
-      },
-    ]);
+  subscribeStaffAsks: (_uid: string, cb: (m: unknown[]) => void) => {
+    cb(mockMessages);
     return () => {};
   },
-  askQuestionsBy: (all: any[]) => all.filter((m) => !m.parentId),
+  askQuestions: (all: any[]) => all.filter((m: any) => !m.parentId),
   askRepliesOf: () => [],
   askWaitedDays: () => 0,
   askOrigin: (m: any, viewerId?: string | null) => {
@@ -71,9 +104,10 @@ describe("AskTheTeam component", () => {
     });
   });
 
-  it("renders questions with correct origin text for asker", () => {
+  it("renders the whole team's questions with the asker's name and correct origin text", () => {
     render(<AskTheTeam meUid="t1" />);
 
+    // my own direct question — my origin voice
     expect(
       screen.getByText("How do you start a conversation at the club table?"),
     ).toBeInTheDocument();
@@ -81,13 +115,24 @@ describe("AskTheTeam component", () => {
       screen.getByText("You asked this here, in your own words"),
     ).toBeInTheDocument();
 
+    // my own in-person question, written down for me
     expect(screen.getByText("Question recorded in person")).toBeInTheDocument();
     expect(
       screen.getByText("Asked in person · Mei wrote it down for you"),
     ).toBeInTheDocument();
+
+    // a full-timer's question is visible team-wide, with the asker's name
+    expect(
+      screen.getByText("What do we do about the club table flyers?"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Mei Lin")).toBeInTheDocument();
+    expect(screen.getByText("Full-timer")).toBeInTheDocument();
+    expect(
+      screen.getByText("Asked here, in their own words"),
+    ).toBeInTheDocument();
   });
 
-  it("allows submitting a new question", () => {
+  it("allows submitting a new question and confirms it reached the team", () => {
     render(<AskTheTeam meUid="t1" />);
 
     const textarea = screen.getByPlaceholderText(
@@ -103,5 +148,8 @@ describe("AskTheTeam component", () => {
       fromName: "Zion Park",
       body: "New question here",
     });
+    expect(
+      screen.getByText("Asked. The team can see it."),
+    ).toBeInTheDocument();
   });
 });

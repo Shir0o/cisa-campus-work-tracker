@@ -13,10 +13,10 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { cn, getUserInitials, relTime, firstName } from '../../lib/utils';
+import { roleLabel } from '../../lib/permissions';
 import {
   AskMessage,
   subscribeAsks,
-  subscribeMyAsks,
   askVisibleFor,
   askUnreadFor,
   askTakenBy,
@@ -54,7 +54,7 @@ export function AskChannelRow({
     if (externalAsks !== undefined) return;
     const unsub = subscribeAsks(setInternalAsks, undefined, {
       uid: me,
-      isAdmin: isFullTimer,
+      isStaff: true,
     });
     return unsub;
   }, [me, isFullTimer, externalAsks]);
@@ -64,13 +64,14 @@ export function AskChannelRow({
     return !!localStorage.getItem(`read_${key}`);
   };
 
-  const qs = askVisibleFor(allAsks, me, isFullTimer);
+  // The channel is a staff-only surface — staff read the whole team's feed.
+  const qs = askVisibleFor(allAsks, me, true);
   const unread = askUnreadFor(allAsks, me, isFullTimer, isRead);
   const waiting = qs.filter((m) => !askAnswered(allAsks, m)).length;
 
   const sub = isFullTimer
     ? (waiting ? `${waiting} waiting on an answer` : "Everyone's questions, answered")
-    : (qs.length ? "Your questions to the team" : "Ask the team anything");
+    : (qs.length ? "The team's questions" : "Ask the team anything");
 
   return (
     <div
@@ -102,13 +103,16 @@ interface AskMsgProps {
   me: string;
   onOpen: () => void;
   open: boolean;
+  /** Role label for the asker (e.g. 'Trainee', 'Full-timer'); omitted when unknown. */
+  roleOf?: (uid: string) => string | undefined;
 }
 
-export function AskMsg({ m, allAsks, me, onOpen, open }: AskMsgProps) {
+export function AskMsg({ m, allAsks, me, onOpen, open, roleOf }: AskMsgProps) {
   const org = askOrigin(m, me);
   const replies = askRepliesOf(allAsks, m.id);
   const answered = askAnswered(allAsks, m);
   const last = replies[replies.length - 1];
+  const roleLabel = roleOf ? roleOf(m.from) : undefined;
 
   const uniqueReplierNames = Array.from(new Set(replies.map((r) => r.fromName || r.from))).slice(0, 3);
 
@@ -119,7 +123,8 @@ export function AskMsg({ m, allAsks, me, onOpen, open }: AskMsgProps) {
       </div>
       <div className="msgb-col">
         <div className="msgb-name">
-          {m.fromName || 'Someone'} <span className="aska-role">Trainee</span>
+          {m.fromName || 'Someone'}
+          {roleLabel && <span className="aska-role">{roleLabel}</span>}
         </div>
         <div className="msgb-row">
           <div className="msgb-bubble">{m.body}</div>
@@ -330,6 +335,7 @@ export function AskChannel({
   const [openId, setOpenId] = useState<string | null>(null);
   const [mode, setMode] = useState<'for' | 'own'>(isFullTimer ? 'for' : 'own');
   const [trainees, setTrainees] = useState<AppUser[]>([]);
+  const [staffByUid, setStaffByUid] = useState<Record<string, AppUser>>({});
   const [forWho, setForWho] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const streamRef = useRef<HTMLDivElement>(null);
@@ -338,32 +344,35 @@ export function AskChannel({
   useEffect(() => {
     const unsub = subscribeAsks(setAsks, undefined, {
       uid: me,
-      isAdmin: isFullTimer,
+      isStaff: true,
     });
     return unsub;
   }, [me, isFullTimer]);
 
-  // Subscribe to trainees / operators roster for "Who asked it?"
+  // Subscribe to the staff roster — role badges on every question (#645) and
+  // the "Who asked it?" picker for full-timers (#563).
   useEffect(() => {
-    if (!isFullTimer) return;
     const q = query(collection(db, 'users'));
     const unsub = onSnapshot(q, (snap) => {
       const docs = snap?.docs || [];
       const all = docs.map((d) => ({ uid: d.id, ...d.data() } as AppUser));
-      const filtered = all.filter((u) => {
-        const isTraineeRole = u.role === 'manager' || u.role === 'operator';
+      const staff = all.filter((u) => {
+        const isStaffRole = u.role === 'admin' || u.role === 'manager' || u.role === 'operator';
         const notBot = !(u.email || '').startsWith('cisa-');
-        return isTraineeRole && notBot && u.approved;
+        return isStaffRole && notBot && u.approved;
       });
-      setTrainees(filtered);
-      if (filtered.length > 0 && !forWho) {
-        setForWho(filtered[0].uid);
+      setStaffByUid(Object.fromEntries(staff.map((u) => [u.uid, u])));
+      const pickerTrainees = staff.filter((u) => u.role === 'manager' || u.role === 'operator');
+      setTrainees(pickerTrainees);
+      if (isFullTimer && pickerTrainees.length > 0 && !forWho) {
+        setForWho(pickerTrainees[0].uid);
       }
     });
     return unsub;
   }, [isFullTimer, forWho]);
 
-  const qs = askVisibleFor(asks, me, isFullTimer).slice().sort(
+  // The channel is a staff-only surface — staff read the whole team's feed.
+  const qs = askVisibleFor(asks, me, true).slice().sort(
     (a, b) => new Date(a.at).getTime() - new Date(b.at).getTime()
   );
 
@@ -440,6 +449,10 @@ export function AskChannel({
               allAsks={asks}
               me={me}
               open={openId === m.id}
+              roleOf={(uid) => {
+                const u = staffByUid[uid];
+                return u && (u.role === 'admin' || u.role === 'manager') ? roleLabel(u.role) : undefined;
+              }}
               onOpen={() => {
                 setOpenId(m.id);
                 localStorage.setItem(`read_ask:${m.id}`, Date.now().toString());

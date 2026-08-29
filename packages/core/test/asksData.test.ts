@@ -12,7 +12,7 @@ const firestoreMock = vi.hoisted(() => ({
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { subscribeAsks, subscribeMyAsks } from '../src/data/asks';
+import { subscribeAsks, subscribeStaffAsks } from '../src/data/asks';
 
 const COLLECTION = { __collection: 'asks' };
 const WHERE_RESULT = { __where: true };
@@ -42,9 +42,9 @@ describe('subscribeAsks (packages/core)', () => {
     expect(typeof unsub).toBe('function');
   });
 
-  it('subscribes to entire asks collection when isAdmin is explicitly true', () => {
+  it('subscribes to entire asks collection when isStaff is explicitly true', () => {
     const cb = vi.fn();
-    subscribeAsks({} as never, cb, undefined, { uid: 'ft1', isAdmin: true });
+    subscribeAsks({} as never, cb, undefined, { uid: 'ft1', isStaff: true });
     expect(firestoreMock.onSnapshot).toHaveBeenCalledWith(
       COLLECTION,
       expect.any(Function),
@@ -52,9 +52,20 @@ describe('subscribeAsks (packages/core)', () => {
     );
   });
 
-  it('scopes query with where("owner", "==", uid) when isAdmin is false', () => {
+  it('subscribes to the whole team\'s asks for a trainee (staff) — no owner filter', () => {
     const cb = vi.fn();
-    subscribeAsks({} as never, cb, undefined, { uid: 'trainee1', isAdmin: false });
+    subscribeAsks({} as never, cb, undefined, { uid: 'trainee1', isStaff: true });
+    expect(firestoreMock.where).not.toHaveBeenCalled();
+    expect(firestoreMock.onSnapshot).toHaveBeenCalledWith(
+      COLLECTION,
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it('scopes query with where("owner", "==", uid) when isStaff is false', () => {
+    const cb = vi.fn();
+    subscribeAsks({} as never, cb, undefined, { uid: 'trainee1', isStaff: false });
     expect(firestoreMock.where).toHaveBeenCalledWith('owner', '==', 'trainee1');
     expect(firestoreMock.query).toHaveBeenCalledWith(COLLECTION, WHERE_RESULT);
     expect(firestoreMock.onSnapshot).toHaveBeenCalledWith(
@@ -66,14 +77,14 @@ describe('subscribeAsks (packages/core)', () => {
 
   it('scopes query when options are passed as the 3rd argument without onError', () => {
     const cb = vi.fn();
-    subscribeAsks({} as never, cb, { uid: 'trainee1', isAdmin: false });
+    subscribeAsks({} as never, cb, { uid: 'trainee1', isStaff: false });
     expect(firestoreMock.where).toHaveBeenCalledWith('owner', '==', 'trainee1');
     expect(firestoreMock.query).toHaveBeenCalledWith(COLLECTION, WHERE_RESULT);
   });
 
-  it('safely yields empty list and no-ops when isAdmin is false and uid is missing', () => {
+  it('safely yields empty list and no-ops when isStaff is false and uid is missing', () => {
     const cb = vi.fn();
-    const unsub = subscribeAsks({} as never, cb, { isAdmin: false });
+    const unsub = subscribeAsks({} as never, cb, { isStaff: false });
     expect(firestoreMock.onSnapshot).not.toHaveBeenCalled();
     expect(cb).toHaveBeenCalledWith([]);
     expect(typeof unsub).toBe('function');
@@ -87,19 +98,18 @@ describe('subscribeAsks (packages/core)', () => {
       return () => {};
     });
 
-    subscribeAsks({} as never, vi.fn(), errCb, { uid: 'trainee1', isAdmin: false });
+    subscribeAsks({} as never, vi.fn(), errCb, { uid: 'trainee1', isStaff: false });
     expect(errCb).toHaveBeenCalledWith(testErr);
   });
 });
 
-describe('subscribeMyAsks (packages/core)', () => {
-  it('delegates to scoped query for the given uid', () => {
+describe('subscribeStaffAsks (packages/core)', () => {
+  it('delegates to a staff-wide query for the given uid — no owner filter', () => {
     const cb = vi.fn();
-    subscribeMyAsks({} as never, 'trainee1', cb);
-    expect(firestoreMock.where).toHaveBeenCalledWith('owner', '==', 'trainee1');
-    expect(firestoreMock.query).toHaveBeenCalledWith(COLLECTION, WHERE_RESULT);
+    subscribeStaffAsks({} as never, 'trainee1', cb);
+    expect(firestoreMock.where).not.toHaveBeenCalled();
     expect(firestoreMock.onSnapshot).toHaveBeenCalledWith(
-      QUERY_RESULT,
+      COLLECTION,
       expect.any(Function),
       expect.any(Function),
     );

@@ -1,12 +1,16 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { HelpCircle, Send, MessageSquare, Pencil } from "lucide-react";
+import { collection, query, onSnapshot } from "firebase/firestore";
 import { cn, relTime } from "../../lib/utils";
+import { db } from "../../lib/firebase";
+import { roleLabel } from "../../lib/permissions";
 import { useAuth } from "../AuthProvider";
 import { useI18n } from "../LanguageProvider";
 import { SectionHead } from "./primitives";
+import type { AppUser } from "../../types";
 import {
-  subscribeMyAsks,
-  askQuestionsBy,
+  subscribeStaffAsks,
+  askQuestions,
   askRepliesOf,
   askWaitedDays,
   askOrigin,
@@ -14,11 +18,12 @@ import {
   type AskMessage,
 } from "../../lib/asks";
 
-// "Ask the team" (#545), trainee side — the questions that don't belong on
-// anyone's page. Asking and reading are ONE list: the composer at the top,
-// your questions newest-first under it, each answer inline. Nothing to
-// resolve, nothing to mark — a question with a reply is just a question with
-// a reply. Every full-timer sees every question; any of them can answer.
+// "Ask the team" (#545, #645), trainee side — the questions that don't belong
+// on anyone's page. Asking and reading are ONE list: the composer at the top,
+// the whole team's questions newest-first under it (staff read every question),
+// each answer inline. Nothing to resolve, nothing to mark — a question with a
+// reply is just a question with a reply. Every staff member sees every
+// question; any full-timer can answer.
 
 function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): string {
   const d = askWaitedDays(m);
@@ -29,9 +34,20 @@ function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): strin
       : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
 }
 
-function AskRow({ m, replies, viewerUid }: { m: AskMessage; replies: AskMessage[]; viewerUid?: string }) {
+function AskRow({
+  m,
+  replies,
+  viewerUid,
+  roleOf,
+}: {
+  m: AskMessage;
+  replies: AskMessage[];
+  viewerUid?: string;
+  roleOf?: (uid: string) => string | undefined;
+}) {
   const { t } = useI18n();
   const org = askOrigin(m, viewerUid);
+  const role = roleOf ? roleOf(m.from) : undefined;
   return (
     <div className="bg-surface rounded-3xl border border-outline-variant/60 p-5">
       <div className="flex gap-3">
@@ -41,7 +57,11 @@ function AskRow({ m, replies, viewerUid }: { m: AskMessage; replies: AskMessage[
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line">{m.body}</p>
+              <p className="text-xs font-medium text-on-surface-variant">
+                {m.fromName || "Someone"}
+                {role && <span className="ml-1.5 text-[11px] text-on-surface-variant/80">{role}</span>}
+              </p>
+              <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line mt-0.5">{m.body}</p>
               <div
                 className={cn(
                   "flex items-center gap-1.5 mt-1.5 text-xs",
@@ -96,19 +116,40 @@ export default function AskTheTeam({
   const uid = meUid || user?.uid || "";
   const [asks, setAsks] = useState<AskMessage[]>([]);
   const [body, setBody] = useState("");
+  const [toast, setToast] = useState<string | null>(null);
+  const [staffByUid, setStaffByUid] = useState<Record<string, AppUser>>({});
 
   useEffect(() => {
     if (!uid) return;
-    return subscribeMyAsks(uid, setAsks);
+    return subscribeStaffAsks(uid, setAsks);
   }, [uid]);
 
-  const mine = useMemo(() => askQuestionsBy(asks, uid), [asks, uid]);
+  // Staff roster for asker role badges — the team's questions are team-visible,
+  // and who asked matters (full-timer vs trainee).
+  useEffect(() => {
+    const q = query(collection(db, "users"));
+    const unsub = onSnapshot(q, (snap) => {
+      const staff = (snap?.docs || [])
+        .map((d) => ({ uid: d.id, ...d.data() } as AppUser))
+        .filter((u) => {
+          const isStaffRole = u.role === "admin" || u.role === "manager";
+          const notBot = !(u.email || "").startsWith("cisa-");
+          return isStaffRole && notBot && u.approved;
+        });
+      setStaffByUid(Object.fromEntries(staff.map((u) => [u.uid, u])));
+    });
+    return unsub;
+  }, []);
+
+  const questions = useMemo(() => askQuestions(asks), [asks]);
 
   const send = () => {
     const b = body.trim();
     if (!b) return;
     void addAsk({ from: uid, fromName: user?.displayName || "A trainee", body: b });
     setBody("");
+    setToast(t("ask.toast_asked", "Asked. The team can see it."));
+    window.setTimeout(() => setToast(null), 2600);
   };
 
   return (
@@ -149,16 +190,34 @@ export default function AskTheTeam({
           </div>
         </div>
 
-        {mine.length === 0 ? (
+        {questions.length === 0 ? (
           <p className="text-sm text-on-surface-variant py-2">
             {t("ask.empty", "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.")}
           </p>
         ) : (
-          mine.map((m) => (
-            <AskRow key={m.id} m={m} replies={askRepliesOf(asks, m.id)} viewerUid={uid} />
+          questions.map((m) => (
+            <AskRow
+              key={m.id}
+              m={m}
+              replies={askRepliesOf(asks, m.id)}
+              viewerUid={uid}
+              roleOf={(askerUid) => {
+                const u = staffByUid[askerUid];
+                return u ? roleLabel(u.role) : undefined;
+              }}
+            />
           ))
         )}
       </div>
+      {toast && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 rounded-full bg-surface border border-outline-variant px-4 py-2 text-sm text-on-surface shadow-lg"
+        >
+          {toast}
+        </div>
+      )}
     </section>
   );
 }

@@ -29,13 +29,14 @@ export function subscribeAsks(
   return core.subscribeAsks(db, cb, onErrorOrOptions as never, options);
 }
 
-/** Live subscription to my own ask-the-team messages (a trainee). */
-export function subscribeMyAsks(
+/** Live subscription to the team-wide ask feed for a staff member (a
+ *  trainee's view of the whole team's questions + answers). */
+export function subscribeStaffAsks(
   uid: string,
   cb: (messages: AskMessage[]) => void,
   onError?: (e: unknown) => void,
 ): () => void {
-  return core.subscribeMyAsks(db, uid, cb, onError);
+  return core.subscribeStaffAsks(db, uid, cb, onError);
 }
 
 /** Ask a question. */

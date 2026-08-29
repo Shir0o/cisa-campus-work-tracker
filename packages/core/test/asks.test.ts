@@ -159,12 +159,15 @@ describe('askVisibleFor', () => {
   const m3 = msg({ id: 'q3', from: 't1', at: hoursAgo(1) });
   const all = [m1, m2, m3];
 
-  it('returns all top-level questions for full-timers, newest first', () => {
+  it('returns all top-level questions for staff (full-timer or trainee), newest first', () => {
     const res = askVisibleFor(all, 'ft1', true);
     expect(res.map((x) => x.id)).toEqual(['q3', 'q2', 'q1']);
+    // a trainee is staff too — the whole team's questions are visible
+    const trainee = askVisibleFor(all, 't1', true);
+    expect(trainee.map((x) => x.id)).toEqual(['q3', 'q2', 'q1']);
   });
 
-  it('returns only own questions for trainees, newest first', () => {
+  it('returns only own questions for non-staff viewers', () => {
     const res = askVisibleFor(all, 't1', false);
     expect(res.map((x) => x.id)).toEqual(['q3', 'q1']);
   });
