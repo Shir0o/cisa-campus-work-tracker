@@ -30,7 +30,7 @@ export function credentials(): Record<Role, CredentialInfo> {
   }
 }
 
-export const ROLES: Role[] = ['fulltimer', 'trainee', 'student', 'community'];
+export const ROLES: Role[] = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'];
 
 /**
  * Sign in as a real test user via the window.__e2eSignIn helper (email/password),

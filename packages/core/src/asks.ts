@@ -95,14 +95,14 @@ export function askStacksFor(messages: AskMessage[], uid: string): AskStack[] {
 export function askTakenBy(m: AskMessage): { uid: string; name: string } | null {
   return m.takenBy ? { uid: m.takenBy, name: m.takenByName || m.takenBy } : null;
 }
-
-/** A full-timer reads every question; anyone else reads their own (#563). */
+/** Staff (full-timer admin or trainee manager) read every question; other
+ *  roles read only their own (#545, team-wide archive). */
 export function askVisibleFor(
   messages: AskMessage[],
   uid: string,
-  isFullTimer: boolean,
+  isStaff: boolean,
 ): AskMessage[] {
-  return isFullTimer ? askQuestions(messages) : askQuestionsBy(messages, uid);
+  return isStaff ? askQuestions(messages) : askQuestionsBy(messages, uid);
 }
 
 /** Unread question count for the Messages channel header row (#563). */
@@ -112,7 +112,9 @@ export function askUnreadFor(
   isFullTimer: boolean,
   isRead: (key: string) => boolean,
 ): number {
-  const mine = askVisibleFor(messages, uid, isFullTimer);
+  // Unread semantics differ from visibility: a trainee's unread count is
+  // replies on their OWN questions, never other people's threads.
+  const mine = isFullTimer ? askQuestions(messages) : askQuestionsBy(messages, uid);
   if (isFullTimer) {
     return mine.filter(
       (m) => m.from !== uid && !askAnswered(messages, m) && !isRead("ask:" + m.id),

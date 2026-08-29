@@ -121,7 +121,7 @@ describe('AskChannel Components (#563)', () => {
         />
       );
 
-      expect(screen.getByText('Your questions to the team')).toBeInTheDocument();
+      expect(screen.getByText("The team's questions")).toBeInTheDocument();
     });
   });
 
@@ -134,11 +134,43 @@ describe('AskChannel Components (#563)', () => {
           me="ft2"
           open={false}
           onOpen={vi.fn()}
+          roleOf={(uid) => (uid === 't1' ? 'Trainee' : uid === 'ft1' ? 'Full-timer' : undefined)}
         />
       );
 
       expect(screen.getByText('Zion Park')).toBeInTheDocument();
       expect(screen.getByText('Trainee')).toBeInTheDocument();
+      expect(screen.queryByText('Full-timer')).not.toBeInTheDocument();
+    });
+
+    it('renders a Full-timer badge for a full-timer\'s own question', () => {
+      render(
+        <AskMsg
+          m={{ ...mockQuestions[1], id: 'q9', from: 'ft1', fromName: 'Mei Lin', owner: 'ft1', body: 'Anyone need new name tags?' }}
+          allAsks={mockQuestions}
+          me="t1"
+          open={false}
+          onOpen={vi.fn()}
+          roleOf={(uid) => (uid === 'ft1' ? 'Full-timer' : undefined)}
+        />
+      );
+
+      expect(screen.getByText('Mei Lin')).toBeInTheDocument();
+      expect(screen.getByText('Full-timer')).toBeInTheDocument();
+      expect(screen.getByText('Anyone need new name tags?')).toBeInTheDocument();
+    });
+
+    it('renders the question body, origin, and answer count', () => {
+      render(
+        <AskMsg
+          m={mockQuestions[0]}
+          allAsks={mockQuestions}
+          me="ft2"
+          open={false}
+          onOpen={vi.fn()}
+        />
+      );
+
       expect(screen.getByText('How do you approach people at the club table?')).toBeInTheDocument();
       expect(screen.getByText(/Asked in person · written down by Mei/)).toBeInTheDocument();
       expect(screen.getByText('1 answer')).toBeInTheDocument();
@@ -322,6 +354,10 @@ describe('AskChannel Components (#563)', () => {
       );
 
       expect(screen.getByText('Questions for the team')).toBeInTheDocument();
+      // the whole team's questions are visible to trainees (#645)
+      expect(
+        screen.getByText('What should I do during campus quiet hour?'),
+      ).toBeInTheDocument();
       // Click back button
       const buttons = screen.getAllByRole('button');
       const backBtn = buttons.find((b) => b.className.includes('icon-btn'));
@@ -353,9 +389,13 @@ describe('AskChannel Components (#563)', () => {
       const visibleFt = asksLib.askVisibleFor(mockQuestions, 'ft1', true);
       expect(visibleFt.length).toBe(2);
 
-      const visibleTrainee = asksLib.askVisibleFor(mockQuestions, 't1', false);
-      expect(visibleTrainee.length).toBe(1);
-      expect(visibleTrainee[0].id).toBe('q1');
+      // staff (trainees included) read every question team-wide
+      const visibleTrainee = asksLib.askVisibleFor(mockQuestions, 't1', true);
+      expect(visibleTrainee.length).toBe(2);
+      // non-staff viewers still see only their own
+      const visibleNonStaff = asksLib.askVisibleFor(mockQuestions, 't1', false);
+      expect(visibleNonStaff.length).toBe(1);
+      expect(visibleNonStaff[0].id).toBe('q1');
 
       const unreadFt = asksLib.askUnreadFor(mockQuestions, 'ft1', true, () => false);
       expect(unreadFt).toBe(1); // q2 is unanswered

@@ -418,8 +418,10 @@ service cloud.firestore {
                data.reactions is list;
       }
 
-      // A trainee sees their own question + answers; full-timers (admin) see all.
-      allow get, list: if isApprovedUser() && (resource.data.owner == request.auth.uid || isAdmin());
+      // The whole team's questions are team-visible: every staff member
+      // (full-timer admin + trainee manager) reads every question and answer;
+      // other roles only read their own (which they can never create).
+      allow get, list: if isApprovedUser() && (resource.data.owner == request.auth.uid || isManager());
       allow create: if isValidId(askId) && isApprovedUser() && isManager() &&
                       isValidAsk(incoming()) &&
                       (

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   subscribeAsks,
-  subscribeMyAsks,
+  subscribeStaffAsks,
   askQuestions,
   askQuestionsBy,
   askRepliesOf,
@@ -122,7 +122,7 @@ describe('src/lib/asks.ts full coverage', () => {
     expect(received[0][0].parentId).toBeNull();
   });
 
-  it('subscribes to my asks', () => {
+  it('subscribes to the staff feed — no owner filter', () => {
     let callback: any;
     (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
       callback = cb;
@@ -130,23 +130,36 @@ describe('src/lib/asks.ts full coverage', () => {
     });
 
     const received: AskMessage[][] = [];
-    subscribeMyAsks('t1', (msgs) => received.push(msgs));
+    subscribeStaffAsks('t1', (msgs) => received.push(msgs));
 
     callback({
       docs: [],
     });
 
+    expect(firestore.where).not.toHaveBeenCalled();
     expect(received.length).toBe(1);
   });
 
-  it('subscribes with options scoping to owner when non-admin', () => {
+  it('subscribes to the whole team\'s asks for a trainee (staff) — no owner filter', () => {
     (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
       cb({ docs: [] });
       return () => {};
     });
 
     const received: AskMessage[][] = [];
-    subscribeAsks((msgs) => received.push(msgs), undefined, { uid: 't1', isAdmin: false });
+    subscribeAsks((msgs) => received.push(msgs), undefined, { uid: 't1', isStaff: true });
+    expect(firestore.where).not.toHaveBeenCalled();
+    expect(received.length).toBe(1);
+  });
+
+  it('subscribes with options scoping to owner when non-staff', () => {
+    (firestore.onSnapshot as any).mockImplementation((_col: any, cb: any) => {
+      cb({ docs: [] });
+      return () => {};
+    });
+
+    const received: AskMessage[][] = [];
+    subscribeAsks((msgs) => received.push(msgs), undefined, { uid: 't1', isStaff: false });
     expect(firestore.where).toHaveBeenCalledWith('owner', '==', 't1');
     expect(received.length).toBe(1);
   });
@@ -158,19 +171,19 @@ describe('src/lib/asks.ts full coverage', () => {
     });
 
     const received: AskMessage[][] = [];
-    subscribeAsks((msgs) => received.push(msgs), { uid: 't1', isAdmin: false });
+    subscribeAsks((msgs) => received.push(msgs), { uid: 't1', isStaff: false });
     expect(firestore.where).toHaveBeenCalledWith('owner', '==', 't1');
     expect(received.length).toBe(1);
   });
 
-  it('safely handles non-admin subscription without uid by yielding empty array', () => {
+  it('safely handles non-staff subscription without uid by yielding empty array', () => {
     const received: AskMessage[][] = [];
-    const unsub = subscribeAsks((msgs) => received.push(msgs), { isAdmin: false });
+    const unsub = subscribeAsks((msgs) => received.push(msgs), { isStaff: false });
     expect(received).toEqual([[]]);
     expect(typeof unsub).toBe('function');
   });
 
-  it('handles error in subscribeAsks and subscribeMyAsks', () => {
+  it('handles error in subscribeAsks and subscribeStaffAsks', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     (firestore.onSnapshot as any).mockImplementation((_col: any, _cb: any, errCb: any) => {
       errCb(new Error('snapshot err'));
@@ -181,7 +194,7 @@ describe('src/lib/asks.ts full coverage', () => {
     subscribeAsks(vi.fn(), customErr);
     expect(customErr).toHaveBeenCalled();
 
-    subscribeMyAsks('t1', vi.fn(), customErr);
+    subscribeStaffAsks('t1', vi.fn(), customErr);
     expect(customErr).toHaveBeenCalledTimes(2);
 
     errorSpy.mockRestore();

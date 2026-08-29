@@ -214,7 +214,7 @@ export default function AskStack({
 
   useEffect(() => {
     if (!isFullTimer) return;
-    return subscribeAsks(setAsks, undefined, { uid, isAdmin: isFullTimer });
+    return subscribeAsks(setAsks, undefined, { uid, isStaff: true });
   }, [isFullTimer, uid]);
 
   const stacks = useMemo(

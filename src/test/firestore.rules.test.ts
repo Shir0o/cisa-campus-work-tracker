@@ -1340,32 +1340,37 @@ describeRules('Firestore Security Rules', () => {
       );
     });
 
-    it('ASK6: a trainee reads their own question and its answers, not others\'', async () => {
+    it('ASK6: a trainee reads their own question and every staff question, team-wide', async () => {
       await seedAskUsers();
       await seedAsk('ask7');
       await seedAsk('ask8', { from: 'ft2', owner: 'ft2' });
       const trainee = getFirestore({ uid: 'trainee1' });
       // own question (owner === me) — allowed
       await assertSucceeds(getDoc(doc(trainee, 'asks', 'ask7')));
-      // someone else's question — denied
-      await assertFails(getDoc(doc(trainee, 'asks', 'ask8')));
+      // a full-timer's own question — now visible to every staff member
+      await assertSucceeds(getDoc(doc(trainee, 'asks', 'ask8')));
       // a full-timer reads everything
       const ft = getFirestore({ uid: 'ft1' });
       await assertSucceeds(getDoc(doc(ft, 'asks', 'ask8')));
+      // a student (non-staff) still cannot read a staff question
+      const student = getFirestore({ uid: 'student1' });
+      await assertFails(getDoc(doc(student, 'asks', 'ask8')));
     });
 
-    it('ASK6b: non-admin list queries on asks require owner filter (#564)', async () => {
+    it('ASK6b: staff list all asks unfiltered; non-staff list queries stay owner-scoped', async () => {
       await seedAskUsers();
       await seedAsk('ask7', { owner: 'trainee1', from: 'trainee1' });
       await seedAsk('ask8', { owner: 'ft2', from: 'ft2' });
       const trainee = getFirestore({ uid: 'trainee1' });
-      // unfiltered query by non-admin is denied by firestore.rules
-      await assertFails(getDocs(query(collection(trainee, 'asks'))));
-      // scoped query by owner succeeds
-      await assertSucceeds(getDocs(query(collection(trainee, 'asks'), where('owner', '==', 'trainee1'))));
+      // unfiltered query by a trainee (manager) — allowed team-wide
+      await assertSucceeds(getDocs(query(collection(trainee, 'asks'))));
       // full-timer unfiltered query succeeds
       const ft = getFirestore({ uid: 'ft1' });
       await assertSucceeds(getDocs(query(collection(ft, 'asks'))));
+      // a student's unfiltered query is denied — they may only read their own (none)
+      const student = getFirestore({ uid: 'student1' });
+      await assertFails(getDocs(query(collection(student, 'asks'))));
+      await assertSucceeds(getDocs(query(collection(student, 'asks'), where('owner', '==', 'student1'))));
     });
 
     it('ASK7: a full-timer toggles a reaction on an answer', async () => {
