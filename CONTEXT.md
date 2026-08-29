@@ -29,3 +29,6 @@ _Avoid_: Test database, sandbox Firestore, staging db
 **Feedback Note ("Tell us how it's going")**:
 An in-app note (categorized as a thought, an idea, something off, or a request) submitted directly by mobile or web users to campus administrators.
 _Avoid_: Bug ticket, customer support issue, help desk ticket
+**Remove an interaction**:
+Permanently deleting a logged conversation from a contact's Conversations (web) / Story (mobile) log. Restricted to the person who logged it or a Trainee/Full-timer; reversible for a short window via Undo, after which the deletion and its History entry commit. Removing does not rewrite the contact's last-contacted stamps, and interaction-created to-dos keep their source link.
+_Avoid_: Archive entry, trash a conversation

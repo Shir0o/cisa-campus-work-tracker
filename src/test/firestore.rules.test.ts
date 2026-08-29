@@ -285,6 +285,70 @@ describeRules('Firestore Security Rules', () => {
         contactName: 'Test',
       }));
     });
+
+    it('lets the person who logged an interaction, or a manager, delete it', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'users', 'owner1'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'users', 'manager1'), { role: 'manager', approved: true });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(adb, 'contacts/contact1/interactions/int-owner'), {
+          userId: 'owner1',
+          userName: 'Owner',
+          content: 'Hello',
+          dateTime: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+        await setDoc(doc(adb, 'contacts/contact1/interactions/int-other'), {
+          userId: 'owner1',
+          userName: 'Owner',
+          content: 'Hello again',
+          dateTime: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      });
+
+      // The person who logged it may remove it…
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'owner1' }), 'contacts/contact1/interactions/int-owner')));
+      // …and so may a Trainee/Full-timer, even for someone else's entry.
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'manager1' }), 'contacts/contact1/interactions/int-other')));
+    });
+
+    it('denies deleting someone else\u2019s interaction to operators and viewers', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'users', 'owner1'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(adb, 'users', 'viewer1'), { role: 'viewer', approved: true });
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(adb, 'contacts/contact1/interactions/int1'), {
+          userId: 'owner1',
+          userName: 'Owner',
+          content: 'Hello',
+          dateTime: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      });
+
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'operator2' }), 'contacts/contact1/interactions/int1')));
+      await assertFails(deleteDoc(doc(getFirestore({ uid: 'viewer1' }), 'contacts/contact1/interactions/int1')));
+    });
+
+    it('denies unauthenticated deletion of interactions', async () => {
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        const adb = context.firestore();
+        await setDoc(doc(adb, 'contacts', 'contact1'), { name: 'Test', email: 'test@example.com' });
+        await setDoc(doc(adb, 'contacts/contact1/interactions/int1'), {
+          userId: 'owner1',
+          userName: 'Owner',
+          content: 'Hello',
+          dateTime: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      });
+
+      await assertFails(deleteDoc(doc(getFirestore(), 'contacts/contact1/interactions/int1')));
+    });
   });
 
   describe('Access Control', () => {

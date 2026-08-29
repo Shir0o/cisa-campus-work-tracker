@@ -79,7 +79,9 @@ export function ActivityItem({
                         : t('activity.interacted_with')
                 : activity.action === "updated an interaction for"
                   ? t('activity.updated_an_interaction_for')
-                  : activity.action.startsWith("updated") &&
+                  : activity.action === "deleted an interaction for"
+                    ? t('activity.deleted_an_interaction_for')
+                    : activity.action.startsWith("updated") &&
                       activity.action !== "updated an interaction for" &&
                       activity.type === "edit" &&
                       activity.description

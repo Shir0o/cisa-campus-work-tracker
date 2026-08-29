@@ -23,7 +23,11 @@ import {
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, logActivity, OperationType } from './firebase';
 import { subscribeContact, subscribeStages } from './data/contacts';
-import { addInteraction as addInteractionApi, subscribeInteractions } from './data/interactions';
+import {
+  addInteraction as addInteractionApi,
+  deleteInteraction as deleteInteractionApi,
+  subscribeInteractions,
+} from './data/interactions';
 import {
   addPrayer as addPrayerApi,
   subscribeContactPrayers,
@@ -140,6 +144,12 @@ export function useContactDetailData(contactId: string) {
     addInteraction: async (input: { content: string; dateTime: string; type: string }) => {
       if (!contact || !uid) return;
       await addInteractionApi(contactId, contact.name, input, { uid, name: by.name, photoURL: by.photoURL });
+    },
+    // The wrapper logs the audit entry and handles errors; the removal
+    // registry decides WHEN this fires (after the Undo window).
+    deleteInteraction: async (interaction: Interaction) => {
+      if (!contact || !uid) return;
+      await deleteInteractionApi(contactId, contact.name, interaction);
     },
 
     // data/prayers.ts's wrapper stays a plain write (matching the Prayer tab's

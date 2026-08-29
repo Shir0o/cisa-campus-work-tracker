@@ -53,6 +53,18 @@ describe('ActivityItem', () => {
     expect(img).toBeInTheDocument();
     expect(img.getAttribute('src')).toBe('alice.jpg');
   });
+  it('renders the removal action for deleted interactions', () => {
+    render(
+      <ActivityItem
+        activity={{ ...defaultActivity, action: 'deleted an interaction for', type: 'edit' }}
+        contacts={mockContacts}
+        onOpenContact={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('removed a conversation for')).toBeInTheDocument();
+    expect(screen.getByText('John Doe')).toBeInTheDocument();
+  });
 
   it('falls back to initials when userPhoto is missing', () => {
     const onOpenContact = vi.fn();

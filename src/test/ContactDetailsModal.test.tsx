@@ -63,7 +63,7 @@ vi.mock('firebase/firestore', () => {
 vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
-  OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE' },
+  OperationType: { LIST: 'LIST', UPDATE: 'UPDATE', CREATE: 'CREATE', DELETE: 'DELETE' },
   logActivity: vi.fn(),
   sendNotification: vi.fn(),
 }));
@@ -832,6 +832,17 @@ describe('ContactDetailsModal Component', () => {
         createdAt: new Date().toISOString(),
         description: 'notes updated\\nemail: updated',
       },
+      {
+        id: 'act-6',
+        action: 'deleted an interaction for',
+        targetId: 'contact-abc',
+        targetName: 'John Doe',
+        targetType: 'contact',
+        type: 'edit',
+        userName: 'User F',
+        createdAt: new Date().toISOString(),
+        description: 'Coffee chat',
+      },
     ];
 
     (firestore.onSnapshot as any).mockImplementation((q: any, successCallback: any) => {
@@ -860,6 +871,7 @@ describe('ContactDetailsModal Component', () => {
       expect(screen.getByText('left a note for')).toBeInTheDocument();
       expect(screen.getByText('interacted with')).toBeInTheDocument();
       expect(screen.getByText('updated the Notes, Email for')).toBeInTheDocument();
+      expect(screen.getByText('removed a conversation for')).toBeInTheDocument();
     });
   });
 
@@ -1877,6 +1889,138 @@ describe('ContactDetailsModal Component', () => {
         })
       );
     });
+  });
+});
+
+describe('removing interactions (#650)', () => {
+  const onClose = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    __resetFrecencyCache();
+    (useAuth as any).mockReturnValue({
+      user: { uid: 'user-123', displayName: 'Admin Tony' },
+      isAdmin: true,
+      role: 'admin',
+    });
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
+      if (typeof cb === 'function') {
+        try {
+          cb({ docs: [] });
+        } catch {
+          // ignore
+        }
+      }
+      return vi.fn();
+    });
+  });
+
+  const interactionDoc = (id: string, userId = 'user-123') => ({
+    id,
+    data: () => ({
+      userId,
+      userName: 'Staffer',
+      content: 'Coffee chat',
+      dateTime: '2026-08-01T12:00:00.000Z',
+      createdAt: '2026-08-01T11:00:00.000Z',
+      type: 'chat',
+    }),
+  });
+
+  const renderWithInteractions = (...docs: any[]) => {
+    (firestore.onSnapshot as any).mockImplementation((q: any, cb: any) => {
+      if (typeof cb === 'function') {
+        if (q?.path?.includes('interactions')) cb({ docs });
+        else cb({ docs: [] });
+      }
+      return vi.fn();
+    });
+    render(<ContactDetailsModal isOpen={true} onClose={onClose} contact={mockContact} />);
+    fireEvent.click(screen.getByRole('button', { name: /Interactions/i }));
+  };
+
+  afterEach(() => {
+    hoisted.messages = [];
+    vi.useRealTimers();
+  });
+
+  it('hides the remove affordance for a non-owner non-manager', async () => {
+    (useAuth as any).mockReturnValue({ user: { uid: 'other-user' }, isAdmin: false, role: 'operator' });
+    renderWithInteractions(interactionDoc('int-1', 'user-123'));
+    await screen.findByText('Coffee chat');
+    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
+  });
+
+  it('hides the remove affordance for visit-mirror interactions', async () => {
+    renderWithInteractions(interactionDoc('visit_abc'));
+    await screen.findByText('Coffee chat');
+    expect(screen.queryByRole('button', { name: /^Remove$/ })).not.toBeInTheDocument();
+  });
+
+  it('removes the row immediately, then commits the delete and audit entry after the undo window', async () => {
+    vi.useFakeTimers();
+    renderWithInteractions(interactionDoc('int-1'));
+    expect(screen.getByText('Coffee chat')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
+
+    expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
+    expect(screen.getByText('Conversation removed')).toBeInTheDocument();
+    expect(firestore.deleteDoc).not.toHaveBeenCalled();
+
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+
+    expect(firestore.deleteDoc).toHaveBeenCalledWith(
+      expect.objectContaining({ path: 'contacts/contact-abc/interactions/int-1' }),
+    );
+    expect(logActivity).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'deleted an interaction for', targetId: 'contact-abc' }),
+    );
+  });
+
+  it('restores the row on Undo and never commits', async () => {
+    vi.useFakeTimers();
+    renderWithInteractions(interactionDoc('int-1'));
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Undo/i }));
+
+    expect(screen.getByText('Coffee chat')).toBeInTheDocument();
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(firestore.deleteDoc).not.toHaveBeenCalled();
+  });
+
+  it('asks for confirmation when the interaction has thread messages', async () => {
+    hoisted.messages = [
+      { id: 'm1', interactionId: 'int-1', from: 'u1', fromName: 'S', kind: 'comment', body: 'x', at: '2026-08-01T00:00:00.000Z', reactions: [] },
+    ];
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
+    renderWithInteractions(interactionDoc('int-1'));
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
+
+    expect(confirmSpy).toHaveBeenCalledWith(expect.stringContaining('message'));
+    expect(firestore.deleteDoc).not.toHaveBeenCalled();
+    expect(screen.getByText('Coffee chat')).toBeInTheDocument();
+    confirmSpy.mockRestore();
+  });
+
+  it('proceeds past the thread confirmation and removes', async () => {
+    vi.useFakeTimers();
+    hoisted.messages = [{ id: 'm1', interactionId: 'int-1' }];
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithInteractions(interactionDoc('int-1'));
+
+    fireEvent.click(screen.getByRole('button', { name: /^Remove$/ }));
+
+    expect(screen.queryByText('Coffee chat')).not.toBeInTheDocument();
+    expect(screen.getByText('Conversation removed')).toBeInTheDocument();
+    confirmSpy.mockRestore();
   });
 });
 
