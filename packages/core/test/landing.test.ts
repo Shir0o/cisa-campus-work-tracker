@@ -38,11 +38,13 @@ describe('traineeMyPeople', () => {
       contact({ id: 'mine-recent', createdBy: 'me', lastSeen: new Date(NOW - DAY_MS).toISOString() }),
       contact({ id: 'not-mine', createdBy: 'someone-else' }),
       contact({ id: 'mine-stale', createdBy: 'me', lastSeen: new Date(NOW - DAY_MS * 10).toISOString() }),
+      contact({ id: 'partner-shared', createdBy: 'partner', coCreators: ['me'], lastSeen: new Date(NOW - DAY_MS * 5).toISOString() }),
     ];
     const result = traineeMyPeople(contacts, 'me', NOW);
-    expect(result.map((p) => p.contact.id)).toEqual(['mine-stale', 'mine-recent']);
+    expect(result.map((p) => p.contact.id)).toEqual(['mine-stale', 'partner-shared', 'mine-recent']);
     expect(result[0].days).toBe(10);
-    expect(result[1].days).toBe(1);
+    expect(result[1].days).toBe(5);
+    expect(result[2].days).toBe(1);
   });
 
   it('falls back to createdAt when lastSeen is missing, and Infinity when both are', () => {

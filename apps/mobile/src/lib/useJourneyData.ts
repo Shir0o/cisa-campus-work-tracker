@@ -1,13 +1,11 @@
-// Live data for the native Journey (stage pipeline) tab — contacts grouped by
-// stage, with a synthetic "Unassigned" tab for orphaned contacts. Mirrors the
-// subscriptions in usePeopleData.ts, reusing @cisa/core's lastTouchByContact
-// as the shared behavior oracle (same as web's src/views/OutreachBoard.tsx).
 import { useEffect, useMemo, useState } from 'react';
 import {
   daysSince,
   lastTouchByContact,
   parseMs,
   personalContactIdsOf,
+  visibleContacts,
+  type AppRole,
   type Contact,
   type Leader,
   type Stage,
@@ -30,7 +28,7 @@ export interface JourneyTab extends JourneyStage {
 
 const UNASSIGNED: JourneyStage = { id: 'uncategorized', label: 'Unassigned' };
 
-export function useJourneyData(uid: string | null) {
+export function useJourneyData(uid: string | null, role?: AppRole | string | null) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [touches, setTouches] = useState<Touch[]>([]);
@@ -77,17 +75,22 @@ export function useJourneyData(uid: string | null) {
     };
   }, [uid]);
 
+  const scopedContacts = useMemo(
+    () => visibleContacts(role ?? null, uid, contacts),
+    [role, uid, contacts],
+  );
+
   const personalContactIds = useMemo(
-    () => personalContactIdsOf(prefContactIds, contacts, uid),
-    [prefContactIds, contacts, uid],
+    () => personalContactIdsOf(prefContactIds, scopedContacts, uid),
+    [prefContactIds, scopedContacts, uid],
   );
 
   const stageLabels = useMemo(() => new Set(stages.map((s) => s.label)), [stages]);
 
   // Contacts with no stage, or a stale stage label that no longer exists.
   const unmappedContacts = useMemo(
-    () => contacts.filter((c) => !c.stage || !stageLabels.has(c.stage)),
-    [contacts, stageLabels],
+    () => scopedContacts.filter((c) => !c.stage || !stageLabels.has(c.stage)),
+    [scopedContacts, stageLabels],
   );
 
   const mobileStages: JourneyStage[] = useMemo(() => {
@@ -101,9 +104,9 @@ export function useJourneyData(uid: string | null) {
       mobileStages.map((s) => ({
         ...s,
         count:
-          s.id === UNASSIGNED.id ? unmappedContacts.length : contacts.filter((c) => c.stage === s.label).length,
+          s.id === UNASSIGNED.id ? unmappedContacts.length : scopedContacts.filter((c) => c.stage === s.label).length,
       })),
-    [mobileStages, contacts, unmappedContacts],
+    [mobileStages, scopedContacts, unmappedContacts],
   );
 
   const activeIdx = Math.min(activeIndex, Math.max(mobileStages.length - 1, 0));
@@ -115,7 +118,7 @@ export function useJourneyData(uid: string | null) {
 
   const items: Leader[] = useMemo(() => {
     const pool =
-      activeStage.id === UNASSIGNED.id ? unmappedContacts : contacts.filter((c) => c.stage === activeStage.label);
+      activeStage.id === UNASSIGNED.id ? unmappedContacts : scopedContacts.filter((c) => c.stage === activeStage.label);
     return pool
       .map((c) => {
         const touch = touchMap.get(c.id);
@@ -127,7 +130,7 @@ export function useJourneyData(uid: string | null) {
         const mine = Number(personalContactIds.has(b.contact.id)) - Number(personalContactIds.has(a.contact.id));
         return mine || a.contact.name.localeCompare(b.contact.name);
       });
-  }, [activeStage, contacts, unmappedContacts, touchMap, personalContactIds]);
+  }, [activeStage, scopedContacts, unmappedContacts, touchMap, personalContactIds]);
 
   return {
     stages,
@@ -138,7 +141,7 @@ export function useJourneyData(uid: string | null) {
     activeStage,
     items,
     personalContactIds,
-    totalCount: contacts.length,
+    totalCount: scopedContacts.length,
     loading: shownLoading,
     error,
   };

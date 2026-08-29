@@ -29,11 +29,16 @@ describe('permissions', () => {
     // only admin reaches admin feedback
     expect(canAccessRoute('manager', '/admin/feedback')).toBe(false);
     expect(canAccessRoute('admin', '/admin/feedback')).toBe(true);
+    // contact details accessible across all approved roles
+    expect(canAccessRoute('viewer', '/contact')).toBe(true);
+    expect(canAccessRoute('manager', '/contact')).toBe(true);
+    expect(canAccessRoute('manager', '/contact/c1')).toBe(true);
     // unknown routes default to admin-only
     expect(canAccessRoute('viewer', '/nonexistent')).toBe(false);
     expect(canAccessRoute('admin', '/nonexistent')).toBe(true);
     // null role is never allowed
     expect(canAccessRoute(null, '/')).toBe(false);
+    expect(canAccessRoute(null, '/contact')).toBe(false);
   });
 
   // What the trainee's mobile drawer and route guards read. Gatherings and The

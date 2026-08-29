@@ -147,6 +147,12 @@ describe('canAccessRoute()', () => {
     expect(canAccessRoute('manager', '/people/c1')).toBe(true);
     expect(canAccessRoute('admin', '/people/c1')).toBe(true);
     expect(canAccessRoute(null, '/people/c1')).toBe(false);
+
+    expect(canAccessRoute('viewer', '/contact')).toBe(true);
+    expect(canAccessRoute('operator', '/contact')).toBe(true);
+    expect(canAccessRoute('manager', '/contact')).toBe(true);
+    expect(canAccessRoute('admin', '/contact')).toBe(true);
+    expect(canAccessRoute('manager', '/contact/c1')).toBe(true);
   });
 });
 

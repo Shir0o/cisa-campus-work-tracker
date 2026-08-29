@@ -6,14 +6,14 @@ import { daysSince, parseMs, type Leader } from "./myday";
 import type { Contact } from "./types";
 import type { ThreadMessageWithContact } from "./threads";
 
-/** Your people — the contacts you created, longest-since-seen first. */
+/** Your people — the contacts you created or co-created, longest-since-seen first. */
 export function traineeMyPeople(
   contacts: Contact[],
   uid: string | null | undefined,
   now: number = Date.now(),
 ): Leader[] {
   return contacts
-    .filter((c) => uid && c.createdBy === uid)
+    .filter((c) => uid && (c.createdBy === uid || (c.coCreators && c.coCreators.includes(uid))))
     .map((c) => {
       const ms = parseMs(c.lastSeen) ?? parseMs(c.createdAt);
       const days = ms == null ? Infinity : daysSince(ms, now);
