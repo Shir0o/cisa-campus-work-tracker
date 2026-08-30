@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #FAFAFA; } a:hover { color: #A1A1AA; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+  </style>
+</helmet>
+
+<div style="width: 1080px; background: #0A0A0B; padding: 60px 60px 68px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #FAFAFA;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px; border-bottom: 1px solid #2A2A2E;">
+    <span class="tok" style="color: #71717A; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; dark</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 42px; line-height: 1.02; letter-spacing: -0.03em; margin: 0;">The <span style="color: #A1A1AA;">.dark</span> block</h1>
+    <p style="font-size: 15px; line-height: 1.55; color: #A1A1AA; margin: 0; max-width: 700px; text-wrap: pretty;">
+      Ink's dark theme is a true inversion, which Bento's never was &mdash; Bento kept violet as the fill in both themes, so <span class="tok">--accent-on</span> could stay white throughout. That no longer holds.
+    </p>
+  </div>
+
+  <!-- THE GOTCHA -->
+  <div style="margin-top: 40px; background: #161618; border-radius: 24px; padding: 30px 32px; display: flex; gap: 32px; align-items: flex-start;">
+    <div style="flex: 1; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: #FF7B88;"></span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: -0.015em; margin: 0;">One token has to become theme-dependent</h3>
+      </div>
+      <p style="font-size: 14px; line-height: 1.55; color: #A1A1AA; margin: 0 0 14px;">
+        In light, the primary button is black with white text. In dark, it is white with black text. So <span class="tok" style="color: #FAFAFA;">--accent-on</span> flips &mdash; it was <span class="tok">#FFFFFF</span> in both Bento blocks. Anything that hardcodes white on <span class="tok">bg-primary</span> instead of using <span class="tok">text-on-primary</span> will go invisible in dark.
+      </p>
+      <p style="font-size: 13px; line-height: 1.5; color: #71717A; margin: 0;">
+        There are 14 hardcoded hex values left in <span class="tok">.tsx</span> files and 109 raw palette classes. Those are where this will bite.
+      </p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px; flex: none; width: 250px;">
+      <div style="background: #FFFFFF; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <span class="tok" style="color: #A1A1AA;">light</span>
+        <button style="height: 42px; border: 0; border-radius: 14px; background: #131316; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500;">The team's board</button>
+      </div>
+      <div style="background: #161618; border: 1px solid #2A2A2E; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 10px;">
+        <span class="tok" style="color: #71717A;">dark</span>
+        <button style="height: 42px; border: 0; border-radius: 14px; background: #FAFAFA; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500;">The team's board</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- THE RAIL IN DARK -->
+  <div style="margin-top: 20px; background: #161618; border-radius: 24px; padding: 30px 32px; display: flex; gap: 32px; align-items: flex-start;">
+    <div style="flex: 1; min-width: 0;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+        <span style="width: 7px; height: 7px; border-radius: 50%; background: #FF7B88;"></span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 18px; letter-spacing: -0.015em; margin: 0;">The rail cannot stay black</h3>
+      </div>
+      <p style="font-size: 14px; line-height: 1.55; color: #A1A1AA; margin: 0 0 14px;">
+        In light the rail is a black slab on a white page &mdash; that contrast is the whole effect. In dark the page is already <span class="tok" style="color: #FAFAFA;">#0A0A0B</span>, so a black rail vanishes into it and the floating slab stops reading as an object at all.
+      </p>
+      <p style="font-size: 14px; line-height: 1.55; color: #A1A1AA; margin: 0;">
+        It takes <span class="tok" style="color: #FAFAFA;">--panel</span> in dark, same as every other surface, and keeps its shadow. The rail is not a special colour &mdash; it is a raised surface, and the tokens already describe that.
+      </p>
+    </div>
+    <div style="display: flex; gap: 12px; flex: none;">
+      <div style="width: 132px; background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 20px; padding: 14px 10px; display: flex; flex-direction: column; gap: 8px;">
+        <span class="tok" style="color: #71717A; padding: 0 4px;">wrong</span>
+        <div style="background: #0A0A0B; border-radius: 14px; padding: 10px 8px; display: flex; flex-direction: column; gap: 6px;">
+          <div style="height: 9px; border-radius: 999px; background: rgba(255,255,255,0.28); width: 70%;"></div>
+          <div style="height: 9px; border-radius: 999px; background: rgba(255,255,255,0.14);"></div>
+          <div style="height: 9px; border-radius: 999px; background: rgba(255,255,255,0.14); width: 82%;"></div>
+        </div>
+      </div>
+      <div style="width: 132px; background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 20px; padding: 14px 10px; display: flex; flex-direction: column; gap: 8px;">
+        <span class="tok" style="color: #71717A; padding: 0 4px;">right</span>
+        <div style="background: #161618; border-radius: 14px; padding: 10px 8px; display: flex; flex-direction: column; gap: 6px; box-shadow: 0 6px 20px rgba(0,0,0,0.5);">
+          <div style="height: 9px; border-radius: 999px; background: #FAFAFA; width: 70%;"></div>
+          <div style="height: 9px; border-radius: 999px; background: rgba(255,255,255,0.18);"></div>
+          <div style="height: 9px; border-radius: 999px; background: rgba(255,255,255,0.18); width: 82%;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SWATCHES -->
+  <div style="margin-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.022em; margin: 0;">Values</h2>
+      <span style="font-size: 13px; color: #71717A;">struck value is Bento dark's</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px;">
+
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #0A0A0B; border: 1px solid #2A2A2E;"></div>
+        <span class="tok" style="font-weight: 600;">--bg</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#0A0A0B</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#1A212B</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #161618;"></div>
+        <span class="tok" style="font-weight: 600;">--panel</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#161618</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#27313F</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #202023;"></div>
+        <span class="tok" style="font-weight: 600;">--panel-2</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#202023</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#202936</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #2A2A2E;"></div>
+        <span class="tok" style="font-weight: 600;">--border</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#2A2A2E</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#3C4959</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #FAFAFA;"></div>
+        <span class="tok" style="font-weight: 600;">--text</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#FAFAFA</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#F6F8FB</span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="height: 76px; border-radius: 14px; background: #FAFAFA; display: grid; place-items: center;">
+          <span style="font-size: 12px; font-weight: 600; color: #0A0A0B;">Aa</span>
+        </div>
+        <span class="tok" style="font-weight: 600;">--accent</span>
+        <span style="font-size: 12px; color: #A1A1AA;">#FAFAFA</span>
+        <span style="font-size: 11.5px; color: #71717A; text-decoration: line-through;">#9A8FFF</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- SCREEN SLICE -->
+  <div style="margin-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.022em; margin: 0;">Home, in dark</h2>
+    </div>
+
+    <div style="background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 28px; padding: 34px 36px; box-sizing: border-box;">
+
+      <div style="display: flex; align-items: flex-end; gap: 28px;">
+        <div style="flex: 1; min-width: 0;">
+          <p style="font-size: 13px; color: #71717A; margin: 0;">Friday, March 14 &middot; Your day</p>
+          <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 36px; line-height: 1.05; letter-spacing: -0.03em; margin: 8px 0 0;">Good morning, Tony.</h1>
+          <p style="font-size: 14.5px; line-height: 1.6; color: #A1A1AA; margin: 12px 0 0; max-width: 560px;">You're working closely with 14 contacts this season, and there are 6 things that are yours to tend before the week is out.</p>
+        </div>
+        <div style="display: flex; gap: 9px; flex: none;">
+          <button style="padding: 11px 19px; border-radius: 999px; border: 1px solid #2A2A2E; background: transparent; color: #FAFAFA; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500;">Pray together</button>
+          <button style="padding: 11px 19px; border-radius: 999px; border: 0; background: #FAFAFA; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500;">The team's board</button>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 26px;">
+        <div style="background: #161618; border-radius: 22px; padding: 24px 26px; display: flex; flex-direction: column; gap: 10px; min-height: 150px; box-sizing: border-box;">
+          <span style="font-size: 12px; color: #71717A;">Next up &middot; Friday, Mar 14</span>
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 23px; letter-spacing: -0.022em; margin: 0;">Campus dinner &amp; testimony night</h3>
+          <p style="font-size: 13px; line-height: 1.5; color: #71717A; margin: auto 0 0;">A good chance to be present with the people in your care.</p>
+        </div>
+        <div style="background: #161618; border-radius: 22px; padding: 24px 26px; display: flex; flex-wrap: wrap; gap: 26px 38px; align-content: flex-start; min-height: 150px; box-sizing: border-box;">
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -0.03em;">14</span>
+            <span style="font-size: 12px; color: #71717A;">contacts in care</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -0.03em;">9</span>
+            <span style="font-size: 12px; color: #71717A;">prayers to hold</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 3px;">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 34px; line-height: 1; letter-spacing: -0.03em;">6</span>
+            <span style="font-size: 12px; color: #71717A;">tasks to hold</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: #161618; border-radius: 22px; padding: 4px 24px; margin-top: 16px;">
+        <div style="display: flex; align-items: center; gap: 13px; padding: 15px 0; border-bottom: 1px solid #2A2A2E;">
+          <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid #3F3F46; background: #202023; flex: none;"></span>
+          <span style="font-size: 14.5px; flex: 1;">Text Ana about coffee before Thursday</span>
+          <span style="font-size: 11px; font-weight: 500; color: #F2930D; background: rgba(242,147,13,0.16); border-radius: 999px; padding: 3px 9px;">Due today</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 13px; padding: 15px 0;">
+          <span style="width: 20px; height: 20px; border-radius: 6px; background: #51E098; border: 1.6px solid #51E098; flex: none; display: grid; place-items: center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+          </span>
+          <span style="font-size: 14.5px; color: #71717A; text-decoration: line-through; flex: 1;">Send the gathering reminder</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1080,"height":1620}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

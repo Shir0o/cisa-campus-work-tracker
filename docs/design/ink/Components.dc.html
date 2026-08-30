@@ -1,0 +1,346 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #0A0A0B; } a:hover { color: #52525B; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+    .sec-h { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; margin: 0; }
+    .sec-n { font-size: 13px; color: #A1A1AA; }
+    .card { background: #F4F4F5; border-radius: 24px; padding: 28px 30px; }
+  </style>
+</helmet>
+
+<div style="width: 1080px; background: #FFFFFF; padding: 60px 60px 72px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #0A0A0B;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px; border-bottom: 1px solid #E4E4E7;">
+    <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; components</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 42px; line-height: 1.02; letter-spacing: -0.03em; margin: 0;">The existing parts, retoned</h1>
+    <p style="font-size: 15px; line-height: 1.55; color: #52525B; margin: 0; max-width: 680px; text-wrap: pretty;">
+      Every part below already exists in <span class="tok">src/index.css</span> at these exact dimensions. Nothing here is a new component &mdash; only the token values behind them move.
+    </p>
+  </div>
+
+  <!-- BUTTONS -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 class="sec-h">Buttons</h2>
+      <span class="sec-n">44px standard &middot; 32px small &middot; radius 14 / 10</span>
+    </div>
+    <div class="card" style="display: flex; flex-direction: column; gap: 24px;">
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <button style="height: 44px; padding: 0 22px; border: 0; border-radius: 14px; background: #131316; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer;">Pray together</button>
+        <button style="height: 44px; padding: 0 22px; border: 1px solid #E4E4E7; border-radius: 14px; background: #FFFFFF; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer;">The team's board</button>
+        <button style="height: 44px; padding: 0 22px; border: 0; border-radius: 14px; background: transparent; color: #52525B; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; cursor: pointer;">Skip for now</button>
+        <button style="height: 32px; padding: 0 13px; border: 1px solid #E4E4E7; border-radius: 10px; background: #FFFFFF; color: #0A0A0B; font-family: Lexend, sans-serif; font-size: 13.5px; font-weight: 500; cursor: pointer;">Add</button>
+        <button style="height: 44px; padding: 0 22px; border: 0; border-radius: 14px; background: #131316; color: #FFFFFF; font-family: Lexend, sans-serif; font-size: 14px; font-weight: 500; opacity: 0.5;">Disabled</button>
+      </div>
+      <div style="display: flex; gap: 34px;">
+        <span class="tok" style="color: #52525B;">primary &rarr; --accent-strong</span>
+        <span class="tok" style="color: #52525B;">secondary &rarr; --border on --bg-elev</span>
+        <span class="tok" style="color: #52525B;">ghost &rarr; --text-dim</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECTION -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px;">
+      <h2 class="sec-h">Selection</h2>
+      <span class="sec-n">the one move that needs care</span>
+    </div>
+    <p style="font-size: 14px; line-height: 1.55; color: #52525B; margin: 0 0 20px; max-width: 760px;">
+      <span class="tok">.bd-chip.on</span> already fills with <span class="tok">--accent</span> rather than tinting, so it inverts for free. The risk sits with the <em>tinted</em> states &mdash; <span class="tok">.bd-pick-row.on</span> and friends use <span class="tok">--accent-soft</span>, which at 6% black is nearly invisible. Those need the solid fill instead.
+    </p>
+    <div class="card" style="display: flex; flex-direction: column; gap: 26px;">
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;">Chips &mdash; works as-is</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <span style="font-size: 13px; font-weight: 500; color: #0A0A0B; background: #0A0A0B; border: 1px solid #0A0A0B; border-radius: 999px; padding: 6px 15px; color: #FFFFFF;">Everyone</span>
+          <span style="font-size: 13px; font-weight: 500; color: #52525B; background: #FFFFFF; border: 1px solid #F0F0F2; border-radius: 999px; padding: 6px 15px;">In my care</span>
+          <span style="font-size: 13px; font-weight: 500; color: #52525B; background: #FFFFFF; border: 1px solid #F0F0F2; border-radius: 999px; padding: 6px 15px;">Needs a visit</span>
+          <span style="font-size: 13px; font-weight: 500; color: #52525B; background: #FFFFFF; border: 1px solid #F0F0F2; border-radius: 999px; padding: 6px 15px;">New this season</span>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 40px;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;">Segmented</span>
+          <div style="display: inline-flex; gap: 2px; background: #EAEAEC; border-radius: 11px; padding: 3px;">
+            <span style="font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 8px; background: #FFFFFF; color: #0A0A0B;">This week</span>
+            <span style="font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 8px; color: #52525B;">This season</span>
+            <span style="font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 8px; color: #52525B;">All</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;">Menu row &mdash; needs the fix</span>
+          <div style="width: 240px; background: #FFFFFF; border-radius: 14px; padding: 5px; display: flex; flex-direction: column; gap: 2px;">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: #0A0A0B; color: #FFFFFF; font-size: 13.5px;">
+              <span style="width: 22px; height: 22px; border-radius: 999px; background: rgba(255,255,255,0.22); flex: none;"></span>Ana Duarte
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; color: #52525B; font-size: 13.5px;">
+              <span style="width: 22px; height: 22px; border-radius: 999px; background: #EAEAEC; flex: none;"></span>Ben Osei
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 class="sec-h">Fields &amp; marks</h2>
+      <span class="sec-n">focus ring moves from violet to a black hairline</span>
+    </div>
+    <div class="card" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 30px;">
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <input type="text" value="Follow up with Ana about Thursday" readonly style="width: 100%; padding: 11px 14px; border: 1px solid #E4E4E7; background: #FFFFFF; color: #0A0A0B; border-radius: 14px; font-size: 14.5px; font-family: Lexend, sans-serif; outline: none; box-sizing: border-box;">
+        <input type="text" value="What needs doing?" readonly style="width: 100%; padding: 11px 14px; border: 1px solid #0A0A0B; background: #FFFFFF; color: #A1A1AA; border-radius: 14px; font-size: 14.5px; font-family: Lexend, sans-serif; outline: none; box-sizing: border-box; box-shadow: 0 0 0 3px rgba(10,10,11,0.08);">
+        <div style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 10px 16px; border-radius: 999px; background: #F0F0F2; box-sizing: border-box;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A1A1AA" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <span style="font-size: 14px; color: #A1A1AA;">Search people, notes, prayers</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 18px;">
+        <div style="display: flex; align-items: center; gap: 26px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid #E4E4E7; background: #FFFFFF; display: block;"></span>
+            <span style="font-size: 14px; color: #52525B;">Open</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 20px; height: 20px; border-radius: 6px; background: #016A1C; border: 1.6px solid #016A1C; display: grid; place-items: center;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+            </span>
+            <span style="font-size: 14px; color: #52525B;">Done</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.6px dashed #A1A1AA; background: transparent; display: block;"></span>
+            <span style="font-size: 14px; color: #52525B;">Carried</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; line-height: 1.5; color: #52525B; margin: 0;">
+          The done state keeps <span class="tok">--success</span>. It is the one place a filled colour still beats a filled black &mdash; black would read as &ldquo;selected&rdquo;, not &ldquo;complete&rdquo;.
+        </p>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="width: 34px; height: 34px; border-radius: 999px; background: #0A0A0B; color: #FFFFFF; display: grid; place-items: center; font-size: 12px; font-weight: 600;">AD</span>
+          <span style="width: 34px; height: 34px; border-radius: 999px; background: #EAEAEC; color: #52525B; display: grid; place-items: center; font-size: 12px; font-weight: 600;">BO</span>
+          <span style="width: 34px; height: 34px; border-radius: 999px; background: #EAEAEC; color: #52525B; display: grid; place-items: center; font-size: 12px; font-weight: 600;">MK</span>
+          <span style="font-size: 13px; color: #A1A1AA; margin-left: 4px;">avatars &mdash; pill radius, no ring</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CARDS -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px;">
+      <h2 class="sec-h">Cards</h2>
+      <span class="sec-n"><span class="tok">bg-surface rounded-3xl</span> &mdash; 34 uses, the dominant pattern</span>
+    </div>
+    <p style="font-size: 14px; line-height: 1.55; color: #52525B; margin: 0 0 20px; max-width: 760px;">
+      These are unchanged in markup. Because <span class="tok">--panel</span> now resolves grey and <span class="tok">--bg</span> white, they simply stop being white-on-grey and become grey-on-white.
+    </p>
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 40px; line-height: 1; letter-spacing: -0.03em;">14</span>
+        <span style="font-size: 13.5px; color: #52525B;">contacts in care</span>
+      </div>
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 6px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 40px; line-height: 1; letter-spacing: -0.03em;">6</span>
+        <span style="font-size: 13.5px; color: #52525B;">things to tend</span>
+      </div>
+
+      <div style="background: #0A0A0B; border-radius: 24px; padding: 26px; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.72);">Next up &middot; Friday, Mar 14</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 21px; line-height: 1.15; letter-spacing: -0.02em; color: #FFFFFF;">Campus dinner</span>
+        <span style="font-size: 13px; line-height: 1.45; color: rgba(255,255,255,0.72);">A good chance to be present.</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- LIST ROW -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 class="sec-h">List rows</h2>
+      <span class="sec-n">hairline dividers at <span class="tok">--border-soft</span>, no card per row</span>
+    </div>
+    <div style="background: #F4F4F5; border-radius: 24px; padding: 8px 26px; display: flex; flex-direction: column;">
+
+      <div style="display: flex; align-items: flex-start; gap: 14px; padding: 18px 0; border-bottom: 1px solid #E4E4E7;">
+        <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid #D4D4D8; background: #FFFFFF; flex: none; margin-top: 1px;"></span>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 7px;">
+          <span style="font-size: 14.5px; line-height: 1.45;">Text Ana about coffee before Thursday</span>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 12px; color: #A1A1AA;">from Coordination Notes</span>
+            <span style="font-size: 11.5px; font-weight: 500; color: #BA5900; background: #FFF2D2; border-radius: 999px; padding: 3px 9px;">Due today</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; gap: 14px; padding: 18px 0; border-bottom: 1px solid #E4E4E7;">
+        <span style="width: 20px; height: 20px; border-radius: 6px; background: #016A1C; border: 1.6px solid #016A1C; flex: none; margin-top: 1px; display: grid; place-items: center;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>
+        </span>
+        <div style="flex: 1; min-width: 0;">
+          <span style="font-size: 14.5px; line-height: 1.45; color: #A1A1AA; text-decoration: line-through;">Send the gathering reminder</span>
+        </div>
+      </div>
+
+      <div style="display: flex; align-items: flex-start; gap: 14px; padding: 18px 0;">
+        <span style="width: 20px; height: 20px; border-radius: 6px; border: 1.6px solid #D4D4D8; background: #FFFFFF; flex: none; margin-top: 1px;"></span>
+        <div style="flex: 1; min-width: 0;">
+          <span style="font-size: 14.5px; line-height: 1.45;">Write up Tuesday's visit notes</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- NAVIGATION -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px;">
+      <h2 class="sec-h">The rail</h2>
+      <span class="sec-n">replaces <span class="tok">TopNav.tsx</span> on desktop</span>
+    </div>
+    <p style="font-size: 14px; line-height: 1.55; color: #52525B; margin: 0 0 24px; max-width: 780px;">
+      A floating dark slab, inset 20px from the page edge, <span class="tok">--radius-xl</span> corners. Inside a black rail the selection rule stays inversion &mdash; it just runs the other way: the active destination is a <em>white</em> pill with black content.
+    </p>
+
+    <div style="display: grid; grid-template-columns: 272px 1fr; gap: 26px; align-items: start;">
+
+      <!-- SPEC RAIL -->
+      <div style="background: #0A0A0B; border-radius: 32px; padding: 20px 12px 14px; box-sizing: border-box; box-shadow: 0 8px 32px rgba(10,10,11,0.14);">
+        <div style="display: flex; align-items: center; gap: 11px; padding: 0 12px 6px;">
+          <div style="width: 34px; height: 34px; border-radius: 11px; background: #FFFFFF; display: grid; place-items: center; flex: none;">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 16px; color: #0A0A0B; letter-spacing: -0.04em;">C</span>
+          </div>
+          <div style="line-height: 1.2;">
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; letter-spacing: -0.015em;">CISA Campus</div>
+            <div style="font-size: 10px; color: rgba(255,255,255,0.42);">Work Tracker</div>
+          </div>
+        </div>
+        <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(255,255,255,0.34); padding: 0 14px; margin: 18px 0 7px;">Today</div>
+        <div style="display: flex; align-items: center; gap: 11px; height: 38px; padding: 0 14px; border-radius: 999px; background: #FFFFFF; color: #0A0A0B; font-size: 13.5px; font-weight: 500;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1"></path><path d="M7 17a5 5 0 0 1 10 0"></path><path d="M3 20h18"></path></svg>Home
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; height: 38px; padding: 0 14px; border-radius: 999px; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.78); font-size: 13.5px;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4M9 12h6M9 16h4"></path></svg>Coordination
+        </div>
+        <div style="display: flex; align-items: center; gap: 11px; height: 38px; padding: 0 14px; border-radius: 999px; color: rgba(255,255,255,0.62); font-size: 13.5px;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.48)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"></path><path d="M10 9.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6 1M12 15h.01"></path></svg>Questions
+          <span style="margin-left: auto; font-size: 10.5px; font-weight: 600; background: rgba(255,255,255,0.14); color: #FFFFFF; border-radius: 999px; padding: 2px 7px;">3</span>
+        </div>
+      </div>
+
+      <!-- SPEC NOTES -->
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="background: #F4F4F5; border-radius: 20px; padding: 20px 24px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 30px;">
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Rail width</span><span class="tok" style="font-weight: 600;">232px</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Page inset</span><span class="tok" style="font-weight: 600;">20px all round</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Corner</span><span class="tok" style="font-weight: 600;">--radius-xl / 32px</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Item height</span><span class="tok" style="font-weight: 600;">38px</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Icon</span><span class="tok" style="font-weight: 600;">19px / 1.9 stroke</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Shadow</span><span class="tok" style="font-weight: 600;">0 8px 32px /.14</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Rest</span><span class="tok" style="font-weight: 600;">white @ 62%</span></div>
+          <div style="display: flex; justify-content: space-between; gap: 12px;"><span style="font-size: 13.5px; color: #52525B;">Hover</span><span class="tok" style="font-weight: 600;">white @ 7% fill</span></div>
+        </div>
+
+        <div style="background: #F4F4F5; border-radius: 20px; padding: 22px 24px;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 10px;">Why labels, not icons only</h3>
+          <p style="font-size: 13.5px; line-height: 1.55; color: #52525B; margin: 0 0 10px;">
+            The reference is a six-destination product. A full-timer here sees <strong style="color: #0A0A0B;">thirteen</strong>. Thirteen unlabelled glyphs is a memory test, so the rail carries labels and trades the ultra-slim look for legibility.
+          </p>
+          <p style="font-size: 13.5px; line-height: 1.55; color: #52525B; margin: 0;">
+            It also retires the More menu. <span class="tok">PRIMARY_BY_ROLE</span> promotes only three destinations per role and buries the other ten &mdash; a compromise the top bar's horizontal space forced. A rail has the vertical room to show all of them, grouped.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- GROUPING + REJECTED VARIANT -->
+    <div style="display: grid; grid-template-columns: 1fr 272px; gap: 26px; margin-top: 16px; align-items: start;">
+
+      <div style="background: #F4F4F5; border-radius: 20px; padding: 22px 24px;">
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 14px;">Grouping (full-timer &mdash; the widest case)</h3>
+        <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px;">
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Today</span>
+            <span style="font-size: 13px; color: #52525B; line-height: 1.7;">Home<br>Coordination<br>Questions</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">People</span>
+            <span style="font-size: 13px; color: #52525B; line-height: 1.7;">The Journey<br>People<br>Visits<br>Gospel<br>Looking back</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Gatherings</span>
+            <span style="font-size: 13px; color: #52525B; line-height: 1.7;">Gatherings<br>Messages</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 7px;">
+            <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Prayer</span>
+            <span style="font-size: 13px; color: #52525B; line-height: 1.7;">On our hearts<br>Answered</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; line-height: 1.55; color: #52525B; margin: 16px 0 0; padding-top: 14px; border-top: 1px solid #E4E4E7;">
+          Settings and the account block pin to the bottom, above a hairline. Thirteen items plus four group labels comes to roughly 760px &mdash; it fits a 900px viewport, but the list must scroll inside the rail, not the page.
+        </p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600;">Also shipping &mdash; the collapsed state</span>
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+          <div style="width: 76px; background: #0A0A0B; border-radius: 28px; padding: 18px 0; display: flex; flex-direction: column; align-items: center; gap: 18px; flex: none;">
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 19px; color: #FFFFFF; letter-spacing: -0.04em;">C.</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.4"></rect><rect x="10" y="4" width="5" height="10" rx="1.4"></rect><rect x="17" y="4" width="4" height="13" rx="1.4"></rect></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7-2.6c0 4.9-7 14.6-7 14.6z"></path></svg>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"></path></svg>
+          </div>
+          <p style="font-size: 12.5px; line-height: 1.55; color: #52525B; margin: 0;">
+            The icon-only rail, close to the reference. It is the better-looking object but asks people to know thirteen glyphs, so it is not the default &mdash; it is what the rail collapses <em>to</em>, by preference. Full spec on the navigation sheet.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- WHAT MOVES -->
+    <div style="margin-top: 26px; background: #F4F4F5; border-radius: 20px; padding: 22px 24px;">
+      <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 12px;">What the shell change touches</h3>
+      <div style="display: flex; flex-direction: column; gap: 9px;">
+        <div style="display: flex; gap: 14px; align-items: baseline;"><span class="tok" style="width: 180px; flex: none; font-weight: 600;">TopNav.tsx</span><span style="font-size: 13.5px; color: #52525B;">becomes the rail; the More menu and its <span class="tok">moreNavFor</span> call go away</span></div>
+        <div style="display: flex; gap: 14px; align-items: baseline;"><span class="tok" style="width: 180px; flex: none; font-weight: 600;">GlobalSearch, avatar</span><span style="font-size: 13.5px; color: #52525B;">move to the top strip above the content, not into the rail</span></div>
+        <div style="display: flex; gap: 14px; align-items: baseline;"><span class="tok" style="width: 180px; flex: none; font-weight: 600;">PageContainer.tsx</span><span style="font-size: 13.5px; color: #52525B;">loses its own gutters &mdash; the shell now owns the 20px inset</span></div>
+        <div style="display: flex; gap: 14px; align-items: baseline;"><span class="tok" style="width: 180px; flex: none; font-weight: 600;">ImpersonateBar, OwnerViewBanner</span><span style="font-size: 13.5px; color: #52525B;">currently span the full width under a sticky bar; they need a home in the content column</span></div>
+        <div style="display: flex; gap: 14px; align-items: baseline;"><span class="tok" style="width: 180px; flex: none; font-weight: 600;">MobileNav.tsx</span><span style="font-size: 13.5px; color: #52525B;">unchanged &mdash; the rail is <span class="tok">lg:</span> and up; mobile keeps its bottom bar</span></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1080,"height":2900}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>
