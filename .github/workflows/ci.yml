@@ -25,9 +25,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run check:i18n
+      - run: npm run check:colors
       - run: npm run test:coverage
       - run: npm run build
-
   mobile-test:
     name: Mobile Lint & Test
     runs-on: ubuntu-latest
