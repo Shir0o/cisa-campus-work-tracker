@@ -12,7 +12,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { TEST_USERS, type TestUser } from './fixtures/users';
-import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts } from '../lib/permissions';
+import { canAccessRoute, hasMinRole, defaultRouteForRole, roleLabel, NAV_ITEMS, canSeeContact, visibleContacts, journeyContacts, canSeeHistory, canSeeSettings, navItemsForRole, canSeePrefs, canSeeBoardNotes, isAppOwner, canSimulateRole, getEffectiveRole, OWNER_VIEW_ROLES, navExternalFor, primaryNavFor, moreNavFor, isRealPerson, pickableStaff, pickableContacts, groupedNavFor } from '../lib/permissions';
 import TopNav from '../components/layout/TopNav';
 import MobileNav from '../components/layout/MobileNav';
 
@@ -531,5 +531,107 @@ describe('Questions for the team as its own destination', () => {
     expect(trainee).toContain('/questions');
     // and it does not displace The Journey from their primary tabs
     expect(primaryNavFor('manager').map((i) => i.href)).toContain('/board');
+  });
+});
+
+// ── Destination grouping for the rail (issue #662) ───────────────────────────
+// The rail (issue #664) consumes this data: ordered groups of destinations a
+// given role can reach. The groups and within-group order are fixed by the
+// design at docs/design/ink/NavPref.dc.html. Settings is excluded — the shell
+// pins it below a divider rather than letting it fall into a group.
+
+describe('groupedNavFor() — rail destination groups (#662)', () => {
+  // Per-role expectations. Each entry lists the groups (in stable order) and
+  // the hrefs inside each. Empty groups are omitted from the output.
+  const expectedByRole: Record<string, Array<{ label: string; hrefs: string[] }>> = {
+    admin: [
+      { label: 'Today', hrefs: ['/', '/coordination', '/questions'] },
+      { label: 'People', hrefs: ['/board', '/directory', '/visits', '/outreach', '/history'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
+    ],
+    manager: [
+      { label: 'Today', hrefs: ['/', '/questions'] },
+      { label: 'People', hrefs: ['/board', '/directory'] },
+      { label: 'Gatherings', hrefs: ['/messages'] },
+    ],
+    operator: [
+      { label: 'Today', hrefs: ['/', '/coordination'] },
+      { label: 'People', hrefs: ['/directory'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
+    ],
+    viewer: [
+      { label: 'Today', hrefs: ['/'] },
+      { label: 'People', hrefs: ['/outreach'] },
+      { label: 'Gatherings', hrefs: ['/attendance', '/messages'] },
+      { label: 'Prayer', hrefs: ['/prayer', '/answered'] },
+    ],
+  };
+
+  it('returns the expected groups for each role, in stable order', () => {
+    for (const role of Object.keys(expectedByRole) as Array<keyof typeof expectedByRole>) {
+      const groups = groupedNavFor(role);
+      expect(groups.map((g) => g.label)).toEqual(expectedByRole[role].map((e) => e.label));
+      for (let i = 0; i < groups.length; i++) {
+        expect(groups[i].items.map((it) => it.href)).toEqual(expectedByRole[role][i].hrefs);
+      }
+    }
+  });
+
+  it('contains exactly the destinations the role can reach — nothing more, nothing less', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      const groups = groupedNavFor(role);
+      const groupedHrefs = groups.flatMap((g) => g.items.map((it) => it.href));
+      const reachable = navItemsForRole(role).map((it) => it.href);
+      // The grouping excludes /settings (pinned separately by the shell), so
+      // compare against reachable destinations minus settings.
+      const reachableNoSettings = reachable.filter((h) => h !== '/settings');
+      expect(new Set(groupedHrefs)).toEqual(new Set(reachableNoSettings));
+      // Every grouped item must be one the role can actually reach.
+      for (const href of groupedHrefs) {
+        expect(canAccessRoute(role, href), `${role} can access ${href}`).toBe(true);
+      }
+    }
+  });
+
+  it('Settings is never in the returned groups', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      const hrefs = groupedNavFor(role).flatMap((g) => g.items.map((it) => it.href));
+      expect(hrefs).not.toContain('/settings');
+    }
+  });
+
+  it('exposes every group label exactly once and never repeats a destination', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      const groups = groupedNavFor(role);
+      const labels = groups.map((g) => g.label);
+      expect(new Set(labels).size).toBe(labels.length);
+      const allHrefs = groups.flatMap((g) => g.items.map((it) => it.href));
+      expect(new Set(allHrefs).size).toBe(allHrefs.length);
+    }
+  });
+
+  it('returns an empty list for a null/unknown role', () => {
+    expect(groupedNavFor(null)).toEqual([]);
+    // Unknown string role: nothing reachable, so nothing grouped.
+    expect(groupedNavFor('not-a-role')).toEqual([]);
+  });
+
+  it('preserves stable ordering across calls (same input → same output shape)', () => {
+    for (const role of ['admin', 'manager', 'operator', 'viewer'] as const) {
+      const a = groupedNavFor(role);
+      const b = groupedNavFor(role);
+      expect(b).toEqual(a);
+    }
+  });
+
+  it('grouping covers every NAV_ITEMS destination except /settings, exactly once', () => {
+    // For a Full-timer every non-settings destination is in some group; this
+    // guards against a new NAV_ITEMS entry being added without being placed
+    // in a group.
+    const adminHrefs = groupedNavFor('admin').flatMap((g) => g.items.map((it) => it.href));
+    const navHrefs = NAV_ITEMS.map((it) => it.href).filter((h) => h !== '/settings');
+    expect(new Set(adminHrefs)).toEqual(new Set(navHrefs));
   });
 });
