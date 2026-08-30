@@ -1002,10 +1002,10 @@ body.bdoc-fs-on main { overflow: hidden; }
   background: transparent; cursor: pointer; color: var(--text);
 }
 .bd-pick-row:hover { background: var(--hover); }
-.bd-pick-row.on { background: var(--accent-soft); }
-.bd-pick-name { font-size: 13.5px; color: var(--text); white-space: nowrap; }
-.bd-pick-role { font-size: 11.5px; color: var(--text-mute); white-space: nowrap; }
-.bd-pick-row .ico { color: var(--accent); }
+.bd-pick-row.on { background: var(--primary); color: var(--accent-on); }
+.bd-pick-row.on .bd-pick-name { color: var(--accent-on); }
+.bd-pick-row.on .bd-pick-role { color: var(--accent-on); opacity: 0.78; }
+.bd-pick-row.on .ico { color: var(--accent-on); }
 
 /* new-task composer */
 .bd-assign-new {
@@ -1210,14 +1210,15 @@ body.bdoc-fs-on main { overflow: hidden; }
 }
 .bdoc-row + .bdoc-row { margin-top: 2px; }
 .bdoc-row:hover { background: var(--panel); }
-.bdoc-row.is-active { background: var(--accent-soft); border-color: var(--accent-line); }
+.bdoc-row.is-active { background: var(--primary); border-color: var(--primary); }
 .bdoc-row-date {
   display: flex; flex-direction: column; align-items: center; flex: none;
   padding-top: 1px; color: var(--text-mute);
 }
 .bdoc-row-wd { font-size: 10.5px; font-weight: 600;   }
 .bdoc-row-day { font-family: var(--font-serif); font-size: 22px; font-weight: 500; line-height: 1; color: var(--text-dim); }
-.bdoc-row.is-active .bdoc-row-day, .bdoc-row.is-active .bdoc-row-wd { color: var(--accent); }
+.bdoc-row.is-active .bdoc-row-day, .bdoc-row.is-active .bdoc-row-wd,
+.bdoc-row.is-active .bdoc-row-title, .bdoc-row.is-active .bdoc-row-preview { color: var(--accent-on); }
 .bdoc-row.today .bdoc-row-day { color: var(--accent); }
 .bdoc-row-main { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .bdoc-row-title {
@@ -1233,6 +1234,8 @@ body.bdoc-fs-on main { overflow: hidden; }
   font-size: 10.5px; font-weight: 600;  
   color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px;
 }
+.bdoc-row.is-active .bdoc-row-today { color: var(--accent-on); background: rgba(255,255,255,0.18); }
+.bdoc-row.is-active .bdoc-row-aud.aud-trainees { color: var(--accent-on); background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.3); }
 .bdoc-row-todo {
   font-size: 11.5px; color: var(--text-mute);
   background: var(--panel-2); border: 1px solid var(--border-soft); border-radius: 999px; padding: 1px 8px;
@@ -1459,7 +1462,7 @@ body.bdoc-fs-on main { overflow: hidden; }
   transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .ntf-bell:hover { background: var(--panel-2); color: var(--text); }
-.ntf-bell.is-open { background: var(--accent-soft); color: var(--accent); border-color: var(--accent-line); }
+.ntf-bell.is-open { background: var(--primary); color: var(--accent-on); border-color: var(--primary); }
 .ntf-badge {
   position: absolute; top: -3px; right: -3px; min-width: 16px; height: 16px;
   padding: 0 4px; border-radius: 999px;
@@ -2188,7 +2191,8 @@ body.bdoc-fs-on main { overflow: hidden; }
   cursor: pointer; transition: background 100ms ease;
 }
 .myd-picker-row:hover { background: var(--hover); }
-.myd-picker-row.on { background: var(--accent-soft); }
+.myd-picker-row.on { background: var(--primary); color: var(--accent-on); }
+.myd-picker-row.on input[type="checkbox"] { accent-color: var(--accent-on); }
 .myd-picker-row input[type="checkbox"] { accent-color: var(--accent); flex: none; }
 .myd-picker-name { font-size: 14.5px; flex: 1; min-width: 0; }
 

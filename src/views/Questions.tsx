@@ -429,7 +429,7 @@ export default function Questions() {
                   className={cn(
                     'text-xs font-medium rounded-full border px-3 py-1.5 transition-colors',
                     mode === id
-                      ? 'bg-accent-soft border-accent-line text-accent'
+                      ? 'bg-primary border-primary text-on-primary'
                       : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
                   )}
                 >
@@ -452,11 +452,11 @@ export default function Questions() {
                   className={cn(
                     'inline-flex items-center gap-2 h-9 pl-1.5 pr-3 rounded-full border text-[13px] transition-colors',
                     forWho === s.uid
-                      ? 'border-accent bg-accent-soft text-on-surface'
+                      ? 'border-primary bg-primary text-on-primary'
                       : 'border-outline-variant bg-surface text-on-surface-variant hover:text-on-surface',
                   )}
                 >
-                  <span className={cn(AVATAR, 'w-6 h-6 text-[9px]')}>{getUserInitials(s.displayName)}</span>
+                  <span className={cn(forWho === s.uid ? 'bg-on-primary/20 text-on-primary' : AVATAR, 'w-6 h-6 text-[9px] rounded-full grid place-items-center font-semibold shrink-0')}>{getUserInitials(s.displayName)}</span>
                   {firstName(s.displayName)}
                 </button>
               ))}
@@ -510,7 +510,7 @@ export default function Questions() {
             className={cn(
               'inline-flex items-center gap-1.5 text-[13px] font-medium rounded-full border px-3 py-1.5 transition-colors',
               filter === f.id
-                ? 'bg-accent-soft border-accent-line text-accent'
+                ? 'bg-primary border-primary text-on-primary'
                 : 'bg-surface border-outline-variant text-on-surface-variant hover:text-on-surface',
             )}
           >

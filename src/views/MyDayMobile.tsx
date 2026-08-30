@@ -753,15 +753,15 @@ export default function MyDayMobile({
                     onClick={() => onTogglePersonalContact(c.id)}
                     className={cn(
                       "flex items-center gap-3 p-3 rounded-xl text-left cursor-pointer transition-colors myd-picker-row w-full",
-                      checked ? "bg-stage-accent-soft on" : "hover:bg-surface-variant",
+                      checked && "on",
                     )}
                   >
                     <Avatar contact={c} size="sm" />
-                    <span className="text-sm text-on-surface flex-1 min-w-0 truncate">
+                    <span className={cn('text-sm flex-1 min-w-0 truncate', checked ? 'text-on-primary' : 'text-on-surface')}>
                       {c.name}
                     </span>
                     <StageChip stage={c.stage} stages={stages} />
-                    {checked && <Check className="w-4 h-4 text-accent shrink-0 ml-2" />}
+                    {checked && <Check className="w-4 h-4 text-on-primary shrink-0 ml-2" />}
                   </button>
                 );
               })}

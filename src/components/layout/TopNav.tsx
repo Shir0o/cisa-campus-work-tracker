@@ -186,20 +186,20 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     cn(
                       'relative flex items-center gap-2 h-10 px-3 rounded-xl transition-colors',
                       isActive
-                        ? 'text-on-surface font-medium bg-accent-soft/60'
+                        ? 'text-on-primary font-medium bg-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                     )
                   }
                 >
                   {({ isActive }) => (
                     <>
-                      <NavGlyph href={href} size={18} className={isActive ? 'text-accent' : ''} />
+                      <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
                       <Translate as="span" className="text-sm whitespace-nowrap" text={label} />
                       {/* 16×4 active bar (design B) */}
                       <span
                         className={cn(
                           'absolute left-1/2 -bottom-[13px] -translate-x-1/2 w-4 h-1 rounded-full transition-opacity',
-                          isActive ? 'opacity-100 bg-primary' : 'opacity-0',
+                          isActive ? 'opacity-100 bg-on-primary' : 'opacity-0',
                         )}
                       />
                     </>
@@ -258,14 +258,14 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                             className={cn(
                               'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left text-[13.5px] transition-colors',
                               pathname === href || (href !== '/' && pathname.startsWith(href))
-                                ? 'bg-accent-soft text-on-surface font-medium'
+                                ? 'bg-primary text-on-primary font-medium'
                                 : 'text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface',
                             )}
                           >
-                            <NavGlyph href={href} size={18} />
+                            <NavGlyph href={href} size={18} className={pathname === href || (href !== '/' && pathname.startsWith(href)) ? 'text-on-primary' : ''} />
                             <Translate as="span" className="min-w-0 flex-1" text={label} />
                             {href === '/questions' && waitingAsks > 0 && (
-                              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-warning bg-warning-container rounded-full px-1.5 py-0.5">
+                              <span className="shrink-0 text-[11px] font-semibold tabular-nums text-on-primary bg-on-primary/20 rounded-full px-1.5 py-0.5">
                                 {waitingAsks}
                               </span>
                             )}
@@ -473,13 +473,17 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                     cn(
                       'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
                       isActive
-                        ? 'bg-accent-soft text-accent font-medium'
+                        ? 'bg-primary text-on-primary font-medium'
                         : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                     )
                   }
                 >
-                  <NavGlyph href={href} size={18} />
-                  <Translate as="span" text={label} />
+                  {({ isActive }) => (
+                    <>
+                      <NavGlyph href={href} size={18} className={isActive ? 'text-on-primary' : ''} />
+                      <Translate as="span" text={label} />
+                    </>
+                  )}
                 </NavLink>
               );
             })}
@@ -512,13 +516,17 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
                   cn(
                     'flex items-center gap-3 rounded-xl h-11 px-3 transition-all text-sm',
                     isActive
-                      ? 'bg-accent-soft text-accent font-medium'
+                      ? 'bg-primary text-on-primary font-medium'
                       : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
                   )
                 }
               >
-                <FileText className="w-[18px] h-[18px] shrink-0" />
-                <span>{t('nav.sign_up_form', 'Sign-up form')}</span>
+                {({ isActive }) => (
+                  <>
+                    <FileText className={cn('w-[18px] h-[18px] shrink-0', isActive && 'text-on-primary')} />
+                    <span>{t('nav.sign_up_form', 'Sign-up form')}</span>
+                  </>
+                )}
               </NavLink>
             </div>
 

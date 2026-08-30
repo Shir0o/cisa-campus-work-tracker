@@ -268,7 +268,7 @@ export default function NotificationCenter() {
         className={cn(
           'relative w-[38px] h-[38px] grid place-items-center rounded-[10px] border transition-all duration-120',
           isOpen
-            ? 'bg-accent-soft text-accent border-accent-line'
+            ? 'bg-primary text-on-primary border-primary'
             : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
         )}
         aria-label={unreadCount ? t('notifications.new_notifications').replace('{n}', String(unreadCount)) : t('notifications.notifications')}

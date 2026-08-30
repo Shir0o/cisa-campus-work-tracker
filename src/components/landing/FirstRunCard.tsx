@@ -85,7 +85,7 @@ export default function FirstRunCard({
               className={cn(
                 'w-5 h-5 sm:w-6 sm:h-6 rounded-lg border flex items-center justify-center shrink-0 transition-colors',
                 step.done
-                  ? 'bg-accent-soft border-accent/40 text-accent'
+                  ? 'bg-success/10 border-success/40 text-success'
                   : 'border-outline-variant bg-surface-container/40 text-transparent',
               )}
               aria-hidden="true"

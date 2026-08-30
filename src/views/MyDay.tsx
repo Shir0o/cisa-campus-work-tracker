@@ -1276,7 +1276,7 @@ export default function MyDay() {
                       key={c.id}
                       className={cn(
                         "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
-                        checked ? "bg-accent-soft" : "hover:bg-surface-variant",
+                        checked ? "bg-primary text-on-primary" : "hover:bg-surface-variant",
                       )}
                     >
                       <input
@@ -1286,7 +1286,7 @@ export default function MyDay() {
                         className="accent-primary shrink-0"
                       />
                       <Avatar contact={c} size="sm" />
-                      <span className="text-sm text-on-surface flex-1 min-w-0 truncate">
+                      <span className={cn('text-sm flex-1 min-w-0 truncate', checked ? 'text-on-primary' : 'text-on-surface')}>
                         {c.name}
                       </span>
                       <StageChip stage={c.stage} stages={stages} />

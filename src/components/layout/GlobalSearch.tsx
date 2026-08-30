@@ -686,14 +686,14 @@ export default function GlobalSearch() {
                 className={cn(
                   'inline-flex items-center gap-1.5 text-[12px] px-2.5 py-1 rounded-full border transition-colors',
                   inclHistory
-                    ? 'border-accent-line bg-accent-soft text-accent'
+                    ? 'border-primary bg-primary text-on-primary'
                     : 'border-outline-variant text-on-surface-variant hover:text-on-surface',
                 )}
               >
                 <span
                   className={cn(
                     'w-1.5 h-1.5 rounded-full',
-                    inclHistory ? 'bg-primary' : 'bg-outline',
+                    inclHistory ? 'bg-on-primary' : 'bg-outline',
                   )}
                 />
                 {t('search.search_history_too')}

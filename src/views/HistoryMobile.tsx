@@ -101,13 +101,13 @@ export default function HistoryMobile({
           onClick={() => setFilterOpen(true)}
           className={cn(
             "inline-flex items-center justify-center gap-2 h-11 border rounded-xl text-sm font-semibold active:brightness-95 transition-all bg-surface border-outline-variant/65 text-on-surface w-full hism-filterbtn",
-            activeCount > 0 && "bg-accent-soft border-accent-line text-accent on"
+            activeCount > 0 && "bg-primary border-primary text-on-primary on"
           )}
         >
           <Filter className="w-4 h-4" />
           <span>{t('history.filter_history')}</span>
           {activeCount > 0 && (
-            <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-on-primary font-semibold  hism-count animate-in zoom-in duration-200">
+            <span className={cn('text-xs px-2 py-0.5 rounded-full font-semibold hism-count animate-in zoom-in duration-200', activeCount > 0 && 'bg-on-primary text-primary')}>
               {activeCount}
             </span>
           )}
@@ -118,7 +118,7 @@ export default function HistoryMobile({
             {kind !== 'all' && (
               <button
                 onClick={() => setKind('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft text-accent text-xs font-semibold rounded-full border border-accent-line hism-chip"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
               >
                 {kindLabel}
                 <X className="w-3.5 h-3.5" />
@@ -127,7 +127,7 @@ export default function HistoryMobile({
             {who !== 'all' && (
               <button
                 onClick={() => setWho('all')}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-accent-soft text-accent text-xs font-semibold rounded-full border border-accent-line hism-chip"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary text-xs font-semibold rounded-full border border-primary hism-chip"
               >
                 {whoLabel}
                 <X className="w-3.5 h-3.5" />
