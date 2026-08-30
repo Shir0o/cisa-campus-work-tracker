@@ -244,5 +244,54 @@ describe("AttentionFeed Component (#330, #595)", () => {
     fireEvent.click(scannedBtns[0]);
     expect(UserEntityState.isRead(uid, "contact:c1")).toBe(true);
   });
+
+  // #reviewer-appstore-orphan-fix: when an activity points at a contactId
+  // that isn't in the `contacts` array (e.g. a deleted/missing contact),
+  // clicking the row must NOT call `onOpenContact` with a string id —
+  // passing a string causes the consumer to build `/people/${string}` and
+  // navigate to `/people/undefined`. Resolve to the actual Contact first;
+  // if missing, do nothing.
+  it("does not call onOpenContact when the stack's contactId is missing from contacts (orphan reference)", () => {
+    const onOpenContact = vi.fn();
+    // Note: contacts array does NOT include 'c_orphan'. The interaction below
+    // references it — this is the exact prod shape of the bad activity
+    // (reviewer-appstore logged an interaction for 'xnkdzn' on a deleted
+    // contact l3vJMlCsJEprKqxzZLYc — see CHANGELOG).
+    const orphanInteraction: Interaction = {
+      id: "i_orphan",
+      contactId: "c_orphan",
+      userId: "u2",
+      content: "",
+      createdAt: new Date().toISOString(),
+      dateTime: new Date().toISOString(),
+      type: "gospel",
+      title: "gospel",
+    } as unknown as Interaction;
+
+    render(
+      <AttentionFeed
+        contacts={sampleContacts}
+        interactions={[orphanInteraction]}
+        staffNameMap={{ u2: "Caleb" }}
+        onOpenContact={onOpenContact}
+      />,
+    );
+
+    // The row renders the "Contact" fallback name (capital C, when contact
+    // prop is undefined but stack.contactId exists).
+    const fallbackBtn = screen.getAllByText("Contact")[0];
+    fireEvent.click(fallbackBtn);
+
+    // The fix: never pass a string id to a Contact-typed consumer.
+    // Either onOpenContact is not called at all, OR it is called with a real
+    // Contact object — never with a raw string.
+    for (const call of onOpenContact.mock.calls) {
+      const arg = call[0];
+      expect(typeof arg).not.toBe("string");
+      if (arg && typeof arg === "object" && "id" in arg) {
+        expect((arg as Contact).id).toBe("c_orphan"); // would still fail lookup
+      }
+    }
+  });
 });
 

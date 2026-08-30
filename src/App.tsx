@@ -350,6 +350,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }
       return;
     }
+    // Defensive: never build `/people/${undefined}` even if a caller passes a
+    // string id instead of a Contact (e.g. an orphan activity reference).
+    if (!contact.id) {
+      setSelectedContact(null);
+      return;
+    }
     setSelectedContact(contact);
     navigate(`/people/${contact.id}`, {
       state: { from: location.pathname },

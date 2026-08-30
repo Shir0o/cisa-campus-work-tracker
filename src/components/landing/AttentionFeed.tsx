@@ -500,8 +500,8 @@ export default function AttentionFeed({
   notifications?: Notification[];
   staffNameMap?: Record<string, string>;
   onOpenContact?: (
-    c: Contact | string,
-    opts?: { tab?: "overview" | "thread" | "history"; interactionId?: string | null } | "overview" | "thread" | "history",
+    c: Contact,
+    opts?: { tab?: "overview" | "thread" | "history"; interactionId?: string | null },
   ) => void;
   onToast?: (msg: string) => void;
   mobile?: boolean;
@@ -579,9 +579,11 @@ export default function AttentionFeed({
     const c = contactMap.get(contactId);
     if (c) {
       onOpenContact(c, { tab: initialTab });
-    } else {
-      (onOpenContact as (id: string, opts?: unknown) => void)(contactId, initialTab ? { tab: initialTab } : undefined);
+      return;
     }
+    // Orphan reference (e.g. an activity that points at a deleted contact):
+    // skip the open entirely rather than passing the raw string id downstream,
+    // which would otherwise build `/people/${string}` → `/people/undefined`.
   };
 
   const rawItems = useMemo(

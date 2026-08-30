@@ -672,9 +672,38 @@ function IntegrationsSection({
 }) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<QuickAddResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [geminiStatus, setGeminiStatus] = useState<'checking' | 'ready' | 'missing'>('checking');
 
+  type QuickAddResult = {
+    name?: string;
+    role?: string;
+    location?: string;
+    stage?: string;
+    notes?: string;
+  };
+  // Live backend diagnostic: `/api/quick-add/status` reports whether the Gemini
+  // API key is configured on the Cloud Run side. Surfaced in the UI so admins
+  // can self-verify without curling — and so a missing key is visible the
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/quick-add/status')
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: unknown) => {
+        if (cancelled) return;
+        const configured =
+          typeof data === 'object' && data !== null && 'geminiConfigured' in data &&
+          (data as { geminiConfigured: unknown }).geminiConfigured === true;
+        setGeminiStatus(configured ? 'ready' : 'missing');
+      })
+      .catch(() => {
+        if (!cancelled) setGeminiStatus('missing');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://cisa-campus-work-tracker.pages.dev';
   const curlCommand = `curl -X POST "${appUrl}/api/quick-add" \\
   -H "Content-Type: application/json" \\
@@ -737,16 +766,44 @@ function IntegrationsSection({
             <span className="w-9 h-9 rounded-full bg-stage-violet-soft text-stage-violet flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4" />
             </span>
-            <div>
-              <h3 className="font-serif text-base text-on-surface leading-tight">Natural-language playground</h3>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-serif text-base text-on-surface leading-tight">Natural-language playground</h3>
+                {geminiStatus === 'ready' && (
+                  <span
+                    data-testid="gemini-status-badge"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success border border-success/20"
+                    title="Gemini API key is configured on the backend (Cloud Run). Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups will all parse with AI."
+                  >
+                    <CheckCircle2 className="w-3 h-3" /> Gemini AI ready
+                  </span>
+                )}
+                {geminiStatus === 'missing' && (
+                  <span
+                    data-testid="gemini-status-badge"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-warning/10 text-warning border border-warning/20"
+                    title="The backend reports GEMINI_API_KEY is not configured. Set it on the campus-hub-backend Cloud Run service to re-enable Quick Add, Smart Import, AI Notes, GroupMe bot, and Siri hookups."
+                  >
+                    <XCircle className="w-3 h-3" /> Gemini AI not configured
+                  </span>
+                )}
+                {geminiStatus === 'checking' && (
+                  <span
+                    data-testid="gemini-status-badge"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-surface-container-high text-on-surface-variant border border-outline-variant/40"
+                  >
+                    <Loader2 className="w-3 h-3 animate-spin" /> Checking Gemini…
+                  </span>
+                )}
+              </div>
               <p className="text-[13px] text-on-surface-variant mt-0.5 leading-relaxed">
                 Type or paste a note about someone you met — the way you'd text it or say it out loud. It's parsed and
                 turned into a contact, ready to keep.
               </p>
             </div>
           </div>
-
           <div className="flex flex-col sm:flex-row gap-2.5">
+
             <input
               type="text"
               placeholder="e.g. Met John Doe at Miller Hall. Sophomore philosophy student, phone 555-1234."
