@@ -139,8 +139,11 @@ export function navItemsForRole(role: AppRole | string | null): NavItem[] {
 // the mark; every other accessible place lives in one "More" menu. Settings is
 // deliberately excluded — it lives in the avatar menu at the right.
 
+/** Group labels are stable identifiers — the rail renders them in this order. */
+export type NavGroupLabel = 'Today' | 'People' | 'Gatherings' | 'Prayer';
+
 export interface NavGroup {
-  label?: string;
+  label?: NavGroupLabel;
   items: NavItem[];
 }
 
@@ -171,6 +174,51 @@ export function moreNavFor(role: AppRole | string | null): NavItem[] {
   );
   const getLabel = (item: NavItem) => (item.href === '/' && role === 'admin' ? 'My Day' : item.label);
   return rest.sort((a, b) => getLabel(a).localeCompare(getLabel(b)));
+}
+
+// ── Destination grouping for the rail (issue #662) ──────────────────────────
+// The rail ticket (#664) consumes this data, but it lands on its own so that
+// the rail ticket is about the rail. Groups and within-group order are fixed
+// by the design at docs/design/ink/NavPref.dc.html; role filtering happens
+// here, not in the consumer. Settings is excluded — the shell pins it below
+// a divider rather than letting it fall into a group.
+
+// Maps each group label to the destinations it contains, in display order.
+// Every NAV_ITEMS entry except /settings must appear in exactly one group
+// here; the "grouping covers every NAV_ITEMS destination except /settings"
+// test in src/test/permissions.test.tsx guards against drift.
+const NAV_GROUPS: Record<NavGroupLabel, string[]> = {
+  Today: ['/', '/coordination', '/questions'],
+  People: ['/board', '/directory', '/visits', '/outreach', '/history'],
+  Gatherings: ['/attendance', '/messages'],
+  Prayer: ['/prayer', '/answered'],
+};
+
+const NAV_GROUP_ORDER: readonly NavGroupLabel[] = ['Today', 'People', 'Gatherings', 'Prayer'];
+
+/**
+ * Returns the ordered groups of destinations a given role can reach. The rail
+ * (#664) renders this directly. Group order and within-group order are both
+ * stable across calls. Settings is excluded — it is pinned by the shell below
+ * a divider, not part of the grouped data. Groups that have no items for the
+ * role are omitted, so a Community member's "People" group contains only
+ * Gospel rather than an empty section.
+ */
+export function groupedNavFor(role: AppRole | string | null): NavGroup[] {
+  // No early return for null/unknown: navItemsForRole / canAccessRoute already
+  // resolve unknown roles to an empty reachable set, so every group falls out
+  // empty — same shape as primaryNavFor / moreNavFor for unknown input.
+  const reachable = new Map(navItemsForRole(role).map((it) => [it.href, it]));
+  const out: NavGroup[] = [];
+  for (const label of NAV_GROUP_ORDER) {
+    const items: NavItem[] = [];
+    for (const href of NAV_GROUPS[label]) {
+      const item = reachable.get(href);
+      if (item) items.push(item);
+    }
+    if (items.length > 0) out.push({ label, items });
+  }
+  return out;
 }
 
 export const canSeeSettings = (role: AppRole | string | null) => role === 'admin';
