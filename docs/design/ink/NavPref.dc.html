@@ -1,0 +1,346 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #0A0A0B; } a:hover { color: #52525B; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+    .sec-h { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.022em; margin: 0; }
+    .sec-n { font-size: 13.5px; color: #A1A1AA; }
+    .card { background: #F4F4F5; border-radius: 24px; padding: 26px 28px; }
+    .lbl { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: #A1A1AA; }
+
+    /* expanded rail */
+    .xgrp { font-size: 10.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; color: rgba(255,255,255,0.34); padding: 0 14px; margin: 15px 0 6px; }
+    .xitem { display: flex; align-items: center; gap: 11px; height: 38px; padding: 0 14px; border-radius: 999px; color: rgba(255,255,255,0.62); font-size: 13.5px; white-space: nowrap; }
+    .xitem svg { flex: none; color: rgba(255,255,255,0.48); }
+    .xitem.on { background: #FFFFFF; color: #0A0A0B; font-weight: 500; }
+    .xitem.on svg { color: #0A0A0B; }
+    .xbadge { margin-left: auto; font-size: 10.5px; font-weight: 600; background: rgba(255,255,255,0.14); color: #FFFFFF; border-radius: 999px; padding: 2px 7px; }
+
+    /* collapsed rail */
+    .citem { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; color: rgba(255,255,255,0.48); position: relative; margin: 0 auto; }
+    .citem.on { background: #FFFFFF; color: #0A0A0B; }
+    .cdot { position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 999px; background: #FFFFFF; }
+    .cdiv { height: 1px; background: rgba(255,255,255,0.10); margin: 9px 14px; }
+
+    /* schematic */
+    .sch { background: #FFFFFF; border-radius: 14px; box-shadow: 0 0 0 1px #E4E4E7; overflow: hidden; height: 300px; display: flex; box-sizing: border-box; }
+    .ghost { background: #EAEAEC; border-radius: 7px; }
+  </style>
+</helmet>
+
+<div style="width: 1600px; background: #FFFFFF; padding: 60px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #0A0A0B;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px; border-bottom: 1px solid #E4E4E7;">
+    <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; navigation preference</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 46px; line-height: 1.02; letter-spacing: -0.032em; margin: 0;">Three shells, one preference</h1>
+    <p style="font-size: 15.5px; line-height: 1.55; color: #52525B; margin: 0; max-width: 820px; text-wrap: pretty;">
+      Stored per user and desktop-only. Below <span class="tok">lg</span> every state falls through to <span class="tok">MobileNav</span>, so the preference never has to describe a phone.
+    </p>
+  </div>
+
+  <!-- THREE STATES -->
+  <div style="padding-top: 44px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px;">
+      <h2 class="sec-h">The states</h2>
+      <span class="sec-n">content width at a 1440 viewport</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px;">
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="sch" style="padding: 8px; gap: 8px;">
+          <div style="width: 78px; background: #0A0A0B; border-radius: 11px; flex: none; padding: 9px 7px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="height: 12px; border-radius: 4px; background: #FFFFFF; width: 60%;"></div>
+            <div style="height: 8px; border-radius: 3px; background: rgba(255,255,255,0.55); margin-top: 6px;"></div>
+            <div style="height: 8px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 8px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 8px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 8px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 9px 4px;">
+            <div class="ghost" style="height: 16px; width: 45%;"></div>
+            <div class="ghost" style="height: 40px;"></div>
+            <div style="display: flex; gap: 8px; flex: 1;"><div class="ghost" style="flex: 1;"></div><div class="ghost" style="flex: 1;"></div></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <span class="lbl" style="color: #0A0A0B;">Rail, expanded</span>
+          <span class="tok" style="color: #A1A1AA;">232px &rarr; 1148 content</span>
+        </div>
+        <p style="font-size: 13px; line-height: 1.5; color: #52525B; margin: 0;">The default. All 13 destinations legible and grouped.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="sch" style="padding: 8px; gap: 8px;">
+          <div style="width: 30px; background: #0A0A0B; border-radius: 11px; flex: none; padding: 9px 6px; display: flex; flex-direction: column; gap: 7px; align-items: center;">
+            <div style="height: 14px; width: 14px; border-radius: 5px; background: #FFFFFF;"></div>
+            <div style="height: 10px; width: 10px; border-radius: 3px; background: rgba(255,255,255,0.55); margin-top: 5px;"></div>
+            <div style="height: 10px; width: 10px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 10px; width: 10px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 10px; width: 10px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 10px; width: 10px; border-radius: 3px; background: rgba(255,255,255,0.20);"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 9px 4px;">
+            <div class="ghost" style="height: 16px; width: 40%;"></div>
+            <div class="ghost" style="height: 40px;"></div>
+            <div style="display: flex; gap: 8px; flex: 1;"><div class="ghost" style="flex: 1;"></div><div class="ghost" style="flex: 1;"></div></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <span class="lbl" style="color: #0A0A0B;">Rail, collapsed</span>
+          <span class="tok" style="color: #A1A1AA;">76px &rarr; 1304 content</span>
+        </div>
+        <p style="font-size: 13px; line-height: 1.5; color: #52525B; margin: 0;">The reference's slim look. Needs tooltips to stay usable.</p>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div class="sch" style="flex-direction: column;">
+          <div style="height: 30px; border-bottom: 1px solid #E4E4E7; display: flex; align-items: center; gap: 6px; padding: 0 10px; flex: none;">
+            <div style="height: 13px; width: 13px; border-radius: 4px; background: #0A0A0B;"></div>
+            <div style="height: 7px; width: 30px; border-radius: 3px; background: #0A0A0B; margin-left: 4px;"></div>
+            <div style="height: 7px; width: 30px; border-radius: 3px; background: #DADADD;"></div>
+            <div style="height: 7px; width: 30px; border-radius: 3px; background: #DADADD;"></div>
+            <div style="height: 7px; width: 22px; border-radius: 3px; background: #DADADD;"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 12px 22px;">
+            <div class="ghost" style="height: 16px; width: 40%;"></div>
+            <div class="ghost" style="height: 40px;"></div>
+            <div style="display: flex; gap: 8px; flex: 1;"><div class="ghost" style="flex: 1;"></div><div class="ghost" style="flex: 1;"></div></div>
+          </div>
+        </div>
+        <div style="display: flex; align-items: baseline; gap: 10px;">
+          <span class="lbl" style="color: #0A0A0B;">Top bar</span>
+          <span class="tok" style="color: #A1A1AA;">64px &rarr; 1280 content</span>
+        </div>
+        <p style="font-size: 13px; line-height: 1.5; color: #52525B; margin: 0;">Today's shell, kept. Still 5 destinations plus a More menu.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AT SIZE -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 24px;">
+      <h2 class="sec-h">The two rail widths, at size</h2>
+      <span class="sec-n">everything else on this sheet is a diagram; these are 1:1</span>
+    </div>
+
+    <div style="display: flex; gap: 40px; align-items: flex-start;">
+
+      <!-- EXPANDED -->
+      <div style="display: flex; flex-direction: column; gap: 12px; flex: none;">
+        <span class="lbl">232px &mdash; expanded</span>
+        <div style="width: 232px; background: #0A0A0B; border-radius: 32px; padding: 20px 12px 14px; box-sizing: border-box; box-shadow: 0 8px 32px rgba(10,10,11,0.14);">
+          <div style="display: flex; align-items: center; gap: 11px; padding: 0 12px 2px;">
+            <div style="width: 34px; height: 34px; border-radius: 11px; background: #FFFFFF; display: grid; place-items: center; flex: none;">
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 16px; color: #0A0A0B; letter-spacing: -0.04em;">C</span>
+            </div>
+            <div style="line-height: 1.2;">
+              <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13.5px; color: #FFFFFF; letter-spacing: -0.015em;">CISA Campus</div>
+              <div style="font-size: 10px; color: rgba(255,255,255,0.42);">Work Tracker</div>
+            </div>
+          </div>
+
+          <div class="xgrp">Today</div>
+          <div class="xitem on"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1"></path><path d="M7 17a5 5 0 0 1 10 0"></path><path d="M3 20h18"></path></svg>Home</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4M9 12h6M9 16h4"></path></svg>Coordination</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"></path><path d="M10 9.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6 1M12 15h.01"></path></svg>Questions<span class="xbadge">3</span></div>
+
+          <div class="xgrp">People</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.4"></rect><rect x="10" y="4" width="5" height="10" rx="1.4"></rect><rect x="17" y="4" width="4" height="13" rx="1.4"></rect></svg>The Journey</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"></path></svg>People</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.4"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg>Visits</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"></path><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v4H6.5A2.5 2.5 0 0 1 4 19.5z"></path></svg>Gospel</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 4v4h4"></path><path d="M12 8v4.5l3 1.7"></path></svg>Looking back</div>
+
+          <div class="xgrp">Gatherings</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.4"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><path d="M8.5 15l2.2 2.2 4.3-4.4"></path></svg>Gatherings</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"></path></svg>Messages</div>
+
+          <div class="xgrp">Prayer</div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7-2.6c0 4.9-7 14.6-7 14.6z"></path></svg>On our hearts<span class="xbadge">9</span></div>
+          <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path></svg>Answered</div>
+
+          <div style="border-top: 1px solid rgba(255,255,255,0.10); padding-top: 8px; margin-top: 12px;">
+            <div class="xitem"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"></path></svg>Settings</div>
+            <div class="xitem" style="color: rgba(255,255,255,0.42); font-size: 12.5px;">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.42)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M13 5l-7 7 7 7"></path><path d="M18 12H6"></path></svg>Collapse
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px; padding: 6px 14px 0;">
+              <span style="width: 30px; height: 30px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #FFFFFF; display: grid; place-items: center; font-size: 11px; font-weight: 600; flex: none;">TW</span>
+              <div style="line-height: 1.25; min-width: 0;">
+                <div style="font-size: 12.5px; font-weight: 500; color: #FFFFFF;">Tony Wang</div>
+                <div style="font-size: 10.5px; color: rgba(255,255,255,0.42);">Full-timer</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <span class="tok" style="color: #A1A1AA;">834px tall</span>
+      </div>
+
+      <!-- COLLAPSED -->
+      <div style="display: flex; flex-direction: column; gap: 12px; flex: none;">
+        <span class="lbl">76px &mdash; collapsed</span>
+        <div style="display: flex; align-items: flex-start; gap: 0;">
+          <div style="width: 76px; background: #0A0A0B; border-radius: 32px; padding: 18px 10px 14px; box-sizing: border-box; box-shadow: 0 8px 32px rgba(10,10,11,0.14); display: flex; flex-direction: column; gap: 2px;">
+            <div style="width: 34px; height: 34px; border-radius: 11px; background: #FFFFFF; display: grid; place-items: center; margin: 0 auto 8px;">
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 16px; color: #0A0A0B; letter-spacing: -0.04em;">C</span>
+            </div>
+            <div class="citem on"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3M5.6 5.6l2.1 2.1M3 12h3M18 12h3M16.3 7.7l2.1-2.1"></path><path d="M7 17a5 5 0 0 1 10 0"></path><path d="M3 20h18"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"></path><path d="M14 3v4h4M9 12h6M9 16h4"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"></path><path d="M10 9.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6 1M12 15h.01"></path></svg><span class="cdot"></span></div>
+            <div class="cdiv"></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="5" height="16" rx="1.4"></rect><rect x="10" y="4" width="5" height="10" rx="1.4"></rect><rect x="17" y="4" width="4" height="13" rx="1.4"></rect></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.4"></circle><path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.4"></rect><path d="M3 10h18M8 3v4M16 3v4"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v16H6.5A2.5 2.5 0 0 0 4 20.5z"></path><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20v4H6.5A2.5 2.5 0 0 1 4 19.5z"></path></svg></div>
+            <div class="citem" style="background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.78);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 2.6-6.4"></path><path d="M3 4v4h4"></path><path d="M12 8v4.5l3 1.7"></path></svg></div>
+            <div class="cdiv"></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2.4"></rect><path d="M3 10h18M8 3v4M16 3v4"></path><path d="M8.5 15l2.2 2.2 4.3-4.4"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"></path></svg></div>
+            <div class="cdiv"></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20s-7-4.5-7-9.4A4 4 0 0 1 12 8a4 4 0 0 1 7-2.6c0 4.9-7 14.6-7 14.6z"></path></svg><span class="cdot"></span></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"></path></svg></div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.10); margin: 10px 8px 8px;"></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M18.4 5.6L17 7M7 17l-1.4 1.4"></path></svg></div>
+            <div class="citem"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5l7 7-7 7"></path><path d="M6 12h12"></path></svg></div>
+            <span style="width: 30px; height: 30px; border-radius: 999px; background: rgba(255,255,255,0.14); color: #FFFFFF; display: grid; place-items: center; font-size: 11px; font-weight: 600; margin: 6px auto 0;">TW</span>
+          </div>
+
+          <!-- tooltip -->
+          <div style="display: flex; align-items: center; margin-top: 336px;">
+            <div style="width: 0; height: 0; border-top: 6px solid transparent; border-bottom: 6px solid transparent; border-right: 7px solid #0A0A0B;"></div>
+            <div style="background: #0A0A0B; color: #FFFFFF; font-size: 12.5px; font-weight: 500; padding: 8px 13px; border-radius: 10px; white-space: nowrap;">Looking back</div>
+          </div>
+        </div>
+        <span class="tok" style="color: #A1A1AA;">750px tall</span>
+      </div>
+
+      <!-- NOTES -->
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <div class="card">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 10px;">What changes when it collapses</h3>
+          <div style="display: flex; flex-direction: column; gap: 9px;">
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Group labels</span><span style="font-size: 13.5px; color: #52525B;">become hairline dividers &mdash; the grouping survives, the words don't</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Item</span><span style="font-size: 13.5px; color: #52525B;">44&times;44, <span class="tok">--radius</span> 14 &mdash; square, not a pill; a pill at this width reads as a circle</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Count badges</span><span style="font-size: 13.5px; color: #52525B;">become a 7px dot &mdash; &ldquo;something here&rdquo; without the number</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Labels</span><span style="font-size: 13.5px; color: #52525B;">move to a tooltip on hover <em>and focus</em> &mdash; not hover alone, or the rail becomes keyboard-hostile</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Wordmark</span><span style="font-size: 13.5px; color: #52525B;">drops to the mark alone</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Account</span><span style="font-size: 13.5px; color: #52525B;">avatar only; name and role move into its menu</span></div>
+          </div>
+        </div>
+        <div class="card" style="background: #FFF2D2;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 10px; color: #BA5900;">The expanded rail does not fit a laptop</h3>
+          <p style="font-size: 13.5px; line-height: 1.55; color: #7A3B00; margin: 0;">
+            At 834px it clears a 900px viewport by a hair and overflows a 13&Prime; MacBook, where the browser leaves roughly 790px. The nav list has to scroll <em>inside</em> the rail, with the account block and collapse control pinned below it &mdash; not the page. Collapsed, at 750px, it fits everywhere.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- THE PREFERENCE -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 24px;">
+      <h2 class="sec-h">Where the preference lives</h2>
+      <span class="sec-n">the shape <span class="tok">ThemeProvider</span> already established</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+
+      <div class="card">
+        <span class="lbl">In Settings &mdash; all three</span>
+        <div style="background: #FFFFFF; border-radius: 18px; padding: 20px 22px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 24px;">
+          <div style="min-width: 0;">
+            <div style="font-size: 14.5px; font-weight: 500;">Navigation</div>
+            <div style="font-size: 12.5px; color: #A1A1AA; margin-top: 3px;">Applies on desktop. Phones always use the bottom bar.</div>
+          </div>
+          <div style="display: inline-flex; gap: 2px; background: #EAEAEC; border-radius: 11px; padding: 3px; flex: none;">
+            <span style="font-size: 13px; font-weight: 500; padding: 7px 13px; border-radius: 8px; background: #FFFFFF; color: #0A0A0B;">Rail</span>
+            <span style="font-size: 13px; font-weight: 500; padding: 7px 13px; border-radius: 8px; color: #52525B;">Compact</span>
+            <span style="font-size: 13px; font-weight: 500; padding: 7px 13px; border-radius: 8px; color: #52525B;">Top bar</span>
+          </div>
+        </div>
+        <p style="font-size: 13px; line-height: 1.55; color: #52525B; margin: 14px 0 0;">
+          The chevron at the bottom of the rail is the quick path, and it only ever moves between Rail and Compact. Getting <em>out</em> of the rail entirely is a Settings decision &mdash; a one-click escape from your whole navigation is a trap, not a shortcut.
+        </p>
+      </div>
+
+      <div class="card" style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;">
+        <span class="lbl" style="font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;">The model</span>
+        <div style="background: #FFFFFF; border-radius: 18px; padding: 20px 22px; margin-top: 14px; font-size: 12.5px; line-height: 1.85; color: #0A0A0B;">
+          <div><span style="color: #A1A1AA;">type</span> NavShell =</div>
+          <div style="padding-left: 18px;">| <span style="color: #016A1C;">'rail'</span> <span style="color: #A1A1AA;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;// default</span></div>
+          <div style="padding-left: 18px;">| <span style="color: #016A1C;">'rail-collapsed'</span></div>
+          <div style="padding-left: 18px;">| <span style="color: #016A1C;">'topbar'</span></div>
+          <div style="height: 10px;"></div>
+          <div><span style="color: #A1A1AA;">storageKey</span> = <span style="color: #016A1C;">'cisa-ui-nav'</span></div>
+        </div>
+        <p style="font-size: 13px; line-height: 1.55; color: #52525B; margin: 14px 0 0; font-family: Lexend, sans-serif;">
+          One flat enum, not two booleans &mdash; <span class="tok">topbar + collapsed</span> is not a state that means anything, and a flat enum makes it unrepresentable. It also remembers: leave the rail for the top bar, come back, and you land on the width you left.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RULES -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px;">
+      <h2 class="sec-h">Rules</h2>
+      <span class="sec-n">the parts that will be got wrong if they aren't written down</span>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 0;">
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0;">
+        <span style="font-size: 13.5px; font-weight: 500;">Below 1024px</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">All three states fall through to <span class="tok">MobileNav</span>. The preference is not consulted and not changed.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">1024&ndash;1279px</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">The rail renders collapsed whatever the preference says &mdash; 232px out of 1024 is a quarter of the screen. This is a <em>forced</em> collapse held in component state; it must not write back to storage, or a narrow window permanently changes what someone chose.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">Short viewports</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">The nav list scrolls inside the rail. The mark, the account block and the collapse control stay pinned &mdash; the way out of a state must never be the thing that scrolls off.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">First paint</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">Read storage before first render, as <span class="tok">ThemeProvider</span> does in its <span class="tok">useState</span> initialiser. Read it in an effect instead and every load flashes the wrong shell and reflows the page.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">Keyboard and screen readers</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">Collapsed items keep their <span class="tok">aria-label</span> when the text is gone, tooltips open on focus as well as hover, and the chevron is a real button carrying <span class="tok">aria-expanded</span>.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">Impersonation banners</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;"><span class="tok">ImpersonateBar</span> and <span class="tok">OwnerViewBanner</span> sit at the top of the content column in both rail states, and stay full-bleed under the bar in top-bar mode. A safety banner that moves depending on a display preference is worth getting right.</span>
+      </div>
+      <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
+        <span style="font-size: 13.5px; font-weight: 500;">Search and the avatar</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">Live in the top strip in both rail states, and back in the bar in top-bar mode. <span class="tok">GlobalSearch</span> and <span class="tok">NotificationCenter</span> get mounted by the shell, not by the nav component, so they are written once.</span>
+      </div>
+    </div>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #52525B; margin: 22px 0 0; max-width: 1000px; text-wrap: pretty;">
+      Worth saying plainly: this is three navigation states to keep in sync forever. Every destination added later has to be placed in a group, given an icon that survives at 20px with no label, and checked in all three. That is the cost of the choice &mdash; it buys real flexibility, and it is not free.
+    </p>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1600,"height":2500}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

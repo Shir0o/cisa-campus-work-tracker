@@ -1,0 +1,294 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #0A0A0B; } a:hover { color: #52525B; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+  </style>
+</helmet>
+
+<div style="width: 1080px; background: #FFFFFF; padding: 60px 60px 72px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #0A0A0B;">
+
+  <!-- ============ HEADER ============ -->
+  <div style="display: flex; flex-direction: column; gap: 18px; padding-bottom: 44px; border-bottom: 1px solid #E4E4E7;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <div style="width: 34px; height: 34px; border-radius: 10px; background: #0A0A0B; display: flex; align-items: center; justify-content: center;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 17px; color: #FFFFFF; letter-spacing: -0.04em;">I</span>
+      </div>
+      <span class="tok" style="color: #A1A1AA; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Design system &middot; replaces Bento</span>
+    </div>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 68px; line-height: 0.98; letter-spacing: -0.035em; margin: 0;">Ink</h1>
+    <p style="font-size: 17px; line-height: 1.55; color: #52525B; margin: 0; max-width: 660px; text-wrap: pretty;">
+      Monochrome shell, colour only in data. Bento's violet stops carrying meaning and black takes over as the accent; selection becomes inversion rather than a tint. Same token names, same 4,254 utility classes &mdash; new values.
+    </p>
+  </div>
+
+  <!-- ============ THE FOUR MOVES ============ -->
+  <div style="padding-top: 48px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 22px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0;">The four moves</h2>
+      <span style="font-size: 13.5px; color: #A1A1AA;">everything else is downstream of these</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px 28px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; color: #A1A1AA; letter-spacing: 0.02em;">01</span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -0.015em; margin: 0;">Surfaces invert</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #52525B; margin: 0;">Bento is white cards on a grey page. Ink is grey cards on a white page. Swapping <span class="tok">--bg</span> and <span class="tok">--panel</span> retints every card at once, with no markup touched.</p>
+      </div>
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px 28px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; color: #A1A1AA; letter-spacing: 0.02em;">02</span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -0.015em; margin: 0;">Borders give way to tint</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #52525B; margin: 0;">Cards separate by fill, not by line. <span class="tok">--border</span> survives only for controls that need an outline &mdash; inputs, ghost buttons, dividers.</p>
+      </div>
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px 28px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; color: #A1A1AA; letter-spacing: 0.02em;">03</span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -0.015em; margin: 0;">Selection is inversion</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #52525B; margin: 0;">With no violet, a tinted background no longer reads as &ldquo;active&rdquo;. The selected thing fills solid black and its content goes white.</p>
+      </div>
+
+      <div style="background: #F4F4F5; border-radius: 24px; padding: 26px 28px; display: flex; flex-direction: column; gap: 10px;">
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 13px; color: #A1A1AA; letter-spacing: 0.02em;">04</span>
+        <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 19px; letter-spacing: -0.015em; margin: 0;">Colour retreats into data</h3>
+        <p style="font-size: 14px; line-height: 1.5; color: #52525B; margin: 0;">Stage and board hues are now the only chroma on screen, so their chroma goes <em>up</em>, not down. Everything structural is neutral.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ SURFACES ============ -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 8px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0;">Surfaces</h2>
+      <span style="font-size: 13.5px; color: #A1A1AA;">light theme &middot; struck value is Bento's</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 20px;">
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 92px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E4E4E7;"></div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span class="tok" style="font-weight: 600;">--bg</span>
+          <span style="font-size: 13px; font-weight: 500;">#FFFFFF</span>
+          <span style="font-size: 12px; color: #A1A1AA; text-decoration: line-through;">#F6F8FB</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 92px; border-radius: 16px; background: #F4F4F5;"></div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span class="tok" style="font-weight: 600;">--panel</span>
+          <span style="font-size: 13px; font-weight: 500;">#F4F4F5</span>
+          <span style="font-size: 12px; color: #A1A1AA; text-decoration: line-through;">#FFFFFF</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 92px; border-radius: 16px; background: #EAEAEC;"></div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span class="tok" style="font-weight: 600;">--panel-2</span>
+          <span style="font-size: 13px; font-weight: 500;">#EAEAEC</span>
+          <span style="font-size: 12px; color: #A1A1AA; text-decoration: line-through;">#F6F8FB</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 92px; border-radius: 16px; background: #FFFFFF; border: 1px solid #E4E4E7; display: flex; align-items: flex-end; padding: 10px; box-sizing: border-box;">
+          <div style="width: 100%; height: 34px; border-radius: 9px; background: #E4E4E7;"></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 3px;">
+          <span class="tok" style="font-weight: 600;">--border</span>
+          <span style="font-size: 13px; font-weight: 500;">#E4E4E7</span>
+          <span style="font-size: 12px; color: #A1A1AA; text-decoration: line-through;">#DEE4ED</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ INK + ACCENT ============ -->
+  <div style="padding-top: 52px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px;">
+
+    <div>
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0 0 20px;">Ink</h2>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 52px; height: 52px; border-radius: 14px; background: #0A0A0B; flex: none;"></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span class="tok" style="font-weight: 600;">--text</span>
+            <span style="font-size: 13px;">#0A0A0B <span style="color: #A1A1AA; text-decoration: line-through; margin-left: 4px;">#1A212B</span></span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 52px; height: 52px; border-radius: 14px; background: #52525B; flex: none;"></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span class="tok" style="font-weight: 600;">--text-dim</span>
+            <span style="font-size: 13px;">#52525B <span style="color: #A1A1AA; text-decoration: line-through; margin-left: 4px;">#525E6F</span></span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px;">
+          <div style="width: 52px; height: 52px; border-radius: 14px; background: #A1A1AA; flex: none;"></div>
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span class="tok" style="font-weight: 600;">--text-mute</span>
+            <span style="font-size: 13px;">#A1A1AA <span style="color: #A1A1AA; text-decoration: line-through; margin-left: 4px;">#728197</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0 0 20px;">Accent</h2>
+      <div style="background: #F4F4F5; border-radius: 20px; padding: 22px 24px; display: flex; flex-direction: column; gap: 16px;">
+        <p style="font-size: 13.5px; line-height: 1.5; color: #52525B; margin: 0;">Black replaces <span class="tok" style="color: #5C17E5;">#5C17E5</span> everywhere. Reserve it &mdash; a page of black buttons has no hierarchy.</p>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="height: 44px; padding: 0 22px; border-radius: 14px; background: #131316; color: #FFFFFF; font-size: 14px; font-weight: 500; display: flex; align-items: center;">Primary</div>
+          <div style="height: 44px; padding: 0 22px; border-radius: 14px; background: transparent; border: 1px solid #E4E4E7; color: #0A0A0B; font-size: 14px; font-weight: 500; display: flex; align-items: center;">Secondary</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <span class="tok" style="color: #52525B;">--accent-strong &nbsp;#131316</span>
+          <span class="tok" style="color: #52525B;">--accent-hover &nbsp;&nbsp;#35353C</span>
+          <span class="tok" style="color: #52525B;">--accent-soft &nbsp;&nbsp;&nbsp;rgba(10,10,11,.06)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ SIGNAL + DATA ============ -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0;">Where colour is still allowed</h2>
+    </div>
+
+    <div style="background: #F4F4F5; border-radius: 24px; padding: 28px 30px; display: flex; flex-direction: column; gap: 26px;">
+
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.01em; margin: 0;">Signal</h3>
+          <span style="font-size: 13px; color: #A1A1AA;">carried over from Bento unchanged &mdash; these already mean something</span>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; background: #E1FCDE; color: #016A1C; border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 500;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #016A1C;"></span>Done</div>
+          <div style="display: flex; align-items: center; gap: 8px; background: #FFF2D2; color: #BA5900; border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 500;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #BA5900;"></span>Overdue</div>
+          <div style="display: flex; align-items: center; gap: 8px; background: #FFD4D8; color: #B1000F; border-radius: 999px; padding: 7px 15px; font-size: 13px; font-weight: 500;"><span style="width: 7px; height: 7px; border-radius: 50%; background: #B1000F;"></span>Needs care</div>
+        </div>
+      </div>
+
+      <div style="height: 1px; background: #E4E4E7;"></div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; gap: 12px;">
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.01em; margin: 0;">Data hues</h3>
+          <span style="font-size: 13px; color: #A1A1AA;">chroma <span class="tok">0.10 &rarr; 0.15</span>, lightness <span class="tok">0.50 &rarr; 0.55</span></span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 258);"></div><span class="tok" style="color: #52525B;">slate</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 12);"></div><span class="tok" style="color: #52525B;">rose</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 42);"></div><span class="tok" style="color: #52525B;">clay</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 88);"></div><span class="tok" style="color: #52525B;">ochre</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 145);"></div><span class="tok" style="color: #52525B;">sage</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 196);"></div><span class="tok" style="color: #52525B;">teal</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 276);"></div><span class="tok" style="color: #52525B;">indigo</span></div>
+          <div style="display: flex; flex-direction: column; gap: 7px;"><div style="height: 56px; border-radius: 12px; background: oklch(0.55 0.15 324);"></div><span class="tok" style="color: #52525B;">plum</span></div>
+        </div>
+        <p style="font-size: 13px; line-height: 1.5; color: #52525B; margin: 0;">These stay because the board's stage colours are persisted in Firestore as class names &mdash; they are data, not decoration, and cannot be retired without a migration.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============ SHAPE ============ -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0;">Shape</h2>
+      <span style="font-size: 13.5px; color: #A1A1AA;">two new steps at the top of the scale</span>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 82px; background: #F4F4F5; border-radius: 10px;"></div>
+        <span class="tok" style="font-weight: 600;">--radius-sm</span>
+        <span style="font-size: 12.5px; color: #52525B;">10px <span style="color: #A1A1AA; text-decoration: line-through;">8px</span></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 82px; background: #F4F4F5; border-radius: 14px;"></div>
+        <span class="tok" style="font-weight: 600;">--radius</span>
+        <span style="font-size: 12.5px; color: #52525B;">14px <span style="color: #A1A1AA; text-decoration: line-through;">16px</span></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 82px; background: #F4F4F5; border-radius: 24px;"></div>
+        <span class="tok" style="font-weight: 600;">--radius-lg</span>
+        <span style="font-size: 12.5px; color: #52525B;">24px <span style="color: #A1A1AA;">unchanged</span></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 82px; background: #F4F4F5; border-radius: 32px;"></div>
+        <span class="tok" style="font-weight: 600;">--radius-xl</span>
+        <span style="font-size: 12.5px; color: #52525B;">32px <span style="color: #A1A1AA;">new</span></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px;">
+        <div style="height: 82px; background: #F4F4F5; border-radius: 999px;"></div>
+        <span class="tok" style="font-weight: 600;">--radius-pill</span>
+        <span style="font-size: 12.5px; color: #52525B;">999px <span style="color: #A1A1AA;">new</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ TYPE ============ -->
+  <div style="padding-top: 52px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 6px;">
+      <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 25px; letter-spacing: -0.022em; margin: 0;">Type</h2>
+      <span style="font-size: 13.5px; color: #A1A1AA;">Lexend stays for reading; a display face takes the headings</span>
+    </div>
+    <p style="font-size: 14px; line-height: 1.55; color: #52525B; margin: 0 0 24px; max-width: 720px;">
+      <span class="tok">index.html</span> currently loads Lexend at 400/500/600 only &mdash; the system has no weight heavy enough for this direction. Plus Jakarta Sans slots into the existing <span class="tok">--font-serif</span> alias, so headings change with one line.
+    </p>
+
+    <div style="background: #F4F4F5; border-radius: 24px; padding: 30px 32px; display: flex; flex-direction: column; gap: 22px;">
+
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span class="tok" style="color: #A1A1AA; width: 150px; flex: none;">display / 44 / 800</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.05; letter-spacing: -0.03em;">Your day</span>
+      </div>
+      <div style="height: 1px; background: #E4E4E7;"></div>
+
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span class="tok" style="color: #A1A1AA; width: 150px; flex: none;">h1 / 34 / 800</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 34px; line-height: 1.1; letter-spacing: -0.025em;">On our hearts</span>
+      </div>
+      <div style="height: 1px; background: #E4E4E7;"></div>
+
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span class="tok" style="color: #A1A1AA; width: 150px; flex: none;">h2 / 26 / 700</span>
+        <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 26px; line-height: 1.15; letter-spacing: -0.02em;">The team's board</span>
+      </div>
+      <div style="height: 1px; background: #E4E4E7;"></div>
+
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span class="tok" style="color: #A1A1AA; width: 150px; flex: none;">body / 15 / 400</span>
+        <span style="font-family: Lexend, sans-serif; font-weight: 400; font-size: 15px; line-height: 1.55; color: #0A0A0B; max-width: 620px;">You're caring for 14 people this season &mdash; 6 things to tend, 9 prayers to hold.</span>
+      </div>
+      <div style="height: 1px; background: #E4E4E7;"></div>
+
+      <div style="display: flex; align-items: baseline; gap: 24px;">
+        <span class="tok" style="color: #A1A1AA; width: 150px; flex: none;">label / 11.5 / 600</span>
+        <span style="font-family: Lexend, sans-serif; font-weight: 600; font-size: 11.5px; line-height: 1.4; letter-spacing: 0.06em; text-transform: uppercase; color: #52525B;">Friday, March 14</span>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1080,"height":2340}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

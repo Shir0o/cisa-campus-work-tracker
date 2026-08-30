@@ -1,0 +1,101 @@
+{
+  "artboards": [
+    {
+      "file": "Main.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 1080,
+      "h": 2340,
+      "title": "Foundations"
+    },
+    {
+      "file": "Components.dc.html",
+      "x": 1180,
+      "y": 0,
+      "w": 1080,
+      "h": 2900,
+      "title": "Components"
+    },
+    {
+      "file": "Home.dc.html",
+      "x": 2360,
+      "y": 0,
+      "w": 1440,
+      "h": 940,
+      "title": "Home"
+    },
+    {
+      "file": "Journey.dc.html",
+      "x": 2360,
+      "y": 1060,
+      "w": 1440,
+      "h": 900,
+      "title": "The Journey"
+    },
+    {
+      "file": "Dark.dc.html",
+      "x": 2360,
+      "y": 2080,
+      "w": 1080,
+      "h": 1620,
+      "title": "Dark"
+    },
+    {
+      "file": "Shells.dc.html",
+      "x": 0,
+      "y": 3820,
+      "w": 3100,
+      "h": 1900,
+      "title": "Top bar vs rail"
+    },
+    {
+      "file": "NavPref.dc.html",
+      "x": 3900,
+      "y": 0,
+      "w": 1600,
+      "h": 2500,
+      "title": "Navigation preference"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "impl-note",
+      "x": 0,
+      "y": -210,
+      "w": 460,
+      "text": "All of this lands in one file: src/index.css.\n\nThe @theme block plus the :root and .dark blocks are the whole change. Component markup stays as it is \u2014 4,254 utility usages already read from these tokens.\n\nThe rail is the exception: that one is a shell rewrite."
+    },
+    {
+      "id": "rail-note",
+      "x": 1180,
+      "y": -210,
+      "w": 460,
+      "text": "Rail spec at the bottom of this sheet.\n\nIt carries labels rather than icons alone \u2014 a full-timer has 13 destinations and the reference product has 6. That also retires the More menu, since PRIMARY_BY_ROLE only ever promoted 3.\n\nThe icon-only version is kept beside it as the dropped alternative."
+    },
+    {
+      "id": "screens-note",
+      "x": 2360,
+      "y": -210,
+      "w": 460,
+      "text": "Real screens, real copy, real component dimensions \u2014 lifted from MyDay.tsx, TopNav.tsx and index.css rather than invented.\n\nThe Journey board is here because it is the hardest case: its stage colours are persisted in Firestore as class names, so they survive the switch and become the only colour on screen."
+    },
+    {
+      "id": "shells-note",
+      "x": 0,
+      "y": 3560,
+      "w": 520,
+      "text": "Same page, same content, same tokens \u2014 only the shell differs.\n\nThe rail costs 132px of content width (10%) and buys back the More menu, which currently hides ten of a full-timer's thirteen destinations."
+    },
+    {
+      "id": "navpref-note",
+      "x": 3900,
+      "y": -210,
+      "w": 460,
+      "text": "Three shells behind one stored preference, following the shape ThemeProvider already set.\n\nTwo findings worth reading: the expanded rail does not fit a 13\" laptop and has to scroll inside itself, and the 1024\u20131279 forced collapse must not write back to storage."
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "NavPref.dc.html"
+  }
+}
