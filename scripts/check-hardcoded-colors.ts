@@ -11,7 +11,9 @@
  *
  * The stylesheet (src/index.css) is excluded by file extension — only
  * `.ts` / `.tsx` source under `src/` and `apps/mobile/src/` is scanned, so
- * CSS custom-property definitions are never in scope.
+ * CSS custom-property definitions are never in scope. Test files are also
+ * excluded: they legitimately exercise the patterns the guard is meant to
+ * flag, and a guard that fails on its own tests is not runnable.
  */
 import { execSync } from 'node:child_process';
 
@@ -61,10 +63,6 @@ export function isCommentLine(line: string): boolean {
 
 /**
  * Find all raw colour violations on a single added line.
- *
- * - Issue refs like `(#563)` are NOT skipped here (callers filter comment
- *   lines). 3-digit all-digit hex values are still matches; their only
- *   appearance in this codebase is in comments.
  */
 export function findViolations(line: string): Violation[] {
   const violations: Violation[] = [];
@@ -81,8 +79,12 @@ export function findViolations(line: string): Violation[] {
 }
 
 export function isTargetFile(path: string): boolean {
-  return (path.startsWith('src/') || path.startsWith('apps/mobile/src/'))
-    && /\.tsx?$/.test(path);
+  if (!(path.startsWith('src/') || path.startsWith('apps/mobile/src/'))) return false;
+  if (!/\.tsx?$/.test(path)) return false;
+  // Test files are excluded — they exercise the patterns the guard is
+  // designed to flag. A guard that fails on its own tests is not runnable.
+  if (/\.(test|spec)\.tsx?$/.test(path)) return false;
+  return true;
 }
 
 export function getBaseRef(): { ref: string; branch: string } {

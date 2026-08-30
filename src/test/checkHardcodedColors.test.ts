@@ -154,6 +154,12 @@ describe("check-hardcoded-colors — isTargetFile", () => {
     expect(isTargetFile(`src/index.css`)).toBe(false);
   });
 
+  it("rejects test files — they exercise the patterns the guard flags", () => {
+    expect(isTargetFile(`src/test/anything.test.tsx`)).toBe(false);
+    expect(isTargetFile(`src/test/anything.test.ts`)).toBe(false);
+    expect(isTargetFile(`apps/mobile/src/test/anything.spec.tsx`)).toBe(false);
+  });
+
   it("rejects files outside the scanned trees", () => {
     expect(isTargetFile(`scripts/check-hardcoded-colors.ts`)).toBe(false);
     expect(isTargetFile(`packages/core/src/foo.ts`)).toBe(false);
