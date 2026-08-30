@@ -107,15 +107,9 @@ const {
 // ── Module mocks ─────────────────────────────────────────────────────────────
 vi.mock("firebase-admin", () => ({
   __esModule: true,
-  default: {
-    apps: [],
-    initializeApp: vi.fn(() => ({})),
-    firestore: { FieldValue: { serverTimestamp: () => ({ __mockServerTimestamp: true }) } },
-    auth: () => ({
-      verifyIdToken: mockVerifyIdToken,
-      createCustomToken: mockCreateCustomToken,
-    }),
-  },
+  initializeApp: vi.fn(() => ({})),
+  getApps: () => [],
+  getApp: () => ({}),
 }));
 
 vi.mock("firebase-admin/firestore", () => ({
@@ -123,6 +117,14 @@ vi.mock("firebase-admin/firestore", () => ({
     getFirestoreDbIds.push(dbId);
     return mockDb;
   },
+  FieldValue: { serverTimestamp: () => ({ __mockServerTimestamp: true }) },
+}));
+
+vi.mock("firebase-admin/auth", () => ({
+  getAuth: () => ({
+    verifyIdToken: mockVerifyIdToken,
+    createCustomToken: mockCreateCustomToken,
+  }),
 }));
 
 vi.mock("@google/genai", () => ({

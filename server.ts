@@ -6,8 +6,9 @@ import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
-import admin from "firebase-admin";
-import { getFirestore } from "firebase-admin/firestore";
+import { initializeApp, getApps, getApp } from "firebase-admin";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
 import dotenv from "dotenv";
 import { verifyTwilioRequest } from "./src/lib/twilioVerify";
 
@@ -59,8 +60,8 @@ export async function createApp() {
         
         // Help prevent "app already exists" issues inside live dev loops
         let firebaseApp;
-        if (admin.apps.length === 0) {
-          firebaseApp = admin.initializeApp({
+        if (getApps().length === 0) {
+          firebaseApp = initializeApp({
             projectId: config.projectId,
             // createCustomToken needs to know which service account to sign
             // with — without this it tries to auto-discover one via the GCP
@@ -68,7 +69,7 @@ export async function createApp() {
             serviceAccountId: "firebase-adminsdk-fbsvc@sac-campus-hub.iam.gserviceaccount.com",
           });
         } else {
-          firebaseApp = admin.apps[0]!;
+          firebaseApp = getApp();
         }
 
         // Properly get custom Firestore instance using getFirestore from subpath.
@@ -107,7 +108,7 @@ export async function createApp() {
   // Helper function to get Admin Auth instance
   function getAdminAuth() {
     getAdminDb(); // ensure admin is initialized
-    return admin.auth();
+    return getAuth();
   }
 
   // Authenticate Firebase user from request Authorization header
@@ -689,7 +690,7 @@ Analyze the input text carefully and extract the following:
       await getAdminDb().collection("webhook_logs").add({
         id: Math.random().toString(36).substr(2, 9),
         timestamp: new Date().toISOString(),
-        serverTimestamp: admin.firestore.FieldValue.serverTimestamp(),
+        serverTimestamp: FieldValue.serverTimestamp(),
         source,
         payload: typeof payload === "object" ? JSON.stringify(payload) : String(payload),
         headers: JSON.stringify(cleanHeaders),
@@ -789,7 +790,7 @@ Analyze the input text carefully and extract the following:
             type: parsed.type || "Quick Add Note",
             dateTime: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+            serverCreatedAt: FieldValue.serverTimestamp()
           });
 
         const detailedLog = [
@@ -819,7 +820,7 @@ Analyze the input text carefully and extract the following:
           message: `Logged a text interaction of type "${parsed.type || "Quick Add Note"}" for existing contact "${existingContact.name}".`,
           type: "info",
           read: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
           link: "/directory",
           targetId: existingContact.id
         });
@@ -848,7 +849,7 @@ Analyze the input text carefully and extract the following:
           initials: getInitials(parsed.contactName),
           lastSeen: "Just now",
           createdAt: new Date().toISOString(),
-          serverCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          serverCreatedAt: FieldValue.serverTimestamp(),
           createdBy: opUserId,
           createdByName: opUserName,
           hasNewActivity: true,
@@ -871,7 +872,7 @@ Analyze the input text carefully and extract the following:
             type: parsed.type || "Quick Add Note",
             dateTime: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+            serverCreatedAt: FieldValue.serverTimestamp()
           });
 
         const detailedLog = [
@@ -901,7 +902,7 @@ Analyze the input text carefully and extract the following:
           message: `Successfully created ${contactData.name} (Student) and logged initial interaction ("${parsed.type || "Quick Add Note"}").`,
           type: "success",
           read: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
           link: "/directory",
           targetId: docRef.id
         });
@@ -971,7 +972,7 @@ Analyze the input text carefully and extract the following:
             type: "Quick Add Note",
             dateTime: new Date().toISOString(),
             createdAt: new Date().toISOString(),
-            serverCreatedAt: admin.firestore.FieldValue.serverTimestamp()
+            serverCreatedAt: FieldValue.serverTimestamp()
           });
 
         // Format description logging message
@@ -1007,7 +1008,7 @@ Analyze the input text carefully and extract the following:
           message: `Logged a text interaction and updated fields for existing contact "${existingContact.name}".`,
           type: "info",
           read: false,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
           link: "/directory",
           targetId: existingContact.id
         });
@@ -1029,7 +1030,7 @@ Analyze the input text carefully and extract the following:
         initials: getInitials(parsed.name),
         lastSeen: "Just now",
         createdAt: new Date().toISOString(),
-        serverCreatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        serverCreatedAt: FieldValue.serverTimestamp(),
         createdBy: opUserId,
         createdByName: opUserName,
         hasNewActivity: true,
@@ -1072,7 +1073,7 @@ Analyze the input text carefully and extract the following:
         message: `Successfully created ${contactData.name} (${contactData.role}) from text description.`,
         type: "success",
         read: false,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
         link: "/directory",
         targetId: docRef.id
       });
@@ -1668,7 +1669,7 @@ ${JSON.stringify(contactsList)}`;
             type: interaction.type || "note",
             userId: uid,
             userName: userName.slice(0, 128),
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
           };
 
           batch.set(interactionRef, interactionData);
@@ -1696,8 +1697,8 @@ ${JSON.stringify(contactsList)}`;
           md: (discussion.content || "").slice(0, 100000),
           tags: discussion.tags || [],
           date: dateStr,
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
           deletedAt: null,
           authorName: userName.slice(0, 128),
           authorId: uid,

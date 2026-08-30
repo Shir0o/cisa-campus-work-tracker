@@ -1,4 +1,4 @@
-import admin from 'firebase-admin';
+import { initializeApp, getApp } from 'firebase-admin';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
 import { readFileSync, existsSync } from 'node:fs';
@@ -154,8 +154,8 @@ if (process.env.NODE_ENV !== 'test') {
     console.error('ERROR: firebase-applet-config.json is missing firestoreDatabaseId.');
     process.exit(1);
   }
-  admin.initializeApp({ projectId: cfg.projectId });
-  const db = getFirestore(admin.app(), cfg.firestoreDatabaseId);
+  initializeApp({ projectId: cfg.projectId });
+  const db = getFirestore(getApp(), cfg.firestoreDatabaseId);
 
   console.log(`Connecting to Firestore projectId="${cfg.projectId}"...`);
 
