@@ -25,6 +25,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run check:i18n
+      - run: npm run check:colors
       - run: npm run test:coverage
       - run: npm run build
 
@@ -50,7 +51,12 @@ jobs:
       # every dev machine — the root tree has to be installed here too, or
       # typecheck and jest fail with "Cannot find module". `npm ci` also runs
       # apps/mobile's postinstall patch-package step.
+      # The colour-token regression guard scopes to src/ and apps/mobile/src/
+      # component source, so mobile-only changes can still introduce raw hex
+      # values or Tailwind palette utilities — run it from the root here.
       - run: npm ci
+        working-directory: .
+      - run: npm run check:colors
         working-directory: .
       - run: npm ci
       - run: npm run typecheck

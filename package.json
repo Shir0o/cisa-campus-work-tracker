@@ -20,7 +20,8 @@
     "seed:e2e-users": "tsx scripts/seed-test-user-docs.ts",
     "seed:qa": "npx tsx scripts/seed-qa.ts",
     "sync:issues": "tsx scripts/sync-github-issues.ts",
-    "check:i18n": "tsx scripts/check-hardcoded-ui-strings.ts"
+    "check:i18n": "tsx scripts/check-hardcoded-ui-strings.ts",
+    "check:colors": "tsx scripts/check-hardcoded-colors.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

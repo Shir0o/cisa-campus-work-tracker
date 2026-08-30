@@ -4,51 +4,26 @@
  * Scans only lines added in the current diff for raw English UI strings in
  * JSX text or common UI attributes. Existing hardcoded strings are intentionally
  * not flagged; this prevents new ones from being introduced without a t() key.
+ *
+ * Base helpers (`getBaseRef`, `ensureBaseRef`, `getChangedFiles`,
+ * `parseUnifiedDiff`) are shared with the colour-token regression guard via
+ * `scripts/_diff-base.ts`.
  */
 import { execSync } from 'node:child_process';
+import {
+  getBaseRef,
+  ensureBaseRef,
+  getChangedFiles,
+  parseUnifiedDiff,
+} from './_diff-base';
 
-const UI_ATTRIBUTES = new Set(['placeholder', 'aria-label', 'title', 'alt', 'label']);
-
-function execOrThrow(cmd: string): string {
-  return execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-}
-
-function ensureBaseRef(base: string, baseBranch: string): void {
-  try {
-    execSync(`git rev-parse --verify ${base}`, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-    return;
-  } catch {
-    // Shallow checkout: fetch just the base branch so a PR diff is available.
-    execSync(`git fetch --no-tags --depth=1 origin ${baseBranch}:refs/remotes/origin/${baseBranch}`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
-  }
-}
-
-function getChangedFiles(base: string): string[] {
-  const cmd = `git diff --name-only --diff-filter=ACM ${base}...HEAD`;
-  try {
-    const out = execOrThrow(cmd);
-    return out.split('\n').map((s) => s.trim()).filter(Boolean);
-  } catch {
-    // Local fallback: compare against the previous commit when no remote base exists.
-    try {
-      const out = execOrThrow('git diff --name-only --diff-filter=ACM HEAD~1');
-      return out.split('\n').map((s) => s.trim()).filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-}
-
-function getBaseRef(): { ref: string; branch: string } {
-  const branch = process.env.GITHUB_BASE_REF || 'main';
-  if (process.argv[2]) {
-    return { ref: process.argv[2], branch };
-  }
-  return { ref: `origin/${branch}`, branch };
-}
+const UI_ATTRIBUTES: Record<string, true> = {
+  placeholder: true,
+  'aria-label': true,
+  title: true,
+  alt: true,
+  label: true,
+};
 
 function looksLikeEnglishText(value: string): boolean {
   const trimmed = value.trim();
@@ -78,7 +53,7 @@ function findViolations(line: string, file: string, lineNo: number): string[] {
   let attrMatch: RegExpExecArray | null;
   while ((attrMatch = attrPattern.exec(line)) !== null) {
     const attr = attrMatch[1];
-    if (!UI_ATTRIBUTES.has(attr)) continue;
+    if (!UI_ATTRIBUTES[attr]) continue;
     const value = attrMatch[2];
     if (looksLikeEnglishText(value)) {
       violations.push(`${file}:${lineNo}: ${attr}="${value}"`);
@@ -104,17 +79,8 @@ function run(): void {
   const allViolations: string[] = [];
   for (const file of targetFiles) {
     const diff = execSync(`git diff --unified=0 ${base}...HEAD -- ${file}`, { encoding: 'utf8' });
-    let currentLine = 0;
-    for (const rawLine of diff.split('\n')) {
-      if (rawLine.startsWith('@@')) {
-        const match = rawLine.match(/\+(\d+)(?:,\d+)?/);
-        if (match) currentLine = Number(match[1]) - 1;
-        continue;
-      }
-      if (!rawLine.startsWith('+')) continue;
-      currentLine++;
-      const added = rawLine.slice(1);
-      allViolations.push(...findViolations(added, file, currentLine));
+    for (const hit of parseUnifiedDiff(diff)) {
+      allViolations.push(...findViolations(hit.text, file, hit.line));
     }
   }
 
