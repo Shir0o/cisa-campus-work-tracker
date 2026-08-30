@@ -28,11 +28,10 @@ Once your project has been imported and connected to Cloudflare Pages via GitHub
 
 | Variable Name | Description/Value | Type |
 | :--- | :--- | :--- |
-| `GEMINI_API_KEY` | Your Google Gemini API Key | Encrypted Secret |
+| ~~`GEMINI_API_KEY`~~ | Not a Cloudflare Pages var — `functions/api/[[path]].ts` is a proxy; set it on the Cloud Run `campus-hub-backend` service instead. See `.env.example` and lines 78–81 below. | n/a |
 | `FIREBASE_SERVICE_ACCOUNT` | The **entire raw content** of your downloaded Service Account `.json` file. | Encrypted Secret |
 | `FIREBASE_PROJECT_ID` | `sac-campus-hub` | Text |
 | `FIREBASE_DATABASE_ID` | `prod` | Text |
-
 ---
 
 ## 🧪 Step 3: Deployment Setup on Cloudflare

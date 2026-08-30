@@ -945,6 +945,89 @@ describe('Settings', () => {
       });
       fetchSpy.mockRestore();
     });
+
+    // Live diagnostics: the Settings "Quick add by text" section surfaces a
+    // badge that reads `/api/quick-add/status` and reflects whether Gemini is
+    // configured on the backend (Cloud Run). This lets admins self-verify
+    // without curling — and surfaces immediately if the key drops out.
+    // The test mocks must include `ok: true`; otherwise the real code path
+    // falls through to `Promise.reject(new Error("HTTP undefined"))` and the
+    // badge would always land on 'missing'.
+    it('shows a "Gemini AI ready" badge when the backend reports geminiConfigured:true', async () => {
+      setupManagerAuth();
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url: unknown) => {
+        if (typeof url === 'string' && url.includes('/api/quick-add/status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({
+              geminiConfigured: true,
+              endpointUrl: '/api/quick-add',
+              webhookUrl: '/api/webhook/sms',
+              groupmeWebhookUrl: '/api/webhook/groupme',
+              appUrl: 'https://example.test',
+            }),
+          } as Response);
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response);
+      });
+      render(<Settings />);
+
+      // Don't capture a stale element reference; let waitFor re-query each tick.
+      await waitFor(
+        () => expect(screen.getByTestId('gemini-status-badge')).toHaveTextContent(/Gemini AI ready/i),
+        { timeout: 5000 },
+      );
+
+      fetchSpy.mockRestore();
+    });
+
+    it('shows a "Gemini AI not configured" badge when the backend reports geminiConfigured:false', async () => {
+      setupManagerAuth();
+
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation((url: unknown) => {
+        if (typeof url === 'string' && url.includes('/api/quick-add/status')) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({
+              geminiConfigured: false,
+              endpointUrl: '/api/quick-add',
+              webhookUrl: '/api/webhook/sms',
+              groupmeWebhookUrl: '/api/webhook/groupme',
+              appUrl: 'https://example.test',
+            }),
+          } as Response);
+        }
+        return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) } as Response);
+      });
+
+      render(<Settings />);
+
+      await waitFor(
+        () => expect(screen.getByTestId('gemini-status-badge')).toHaveTextContent(/Gemini AI not configured/i),
+        { timeout: 5000 },
+      );
+
+      fetchSpy.mockRestore();
+    });
+
+    it('shows an indeterminate "Checking Gemini…" badge while the status fetch is in-flight', async () => {
+      setupManagerAuth();
+
+      // Pending promise that never resolves — keeps the badge in its loading
+      // state. Executor form (vs Promise.withResolvers) because the repo's CI
+      // currently runs on Node 20, which predates withResolvers.
+      const pending: Promise<Response> = new Promise(() => {});
+      const fetchSpy = vi.spyOn(global, 'fetch').mockImplementation(() => pending);
+
+      render(<Settings />);
+
+      expect(await screen.findByText(/Checking Gemini/i)).toBeInTheDocument();
+
+      fetchSpy.mockRestore();
+    });
   });
 
   describe('Webhook Logs Console', () => {
