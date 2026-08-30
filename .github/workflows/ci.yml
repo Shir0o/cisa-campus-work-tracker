@@ -54,9 +54,9 @@ jobs:
       # The colour-token regression guard scopes to src/ and apps/mobile/src/
       # component source, so mobile-only changes can still introduce raw hex
       # values or Tailwind palette utilities — run it from the root here.
-      - run: npm run check:colors
-        working-directory: .
       - run: npm ci
+        working-directory: .
+      - run: npm run check:colors
         working-directory: .
       - run: npm ci
       - run: npm run typecheck
