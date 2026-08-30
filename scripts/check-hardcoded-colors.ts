@@ -1,5 +1,5 @@
 /**
- * Colour-token regression guard (#661).
+ * Colour-token regression guard (#661, #669).
  *
  * Scans only lines added in the current diff for raw hex values and raw
  * Tailwind palette classes in component source. Existing hardcoded colours
@@ -7,7 +7,8 @@
  * introduced without going through a CSS custom property token.
  *
  * Mirrors the i18n regression guard (scripts/check-hardcoded-ui-strings.ts):
- * same diff-scoping approach, same npm-script / CI wiring pattern.
+ * same diff-scoping approach, same npm-script / CI wiring pattern, and
+ * shared base helpers via scripts/_diff-base.ts.
  *
  * The stylesheet (src/index.css) is excluded by file extension — only
  * `.ts` / `.tsx` source under `src/` and `apps/mobile/src/` is scanned, so
@@ -15,36 +16,67 @@
  * excluded: they legitimately exercise the patterns the guard is meant to
  * flag, and a guard that fails on its own tests is not runnable.
  */
+/// <reference types="node" />
 import { execSync } from 'node:child_process';
+import {
+  getBaseRef,
+  ensureBaseRef,
+  getChangedFiles,
+  parseUnifiedDiff,
+} from './_diff-base';
 
 // 3, 4, 6, or 8 hex digits — matches the lengths CSS accepts.
 const HEX_PATTERN = /#[0-9A-Fa-f]{3,8}\b/g;
 
 // Tailwind palette utilities. The prefix list covers every utility that
-// can carry a colour value; the colour list covers every built-in palette.
-// Matching is whole-word to avoid e.g. `bg-blueprint` (a custom class).
+// can carry a colour value; the colour list covers every built-in palette;
+// the shade list covers every weight Tailwind ships. A new prefix/colour/
+// shade that lands in Tailwind but is not added here is silent — drive
+// updates from this single constant and the CI lint will not catch a miss,
+// so review this table when bumping Tailwind.
 const PALETTE_PREFIXES = [
   'bg', 'text', 'border', 'ring', 'outline', 'fill', 'stroke',
   'from', 'to', 'via', 'shadow', 'divide', 'placeholder',
   'caret', 'accent', 'decoration',
-].join('|');
+];
 const PALETTE_COLOURS = [
   'slate', 'gray', 'zinc', 'neutral', 'stone',
   'red', 'orange', 'amber', 'yellow', 'lime',
   'green', 'emerald', 'teal', 'cyan', 'sky',
   'blue', 'indigo', 'violet', 'purple', 'fuchsia',
   'pink', 'rose',
-].join('|');
+];
+const PALETTE_SHADES = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
 const PALETTE_PATTERN = new RegExp(
-  `\\b(?:${PALETTE_PREFIXES})-(?:${PALETTE_COLOURS})-(?:50|100|200|300|400|500|600|700|800|900|950)\\b`,
+  `\\b(?:${PALETTE_PREFIXES.join('|')})-(?:${PALETTE_COLOURS.join('|')})-(?:${PALETTE_SHADES.join('|')})\\b`,
   'g',
 );
 
-export type Violation = {
+export type ViolationKind = 'hex' | 'palette';
+
+export type RawHit = {
+  match: string;
+  kind: ViolationKind;
+};
+
+/**
+ * Find all raw colour matches on a single added line. Producer-side —
+ * file/line context is added by the caller after parsing the diff.
+ */
+export function findRawHits(line: string): RawHit[] {
+  const hits: RawHit[] = [];
+  for (const match of line.matchAll(HEX_PATTERN)) {
+    hits.push({ match: match[0], kind: 'hex' });
+  }
+  for (const match of line.matchAll(PALETTE_PATTERN)) {
+    hits.push({ match: match[0], kind: 'palette' });
+  }
+  return hits;
+}
+
+export type Violation = RawHit & {
   file: string;
   line: number;
-  match: string;
-  kind: 'hex' | 'palette';
 };
 
 /**
@@ -61,23 +93,6 @@ export function isCommentLine(line: string): boolean {
   return trimmed.startsWith('//') || trimmed.startsWith('/*') || trimmed.startsWith('*');
 }
 
-/**
- * Find all raw colour violations on a single added line.
- */
-export function findViolations(line: string): Violation[] {
-  const violations: Violation[] = [];
-
-  for (const match of line.matchAll(HEX_PATTERN)) {
-    violations.push({ file: '', line: 0, match: match[0], kind: 'hex' });
-  }
-
-  for (const match of line.matchAll(PALETTE_PATTERN)) {
-    violations.push({ file: '', line: 0, match: match[0], kind: 'palette' });
-  }
-
-  return violations;
-}
-
 export function isTargetFile(path: string): boolean {
   if (!(path.startsWith('src/') || path.startsWith('apps/mobile/src/'))) return false;
   if (!/\.tsx?$/.test(path)) return false;
@@ -85,75 +100,6 @@ export function isTargetFile(path: string): boolean {
   // designed to flag. A guard that fails on its own tests is not runnable.
   if (/\.(test|spec)\.tsx?$/.test(path)) return false;
   return true;
-}
-
-export function getBaseRef(): { ref: string; branch: string } {
-  const branch = process.env.GITHUB_BASE_REF || 'main';
-  if (process.argv[2]) {
-    return { ref: process.argv[2], branch };
-  }
-  return { ref: `origin/${branch}`, branch };
-}
-
-export function ensureBaseRef(base: string, baseBranch: string): void {
-  try {
-    execSync(`git rev-parse --verify ${base}`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
-    return;
-  } catch {
-    // Shallow checkout: fetch just the base branch so a PR diff is available.
-    execSync(`git fetch --no-tags --depth=1 origin ${baseBranch}:refs/remotes/origin/${baseBranch}`, {
-      encoding: 'utf8',
-      stdio: ['pipe', 'pipe', 'ignore'],
-    });
-  }
-}
-
-export function getChangedFiles(base: string): string[] {
-  const cmd = `git diff --name-only --diff-filter=ACM ${base}...HEAD`;
-  try {
-    const out = execSync(cmd, { encoding: 'utf8', stdio: ['pipe', 'pipe', 'ignore'] });
-    return out.split('\n').map((s) => s.trim()).filter(Boolean);
-  } catch {
-    // Local fallback: compare against the previous commit when no remote base exists.
-    try {
-      const out = execSync('git diff --name-only --diff-filter=ACM HEAD~1', {
-        encoding: 'utf8',
-        stdio: ['pipe', 'pipe', 'ignore'],
-      });
-      return out.split('\n').map((s) => s.trim()).filter(Boolean);
-    } catch {
-      return [];
-    }
-  }
-}
-
-export type DiffHit = {
-  file: string;
-  line: number;
-  text: string;
-};
-
-/**
- * Walk a `git diff --unified=0` output and return one entry per added line,
- * carrying the post-image line number so callers can report it.
- */
-export function parseUnifiedDiff(diff: string): DiffHit[] {
-  const hits: DiffHit[] = [];
-  let currentLine = 0;
-  for (const rawLine of diff.split('\n')) {
-    if (rawLine.startsWith('@@')) {
-      const match = rawLine.match(/\+(\d+)(?:,\d+)?/);
-      if (match) currentLine = Number(match[1]) - 1;
-      continue;
-    }
-    if (!rawLine.startsWith('+')) continue;
-    currentLine++;
-    hits.push({ file: '', line: currentLine, text: rawLine.slice(1) });
-  }
-  return hits;
 }
 
 /**
@@ -167,8 +113,8 @@ export function checkFile(file: string, base: string): Violation[] {
   const violations: Violation[] = [];
   for (const hit of parseUnifiedDiff(diff)) {
     if (isCommentLine(hit.text)) continue;
-    for (const v of findViolations(hit.text)) {
-      violations.push({ file, line: hit.line, match: v.match, kind: v.kind });
+    for (const raw of findRawHits(hit.text)) {
+      violations.push({ file, line: hit.line, ...raw });
     }
   }
   return violations;

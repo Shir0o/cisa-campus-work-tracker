@@ -1,52 +1,51 @@
 import { describe, it, expect } from "vitest";
 import {
-  findViolations,
+  findRawHits,
   isCommentLine,
   isTargetFile,
-  parseUnifiedDiff,
 } from "../../scripts/check-hardcoded-colors";
+import { parseUnifiedDiff } from "../../scripts/_diff-base";
 
-describe("check-hardcoded-colors — findViolations", () => {
+describe("check-hardcoded-colors — findRawHits", () => {
   it("flags 6-digit hex colours", () => {
-    const v = findViolations(`const dot = '#FF0000';`);
+    const v = findRawHits(`const dot = '#FF0000';`);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatchObject({ match: "#FF0000", kind: "hex" });
   });
-
   it("flags 3-digit hex colours", () => {
-    const v = findViolations(`const dot = '#fff';`);
+    const v = findRawHits(`const dot = '#fff';`);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatchObject({ match: "#fff", kind: "hex" });
   });
 
   it("flags 8-digit hex (with alpha)", () => {
-    const v = findViolations(`const a = '#abcdef12';`);
+    const v = findRawHits(`const a = '#abcdef12';`);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatchObject({ match: "#abcdef12", kind: "hex" });
   });
 
   it("flags 4-digit hex (shorthand with alpha)", () => {
-    const v = findViolations(`const a = '#abcd';`);
+    const v = findRawHits(`const a = '#abcd';`);
     expect(v).toHaveLength(1);
     expect(v[0]).toMatchObject({ kind: "hex" });
   });
 
   it("flags multiple hex values on one line", () => {
-    const v = findViolations(`from-[#ff0000] to-[#00ff00]`);
+    const v = findRawHits(`from-[#ff0000] to-[#00ff00]`);
     expect(v).toHaveLength(2);
     expect(v.map((x) => x.match).sort()).toEqual(["#00ff00", "#ff0000"]);
   });
 
   it("flags Tailwind palette utilities", () => {
-    expect(findViolations(`className="bg-red-500"`)[0]).toMatchObject({
+    expect(findRawHits(`className="bg-red-500"`)[0]).toMatchObject({
       match: "bg-red-500",
       kind: "palette",
     });
-    expect(findViolations(`className="text-blue-600"`)[0]).toMatchObject({
+    expect(findRawHits(`className="text-blue-600"`)[0]).toMatchObject({
       match: "text-blue-600",
       kind: "palette",
     });
-    expect(findViolations(`className="border-slate-200"`)[0]).toMatchObject({
+    expect(findRawHits(`className="border-slate-200"`)[0]).toMatchObject({
       match: "border-slate-200",
       kind: "palette",
     });
@@ -62,7 +61,7 @@ describe("check-hardcoded-colors — findViolations", () => {
       "via-red-500",
     ];
     for (const cls of prefixes) {
-      const v = findViolations(`className="${cls}"`);
+      const v = findRawHits(`className="${cls}"`);
       expect(v, cls).toHaveLength(1);
       expect(v[0].kind, cls).toBe("palette");
     }
@@ -77,7 +76,7 @@ describe("check-hardcoded-colors — findViolations", () => {
       "pink", "rose",
     ];
     for (const colour of colours) {
-      const v = findViolations(`className="bg-${colour}-500"`);
+      const v = findRawHits(`className="bg-${colour}-500"`);
       expect(v, colour).toHaveLength(1);
     }
   });
@@ -92,24 +91,24 @@ describe("check-hardcoded-colors — findViolations", () => {
       `className="ring-color-stage-accent"`,
     ];
     for (const line of tokens) {
-      expect(findViolations(line), line).toHaveLength(0);
+      expect(findRawHits(line), line).toHaveLength(0);
     }
   });
 
   it("does NOT flag classes that merely contain a palette colour name", () => {
-    expect(findViolations(`className="bg-blueprint"`)).toHaveLength(0);
-    expect(findViolations(`className="text-readable"`)).toHaveLength(0);
+    expect(findRawHits(`className="bg-blueprint"`)).toHaveLength(0);
+    expect(findRawHits(`className="text-readable"`)).toHaveLength(0);
   });
 
   it("does NOT flag arbitrary value classes like bg-[#var]", () => {
     // `bg-[var(--accent)]` is a token reference, not a raw hex.
-    expect(findViolations(`className="bg-[var(--accent)]"`)).toHaveLength(0);
+    expect(findRawHits(`className="bg-[var(--accent)]"`)).toHaveLength(0);
   });
 
   it("returns empty for a line with no colour values", () => {
-    expect(findViolations(`const name = "Hello";`)).toHaveLength(0);
-    expect(findViolations(``)).toHaveLength(0);
-    expect(findViolations(`  `)).toHaveLength(0);
+    expect(findRawHits(`const name = "Hello";`)).toHaveLength(0);
+    expect(findRawHits(``)).toHaveLength(0);
+    expect(findRawHits(`  `)).toHaveLength(0);
   });
 });
 
