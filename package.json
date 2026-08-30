@@ -55,7 +55,7 @@
     "ical.js": "^2.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^13.1.0",
-    "react": "^19.0.0",
+    "react": "^19.2.8",
     "react-dom": "^19.0.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.2",
