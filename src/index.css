@@ -2,11 +2,20 @@
 
 @theme {
   --font-sans: "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-serif: var(--font-sans);
-  /* Bento ships no visible monospace — alias font-mono to the sans stack.
+  --font-serif: "Plus Jakarta Sans", "Lexend", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  /* Ink ships no visible monospace — alias font-mono to the sans stack.
      Genuine code blocks (webhook URLs / payloads) may opt into --font-code. */
   --font-mono: var(--font-sans);
   --font-code: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  /* Bento shape → Ink shape: 14 interactive, 24 containers, 10 small marks,
+     32 shell-level containers, 999 for pills/avatars. The values are exposed
+     on `@theme` so Tailwind's rounded-* utilities pick them up at the new sizes. */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --radius-pill: 999px;
 
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
@@ -85,25 +94,25 @@
 
 @layer base {
   :root {
-    /* Bento — cool blue-leaning neutrals + violet #5C17E5. Source: the design
-       project's [data-theme="light"] (styles.css). */
-    --bg: #F6F8FB;
+    /* Ink — neutral near-monochrome shell, data-hue chroma up. Source: the
+       design project's Foundations artboard (Main.dc.html). */
+    --bg: #FFFFFF;
     --bg-elev: #FFFFFF;
-    --panel: #FFFFFF;
-    --panel-2: #F6F8FB;
-    --hover: rgba(203, 212, 225, 0.4);
-    --border: #DEE4ED;
-    --border-soft: #ECEFF4;
-    --gs-outline: #9AA8BC; /* Global search field outline — Bento neutral-40 */
-    --text: #1A212B;
-    --text-dim: #525E6F;
-    --text-mute: #728197;
-    --accent: #5C17E5;
-    --accent-strong: #5C17E5;
-    --accent-hover: #360090;
+    --panel: #F4F4F5;
+    --panel-2: #EAEAEC;
+    --hover: rgba(127, 127, 127, 0.08);
+    --border: #E4E4E7;
+    --border-soft: #F0F0F2;
+    --gs-outline: #A1A1AA; /* Global search field outline — Ink neutral-30 */
+    --text: #0A0A0B;
+    --text-dim: #52525B;
+    --text-mute: #A1A1AA;
+    --accent: #0A0A0B;
+    --accent-strong: #131316;
+    --accent-hover: #35353C;
     --accent-on: #FFFFFF;
-    --accent-soft: rgba(92, 23, 229, 0.08);
-    --accent-line: rgba(92, 23, 229, 0.24);
+    --accent-soft: rgba(10, 10, 11, 0.06);
+    --accent-line: rgba(10, 10, 11, 0.18);
     --success: #016A1C;
     --success-soft: #E1FCDE;
     --warn: #BA5900;
@@ -113,16 +122,21 @@
     --shadow-pop: 0 16px 32px rgba(0, 0, 0, 0.16);
     --shadow-card: none;
 
-    /* Bento shape: 16px interactive, 24px containers, 8px small marks. */
-    --radius: 16px;
-    --radius-sm: 8px;
+    /* Ink shape: 10 small marks, 14 interactive, 24 containers, 32 shell,
+       999 pills/avatars. `--radius-xl` and `--radius-pill` are new; the others
+       carry the Bento values adjusted to the new scale. */
+    --radius-sm: 10px;
+    --radius: 14px;
     --radius-lg: 24px;
+    --radius-xl: 32px;
+    --radius-pill: 999px;
 
-    /* stage tones — Bento's data-viz hue angles (red/orange/yellow/green/jade/
-       blue/indigo/violet). */
-    --tone-l: 0.50;
-    --tone-c: 0.10;
-    --tone-a: 0.12;
+    /* Stage tones — Ink chroma and lightness raised; the eight hue angles and
+       the legacy `board-*` names are unchanged (board stage colours are
+       persisted in Firestore as class-name strings). */
+    --tone-l: 0.55;
+    --tone-c: 0.15;
+    --tone-a: 0.14;
 
     --t-slate:  oklch(var(--tone-l) var(--tone-c) 258);
     --t-clay:   oklch(var(--tone-l) var(--tone-c) 42);
@@ -195,26 +209,28 @@
   }
 
   .dark {
-    /* Bento dark — reads its cool neutral ramp downwards (90 canvas / 80 surface
-       / 01 text); violet stays the one bright fill, and interactive colour moves
-       to the brand-secondary violet #9A8FFF (styles.css :root). */
-    --bg: #1A212B;
-    --bg-elev: #27313F;
-    --panel: #27313F;
-    --panel-2: #202936;
-    --hover: rgba(255, 255, 255, 0.06);
-    --border: #3C4959;
-    --border-soft: #333E4C;
-    --gs-outline: #3C4959; /* Global search field outline — Bento neutral-40 */
-    --text: #F6F8FB;
-    --text-dim: #B6C2D3;
-    --text-mute: #AEC0D6;
-    --accent: #9A8FFF;
-    --accent-strong: #5C17E5;
-    --accent-hover: #6D2BEE;
-    --accent-on: #FFFFFF;
-    --accent-soft: rgba(154, 143, 255, 0.18);
-    --accent-line: rgba(154, 143, 255, 0.34);
+    /* Ink dark — a true inversion. In light the primary button is black-on-white,
+       in dark it is white-on-black, so `--accent-on` flips (it was `#FFFFFF` in
+       both Bento blocks because violet was the fill in either theme). Anything
+       hardcoding white on `bg-primary` instead of using `text-on-primary` will
+       go invisible here; that is the one place the dark walk surfaces bugs. */
+    --bg: #0A0A0B;
+    --bg-elev: #161618;
+    --panel: #161618;
+    --panel-2: #202023;
+    --hover: rgba(255, 255, 255, 0.08);
+    --border: #2A2A2E;
+    --border-soft: #232327;
+    --gs-outline: #3F3F46; /* Global search field outline — Ink neutral-30 */
+    --text: #FAFAFA;
+    --text-dim: #A1A1AA;
+    --text-mute: #71717A;
+    --accent: #FAFAFA;
+    --accent-strong: #FAFAFA;
+    --accent-hover: #E4E4E7;
+    --accent-on: #0A0A0B;
+    --accent-soft: rgba(255, 255, 255, 0.06);
+    --accent-line: rgba(255, 255, 255, 0.18);
     --success: #51E098;
     --success-soft: rgba(81, 224, 152, 0.16);
     --warn: #F2930D;
@@ -222,9 +238,11 @@
     --danger: #FF7B88;
     --danger-soft: rgba(241, 74, 88, 0.16);
 
-    --tone-l: 0.80;
-    --tone-c: 0.085;
-    --tone-a: 0.18;
+    /* Same hue angles as the light theme; lightness and chroma retuned for
+       the dark canvas. */
+    --tone-l: 0.82;
+    --tone-c: 0.14;
+    --tone-a: 0.20;
 
     --t-slate:  oklch(var(--tone-l) var(--tone-c) 258);
     --t-clay:   oklch(var(--tone-l) var(--tone-c) 42);
@@ -247,7 +265,7 @@
     --primary: var(--accent-strong);
     --on-primary: var(--accent-on);
     --primary-container: var(--accent-soft);
-    --on-primary-container: #C8C2FF;
+    --on-primary-container: var(--text);
 
     --secondary: var(--text-dim);
     --on-secondary: var(--accent-on);
@@ -302,8 +320,8 @@
   }
 
   h1, h2, h3, .serif {
-    font-family: var(--font-sans);
-    font-weight: 600;
+    font-family: var(--font-serif);
+    font-weight: 700;
   }
 
   button, 
