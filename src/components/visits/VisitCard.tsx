@@ -126,7 +126,7 @@ export default function VisitCard({
         open ? 'border-primary/30' : 'border-outline-variant hover:border-primary/20',
       )}
     >
-      <div className="relative">
+      <div>
         <button
           onClick={onToggle}
           aria-expanded={open}
@@ -154,7 +154,7 @@ export default function VisitCard({
             )}
           </div>
 
-          <div className="flex flex-col items-end gap-2 shrink-0">
+          <div data-testid="visit-card-actions" className="flex flex-col items-end gap-2 shrink-0">
             <div className="flex -space-x-2">
               {wentNames.map((n, i) => (
                 <Face key={`${n}-${i}`} name={n} className="ring-2 ring-surface" />
@@ -187,34 +187,33 @@ export default function VisitCard({
                 </span>
               )}
             </div>
+            <RowActions
+              className="self-end"
+              label={t('visitCard.more_for').replace('{name}', andList(names) || t('visitCard.this_visit'))}
+              items={buildContactRowActions({
+                contact: {
+                  id: visit.contactIds[0] || '',
+                  name: names[0] || t('visitCard.a_visit'),
+                  role: '',
+                  location: '',
+                  email: '',
+                  phone: '',
+                  stage: '',
+                  lastSeen: '',
+                  initials: '',
+                },
+                onOpen: () => {
+                  if (visit.contactIds[0]) onOpenContact(visit.contactIds[0]);
+                },
+                onFollowUp: () => {
+                  if (!uid || !visit.id) return;
+                  UserEntityState.markDone(uid, `visit:${visit.id}`);
+                },
+                hide: ['todo', 'share'],
+              })}
+            />
           </div>
         </button>
-        <div className="absolute top-3 right-3">
-          <RowActions
-            label={t('visitCard.more_for').replace('{name}', andList(names) || t('visitCard.this_visit'))}
-            items={buildContactRowActions({
-              contact: {
-                id: visit.contactIds[0] || '',
-                name: names[0] || t('visitCard.a_visit'),
-                role: '',
-                location: '',
-                email: '',
-                phone: '',
-                stage: '',
-                lastSeen: '',
-                initials: '',
-              },
-              onOpen: () => {
-                if (visit.contactIds[0]) onOpenContact(visit.contactIds[0]);
-              },
-              onFollowUp: () => {
-                if (!uid || !visit.id) return;
-                UserEntityState.markDone(uid, `visit:${visit.id}`);
-              },
-              hide: ['todo', 'share'],
-            })}
-          />
-        </div>
       </div>
 
       {open && (
