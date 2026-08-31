@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import Visits from '../views/Visits';
 import { useAuth } from '../components/AuthProvider';
@@ -161,6 +161,34 @@ describe('Visits', () => {
     // The avatar's initials are part of the button's accessible name ("AO Ama Osei").
     fireEvent.click(screen.getByRole('button', { name: /AO\s*Ama Osei$/ }));
     expect(screen.getByText('Contact: Ama Osei')).toBeInTheDocument();
+  });
+
+  it('does not overlay the ⋯ menu on top of the who-went avatar (#687)', async () => {
+    emitVisits([visit()]);
+    render(<Visits />);
+    await waitFor(() => expect(screen.getByText('Ama Osei')).toBeInTheDocument());
+
+    // The avatar (initials "MT") and the ⋯ trigger ("More for Ama Osei") must
+    // share the right-hand meta column of the toggle button — the dots sit
+    // next to the avatar, not on top of it.
+    const actions = screen.getByTestId('visit-card-actions');
+    expect(within(actions).getByText('MT')).toBeInTheDocument();
+    const dots = within(actions).getByRole('button', { name: 'More for Ama Osei' });
+
+    // No ancestor of the actions column should be an absolute overlay that
+    // would cover the avatar.
+    const card = actions.closest('article');
+    let walker: HTMLElement | null = actions;
+    while (walker && walker !== card) {
+      expect(walker.className).not.toMatch(/\babsolute\b/);
+      walker = walker.parentElement;
+    }
+
+    // Clicking the dots should not toggle the card.
+    fireEvent.click(dots);
+    expect(dots).toHaveAttribute('aria-expanded', 'true');
+    const toggle = card!.querySelector('button[aria-expanded]');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('removes a visit only after it is confirmed, and says so in the record', async () => {

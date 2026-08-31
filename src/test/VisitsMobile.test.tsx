@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
 import VisitsMobile from '../views/VisitsMobile';
 import type { Contact, Visit } from '../types';
@@ -133,5 +133,38 @@ describe('VisitsMobile', () => {
     // empty state renders two "Log a visit" buttons (header + empty card); use the last
     fireEvent.click(screen.getAllByRole('button', { name: 'Log a visit' }).at(-1)!);
     expect(onLog).toHaveBeenCalledWith();
+  });
+
+
+  it('does not overlay the ⋯ menu on top of the who-went avatar (#687)', () => {
+    render(
+      <VisitsMobile
+        {...baseProps}
+        visits={[visit()]}
+        groups={{ thisWeek: [visit()], lastWeek: [], earlier: [] }}
+      />,
+    );
+
+    // The avatar (initials "MT") and the ⋯ trigger ("More for Ama Osei") must
+    // share the right-hand meta column of the toggle button — the dots sit
+    // next to the avatar, not on top of it.
+    const actions = screen.getByTestId('visit-card-actions');
+    expect(within(actions).getByText('MT')).toBeInTheDocument();
+    const dots = within(actions).getByRole('button', { name: 'More for Ama Osei' });
+
+    // No ancestor of the actions column should be an absolute overlay that
+    // would cover the avatar.
+    const card = actions.closest('article');
+    let walker: HTMLElement | null = actions;
+    while (walker && walker !== card) {
+      expect(walker.className).not.toMatch(/\babsolute\b/);
+      walker = walker.parentElement;
+    }
+
+    // Clicking the dots should not toggle the card.
+    fireEvent.click(dots);
+    expect(dots).toHaveAttribute('aria-expanded', 'true');
+    const toggle = card!.querySelector('button[aria-expanded]');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
   });
 });
