@@ -39,6 +39,18 @@ vi.mock('../lib/firebase', () => ({
   OperationType: { UPDATE: 'UPDATE' },
 }));
 
+vi.mock('firebase/firestore', () => ({
+  collection: vi.fn(),
+  getDocs: vi.fn().mockResolvedValue({ docs: [] }),
+  doc: vi.fn(),
+  updateDoc: vi.fn().mockResolvedValue(undefined),
+  onSnapshot: vi.fn(() => () => {}),
+  query: vi.fn(),
+  orderBy: vi.fn(),
+  setDoc: vi.fn().mockResolvedValue(undefined),
+  deleteDoc: vi.fn().mockResolvedValue(undefined),
+  serverTimestamp: vi.fn(),
+}));
 describe('Settings Notifications Section', () => {
   beforeEach(() => {
     vi.clearAllMocks();
