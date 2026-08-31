@@ -48,8 +48,12 @@
   --color-stage-violet: var(--stage-violet);
   --color-stage-violet-soft: var(--stage-violet-soft);
 
-  /* Bento accent — the interactive violet (text/icons, `--accent`) vs the
-     solid fill (`--accent-strong`, white text sits on it). */
+  /* `--accent` is the interactive-text signal (links, clickable names,
+     hover affordances) and MUST stay visually distinct from `--text` in
+     both themes. Today it points at `--text-dim`; if a future theme
+     flattens `--text-dim` back toward `--text`, re-introduce headroom
+     here. `--accent-strong`/`-hover`/`-on`/`-soft`/`-line` keep their
+     distinct roles for buttons, fills, and surfaces. */
   --color-accent: var(--accent);
   --color-accent-strong: var(--accent-strong);
   --color-accent-on: var(--accent-on);
@@ -107,7 +111,7 @@
     --text: #0A0A0B;
     --text-dim: #52525B;
     --text-mute: #A1A1AA;
-    --accent: #0A0A0B;
+    --accent: var(--text-dim);
     --accent-strong: #131316;
     --accent-hover: #35353C;
     --accent-on: #FFFFFF;
@@ -225,7 +229,7 @@
     --text: #FAFAFA;
     --text-dim: #A1A1AA;
     --text-mute: #71717A;
-    --accent: #FAFAFA;
+    --accent: var(--text-dim);
     --accent-strong: #FAFAFA;
     --accent-hover: #E4E4E7;
     --accent-on: #0A0A0B;

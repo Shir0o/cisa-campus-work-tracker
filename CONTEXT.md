@@ -38,3 +38,15 @@ The desktop search palette that opens the do-everything navigation: jump to any 
 **Questions for the team**:
 The Full-timer destination for trainee questions that aren't about one person, at `/questions`. My Day's "Questions for the team" stack is a summary that points here — answering happens in exactly one place, on the page's question cards.
 _Avoid_: Ask the team board
+
+**`--accent` (CSS token)**:
+The interactive-text signal — links, clickable names, and `hover:text-*`
+affordances resolve to it via the Tailwind utility. Invariant: in every
+theme, `text-accent` must render visually distinct from `text-on-surface`,
+otherwise interactive text reads as plain body and links go invisible.
+Defence-in-depth: interactive text also carries a persistent `underline
+underline-offset-2` so the affordance holds even if the colour signal
+ever drifts back to equality with `--text`. If you find yourself tempted
+to flatten `--accent` toward `--text` for visual consistency, re-introduce
+headroom instead — the regression test in `src/test/accentToken.test.ts`
+will fail otherwise.

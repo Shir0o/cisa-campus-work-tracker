@@ -450,17 +450,25 @@ describe('Settings', () => {
 
       render(<Settings />);
 
-      await waitFor(() => {
-        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-      });
+      // Coverage-instrumented renders blow past the 1s default; the search
+      // block's async snapshot regularly takes >1s under instrumentation.
+      await waitFor(
+        () => {
+          expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
 
       const searchInput = screen.getByPlaceholderText('Find a teammate…');
       fireEvent.change(searchInput, { target: { value: 'alice' } });
 
-      await waitFor(() => {
-        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-        expect(screen.queryByText('charlie@test.com')).not.toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+          expect(screen.queryByText('charlie@test.com')).not.toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
     });
 
     it('shows empty state when no results match search', async () => {
@@ -469,16 +477,24 @@ describe('Settings', () => {
 
       render(<Settings />);
 
-      await waitFor(() => {
-        expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
-      });
+      // Coverage-instrumented renders blow past the 1s default; the search
+      // block's async snapshot regularly takes >1s under instrumentation.
+      await waitFor(
+        () => {
+          expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
 
       const searchInput = screen.getByPlaceholderText('Find a teammate…');
       fireEvent.change(searchInput, { target: { value: 'zzznomatch' } });
 
-      await waitFor(() => {
-        expect(screen.getByText('No teammates or invites match your search.')).toBeInTheDocument();
-      });
+      await waitFor(
+        () => {
+          expect(screen.getByText('No teammates or invites match your search.')).toBeInTheDocument();
+        },
+        { timeout: 3000 },
+      );
     });
 
     it('filters out cisa-* test accounts from the teammates list', async () => {

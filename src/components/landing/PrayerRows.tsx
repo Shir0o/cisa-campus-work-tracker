@@ -70,7 +70,7 @@ export function TeamPrayerRow({
               <button
                 type="button"
                 onClick={() => onOpenContact(contact)}
-                className="text-sm text-accent hover:underline"
+                className="text-sm text-accent underline underline-offset-2"
               >
                 {t("prayers.for_contact", "for {name}").replace("{name}", contact.name)}
               </button>

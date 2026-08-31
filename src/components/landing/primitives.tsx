@@ -126,7 +126,7 @@ export function SectionHead({
             <button
               type="button"
               onClick={onLink}
-              className="text-sm font-medium text-accent hover:underline inline-flex items-center gap-1"
+              className="text-sm font-medium text-accent underline underline-offset-2 inline-flex items-center gap-1"
             >
               {linkLabel} <ArrowRight className="w-3.5 h-3.5" />
             </button>

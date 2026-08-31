@@ -387,7 +387,7 @@ export default function FromTraineesInbox({
       {hidden > 0 && !showAll && (
         <button
           onClick={() => setShowAll(true)}
-          className={mobile ? "ibx-more w-full py-3 text-center text-sm font-medium text-accent hover:underline border-t border-outline-variant/20 mt-1" : "mt-3 text-sm font-medium text-accent hover:underline"}
+          className={mobile ? "ibx-more w-full py-3 text-center text-sm font-medium text-accent underline underline-offset-2 border-t border-outline-variant/20 mt-1" : "mt-3 text-sm font-medium text-accent underline underline-offset-2"}
         >
           Show {hidden} earlier
         </button>
