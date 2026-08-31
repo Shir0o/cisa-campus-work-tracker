@@ -9,13 +9,18 @@ import {
   useParams,
   Link,
 } from "react-router-dom";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, collection } from "firebase/firestore";
 import { cn } from "./lib/utils";
 import { db } from "./lib/firebase";
 import OwnerViewBanner from "./components/layout/OwnerViewBanner";
 import ImpersonateModal from "./components/layout/ImpersonateModal";
 import TopNav from "./components/layout/TopNav";
 import MobileNav from "./components/layout/MobileNav";
+import NavRail from "./components/layout/NavRail";
+import NavChromeStrip from "./components/layout/NavChromeStrip";
+import { useNavShell } from "./components/NavShellProvider";
+import { useMediaQuery } from "./lib/useMediaQuery";
+import { NavShellProvider } from "./components/NavShellProvider";
 import NewContactModal from "./components/modals/NewContactModal";
 import Landing from "./views/landings/Landing";
 import { AuthProvider, useAuth } from "./components/AuthProvider";
@@ -37,8 +42,6 @@ import { usePreserveScroll } from "./lib/usePreserveScroll";
 import { UsageStats } from "./lib/usageStats";
 import { applyRoster } from "./lib/walking";
 import { applyPartners, subscribePartners } from "./lib/partners";
-import { collection } from "firebase/firestore";
-
 /* v8 ignore start -- trivial dynamic-import factories; vi.mock intercepts module resolution */
 const Attendance = lazyWithRetry(() => import("./views/Attendance"));
 const Outreach = lazyWithRetry(() => import("./views/Outreach"));
@@ -391,7 +394,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   // Session 7 (#370): record which screen was opened. This is local-only,
   // anonymous usage shape data for the owner's "what is the app costing"
-  // readings; no content is stored.
   React.useEffect(() => {
     if (user?.uid) {
       UsageStats.record(user.uid, {
@@ -402,6 +404,11 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [location.pathname, user?.uid, role]);
 
+  // Pick a desktop shell from the user's preference, falling through to the
+  // existing mobile bottom nav below md regardless of preference (#664).
+  const { effective } = useNavShell();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const useRail = isDesktop && effective !== 'topbar';
   return (
     <LayoutContext.Provider
       value={{
@@ -423,49 +430,83 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       }}
     >
       <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
-        <div
-          className={cn(
-            "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",
-          )}
-        >
-          <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
-          <TopNav onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
-          <main
+        {useRail ? (
+          // ── Rail shell: rail on the left, chrome strip + content + banners on the right.
+          <>
+            <NavRail onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+            <div className="flex-1 flex flex-col h-screen min-w-0">
+              <NavChromeStrip onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+              {/* In rail mode the impersonation/owner-view banner sits at the
+                  top of the content column rather than full-bleed above the
+                  bar (there is no bar). */}
+              <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
+              <main
+                className={cn(
+                  "flex-1 w-full min-h-0",
+                  isMessagesPage
+                    ? "flex flex-col overflow-hidden"
+                    : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+                )}
+              >
+                {selectedContact && contactId ? (
+                  <ContactDetailsModal
+                    isOpen
+                    onClose={() => openSelectedContact(null)}
+                    contact={selectedContact}
+                  />
+                ) : (
+                  <React.Suspense
+                    fallback={
+                      <div className="p-8 space-y-6">
+                        <Skeleton className="h-10 w-64" />
+                        <Skeleton className="h-96 w-full rounded-3xl" />
+                      </div>
+                    }
+                  >
+                    <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
+                  </React.Suspense>
+                )}
+              </main>
+            </div>
+          </>
+        ) : (
+          // ── Top-bar shell (or any viewport below md): existing layout, unchanged.
+          <div
             className={cn(
-              "flex-1 w-full min-h-0",
-              isMessagesPage
-                ? "flex flex-col overflow-hidden"
-                : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+              "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",
             )}
           >
-            {/* People detail is a full page on desktop (the design's ContactDetail),
-                not a popup — it replaces the current view inside the shell. */}
-            {selectedContact && contactId ? (
-              <ContactDetailsModal
-                isOpen
-                onClose={() => openSelectedContact(null)}
-                contact={selectedContact}
-              />
-            ) : (
-              // Keyed by the effective identity: switching "See it as they do"
-              // (or back) remounts the routed view in the SAME commit, so the
-              // first frame after the switch is the new viewer's loading
-              // skeleton instead of the previous viewer's content — the flash
-              // every identity-keyed view would otherwise show until its
-              // effects re-subscribed and its stale state cleared.
-              <React.Suspense
-                fallback={
-                  <div className="p-8 space-y-6">
-                    <Skeleton className="h-10 w-64" />
-                    <Skeleton className="h-96 w-full rounded-3xl" />
-                  </div>
-                }
-              >
-                <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
-              </React.Suspense>
-            )}
-          </main>
-        </div>
+            <OwnerViewBanner onOpenModal={() => setIsImpersonateModalOpen(true)} />
+            <TopNav onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
+            <main
+              className={cn(
+                "flex-1 w-full min-h-0",
+                isMessagesPage
+                  ? "flex flex-col overflow-hidden"
+                  : "overflow-x-hidden overflow-y-auto pb-36 md:pb-8",
+              )}
+            >
+              {selectedContact && contactId ? (
+                <ContactDetailsModal
+                  isOpen
+                  onClose={() => openSelectedContact(null)}
+                  contact={selectedContact}
+                />
+              ) : (
+                <React.Suspense
+                  fallback={
+                    <div className="p-8 space-y-6">
+                      <Skeleton className="h-10 w-64" />
+                      <Skeleton className="h-96 w-full rounded-3xl" />
+                    </div>
+                  }
+                >
+                  <React.Fragment key={effectiveIdentityKey}>{children}</React.Fragment>
+                </React.Suspense>
+              )}
+            </main>
+          </div>
+        )}
 
         <MobileNav />
 
@@ -527,6 +568,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <ThemeProvider defaultTheme="system" storageKey="campus-hub-theme">
+        <NavShellProvider>
         <Router>
           <AuthProvider>
             <LanguageProvider>
@@ -825,6 +867,7 @@ export default function App() {
             </LanguageProvider>
           </AuthProvider>
         </Router>
+        </NavShellProvider>
       </ThemeProvider>
     </ErrorBoundary>
   );

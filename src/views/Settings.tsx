@@ -43,11 +43,15 @@ import {
   Minus,
   Plus,
   X,
+  PanelLeft,
+  LayoutPanelLeft,
+  Rows3,
 } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton } from '../components/ui/Skeleton';
 import { useTheme } from '../components/ThemeProvider';
+import { useNavShell, type NavShellPreference } from '../components/NavShellProvider';
 import { useLanguage } from '../components/LanguageProvider';
 import FeedbackList from './FeedbackList';
 import UsageStatsPanel from '../components/settings/UsageStatsPanel';
@@ -326,7 +330,64 @@ function AppearanceSection({
   );
 }
 
-// ── Notifications ──────────────────────────────────────────────────────
+// ── Navigation ───────────────────────────────────────────────────────────
+
+const NAV_SHELLS: Array<{
+  key: NavShellPreference;
+  label: string;
+  note: string;
+  Icon: typeof Sun;
+}> = [
+  { key: 'rail', label: 'Rail', note: 'Wide, all destinations visible', Icon: PanelLeft },
+  { key: 'rail-collapsed', label: 'Compact', note: 'Icons only, labels on hover', Icon: LayoutPanelLeft },
+  { key: 'topbar', label: 'Top bar', note: 'The original horizontal bar', Icon: Rows3 },
+];
+
+function NavigationSection() {
+  const { t } = useLanguage();
+  const { preference, setPreference } = useNavShell();
+  return (
+    <section className="mt-10">
+      <SectionHeader
+        title={t('settings.navigation', 'Navigation')}
+        sub={t(
+          'settings.navigation_sub',
+          'Desktop-only. The rail shows every destination grouped; the compact rail keeps the same destinations on icons; the top bar keeps the existing horizontal shell.',
+        )}
+      />
+      <div className="grid grid-cols-3 gap-3 max-w-2xl">
+        {NAV_SHELLS.map(({ key, label, note, Icon }) => {
+          const active = preference === key;
+          return (
+            <button
+              key={key}
+              onClick={() => setPreference(key)}
+              aria-pressed={active}
+              className={cn(
+                'flex flex-col items-start gap-2 p-4 rounded-3xl border text-left transition-colors',
+                active
+                  ? 'border-primary/40 bg-primary/5'
+                  : 'bg-surface-container border-outline-variant/40 hover:bg-surface-container-high',
+              )}
+            >
+              <Icon className={cn('w-5 h-5', active ? 'text-accent' : 'text-on-surface-variant')} />
+              <span className="font-serif text-base text-on-surface leading-none">{label}</span>
+              <span className="text-xs text-on-surface-variant">{note}</span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-3 text-xs text-on-surface-variant/70 max-w-2xl">
+        {t(
+          'settings.navigation_help',
+          'Below the large breakpoint, mobile navigation is used unchanged. A narrow window may temporarily collapse the rail without changing this choice.',
+        )}
+      </p>
+    </section>
+  );
+}
+
+ // ── Notifications ──────────────────────────────────────────────────────
 
 function NotificationsSection() {
   const { user } = useAuth();
@@ -2040,22 +2101,20 @@ export default function Settings() {
           <h1 className="font-serif text-3xl sm:text-4xl text-on-surface">{t('settings.title', 'Settings')}</h1>
           <p className="text-base text-on-surface-variant mt-2">{t('settings.subtitle', 'Your account and preferences.')}</p>
         </header>
-
         <AccountSection />
 
         <section className="mt-10">
           <SectionHeader
             title={t('settings.roles_access', 'Roles & access')}
-            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who carries what, and what each person sees.')}
+            sub={t('settings.roles_access_sub', 'Roles are labels — a way to know who each person carries what, and what sees.')}
           />
           <RolesReference currentRole={myRole} />
         </section>
 
         <AppearanceSection theme={theme} setTheme={setTheme} />
+        <NavigationSection />
         <NotificationsSection />
         <LanguageSection />
-
-        {sharedTail}
 
         <p className="mt-12 text-center text-[13px] text-on-surface-variant/70 italic">
           {t('settings.more_account_settings', 'More account settings will arrive in time.')}
@@ -2068,16 +2127,15 @@ export default function Settings() {
   return (
     <PageContainer variant="reading">
       <header className="mb-8">
-        <h1 className="font-serif page-title text-on-surface">{t('settings.title', 'Settings')}</h1>
         <p className="text-base text-on-surface-variant mt-2">
           {currentUser?.displayName
             ? `${t('settings.signed_in_as', 'Signed in as')} ${currentUser.displayName}${myRole ? ` · ${ROLE_LABEL[myRole]}` : ''}`
             : t('settings.manager_subtitle', 'Your workspace and preferences.')}
         </p>
       </header>
-
       <AccountSection />
       <AppearanceSection theme={theme} setTheme={setTheme} />
+      <NavigationSection />
       <NotificationsSection />
       <LanguageSection />
 

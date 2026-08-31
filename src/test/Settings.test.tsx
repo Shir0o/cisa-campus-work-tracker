@@ -21,6 +21,12 @@ vi.mock('../components/ThemeProvider', () => ({
   useTheme: () => ({ theme: 'system', setTheme: mockSetTheme }),
 }));
 
+const mockSetNavShell = vi.fn();
+vi.mock('../components/NavShellProvider', () => ({
+  useNavShell: () => ({ preference: 'rail', effective: 'rail', setPreference: mockSetNavShell }),
+  NavShellProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 const mockSetLanguage = vi.fn();
 vi.mock('../components/LanguageProvider', () => ({
   useLanguage: () => ({ language: 'en', setLanguage: mockSetLanguage, isSpanish: false, t: (_key: string, fallback?: string) => fallback ?? _key }),
@@ -32,7 +38,6 @@ vi.mock('./FeedbackList', () => ({
     return createElement('div', { 'data-testid': 'feedback-list' }, 'FeedbackList');
   },
 }));
-
 vi.mock('motion/react', () => {
   const { forwardRef, createElement, Fragment } = require('react');
   return {

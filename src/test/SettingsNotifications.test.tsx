@@ -20,6 +20,19 @@ vi.mock('../components/AuthProvider', () => ({
   }),
 }));
 
+vi.mock('../components/NavShellProvider', () => ({
+  useNavShell: () => ({ preference: 'rail', effective: 'rail', setPreference: vi.fn() }),
+  NavShellProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+vi.mock('../components/ThemeProvider', () => ({
+  useTheme: () => ({ theme: 'system', setTheme: vi.fn() }),
+}));
+
+vi.mock('../components/LanguageProvider', () => ({
+  useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), isSpanish: false, t: (_k: string, fb?: string) => fb ?? _k }),
+}));
+
 vi.mock('../lib/firebase', () => ({
   db: {},
   handleFirestoreError: vi.fn(),
@@ -38,7 +51,6 @@ vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn().mockResolvedValue(undefined),
   serverTimestamp: vi.fn(),
 }));
-
 describe('Settings Notifications Section', () => {
   beforeEach(() => {
     vi.clearAllMocks();

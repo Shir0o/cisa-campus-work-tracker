@@ -34,9 +34,7 @@ Permanently deleting a logged conversation from a contact's Conversations (web) 
 _Avoid_: Archive entry, trash a conversation
 
 **Global Search (⌘K)**:
-The desktop topbar search field that opens the do-everything navigation: jump to any destination, find a person, conversation, coordination note, or history entry, and run quick actions — role-filtered and ranked by frecency. ⌘K (Ctrl+K on other keyboards) opens it from anywhere; on mobile a search button opens the same palette full-screen.
-_Avoid_: Command palette, jump bar
-
+The desktop search palette that opens the do-everything navigation: jump to any destination, find a person, conversation, coordination note, or history entry, and run quick actions — role-filtered and ranked by frecency. ⌘K (Ctrl+K on other keyboards) opens it from anywhere; on mobile a search button opens the same palette full-screen. In rail mode the palette is mounted by the shell above the content; in top-bar mode it sits inside the bar; the keyboard shortcut is identical in both shells.
 **Questions for the team**:
 The Full-timer destination for trainee questions that aren't about one person, at `/questions`. My Day's "Questions for the team" stack is a summary that points here — answering happens in exactly one place, on the page's question cards.
 _Avoid_: Ask the team board
