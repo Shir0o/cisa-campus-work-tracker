@@ -44,7 +44,7 @@ import { LanguageToggle } from '../LanguageToggle';
 import { useI18n } from '../LanguageProvider';
 import { Translate } from '../Translate';
 import { SIGNUP_TITLE } from './SignupInvite';
-import { subscribeAsks, askQuestions, askAnswered } from '../../lib/asks';
+import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 
 // Route → icon (the same mapping the old rail used, so the top bar reads the
 // same way). Fallback to LayoutDashboard for anything unmapped.
@@ -79,7 +79,9 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   const [moreOpen, setMoreOpen] = useState(false);
   // Questions lives in the More menu now (#646). Folding a destination away costs
   // discoverability, so the fold leaks: a dot on More, the count on the row.
-  const [waitingAsks, setWaitingAsks] = useState(0);
+  // The shared hook also feeds the rail's badge (#665); both shells read
+  // from the same Firestore collection so they stay in sync.
+  const waitingAsks = useWaitingAsksCount(user?.uid, isAdmin);
   const [profileOpen, setProfileOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -87,15 +89,6 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   const primary = primaryNavFor(role);
   const moreItems = moreNavFor(role);
   const externalLinks = navExternalFor(role);
-
-  useEffect(() => {
-    if (!isAdmin || !user?.uid) return;
-    return subscribeAsks(
-      (msgs) => setWaitingAsks(askQuestions(msgs).filter((m) => m.from !== user.uid && !askAnswered(msgs, m)).length),
-      undefined,
-      { uid: user.uid, isStaff: true },
-    );
-  }, [isAdmin, user?.uid]);
 
   // Close "More" / avatar menus on outside click or Escape.
   useEffect(() => {

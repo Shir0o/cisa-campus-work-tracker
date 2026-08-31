@@ -1,5 +1,5 @@
 /**
- * NavRail component (#664).
+ * NavRail component (#664) and collapse/expand control (#665).
  *
  * The rail renders every destination a role can reach, grouped, with the
  * mark pinned at the top and the account block + collapse control pinned at
@@ -8,17 +8,43 @@
  * Test focus: the user-observable contract. A Full-timer sees all thirteen
  * destinations grouped, the current one is unmistakable, the mark and the
  * account block stay pinned, the collapse control announces its expanded
- * state, and the destination names survive as accessible labels in compact
- * mode.
+ * state, the destination names survive as accessible labels in compact
+ * mode, the unread count renders as a number when expanded and a dot when
+ * collapsed, and destination labels appear as tooltips on hover and on
+ * keyboard focus.
  */
-import React from 'react';
-import { render, screen, fireEvent, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import NavRail from '../components/layout/NavRail';
 import { NavShellProvider } from '../components/NavShellProvider';
 import { groupedNavFor, navExternalFor } from '../lib/permissions';
 import type { AppRole } from '../lib/permissions';
+import * as asks from '../lib/asks';
+// ── asks subscription mock ──────────────────────────────────────────────────
+// The rail renders an unread badge for /questions, the same way the top bar
+// does (#646). The badge reads the same subscribed list the page consumes.
+const asksMock = vi.hoisted(() => ({
+  // Tests that care about a specific count reassign this with
+//   vi.mocked(asks.subscribeAsks).mockImplementation(...)
+  subscribeAsks: vi.fn<
+    (
+      cb: (m: unknown[]) => void,
+      _err?: unknown,
+      opts?: { uid?: string; isStaff?: boolean },
+    ) => () => void
+  >((cb) => {
+    cb([]);
+    return () => {};
+  }),
+  subscribeStaffAsks: vi.fn((_uid: string, cb: (m: unknown[]) => void) => {
+    cb([]);
+    return () => {};
+  }),
+  askQuestions: vi.fn((m: unknown[]) => m as never[]),
+  askAnswered: vi.fn(() => false),
+}));
+vi.mock('../lib/asks', () => asksMock);
 // ── auth + layout mocks ─────────────────────────────────────────────────────
 const h = vi.hoisted(() => ({
   user: null as null | { uid: string; email: string; displayName: string; photoURL: string | null },
@@ -219,11 +245,48 @@ describe('NavRail (#664)', () => {
     expect(brand).toBeInTheDocument();
   });
 
+  it('reduces the wordmark to just the mark when the rail is collapsed (#665)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail();
+    // The logo image is still pinned at the top.
+    expect(screen.getByAltText('CISA Campus Work Tracker')).toBeInTheDocument();
+    // The two-line "CISA Campus / Work Tracker" wordmark is hidden in the
+    // collapsed rail; the spec's promise is that only the mark survives.
+    expect(screen.queryByText('CISA Campus')).not.toBeInTheDocument();
+    expect(screen.queryByText('Work Tracker')).not.toBeInTheDocument();
+  });
+
+  it('replaces group labels with hairline dividers when the rail is collapsed (#665 AC3)', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+    // The four group headers (Today, People, Gatherings, Prayer) become
+    // hairline dividers when collapsed. The destination names still appear
+    // inside `<span class="sr-only">` for screen readers; we assert that
+    // the visible group labels are gone by searching for them in any
+    // element that is *not* sr-only.
+    const rail = screen.getByTestId('nav-rail');
+    const groupLabels = ['Today', 'People', 'Gatherings', 'Prayer'];
+    for (const label of groupLabels) {
+      const visible = rail.querySelectorAll(`*:not(.sr-only)`);
+      const matches = Array.from(visible).filter((el) =>
+        el.children.length === 0 && el.textContent === label,
+      );
+      expect(matches).toEqual([]);
+    }
+  });
+
   // ── Pinned controls at the bottom ──────────────────────────────
   it('renders the Settings link at the bottom of the rail (pinned control)', () => {
     renderRail();
     const rail = screen.getByTestId('nav-rail');
     expect(within(rail).getByRole('link', { name: /^Settings$/ })).toBeInTheDocument();
+  });
+
+  it('exposes a focusable tooltip on the Settings link when the rail is collapsed', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail();
+    const settings = screen.getByRole('link', { name: /^Settings$/ });
+    expect(settings).toHaveAttribute('data-tooltip', 'Settings');
   });
 
   // ── External links rendered too ────────────────────────────────────
@@ -275,6 +338,76 @@ describe('NavRail (#664)', () => {
     renderRail();
     fireEvent.click(screen.getByRole('button', { name: /Expand navigation/i }));
     expect(localStorage.getItem('campus-hub-nav-shell')).toBe('rail');
+  });
+
+  // ── Unread badge (acceptance criterion 5: count → dot on collapse) ──
+  it('shows the waiting-asks count as a number next to the Questions label in the expanded rail', () => {
+    // Three open questions on other people's accounts — counted by askQuestions
+    // and gated by askAnswered returning false. The current user (u-1) is
+    // excluded by the `from !== uid` filter, mirroring TopNav's logic.
+    const messages = [
+      { id: 'q1', parentId: null, owner: 't1', from: 't1', kind: 'question' },
+      { id: 'q2', parentId: null, owner: 't2', from: 't2', kind: 'question' },
+      { id: 'q3', parentId: null, owner: 't3', from: 't3', kind: 'question' },
+    ];
+    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: typeof messages) => void) => {
+      cb(messages);
+      return () => {};
+    }) as never);
+    vi.mocked(asks.askQuestions).mockImplementation(((m: typeof messages) => m) as never);
+    vi.mocked(asks.askAnswered).mockReturnValue(false as never);
+
+    renderRail({ role: 'admin' });
+    // The number "3" must be visible next to the Questions label.
+    const questions = screen.getByRole('link', { name: /Questions/i });
+    expect(within(questions).getByText('3')).toBeInTheDocument();
+  });
+
+  it('shows the waiting-asks count as a dot (no number) when the rail is collapsed', () => {
+    const messages = [
+      { id: 'q1', parentId: null, owner: 't1', from: 't1', kind: 'question' },
+      { id: 'q2', parentId: null, owner: 't2', from: 't2', kind: 'question' },
+    ];
+    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: typeof messages) => void) => {
+      cb(messages);
+      return () => {};
+    }) as never);
+    vi.mocked(asks.askQuestions).mockImplementation(((m: typeof messages) => m) as never);
+    vi.mocked(asks.askAnswered).mockReturnValue(false as never);
+
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+
+    const questions = screen.getByRole('link', { name: /Questions/i });
+    // No number — a dot is an aria-hidden indicator, the count is in the
+    // accessible name so screen readers still hear "Questions, 2 waiting".
+    expect(within(questions).queryByText('2')).not.toBeInTheDocument();
+    expect(questions).toHaveAccessibleName(/2\s+waiting/);
+  });
+
+  it('does not show a badge at all when there are no waiting asks', () => {
+    vi.mocked(asks.subscribeAsks).mockImplementation(((cb: (m: unknown[]) => void) => {
+      cb([]);
+      return () => {};
+    }) as never);
+
+    renderRail({ role: 'admin' });
+    const questions = screen.getByRole('link', { name: /^Questions$/ });
+    // The accessible name is the label alone — no "waiting" suffix when
+    // there's nothing to wait on.
+    expect(questions).toHaveAccessibleName('Questions');
+  });
+
+  // ── Focusable tooltip (acceptance criterion 6: label on hover AND focus)
+  it('exposes the destination label as a tooltip on focus, not just on hover', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+    // The native `title` attribute is hover-only and not announced reliably
+    // on focus; the contract here is a focusable tooltip — the label must be
+    // surfaced via a non-title channel. The collapse rail sets
+    // `data-tooltip` so the focus-visible pseudo-rule can render a tooltip.
+    const questions = screen.getByRole('link', { name: /Questions/i });
+    expect(questions).toHaveAttribute('data-tooltip', 'Questions');
   });
 
   // The impersonation eye moved to NavChromeStrip; the rail's chrome lives

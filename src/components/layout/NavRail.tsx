@@ -31,6 +31,7 @@ import {
 } from '../../lib/permissions';
 import { useNavShell } from '../NavShellProvider';
 import { Translate } from '../Translate';
+import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   '/': Sunrise,
@@ -60,19 +61,31 @@ const PINNED_LABELS: Record<NavGroupLabel, string> = {
   Prayer: 'Prayer',
 };
 
+// Stable test id for the unread badge on a destination. Used in both the
+// expanded-rail number span and the collapsed-rail dot so tests can target
+// the same node regardless of which shell variant is rendered. The href
+// is sanitised to alphanumeric so it can be used as a DOM id class safely.
+const unreadTestId = (href: string) => `rail-unread-${href.replace(/[^a-z0-9]/gi, '')}`;
+
 export interface NavRailProps {
   /** Reserved for future use — kept for symmetry with TopNav. */
   onOpenImpersonateModal?: () => void;
 }
 
 export default function NavRail(_props: NavRailProps = {}) {
-  const { role } = useAuth();
+  const { role, isAdmin, user } = useAuth();
   const { pathname } = useLocation();
   const { effective, setPreference } = useNavShell();
   const collapsed = effective === 'rail-collapsed';
 
   const groups = groupedNavFor(role);
   const externalLinks = navExternalFor(role);
+
+  // The /questions destination shows a badge: a number when the rail is
+  // expanded, a dot when it's collapsed. The same hook powers the badge on
+  // the top bar (#646); both shells stay in sync because they read from
+  // the same Firestore collection.
+  const waitingAsks = useWaitingAsksCount(user?.uid, isAdmin);
 
   const railWidth = collapsed ? 'w-[76px]' : 'w-[232px]';
 
@@ -94,6 +107,7 @@ export default function NavRail(_props: NavRailProps = {}) {
       <div className="flex items-center h-14 lg:h-16 px-3 border-b border-outline-variant shrink-0">
         <Link
           to="/"
+          data-tooltip={collapsed ? 'Home' : undefined}
           className={cn(
             'flex items-center shrink-0 hover:opacity-80 transition-opacity',
             collapsed ? 'justify-center w-full' : 'gap-2',
@@ -159,6 +173,7 @@ export default function NavRail(_props: NavRailProps = {}) {
                     collapsed={collapsed}
                     currentPath={pathname}
                     role={role as AppRole | null}
+                    unread={item.href === '/questions' ? waitingAsks : 0}
                   />
                 </li>
               ))}
@@ -199,12 +214,12 @@ export default function NavRail(_props: NavRailProps = {}) {
         <div className="flex items-center px-2 py-2">
           <Link
             to="/settings"
+            data-tooltip={collapsed ? 'Settings' : undefined}
             className={cn(
               'flex items-center gap-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors',
               collapsed ? 'p-1 justify-center w-full' : 'flex-1 px-3 py-1.5 text-sm',
             )}
             aria-label="Settings"
-            title="Settings"
           >
             <SettingsIcon className="w-4 h-4 shrink-0" />
             {!collapsed && <span className="font-medium">Settings</span>}
@@ -217,7 +232,7 @@ export default function NavRail(_props: NavRailProps = {}) {
             onClick={toggleCollapsed}
             aria-expanded={!collapsed}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            title={collapsed ? 'Expand navigation' : 'Collapse navigation'}
+            data-tooltip={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             className={cn(
               'w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors',
               collapsed ? 'justify-center' : 'justify-between',
@@ -237,25 +252,38 @@ export default function NavRail(_props: NavRailProps = {}) {
 }
 
 // ── Internal item components ────────────────────────────────────────────────
-
 interface RailItemProps {
   item: NavItem;
   collapsed: boolean;
   currentPath: string;
   role: AppRole | null;
+  /** Unread count for this destination. 0 means no badge. */
+  unread?: number;
 }
 
-function RailItem({ item, collapsed, currentPath, role }: RailItemProps) {
+function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemProps) {
   const isActive =
     currentPath === item.href || (item.href !== '/' && currentPath.startsWith(item.href + '/'));
   const label = item.href === '/' && role === 'admin' ? 'My Day' : item.label;
+  // The spec requires the count to be readable on a screen reader even when
+  // the badge is reduced to a dot (#665, "unread counts to remain visible when
+  // the rail is collapsed"). The dot is `aria-hidden`; the count lives in the
+  // link's accessible name.
+  const a11yLabel = unread > 0 ? `${label}, ${unread} waiting` : label;
 
   return (
     <NavLink
       to={item.href}
       end={item.href === '/'}
       aria-current={isActive ? 'page' : undefined}
-      title={collapsed ? label : undefined}
+      aria-label={unread > 0 ? a11yLabel : undefined}
+      // The collapsed rail is icon-only, so the destination's label is
+      // surfaced via a `data-tooltip` CSS pseudo (defined in index.css)
+      // that shows on both hover and keyboard focus — the native `title`
+      // is hover-only, so we don't set it. A keyboard user tabbing
+      // through the rail can identify an icon-only destination without
+      // a mouse. #665 acceptance criterion 6.
+      data-tooltip={collapsed ? label : undefined}
       className={cn(
         'group relative flex items-center gap-3 rounded-xl transition-colors',
         collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
@@ -270,7 +298,27 @@ function RailItem({ item, collapsed, currentPath, role }: RailItemProps) {
         className={cn(isActive ? 'text-on-primary' : '')}
       />
       {!collapsed && (
-        <Translate as="span" className="text-sm whitespace-nowrap truncate" text={label} />
+        <>
+          <Translate as="span" className="text-sm whitespace-nowrap truncate flex-1" text={label} />
+          {unread > 0 && (
+            <span
+              data-testid={unreadTestId(item.href)}
+              aria-hidden="true"
+              className="shrink-0 text-[11px] font-semibold tabular-nums text-on-primary bg-primary/15 rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center"
+            >
+              {unread}
+            </span>
+          )}
+        </>
+      )}
+      {collapsed && unread > 0 && (
+        // A dot — "something here" without the number. The number is in the
+        // accessible name above; the dot is purely visual.
+        <span
+          data-testid={unreadTestId(item.href)}
+          aria-hidden="true"
+          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"
+        />
       )}
       {collapsed && <span className="sr-only">{label}</span>}
     </NavLink>
@@ -283,7 +331,9 @@ function RailExternalItem({ link, collapsed }: { link: ExternalNavItem; collapse
       href={link.href}
       target="_blank"
       rel="noopener noreferrer"
-      title={collapsed ? link.label : undefined}
+      // Same hover+focus tooltip pattern as RailItem — see index.css
+      // `[data-tooltip]`. #665 acceptance criterion 6.
+      data-tooltip={collapsed ? link.label : undefined}
       className={cn(
         'group relative flex items-center gap-3 rounded-xl transition-colors text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
         collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
