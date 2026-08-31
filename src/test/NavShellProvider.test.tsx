@@ -215,15 +215,27 @@ describe('NavShellProvider (#664)', () => {
   });
 
   // ── 3. The big one: forced collapse must NOT persist ──────────────────
-  it('does not write the forced collapse back to storage (component state only)', () => {
-    setMatchMedia(1400);
+  it('forced collapse is component state only and never writes to storage', () => {
+    // Below the rail-fits threshold (1180px) the provider must show
+    // `rail-collapsed` so the consumer renders correctly — and crucially,
+    // it must NOT rewrite the stored preference, or the user comes back
+    // on a wide screen to find their preference silently flipped to
+    // `rail-collapsed`. The widening test below exercises the restore.
+    const { resizeTo } = setMatchMedia(900); // < 1180 → forced collapse
     store[STORAGE_KEY] = 'rail';
     render(
       <NavShellProvider>
-        <Harness initialWidth={1400} />
+        <Harness initialWidth={900} />
       </NavShellProvider>,
     );
-    // No setter has been called → no write should have happened.
+    expect(screen.getByTestId('effective')).toHaveTextContent('rail-collapsed');
+    // Storage is untouched — the forced collapse is component state.
+    expect(store[STORAGE_KEY]).toBe('rail');
+    // And it stays untouched even after the user resizes.
+    act(() => {
+      resizeTo(1400);
+    });
+    expect(screen.getByTestId('effective')).toHaveTextContent('rail');
     expect(store[STORAGE_KEY]).toBe('rail');
   });
 
@@ -272,6 +284,9 @@ describe('NavShellProvider (#664)', () => {
   });
 
   it('narrowing past the breakpoint does not write — desktop shell stays as the stored value, consumer renders mobile below md', () => {
+    // Provider reports rail-collapsed below the rail-fits threshold;
+    // the *consumer* branches on its own md media query to render mobile.
+    // Storage is untouched — the forced collapse is component state.
     const { resizeTo } = setMatchMedia(1400);
     store[STORAGE_KEY] = 'rail';
     render(
@@ -284,7 +299,6 @@ describe('NavShellProvider (#664)', () => {
     act(() => {
       resizeTo(500);
     });
-    // Provider still reports rail — the consumer is what branches on md.
     expect(screen.getByTestId('effective')).toHaveTextContent('rail-collapsed');
     expect(store[STORAGE_KEY]).toBe('rail');
   });
