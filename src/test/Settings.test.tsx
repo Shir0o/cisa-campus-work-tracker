@@ -1136,5 +1136,43 @@ describe('Settings', () => {
       expect(mockLogOut).toHaveBeenCalledTimes(1);
     });
   });
+
+  // ── Navigation section (#666) ───────────────────────────────────────────────
+  // Spec: Settings offers all three preference states with copy making clear
+  // the setting is desktop-only. The provider carries the persistence and the
+  // width rules; the Settings UI is the seam a user reaches, so a small
+  // integration test here defends against the buttons drifting away from
+  // `rail | rail-collapsed | topbar` or losing the desktop-only copy.
+  describe('navigation section (#666)', () => {
+    it('renders all three preference buttons with desktop-only copy', () => {
+      setupNonManagerAuth();
+
+      render(<Settings />);
+
+      // The three states the user can pick — the flat enum the spec mandates.
+      expect(screen.getByRole('button', { name: /Rail/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Compact/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Top bar/i })).toBeInTheDocument();
+
+      // Desktop-only copy is part of the section's sub-text. Match the
+      // prefix that makes it unmistakable to a reader.
+      expect(screen.getByText(/^Desktop-only\./)).toBeInTheDocument();
+    });
+
+    it('clicking each preference calls setPreference with the matching value', () => {
+      setupNonManagerAuth();
+
+      render(<Settings />);
+
+      fireEvent.click(screen.getByRole('button', { name: /Rail/i }));
+      expect(mockSetNavShell).toHaveBeenLastCalledWith('rail');
+
+      fireEvent.click(screen.getByRole('button', { name: /Compact/i }));
+      expect(mockSetNavShell).toHaveBeenLastCalledWith('rail-collapsed');
+
+      fireEvent.click(screen.getByRole('button', { name: /Top bar/i }));
+      expect(mockSetNavShell).toHaveBeenLastCalledWith('topbar');
+    });
+  });
 });
 
