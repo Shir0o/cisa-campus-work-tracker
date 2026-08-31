@@ -8,8 +8,9 @@
  *   npx tsx scripts/seed-emulator.ts
  */
 
-import admin from 'firebase-admin';
-import { getFirestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps, getApp } from 'firebase-admin';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { DEFAULT_CREDENTIALS } from '../e2e/helpers/auth-defaults.js';
 
 // Route firebase-admin to local emulators
@@ -19,12 +20,12 @@ process.env.FIREBASE_AUTH_EMULATOR_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOS
 const projectId = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'sac-campus-hub';
 const firestoreDatabaseId = process.env.FIRESTORE_DATABASE_ID || process.env.VITE_FIREBASE_FIRESTORE_DB_ID || 'qa-db';
 
-if (!admin.apps.length) {
-  admin.initializeApp({ projectId });
+if (getApps().length === 0) {
+  initializeApp({ projectId });
 }
 
-const auth = admin.auth();
-const db = getFirestore(admin.app());
+const auth = getAuth();
+const db = getFirestore(getApp());
 
 const KEYS = ['fulltimer', 'trainee', 'trainee2', 'student', 'community'] as const;
 
@@ -55,8 +56,8 @@ export async function seedEmulator() {
         photoURL: '',
         role,
         approved: true,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true },
     );
@@ -71,7 +72,7 @@ export async function seedEmulator() {
     type: 'large_group',
     dateTime: new Date().toISOString(),
     location: 'Campus Center',
-    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   }, { merge: true });
 
   // Seed default stages for The Journey board
