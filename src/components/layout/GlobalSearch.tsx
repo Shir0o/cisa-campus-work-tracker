@@ -738,7 +738,11 @@ export default function GlobalSearch() {
           aria-expanded={searchOpen}
           className={cn(
             'relative flex items-center w-full h-10 rounded-2xl transition-shadow text-left cursor-pointer bg-surface',
-            'shadow-[inset_0_0_0_1px_var(--gs-outline)] hover:shadow-[inset_0_0_0_1px_#525E6F] focus:outline-none focus:shadow-[inset_0_0_0_2px_var(--color-accent)]',
+            // The hover ring was a literal #525E6F — a Bento blue-grey, off
+            // Ink's neutral axis and identical in both themes. `--accent-line`
+            // is already a theme-dependent low-alpha ink, which is what a
+            // hover ring wants. See docs/design/DRIFT.md #7.
+            'shadow-[inset_0_0_0_1px_var(--gs-outline)] hover:shadow-[inset_0_0_0_1px_var(--accent-line)] focus:outline-none focus:shadow-[inset_0_0_0_2px_var(--color-accent)]',
           )}
         >
           <span className="grid place-items-center h-full w-11 text-on-surface-variant shrink-0">

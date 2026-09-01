@@ -98,13 +98,16 @@ export default function NavRail(_props: NavRailProps = {}) {
       aria-label="Main Navigation"
       data-testid="nav-rail"
       className={cn(
-        'hidden md:flex shrink-0 bg-surface border-r border-outline-variant flex-col h-screen sticky top-0',
+        // A floating slab, not a flush column: the gutter around it is what
+        // makes it read as an object (ADR 0003). `rounded-xl` is --radius-xl
+        // (32px), the shell-container step. The parent owns the padding.
+        'hidden lg:flex shrink-0 bg-rail rounded-xl shadow-shell flex-col h-full overflow-hidden',
         railWidth,
         'transition-[width] duration-200',
       )}
     >
       {/* ── Pinned: mark ─────────────────────────────────────────────── */}
-      <div className="flex items-center h-14 lg:h-16 px-3 border-b border-outline-variant shrink-0">
+      <div className="flex items-center h-14 lg:h-16 px-3 border-b border-rail-line shrink-0">
         <Link
           to="/"
           data-tooltip={collapsed ? 'Home' : undefined}
@@ -114,7 +117,7 @@ export default function NavRail(_props: NavRailProps = {}) {
           )}
           aria-label="CISA Campus Work Tracker — Home"
         >
-          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center overflow-hidden shrink-0">
+          <div className="w-9 h-9 rounded-[14px] bg-rail-selected flex items-center justify-center overflow-hidden shrink-0">
             <img
               src="/logo.svg"
               alt="CISA Campus Work Tracker"
@@ -127,7 +130,7 @@ export default function NavRail(_props: NavRailProps = {}) {
                     'font-serif',
                     'text-base',
                     'font-semibold',
-                    'text-on-primary',
+                    'text-rail-on-selected',
                   );
                   target.parentElement.textContent = 'C';
                 }
@@ -136,10 +139,10 @@ export default function NavRail(_props: NavRailProps = {}) {
           </div>
           {!collapsed && (
             <div className="leading-tight min-w-0">
-              <div className="font-serif text-sm font-semibold text-on-surface truncate">
+              <div className="font-serif text-sm font-semibold text-rail-on truncate">
                 CISA Campus
               </div>
-              <div className="text-[10px] text-on-surface-variant -mt-0.5 truncate">
+              <div className="text-[10px] text-rail-on-dim -mt-0.5 truncate">
                 Work Tracker
               </div>
             </div>
@@ -155,14 +158,14 @@ export default function NavRail(_props: NavRailProps = {}) {
         {groups.map((group) => (
           <div key={group.label ?? 'ungrouped'} className={cn(collapsed ? 'py-2' : 'py-3')}>
             {!collapsed && group.label && (
-              <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-on-surface-variant/70">
+              <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-rail-on-dim">
                 {PINNED_LABELS[group.label]}
               </div>
             )}
             {collapsed && (
               <div
                 aria-hidden="true"
-                className="mx-3 mb-1 border-t border-outline-variant/60"
+                className="mx-3 mb-1 border-t border-rail-line"
               />
             )}
             <ul className="space-y-0.5">
@@ -184,14 +187,14 @@ export default function NavRail(_props: NavRailProps = {}) {
         {externalLinks.length > 0 && (
           <div className={cn(collapsed ? 'py-2' : 'py-3')}>
             {!collapsed && (
-              <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-on-surface-variant/70">
+              <div className="px-3 pb-1 text-[11px] font-medium uppercase tracking-wide text-rail-on-dim">
                 Elsewhere
               </div>
             )}
             {collapsed && (
               <div
                 aria-hidden="true"
-                className="mx-3 mb-1 border-t border-outline-variant/60"
+                className="mx-3 mb-1 border-t border-rail-line"
               />
             )}
             <ul className="space-y-0.5">
@@ -210,13 +213,13 @@ export default function NavRail(_props: NavRailProps = {}) {
           above the content. The rail's pinned row keeps the rail-resident
           Settings link and the chevron collapse control — both small and
           staying-at-the-bottom is the user-visible promise of the spec. */}
-      <div className="shrink-0 border-t border-outline-variant">
+      <div className="shrink-0 border-t border-rail-line">
         <div className="flex items-center px-2 py-2">
           <Link
             to="/settings"
             data-tooltip={collapsed ? 'Settings' : undefined}
             className={cn(
-              'flex items-center gap-2 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors',
+              'flex items-center gap-2 rounded-full text-rail-on-dim hover:bg-rail-hover hover:text-rail-on transition-colors',
               collapsed ? 'p-1 justify-center w-full' : 'flex-1 px-3 py-1.5 text-sm',
             )}
             aria-label="Settings"
@@ -226,7 +229,7 @@ export default function NavRail(_props: NavRailProps = {}) {
           </Link>
         </div>
 
-        <div className="border-t border-outline-variant">
+        <div className="border-t border-rail-line">
           <button
             type="button"
             onClick={toggleCollapsed}
@@ -234,7 +237,7 @@ export default function NavRail(_props: NavRailProps = {}) {
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             data-tooltip={collapsed ? 'Expand navigation' : 'Collapse navigation'}
             className={cn(
-              'w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors',
+              'w-full flex items-center gap-2 px-3 py-2 text-[12px] font-medium text-rail-on-dim hover:bg-rail-hover hover:text-rail-on transition-colors',
               collapsed ? 'justify-center' : 'justify-between',
             )}
           >
@@ -285,17 +288,21 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
       // a mouse. #665 acceptance criterion 6.
       data-tooltip={collapsed ? label : undefined}
       className={cn(
-        'group relative flex items-center gap-3 rounded-xl transition-colors',
+        // `rounded-[14px]` is the interactive radius, not `rounded-xl` —
+        // Ink re-values --radius-xl to 32px, which a 44px item clamps to a
+        // pill and a 44×44 collapsed item to a circle. The nav spec asks for
+        // a square at this width. See docs/design/DRIFT.md #4.
+        'group relative flex items-center gap-3 rounded-[14px] transition-colors',
         collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
         isActive
-          ? 'bg-primary text-on-primary font-medium'
-          : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+          ? 'bg-rail-selected text-rail-on-selected font-medium'
+          : 'text-rail-on-dim hover:bg-rail-hover hover:text-rail-on',
       )}
     >
       <NavGlyph
         href={item.href}
         size={collapsed ? 20 : 18}
-        className={cn(isActive ? 'text-on-primary' : '')}
+        className={cn(isActive ? 'text-rail-on-selected' : '')}
       />
       {!collapsed && (
         <>
@@ -304,7 +311,16 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
             <span
               data-testid={unreadTestId(item.href)}
               aria-hidden="true"
-              className="shrink-0 text-[11px] font-semibold tabular-nums text-on-primary bg-primary/15 rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center"
+              className={cn(
+                'shrink-0 text-[11px] font-semibold tabular-nums rounded-full min-w-[20px] h-5 px-1.5 flex items-center justify-center',
+                // The badge has to follow the item it sits on. A single
+                // pairing that assumed the selected fill left the count at
+                // ~1.6:1 on every resting item — i.e. invisible exactly where
+                // it matters. See docs/design/DRIFT.md #6.
+                isActive
+                  ? 'text-rail-on-selected bg-rail-on-selected/15'
+                  : 'text-rail-on bg-rail-hover',
+              )}
             >
               {unread}
             </span>
@@ -317,7 +333,7 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
         <span
           data-testid={unreadTestId(item.href)}
           aria-hidden="true"
-          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-surface"
+          className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rail-selected ring-2 ring-rail"
         />
       )}
       {collapsed && <span className="sr-only">{label}</span>}
@@ -335,7 +351,7 @@ function RailExternalItem({ link, collapsed }: { link: ExternalNavItem; collapse
       // `[data-tooltip]`. #665 acceptance criterion 6.
       data-tooltip={collapsed ? link.label : undefined}
       className={cn(
-        'group relative flex items-center gap-3 rounded-xl transition-colors text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+        'group relative flex items-center gap-3 rounded-[14px] transition-colors text-rail-on-dim hover:bg-rail-hover hover:text-rail-on',
         collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
       )}
     >

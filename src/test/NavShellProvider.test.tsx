@@ -6,13 +6,12 @@
  * rules (see docs/specs/navigation-shell-preference.md):
  *
  *   - absent stored value → default = rail
- *   - stored value is honoured at ≥ 1180px (Tailwind `xl`)
- *   - between md (768px) and 1180px: any rail preference is forced to
- *     rail-collapsed since a 232px rail doesn't fit. The forced collapse is
- *     component state only — it never writes back to storage.
- *   - below md: the provider still reports a desktop variant; the consumer
- *     branches on its own media query to render the existing mobile bottom
- *     navigation.
+ *   - stored value is honoured at ≥ 1280px (Tailwind `xl`)
+ *   - between lg (1024px) and 1280px: any rail preference is forced to
+ *     rail-collapsed since a 232px rail is a quarter of the screen. The forced
+ *     collapse is component state only — it never writes back to storage.
+ *   - below lg: the provider still reports a desktop variant; the consumer
+ *     branches on its own media query and falls through to the top-bar shell.
  *   - setting a preference persists it to localStorage under the storageKey.
  *
  * The forced-collapse-does-not-persist case is the defect most likely to ship.
@@ -29,7 +28,7 @@ import {
 
 // Same width breakpoints the shell uses at runtime. The provider is purely
 // pure — these are constants — but kept here so the test can pin them.
-const RAIL_FITS_MIN = 1180; // ≥ this → stored preference honoured
+const RAIL_FITS_MIN = 1280; // ≥ this → stored preference honoured
 const STORAGE_KEY = 'campus-hub-nav-shell';
 
 // Test harness — reads the provider's effective shell + the setter.
@@ -97,7 +96,7 @@ function setMatchMedia(width: number) {
   return {
     resizeTo: (next: number) => {
       for (const [media, set] of Object.entries(listeners)) {
-        // We only register listeners on (min-width: 1180px) in the provider.
+        // We only register listeners on (min-width: 1280px) in the provider.
         const min = Number(media.match(/min-width:\s*(\d+)px/)?.[1] ?? 0);
         for (const cb of set) cb({ matches: next >= min });
       }
@@ -185,16 +184,15 @@ describe('NavShellProvider (#664)', () => {
 
   // ── 2. Width rules: narrow viewport forces collapse ─────────────────
   // The provider's `effective` reflects only the desktop shell variant.
-  // Below md (< 768px) the consumer renders the existing mobile bottom
-  // navigation — the desktop shell is rendered only above that line, so the
-  // provider still reports the desktop variant and the consumer branches on
-  // its own media query.
+  // Below lg (< 1024px) the consumer falls through to the top-bar shell — the
+  // rail is rendered only above that line, so the provider still reports the
+  // desktop variant and the consumer branches on its own media query.
   it('forces the rail preference to collapsed below the rail-fits threshold', () => {
-    setMatchMedia(900); // < 1180 → can't fit a 232px rail
+    setMatchMedia(1100); // < 1280 → a 232px rail is a quarter of the screen
     store[STORAGE_KEY] = 'rail';
     render(
       <NavShellProvider>
-        <Harness initialWidth={900} />
+        <Harness initialWidth={1100} />
       </NavShellProvider>,
     );
     // Stored preference is unchanged — the rail can't fit.
@@ -203,11 +201,11 @@ describe('NavShellProvider (#664)', () => {
   });
 
   it('keeps the topbar preference unchanged below the rail-fits threshold', () => {
-    setMatchMedia(900);
+    setMatchMedia(1100);
     store[STORAGE_KEY] = 'topbar';
     render(
       <NavShellProvider>
-        <Harness initialWidth={900} />
+        <Harness initialWidth={1100} />
       </NavShellProvider>,
     );
     expect(screen.getByTestId('pref')).toHaveTextContent('topbar');
@@ -216,16 +214,16 @@ describe('NavShellProvider (#664)', () => {
 
   // ── 3. The big one: forced collapse must NOT persist ──────────────────
   it('forced collapse is component state only and never writes to storage', () => {
-    // Below the rail-fits threshold (1180px) the provider must show
+    // Below the rail-fits threshold (1280px) the provider must show
     // `rail-collapsed` so the consumer renders correctly — and crucially,
     // it must NOT rewrite the stored preference, or the user comes back
     // on a wide screen to find their preference silently flipped to
     // `rail-collapsed`. The widening test below exercises the restore.
-    const { resizeTo } = setMatchMedia(900); // < 1180 → forced collapse
+    const { resizeTo } = setMatchMedia(1100); // < 1280 → forced collapse
     store[STORAGE_KEY] = 'rail';
     render(
       <NavShellProvider>
-        <Harness initialWidth={900} />
+        <Harness initialWidth={1100} />
       </NavShellProvider>,
     );
     expect(screen.getByTestId('effective')).toHaveTextContent('rail-collapsed');
@@ -266,11 +264,11 @@ describe('NavShellProvider (#664)', () => {
 
   // ── 4. Resize: intermediate → wide restores the stored preference ────
   it('widening past the forced-collapse threshold restores the stored preference', () => {
-    const { resizeTo } = setMatchMedia(900);
+    const { resizeTo } = setMatchMedia(1100);
     store[STORAGE_KEY] = 'rail';
     render(
       <NavShellProvider>
-        <Harness initialWidth={900} />
+        <Harness initialWidth={1100} />
       </NavShellProvider>,
     );
     expect(screen.getByTestId('effective')).toHaveTextContent('rail-collapsed');

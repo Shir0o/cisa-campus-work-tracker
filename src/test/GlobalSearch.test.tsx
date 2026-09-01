@@ -550,7 +550,10 @@ describe('GlobalSearch', () => {
     expect(trigger.className).toContain('bg-surface');
     // Border states are inset box-shadows — no layout shift between states.
     expect(trigger.className).toContain('shadow-[inset_0_0_0_1px_var(--gs-outline)]');
-    expect(trigger.className).toContain('hover:shadow-[inset_0_0_0_1px_#525E6F]');
+    // Every state resolves through a token — the hover ring used to pin a
+    // literal Bento #525E6F here, which is the assertion that failed when the
+    // colour was finally moved onto `--accent-line` (docs/design/DRIFT.md #7).
+    expect(trigger.className).toContain('hover:shadow-[inset_0_0_0_1px_var(--accent-line)]');
     expect(trigger.className).toContain('focus:shadow-[inset_0_0_0_2px_var(--color-accent)]');
   });
 

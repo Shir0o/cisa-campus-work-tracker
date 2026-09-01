@@ -67,7 +67,10 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
   const profileName = user?.displayName || user?.email?.split('@')[0] || 'User';
 
   return (
-    <div className="hidden md:flex items-center gap-1 sm:gap-2 px-4 lg:px-6 h-14 border-b border-outline-variant bg-surface shrink-0">
+    // In the floating shell there is no bar to be the edge of — a full-bleed
+    // fill with a bottom rule would read as a leftover. The strip is just a
+    // row on the page; its controls carry their own raised surface.
+    <div className="hidden lg:flex items-center gap-1 sm:gap-2 h-14 shrink-0">
       {/* Push the strip actions to the right — the rail owns the left side. */}
       <div className="flex-1" />
 
@@ -92,7 +95,7 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
           type="button"
           onClick={onOpenImpersonateModal}
           className={cn(
-            'relative p-2 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors focus:outline-none shrink-0',
+            'relative p-2 rounded-full bg-surface text-on-surface-variant hover:bg-surface-container-high transition-colors focus:outline-none shrink-0',
             (impersonateTarget || ownerViewRole) &&
               'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 ring-1 ring-amber-500/40',
           )}
@@ -118,7 +121,7 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
           type="button"
           onClick={() => setProfileOpen((o) => !o)}
           aria-label="Profile"
-          className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
+          className="w-9 h-9 lg:w-10 lg:h-10 rounded-full overflow-hidden bg-surface border border-outline-variant hover:ring-2 hover:ring-primary/20 transition-all focus:outline-none"
         >
           <UserAvatar
             name={impersonateTarget ? impersonateTarget.name : profileName}

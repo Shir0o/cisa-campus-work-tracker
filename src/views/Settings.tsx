@@ -380,7 +380,7 @@ function NavigationSection() {
       <p className="mt-3 text-xs text-on-surface-variant/70 max-w-2xl">
         {t(
           'settings.navigation_help',
-          'Below the large breakpoint, mobile navigation is used unchanged. A narrow window may temporarily collapse the rail without changing this choice.',
+          'On narrower windows the top bar is used instead, and on phones the bottom bar — neither changes this choice. A narrow window may also collapse the rail temporarily.',
         )}
       </p>
     </section>
