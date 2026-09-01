@@ -110,11 +110,11 @@ function DuePresetPills({
 }
 
 export default function MyDayMobile({
-  contacts,
-  events,
-  prayers,
-  stages,
-  uid,
+  contacts = [],
+  events = [],
+  prayers = [],
+  stages = [],
+  uid: propUid,
   myLeaders: rawMyLeaders = [],
   staleLeader,
   assignedTasks = [],
@@ -145,9 +145,10 @@ export default function MyDayMobile({
   onOpenPrayer = () => {},
   onOpenCalendar = () => {},
 }: MyDayMobileProps) {
-  const { user } = useAuth();
+  const { user, effectiveUserId, effectiveUserName } = useAuth();
   const { t } = useLanguage();
-  const firstName = user?.displayName?.split(" ")[0] || t('myDay.friend');
+  const uid = propUid || effectiveUserId || user?.uid;
+  const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || t('myDay.friend');
 
   const myLeaders = useMemo(() => {
     if (rawMyLeaders.length > 0) return rawMyLeaders;

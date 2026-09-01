@@ -23,10 +23,10 @@ interface FullTimer {
 // Community landing: the gatherings you're welcome to + a way to reach a
 // Full-timer. Reach-out opens a direct message, falling back to email.
 export default function LandingCommunity() {
-  const { user } = useAuth();
+  const { user, effectiveUserId, effectiveUserName } = useAuth();
   const navigate = useNavigate();
-  const uid = user?.uid;
-  const firstName = user?.displayName?.split(" ")[0] || "friend";
+  const uid = effectiveUserId || user?.uid;
+  const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
   const [fts, setFts] = useState<FullTimer[]>([]);
 

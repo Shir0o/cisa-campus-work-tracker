@@ -4,11 +4,15 @@ import { MemoryRouter } from 'react-router-dom';
 import { describe, it, expect, vi } from 'vitest';
 import LandingTrainee from '../views/landings/LandingTrainee';
 
+let mockAuthValue: any = {
+  user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
+  role: 'manager',
+  effectiveUserId: 'u-trainee',
+  effectiveUserName: 'Trainee Sam',
+};
+
 vi.mock('../components/AuthProvider', () => ({
-  useAuth: () => ({
-    user: { uid: 'u-trainee', displayName: 'Trainee Sam' },
-    role: 'manager',
-  }),
+  useAuth: () => mockAuthValue,
 }));
 
 vi.mock('../lib/seasons', () => ({
@@ -224,5 +228,23 @@ describe('LandingTrainee component', () => {
     fireEvent.click(prayerTitle);
     const deleteBtn = screen.getAllByRole('button', { name: /^Delete$/i })[0];
     if (deleteBtn) fireEvent.click(deleteBtn);
+  });
+
+  it('renders impersonated persona name and scopes data by effectiveUserId when impersonating', async () => {
+    mockAuthValue = {
+      user: { uid: 'u-owner-admin', displayName: 'Admin Owner' },
+      role: 'manager',
+      effectiveUserId: 'u-trainee-bob',
+      effectiveUserName: 'Bob Trainee',
+    };
+
+    render(
+      <MemoryRouter>
+        <LandingTrainee />
+      </MemoryRouter>
+    );
+
+    // Impersonated name is Bob Trainee -> greeting uses Bob
+    expect(screen.getByText(/Bob\./i)).toBeInTheDocument();
   });
 });

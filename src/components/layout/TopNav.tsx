@@ -70,7 +70,7 @@ function NavGlyph({ href, size = 20, className }: { href: string; size?: number;
 }
 
 export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateModal?: () => void }) {
-  const { user, logOut, isAdmin, isOwner, role, impersonateTarget, ownerViewRole } = useAuth();
+  const { user, logOut, isAdmin, isOwner, role, impersonateTarget, ownerViewRole, effectiveUserId, effectiveUserName } = useAuth();
   const { isMobileMenuOpen, setIsMobileMenuOpen, setSearchOpen } = useLayout();
   const { t } = useI18n();
   const { pathname } = useLocation();
@@ -81,7 +81,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   // discoverability, so the fold leaks: a dot on More, the count on the row.
   // The shared hook also feeds the rail's badge (#665); both shells read
   // from the same Firestore collection so they stay in sync.
-  const waitingAsks = useWaitingAsksCount(user?.uid, isAdmin);
+  const waitingAsks = useWaitingAsksCount(effectiveUserId || user?.uid, isAdmin);
   const [profileOpen, setProfileOpen] = useState(false);
   const moreRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -112,7 +112,7 @@ export default function TopNav({ onOpenImpersonateModal }: { onOpenImpersonateMo
   }, [moreOpen, profileOpen]);
 
   const homeLabel = isAdmin ? 'My Day' : 'Home';
-  const profileName = user?.displayName || user?.email?.split('@')[0] || 'User';
+  const profileName = effectiveUserName || user?.displayName || user?.email?.split('@')[0] || 'User';
 
   const go = (href: string) => {
     setMoreOpen(false);

@@ -19,10 +19,10 @@ import FirstRunCard from "../../components/landing/FirstRunCard";
 // Student landing: what's coming up (with RSVP) + a quiet place to pray for the
 // friends on your heart. Friends are just titled personal prayers (no contacts).
 export default function LandingStudent() {
-  const { user } = useAuth();
+  const { user, effectiveUserId, effectiveUserName } = useAuth();
   const navigate = useNavigate();
-  const uid = user?.uid;
-  const firstName = user?.displayName?.split(" ")[0] || "friend";
+  const uid = effectiveUserId || user?.uid;
+  const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
   const [personalPrayers, setPersonalPrayers] = useState<PersonalPrayer[]>([]);
 

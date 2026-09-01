@@ -41,7 +41,7 @@ export interface NavChromeStripProps {
  * shared actions.
  */
 export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStripProps) {
-  const { user, logOut, isOwner, role, impersonateTarget, ownerViewRole } = useAuth();
+  const { user, logOut, isOwner, role, impersonateTarget, ownerViewRole, effectiveUserName } = useAuth();
   const { t } = useI18n();
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -64,7 +64,7 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
     };
   }, [profileOpen]);
 
-  const profileName = user?.displayName || user?.email?.split('@')[0] || 'User';
+  const profileName = effectiveUserName || user?.displayName || user?.email?.split('@')[0] || 'User';
 
   return (
     // In the floating shell there is no bar to be the edge of — a full-bleed

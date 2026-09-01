@@ -11,13 +11,14 @@ import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/fires
 import { auth, db } from '../lib/firebase';
 import { sleep } from '../lib/utils';
 
-import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole } from '../lib/permissions';
+import { isAppOwner, canSimulateRole, getEffectiveRole, AppRole, roleLabel } from '../lib/permissions';
 import { ImpersonateTarget } from '../types';
 import { Impersonation, meIdFor, identityKey } from '../lib/impersonate';
 
 interface AuthContextType {
   user: User | null;
   effectiveUserId: string | null;
+  effectiveUserName: string | null;
   effectiveIdentityKey: string;
   isAdmin: boolean;
   isManager: boolean;
@@ -101,6 +102,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : isOwner && ownerViewRole === 'viewer'
         ? 'cisa-community'
         : (user?.uid || null));
+
+  const effectiveUserName = (isOwner && impersonateTarget)
+    ? (impersonateTarget.name || impersonateTarget.persona?.name || 'Friend')
+    : (isOwner && ownerViewRole
+        ? roleLabel(ownerViewRole)
+        : (user?.displayName || user?.email?.split('@')[0] || null));
 
   const effectiveIdentityKey = (isOwner && impersonateTarget)
     ? identityKey(impersonateTarget.persona, impersonateTarget.role)
@@ -316,6 +323,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       value={{
         user,
         effectiveUserId,
+        effectiveUserName,
         effectiveIdentityKey,
         isAdmin,
         isManager,
