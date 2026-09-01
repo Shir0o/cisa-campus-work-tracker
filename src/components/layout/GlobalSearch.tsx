@@ -94,7 +94,7 @@ export default function GlobalSearch() {
   const [boardNotes, setBoardNotes] = useState<BoardNote[]>([]);
   const [activities, setActivities] = useState<(SystemActivity & { id: string })[]>([]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const desktopInputRef = useRef<HTMLInputElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
@@ -424,6 +424,19 @@ export default function GlobalSearch() {
     setCursor(-1);
   }, [q]);
 
+  // Hand focus back to the trigger when the palette closes, so Tab order picks
+  // up where the palette interrupted it. `wasOpen` keeps a first render (with
+  // nothing ever opened) from stealing focus onto the trigger.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (searchOpen) {
+      wasOpen.current = true;
+    } else if (wasOpen.current) {
+      wasOpen.current = false;
+      triggerRef.current?.focus();
+    }
+  }, [searchOpen]);
+
   // Focus the visible input + lock body scroll while open.
   useEffect(() => {
     if (!searchOpen) return;
@@ -441,19 +454,6 @@ export default function GlobalSearch() {
       clearTimeout(t);
       document.body.style.overflow = prevOverflow;
     };
-  }, [searchOpen]);
-
-  // Click-away (desktop dropdown).
-  useEffect(() => {
-    if (!searchOpen) return;
-    const onDown = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        close();
-      }
-    };
-    document.addEventListener('mousedown', onDown);
-    return () => document.removeEventListener('mousedown', onDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchOpen]);
 
   // ── row + group primitives ────────────────────────────────────────────────
@@ -725,75 +725,109 @@ export default function GlobalSearch() {
 
   return (
     <>
-      <div ref={containerRef} className="relative w-[300px] hidden lg:block">
-        <div
+      {/* ── Desktop: the topbar trigger. It opens the palette; it holds no
+             field of its own, so the caret and the results it drives stay
+             together inside the popup (#689). ── */}
+      <div className="relative w-[300px] hidden lg:block">
+        <button
+          ref={triggerRef}
+          type="button"
+          onClick={() => setSearchOpen(true)}
+          aria-label={t('search.open_search')}
+          aria-haspopup="dialog"
+          aria-expanded={searchOpen}
           className={cn(
-            'relative flex items-center w-full h-10 rounded-2xl transition-shadow cursor-text bg-surface',
-            'shadow-[inset_0_0_0_1px_var(--gs-outline)] hover:shadow-[inset_0_0_0_1px_#525E6F] focus-within:shadow-[inset_0_0_0_2px_var(--color-accent)]',
+            'relative flex items-center w-full h-10 rounded-2xl transition-shadow text-left cursor-pointer bg-surface',
+            'shadow-[inset_0_0_0_1px_var(--gs-outline)] hover:shadow-[inset_0_0_0_1px_#525E6F] focus:outline-none focus:shadow-[inset_0_0_0_2px_var(--color-accent)]',
           )}
-          onClick={() => {
-            setSearchOpen(true);
-            desktopInputRef.current?.focus();
-          }}
         >
-          <div className="grid place-items-center h-full w-11 text-on-surface-variant">
+          <span className="grid place-items-center h-full w-11 text-on-surface-variant shrink-0">
             <Search className="w-4 h-4" />
-          </div>
-          <input
-            ref={desktopInputRef}
-            type="text"
-            value={q}
-            onFocus={() => setSearchOpen(true)}
-            onChange={(e) => {
-              setQ(e.target.value);
-              setSearchOpen(true);
-            }}
-            className="peer h-full w-full outline-none text-sm text-on-surface bg-transparent pr-12 font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
-            placeholder={t('search.search_or_jump')}
-            aria-label={t('nav.search')}
-          />
-          {!q ? (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 h-5 px-1.5 rounded-sm bg-background border border-outline-variant text-[12px] font-medium text-on-surface-variant pointer-events-none">
-              <Command className="w-3 h-3" />
-              <span>K</span>
-            </div>
-          ) : (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setQ('');
-                  desktopInputRef.current?.focus();
-                }}
-                className="absolute right-2.5 p-1 rounded-full hover:bg-surface-variant text-on-surface-variant"
-                aria-label={t('search.clear_search')}
-              >
-                <X className="w-4 h-4" />
-              </button>
-          )}
-        </div>
+          </span>
+          <span className="flex-1 min-w-0 pr-12 text-sm font-medium text-on-surface-variant/70 truncate">
+            {t('search.search_or_jump')}
+          </span>
+          {/* The ⌘K hint is permanent now — nothing swaps into its slot. */}
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-0.5 h-5 px-1.5 rounded-sm bg-background border border-outline-variant text-[12px] font-medium text-on-surface-variant pointer-events-none">
+            <Command className="w-3 h-3" />
+            <span>K</span>
+          </span>
+        </button>
+      </div>
 
+      {/* ── Desktop: centred popup (portal) ──────────────────────────────────
+             Portalled to the body so the panel lands in the same place in both
+             shells — anchored to the trigger it inherited the bar's stacking
+             and clipping context, and moved with whichever shell mounted it. */}
+      {createPortal(
         <AnimatePresence>
           {searchOpen && (
             <motion.div
-              initial={{ opacity: 0, y: 4, scale: 0.99 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 4, scale: 0.99 }}
-              transition={{ duration: 0.12 }}
-              className="absolute right-0 top-[calc(100%+8px)] w-[420px] max-w-[calc(100vw-2rem)] bg-surface rounded-3xl shadow-[0_8px_16px_rgba(0,0,0,0.16)] border border-outline-variant overflow-hidden z-50"
+              key="gs-popup"
+              className="hidden lg:flex fixed inset-0 z-[100] items-start justify-center pt-24 px-4"
             >
-              <div className="max-h-[min(60vh,440px)] overflow-y-auto custom-scrollbar">
-                {panelBody}
-              </div>
-              <div className="px-4 py-2 border-t border-outline-variant/60 bg-surface-container-highest/40 text-center">
-                <p className="text-[11px] text-on-surface-variant">
-                  <kbd className="font-sans">⌘K</kbd> {t('search.anywhere_navigate_open')}
-                </p>
-              </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                onClick={close}
+                data-testid="gs-scrim"
+                className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.97, y: -8 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.97, y: -8 }}
+                transition={{ duration: 0.12 }}
+                role="dialog"
+                aria-modal="true"
+                aria-label={t('nav.search')}
+                className="relative w-[640px] max-w-[calc(100vw-2rem)] bg-surface rounded-3xl shadow-[var(--shadow-pop)] border border-outline-variant overflow-hidden"
+              >
+                <div className="flex items-center gap-3 h-14 px-[18px] border-b border-outline-variant">
+                  <Search className="w-[18px] h-[18px] text-on-surface-variant shrink-0" />
+                  <input
+                    ref={desktopInputRef}
+                    type="text"
+                    value={q}
+                    onChange={(e) => setQ(e.target.value)}
+                    className="flex-1 min-w-0 h-full bg-transparent outline-none text-[15px] text-on-surface font-medium placeholder:text-on-surface-variant/70 border-0 ring-0 focus:outline-none focus:ring-0"
+                    placeholder={t('search.search_or_jump')}
+                    aria-label={t('nav.search')}
+                  />
+                  {q ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setQ('');
+                        desktopInputRef.current?.focus();
+                      }}
+                      className="grid place-items-center w-[26px] h-[26px] rounded-full bg-surface-container-highest hover:bg-surface-variant text-on-surface-variant shrink-0"
+                      aria-label={t('search.clear_search')}
+                    >
+                      <X className="w-[15px] h-[15px]" />
+                    </button>
+                  ) : (
+                    <span className="inline-flex items-center h-[22px] px-2 rounded-sm bg-background border border-outline-variant text-[11.5px] font-medium text-on-surface-variant shrink-0">
+                      esc
+                    </span>
+                  )}
+                </div>
+                <div className="max-h-[min(62vh,520px)] overflow-y-auto custom-scrollbar">
+                  {panelBody}
+                </div>
+                <div className="px-4 py-2 border-t border-outline-variant/60 bg-surface-container-highest/40 text-center">
+                  <p className="text-[11px] text-on-surface-variant">
+                    <kbd className="font-sans">⌘K</kbd> {t('search.anywhere_navigate_open')}
+                  </p>
+                </div>
+              </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
+        </AnimatePresence>,
+        document.body,
+      )}
 
       {/* ── Mobile: full-screen overlay (portal) ── */}
       {createPortal(
