@@ -406,9 +406,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   }, [location.pathname, user?.uid, role]);
 
   // Pick a desktop shell from the user's preference, falling through to the
-  // existing mobile bottom nav below md regardless of preference (#664).
+  // top-bar shell below lg regardless of preference (#664).
   const { effective } = useNavShell();
-  const isDesktop = useMediaQuery('(min-width: 768px)');
+  // `lg`, per docs/specs/navigation-shell-preference.md: below the large
+  // breakpoint every preference falls through to the top-bar shell, which
+  // already carries its own hamburger drawer under `lg` and MobileNav's bottom
+  // bar under `md`. This was 768px; see docs/design/DRIFT.md #5.
+  const isDesktop = useMediaQuery('(min-width: 1024px)');
   const useRail = isDesktop && effective !== 'topbar';
   return (
     <LayoutContext.Provider
@@ -433,9 +437,12 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen bg-background pb-16 md:pb-0 relative">
         {useRail ? (
           // ── Rail shell: rail on the left, chrome strip + content + banners on the right.
-          <>
+          //    The track pads all four sides so the rail floats with a gutter
+          //    of page colour around it — the gutter is what makes the slab
+          //    read as an object rather than a wall (ADR 0003).
+          <div className="flex-1 flex h-screen min-w-0 p-4 gap-4">
             <NavRail onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
-            <div className="flex-1 flex flex-col h-screen min-w-0">
+            <div className="flex-1 flex flex-col min-h-0 min-w-0">
               <NavChromeStrip onOpenImpersonateModal={() => setIsImpersonateModalOpen(true)} />
               {/* In rail mode the impersonation/owner-view banner sits at the
                   top of the content column rather than full-bleed above the
@@ -470,9 +477,9 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 )}
               </main>
             </div>
-          </>
+          </div>
         ) : (
-          // ── Top-bar shell (or any viewport below md): existing layout, unchanged.
+          // ── Top-bar shell (or any viewport below lg): existing layout, unchanged.
           <div
             className={cn(
               "flex-1 flex flex-col h-screen transition-all duration-300 min-w-0",

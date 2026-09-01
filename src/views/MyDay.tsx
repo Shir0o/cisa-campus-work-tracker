@@ -916,8 +916,11 @@ export default function MyDay() {
 
         {/* ── Top Bento Row: Next Up Card + Figures Card ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-8">
-          {/* Next up solid violet card */}
-          <div className="lg:col-span-6 rounded-3xl p-6 text-white bg-accent-strong flex flex-col justify-between shadow-xs md-next">
+          {/* Next up — a solid accent card. The ink MUST be `accent-on`, not a
+              literal white: `--accent-strong` is near-black in light and near-WHITE
+              in dark, so hardcoded white text disappears entirely in dark mode.
+              This card was the one place that still did it. docs/design/DRIFT.md #9. */}
+          <div className="lg:col-span-6 rounded-3xl p-6 text-accent-on bg-accent-strong flex flex-col justify-between shadow-xs md-next">
             {thisWeek.length > 0 ? (() => {
               const lead = thisWeek[0];
               const d = new Date(lead.date);
@@ -925,16 +928,16 @@ export default function MyDay() {
               return (
                 <>
                   <div>
-                    <div className="text-xs font-medium text-white/75 flex items-center gap-2">
+                    <div className="text-xs font-medium text-accent-on/75 flex items-center gap-2">
                       <span>{t('myDay.next_up')} {isValid(d) ? format(d, 'EEEE, MMM d') : t('myDay.this_week')}</span>
                       {lead.synced && (
                         <span className="cal-mark s">{t('calendar.badge', 'calendar')}</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2.5 mt-2">
-                      <h3 className="text-2xl font-semibold text-white truncate">{lead.title || lead.name}</h3>
+                      <h3 className="text-2xl font-semibold text-accent-on truncate">{lead.title || lead.name}</h3>
                     </div>
-                    <p className="text-sm text-white/80 leading-relaxed mt-1.5 max-w-2xl">
+                    <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5 max-w-2xl">
                       {t('myDay.good_chance')}
                     </p>
                   </div>
@@ -943,7 +946,7 @@ export default function MyDay() {
                       {facts.map((f) => (
                         <span
                           key={f}
-                          className="text-xs text-white/85 bg-white/15 border border-white/20 rounded-full px-3 py-1"
+                          className="text-xs text-accent-on/85 bg-accent-on/15 border border-accent-on/20 rounded-full px-3 py-1"
                         >
                           {f}
                         </span>
@@ -954,9 +957,9 @@ export default function MyDay() {
               );
             })() : (
               <div>
-                <div className="text-xs font-medium text-white/75">{t('myDay.this_week')}</div>
-                <h3 className="text-2xl font-semibold text-white mt-2">{t('myDay.all_clear_this_week')}</h3>
-                <p className="text-sm text-white/80 leading-relaxed mt-1.5">
+                <div className="text-xs font-medium text-accent-on/75">{t('myDay.this_week')}</div>
+                <h3 className="text-2xl font-semibold text-accent-on mt-2">{t('myDay.all_clear_this_week')}</h3>
+                <p className="text-sm text-accent-on/80 leading-relaxed mt-1.5">
                   {t('myDay.no_gatherings_scheduled')}
                 </p>
               </div>

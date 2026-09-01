@@ -281,7 +281,10 @@ export default function NotificationCenter() {
           'relative w-[38px] h-[38px] grid place-items-center rounded-[10px] border transition-all duration-120',
           isOpen
             ? 'bg-primary text-on-primary border-primary'
-            : 'bg-transparent text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
+            // `bg-surface` reads the same as transparent inside the top bar
+            // (which is itself `bg-surface`) and gives the button a body of
+            // its own on the rail shell's unfilled chrome strip.
+            : 'bg-surface text-on-surface-variant border-transparent hover:bg-surface-container-high hover:text-on-surface',
         )}
         aria-label={unreadCount ? t('notifications.new_notifications').replace('{n}', String(unreadCount)) : t('notifications.notifications')}
       >

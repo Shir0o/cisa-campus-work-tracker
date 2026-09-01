@@ -17,6 +17,22 @@
   --radius-xl: 32px;
   --radius-pill: 999px;
 
+  /* Shell-level shadow for raised chrome (the floating nav rail). The Ink
+     spec called for this token; it is defined per-theme below. */
+  --shadow-shell: var(--shell-shadow);
+
+  /* The nav rail is an *inverted* surface in light — a near-black slab on a
+     white page — and a *raised* one in dark. Neither is describable with the
+     surface tokens, so it gets its own small namespace, defined in both theme
+     blocks. NavRail names the same tokens in either theme (ADR 0003). */
+  --color-rail: var(--rail);
+  --color-rail-on: var(--rail-on);
+  --color-rail-on-dim: var(--rail-on-dim);
+  --color-rail-hover: var(--rail-hover);
+  --color-rail-selected: var(--rail-selected);
+  --color-rail-on-selected: var(--rail-on-selected);
+  --color-rail-line: var(--rail-line);
+
   --color-primary: var(--primary);
   --color-on-primary: var(--on-primary);
   --color-primary-container: var(--primary-container);
@@ -125,6 +141,17 @@
     --danger-soft: #FFD4D8;
     --shadow-pop: 0 16px 32px rgba(0, 0, 0, 0.16);
     --shadow-card: none;
+    --shell-shadow: 0 8px 32px rgba(10, 10, 11, 0.14);
+
+    /* The rail, light: a near-black slab floating on the white page. This is
+       the one inverted surface in the system, so its ink tokens are whites. */
+    --rail: #0A0A0B;
+    --rail-on: #FFFFFF;
+    --rail-on-dim: rgba(255, 255, 255, 0.62);
+    --rail-hover: rgba(255, 255, 255, 0.08);
+    --rail-selected: #FFFFFF;
+    --rail-on-selected: #0A0A0B;
+    --rail-line: rgba(255, 255, 255, 0.10);
 
     /* Ink shape: 10 small marks, 14 interactive, 24 containers, 32 shell,
        999 pills/avatars. `--radius-xl` and `--radius-pill` are new; the others
@@ -241,6 +268,18 @@
     --warn-soft: rgba(242, 147, 13, 0.16);
     --danger: #FF7B88;
     --danger-soft: rgba(241, 74, 88, 0.16);
+    --shell-shadow: 0 8px 32px rgba(0, 0, 0, 0.66);
+
+    /* The rail, dark: the inversion light uses is unavailable here — the page
+       is already the darkest value — so the rail separates by rising instead,
+       to `--panel-2`, one step above the cards. Same tokens, opposite move. */
+    --rail: #202023;
+    --rail-on: #FAFAFA;
+    --rail-on-dim: #A1A1AA;
+    --rail-hover: #2A2A2E;
+    --rail-selected: #FAFAFA;
+    --rail-on-selected: #0A0A0B;
+    --rail-line: #2A2A2E;
 
     /* Same hue angles as the light theme; lightness and chroma retuned for
        the dark canvas. */
@@ -300,8 +339,13 @@
     --surface-container-lowest: var(--panel);
     --surface-container-low: var(--panel-2);
     --surface-container: var(--panel-2);
-    --surface-container-high: var(--bg-elev);
-    --surface-container-highest: var(--bg-elev);
+    /* These must stay a step ABOVE `--panel`, or every `hover:bg-surface-
+       container-high` on a `bg-surface` parent paints the surface its own
+       colour and the raised state silently disappears. They pointed at
+       `--bg-elev` (= `--panel` in dark) and did exactly that; light has always
+       pointed at `--panel-2`. See docs/design/DRIFT.md #3. */
+    --surface-container-high: var(--panel-2);
+    --surface-container-highest: var(--panel-2);
 
     --success-container: var(--success-soft);
     --warning: var(--warn);
@@ -426,7 +470,9 @@
   opacity: 0;
   z-index: 60;
   transition: opacity 80ms linear;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  /* A 4%-black shadow is invisible against a dark page; the popover token
+     carries a real value in both themes. */
+  box-shadow: var(--shadow-pop);
 }
 [data-tooltip]:hover:not(:focus-visible)::after,
 [data-tooltip]:focus-visible::after {

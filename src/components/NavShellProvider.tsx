@@ -13,15 +13,19 @@ import { useMediaQuery } from '../lib/useMediaQuery';
  * right shell — reading in an effect would flash the default on every load.
  *
  * Width rules:
- *   - ≥ 1180px (Tailwind `xl`): stored preference honoured as-is.
- *   - 768–1179px (md..xl): a 232px rail doesn't fit, so any rail preference
- *     is forced to `rail-collapsed`. The forced collapse is component state
- *     only — it never writes to storage. `topbar` still fits, so it's
- *     unchanged.
- *   - < 768px (mobile): the provider keeps reporting the desktop shell, but
- *     the consumer branches on `useMediaQuery('(min-width: 768px)')` to render
- *     the existing mobile bottom navigation. The preference is intentionally
- *     not consulted at this width.
+ *   - ≥ 1280px (Tailwind `xl`): stored preference honoured as-is.
+ *   - 1024–1279px (lg..xl): a 232px rail is a quarter of the screen, so any
+ *     rail preference is forced to `rail-collapsed`. The forced collapse is
+ *     component state only — it never writes to storage. `topbar` still fits,
+ *     so it's unchanged.
+ *   - < 1024px: the provider keeps reporting the desktop shell, but the
+ *     consumer branches on `useMediaQuery('(min-width: 1024px)')` and falls
+ *     through to the top-bar shell — which carries its own hamburger drawer
+ *     below `lg`, and MobileNav's bottom bar below `md`. The preference is
+ *     intentionally not consulted at this width.
+ *
+ * These thresholds were 1180/768 and are now 1280/1024, matching the spec and
+ * the canvas. See docs/design/DRIFT.md #5.
  */
 export type NavShellPreference = 'rail' | 'rail-collapsed' | 'topbar';
 
@@ -37,7 +41,7 @@ interface NavShellState {
 }
 
 const DEFAULT_PREFERENCE: NavShellPreference = 'rail';
-const RAIL_FITS_MIN_WIDTH = 1180; // Tailwind `xl` — below this, the rail (232px) won't fit
+const RAIL_FITS_MIN_WIDTH = 1280; // Tailwind `xl` — below this, the rail (232px) won't fit
 const STORAGE_KEY = 'campus-hub-nav-shell';
 
 const VALID_PREFERENCES: readonly NavShellPreference[] = [
