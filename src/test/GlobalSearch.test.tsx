@@ -285,31 +285,26 @@ describe('GlobalSearch', () => {
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
   });
 
-  it('handles desktop input focus and clear functionality', () => {
-    // Test container click when search is closed
+  it('the trigger opens the palette, and the palette owns the query and its clear \u00d7', () => {
     h.mockLayout.searchOpen = false;
     const { rerender } = render(<GlobalSearch />);
-    const desktopInput = screen.getByPlaceholderText('Search or jump to…') as HTMLInputElement;
-    const container = desktopInput.closest('.relative.w-full.h-10')!;
-    
-    fireEvent.click(container);
+
+    // Closed: the trigger is the only way in, and there is no field to type into.
+    expect(screen.queryByPlaceholderText('Search or jump to\u2026')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open search' }));
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
 
-    // Test focus behavior when search is closed
-    vi.clearAllMocks();
-    fireEvent.focus(desktopInput);
-    expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(true);
-
-    // Re-render with searchOpen = true to test clear button
     h.mockLayout.searchOpen = true;
     rerender(<GlobalSearch />);
-    
-    // Type query
+
+    const desktopInput = screen.getByPlaceholderText('Search or jump to\u2026') as HTMLInputElement;
     typeDesktop('alice');
     expect(desktopInput.value).toBe('alice');
 
-    // Click clear button
-    const clearBtn = within(desktopInput.closest('div')!).getByRole('button', { name: 'Clear search' });
+    // The clear \u00d7 sits in the popup's field row, beside the caret it clears.
+    const clearBtn = within(desktopInput.closest('div')!).getByRole('button', {
+      name: 'Clear search',
+    });
     fireEvent.click(clearBtn);
     expect(desktopInput.value).toBe('');
   });
@@ -441,10 +436,18 @@ describe('GlobalSearch', () => {
     );
   });
 
-  it('clicking outside the search closes it', () => {
+  it('clicking the scrim closes the palette', () => {
     render(<GlobalSearch />);
-    fireEvent.mouseDown(document.body);
+    fireEvent.click(screen.getByTestId('gs-scrim'));
     expect(h.mockLayout.setSearchOpen).toHaveBeenCalledWith(false);
+  });
+
+  it('focuses the palette field on open, so typing can start without a click', async () => {
+    window.matchMedia = vi.fn().mockReturnValue({ matches: true });
+    render(<GlobalSearch />);
+    await new Promise((r) => setTimeout(r, 80));
+    expect(screen.getByPlaceholderText('Search or jump to\u2026')).toHaveFocus();
+    delete (window as any).matchMedia;
   });
 
   it('focuses the mobile input when matchMedia reports a narrow viewport', async () => {
@@ -533,52 +536,134 @@ describe('GlobalSearch', () => {
   });
 
   // ── visual contract — PICKED shell design (issue #653) ────────────────
-  // The desktop trigger is a Bento SearchBar: fixed 300px, radius-16, always-on
-  // inset outline border, violet focus ring, ⌘K pill while empty.
+  // The desktop trigger keeps the Bento SearchBar look from #653 — fixed 300px,
+  // radius-16, always-on inset outline — but is a button now: the palette it
+  // opens owns the caret (#689).
 
-  it('desktop trigger is a fixed 300px radius-16 field with an always-on inset outline and focus ring', () => {
+  it('desktop trigger is a fixed 300px radius-16 button with an always-on inset outline and focus ring', () => {
     render(<GlobalSearch />);
-    const trigger = screen.getByPlaceholderText('Search or jump to…').parentElement!;
-    const root = trigger.parentElement!;
+    const trigger = screen.getByRole('button', { name: 'Open search' });
 
-    expect(root.className).toContain('w-[300px]');
+    expect(trigger.parentElement!.className).toContain('w-[300px]');
     expect(trigger.className).toContain('rounded-2xl');
     expect(trigger.className).toContain('bg-surface');
     // Border states are inset box-shadows — no layout shift between states.
     expect(trigger.className).toContain('shadow-[inset_0_0_0_1px_var(--gs-outline)]');
     expect(trigger.className).toContain('hover:shadow-[inset_0_0_0_1px_#525E6F]');
-    expect(trigger.className).toContain('focus-within:shadow-[inset_0_0_0_2px_var(--color-accent)]');
+    expect(trigger.className).toContain('focus:shadow-[inset_0_0_0_2px_var(--color-accent)]');
   });
 
-  it('shows the ⌘K pill while the query is empty and swaps to the clear × while typing', () => {
-    render(<GlobalSearch />);
-    const trigger = screen.getByPlaceholderText('Search or jump to…').parentElement!;
+  it('announces itself as the control that opens the palette', () => {
+    h.mockLayout.searchOpen = false;
+    const { rerender } = render(<GlobalSearch />);
+    const trigger = screen.getByRole('button', { name: 'Open search' });
 
-    // Empty query — hint pill (8px badge radius: app --radius-sm, not 24px
-    // --radius-lg) and no clear button.
+    expect(trigger).toHaveAttribute('aria-haspopup', 'dialog');
+    expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+    h.mockLayout.searchOpen = true;
+    rerender(<GlobalSearch />);
+    expect(screen.getByRole('button', { name: 'Open search' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  });
+
+  it('keeps the ⌘K pill on the trigger permanently, whatever is typed in the palette', () => {
+    render(<GlobalSearch />);
+    const trigger = screen.getByRole('button', { name: 'Open search' });
+
+    // 8px badge radius: app --radius-sm, not 24px --radius-lg.
     expect(within(trigger).getByText('K')).toBeInTheDocument();
     expect(within(trigger).getByText('K').parentElement!.className).toContain('rounded-sm');
-    expect(within(trigger).queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
 
-    // Typing — pill yields the slot to the clear button.
+    // Typing no longer evicts the pill — the trigger never shows the query.
     typeDesktop('alice');
-    expect(within(trigger).queryByText('K')).not.toBeInTheDocument();
-    expect(within(trigger).getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
-
-    // Clearing restores the pill.
-    fireEvent.click(within(trigger).getByRole('button', { name: 'Clear search' }));
     expect(within(trigger).getByText('K')).toBeInTheDocument();
+    expect(within(trigger).queryByText('alice')).not.toBeInTheDocument();
+    expect(within(trigger).queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
   });
 
-  it('dropdown floats on the design elevation shadow over a white radius-24 surface', () => {
+  it("the palette's field row shows an esc chip while empty and the clear × while typing", () => {
     render(<GlobalSearch />);
-    const dropdown = screen
-      .getByText(/anywhere · ↑↓ navigate · ↵ open/)
-      .closest('div')!.parentElement!;
+    const fieldRow = screen.getByPlaceholderText('Search or jump to…').closest('div')!;
 
-    expect(dropdown.className).toContain('bg-surface');
-    expect(dropdown.className).toContain('rounded-3xl');
-    expect(dropdown.className).toContain('shadow-[0_8px_16px_rgba(0,0,0,0.16)]');
-    expect(dropdown.className).toContain('border-outline-variant');
+    expect(within(fieldRow).getByText('esc')).toBeInTheDocument();
+    expect(within(fieldRow).queryByRole('button', { name: 'Clear search' })).not.toBeInTheDocument();
+
+    typeDesktop('alice');
+    expect(within(fieldRow).queryByText('esc')).not.toBeInTheDocument();
+    expect(within(fieldRow).getByRole('button', { name: 'Clear search' })).toBeInTheDocument();
+
+    fireEvent.click(within(fieldRow).getByRole('button', { name: 'Clear search' }));
+    expect(within(fieldRow).getByText('esc')).toBeInTheDocument();
+  });
+
+  it('palette is a centred modal dialog floating on a scrim', () => {
+    render(<GlobalSearch />);
+    const dialog = screen.getByRole('dialog');
+    const overlay = dialog.parentElement!;
+
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog).toHaveAccessibleName();
+
+    // Centred and top-anchored at the app's modal offset, not hung off the field.
+    expect(overlay.className).toContain('fixed');
+    expect(overlay.className).toContain('inset-0');
+    expect(overlay.className).toContain('items-start');
+    expect(overlay.className).toContain('justify-center');
+    expect(overlay.className).toContain('pt-24');
+
+    expect(screen.getByTestId('gs-scrim').className).toContain('bg-black/40');
+    expect(screen.getByTestId('gs-scrim').className).toContain('backdrop-blur-sm');
+  });
+
+  it('panel is 640px on the pop elevation, shrinking rather than overflowing a narrow window', () => {
+    render(<GlobalSearch />);
+    const dialog = screen.getByRole('dialog');
+
+    expect(dialog.className).toContain('w-[640px]');
+    expect(dialog.className).toContain('max-w-[calc(100vw-2rem)]');
+    expect(dialog.className).toContain('bg-surface');
+    expect(dialog.className).toContain('rounded-3xl');
+    expect(dialog.className).toContain('border-outline-variant');
+    expect(dialog.className).toContain('shadow-[var(--shadow-pop)]');
+  });
+
+  it('leaves the mobile overlay a separate full-screen surface, not the desktop dialog', () => {
+    render(<GlobalSearch />);
+    const mobileOverlay = screen
+      .getByPlaceholderText('Search people, conversations, notes\u2026')
+      .closest('.fixed')!;
+
+    expect(mobileOverlay.className).toContain('lg:hidden');
+    expect(mobileOverlay.className).toContain('inset-0');
+    expect(mobileOverlay.className).toContain('bg-background');
+    // The two are still separate implementations — the popup did not swallow it.
+    expect(mobileOverlay).not.toBe(screen.getByRole('dialog'));
+    expect(mobileOverlay.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it('returns focus to the trigger when the palette closes', () => {
+    h.mockLayout.searchOpen = true;
+    const { rerender } = render(<GlobalSearch />);
+
+    h.mockLayout.searchOpen = false;
+    rerender(<GlobalSearch />);
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Open search' }));
+  });
+
+  it('footer teaches the palette its own exit', () => {
+    render(<GlobalSearch />);
+    expect(
+      screen.getByText(/anywhere · ↑↓ navigate · ↵ open · esc close/),
+    ).toBeInTheDocument();
+  });
+
+  it('results region is capped at 520px, the room the popup bought', () => {
+    render(<GlobalSearch />);
+    const results = screen.getByRole('dialog').querySelector('.overflow-y-auto')!;
+    expect(results.className).toContain('max-h-[min(62vh,520px)]');
   });
 });

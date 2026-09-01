@@ -1149,7 +1149,7 @@
     "people_conversations_notes": "Search people, conversations, notes…",
     "nothing_came_up": "Nothing came up for \"{q}\"",
     "search_history_too": "Search history too",
-    "anywhere_navigate_open": "anywhere · ↑↓ navigate · ↵ open"
+    "anywhere_navigate_open": "anywhere · ↑↓ navigate · ↵ open · esc close"
   },
   "modals": {
     "smartImport": {
