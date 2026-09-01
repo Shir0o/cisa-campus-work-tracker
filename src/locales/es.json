@@ -1321,6 +1321,8 @@
       "transfer_done": "Ahora {recipient} cuida de {name}.",
       "add_someone": "Añadir a alguien…",
       "add_someone_lower": "añadir a alguien",
+      "who_else_can_see": "Quién más puede verlos",
+      "remove_access": "Quitar acceso",
       "tags": "Etiquetas",
       "none_yet": "Ninguna todavía",
       "remove_tag": "Quitar etiqueta",
