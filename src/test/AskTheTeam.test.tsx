@@ -1,8 +1,8 @@
 import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 import AskTheTeam from "../components/landing/AskTheTeam";
 import { useAuth } from "../components/AuthProvider";
-import { addAsk } from "../lib/asks";
+import { addAsk, deleteAskReply } from "../lib/asks";
 
 vi.mock("../components/AuthProvider", () => ({
   useAuth: vi.fn(),
@@ -64,6 +64,17 @@ const mockMessages = [
     at: "2026-08-03T10:00:00.000Z",
     reactions: [],
   },
+  {
+    id: "q1r1",
+    parentId: "q1",
+    owner: "t1",
+    from: "ft1",
+    fromName: "Mei Lin",
+    kind: "comment",
+    body: "Ask what they're studying first.",
+    at: "2026-08-01T11:00:00.000Z",
+    reactions: [],
+  },
 ];
 
 vi.mock("../lib/asks", () => ({
@@ -71,10 +82,11 @@ vi.mock("../lib/asks", () => ({
     cb(mockMessages);
     return () => {};
   },
-  askQuestions: (all: any[]) => all.filter((m: any) => !m.parentId),
-  askRepliesOf: () => [],
+  askQuestions: (all: { parentId: string | null }[]) => all.filter((m) => !m.parentId),
+  askRepliesOf: (all: { parentId: string | null }[], parentId: string) =>
+    all.filter((m) => m.parentId === parentId),
   askWaitedDays: () => 0,
-  askOrigin: (m: any, viewerId?: string | null) => {
+  askOrigin: (m: { from: string; takenBy?: string; takenByName?: string }, viewerId?: string | null) => {
     const mine = viewerId === m.from;
     if (!m.takenBy) {
       return {
@@ -94,6 +106,7 @@ vi.mock("../lib/asks", () => ({
     };
   },
   addAsk: vi.fn(),
+  deleteAskReply: vi.fn(),
 }));
 
 describe("AskTheTeam component", () => {
@@ -151,5 +164,43 @@ describe("AskTheTeam component", () => {
     expect(
       screen.getByText("Asked. The team can see it."),
     ).toBeInTheDocument();
+  });
+});
+
+describe("AskTheTeam component (#680) per-reply delete", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useAuth as unknown as Mock).mockReturnValue({
+      user: { uid: "t1", displayName: "Zion Park" },
+    });
+  });
+
+  it("the asker of a question sees a per-reply trash on the trainee home", () => {
+    render(<AskTheTeam meUid="t1" />);
+    // q1 (Zion's) has the reply q1r1 from Mei.
+    expect(
+      screen.getAllByRole("button", { name: "Delete this answer" }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it('"Keep it" backs out without deleting', () => {
+    render(<AskTheTeam meUid="t1" />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete this answer" })[0]);
+    expect(screen.getByText(/delete this answer\?/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /keep it/i }));
+
+    expect(screen.queryByText(/delete this answer\?/i)).not.toBeInTheDocument();
+    expect(deleteAskReply).not.toHaveBeenCalled();
+  });
+
+  it("confirming a reply delete calls deleteAskReply with the reply id", async () => {
+    vi.mocked(deleteAskReply).mockResolvedValue(undefined);
+    render(<AskTheTeam meUid="t1" />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Delete this answer" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: /^Delete answer$/ }));
+
+    await vi.waitFor(() => expect(deleteAskReply).toHaveBeenCalledWith("q1r1"));
   });
 });

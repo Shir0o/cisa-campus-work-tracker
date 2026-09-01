@@ -82,3 +82,15 @@ export async function addAskReply(
     handleFirestoreError(e, OperationType.CREATE, 'asks');
   }
 }
+
+/** Delete a single reply on a question, leaving the question itself in place
+ *  (#680). The Firestore rule permits `isAdmin() || existing().owner == uid`
+ *  — the asker (who is the reply's `owner` since every reply inherits the
+ *  asker's owner) and any full-timer can drop just this one doc. */
+export async function deleteAskReply(replyId: string): Promise<void> {
+  try {
+    await core.deleteAskReply(db, replyId);
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `asks/${replyId}`);
+  }
+}

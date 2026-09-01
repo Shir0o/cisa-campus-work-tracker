@@ -5,7 +5,7 @@
 // question with a reply is just a question with a reply. Every staff member
 // sees every question; any full-timer can answer, from My Day.
 import React from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
@@ -23,6 +23,7 @@ import { useLanguage } from '../../lib/LanguageProvider';
 import { useV2Theme } from '../../theme/v2';
 import {
   addAsk,
+  deleteAskReply,
   subscribeStaffAsks,
 } from '../../lib/data/asks';
 import { subscribeUsers } from '../../lib/data/users';
@@ -43,9 +44,28 @@ function AskItem({
   roleOf?: (uid: string) => string | undefined;
 }) {
   const { c, font, fs } = useV2Theme();
+  const { t } = useLanguage();
   const org = askOrigin(m, me);
   const role = roleOf ? roleOf(m.from) : undefined;
   const answered = replies.length > 0;
+  // The asker of the question owns every reply (carries the asker's `owner`).
+  // A full-timer can clean up from /questions on web; on mobile only the
+  // asker gets the control, consistent with the trainee-home surface.
+  const canDeleteReply = Boolean(me) && m.from === me;
+  const confirmDeleteReply = (r: AskMessage) => {
+    Alert.alert(
+      t('mobile.ask.delete_reply_confirm', 'Delete this answer?'),
+      t('mobile.ask.delete_reply_body', "It comes off the question for the whole team. This can't be undone."),
+      [
+        { text: t('mobile.ask.delete_reply_keep', 'Keep it'), style: 'cancel' },
+        {
+          text: t('mobile.ask.delete_reply', 'Delete answer'),
+          style: 'destructive',
+          onPress: () => void deleteAskReply(r.id),
+        },
+      ],
+    );
+  };
   return (
     <View
       style={{
@@ -89,9 +109,27 @@ function AskItem({
                 paddingVertical: 10,
               }}
             >
-              <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.card.ink }}>
-                {r.body}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8 }}>
+                <Text style={{ fontFamily: font.semi, fontSize: fs(14), lineHeight: fs(20), color: c.card.ink, flex: 1 }}>
+                  {r.body}
+                </Text>
+                {canDeleteReply && (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t('mobile.ask.delete_reply_aria', 'Delete this answer')}
+                    onPress={() => confirmDeleteReply(r)}
+                    style={({ pressed }) => ({
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 6,
+                      opacity: pressed ? 0.6 : 1,
+                    })}
+                    hitSlop={6}
+                  >
+                    <Text style={{ fontFamily: font.semi, fontSize: fs(13), color: c.card.ink3 }}>×</Text>
+                  </Pressable>
+                )}
+              </View>
               <Text style={{ fontFamily: font.medium, fontSize: fs(12), color: c.card.ink3, marginTop: 4 }}>
                 {r.fromName || 'Someone'}
               </Text>

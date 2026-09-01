@@ -14,6 +14,7 @@ import {
   addDoc,
   collection,
   doc,
+  deleteDoc,
   getDocs,
   onSnapshot,
   query,
@@ -342,6 +343,18 @@ export async function deleteAsk(questionId: string): Promise<void> {
     await batch.commit();
   } catch (e) {
     handleFirestoreError(e, OperationType.DELETE, `asks/${questionId}`);
+  }
+}
+
+/** Delete a single reply on a question, leaving the question itself in place
+ *  (#680). The Firestore rule permits `isAdmin() || existing().owner == uid`
+ *  — the asker (who is the reply's `owner` since every reply inherits the
+ *  asker's owner) and any full-timer can drop just this one doc. */
+export async function deleteAskReply(replyId: string): Promise<void> {
+  try {
+    await deleteDoc(ref(replyId));
+  } catch (e) {
+    handleFirestoreError(e, OperationType.DELETE, `asks/${replyId}`);
   }
 }
 

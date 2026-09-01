@@ -295,6 +295,60 @@ describe('Questions for the team page (#646)', () => {
     });
   });
 
+  describe('deleting a reply (#680)', () => {
+    it('a full-timer sees a per-reply trash control on every answer', () => {
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+
+      // The reply r1 from ft1 on Ana's question is rendered — its trash is visible.
+      expect(
+        screen.getAllByRole('button', { name: 'Delete this answer' }).length,
+      ).toBeGreaterThan(0);
+    });
+
+    it('the trash opens an inline confirm; "Keep it" backs out without deleting', () => {
+      const del = vi.spyOn(asksLib, 'deleteAskReply').mockResolvedValue(undefined);
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete this answer' }));
+      // Confirming is a step, not a click-through.
+      expect(screen.getByText(/delete this answer\?/i)).toBeInTheDocument();
+      expect(del).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: /keep it/i }));
+      expect(screen.queryByText(/delete this answer\?/i)).not.toBeInTheDocument();
+      expect(del).not.toHaveBeenCalled();
+    });
+
+    it('confirming calls deleteAskReply with the reply id and shows a toast', async () => {
+      const del = vi.spyOn(asksLib, 'deleteAskReply').mockResolvedValue(undefined);
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Delete this answer' }));
+      fireEvent.click(screen.getByRole('button', { name: /^Delete answer$/ }));
+      await waitFor(() => expect(del).toHaveBeenCalledWith('r1'));
+      expect(await screen.findByText('Answer deleted.')).toBeInTheDocument();
+    });
+
+    it('the asker of the question sees the trash; a fellow trainee does not', () => {
+      // Asker: trainee1 owns q1, no replies on it. Switch to t1 viewer.
+      mockAuth = { user: { uid: 't1', displayName: 'Zion Park' }, role: 'manager', impersonateTarget: null };
+      vi.spyOn(asksLib, 'subscribeAsks').mockImplementation((cb: (m: AskMessage[]) => void) => {
+        cb(QUESTIONS);
+        return () => {};
+      });
+      renderPage();
+      fireEvent.click(screen.getByRole('button', { name: /^Answered/ }));
+
+      // q1 has no answers; q2 (Ana's, owned by t2) has r1. The asker of q2 is t2,
+      // not the viewer t1, so t1 should see no reply trash on someone else's thread.
+      const controls = screen.queryAllByRole('button', { name: 'Delete this answer' });
+      expect(controls).toHaveLength(0);
+    });
+  });
+
   it('binds writes to the real account during role simulation (#603)', async () => {
     mockAuth = {
       user: { uid: 'ft1', displayName: 'Mei Lin' },

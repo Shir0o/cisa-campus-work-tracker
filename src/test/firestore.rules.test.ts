@@ -1491,6 +1491,23 @@ describeRules('Firestore Security Rules', () => {
       await seedAsk('askDel2');
       await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDel2')));
     });
+
+    it('ASK9b (#680): a full-timer can delete a single reply on a question they did not ask', async () => {
+      await seedAskUsers();
+      // Trainee1 asks; ft1 answers. ft2 (also a full-timer) drops the answer.
+      await seedAsk('askDelB1');
+      await seedAsk('askDelB1a', {
+        parentId: 'askDelB1',
+        from: 'ft1',
+        fromName: 'Mei',
+        kind: 'comment',
+        body: 'Three tries, spread out.',
+      });
+
+      await assertSucceeds(deleteDoc(doc(getFirestore({ uid: 'ft2' }), 'asks', 'askDelB1a')));
+      // The question itself is still in place — only the reply was removed.
+      await assertSucceeds(getDoc(doc(getFirestore({ uid: 't1' }), 'asks', 'askDelB1')));
+    });
   });
 
   describe('Walking-together threads', () => {

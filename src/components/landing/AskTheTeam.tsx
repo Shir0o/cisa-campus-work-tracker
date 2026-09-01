@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { HelpCircle, Send, MessageSquare, Pencil } from "lucide-react";
+import { HelpCircle, Send, MessageSquare, Pencil, Trash2, AlertTriangle } from "lucide-react";
 import { collection, query, onSnapshot } from "firebase/firestore";
 import { cn, relTime } from "../../lib/utils";
 import { db } from "../../lib/firebase";
@@ -15,6 +15,7 @@ import {
   askWaitedDays,
   askOrigin,
   addAsk,
+  deleteAskReply,
   type AskMessage,
 } from "../../lib/asks";
 
@@ -34,6 +35,80 @@ function waitedWords(m: AskMessage, t: (k: string, f?: string) => string): strin
       : t("ask.waited_days", `waiting ${d} days`).replace("{n}", String(d));
 }
 
+/** A single reply bubble on the trainee home (#680). The asker of the
+ *  question can clean up a reply from this surface; the inline confirm
+ *  mirrors the question-delete affordance on /questions. */
+function ReplyRow({
+  r,
+  canDelete,
+}: {
+  r: AskMessage;
+  canDelete: boolean;
+}) {
+  const { t } = useI18n();
+  const [confirming, setConfirming] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const remove = async () => {
+    if (deleting) return;
+    setDeleting(true);
+    await deleteAskReply(r.id);
+    setConfirming(false);
+    setDeleting(false);
+  };
+  if (confirming) {
+    return (
+      <div className="bg-error-container/40 border border-error-container rounded-xl px-3 py-2">
+        <div className="flex gap-2">
+          <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0 mt-0.5" />
+          <p className="text-xs text-on-surface text-pretty">
+            <span className="font-semibold">{t("ask.delete_reply_confirm", "Delete this answer?")}</span>{" "}
+            {t("ask.delete_reply_body", "It comes off the question for the whole team. This can't be undone.")}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 mt-2 pl-[22px]">
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={() => void remove()}
+            className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default"
+          >
+            <Trash2 className="w-3 h-3" />
+            {t("ask.delete_reply", "Delete answer")}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(false)}
+            className="h-7 px-2.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface"
+          >
+            {t("ask.delete_reply_keep", "Keep it")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="bg-surface-variant/50 rounded-xl px-3 py-2">
+      <div className="flex items-center gap-2">
+        <p className="text-sm text-on-surface whitespace-pre-line leading-relaxed flex-1">{r.body}</p>
+        {canDelete && (
+          <button
+            type="button"
+            aria-label={t("ask.delete_reply_aria", "Delete this answer")}
+            title={t("ask.delete_reply_aria", "Delete this answer")}
+            onClick={() => setConfirming(true)}
+            className="grid place-items-center w-6 h-6 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+      </div>
+      <span className="text-[11px] text-on-surface-variant mt-1 block">
+        {r.fromName} · {relTime(r.at)}
+      </span>
+    </div>
+  );
+}
+
 function AskRow({
   m,
   replies,
@@ -48,6 +123,9 @@ function AskRow({
   const { t } = useI18n();
   const org = askOrigin(m, viewerUid);
   const role = roleOf ? roleOf(m.from) : undefined;
+  // The trainee home is for the asker: only the asker of the question can
+  // delete a reply on this surface. A full-timer cleans up on /questions.
+  const canDeleteReply = Boolean(viewerUid) && m.from === viewerUid;
   return (
     <div className="bg-surface rounded-3xl border border-outline-variant/60 p-5">
       <div className="flex gap-3">
@@ -89,12 +167,7 @@ function AskRow({
           ) : (
             <div className="mt-3 flex flex-col gap-2">
               {replies.map((r) => (
-                <div key={r.id} className="bg-surface-variant/50 rounded-xl px-3 py-2">
-                  <p className="text-sm text-on-surface whitespace-pre-line leading-relaxed">{r.body}</p>
-                  <span className="text-[11px] text-on-surface-variant mt-1 block">
-                    {r.fromName} · {relTime(r.at)}
-                  </span>
-                </div>
+                <ReplyRow key={r.id} r={r} canDelete={canDeleteReply} />
               ))}
             </div>
           )}

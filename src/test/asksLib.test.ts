@@ -17,6 +17,7 @@ import {
   addAskFor,
   addAskReply,
   deleteAsk,
+  deleteAskReply,
   toggleAskReaction,
   AskMessage,
 } from '../lib/asks';
@@ -37,6 +38,7 @@ vi.mock('firebase/firestore', () => ({
   where: vi.fn(),
   onSnapshot: vi.fn(),
   addDoc: vi.fn(),
+  deleteDoc: vi.fn(),
   getDocs: vi.fn(),
   writeBatch: vi.fn(),
   runTransaction: vi.fn(),
@@ -451,6 +453,26 @@ describe('src/lib/asks.ts full coverage', () => {
       expect.any(Error),
       firebaseLib.OperationType.DELETE,
       'asks/q1',
+    );
+  });
+
+  it('deleteAskReply removes a single reply by id (#680)', async () => {
+    vi.mocked(firestore.deleteDoc).mockResolvedValueOnce(undefined as never);
+
+    await deleteAskReply('r1');
+
+    expect(firestore.doc).toHaveBeenCalledWith(expect.anything(), 'asks', 'r1');
+    expect(firestore.deleteDoc).toHaveBeenCalledTimes(1);
+    expect(firestore.deleteDoc).toHaveBeenCalledWith({ path: 'asks/r1' });
+  });
+
+  it('deleteAskReply routes a failure through handleFirestoreError', async () => {
+    vi.mocked(firestore.deleteDoc).mockRejectedValueOnce(new Error('nope'));
+    await deleteAskReply('r1');
+    expect(firebaseLib.handleFirestoreError).toHaveBeenCalledWith(
+      expect.any(Error),
+      firebaseLib.OperationType.DELETE,
+      'asks/r1',
     );
   });
 });
