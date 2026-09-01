@@ -82,6 +82,16 @@ describe("todo notification payload builders", () => {
       expect(result.message).toContain(title);
       expect(result.message).not.toContain("…");
     });
+
+    it("sets link to /coordination when sourceDocId is present", () => {
+      const result = buildAssignmentNotificationPayload({
+        assigneeId: "user-1",
+        title: "Review doc",
+        assignerName: "Bob",
+        sourceDocId: "doc-123",
+      });
+      expect(result.link).toBe("/coordination");
+    });
   });
 
   // ── buildCompletionNotificationPayload ─────────────────────────────
@@ -103,6 +113,17 @@ describe("todo notification payload builders", () => {
         targetId: "todo-2",
       });
     });
+
+    it("sets link to /coordination when sourceDocId is present", () => {
+      const result = buildCompletionNotificationPayload({
+        createdById: "user-2",
+        title: "Task",
+        completerName: "Charlie",
+        sourceDocId: "doc-456",
+      });
+      expect(result.link).toBe("/coordination");
+    });
+
 
     it('uses "Someone" when completerName is null', () => {
       const result = buildCompletionNotificationPayload({

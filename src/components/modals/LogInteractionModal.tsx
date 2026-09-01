@@ -191,6 +191,7 @@ export default function LogInteractionModal({ isOpen, onClose, initialContactId 
               message: snippet,
               type: 'info',
               targetId: contactId,
+              link: `/people/${contactId}`,
             });
           }
         }

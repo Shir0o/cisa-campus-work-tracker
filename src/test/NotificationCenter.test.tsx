@@ -258,6 +258,93 @@ describe('NotificationCenter Component', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/messages/room_123');
   });
 
+  it('navigates to contact detail when contact notification with link is clicked', async () => {
+    const mockNotifs = [
+      {
+        id: 'n_contact',
+        userId: 'mock-user-id',
+        title: 'Tony added Alex',
+        message: 'A new person in your circle',
+        type: 'info',
+        read: false,
+        link: '/people/c_alex',
+        targetId: 'c_alex',
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('Tony added Alex'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/people/c_alex');
+  });
+
+  it('navigates to questions page when ask notification with link is clicked', async () => {
+    const mockNotifs = [
+      {
+        id: 'n_ask',
+        userId: 'mock-user-id',
+        title: 'Alice answered your question',
+        message: 'Here is the answer',
+        type: 'info',
+        read: false,
+        link: '/questions',
+        targetId: 'ask_1',
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('Alice answered your question'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/questions');
+  });
+
+  it('navigates to coordination when doc to-do notification with link is clicked', async () => {
+    const mockNotifs = [
+      {
+        id: 'n_todo_doc',
+        userId: 'mock-user-id',
+        title: 'New to-do',
+        message: 'Alice assigned you: Follow up',
+        type: 'assignment',
+        read: false,
+        link: '/coordination',
+        targetId: 't1',
+        createdAt: { toDate: () => new Date() },
+      },
+    ];
+
+    triggerOnSnapshotCallbacks(mockNotifs);
+
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('New to-do'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/coordination');
+  });
+
   // ── Empty panel state ──────────────────────────────────────────────
 
   it('shows "Nothing needs you right now" when panel open with no notifications', () => {
@@ -742,6 +829,36 @@ describe('NotificationCenter Component', () => {
     fireEvent.click(screen.getByLabelText(/notifications/i));
     fireEvent.click(screen.getByText('New note'));
     expect(mockNavigate).toHaveBeenCalledWith('/messages/room_9');
+  });
+
+  it('navigates to questions for unlinked ask notifications with question/answer in title', () => {
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'Answer to your question', body: 'b', type: 'info', targetId: 'ask_123', read: true, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('Answer to your question'));
+    expect(mockNavigate).toHaveBeenCalledWith('/questions');
+  });
+
+  it('navigates to contact for unlinked contact activity notifications', () => {
+    triggerOnSnapshotCallbacks([
+      { id: 'n1', userId: 'mock-user-id', title: 'A trainee added a contact', body: 'b', type: 'info', targetId: 'c_999', read: true, createdAt: { toDate: () => new Date() } },
+    ]);
+    render(
+      <MemoryRouter>
+        <NotificationCenter />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByLabelText(/notifications/i));
+    fireEvent.click(screen.getByText('A trainee added a contact'));
+    expect(mockNavigate).toHaveBeenCalledWith('/people/c_999');
   });
 
   // ── Enter key opens a notification ─────────────────────────────────

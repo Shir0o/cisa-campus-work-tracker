@@ -323,6 +323,7 @@ export async function addAskReply(
         message: body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body,
         type: "info",
         targetId: parentId,
+        link: "/questions",
       });
     }
   } catch (e) {

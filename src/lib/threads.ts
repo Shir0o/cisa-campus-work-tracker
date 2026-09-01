@@ -214,6 +214,7 @@ export async function addThreadMessage(
         message: body.length > 140 ? body.slice(0, 140).trimEnd() + "…" : body,
         type: "info",
         targetId: contactId,
+        link: `/people/${contactId}?tab=thread`,
       });
     }
   } catch (e) {

@@ -129,6 +129,7 @@ describe("addThreadMessage notify", () => {
         message: "Coming Thursday?",
         type: "info",
         targetId: "C-1",
+        link: "/people/C-1?tab=thread",
       }),
     );
   });

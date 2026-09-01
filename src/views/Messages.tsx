@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   collection,
   query,
@@ -97,6 +97,7 @@ function MessageBody({ text, memberFirstNames }: { text: string; memberFirstName
 }
 
 export default function Messages() {
+  const { roomId } = useParams<{ roomId?: string }>();
   const { user: currentUser, role: userRole, effectiveUserId, impersonateTarget } = useAuth();
   const effectiveUid = effectiveUserId || currentUser?.uid;
   const { setSelectedContact, openLogInteraction } = useLayout();
@@ -111,13 +112,27 @@ export default function Messages() {
 
   // Messaging state
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(roomId || null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [attachments, setAttachments] = useState<ChatAttachment[]>([]);
   const [roomSearch, setRoomSearch] = useState('');
   const [loadingRooms, setLoadingRooms] = useState(true);
   const { language, t } = useLanguage();
+
+  useEffect(() => {
+    setActiveRoomId(roomId || null);
+  }, [roomId]);
+
+  const handleSelectRoom = (id: string) => {
+    setActiveRoomId(id);
+    navigate(`/messages/${id}`);
+  };
+
+  const handleClearRoom = () => {
+    setActiveRoomId(null);
+    navigate('/messages');
+  };
 
   // Warm translation cache for visible chat messages when Spanish is active.
   useEffect(() => {
@@ -629,7 +644,7 @@ export default function Messages() {
                 <div
                   key={room.id}
                   className={cn("msgs-item", isActive && "active", unread && "unread")}
-                  onClick={() => setActiveRoomId(room.id)}
+                  onClick={() => handleSelectRoom(room.id)}
                 >
                   {isGroupish ? (
                     <span className={cn("msgs-cluster", room.type === 'announcement' && "broadcast")}>
@@ -701,7 +716,7 @@ export default function Messages() {
                                       setConvMenuConfirm(false);
                                       try {
                                         await deleteChatRoom(room.id);
-                                        if (activeRoomId === room.id) setActiveRoomId(null);
+                                        if (activeRoomId === room.id) handleClearRoom();
                                       } catch (err) {
                                         console.error('Failed to delete chat room:', err);
                                       }
@@ -725,7 +740,7 @@ export default function Messages() {
                                       e.stopPropagation();
                                       setConvMenuFor(null);
                                       if (effectiveUid) ConvHides.hide(effectiveUid, room.id);
-                                      if (activeRoomId === room.id) setActiveRoomId(null);
+                                      if (activeRoomId === room.id) handleClearRoom();
                                     }}
                                   >
                                     Hide from my list
@@ -791,7 +806,7 @@ export default function Messages() {
               {/* Active Room Header */}
               <div className="msgs-thread-head">
                 {isMobile && (
-                  <button className="icon-btn" onClick={() => setActiveRoomId(null)}>
+                  <button className="icon-btn" onClick={handleClearRoom}>
                     <ChevronLeft className="w-4 h-4" />
                   </button>
                 )}
@@ -1238,7 +1253,7 @@ export default function Messages() {
       <CreateChatModal
         isOpen={createChatOpen}
         onClose={() => setCreateChatOpen(false)}
-        onSelectRoom={(id) => setActiveRoomId(id)}
+        onSelectRoom={(id) => handleSelectRoom(id)}
       />
 
       {activeRoom && (
@@ -1246,7 +1261,7 @@ export default function Messages() {
           isOpen={chatDetailsOpen}
           onClose={() => setChatDetailsOpen(false)}
           room={activeRoom}
-          onLeftGroup={() => setActiveRoomId(null)}
+          onLeftGroup={handleClearRoom}
         />
       )}
 

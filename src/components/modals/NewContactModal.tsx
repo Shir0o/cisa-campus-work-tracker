@@ -185,7 +185,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           title: 'Contact Created',
           message: `Successfully added ${fullName} to your directory.`,
           type: 'success',
-          link: '/directory',
+          link: `/people/${docRef.id}`,
           targetId: docRef.id
         });
       }
@@ -199,7 +199,8 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
             userId: ftId,
             title: `${who} added ${fullName}`,
             message: 'A new person in your circle — take a look when you can.',
-            type: 'assignment',
+            type: 'info',
+            link: `/people/${docRef.id}`,
             targetId: docRef.id,
           });
         }

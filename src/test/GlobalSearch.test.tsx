@@ -451,13 +451,14 @@ describe('GlobalSearch', () => {
   });
 
   it('focuses the mobile input when matchMedia reports a narrow viewport', async () => {
+    const origMatchMedia = window.matchMedia;
     const matchMediaMock = vi.fn().mockReturnValue({ matches: false });
     window.matchMedia = matchMediaMock;
     render(<GlobalSearch />);
     await new Promise((r) => setTimeout(r, 80));
     expect(matchMediaMock).toHaveBeenCalledWith('(min-width: 1024px)');
     expect(screen.getByPlaceholderText('Search people, conversations, notes…')).toHaveFocus();
-    delete (window as any).matchMedia;
+    window.matchMedia = origMatchMedia;
   });
 
   it('logs listener errors without crashing', () => {
