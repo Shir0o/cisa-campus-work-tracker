@@ -322,6 +322,7 @@ function Person({ contactId, initialTab, initialInteractionId }: ContactScreenPr
               <Details
                 contact={contact}
                 careLine={contactCareLine(data.inYourCare, contact.createdByName)}
+                caregiverName={data.caregiverName}
               />
             )}
           </View>
@@ -662,9 +663,11 @@ function PrayerCard({
 function Details({
   contact,
   careLine,
+  caregiverName,
 }: {
   contact: NonNullable<ReturnType<typeof useContactDetailData>['contact']>;
   careLine: string;
+  caregiverName: string | null;
 }) {
   const { c, font, radius, fs } = useV2Theme();
   const { t } = useLanguage();
@@ -705,10 +708,10 @@ function Details({
           asks that they have somewhere to be read. `role` is this app's
           contact group, which the sheet labels "Part of". */}
       <DetailRow label={t('mobile.contact.part_of')} value={contact.role} />
-      <DetailRow label={t('mobile.contact.faith_so_far')} value={contact.spiritualBackground} />
-      <DetailRow label={t('mobile.contact.goes_by')} value={contact.pronouns} />
-      <DetailRow label={t('mobile.contact.known')} value={knownMs === null ? null : `${daysSince(knownMs)} days`} />
-      <DetailRow label={t('mobile.contact.cared_for_by')} value={careLine === 'In your care' ? t('mobile.common.you') : contact.createdByName} />
+      <DetailRow
+        label={t('mobile.contact.cared_for_by')}
+        value={careLine === 'In your care' ? t('mobile.common.you') : caregiverName ?? contact.createdByName}
+      />
     </View>
   );
 }
