@@ -537,7 +537,7 @@ describe('Settings', () => {
   // ── 6. Invite flow ──
 
   describe('invite flow', () => {
-    it('opens invite modal, fills email, submits, and calls setDoc', async () => {
+    it('opens invite modal, selects role, fills email, submits, and calls setDoc', async () => {
       setupManagerAuth();
       setupManagerSnapshot();
 
@@ -553,6 +553,11 @@ describe('Settings', () => {
         expect(screen.getByText('Add someone by email')).toBeInTheDocument();
       });
 
+      const roleSelect = screen.getByLabelText('Role');
+      expect(roleSelect).toBeInTheDocument();
+      fireEvent.change(roleSelect, { target: { value: 'manager' } });
+      expect(roleSelect).toHaveValue('manager');
+
       const emailInput = screen.getByPlaceholderText('their@email.com');
       fireEvent.change(emailInput, { target: { value: 'newuser@test.com' } });
 
@@ -564,7 +569,7 @@ describe('Settings', () => {
           expect.objectContaining({ path: 'invitations/newuser@test.com' }),
           expect.objectContaining({
             email: 'newuser@test.com',
-            role: 'operator',
+            role: 'manager',
             approved: true,
             invitedBy: 'u-admin',
           }),
