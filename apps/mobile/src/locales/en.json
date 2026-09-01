@@ -1413,7 +1413,13 @@
       "empty": "Nothing asked yet. The questions that don't belong on anyone's page — how to start a conversation at the club table, what to say when you're stuck — live here.",
       "questions_for_team": "Questions for the team",
       "send": "Send it",
-      "scanned": "Scanned"
+      "scanned": "Scanned",
+      "delete_reply_aria": "Delete this answer",
+      "delete_reply": "Delete answer",
+      "delete_reply_confirm": "Delete this answer?",
+      "delete_reply_body": "It comes off the question for the whole team. This can't be undone.",
+      "delete_reply_keep": "Keep it",
+      "delete_reply_toast": "Answer deleted."
     },
     "goal": {
       "ring_label": "You've spoken with {count} of {goal} new people today."

@@ -7,12 +7,13 @@ const firestoreMock = vi.hoisted(() => ({
   onSnapshot: vi.fn(),
   addDoc: vi.fn(),
   doc: vi.fn(),
+  deleteDoc: vi.fn(),
   runTransaction: vi.fn(),
 }));
 
 vi.mock('firebase/firestore', () => firestoreMock);
 
-import { subscribeAsks, subscribeStaffAsks } from '../src/data/asks';
+import { subscribeAsks, subscribeStaffAsks, deleteAskReply } from '../src/data/asks';
 
 const COLLECTION = { __collection: 'asks' };
 const WHERE_RESULT = { __where: true };
@@ -113,5 +114,20 @@ describe('subscribeStaffAsks (packages/core)', () => {
       expect.any(Function),
       expect.any(Function),
     );
+  });
+});
+
+describe('deleteAskReply (packages/core) (#680)', () => {
+  it('deletes a single reply by id', async () => {
+    const REPLY_REF = { path: 'asks/r1' };
+    firestoreMock.doc.mockReturnValue(REPLY_REF);
+    firestoreMock.deleteDoc.mockResolvedValue(undefined);
+
+    await deleteAskReply({} as never, 'r1');
+
+    expect(firestoreMock.doc).toHaveBeenCalledTimes(1);
+    expect(firestoreMock.doc).toHaveBeenCalledWith({}, 'asks', 'r1');
+    expect(firestoreMock.deleteDoc).toHaveBeenCalledTimes(1);
+    expect(firestoreMock.deleteDoc).toHaveBeenCalledWith(REPLY_REF);
   });
 });

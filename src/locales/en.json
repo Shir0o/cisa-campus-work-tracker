@@ -657,7 +657,13 @@
     "delete_confirm_body_answers": "The answers on it go too, and it comes off the board for the whole team. This can't be undone.",
     "delete_keep": "Keep it",
     "deleted_toast": "Question deleted.",
-    "delete_aria": "Delete this question"
+    "delete_aria": "Delete this question",
+    "delete_reply_aria": "Delete this answer",
+    "delete_reply": "Delete answer",
+    "delete_reply_confirm": "Delete this answer?",
+    "delete_reply_body": "It comes off the question for the whole team. This can't be undone.",
+    "delete_reply_keep": "Keep it",
+    "delete_reply_toast": "Answer deleted."
   },
   "visits": {
     "where_weve_been": "Where we've been",

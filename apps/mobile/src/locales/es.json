@@ -1413,7 +1413,13 @@
       "empty": "Todavía no has preguntado nada. Las preguntas que no pertenecen a la página de nadie — cómo empezar una conversación en la mesa del club, qué decir cuando estás atascado — viven aquí.",
       "questions_for_team": "Preguntas para el equipo",
       "send": "Enviar",
-      "scanned": "Visto"
+      "scanned": "Visto",
+      "delete_reply_aria": "Eliminar esta respuesta",
+      "delete_reply": "Eliminar respuesta",
+      "delete_reply_confirm": "¿Eliminar esta respuesta?",
+      "delete_reply_body": "Se quita de la pregunta para todo el equipo. Esto no se puede deshacer.",
+      "delete_reply_keep": "Conservarla",
+      "delete_reply_toast": "Respuesta eliminada."
     },
     "goal": {
       "ring_label": "Hoy has hablado con {count} de {goal} personas nuevas."

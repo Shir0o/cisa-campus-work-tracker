@@ -12,6 +12,7 @@ import {
   where,
   runTransaction,
   doc,
+  deleteDoc,
   type Firestore,
 } from "firebase/firestore";
 import type { AskKind, AskMessage } from "../asks";
@@ -194,4 +195,15 @@ export async function toggleAskReaction(
       : [...reactions, { by, emoji }];
     tx.update(ref(db, messageId), { reactions: next });
   });
+}
+
+/** Delete a single reply on a question, leaving the question itself in place
+ *  (#680). The Firestore rule permits `isAdmin() || existing().owner == uid`
+ *  — the asker (who is the reply's `owner` since every reply inherits the
+ *  asker's owner) and any full-timer can drop just this one doc. */
+export async function deleteAskReply(
+  db: Firestore,
+  replyId: string,
+): Promise<void> {
+  await deleteDoc(ref(db, replyId));
 }

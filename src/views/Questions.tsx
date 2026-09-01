@@ -31,6 +31,7 @@ import {
   addAskFor,
   addAskReply,
   deleteAsk,
+  deleteAskReply,
 } from '../lib/asks';
 
 type Filter = 'waiting' | 'answered' | 'mine' | 'all';
@@ -69,6 +70,8 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
   const [sending, setSending] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [confirmingReplyDelete, setConfirmingReplyDelete] = useState<string | null>(null);
+  const [deletingReply, setDeletingReply] = useState<string | null>(null);
 
   const replies = askRepliesOf(allAsks, m.id);
   const answered = askAnswered(allAsks, m);
@@ -77,6 +80,9 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
   const canAnswer = isFullTimer || mine;
   // Delete is the asker's (their own question) or a full-timer's (anyone's).
   const canDelete = isFullTimer || mine;
+  // Per-reply delete mirrors the question rule: the asker of the question owns
+  // every reply (carries the asker's `owner`), and any full-timer can clean up.
+  const canDeleteReply = canDelete;
   const who = firstName(m.fromName || 'Someone');
 
   const close = () => {
@@ -92,6 +98,16 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
     await deleteAsk(m.id);
     close();
     onToast(t('ask.deleted_toast', 'Question deleted.'));
+  };
+
+  const removeReply = async (replyId: string) => {
+    if (deletingReply) return;
+    setDeletingReply(replyId);
+    // deleteAskReply swallows its own errors; the subscription drops the reply.
+    await deleteAskReply(replyId);
+    setConfirmingReplyDelete(null);
+    setDeletingReply(null);
+    onToast(t('ask.delete_reply_toast', 'Answer deleted.'));
   };
 
   const send = async () => {
@@ -165,12 +181,56 @@ function QuestionCard({ m, allAsks, me, meName, isFullTimer, onToast, initialOpe
           {replies.map((r) => (
             <div key={r.id} className="flex gap-2.5">
               <span className={cn(AVATAR, 'w-6 h-6 text-[9px]')}>{getUserInitials(r.fromName || 'Someone')}</span>
-              <div className="min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-semibold text-on-surface-variant">{r.fromName || 'Someone'}</span>
-                  <span className="text-[11px] text-on-surface-variant">{relTime(r.at)}</span>
-                </div>
-                <p className="text-sm leading-relaxed text-on-surface-variant mt-0.5 text-pretty">{r.body}</p>
+              <div className="min-w-0 flex-1">
+                {confirmingReplyDelete === r.id ? (
+                  <div className="rounded-xl bg-error-container/40 border border-error-container p-3">
+                    <div className="flex gap-2">
+                      <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0 mt-0.5" />
+                      <p className="text-xs text-on-surface text-pretty">
+                        <span className="font-semibold">{t('ask.delete_reply_confirm', 'Delete this answer?')}</span>{' '}
+                        {t('ask.delete_reply_body', "It comes off the question for the whole team. This can't be undone.")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2.5 pl-[22px]">
+                      <button
+                        type="button"
+                        disabled={deletingReply === r.id}
+                        onClick={() => void removeReply(r.id)}
+                        className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-error text-on-error text-xs font-semibold disabled:opacity-40 disabled:cursor-default"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        {t('ask.delete_reply', 'Delete answer')}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingReplyDelete(null)}
+                        className="h-7 px-2.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface-variant hover:text-on-surface"
+                      >
+                        {t('ask.delete_reply_keep', 'Keep it')}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xs font-semibold text-on-surface-variant">{r.fromName || 'Someone'}</span>
+                      <span className="text-[11px] text-on-surface-variant">{relTime(r.at)}</span>
+                      <span className="flex-1" />
+                      {canDeleteReply && (
+                        <button
+                          type="button"
+                          aria-label={t('ask.delete_reply_aria', 'Delete this answer')}
+                          title={t('ask.delete_reply_aria', 'Delete this answer')}
+                          onClick={() => setConfirmingReplyDelete(r.id)}
+                          className="grid place-items-center w-6 h-6 rounded-md text-on-surface-variant hover:text-error hover:bg-error/10 transition-colors shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed text-on-surface-variant mt-0.5 text-pretty">{r.body}</p>
+                  </>
+                )}
               </div>
             </div>
           ))}
