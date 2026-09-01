@@ -32,6 +32,7 @@ import {
 import { useNavShell } from '../NavShellProvider';
 import { Translate } from '../Translate';
 import { useWaitingAsksCount } from '../../hooks/useWaitingAsksCount';
+import { SIGNUP_TITLE } from './SignupInvite';
 
 const NAV_ICONS: Record<string, LucideIcon> = {
   '/': Sunrise,
@@ -203,6 +204,40 @@ export default function NavRail(_props: NavRailProps = {}) {
             </ul>
           </div>
         )}
+
+        <div className={cn(collapsed ? 'py-2' : 'py-3')}>
+          {collapsed && (
+            <div
+              aria-hidden="true"
+              className="mx-3 mb-1 border-t border-outline-variant/60"
+            />
+          )}
+          <ul className="space-y-0.5">
+            <li>
+              <NavLink
+                to="/signup"
+                aria-current={pathname === '/signup' ? 'page' : undefined}
+                data-tooltip={collapsed ? SIGNUP_TITLE : undefined}
+                className={cn(
+                  'group relative flex items-center gap-3 rounded-xl transition-colors',
+                  collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
+                  pathname === '/signup'
+                    ? 'bg-primary text-on-primary font-medium'
+                    : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+                )}
+              >
+                <FileText
+                  className={cn('shrink-0', pathname === '/signup' ? 'text-on-primary' : '')}
+                  style={{ width: collapsed ? 20 : 18, height: collapsed ? 20 : 18 }}
+                />
+                {!collapsed && (
+                  <Translate as="span" className="text-sm whitespace-nowrap truncate flex-1" text={SIGNUP_TITLE} />
+                )}
+                {collapsed && <span className="sr-only">{SIGNUP_TITLE}</span>}
+              </NavLink>
+            </li>
+          </ul>
+        </div>
       </nav>
 
       {/* ── Pinned: Settings link + collapse control ──────────────────── */}

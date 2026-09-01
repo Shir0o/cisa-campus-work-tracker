@@ -410,6 +410,27 @@ describe('NavRail (#664)', () => {
     expect(questions).toHaveAttribute('data-tooltip', 'Questions');
   });
 
+  // ── Sign-up form destination (Issue #676) ──────────────────────────────────
+  it('renders the Sign-up form link when the rail is expanded', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail');
+    renderRail({ role: 'admin' });
+
+    const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
+    expect(signupLink).toBeInTheDocument();
+    expect(signupLink).toHaveAttribute('href', '/signup');
+  });
+
+  it('renders the Sign-up form link with tooltip and accessible label when collapsed', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+
+    const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
+    expect(signupLink).toBeInTheDocument();
+    expect(signupLink).toHaveAttribute('href', '/signup');
+    expect(signupLink).toHaveAttribute('data-tooltip', 'Sign-up form');
+    expect(within(signupLink).getByText('Sign-up form')).toHaveClass('sr-only');
+  });
+
   // The impersonation eye moved to NavChromeStrip; the rail's chrome lives
   // in the spec's "strip above the content" and is tested separately.
 });
