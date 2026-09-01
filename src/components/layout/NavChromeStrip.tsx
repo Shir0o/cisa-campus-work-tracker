@@ -80,12 +80,6 @@ export default function NavChromeStrip({ onOpenImpersonateModal }: NavChromeStri
       {/* Notifications */}
       <NotificationCenter />
 
-      {/* Season indicator (rail mounts it inline in the profile menu too,
-          but the spec calls for it visible above the content). */}
-      <div className="hidden lg:flex">
-        <SeasonChip />
-      </div>
-
       {/* "See as their view" — owner only */}
       {isOwner && (
         <button
