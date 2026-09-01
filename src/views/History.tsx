@@ -22,6 +22,7 @@ import {
   Tag,
   Pencil,
   Users,
+  ArrowRightLeft,
   Search,
   type LucideIcon,
 } from "lucide-react";
@@ -205,6 +206,15 @@ const humanize = (a: Hist): Humanized => {
   }
   if (act.startsWith("submitted feedback")) {
     return { bucket: "talk", icon: MessageSquare, lead: "shared some feedback", showTarget: false, detail: quote(desc) };
+  }
+  if (act.startsWith("transferred a person")) {
+    return {
+      bucket: "talk",
+      icon: ArrowRightLeft,
+      lead: "handed off",
+      showTarget: true,
+      detail: scrub(desc) ? scrub(desc) : undefined,
+    };
   }
   if (act.startsWith("updated")) {
     return {

@@ -198,6 +198,80 @@ describeRules('Firestore Security Rules', () => {
         updatedAt: serverTimestamp(),
       }));
     });
+
+    it('lets the current owner transfer the contact by updating owner + coCreators', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'users', 'operator2'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
+          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+        owner: 'operator2',
+        coCreators: [],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator1',
+        updatedByName: 'Operator One',
+      }));
+    });
+
+    it('rejects a non-owner non-admin from updating owner', async () => {
+      const db = getFirestore({ uid: 'operator3' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator3'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
+          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertFails(updateDoc(doc(db, 'contacts', 'contact1'), {
+        owner: 'operator3',
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator3',
+        updatedByName: 'Operator Three',
+      }));
+    });
+
+    it('lets an admin reassign owner regardless of the current owner', async () => {
+      const db = getFirestore({ uid: 'admin1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'admin1'), { role: 'admin', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
+          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+        owner: 'operator2',
+        updatedAt: serverTimestamp(),
+        updatedBy: 'admin1',
+        updatedByName: 'Admin One',
+      }));
+    });
+
+    it('lets the current owner share the contact via coCreators', async () => {
+      const db = getFirestore({ uid: 'operator1' });
+
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), 'users', 'operator1'), { role: 'operator', approved: true });
+        await setDoc(doc(context.firestore(), 'contacts', 'contact1'), {
+          name: 'Test', email: 'test@example.com', owner: 'operator1', coCreators: [],
+        });
+      });
+
+      await assertSucceeds(updateDoc(doc(db, 'contacts', 'contact1'), {
+        coCreators: ['operator2'],
+        updatedAt: serverTimestamp(),
+        updatedBy: 'operator1',
+        updatedByName: 'Operator One',
+      }));
+    });
   });
 
   describe('Prayers', () => {

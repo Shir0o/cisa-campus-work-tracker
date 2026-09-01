@@ -2022,6 +2022,51 @@ describe('removing interactions (#650)', () => {
     expect(screen.getByText('Conversation removed')).toBeInTheDocument();
     confirmSpy.mockRestore();
   });
+
+  it('renders all tab navigation buttons in cd-tabs-bar with consistent tab elements (#684)', () => {
+    const { container } = render(
+      <ContactDetailsModal
+        isOpen={true}
+        onClose={vi.fn()}
+        contact={{
+          id: 'contact-test-tabs',
+          name: 'Test Student',
+          email: 'test@example.com',
+          initials: 'TS',
+          stage: 'Lead',
+          tags: ['student'],
+          createdAt: new Date().toISOString(),
+        } as any}
+      />
+    );
+
+    const tabsBar = container.querySelector('.cd-tabs-bar');
+    expect(tabsBar).toBeTruthy();
+
+    const tabs = container.querySelectorAll('.cd-tab');
+    expect(tabs.length).toBeGreaterThanOrEqual(4);
+
+    // Overview tab is rendered and active by default without count badge
+    const overviewTab = screen.getByRole('button', { name: /^Overview$/i });
+    expect(overviewTab).toHaveClass('cd-tab');
+    expect(overviewTab).toHaveClass('on');
+    expect(overviewTab.querySelector('.count')).toBeNull();
+
+    // Tabs with counts render the .count badge element
+    const interactionsTab = screen.getByRole('button', { name: /Interactions/i });
+    expect(interactionsTab).toHaveClass('cd-tab');
+    expect(interactionsTab.querySelector('.count')).toBeTruthy();
+
+    // Switching to Interactions makes it active and removes active from Overview
+    fireEvent.click(interactionsTab);
+    expect(interactionsTab).toHaveClass('on');
+    expect(overviewTab).not.toHaveClass('on');
+
+    // Switching back to Overview restores active state smoothly
+    fireEvent.click(overviewTab);
+    expect(overviewTab).toHaveClass('on');
+    expect(interactionsTab).not.toHaveClass('on');
+  });
 });
 
 
