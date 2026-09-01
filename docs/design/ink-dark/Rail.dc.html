@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #FAFAFA; } a:hover { color: #A1A1AA; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+    .lbl { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: #71717A; }
+    .sec-h { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.022em; margin: 0; }
+    .card { background: #161618; border-radius: 24px; padding: 24px 26px; }
+
+    .r-grp { padding: 0 12px 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; color: rgba(161,161,170,0.7); line-height: 16px; }
+    .r-sec { padding: 12px 0; }
+    .r-item { display: flex; align-items: center; gap: 12px; margin: 0 8px; height: 44px; padding: 0 12px; border-radius: 32px; color: #A1A1AA; font-size: 14px; box-sizing: border-box; }
+    .r-item + .r-item { margin-top: 2px; }
+    .r-item svg { flex: none; }
+    .r-item.on { background: #FAFAFA; color: #0A0A0B; font-weight: 500; }
+    .r-lbl { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .r-badge { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(250,250,250,0.15); color: #0A0A0B; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+
+    .c-sec { padding: 8px 0; }
+    .c-div { margin: 0 12px 4px; border-top: 1px solid rgba(35,35,39,0.6); }
+    .c-item { position: relative; width: 44px; height: 44px; margin: 0 auto; border-radius: 32px; display: grid; place-items: center; color: #A1A1AA; }
+    .c-item + .c-item { margin-top: 2px; }
+    .c-item.on { background: #FAFAFA; color: #0A0A0B; }
+  </style>
+</helmet>
+
+<div style="width: 1400px; background: #0A0A0B; padding: 60px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #FAFAFA;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 36px; border-bottom: 1px solid #2A2A2E;">
+    <span class="tok" style="color: #71717A; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; dark &middot; NavRail</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.02; letter-spacing: -0.032em; margin: 0;">The side nav, at size</h1>
+    <p style="font-size: 15px; line-height: 1.55; color: #A1A1AA; margin: 0; max-width: 820px; text-wrap: pretty;">
+      Both widths 1:1 against a 900px viewport, drawn from <span class="tok" style="color: #FAFAFA;">NavRail.tsx</span> with every colour resolved through the <span class="tok" style="color: #FAFAFA;">.dark</span> block. The rail is a flush <span class="tok" style="color: #FAFAFA;">bg-surface</span> column, not a floating slab &mdash; which is what the original dark note asked for.
+    </p>
+  </div>
+
+  <div style="display: flex; gap: 40px; align-items: flex-start; padding-top: 40px;">
+
+    <!-- ══ EXPANDED, 1:1 ══ -->
+    <div style="flex: none; display: flex; flex-direction: column; gap: 12px;">
+      <span class="lbl">232px &mdash; expanded</span>
+      <aside style="width: 232px; height: 900px; background: #161618; border-right: 1px solid #232327; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+        <div style="display: flex; align-items: center; height: 64px; padding: 0 12px; border-bottom: 1px solid #232327; flex: none; box-sizing: border-box;">
+          <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+            <div style="width: 36px; height: 36px; border-radius: 32px; background: #FAFAFA; display: grid; place-items: center; flex: none;">
+              <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; color: #0A0A0B; letter-spacing: -0.03em;">C</span>
+            </div>
+            <div style="line-height: 1.2; min-width: 0;">
+              <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600;">CISA Campus</div>
+              <div style="font-size: 10px; color: #A1A1AA; margin-top: -2px;">Work Tracker</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+          <div class="r-sec">
+            <div class="r-grp">Today</div>
+            <div class="r-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg><span class="r-lbl">My Day</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="r-lbl">Coordination Notes</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="r-lbl">Questions</span><span class="r-badge">3</span></div>
+          </div>
+          <div class="r-sec">
+            <div class="r-grp">People</div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="r-lbl">The Journey</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg><span class="r-lbl">People</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg><span class="r-lbl">Visits</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="r-lbl">Gospel</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg><span class="r-lbl">Looking back</span></div>
+          </div>
+          <div class="r-sec">
+            <div class="r-grp">Gatherings</div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg><span class="r-lbl">Gatherings</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg><span class="r-lbl">Messages</span></div>
+          </div>
+          <div class="r-sec">
+            <div class="r-grp">Prayer</div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762"/></svg><span class="r-lbl">On our hearts</span></div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg><span class="r-lbl">Answered</span></div>
+          </div>
+          <div class="r-sec" style="padding-bottom: 0;">
+            <div class="r-grp">Elsewhere</div>
+            <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg><span class="r-lbl">Shared Calendar</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6;"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg></div>
+          </div>
+          <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 44px; background: linear-gradient(to top, #161618, rgba(22,22,24,0));"></div>
+        </div>
+
+        <div style="flex: none; border-top: 1px solid #232327;">
+          <div style="display: flex; align-items: center; padding: 8px;">
+            <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; color: #A1A1AA; font-size: 14px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex: none;"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+              <span style="font-weight: 500;">Settings</span>
+            </div>
+          </div>
+          <div style="border-top: 1px solid #232327;">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; font-size: 12px; font-weight: 500; color: #A1A1AA;">
+              <span>Collapse</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </div>
+          </div>
+        </div>
+      </aside>
+      <span class="tok" style="color: #71717A;">list is 955px &rarr; scrolls at 900</span>
+    </div>
+
+    <!-- ══ COLLAPSED, 1:1 ══ -->
+    <div style="flex: none; display: flex; flex-direction: column; gap: 12px;">
+      <span class="lbl">76px</span>
+      <aside style="width: 76px; height: 900px; background: #161618; border-right: 1px solid #232327; display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+        <div style="display: grid; place-items: center; height: 64px; border-bottom: 1px solid #232327; flex: none;">
+          <div style="width: 36px; height: 36px; border-radius: 32px; background: #FAFAFA; display: grid; place-items: center;">
+            <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; color: #0A0A0B; letter-spacing: -0.03em;">C</span>
+          </div>
+        </div>
+        <div style="flex: 1; min-height: 0; overflow: hidden;">
+          <div class="c-sec">
+            <div class="c-div"></div>
+            <div class="c-item on"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span style="position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 999px; background: #FAFAFA; box-shadow: 0 0 0 2px #161618;"></span></div>
+          </div>
+          <div class="c-sec">
+            <div class="c-div"></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></div>
+          </div>
+          <div class="c-sec">
+            <div class="c-div"></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="m9 16 2 2 4-4"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg></div>
+          </div>
+          <div class="c-sec">
+            <div class="c-div"></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19.414 14.414C21 12.828 22 11.5 22 9.5a5.5 5.5 0 0 0-9.591-3.676.6.6 0 0 1-.818.001A5.5 5.5 0 0 0 2 9.5c0 2.3 1.5 4 3 5.5l5.535 5.362a2 2 0 0 0 2.879.052 2.12 2.12 0 0 0-.004-3 2.124 2.124 0 1 0 3-3 2.124 2.124 0 0 0 3.004 0 2 2 0 0 0 0-2.828l-1.881-1.882a2.41 2.41 0 0 0-3.409 0l-1.71 1.71a2 2 0 0 1-2.828 0 2 2 0 0 1 0-2.828l2.823-2.762"/></svg></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg></div>
+          </div>
+          <div class="c-sec">
+            <div class="c-div"></div>
+            <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg></div>
+          </div>
+        </div>
+        <div style="flex: none; border-top: 1px solid #232327;">
+          <div style="display: grid; place-items: center; padding: 8px;">
+            <div style="width: 100%; display: grid; place-items: center; padding: 4px 0; border-radius: 999px; color: #A1A1AA;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+          </div>
+          <div style="border-top: 1px solid #232327; display: grid; place-items: center; padding: 8px 12px; color: #A1A1AA;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </div>
+        </div>
+      </aside>
+      <span class="tok" style="color: #71717A;">fits at 900</span>
+    </div>
+
+    <!-- ══ ANATOMY ══ -->
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
+
+      <div>
+        <h2 class="sec-h">Item states</h2>
+        <p style="font-size: 13.5px; line-height: 1.5; color: #A1A1AA; margin: 8px 0 0;">Each row is a real 44px item on the rail's own <span class="tok" style="color: #FAFAFA;">#161618</span>.</p>
+      </div>
+
+      <div class="card" style="padding: 20px 8px;">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 216px; flex: none;">
+              <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="r-lbl">The Journey</span></div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500;">Rest</div><div class="tok" style="color: #71717A; margin-top: 2px;">text-on-surface-variant &rarr; #A1A1AA</div></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 216px; flex: none;">
+              <div class="r-item" style="background: #161618;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="r-lbl" style="color: #FAFAFA;">The Journey</span></div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500; color: #FF7B88;">Hover &mdash; the fill does nothing</div><div class="tok" style="color: #71717A; margin-top: 2px;">hover:bg-surface-container-high &rarr; #161618, the rail's own value</div></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 216px; flex: none;">
+              <div class="r-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="r-lbl">The Journey</span></div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500;">Active</div><div class="tok" style="color: #71717A; margin-top: 2px;">bg-primary #FAFAFA / text-on-primary #0A0A0B</div></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 216px; flex: none;">
+              <div class="r-item on"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="r-lbl">Questions</span><span class="r-badge">3</span></div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500;">Active + badge &mdash; reads</div><div class="tok" style="color: #71717A; margin-top: 2px;">bg-primary/15 sits on the white pill</div></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 18px;">
+            <div style="width: 216px; flex: none;">
+              <div class="r-item"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="r-lbl">Questions</span><span class="r-badge">3</span></div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500; color: #FF7B88;">Inactive + badge &mdash; the count is gone</div><div class="tok" style="color: #71717A; margin-top: 2px;">#0A0A0B on #38383A &mdash; 1.6:1</div></div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 18px; padding-top: 6px;">
+            <div style="width: 216px; flex: none; display: flex; align-items: center; padding-left: 8px;">
+              <div class="c-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></svg></div>
+              <div style="display: flex; align-items: center; margin-left: 8px;">
+                <div style="background: #161618; color: #FAFAFA; border: 1px solid #232327; font-size: 12px; font-weight: 500; padding: 4px 8px; border-radius: 8px; white-space: nowrap;">Looking back</div>
+              </div>
+            </div>
+            <div style="min-width: 0;"><div style="font-size: 13.5px; font-weight: 500;">Collapsed + tooltip</div><div class="tok" style="color: #71717A; margin-top: 2px;">hover <em>and</em> focus; bubble is --surface-container-highest &rarr; #161618</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <span class="lbl">Shape</span>
+        <p style="font-size: 13.5px; line-height: 1.6; color: #A1A1AA; margin: 12px 0 0;">
+          Items use <span class="tok" style="color: #FAFAFA;">rounded-xl</span>, and Ink re-values <span class="tok" style="color: #FAFAFA;">--radius-xl</span> to <span class="tok" style="color: #FAFAFA;">32px</span> for shell-level containers. On a 44px item the browser clamps that to 22 &mdash; so the expanded item is a full pill and the collapsed 44&times;44 item is a circle, as is the 36px mark. The rail spec argued for a 14px square at that width, on the grounds that a pill there reads as a circle. It does.
+        </p>
+      </div>
+
+      <div class="card">
+        <span class="lbl">Resolved values</span>
+        <div style="display: flex; flex-direction: column; margin-top: 12px;">
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #232327;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #161618; border: 1px solid #2A2A2E;"></span>
+            <span class="tok">--panel / bg-surface</span><span class="tok" style="color: #A1A1AA;">#161618 &mdash; rail, chrome strip, cards</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #232327;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #0A0A0B; border: 1px solid #2A2A2E;"></span>
+            <span class="tok">--bg / background</span><span class="tok" style="color: #A1A1AA;">#0A0A0B &mdash; the page behind the cards</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #232327;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #232327;"></span>
+            <span class="tok">--border-soft</span><span class="tok" style="color: #A1A1AA;">#232327 &mdash; the rail's right edge and dividers</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #232327;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #202023;"></span>
+            <span class="tok">--panel-2</span><span class="tok" style="color: #A1A1AA;">#202023 &mdash; unused by the rail in dark</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0; border-bottom: 1px solid #232327;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #A1A1AA;"></span>
+            <span class="tok">--text-dim</span><span class="tok" style="color: #A1A1AA;">#A1A1AA &mdash; every resting item label</span>
+          </div>
+          <div style="display: grid; grid-template-columns: 30px 200px 1fr; align-items: center; gap: 14px; padding: 8px 0;">
+            <span style="width: 30px; height: 22px; border-radius: 6px; background: #FAFAFA;"></span>
+            <span class="tok">--accent-strong / primary</span><span class="tok" style="color: #A1A1AA;">#FAFAFA &mdash; the active pill, the mark, the bell badge</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1400,"height":1320}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

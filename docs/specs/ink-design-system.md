@@ -62,6 +62,18 @@ The single structural inversion is that Bento's `--bg` (grey) and `--panel` (whi
 
 **Elevation stays flat.** Card shadow remains none. The popover shadow is deepened and softened. A shell-level shadow token is added for raised chrome.
 
+## Amendments
+
+*Added 2026-09-01, alongside the navigation rail's floating shell ([ADR 0003](../adr/0003-nav-rail-floating-shell.md)). Each of these corrects something this document got wrong or left undone; the evidence is in [`docs/design/DRIFT.md`](../design/DRIFT.md).*
+
+**`--shadow-shell` now exists.** "A shell-level shadow token is added for raised chrome" was written and not done. It is now defined in both theme blocks — `0 8px 32px rgba(10,10,11,0.14)` light, `0 8px 32px rgba(0,0,0,0.66)` dark — and exposed on `@theme`. The floating rail is its first consumer.
+
+**The dark block's raised surfaces were not raised.** `--surface-container-high` and `--surface-container-highest` pointed at `--bg-elev`, which is the same value as `--panel` in dark. Every `hover:bg-surface-container-high` on a `bg-surface` parent therefore painted the surface its own colour — a no-op across roughly 200 usages in 44 files, in dark only. Both now point at `--panel-2`, as light always did. Whatever else changes in these blocks, these two must stay a step above `--panel`, or hover states disappear across the application without anything failing.
+
+**The rail has its own token namespace.** `--rail`, `--rail-on`, `--rail-on-dim`, `--rail-hover`, `--rail-selected`, `--rail-on-selected` and `--rail-line`, defined in both blocks. The navigation shell was listed as out of scope for Ink and remains so behaviourally, but the rail's *surface* is an Ink question and the surface tokens could not answer it: in light the rail is an inverted surface (a near-black slab on a white page), which no `--panel` step describes, and in dark it is a raised one. The namespace lets `NavRail.tsx` name the same tokens in both themes rather than branching. This is the one place in the system where a component owns colour tokens; the justification is that it is the one genuinely inverted surface.
+
+**One of the fourteen hardcoded hex values is gone.** `GlobalSearch`'s hover ring was a literal `#525E6F`; it now reads `--accent-line`. Thirteen remain, and retiring them is still separate work. Worth noting that this document's prediction held exactly — the test that had to be edited was the one asserting the hardcoded colour.
+
 ## Testing Decisions
 
 **A good test here asserts behaviour a user could observe, not a value we wrote down.** A test that asserts `--bg` equals a particular hex tests the implementation: it fails whenever the design changes, catches no defect, and makes the design system harder to edit rather than safer. Per the repository's testing policy, pure styling changes are tested only where behaviour is actually assertable, and hollow snapshot tests written to satisfy a coverage rule are explicitly not wanted. No unit tests are added for token values.

@@ -1,0 +1,229 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #FAFAFA; } a:hover { color: #A1A1AA; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+    .lbl { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: #71717A; }
+    .card { background: #161618; border-radius: 24px; padding: 26px 28px; }
+    .n { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 13px; flex: none; }
+    .h3 { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -0.018em; margin: 0; }
+    .body { font-size: 14px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty; }
+    .fix { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; line-height: 1.7; background: #0A0A0B; border: 1px solid #232327; border-radius: 12px; padding: 12px 14px; color: #FAFAFA; }
+
+    /* item, dark */
+    .di { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 32px; color: #A1A1AA; font-size: 14px; box-sizing: border-box; }
+    .di + .di { margin-top: 2px; }
+    .di svg { flex: none; }
+    /* item, light */
+    .li { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; border-radius: 32px; color: #52525B; font-size: 14px; box-sizing: border-box; }
+    .li + .li { margin-top: 2px; }
+    .li svg { flex: none; }
+  </style>
+</helmet>
+
+<div style="width: 1400px; background: #0A0A0B; padding: 60px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #FAFAFA;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 36px; border-bottom: 1px solid #2A2A2E;">
+    <span class="tok" style="color: #71717A; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; dark &middot; what the walk turns up</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.02; letter-spacing: -0.032em; margin: 0;">Four things dark surfaces</h1>
+    <p style="font-size: 15px; line-height: 1.55; color: #A1A1AA; margin: 0; max-width: 860px; text-wrap: pretty;">
+      Content survives the inversion cleanly &mdash; cards, type, signal colours and the stage hues all hold. What does not survive is the rail's <em>quiet</em> feedback: in dark, three of the four values Ink uses for &ldquo;slightly raised&rdquo; land on the rail's own colour. Each pair below is the same markup under <span class="tok" style="color: #FAFAFA;">:root</span> and under <span class="tok" style="color: #FAFAFA;">.dark</span>.
+    </p>
+  </div>
+
+  <!-- ── 1 ─────────────────────────────────────────────────────────── -->
+  <div style="padding-top: 40px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="n" style="background: #FF7B88; color: #0A0A0B;">1</span>
+      <h2 class="h3">The hover fill is the rail's own colour</h2>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-top: 18px; align-items: stretch;">
+
+      <div style="flex: none; width: 272px; background: #FFFFFF; border-radius: 24px; padding: 14px; box-sizing: border-box;">
+        <span class="lbl" style="color: #A1A1AA; padding-left: 6px;">Light</span>
+        <div style="margin-top: 10px; background: #F4F4F5; border-radius: 16px; padding: 8px;">
+          <div class="li"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg>The Journey</div>
+          <div class="li" style="background: #EAEAEC; color: #0A0A0B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>People</div>
+          <div class="li"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg>Visits</div>
+        </div>
+        <p class="tok" style="color: #A1A1AA; margin: 10px 0 0; padding-left: 6px;">#EAEAEC on #F4F4F5</p>
+      </div>
+
+      <div style="flex: none; width: 272px; background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 24px; padding: 14px; box-sizing: border-box;">
+        <span class="lbl" style="padding-left: 6px;">Dark &mdash; same row hovered</span>
+        <div style="margin-top: 10px; background: #161618; border-radius: 16px; padding: 8px;">
+          <div class="di"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg>The Journey</div>
+          <div class="di" style="background: #161618; color: #FAFAFA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg>People</div>
+          <div class="di"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg>Visits</div>
+        </div>
+        <p class="tok" style="color: #71717A; margin: 10px 0 0; padding-left: 6px;">#161618 on #161618 &mdash; only the text brightens</p>
+      </div>
+
+      <div class="card" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <p class="body">
+          The light block points <span class="tok" style="color: #FAFAFA;">--surface-container-high</span> at <span class="tok" style="color: #FAFAFA;">--panel-2</span>; the dark block points it at <span class="tok" style="color: #FAFAFA;">--bg-elev</span>, which is the same value as <span class="tok" style="color: #FAFAFA;">--panel</span>. Every surface that is already a panel therefore has no raised state in dark. In the rail that is the twelve destinations, the Settings row, the Collapse button, the bell and the impersonation eye in the chrome strip, and the profile menu, which lands on the strip at the strip's own colour. The rail's internal scrollbar has the same problem from the other end &mdash; its thumb is <span class="tok" style="color: #FAFAFA;">--outline-variant</span> (#232327) on #161618.
+        </p>
+        <div class="fix">
+          <span style="color: #71717A;">.dark {</span><br>
+          <span style="color: #FF7B88;">-  --surface-container-high: var(--bg-elev);</span><br>
+          <span style="color: #51E098;">+  --surface-container-high: var(--panel-2);</span> <span style="color: #71717A;">/* #202023, as light does */</span><br>
+          <span style="color: #71717A;">}</span>
+        </div>
+        <p class="body" style="font-size: 13px;">One line, no markup, and it restores the raised step for the whole application rather than the rail alone. <span class="tok">--surface-container-highest</span> wants the same treatment for the tooltip.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2 ─────────────────────────────────────────────────────────── -->
+  <div style="padding-top: 36px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="n" style="background: #FF7B88; color: #0A0A0B;">2</span>
+      <h2 class="h3">The Questions count is only readable when Questions is the page you are on</h2>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-top: 18px; align-items: stretch;">
+      <div style="flex: none; width: 272px; background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 24px; padding: 14px; box-sizing: border-box;">
+        <span class="lbl" style="padding-left: 6px;">Dark</span>
+        <div style="margin-top: 10px; background: #161618; border-radius: 16px; padding: 8px;">
+          <div class="di" style="background: #FAFAFA; color: #0A0A0B; font-weight: 500;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <span style="flex: 1;">Questions</span>
+            <span style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(250,250,250,0.15); color: #0A0A0B; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">3</span>
+          </div>
+          <div class="di">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <span style="flex: 1;">Questions</span>
+            <span style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(250,250,250,0.15); color: #0A0A0B; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">3</span>
+          </div>
+        </div>
+        <p class="tok" style="color: #71717A; margin: 10px 0 0; padding-left: 6px;">active, then not</p>
+      </div>
+
+      <div style="flex: none; width: 272px; background: #FFFFFF; border-radius: 24px; padding: 14px; box-sizing: border-box;">
+        <span class="lbl" style="color: #A1A1AA; padding-left: 6px;">Light &mdash; the same fault</span>
+        <div style="margin-top: 10px; background: #F4F4F5; border-radius: 16px; padding: 8px;">
+          <div class="li" style="background: #131316; color: #FFFFFF; font-weight: 500;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <span style="flex: 1;">Questions</span>
+            <span style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(19,19,22,0.15); color: #FFFFFF; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">3</span>
+          </div>
+          <div class="li">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+            <span style="flex: 1;">Questions</span>
+            <span style="min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: rgba(19,19,22,0.15); color: #FFFFFF; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">3</span>
+          </div>
+        </div>
+        <p class="tok" style="color: #A1A1AA; margin: 10px 0 0; padding-left: 6px;">not a dark-only bug</p>
+      </div>
+
+      <div class="card" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <p class="body">
+          The badge is <span class="tok" style="color: #FAFAFA;">text-on-primary bg-primary/15</span>. That pairing is only coherent on top of a <span class="tok" style="color: #FAFAFA;">bg-primary</span> fill &mdash; which is exactly where it was designed and looked at. On a resting item the 15% tint blends into the rail and the text keeps the <em>opposite</em> theme's ink: <span class="tok" style="color: #FAFAFA;">#0A0A0B on #38383A</span> in dark, <span class="tok" style="color: #FAFAFA;">#FFFFFF on #D2D2D3</span> in light. Both land near 1.6:1.
+        </p>
+        <p class="body">
+          Worth saying plainly: this is not a dark-mode regression, it is a pre-existing bug that dark makes obvious &mdash; and it defeats the point of the badge, since the count matters most on the page you are <em>not</em> looking at. The collapsed rail is unaffected: it reduces to a <span class="tok" style="color: #FAFAFA;">bg-primary</span> dot, which reads in both themes.
+        </p>
+        <div class="fix">
+          <span style="color: #71717A;">RailItem badge, expanded</span><br>
+          <span style="color: #FF7B88;">-  text-on-primary bg-primary/15</span><br>
+          <span style="color: #51E098;">+  text-on-surface bg-surface-container-high</span> <span style="color: #71717A;">/* + the isActive pair */</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3 ─────────────────────────────────────────────────────────── -->
+  <div style="padding-top: 36px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="n" style="background: #F2930D; color: #0A0A0B;">3</span>
+      <h2 class="h3">The active pill is the brightest object on the screen</h2>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-top: 18px; align-items: stretch;">
+      <div style="flex: none; width: 564px; background: #0A0A0B; border: 1px solid #2A2A2E; border-radius: 24px; padding: 14px; box-sizing: border-box; display: flex; gap: 14px;">
+        <div style="width: 232px; flex: none; background: #161618; border-radius: 16px; padding: 8px 0;">
+          <div class="di" style="margin: 0 8px; background: #FAFAFA; color: #0A0A0B; font-weight: 500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg>My Day</div>
+          <div class="di" style="margin: 0 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Coordination Notes</div>
+          <div class="di" style="margin: 0 8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg>The Journey</div>
+        </div>
+        <div style="flex: 1; min-width: 0; padding: 10px 6px 0;">
+          <p style="font-size: 12.5px; color: #71717A; margin: 0;">Friday, March 14</p>
+          <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: -0.02em; margin: 6px 0 0;">Good morning, Tony.</h3>
+          <div style="background: #161618; border-radius: 16px; padding: 14px 16px; margin-top: 14px;">
+            <span style="font-size: 12px; color: #A1A1AA;">Next up &middot; Fri, Mar 14</span>
+            <p style="font-size: 14px; margin: 6px 0 0;">Campus dinner &amp; testimony night</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <p class="body">
+          This is the system working exactly as specified &mdash; selection is inversion, and <span class="tok" style="color: #FAFAFA;">--accent-strong</span> flipping to <span class="tok" style="color: #FAFAFA;">#FAFAFA</span> is the documented dark behaviour. But the step is much larger here than in light. In light, a <span class="tok" style="color: #FAFAFA;">#131316</span> pill sits on a page whose brightest area is already white, so it reads as one dark mark among many. In dark, a 232&times;44 block of near-white is the highest-luminance region on the entire screen, brighter than any heading, and the eye goes to the nav rather than to the page.
+        </p>
+        <p class="body">
+          Nothing here is broken and it needs no fix to ship. It is a judgement call worth making deliberately rather than inheriting: keep it, or give the dark block a slightly restrained selected fill &mdash; <span class="tok" style="color: #FAFAFA;">#E4E4E7</span> is already in the palette as <span class="tok" style="color: #FAFAFA;">--accent-hover</span>, and takes roughly a fifth off the glare while staying unmistakably selected.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4 ─────────────────────────────────────────────────────────── -->
+  <div style="padding-top: 36px;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span class="n" style="background: #F2930D; color: #0A0A0B;">4</span>
+      <h2 class="h3">One Bento hex is still in the search field's hover ring</h2>
+    </div>
+
+    <div style="display: flex; gap: 20px; margin-top: 18px; align-items: stretch;">
+      <div style="flex: none; width: 564px; background: #161618; border-radius: 24px; padding: 22px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px;">
+        <div style="position: relative; width: 300px; height: 40px; border-radius: 16px; background: #161618; box-shadow: inset 0 0 0 1px #3F3F46; display: flex; align-items: center; box-sizing: border-box;">
+          <span style="display: grid; place-items: center; width: 44px; height: 100%; color: #A1A1AA;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+          <span style="font-size: 14px; font-weight: 500; color: rgba(161,161,170,0.7);">Search or jump to&hellip;</span>
+        </div>
+        <span class="tok" style="color: #71717A;">rest &mdash; inset 1px var(--gs-outline) #3F3F46</span>
+        <div style="position: relative; width: 300px; height: 40px; border-radius: 16px; background: #161618; box-shadow: inset 0 0 0 1px #525E6F; display: flex; align-items: center; box-sizing: border-box;">
+          <span style="display: grid; place-items: center; width: 44px; height: 100%; color: #A1A1AA;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg></span>
+          <span style="font-size: 14px; font-weight: 500; color: rgba(161,161,170,0.7);">Search or jump to&hellip;</span>
+        </div>
+        <span class="tok" style="color: #71717A;">hover &mdash; inset 1px #525E6F, hardcoded</span>
+      </div>
+
+      <div class="card" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <p class="body">
+          <span class="tok" style="color: #FAFAFA;">GlobalSearch</span>'s hover ring is a literal <span class="tok" style="color: #FAFAFA;">#525E6F</span> &mdash; a Bento blue-grey, sitting a few degrees off Ink's neutral axis and the same in both themes. It is subtle rather than wrong, and it is one of the fourteen hardcoded hex values the spec deliberately left in place. Worth naming because the chrome strip is one of the three places the dark walk was supposed to check.
+        </p>
+        <p class="body" style="font-size: 13px;">
+          The natural token is <span class="tok" style="color: #FAFAFA;">--accent-line</span>, which is already a theme-dependent low-alpha ink and would give the hover ring a real light and dark value instead of one shared blue.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- WHAT HELD -->
+  <div style="padding-top: 40px;">
+    <div class="card" style="background: rgba(81,224,152,0.10); border: 1px solid rgba(81,224,152,0.28);">
+      <h3 class="h3" style="font-size: 17px; color: #51E098;">What held up</h3>
+      <p class="body" style="margin-top: 10px; max-width: 1080px;">
+        The inversion itself is sound. <span class="tok" style="color: #FAFAFA;">--accent-on</span> flips correctly, so primary buttons stay black-on-white; the rail takes <span class="tok" style="color: #FAFAFA;">--panel</span> rather than staying black, which is what the original dark note asked for and what the shipped shell does; signal colours carry over legibly, with overdue in <span class="tok" style="color: #FAFAFA;">#FF7B88</span> and done in <span class="tok" style="color: #FAFAFA;">#51E098</span> at their soft 16% containers; and the stage hues at <span class="tok" style="color: #FAFAFA;">L 0.82 / C 0.14</span> stay the only chroma on screen without glowing. The rail's separation from the page is about as strong in dark as in light &mdash; roughly four points of L* either way &mdash; so the flush column still reads as its own object.
+      </p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1400,"height":1620}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

@@ -23,6 +23,15 @@ Values in these files were lifted from `src/index.css` and the real component
 source rather than invented, so they can be read as the target rather than as an
 impression of it.
 
+**With one caveat, added later.** That is true of the token artboards and false
+of the rail ones. `NavPref.dc.html`, `Shells.dc.html` and `Home.dc.html` were
+drawn from `navigation-shell-preference.md` *before* the rail existed, so their
+rail is a proposal, not a description — and the gap between the drawing and what
+got built is most of [`../DRIFT.md`](../DRIFT.md). The floating black slab they
+show shipped on 2026-09-01 ([ADR 0003](../../adr/0003-nav-rail-floating-shell.md));
+the account block they show never did. See also
+[`../ink-dark/`](../ink-dark), the canvas from the dark-theme review.
+
 ## Why the published page is not checked in
 
 Publishing wraps these sources in a ~2.6 MB editor payload. That artifact is
