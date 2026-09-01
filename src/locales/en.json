@@ -1316,6 +1316,8 @@
       "here_now": "here now",
       "cared_for_by": "Cared for by",
       "added_by": "Added by",
+      "last_contacted_by": "Last contacted by",
+      "just_owner_for_now": "Just {name} for now.",
       "transfer_to": "Transfer to…",
       "transfer_confirm": "Hand off {name} to {recipient}? They'll own this contact from now on.",
       "transfer_done": "{recipient} now cares for {name}.",
