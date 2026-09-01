@@ -6,6 +6,7 @@ follows [Keep a Changelog](https://keepachangelog.com/) (Added / Changed / Fixed
 
 ## [Unreleased]
 ### Fixed
+- **Contact Details Tab Bar Height Invariance (#684)** — Enforced uniform `48px` min-height and centered vertical alignment across `.cd-tabs-bar` and `.cd-tab` buttons in `src/index.css`. This prevents the tab navigation bar from narrowing or jittering in height when selecting the badge-less "Overview" tab versus tabs with count badges ("Follow-up", "Interactions", etc.). Added unit regression test in `src/test/ContactDetailsModal.test.tsx` and restored missing desktop aside translation keys in `en.json` and `es.json`.
 - **fix(ci): migrate seed-emulator.ts to firebase-admin v14 modular API** — The E2E CI workflow (`e2e.yml`) had been failing for 5+ consecutive daily runs because `scripts/seed-emulator.ts` still used the legacy `import admin from 'firebase-admin'` namespace (removed in v14). The `admin.apps` property was `undefined`, causing a `TypeError` at startup before Playwright ever launched. Migrated all 7 call sites to the modular API (`initializeApp`/`getApps`/`getApp`/`getAuth`/`FieldValue`), matching the pattern already used in `server.ts` since commit `3185380`.
 
 ### Added

@@ -1321,6 +1321,8 @@
       "transfer_done": "{recipient} now cares for {name}.",
       "add_someone": "Add someone…",
       "add_someone_lower": "add someone",
+      "who_else_can_see": "Who else can see them",
+      "remove_access": "Remove access",
       "tags": "Tags",
       "none_yet": "None yet",
       "remove_tag": "Remove tag",
