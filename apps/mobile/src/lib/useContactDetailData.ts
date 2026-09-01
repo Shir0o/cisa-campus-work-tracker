@@ -22,6 +22,8 @@ import {
 } from '@cisa/core';
 import { useAuth } from './AuthProvider';
 import { handleFirestoreError, logActivity, OperationType } from './firebase';
+import { useFullTimerNames } from './useFullTimerNames';
+import { resolveCaregiverName } from './caregiverName';
 import { subscribeContact, subscribeStages } from './data/contacts';
 import {
   addInteraction as addInteractionApi,
@@ -128,6 +130,19 @@ export function useContactDetailData(contactId: string) {
 
   const shownLoading = useMinLoading(loading);
 
+  // Resolve the contact's "Cared for by" name. The display is bound to the
+  // mutable `owner` field, not `createdBy` — when a contact is handed off,
+  // the name shown here should change. The full-timer roster is the source
+  // of uid → name; if the owner isn't in the roster (deleted user, anon
+  // sign-up), fall back to the immutable `createdByName` so the row never
+  // shows nothing.
+  const fullTimerNames = useFullTimerNames();
+  const caregiverName = resolveCaregiverName(
+    contact?.owner ?? null,
+    contact?.createdByName ?? null,
+    fullTimerNames,
+  );
+
   return {
     contact,
     stages,
@@ -140,6 +155,7 @@ export function useContactDetailData(contactId: string) {
     threadMessages,
     walkLabel,
     inYourCare,
+    caregiverName,
 
     addInteraction: async (input: { content: string; dateTime: string; type: string }) => {
       if (!contact || !uid) return;

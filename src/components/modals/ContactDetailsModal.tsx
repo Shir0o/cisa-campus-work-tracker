@@ -24,7 +24,8 @@ import {
   Check,
   HeartHandshake,
   Tag,
-} from "lucide-react";
+  ArrowRightLeft,
+ } from "lucide-react";
 import {
   db,
   handleFirestoreError,
@@ -218,6 +219,11 @@ export default function ContactDetailsModal({
   const [prayers, setPrayers] = useState<PrayerRecord[]>([]);
   const [prayersLoading, setPrayersLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; role: string; initials: string }[]>([]);
+
+  // True while the aside's Transfer affordance is open. The owner/admin
+  // gates this affordance via `canShare`, so the picker only lists teammates
+  // who are not already the current owner.
+  const [transferring, setTransferring] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [activeTab, setActiveTab] = useState<
     "overview" | "interactions" | "thread" | "prayer" | "discussion" | "history"
@@ -546,6 +552,10 @@ export default function ContactDetailsModal({
   const shareOptions = teamMembers.filter(
     (m) => m.id !== ownerId && !coCreators.includes(m.id)
   );
+  // Transfer candidates: every teammate except the current owner. The admin
+  // should be able to hand a contact to a gospel partner already listed as
+  // a co-creator, so we don't filter coCreators out of this list.
+  const transferOptions = teamMembers.filter((m) => m.id !== ownerId);
   const canRemoveInteraction = (interaction: Interaction) =>
     !interaction.id.startsWith("visit_") &&
     (currentUid === interaction.userId || hasMinRole(role, "manager"));
@@ -621,6 +631,59 @@ export default function ContactDetailsModal({
       });
     }
   };
+
+  // "Cared for by" on the aside reads from `owner` — the mutable field that
+  // says who currently has pastoral responsibility for this contact. Hand it
+  // off to another teammate and the audit log will say so. The firestore
+  // rules gate this by `isAdmin() || existing().owner == request.auth.uid`.
+  const transferOwner = async (newOwnerId: string) => {
+    if (!contact) return;
+    if (!canShare) return;
+    if (newOwnerId === ownerId) {
+      setTransferring(false);
+      return;
+    }
+    const newOwner = teamMembers.find((m) => m.id === newOwnerId);
+    const previousOwnerId = ownerId;
+    const previousOwner = teamMembers.find((m) => m.id === previousOwnerId);
+    const recipientName = newOwner?.name || newOwnerId;
+    const ok = window.confirm(
+      t('modals.contactDetails.transfer_confirm')
+        .replace('{name}', contact.name.split(' ')[0] || contact.name)
+        .replace('{recipient}', recipientName),
+    );
+    if (!ok) {
+      setTransferring(false);
+      return;
+    }
+    // Drop the previous owner from coCreators in the same write so the audit
+    // stays clean — a former owner should not be self-sharing the contact.
+    const patch: Record<string, unknown> = { owner: newOwnerId };
+    if (previousOwnerId && previousOwnerId !== newOwnerId) {
+      patch.coCreators = arrayRemove(previousOwnerId);
+    }
+    await updateDoc(doc(db, 'contacts', contact.id), patch);
+    contact.owner = newOwnerId;
+    if (previousOwnerId && previousOwnerId !== newOwnerId) {
+      contact.coCreators = (contact.coCreators || []).filter(
+        (id) => id !== previousOwnerId,
+      );
+    }
+    await logActivity({
+      action: 'transferred a person',
+      targetId: contact.id,
+      targetName: t('modals.contactDetails.transfer_done')
+        .replace('{recipient}', recipientName)
+        .replace('{name}', contact.name.split(' ')[0] || contact.name),
+      targetType: 'contact',
+      type: 'edit',
+      description: previousOwner?.name
+        ? `From ${previousOwner.name} to ${recipientName}`
+        : `To ${recipientName}`,
+    });
+    setTransferring(false);
+  };
+
 
   const handlePhoneBlur = () => {
     if (!formData.phone) {
@@ -2533,6 +2596,37 @@ export default function ContactDetailsModal({
                     {ownerRole && <div className="cd-owner-role">{ownerRole}</div>}
                   </div>
                 </div>
+
+                {canShare && transferOptions.length > 0 && (
+                  transferring ? (
+                    <div className="flex items-center gap-2 mt-2">
+                      <select
+                        className="cd-share-sel flex-1"
+                        autoFocus
+                        defaultValue=""
+                        onChange={(e) => e.target.value && transferOwner(e.target.value)}
+                      >
+                        <option value="" disabled>{t('modals.contactDetails.transfer_to')}</option>
+                        {transferOptions.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name} · {s.role}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => setTransferring(false)}
+                        className="px-2.5 py-1 text-xs text-on-surface-variant hover:text-on-surface transition-colors shrink-0"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setTransferring(true)}
+                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border border-dashed border-outline-variant text-xs font-medium text-on-surface-variant hover:border-primary hover:text-accent transition-colors self-start mt-2"
+                    >
+                      <ArrowRightLeft className="w-3 h-3" /> {t('modals.contactDetails.transfer_to')}
+                    </button>
+                  )
+                )}
                 {(addedByName || sinceBy) && (
                   <div className="cd-whowho">
                     {addedByName && (
