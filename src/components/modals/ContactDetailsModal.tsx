@@ -1077,8 +1077,13 @@ export default function ContactDetailsModal({
     ? t('modals.contactDetails.last_connected').replace('{date}', lastConnectedDate)
     : t('modals.contactDetails.not_connected_yet');
   const sinceBy = latestInteraction?.userName || currentContact?.lastContactedBy || null;
+  // "Cared for by" binds to `owner` only. The legacy fallback to
+  // `createdByName` stays so contacts whose `owner` hasn't been backfilled
+  // yet still show a real name — once the backfill script runs, the
+  // fallback becomes unreachable in production and the field is purely
+  // `owner`. `addedByName` below renders "Added by" separately.
   const ownerInfo = teamMembers.find((m) => m.id === ownerId);
-  const ownerName = ownerInfo?.name || contact.createdByName || "—";
+  const ownerName = ownerInfo?.name || (contact.owner ? null : contact.createdByName) || "—";
   const ownerRole = ownerInfo?.role || "";
   const addedByName =
     contact.createdByName ||

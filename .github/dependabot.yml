@@ -1,69 +1,22 @@
 version: 2
 updates:
-  # GitHub Actions workflows
-  - package-ecosystem: "github-actions"
-    directory: "/"
+  - package-ecosystem: npm
+    directory: /
     schedule:
-      interval: "weekly"
-
-  # Root web application (npm)
-  - package-ecosystem: "npm"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+      interval: weekly
+    open-pull-requests-limit: 5
     groups:
-      tiptap:
+      dev-dependencies:
+        dependency-type: development
+      production-dependencies:
+        dependency-type: production
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      actions:
         patterns:
-          - "@tiptap/*"
-
-  # Mobile application (npm)
-  - package-ecosystem: "npm"
-    directory: "/apps/mobile"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
-    ignore:
-      # Pinned to Expo SDK 54 runtime matrix
-      - dependency-name: "expo"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react-native"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react-native-worklets"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "@react-native-async-storage/async-storage"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "jest"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "jest-expo"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@babel/core"
-        update-types: ["version-update:semver-major"]
-      # react is pinned exactly (19.1.0) for the Expo SDK 54 runtime matrix, so
-      # react-dom / react-test-renderer can only move in lockstep with it.
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react-test-renderer"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      # Pinned to Expo SDK 54 versions to prevent cross-SDK EAS build failures
-      - dependency-name: "expo-build-properties"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "expo-updates"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "expo-splash-screen"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "expo-file-system"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@expo/metro-runtime"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "react-native-screens"
-        update-types: ["version-update:semver-minor"]
-      - dependency-name: "react-native-webview"
-        update-types: ["version-update:semver-major"]
-
-  # Core shared package (npm)
-  - package-ecosystem: "npm"
-    directory: "/packages/core"
-    schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 10
+          - "*"

@@ -160,7 +160,7 @@ export interface ContactNotifyPayload {
 export async function addContact(
   db: Firestore,
   input: NewContactInput,
-  by: { uid?: string | null; name?: string | null },
+  by?: { uid?: string | null; name?: string | null },
   notify?: (payload: ContactNotifyPayload) => void,
 ): Promise<string> {
   const data: Record<string, any> = {
@@ -168,14 +168,20 @@ export async function addContact(
     lastSeen: "Just now",
     createdAt: input.createdAt || new Date().toISOString(),
     serverCreatedAt: serverTimestamp(),
-    createdBy: by.uid ?? null,
-    createdByName: by.name ?? null,
+    createdBy: by?.uid ?? null,
+    createdByName: by?.name ?? null,
+    // "Cared for by" on the contact detail page binds to `owner` — the
+    // mutable field that says who currently has pastoral responsibility for
+    // the contact. It defaults to whoever adds the contact (falling back to
+    // `null` for the anon sign-up path) and can be reassigned later from the
+    // contact page (gated by the firestore rules on `owner` + `coCreators`).
+    owner: by?.uid ?? null,
     hasNewActivity: true,
     attendance: {},
   };
   // Gospel partners: a person either member of a pair brings in is shared with
   // the other from the moment they're added (stamped as a co-creator).
-  stampPartners(data, by.uid);
+  stampPartners(data, by?.uid);
   for (const key of Object.keys(data)) {
     if (data[key] === undefined) {
       delete data[key];
@@ -183,7 +189,7 @@ export async function addContact(
   }
   const docRef = await addDoc(collection(db, "contacts"), data);
 
-  if (notify && by.uid) {
+  if (notify && by?.uid) {
     notify({
       userId: by.uid,
       title: "Contact Created",
