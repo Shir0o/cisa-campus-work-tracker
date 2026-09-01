@@ -465,13 +465,13 @@ function AddTaskRow({
 }
 
 export default function MyDay() {
-  const { user, role } = useAuth();
+  const { user, role, effectiveUserId, effectiveUserName } = useAuth();
   const { t } = useLanguage();
   const { setSelectedContact: setGlobalSelectedContact } = useLayout();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
-  const firstName = user?.displayName?.split(" ")[0] || "friend";
-  const uid = user?.uid;
+  const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
+  const uid = effectiveUserId || user?.uid;
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);

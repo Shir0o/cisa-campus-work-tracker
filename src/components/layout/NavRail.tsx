@@ -74,7 +74,7 @@ export interface NavRailProps {
 }
 
 export default function NavRail(_props: NavRailProps = {}) {
-  const { role, isAdmin, user } = useAuth();
+  const { role, isAdmin, user, effectiveUserId } = useAuth();
   const { pathname } = useLocation();
   const { effective, setPreference } = useNavShell();
   const collapsed = effective === 'rail-collapsed';
@@ -86,7 +86,7 @@ export default function NavRail(_props: NavRailProps = {}) {
   // expanded, a dot when it's collapsed. The same hook powers the badge on
   // the top bar (#646); both shells stay in sync because they read from
   // the same Firestore collection.
-  const waitingAsks = useWaitingAsksCount(user?.uid, isAdmin);
+  const waitingAsks = useWaitingAsksCount(effectiveUserId || user?.uid, isAdmin);
 
   const railWidth = collapsed ? 'w-[76px]' : 'w-[232px]';
 

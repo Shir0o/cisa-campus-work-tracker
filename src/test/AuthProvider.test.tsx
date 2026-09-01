@@ -651,10 +651,11 @@ describe('AuthProvider', () => {
     });
 
     const ImpersonationSwitchComponent = () => {
-      const { effectiveUserId, setImpersonateTarget, setOwnerViewRole } = useAuth();
+      const { effectiveUserId, effectiveUserName, setImpersonateTarget, setOwnerViewRole } = useAuth();
       return (
         <div>
           <div data-testid="effective-uid">{effectiveUserId}</div>
+          <div data-testid="effective-name">{effectiveUserName}</div>
           <button
             onClick={() =>
               setImpersonateTarget({
@@ -690,13 +691,16 @@ describe('AuthProvider', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('effective-uid')).toHaveTextContent('admin-uid');
+      expect(screen.getByTestId('effective-name')).toHaveTextContent('Admin User');
     });
 
     fireEvent.click(screen.getByText('Impersonate Trainee 88'));
     expect(screen.getByTestId('effective-uid')).toHaveTextContent('tr-88');
+    expect(screen.getByTestId('effective-name')).toHaveTextContent('Trainee 88');
 
     fireEvent.click(screen.getByText('Simulate Trainee Role'));
     expect(screen.getByTestId('effective-uid')).toHaveTextContent('cisa-trainee');
+    expect(screen.getByTestId('effective-name')).toHaveTextContent('Trainee');
   });
 });
 

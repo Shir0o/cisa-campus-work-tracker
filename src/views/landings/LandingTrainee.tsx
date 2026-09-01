@@ -117,10 +117,10 @@ function WaitingRow({
 // Trainee landing: what the full-timer's flagged + the students in your care +
 // the prayers you're holding.
 export default function LandingTrainee() {
-  const { user } = useAuth();
+  const { user, effectiveUserId, effectiveUserName } = useAuth();
   const navigate = useNavigate();
-  const uid = user?.uid;
-  const firstName = user?.displayName?.split(" ")[0] || "friend";
+  const uid = effectiveUserId || user?.uid;
+  const firstName = (effectiveUserName || user?.displayName || user?.email)?.split(" ")[0] || "friend";
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);

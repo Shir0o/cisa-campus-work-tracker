@@ -712,4 +712,17 @@ describe('MyDayMobile', () => {
       state: { focusQuestionId: 'q1' },
     });
   });
+
+  it('renders impersonated persona name in greeting when effectiveUserName is present', () => {
+    (useAuth as ReturnType<typeof vi.fn>).mockReturnValue({
+      user: { uid: 'owner-uid', displayName: 'Admin Owner' },
+      effectiveUserId: 'student-uid',
+      effectiveUserName: 'Jordan Student',
+      role: 'admin',
+    });
+
+    render(<MyDayMobile contacts={[]} events={[]} prayers={[]} stages={[]} />);
+
+    expect(screen.getByText(/Good morning, Jordan\./)).toBeInTheDocument();
+  });
 });
