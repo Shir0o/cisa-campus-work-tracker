@@ -702,5 +702,72 @@ describe('AuthProvider', () => {
     expect(screen.getByTestId('effective-uid')).toHaveTextContent('cisa-trainee');
     expect(screen.getByTestId('effective-name')).toHaveTextContent('Trainee');
   });
+
+  it('clears loading state when user doc fetch throws an error', async () => {
+    const mockUser = {
+      uid: 'error-uid',
+      email: 'error@example.com',
+      displayName: 'Error User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(mockUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockRejectedValue(new Error('Firestore network error'));
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading Auth...')).not.toBeInTheDocument();
+      expect(screen.getByText('User: error@example.com')).toBeInTheDocument();
+    });
+  });
+
+  it('clears loading state and handles error when provisioning new user doc throws', async () => {
+    const mockUser = {
+      uid: 'prov-error-uid',
+      email: 'prov-error@example.com',
+      displayName: 'Prov Error User',
+      getIdTokenResult: vi.fn().mockResolvedValue({ claims: {} }),
+    };
+
+    (onAuthStateChanged as any).mockImplementation((auth: any, callback: any) => {
+      callback(mockUser);
+      return vi.fn();
+    });
+
+    (getDoc as any).mockImplementation((docRef: any) => {
+      if (docRef.path === 'users/prov-error-uid') {
+        return Promise.resolve({ exists: () => false });
+      }
+      if (docRef.path === 'invitations/prov-error@example.com') {
+        return Promise.resolve({
+          exists: () => true,
+          data: () => ({ role: 'manager', approved: true }),
+        });
+      }
+      return Promise.resolve({ exists: () => false });
+    });
+
+    (setDoc as any).mockRejectedValueOnce(new Error('Permission denied or network failure on setDoc'));
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading Auth...')).not.toBeInTheDocument();
+      expect(screen.getByText('User: prov-error@example.com')).toBeInTheDocument();
+    });
+  });
 });
 
