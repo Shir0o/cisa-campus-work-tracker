@@ -136,122 +136,135 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         userDocUnsubscribe = null;
       }
 
-      if (authUser) {
-        const idTokenResult = await authUser.getIdTokenResult();
-        const isAdminClaim = !!idTokenResult.claims.admin;
-        const userEmail = authUser.email?.toLowerCase();
-        if (!userEmail) return;
-
-        // Initial setup/check
-        const userDocRef = doc(db, 'users', authUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        
-        if (!userDoc.exists()) {
-          // Check for invitation
-          const inviteRef = doc(db, 'invitations', userEmail);
-          const inviteDoc = await getDoc(inviteRef);
-          
-          let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isAdminClaim ? 'admin' : 'viewer';
-          let initialApproved = isAdminClaim;
-
-          if (inviteDoc.exists()) {
-            const inviteData = inviteDoc.data();
-            initialRole = inviteData.role;
-            initialApproved = inviteData.approved;
-          } else if (!isAdminClaim && userEmail !== 'yilongwang05@gmail.com') {
-            // Uninvited user attempting to log in
-            await signOut(auth);
-            setUser(null);
+      try {
+        if (authUser) {
+          const idTokenResult = await authUser.getIdTokenResult();
+          const isAdminClaim = !!idTokenResult.claims.admin;
+          const userEmail = authUser.email?.toLowerCase();
+          if (!userEmail) {
             setLoading(false);
-            alert("Access Denied: Your account has not been added by an administrator yet.");
             return;
           }
 
-          // Email/password accounts have no displayName/photoURL; the Firestore
-          // rules require displayName to be a non-null string, so fall back to
-          // the local part of the email (or a default) when the provider has none.
-          const fallbackName = authUser.email?.split('@')[0] || 'Member';
-          const resolvedDisplayName = authUser.displayName || fallbackName;
-          const resolvedPhotoURL = authUser.photoURL || '';
-          const initialData = {
-            email: authUser.email,
-            displayName: resolvedDisplayName,
-            photoURL: resolvedPhotoURL,
-            approved: initialApproved,
-            role: initialRole,
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          };
-          await setDoc(userDocRef, initialData);
+          // Initial setup/check
+          const userDocRef = doc(db, 'users', authUser.uid);
+          const userDoc = await getDoc(userDocRef);
           
-          if (inviteDoc.exists()) {
-            try {
-              const { deleteDoc } = await import('firebase/firestore');
-              await deleteDoc(inviteRef);
-            } catch (error) {
-              console.warn('Failed to delete invitation:', error);
+          if (!userDoc.exists()) {
+            // Check for invitation
+            const inviteRef = doc(db, 'invitations', userEmail);
+            const inviteDoc = await getDoc(inviteRef);
+            
+            let initialRole: 'admin' | 'manager' | 'operator' | 'viewer' = isAdminClaim ? 'admin' : 'viewer';
+            let initialApproved = isAdminClaim;
+
+            if (inviteDoc.exists()) {
+              const inviteData = inviteDoc.data();
+              initialRole = inviteData.role;
+              initialApproved = inviteData.approved;
+            } else if (!isAdminClaim && userEmail !== 'yilongwang05@gmail.com') {
+              // Uninvited user attempting to log in
+              await signOut(auth);
+              setUser(null);
+              setLoading(false);
+              alert("Access Denied: Your account has not been added by an administrator yet.");
+              return;
             }
-          }
 
-          setIsApproved(initialApproved);
-          setActualRole(initialRole);
-          if (!authUser.displayName) {
-            setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
-          }
-        } else {
-          // Document exists, set initial state before listener starts
-          const data = userDoc.data();
-
-          if (isAdminClaim && (data.role !== 'admin' || !data.approved)) {
-            try {
-              const { updateDoc } = await import('firebase/firestore');
-              await updateDoc(userDocRef, {
-                role: 'admin',
-                approved: true
-              });
-            } catch(e) {
-              console.error('Failed to auto-upgrade custom claim admin', e);
+            // Email/password accounts have no displayName/photoURL; the Firestore
+            // rules require displayName to be a non-null string, so fall back to
+            // the local part of the email (or a default) when the provider has none.
+            const fallbackName = authUser.email?.split('@')[0] || 'Member';
+            const resolvedDisplayName = authUser.displayName || fallbackName;
+            const resolvedPhotoURL = authUser.photoURL || '';
+            const initialData = {
+              email: authUser.email,
+              displayName: resolvedDisplayName,
+              photoURL: resolvedPhotoURL,
+              approved: initialApproved,
+              role: initialRole,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            };
+            await setDoc(userDocRef, initialData);
+            
+            if (inviteDoc.exists()) {
+              try {
+                const { deleteDoc } = await import('firebase/firestore');
+                await deleteDoc(inviteRef);
+              } catch (error) {
+                console.warn('Failed to delete invitation:', error);
+              }
             }
-          }
 
-          const currentRole = data.role as string;
-          setIsApproved(data.approved || isAdminClaim);
-          const effective = isAdminClaim ? 'admin' : currentRole;
-          setActualRole(effective);
+            setIsApproved(initialApproved);
+            setActualRole(initialRole);
+            if (!authUser.displayName) {
+              setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
+            }
+          } else {
+            // Document exists, set initial state before listener starts
+            const data = userDoc.data();
 
-          const resolvedDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0] || 'Member';
-          const resolvedPhotoURL = authUser.photoURL || data?.photoURL || '';
-          if (!authUser.displayName || (data?.displayName && authUser.displayName !== data.displayName)) {
-            setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
-          }
-        }
+            if (isAdminClaim && (data.role !== 'admin' || !data.approved)) {
+              try {
+                const { updateDoc } = await import('firebase/firestore');
+                await updateDoc(userDocRef, {
+                  role: 'admin',
+                  approved: true
+                });
+              } catch(e) {
+                console.error('Failed to auto-upgrade custom claim admin', e);
+              }
+            }
 
-        // Listen for real-time changes to the user's record
-        userDocUnsubscribe = onSnapshot(userDocRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
-            setIsApproved(data.approved || isAdminClaim);
             const currentRole = data.role as string;
+            setIsApproved(data.approved || isAdminClaim);
             const effective = isAdminClaim ? 'admin' : currentRole;
             setActualRole(effective);
-            if (data?.displayName) {
-              setUser((prev) => (prev && prev.displayName !== data.displayName ? ({ ...prev, displayName: data.displayName, photoURL: data.photoURL || prev.photoURL } as User) : prev));
+
+            const resolvedDisplayName = authUser.displayName || data?.displayName || authUser.email?.split('@')[0] || 'Member';
+            const resolvedPhotoURL = authUser.photoURL || data?.photoURL || '';
+            if (!authUser.displayName || (data?.displayName && authUser.displayName !== data.displayName)) {
+              setUser((prev) => (prev ? ({ ...prev, displayName: resolvedDisplayName, photoURL: resolvedPhotoURL || prev.photoURL } as User) : prev));
             }
           }
-        });
 
-      } else {
-        setActualRole(null);
-        setIsApproved(false);
-        setImpersonateTargetState(null);
-        setOwnerViewRoleState(null);
-        Impersonation.set(null);
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+          // Listen for real-time changes to the user's record
+          userDocUnsubscribe = onSnapshot(
+            userDocRef,
+            (doc) => {
+              if (doc.exists()) {
+                const data = doc.data();
+                setIsApproved(data.approved || isAdminClaim);
+                const currentRole = data.role as string;
+                const effective = isAdminClaim ? 'admin' : currentRole;
+                setActualRole(effective);
+                if (data?.displayName) {
+                  setUser((prev) => (prev && prev.displayName !== data.displayName ? ({ ...prev, displayName: data.displayName, photoURL: data.photoURL || prev.photoURL } as User) : prev));
+                }
+              }
+            },
+            (error) => {
+              console.warn('Failed to listen to user document changes:', error);
+            }
+          );
+
+        } else {
+          setActualRole(null);
+          setIsApproved(false);
+          setImpersonateTargetState(null);
+          setOwnerViewRoleState(null);
+          Impersonation.set(null);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem(STORAGE_KEY_OWNER_VIEW);
+          }
         }
+      } catch (err) {
+        console.error('Error during authentication initialization:', err);
+      } finally {
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
     return () => {
