@@ -1,0 +1,312 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@600;700;800&family=Lexend:wght@400;500;600&display=swap">
+  <style>
+    body { margin: 0; }
+    a { color: #FAFAFA; } a:hover { color: #A1A1AA; }
+    .tok { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: -0.01em; }
+    .lbl { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; font-weight: 600; color: #71717A; }
+    .sec-h { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; letter-spacing: -0.022em; margin: 0; }
+    .card { background: #161618; border-radius: 24px; padding: 22px 24px; }
+
+    /* one rail item, 44px, rounded-xl → clamps to a pill */
+    .it { display: flex; align-items: center; gap: 12px; margin: 0 8px; height: 44px; padding: 0 12px; border-radius: 32px; font-size: 14px; box-sizing: border-box; }
+    .it + .it { margin-top: 2px; }
+    .it svg { flex: none; }
+    .lb { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .grp { padding: 0 12px 4px; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.025em; line-height: 16px; }
+    .sec { padding: 12px 0; }
+    .head { display: flex; align-items: center; height: 64px; padding: 0 12px; box-sizing: border-box; flex: none; }
+    .mark { width: 36px; height: 36px; border-radius: 32px; display: grid; place-items: center; flex: none; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.03em; }
+    .wm { font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600; }
+    .ws { font-size: 10px; margin-top: -2px; }
+    .bdg { flex: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+    .pill { display: inline-flex; align-items: center; height: 24px; padding: 0 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+    .kv { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; line-height: 1.5; }
+    .kv b { flex: none; width: 62px; color: #71717A; font-weight: 500; font-size: 11.5px; }
+  </style>
+</helmet>
+
+<div style="width: 1620px; background: #0A0A0B; padding: 60px; box-sizing: border-box; font-family: Lexend, ui-sans-serif, system-ui, sans-serif; color: #FAFAFA;">
+
+  <!-- HEADER -->
+  <div style="display: flex; flex-direction: column; gap: 14px; padding-bottom: 34px; border-bottom: 1px solid #2A2A2E;">
+    <span class="tok" style="color: #71717A; text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600;">Ink &middot; dark &middot; four directions for the rail</span>
+    <h1 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 44px; line-height: 1.02; letter-spacing: -0.032em; margin: 0;">Giving the rail back its edge</h1>
+    <p style="font-size: 15px; line-height: 1.55; color: #A1A1AA; margin: 0; max-width: 900px; text-wrap: pretty;">
+      A black slab on a white page is the strongest move a light interface has, and dark cannot borrow it &mdash; the darkest value is already the page. Each direction below finds the separation somewhere else: in <em>elevation</em>, in <em>geometry</em>, in a <em>literal mirror</em>, or by <em>removing the slab</em>. Same seven destinations, same tokens, same 232px.
+    </p>
+  </div>
+
+  <!-- ══ THE FOUR ══ -->
+  <div style="padding-top: 36px;">
+    <div style="display: flex; gap: 22px;">
+
+      <!-- ─────────── A — RAISED ─────────── -->
+      <div style="width: 352px; flex: none;">
+        <div style="display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px;">
+          <span class="pill" style="background: #202023; color: #A1A1AA;">A</span>
+          <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em;">Raised</span>
+        </div>
+        <div style="height: 600px; background: #0A0A0B; border-radius: 20px; overflow: hidden; display: flex; box-sizing: border-box;">
+          <div style="width: 232px; flex: none; background: #202023; border-right: 1px solid #2A2A2E; display: flex; flex-direction: column; box-sizing: border-box;">
+            <div class="head"><div style="display: flex; align-items: center; gap: 8px;"><div class="mark" style="background: #FAFAFA; color: #0A0A0B;">C</div><div style="line-height: 1.2;"><div class="wm" style="color: #FAFAFA;">CISA Campus</div><div class="ws" style="color: #A1A1AA;">Work Tracker</div></div></div></div>
+            <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+              <div class="sec">
+                <div class="grp" style="color: rgba(161,161,170,0.7);">Today</div>
+                <div class="it" style="background: #FAFAFA; color: #0A0A0B; font-weight: 500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg><span class="lb">My Day</span></div>
+                <div class="it" style="background: #2A2A2E; color: #FAFAFA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="lb">Coordination Notes</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lb">Questions</span><span class="bdg" style="background: #35353A; color: #FAFAFA;">3</span></div>
+              </div>
+              <div class="sec">
+                <div class="grp" style="color: rgba(161,161,170,0.7);">People</div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="lb">The Journey</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg><span class="lb">People</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg><span class="lb">Visits</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="lb">Gospel</span></div>
+              </div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to top, #202023, rgba(32,32,35,0));"></div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 0; padding: 18px 16px;">
+            <div style="font-size: 11px; color: #71717A;">Friday, March 14</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.018em; margin-top: 5px;">Good morning.</div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 14px;"><div style="font-size: 10.5px; color: #A1A1AA;">Next up</div><div style="font-size: 12.5px; margin-top: 5px; line-height: 1.4;">Campus dinner &amp; testimony night</div></div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 10px;"><div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; line-height: 1;">14</div><div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px;">contacts in care</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────── B — FLOATING ─────────── -->
+      <div style="width: 352px; flex: none;">
+        <div style="display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px;">
+          <span class="pill" style="background: #FAFAFA; color: #0A0A0B;">B</span>
+          <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em;">Floating</span>
+          <span class="tok" style="color: #71717A;">leading</span>
+        </div>
+        <div style="height: 600px; background: #0A0A0B; border-radius: 20px; overflow: hidden; display: flex; padding: 16px; gap: 16px; box-sizing: border-box;">
+          <div style="width: 232px; flex: none; background: #202023; border-radius: 32px; box-shadow: 0 8px 32px rgba(0,0,0,0.66); display: flex; flex-direction: column; box-sizing: border-box; overflow: hidden;">
+            <div class="head" style="height: 60px;"><div style="display: flex; align-items: center; gap: 8px;"><div class="mark" style="background: #FAFAFA; color: #0A0A0B;">C</div><div style="line-height: 1.2;"><div class="wm" style="color: #FAFAFA;">CISA Campus</div><div class="ws" style="color: #A1A1AA;">Work Tracker</div></div></div></div>
+            <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+              <div class="sec">
+                <div class="grp" style="color: rgba(161,161,170,0.7);">Today</div>
+                <div class="it" style="background: #FAFAFA; color: #0A0A0B; font-weight: 500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg><span class="lb">My Day</span></div>
+                <div class="it" style="background: #2A2A2E; color: #FAFAFA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="lb">Coordination Notes</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lb">Questions</span><span class="bdg" style="background: #35353A; color: #FAFAFA;">3</span></div>
+              </div>
+              <div class="sec">
+                <div class="grp" style="color: rgba(161,161,170,0.7);">People</div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="lb">The Journey</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg><span class="lb">People</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg><span class="lb">Visits</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="lb">Gospel</span></div>
+              </div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to top, #202023, rgba(32,32,35,0));"></div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 0; padding: 4px 0;">
+            <div style="font-size: 11px; color: #71717A;">Friday, March 14</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.018em; margin-top: 5px;">Good morning.</div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 14px;"><div style="font-size: 10.5px; color: #A1A1AA;">Next up</div><div style="font-size: 12.5px; margin-top: 5px; line-height: 1.4;">Campus dinner &amp; testimony night</div></div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 10px;"><div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; line-height: 1;">14</div><div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px;">contacts in care</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────── C — INVERTED ─────────── -->
+      <div style="width: 352px; flex: none;">
+        <div style="display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px;">
+          <span class="pill" style="background: #EDEDEF; color: #0A0A0B;">C</span>
+          <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em;">Inverted</span>
+        </div>
+        <div style="height: 600px; background: #0A0A0B; border-radius: 20px; overflow: hidden; display: flex; box-sizing: border-box;">
+          <div style="width: 232px; flex: none; background: #EDEDEF; display: flex; flex-direction: column; box-sizing: border-box;">
+            <div class="head"><div style="display: flex; align-items: center; gap: 8px;"><div class="mark" style="background: #0A0A0B; color: #FAFAFA;">C</div><div style="line-height: 1.2;"><div class="wm" style="color: #0A0A0B;">CISA Campus</div><div class="ws" style="color: #71717A;">Work Tracker</div></div></div></div>
+            <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+              <div class="sec">
+                <div class="grp" style="color: #A1A1AA;">Today</div>
+                <div class="it" style="background: #0A0A0B; color: #FAFAFA; font-weight: 500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg><span class="lb">My Day</span></div>
+                <div class="it" style="background: #DEDEE1; color: #0A0A0B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="lb">Coordination Notes</span></div>
+                <div class="it" style="color: #52525B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lb">Questions</span><span class="bdg" style="background: #D5D5D9; color: #0A0A0B;">3</span></div>
+              </div>
+              <div class="sec">
+                <div class="grp" style="color: #A1A1AA;">People</div>
+                <div class="it" style="color: #52525B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="lb">The Journey</span></div>
+                <div class="it" style="color: #52525B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg><span class="lb">People</span></div>
+                <div class="it" style="color: #52525B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg><span class="lb">Visits</span></div>
+                <div class="it" style="color: #52525B;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="lb">Gospel</span></div>
+              </div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to top, #EDEDEF, rgba(237,237,239,0));"></div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 0; padding: 18px 16px;">
+            <div style="font-size: 11px; color: #71717A;">Friday, March 14</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.018em; margin-top: 5px;">Good morning.</div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 14px;"><div style="font-size: 10.5px; color: #A1A1AA;">Next up</div><div style="font-size: 12.5px; margin-top: 5px; line-height: 1.4;">Campus dinner &amp; testimony night</div></div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 10px;"><div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; line-height: 1;">14</div><div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px;">contacts in care</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ─────────── D — RULE ─────────── -->
+      <div style="width: 352px; flex: none;">
+        <div style="display: flex; align-items: baseline; gap: 9px; margin-bottom: 12px;">
+          <span class="pill" style="background: transparent; color: #A1A1AA; box-shadow: inset 0 0 0 1px #2A2A2E;">D</span>
+          <span style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.015em;">Rule</span>
+        </div>
+        <div style="height: 600px; background: #0A0A0B; border-radius: 20px; overflow: hidden; display: flex; box-sizing: border-box;">
+          <div style="width: 232px; flex: none; background: #0A0A0B; border-right: 1px solid #2A2A2E; display: flex; flex-direction: column; box-sizing: border-box;">
+            <div class="head"><div style="display: flex; align-items: center; gap: 8px;"><div class="mark" style="background: transparent; color: #FAFAFA; box-shadow: inset 0 0 0 1.5px #3F3F46;">C</div><div style="line-height: 1.2;"><div class="wm" style="color: #FAFAFA;">CISA Campus</div><div class="ws" style="color: #71717A;">Work Tracker</div></div></div></div>
+            <div style="flex: 1; min-height: 0; overflow: hidden; position: relative;">
+              <div class="sec">
+                <div class="grp" style="color: #71717A;">Today</div>
+                <div class="it" style="background: #FAFAFA; color: #0A0A0B; font-weight: 500;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8"/><path d="m4.93 10.93 1.41 1.41"/><path d="M2 18h2"/><path d="M20 18h2"/><path d="m19.07 10.93-1.41 1.41"/><path d="M22 22H2"/><path d="m8 6 4-4 4 4"/><path d="M16 18a4 4 0 0 0-8 0"/></svg><span class="lb">My Day</span></div>
+                <div class="it" style="background: #202023; color: #FAFAFA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg><span class="lb">Coordination Notes</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg><span class="lb">Questions</span><span class="bdg" style="background: #202023; color: #FAFAFA;">3</span></div>
+              </div>
+              <div class="sec">
+                <div class="grp" style="color: #71717A;">People</div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v14"/><path d="M12 3v8"/><path d="M19 3v18"/></svg><span class="lb">The Journey</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 2v2"/><path d="M7 22v-2a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2"/><path d="M8 2v2"/><circle cx="12" cy="11" r="3"/><rect x="3" y="4" width="18" height="18" rx="2"/></svg><span class="lb">People</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/></svg><span class="lb">Visits</span></div>
+                <div class="it" style="color: #A1A1AA;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg><span class="lb">Gospel</span></div>
+              </div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(to top, #0A0A0B, rgba(10,10,11,0));"></div>
+            </div>
+          </div>
+          <div style="flex: 1; min-width: 0; padding: 18px 16px;">
+            <div style="font-size: 11px; color: #71717A;">Friday, March 14</div>
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 17px; letter-spacing: -0.018em; margin-top: 5px;">Good morning.</div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 14px;"><div style="font-size: 10.5px; color: #A1A1AA;">Next up</div><div style="font-size: 12.5px; margin-top: 5px; line-height: 1.4;">Campus dinner &amp; testimony night</div></div>
+            <div style="background: #161618; border-radius: 16px; padding: 14px; margin-top: 10px;"><div style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 24px; line-height: 1;">14</div><div style="font-size: 10.5px; color: #A1A1AA; margin-top: 4px;">contacts in care</div></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══ NOTES ══ -->
+    <div style="display: flex; gap: 22px; margin-top: 20px; align-items: stretch;">
+
+      <div class="card" style="width: 352px; flex: none; display: flex; flex-direction: column; gap: 12px;">
+        <p style="font-size: 13.5px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">The rail steps <em>up</em> instead of down. Page, cards and rail become three real planes &mdash; #0A0A0B, #161618, #202023 &mdash; and the rail is the lightest large surface on screen, so it reads as the thing in front.</p>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 2px;">
+          <div class="kv"><b>fill</b><span class="tok" style="color: #FAFAFA;">--panel-2 &rarr; #202023</span></div>
+          <div class="kv"><b>edge</b><span class="tok" style="color: #FAFAFA;">--border &rarr; #2A2A2E</span></div>
+          <div class="kv"><b>hover</b><span class="tok" style="color: #FAFAFA;">#2A2A2E, finally visible</span></div>
+          <div class="kv"><b>cost</b><span style="color: #51E098;">one class on the aside</span></div>
+        </div>
+        <p style="font-size: 12.5px; line-height: 1.55; color: #71717A; margin: auto 0 0; padding-top: 8px; border-top: 1px solid #232327;"><b style="color: #F2930D; font-weight: 500;">Tradeoff.</b> A smaller step than light's black-on-white, and it makes the rail lighter than the cards &mdash; the reverse of light, where rail and cards share a value.</p>
+      </div>
+
+      <div class="card" style="width: 352px; flex: none; display: flex; flex-direction: column; gap: 12px; background: #1B1B1E; box-shadow: inset 0 0 0 1px #3F3F46;">
+        <p style="font-size: 13.5px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">A raised fill <em>and</em> a gap of page colour all the way around, with the 32px radius and the shadow. Light's slab reads as an object because it is a shape on a field; this is that move, with elevation standing in for value. It is also what the Ink canvas actually drew &mdash; a floating rail that was never built.</p>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 2px;">
+          <div class="kv"><b>fill</b><span class="tok" style="color: #FAFAFA;">--panel-2 &rarr; #202023</span></div>
+          <div class="kv"><b>shape</b><span class="tok" style="color: #FAFAFA;">--radius-xl 32, inset 16</span></div>
+          <div class="kv"><b>lift</b><span class="tok" style="color: #FAFAFA;">0 8px 32px rgba(0,0,0,.66)</span></div>
+          <div class="kv"><b>cost</b><span style="color: #F2930D;">shell change in App.tsx</span></div>
+        </div>
+        <p style="font-size: 12.5px; line-height: 1.55; color: #71717A; margin: auto 0 0; padding-top: 8px; border-top: 1px solid #2A2A2E;"><b style="color: #F2930D; font-weight: 500;">Tradeoff.</b> Costs 32px of content width, and the rail's list already overflows a 900px viewport &mdash; insetting it takes another 32px off the height it has to scroll in.</p>
+      </div>
+
+      <div class="card" style="width: 352px; flex: none; display: flex; flex-direction: column; gap: 12px;">
+        <p style="font-size: 13.5px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">The literal mirror: light puts black on white, so dark puts white on black. It is unambiguously the highest-contrast answer, and it is here so the case against it can be seen rather than argued.</p>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 2px;">
+          <div class="kv"><b>fill</b><span class="tok" style="color: #FAFAFA;">#EDEDEF</span></div>
+          <div class="kv"><b>ink</b><span class="tok" style="color: #FAFAFA;">#0A0A0B on the rail</span></div>
+          <div class="kv"><b>active</b><span class="tok" style="color: #FAFAFA;">inverts back to black</span></div>
+          <div class="kv"><b>cost</b><span style="color: #F2930D;">a rail-only theme block</span></div>
+        </div>
+        <p style="font-size: 12.5px; line-height: 1.55; color: #71717A; margin: auto 0 0; padding-top: 8px; border-top: 1px solid #232327;"><b style="color: #FF7B88; font-weight: 500;">Tradeoff.</b> A 232px column of near-white is roughly a fifth of a 1440 screen held at full brightness &mdash; the thing dark mode exists to avoid. It also needs its own inverted token set, which is the one thing Ink was shaped to not need.</p>
+      </div>
+
+      <div class="card" style="width: 352px; flex: none; display: flex; flex-direction: column; gap: 12px;">
+        <p style="font-size: 13.5px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">Take the slab away. The rail sits at page value with one crisp rule down its edge, and the only fill in the whole column is the selected item. Contrast comes from a hard edge and from type, not from a plane &mdash; and the cards become the only lit objects, so content leads.</p>
+        <div style="display: flex; flex-direction: column; gap: 5px; padding-top: 2px;">
+          <div class="kv"><b>fill</b><span class="tok" style="color: #FAFAFA;">none &mdash; --bg #0A0A0B</span></div>
+          <div class="kv"><b>edge</b><span class="tok" style="color: #FAFAFA;">--border &rarr; #2A2A2E</span></div>
+          <div class="kv"><b>hover</b><span class="tok" style="color: #FAFAFA;">--panel-2 #202023</span></div>
+          <div class="kv"><b>cost</b><span style="color: #51E098;">one class on the aside</span></div>
+        </div>
+        <p style="font-size: 12.5px; line-height: 1.55; color: #71717A; margin: auto 0 0; padding-top: 8px; border-top: 1px solid #232327;"><b style="color: #F2930D; font-weight: 500;">Tradeoff.</b> It answers the opposite of what was asked &mdash; the nav stops being an object. Defensible on its own terms, and it drifts furthest from the light theme, so the two stop being the same design.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ WHERE THE BLACK RAIL LIVES ══ -->
+  <div style="padding-top: 46px;">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px;">
+      <h2 class="sec-h">The black rail is in the design, not in the build</h2>
+    </div>
+
+    <div style="display: flex; gap: 22px; align-items: stretch;">
+
+      <div style="width: 352px; flex: none;">
+        <span class="lbl">Documented &mdash; docs/design/ink</span>
+        <div style="height: 250px; margin-top: 12px; background: #FFFFFF; border-radius: 20px; padding: 14px; display: flex; gap: 14px; box-sizing: border-box;">
+          <div style="width: 116px; flex: none; background: #0A0A0B; border-radius: 22px; box-shadow: 0 8px 32px rgba(10,10,11,0.14); padding: 12px 8px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="height: 18px; width: 18px; border-radius: 7px; background: #FFFFFF; margin-bottom: 6px;"></div>
+            <div style="height: 10px; border-radius: 999px; background: #FFFFFF; width: 78%;"></div>
+            <div style="height: 10px; border-radius: 999px; background: rgba(255,255,255,0.20);"></div>
+            <div style="height: 10px; border-radius: 999px; background: rgba(255,255,255,0.20); width: 86%;"></div>
+            <div style="height: 10px; border-radius: 999px; background: rgba(255,255,255,0.20); width: 72%;"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding-top: 4px;">
+            <div style="height: 13px; width: 55%; border-radius: 5px; background: #EAEAEC;"></div>
+            <div style="height: 54px; border-radius: 12px; background: #F4F4F5;"></div>
+            <div style="flex: 1; display: flex; gap: 8px;"><div style="flex: 1; border-radius: 12px; background: #F4F4F5;"></div><div style="flex: 1; border-radius: 12px; background: #F4F4F5;"></div></div>
+          </div>
+        </div>
+        <p class="tok" style="color: #71717A; margin: 10px 0 0;">#0A0A0B, floating, radius 32</p>
+      </div>
+
+      <div style="width: 352px; flex: none;">
+        <span class="lbl">Shipped &mdash; NavRail.tsx</span>
+        <div style="height: 250px; margin-top: 12px; background: #FFFFFF; border-radius: 20px; display: flex; box-sizing: border-box; overflow: hidden;">
+          <div style="width: 116px; flex: none; background: #F4F4F5; border-right: 1px solid #F0F0F2; padding: 14px 8px; display: flex; flex-direction: column; gap: 6px;">
+            <div style="height: 18px; width: 18px; border-radius: 7px; background: #131316; margin-bottom: 6px;"></div>
+            <div style="height: 10px; border-radius: 999px; background: #131316; width: 78%;"></div>
+            <div style="height: 10px; border-radius: 999px; background: #D4D4D8;"></div>
+            <div style="height: 10px; border-radius: 999px; background: #D4D4D8; width: 86%;"></div>
+            <div style="height: 10px; border-radius: 999px; background: #D4D4D8; width: 72%;"></div>
+          </div>
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 18px 14px;">
+            <div style="height: 13px; width: 55%; border-radius: 5px; background: #EAEAEC;"></div>
+            <div style="height: 54px; border-radius: 12px; background: #F4F4F5;"></div>
+            <div style="flex: 1; display: flex; gap: 8px;"><div style="flex: 1; border-radius: 12px; background: #F4F4F5;"></div><div style="flex: 1; border-radius: 12px; background: #F4F4F5;"></div></div>
+          </div>
+        </div>
+        <p class="tok" style="color: #71717A; margin: 10px 0 0;">bg-surface #F4F4F5, flush</p>
+      </div>
+
+      <div class="card" style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;">
+        <p style="font-size: 14px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">
+          The rail you are picturing is real, but it is on the canvas rather than in the application. <span class="tok" style="color: #FAFAFA;">NavRail.tsx</span> renders <span class="tok" style="color: #FAFAFA;">bg-surface border-r border-outline-variant</span> and always has, across both of its commits &mdash; so in light it is #F4F4F5 on white, and the black slab with its 32px radius and its shadow only ever existed in <span class="tok" style="color: #FAFAFA;">docs/design/ink</span>.
+        </p>
+        <p style="font-size: 14px; line-height: 1.6; color: #A1A1AA; margin: 0; text-wrap: pretty;">
+          Which is worth knowing before choosing, because it changes what these directions are. <b style="color: #FAFAFA; font-weight: 500;">A</b> and <b style="color: #FAFAFA; font-weight: 500;">D</b> are dark-only retunes that leave light exactly as it ships. <b style="color: #FAFAFA; font-weight: 500;">B</b> is the designed rail finally getting built, and it wants to land in <em>both</em> themes &mdash; black slab in light, raised slab in dark &mdash; which is the version where the two themes are the same design and dark stops feeling like the weaker one.
+        </p>
+        <p style="font-size: 13px; line-height: 1.6; color: #71717A; margin: 0; padding-top: 12px; border-top: 1px solid #232327; text-wrap: pretty;">
+          If the answer is &ldquo;dark should feel like light does&rdquo;, B in both themes is the honest fix and the only one here that touches the shell. If it is &ldquo;dark just needs more separation&rdquo;, A is a one-class change and can ship this week.
+        </p>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script data-dc-script data-props='{"$preview":{"width":1620,"height":1800}}'>
+class Component extends DCLogic {}
+</script>
+</body>
+</html>

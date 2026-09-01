@@ -235,13 +235,13 @@
             <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Count badges</span><span style="font-size: 13.5px; color: #52525B;">become a 7px dot &mdash; &ldquo;something here&rdquo; without the number</span></div>
             <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Labels</span><span style="font-size: 13.5px; color: #52525B;">move to a tooltip on hover <em>and focus</em> &mdash; not hover alone, or the rail becomes keyboard-hostile</span></div>
             <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Wordmark</span><span style="font-size: 13.5px; color: #52525B;">drops to the mark alone</span></div>
-            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA;">Account</span><span style="font-size: 13.5px; color: #52525B;">avatar only; name and role move into its menu</span></div>
+            <div style="display: flex; gap: 14px; align-items: baseline;"><span style="width: 130px; flex: none; font-size: 13px; color: #A1A1AA; text-decoration: line-through;">Account</span><span style="font-size: 13.5px; color: #52525B;"><s style="color: #A1A1AA;">avatar only; name and role move into its menu</s> &mdash; <strong style="font-weight: 500;">dropped.</strong> The rail has no account block; the avatar is mounted once by the shell in the chrome strip, for the same reason search and notifications are. The block drawn in the rail above is what was proposed, not what shipped. See <span class="tok">docs/design/DRIFT.md</span> #8.</span></div>
           </div>
         </div>
         <div class="card" style="background: #FFF2D2;">
           <h3 style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: -0.012em; margin: 0 0 10px; color: #BA5900;">The expanded rail does not fit a laptop</h3>
           <p style="font-size: 13.5px; line-height: 1.55; color: #7A3B00; margin: 0;">
-            At 834px it clears a 900px viewport by a hair and overflows a 13&Prime; MacBook, where the browser leaves roughly 790px. The nav list has to scroll <em>inside</em> the rail, with the account block and collapse control pinned below it &mdash; not the page. Collapsed, at 750px, it fits everywhere.
+            At 834px it clears a 900px viewport by a hair and overflows a 13&Prime; MacBook, where the browser leaves roughly 790px. The nav list has to scroll <em>inside</em> the rail, with the Settings link and collapse control pinned below it &mdash; not the page. Collapsed, at 750px, it fits everywhere.
           </p>
         </div>
       </div>
@@ -312,7 +312,7 @@
       </div>
       <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
         <span style="font-size: 13.5px; font-weight: 500;">Short viewports</span>
-        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">The nav list scrolls inside the rail. The mark, the account block and the collapse control stay pinned &mdash; the way out of a state must never be the thing that scrolls off.</span>
+        <span style="font-size: 13.5px; color: #52525B; line-height: 1.5;">The nav list scrolls inside the rail. The mark, the Settings link and the collapse control stay pinned &mdash; the way out of a state must never be the thing that scrolls off.</span>
       </div>
       <div style="display: grid; grid-template-columns: 250px 1fr; gap: 24px; padding: 14px 0; border-top: 1px solid #E4E4E7;">
         <span style="font-size: 13.5px; font-weight: 500;">First paint</span>

@@ -1,0 +1,33 @@
+{
+  "artboards": [
+    { "file": "Directions.dc.html", "x": 0, "y": 0, "w": 1620, "h": 1800, "title": "Four directions" },
+    { "file": "Floating.dc.html", "x": 1740, "y": 0, "w": 1440, "h": 900, "title": "B — Floating, at 1440" },
+    { "file": "Main.dc.html", "x": 1740, "y": 1020, "w": 1440, "h": 900, "title": "Today, at 1440" },
+    { "file": "Rail.dc.html", "x": 3300, "y": 0, "w": 1400, "h": 1320, "title": "The side nav, at size" },
+    { "file": "Findings.dc.html", "x": 0, "y": 1920, "w": 1400, "h": 1620, "title": "What dark surfaces" }
+  ],
+  "annotations": [
+    {
+      "id": "directions-note",
+      "x": 0,
+      "y": -260,
+      "w": 500,
+      "text": "Four ways to give the dark rail the edge the light one has — elevation, geometry, a literal mirror, and removing the slab.\n\nRead the bottom section first if you have time for one thing: the black rail you're picturing is in docs/design/ink, not in NavRail.tsx. It was designed and never built, in either theme."
+    },
+    {
+      "id": "compare-note",
+      "x": 1740,
+      "y": -260,
+      "w": 500,
+      "text": "B at full size, directly above what ships today — same content, same 1440×900, so the two stack for comparison.\n\nIn B the chrome strip loses its fill and its rule: the search field, bell and avatar become raised chips on the page, so the rail is not the only floating object."
+    },
+    {
+      "id": "ref-note",
+      "x": 0,
+      "y": 1700,
+      "w": 500,
+      "text": "Reference from the first pass — the rail at both widths 1:1, and the four things the dark walk turned up.\n\nDirection A fixes the first of those for free: a #202023 rail makes the #2A2A2E hover visible again."
+    }
+  ],
+  "launch": { "view": "focused", "file": "Directions.dc.html" }
+}

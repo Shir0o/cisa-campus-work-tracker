@@ -39,8 +39,8 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 19. As a Trainee, I want the correct shell on first paint, so that the page does not flash the wrong navigation and reflow underneath me.
 20. As a Trainee on a narrow laptop, I want the rail to collapse automatically rather than crushing the content, so that a smaller window is still usable.
 21. As a Trainee, I want an automatic collapse to be temporary, so that resizing a window does not permanently change the preference I chose.
-22. As a Full-timer on a 13-inch laptop, I want the destination list to scroll within the rail, so that a long list does not push the account controls off-screen.
-23. As a Full-timer, I want the account controls and the collapse control to stay pinned, so that the way out of a state is never the thing that scrolls away.
+22. As a Full-timer on a 13-inch laptop, I want the destination list to scroll within the rail, so that a long list does not push the pinned controls off-screen.
+23. As a Full-timer, I want the Settings link and the collapse control to stay pinned, so that the way out of a state is never the thing that scrolls away.
 24. As a Student on a phone, I want navigation to be unchanged, so that a desktop preference has no effect on my device.
 25. As a Full-timer impersonating a colleague, I want the impersonation banner to remain prominent in every shell, so that I never forget whose account I am acting in.
 26. As a Full-timer, I want Global Search reachable from the same keyboard shortcut in every shell, so that muscle memory survives the change.
@@ -57,13 +57,17 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **Effective shell is derived, never stored.** The stored preference and the rendered shell are different values. Width rules produce the second from the first, and only explicit user action writes to storage.
 
-**Width rules.** Below the large breakpoint, all three states fall through to the existing mobile navigation; the preference is neither consulted nor changed. Between the large breakpoint and the point where a 232px rail stops being affordable, the rail renders collapsed regardless of preference — a forced collapse held in component state that must not write back to storage, or a briefly narrow window permanently changes what someone chose. Above that, the stored preference is honoured.
+**Width rules.** Below the large breakpoint (1024px), all three states fall through; the preference is neither consulted nor changed. Between 1024px and 1280px — the point where a 232px rail stops being affordable — the rail renders collapsed regardless of preference: a forced collapse held in component state that must not write back to storage, or a briefly narrow window permanently changes what someone chose. Above 1280px, the stored preference is honoured.
 
-**Grouping is role-filtered data and belongs with the other navigation data.** A grouping function is added alongside the existing per-role navigation helpers, returning ordered groups of destinations for a role. Groups are Today, People, Gatherings and Prayer, with Settings and the account block pinned below a divider.
+**What "falls through" means below 1024px.** Read literally, "falls through to the existing mobile navigation" would put the bottom bar on every viewport under `lg`, which gives 768–1023px both the top bar's hamburger drawer *and* a bottom bar. What it means, and what is implemented: below `lg` the rail is not rendered and the shell falls through to the **top-bar branch**, which already carries its own drawer under `lg`; the bottom bar keeps its own `md` threshold and is unchanged. Only the rail's gates move at `lg`.
+
+**Grouping is role-filtered data and belongs with the other navigation data.** A grouping function is added alongside the existing per-role navigation helpers, returning ordered groups of destinations for a role. Groups are Today, People, Gatherings and Prayer, with Settings pinned below a divider.
 
 **The More menu is retired for both rail states.** The rail shows everything a role can reach, so the more-navigation helper is no longer called by the rail. It remains in use by the top-bar shell, which still needs it. Its existing tests stay meaningful for that path.
 
-**Collapsing changes six things.** Group labels become hairline dividers, so the grouping survives without the words. Items become 44×44 squares at the interactive radius rather than pills, because a pill at that width reads as a circle. Count badges become a dot — "something here" without the number. Labels move to a tooltip on hover *and* focus. The wordmark drops to the mark. The account block reduces to an avatar, with name and role moving into its menu.
+**Collapsing changes five things.** Group labels become hairline dividers, so the grouping survives without the words. Items become 44×44 squares at the interactive radius rather than pills, because a pill at that width reads as a circle. Count badges become a dot — "something here" without the number. Labels move to a tooltip on hover *and* focus. The wordmark drops to the mark.
+
+**The rail does not own an account block.** This was originally specified as a sixth collapsing behaviour — an avatar, name and role pinned at the bottom of the rail, reducing to the avatar alone. It contradicted this document's own reasoning two decisions below: search, notifications and the season indicator are mounted by the shell precisely so they are written once rather than per-shell, and the avatar is the same case. It lives in the chrome strip with them. The rail's pinned footer is the Settings link and the collapse control.
 
 **The two controls have deliberately different reach.** The chevron on the rail moves only between rail and rail-collapsed. Leaving the rail entirely is a Settings decision. A one-click escape from your whole navigation is a trap, not a shortcut.
 
@@ -73,7 +77,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 **The impersonation and owner-view banners need a defined home in each shell.** In the rail states they sit at the top of the content column; in top-bar mode they stay full-bleed beneath the bar. A safety banner whose position depends on a display preference is worth specifying rather than discovering.
 
-**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark, the account block and the collapse control stay pinned.
+**The rail scrolls internally.** At its expanded height the destination list overflows a 13-inch laptop viewport. The list scrolls within the rail while the mark, the Settings link and the collapse control stay pinned.
 
 ## Testing Decisions
 
@@ -106,7 +110,7 @@ The preference is stored per user and is desktop-only. Below the large breakpoin
 
 The three states, both rail widths at full size, the grouping, the Settings control and the width rules are drawn out on a canvas artboard, together with a side-by-side of the top bar and rail on the same destination with identical content. Sources are checked in under `docs/design/ink/` (`NavPref.dc.html` and `Shells.dc.html`); the published canvas is at https://claude.ai/code/artifact/15037373-dc36-41fa-98df-ca1d16678d73.
 
-Two findings from drawing it are worth carrying into implementation. The expanded rail is taller than a 13-inch laptop viewport once a Full-timer's thirteen destinations, four group labels and the pinned account block are counted — internal scrolling is a requirement, not a refinement. And the intermediate-width forced collapse is the sharp edge: it must be component state, never a write.
+Two findings from drawing it are worth carrying into implementation. The expanded rail is taller than a 13-inch laptop viewport once a Full-timer's thirteen destinations, four group labels and the pinned footer are counted — internal scrolling is a requirement, not a refinement. And the intermediate-width forced collapse is the sharp edge: it must be component state, never a write.
 
 This is three navigation states to keep in sync for as long as the product lives. Every destination added later needs a group, an icon that survives at 20px with no label beside it, and a check in all three. That cost was raised and accepted deliberately; it is recorded here so that whoever picks this up knows it was a choice rather than an accident.
 
