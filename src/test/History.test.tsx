@@ -426,6 +426,16 @@ describe('History View', () => {
     });
   });
 
+  it('humanize: "transferred a person" shows handed off', async () => {
+    renderWithActivity({
+      action: 'transferred a person',
+      targetName: 'Mei now cares for Grace.',
+      description: 'From Tony to Mei',
+    });
+    await waitFor(() => {
+      expect(screen.getByText('handed off')).toBeInTheDocument();
+    });
+  });
   it('humanize: "updated" fallback shows updated details for', async () => {
     renderWithActivity({
       action: 'updated phone number',

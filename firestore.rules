@@ -154,14 +154,22 @@ service cloud.firestore {
       // batch and ContactDetailsModal.handleAddInteraction).
       allow update: if isValidId(contactId) && isApprovedUser() && isOperator() &&
                       isValidContact(incoming()) &&
-                      incoming().diff(existing()).affectedKeys().hasOnly([
+                      // Owner transfer / share: only the current owner or an admin
+                      // may rewrite who cares for this contact or who else can see
+                      // it. Mirror of the `asks` rule that gates by
+                      // `existing().owner == request.auth.uid || isAdmin()`.
+                      (incoming().diff(existing()).affectedKeys().hasOnly([
                         'name', 'initials', 'role', 'location', 'metVia', 'email', 'phone', 'stage',
                         'gender', 'tags', 'notes', 'spiritualBackground', 'pronouns', 'year', 'major',
                         'instagram', 'howHeard', 'interests', 'prayerRequest', 'attendance',
                         'lastSeen', 'avatar', 'hasNewActivity', 'reviewed',
                         'lastContactedBy', 'lastContactedById', 'lastContactedDate',
                         'updatedAt', 'updatedBy', 'updatedByName'
-                      ]);
+                      ]) ||
+                       (incoming().diff(existing()).affectedKeys().hasOnly([
+                         'owner', 'coCreators',
+                         'updatedAt', 'updatedBy', 'updatedByName'
+                       ]) && (isAdmin() || existing().get('owner', null) == request.auth.uid)));
       allow delete: if isValidId(contactId) && isManager();
 
       // Interactions
