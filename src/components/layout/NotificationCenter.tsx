@@ -255,7 +255,19 @@ export default function NotificationCenter() {
       if (notif.type === 'assignment') {
         navigate('/coordination');
       } else {
-        navigate(`/messages/${notif.targetId}`);
+        const titleLower = (notif.title || '').toLowerCase();
+        if (titleLower.includes('question') || titleLower.includes('answer')) {
+          navigate('/questions');
+        } else if (
+          titleLower.includes('logged time') ||
+          titleLower.includes('contact') ||
+          titleLower.includes('person') ||
+          titleLower.includes('added')
+        ) {
+          navigate(`/people/${notif.targetId}`);
+        } else {
+          navigate(`/messages/${notif.targetId}`);
+        }
       }
     }
   };

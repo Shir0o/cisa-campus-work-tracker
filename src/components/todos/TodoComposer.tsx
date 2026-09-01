@@ -179,7 +179,8 @@ export default function TodoComposer({
               title: "New to-do",
               message: `${meName.split(" ")[0]} assigned you: ${valText.slice(0, 400)}`,
               type: "assignment",
-              link: "/",
+              link: source?.docId ? "/coordination" : "/",
+              targetId: newId,
             });
           }
         }

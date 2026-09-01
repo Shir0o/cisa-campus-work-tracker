@@ -17,6 +17,7 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `feedback-submission.spec.ts` | Feedback form, kind selector, Send gating, admin triage access, role redirects, FAB presence (#628) |
 | `impersonation-personas.spec.ts` | Owner-only "See as their view" modal, four role-preview chips, nav-scoping on simulate, back-to-my-view reset (#628) |
 | `asks-questions-for-team.spec.ts` | Questions-for-the-team page, staff-only (#603, #645) |
+| `notification-bell-deep-linking.spec.ts` | Notification bell deep-linking, contact modal routing, and chat room URL synchronization (#682) |
 | `outreach-signup.spec.ts` | Outreach view + public sign-up intake form |
 | `people-directory.spec.ts` | Directory access per role |
 | `prayer-carrying.spec.ts` | Prayer wall per role |

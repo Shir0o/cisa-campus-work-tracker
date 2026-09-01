@@ -50,3 +50,8 @@ ever drifts back to equality with `--text`. If you find yourself tempted
 to flatten `--accent` toward `--text` for visual consistency, re-introduce
 headroom instead — the regression test in `src/test/accentToken.test.ts`
 will fail otherwise.
+
+**In-app Notification**:
+An alert delivered to the notification bell in the top navigation bar (and optionally mirrored as an OS push notification) informing a user of assigned to-dos, trainee activity on contacts, answered questions, or chat messages. Clicking a notification deep-links directly to the target item (the contact at `/people/:contactId`, the chat conversation at `/messages/:roomId`, or team questions at `/questions`).
+_Avoid_: Bell popup, system toast, activity blast
+

@@ -393,8 +393,34 @@ describe('NewContactModal', () => {
 
   // ── Modal not rendered when closed ─────────────────────────────────
 
+  it('sends notification linking to /people/:id upon creation', async () => {
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    const { sendNotification } = await import('../lib/firebase');
+    render(<NewContactModal isOpen={true} onClose={onClose} />);
+
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    const firstName = await screen.findByPlaceholderText('First name is plenty');
+    await user.type(firstName, 'Jane');
+
+    const submitBtn = screen.getByRole('button', { name: /Add Contact/i });
+    await user.click(submitBtn);
+
+    await waitFor(() => {
+      expect(sendNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          link: expect.stringMatching(/^\/people\//),
+        })
+      );
+    });
+  });
+
   it('does not render when isOpen is false', () => {
     const { container } = render(<NewContactModal isOpen={false} onClose={vi.fn()} />);
     expect(screen.queryByText('New Contact')).not.toBeInTheDocument();
   });
 });
+

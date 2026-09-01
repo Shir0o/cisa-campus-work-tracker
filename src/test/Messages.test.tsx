@@ -1680,5 +1680,33 @@ describe('Messages View Component', () => {
         });
       }
     });
+
+    it('syncs active room from /messages/:roomId URL parameter and loads messages', async () => {
+      const { Routes, Route } = await import('react-router-dom');
+      render(
+        <MemoryRouter initialEntries={['/messages/room1']}>
+          <Routes>
+            <Route path="/messages/:roomId" element={<Messages />} />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(screen.getAllByText('Trainees Chat').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByPlaceholderText(/Write a message/i)).toBeInTheDocument();
+      });
+    });
+
+    it('navigates to /messages/:roomId when another room is clicked', async () => {
+      render(
+        <MemoryRouter>
+          <Messages />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByText('Trainees Chat').closest('.msgs-item')!);
+      expect(mockNavigate).toHaveBeenCalledWith('/messages/room1');
+    });
   });
 });
+

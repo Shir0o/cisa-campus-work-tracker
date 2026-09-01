@@ -242,6 +242,7 @@ describe('LogInteractionModal Component', () => {
         message: expect.stringContaining('Great time'),
         type: 'info',
         targetId: 'c1',
+        link: '/people/c1',
       });
       expect(logActivity).toHaveBeenCalledWith(
         expect.objectContaining({ action: 'logged an interaction for', type: 'event' }),

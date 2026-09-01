@@ -297,7 +297,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { contactId } = useParams();
-  const isMessagesPage = location.pathname === "/messages";
+  const isMessagesPage = location.pathname.startsWith("/messages");
+  const initialTab = new URLSearchParams(location.search).get("tab") === "thread" ? ("thread" as const) : undefined;
   const { setImpersonateTarget, impersonateTarget, effectiveIdentityKey, user, role } = useAuth();
   const [isNewContactModalOpen, setIsNewContactModalOpen] =
     React.useState(false);
@@ -453,6 +454,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     isOpen
                     onClose={() => openSelectedContact(null)}
                     contact={selectedContact}
+                    initialTab={initialTab}
                   />
                 ) : (
                   <React.Suspense
@@ -491,6 +493,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   isOpen
                   onClose={() => openSelectedContact(null)}
                   contact={selectedContact}
+                  initialTab={initialTab}
                 />
               ) : (
                 <React.Suspense
@@ -772,6 +775,27 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                <Route
+                  path="/messages/:roomId"
+                  element={
+                    <ProtectedRoute>
+                      <DashboardLayout>
+                        <React.Suspense
+                          fallback={
+                            <div className="p-8 space-y-6">
+                              <Skeleton className="h-10 w-64" />
+                              <Skeleton className="h-96 w-full rounded-3xl" />
+                            </div>
+                          }
+                        >
+                          <Messages />
+                        </React.Suspense>
+                      </DashboardLayout>
+                    </ProtectedRoute>
+                  }
+                />
+
 
                 <Route
                   path="/questions"

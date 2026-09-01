@@ -12,6 +12,7 @@ export function buildAssignmentNotificationPayload(params: {
   title: string;
   assignerName?: string | null;
   todoId?: string;
+  sourceDocId?: string | null;
 }) {
   const who = firstName(params.assignerName);
   const truncatedTitle = params.title.length > 300 ? params.title.slice(0, 300) + "…" : params.title;
@@ -20,7 +21,7 @@ export function buildAssignmentNotificationPayload(params: {
     title: "New to-do",
     message: `${who} assigned you: ${truncatedTitle}`,
     type: "assignment" as const,
-    link: "/",
+    link: params.sourceDocId ? "/coordination" : "/",
     targetId: params.todoId,
   };
 }
@@ -30,6 +31,7 @@ export function buildCompletionNotificationPayload(params: {
   title: string;
   completerName?: string | null;
   todoId?: string;
+  sourceDocId?: string | null;
 }) {
   const who = firstName(params.completerName);
   const truncatedTitle = params.title.length > 300 ? params.title.slice(0, 300) + "…" : params.title;
@@ -38,7 +40,7 @@ export function buildCompletionNotificationPayload(params: {
     title: "To-do completed",
     message: `${who} completed: ${truncatedTitle}`,
     type: "success" as const,
-    link: "/",
+    link: params.sourceDocId ? "/coordination" : "/",
     targetId: params.todoId,
   };
 }
@@ -186,6 +188,7 @@ export async function addTodo(input: NewTodo, me: { uid: string; name: string })
           title: input.title,
           assignerName: me.name,
           todoId: newId,
+          sourceDocId: input.source?.docId,
         }),
       );
     }
@@ -205,7 +208,7 @@ export async function updateTodo(
     subtasks?: SubtaskItem[];
     source?: TodoSource | null;
   },
-  context?: { oldAssigneeId?: string | null; title?: string; meName?: string; meUid?: string },
+  context?: { oldAssigneeId?: string | null; title?: string; meName?: string; meUid?: string; sourceDocId?: string | null },
 ): Promise<void> {
   try {
     const clean: Record<string, unknown> = {};
@@ -232,6 +235,7 @@ export async function updateTodo(
           title: patch.title || context?.title || "To-do",
           assignerName: context?.meName,
           todoId: id,
+          sourceDocId: patch.source?.docId ?? context?.sourceDocId,
         }),
       );
     }
@@ -248,7 +252,7 @@ export async function toggleSubtask(id: string, currentSubtasks: SubtaskItem[], 
 export async function setTodoDone(
   id: string,
   done: boolean,
-  context?: { createdById?: string | null; title?: string; completerName?: string; completerUid?: string },
+  context?: { createdById?: string | null; title?: string; completerName?: string; completerUid?: string; sourceDocId?: string | null },
 ): Promise<void> {
   try {
     await updateDoc(doc(db, "tasks", id), { status: done ? "completed" : "pending" });
@@ -263,6 +267,7 @@ export async function setTodoDone(
           title: context.title || "To-do",
           completerName: context.completerName,
           todoId: id,
+          sourceDocId: context.sourceDocId,
         }),
       );
     }

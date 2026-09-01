@@ -286,6 +286,7 @@ describe('src/lib/asks.ts full coverage', () => {
         userId: 't1',
         title: 'Mei answered your question',
         message: expect.stringMatching(/…$/),
+        link: '/questions',
       })
     );
 
