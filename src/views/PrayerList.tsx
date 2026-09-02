@@ -18,6 +18,8 @@ import {
   isContactBrother,
   isContactSister,
   getContactGrade,
+  getContactCaregiver,
+  getContactAddedBy,
   sortPrayerEntries,
   isContactStale,
   getDaysSinceLastInteraction,
@@ -456,6 +458,7 @@ export default function PrayerList() {
           contacts={contacts}
           prayers={teamPrayers}
           entries={filteredEntries}
+          team={team}
           suggestions={suggestions}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -615,6 +618,7 @@ export default function PrayerList() {
                 key={e.contact.id}
                 contact={e.contact}
                 prayers={e.prayers}
+                team={team}
                 autoCompose={composeFor === e.contact.id}
                 onAddBurden={handleAddBurden}
                 onUpdateStatus={handleUpdateStatus}
@@ -667,6 +671,7 @@ export default function PrayerList() {
 function PrayerThread({
   contact,
   prayers,
+  team,
   autoCompose,
   onAddBurden,
   onUpdateStatus,
@@ -679,6 +684,7 @@ function PrayerThread({
 }: {
   contact: Contact;
   prayers: PrayerRecord[];
+  team?: TodoPerson[];
   autoCompose: boolean;
   onAddBurden: (contactId: string, text: string) => Promise<boolean>;
   onUpdateStatus: (prayer: PrayerRecord, status: Status, answer?: string, answeredAt?: string, answeredPhotos?: VisitPhoto[]) => void;
@@ -696,6 +702,9 @@ function PrayerThread({
 
   const isStale = isContactStale(contact);
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
+
+  const caregiver = getContactCaregiver(contact, team);
+  const addedBy = getContactAddedBy(contact, team);
 
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
   const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
@@ -740,7 +749,12 @@ function PrayerThread({
               )}
             </div>
             <div className="text-[13px] text-on-surface-variant mt-0.5 truncate">
-              {[contact.role, getContactGrade(contact)].filter(Boolean).join(' · ') || t('directory.unassigned')}
+              {[
+                contact.role,
+                getContactGrade(contact),
+                caregiver ? t('prayers.cared_for_by_name', `Cared for by ${caregiver}`).replace('{name}', caregiver) : undefined,
+                addedBy ? t('prayers.added_by_name', `Added by ${addedBy}`).replace('{name}', addedBy) : undefined,
+              ].filter(Boolean).join(' · ') || t('directory.unassigned')}
             </div>
           </div>
         </button>

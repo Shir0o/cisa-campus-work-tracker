@@ -599,7 +599,9 @@
     "pill_answered": "contestada",
     "pill_archive": "archivar",
     "day_ago": "hace 1 día",
-    "days_ago": "hace {n} días"
+    "days_ago": "hace {n} días",
+    "cared_for_by_name": "Cuidado por {name}",
+    "added_by_name": "Añadido por {name}"
   },
   "ask": {
     "questions_for_team": "Preguntas para el equipo",

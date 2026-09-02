@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { Archive, Clock, MessageSquare, Plus, Search, X } from 'lucide-react';
 import { cn, getUserInitials } from '../lib/utils';
 import { Contact, PrayerRecord } from '../types';
-import { getContactGrade, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
+import { getContactGrade, getContactCaregiver, getContactAddedBy, isContactStale, getDaysSinceLastInteraction } from '../lib/prayers';
 import { Translate } from '../components/Translate';
 import { useLanguage } from '../components/LanguageProvider';
 import { useLayout } from '../App';
@@ -15,6 +15,7 @@ interface PrayerListMobileProps {
   contacts: Contact[];
   prayers: PrayerRecord[];
   entries: { contact: Contact; prayers: PrayerRecord[] }[];
+  team?: { uid?: string; id?: string; name?: string }[];
   suggestions: Contact[];
   searchQuery: string;
   setSearchQuery: (q: string) => void;
@@ -83,6 +84,7 @@ export default function PrayerListMobile({
   contacts,
   prayers,
   entries,
+  team,
   suggestions,
   searchQuery,
   setSearchQuery,
@@ -202,6 +204,7 @@ export default function PrayerListMobile({
             key={e.contact.id}
             contact={e.contact}
             prayers={e.prayers}
+            team={team}
             autoCompose={composeFor === e.contact.id}
             onAddBurden={onAddBurden}
             onUpdateStatus={onUpdateStatus}
@@ -299,11 +302,13 @@ interface PrayerThreadCardProps {
   setComposeFor: (id: string | null) => void;
   isOperator: boolean;
   onMakeTodo?: (prayer: PrayerRecord) => void;
+  team?: { uid?: string; id?: string; name?: string }[];
 }
 
 function PrayerThreadCard({
   contact,
   prayers,
+  team,
   autoCompose,
   onAddBurden,
   onUpdateStatus,
@@ -321,6 +326,9 @@ function PrayerThreadCard({
 
   const isStale = isContactStale(contact);
   const daysSinceInteraction = getDaysSinceLastInteraction(contact);
+
+  const caregiver = getContactCaregiver(contact, team);
+  const addedBy = getContactAddedBy(contact, team);
 
   const sorted = useMemo(() => [...prayers].sort((a, b) => prayerMs(b) - prayerMs(a)), [prayers]);
   const weekItem = sorted.find((p) => prayerMs(p) >= THIS_WEEK_START && prayerMs(p) < THIS_WEEK_END) || null;
@@ -348,7 +356,12 @@ function PrayerThreadCard({
           <div className="min-w-0 flex-1 prt-person-id">
             <h4 className="font-serif text-lg text-on-surface leading-tight truncate prt-name">{contact.name}</h4>
             <div className="text-xs text-on-surface-variant truncate mt-0.5 prt-meta">
-              {[contact.role, getContactGrade(contact)].filter(Boolean).join(' · ')}
+              {[
+                contact.role,
+                getContactGrade(contact),
+                caregiver ? t('prayers.cared_for_by_name', `Cared for by ${caregiver}`).replace('{name}', caregiver) : undefined,
+                addedBy ? t('prayers.added_by_name', `Added by ${addedBy}`).replace('{name}', addedBy) : undefined,
+              ].filter(Boolean).join(' · ')}
             </div>
             <div className="flex items-center gap-2 mt-2 prt-substatus flex-wrap">
               <span className={cn(

@@ -5,6 +5,8 @@ import {
   isTeamPrayer,
   updatePrayerStatus,
   getContactGrade,
+  getContactCaregiver,
+  getContactAddedBy,
   isContactBrother,
   isContactSister,
   sortPrayerEntries,
@@ -92,6 +94,29 @@ describe('isTeamPrayer', () => {
     expect(isTeamPrayer({})).toBe(true);
     expect(isTeamPrayer({ teamPrayer: true })).toBe(true);
     expect(isTeamPrayer({ teamPrayer: false })).toBe(false);
+  });
+});
+
+describe('getContactCaregiver & getContactAddedBy', () => {
+  const team = [
+    { uid: 'u1', name: 'Mei Tanaka' },
+    { uid: 'u2', name: 'Tony Wang' },
+  ];
+
+  it('resolves caregiver from owner in team', () => {
+    expect(getContactCaregiver({ owner: 'u1' }, team)).toBe('Mei Tanaka');
+  });
+
+  it('resolves caregiver falling back to createdByName or addedBy when owner is missing', () => {
+    expect(getContactCaregiver({ createdByName: 'Tony Wang' }, team)).toBe('Tony Wang');
+    expect(getContactCaregiver({ addedBy: 'u2' }, team)).toBe('Tony Wang');
+    expect(getContactCaregiver({}, team)).toBeUndefined();
+  });
+
+  it('resolves addedBy from createdByName first, then addedBy uid in team', () => {
+    expect(getContactAddedBy({ createdByName: 'Tony Wang' }, team)).toBe('Tony Wang');
+    expect(getContactAddedBy({ addedBy: 'u1' }, team)).toBe('Mei Tanaka');
+    expect(getContactAddedBy({}, team)).toBeUndefined();
   });
 });
 
