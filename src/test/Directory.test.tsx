@@ -158,6 +158,32 @@ describe('Directory', () => {
     expect(screen.queryByText('Bob Smith')).not.toBeInTheDocument();
   });
 
+  it('does not surface a contact\'s location or metVia in the sub-text (#730)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Alice has `location: 'Dorm A'` and the rest have `location: 'Off-campus'`
+    // in the fixture. The card sub-text must not surface either value now
+    // that the field is removed from the UI.
+    expect(screen.queryByText(/Dorm A/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Off-campus/)).not.toBeInTheDocument();
+  });
+
+  it('does not match contacts on `location` text in the search predicate (#730)', async () => {
+    render(<Directory />);
+    await waitFor(() => {
+      expect(screen.getByText('Alice Johnson')).toBeInTheDocument();
+    });
+
+    // Alice's location is "Dorm A" — searching for "Dorm" used to surface her.
+    // That matching is gone with the field.
+    const searchInput = screen.getByPlaceholderText(/Find someone by name/i);
+    fireEvent.change(searchInput, { target: { value: 'Dorm' } });
+
+    expect(screen.queryByText('Alice Johnson')).not.toBeInTheDocument();
+  });
   it('filters contacts by stage dropdown option', async () => {
     render(<Directory />);
 

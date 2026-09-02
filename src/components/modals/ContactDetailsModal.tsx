@@ -4,7 +4,6 @@ import {
   X,
   User,
   Briefcase,
-  MapPin,
   Mail,
   Phone,
   Loader2,
@@ -22,10 +21,9 @@ import {
   Footprints,
   Instagram,
   Check,
-  HeartHandshake,
   Tag,
   ArrowRightLeft,
- } from "lucide-react";
+} from "lucide-react";
 import {
   db,
   handleFirestoreError,
@@ -52,7 +50,7 @@ import {
 } from "firebase/firestore";
 import { cn, formatPhoneNumber, validatePhoneNumber } from "../../lib/utils";
 import { format } from 'date-fns';
-import { Contact, Stage, Interaction, Activity, PrayerRecord, MET_VIA } from "../../types";
+import { Contact, Stage, Interaction, Activity, PrayerRecord } from "../../types";
 import { useAuth } from "../AuthProvider";
 import { canSeeContact, canSeeHistory, hasMinRole } from "../../lib/permissions";
 import { useMediaQuery } from '../../lib/useMediaQuery';
@@ -300,8 +298,6 @@ export default function ContactDetailsModal({
     firstName: "",
     lastName: "",
     role: "",
-    metVia: "",
-    location: "",
     email: "",
     phone: "",
     stage: "",
@@ -310,7 +306,6 @@ export default function ContactDetailsModal({
     notes: "",
     spiritualBackground: "",
   });
-
   const capitalize = (str: string) => {
     return str.charAt(0).toUpperCase() + str.slice(1);
   };
@@ -369,8 +364,6 @@ export default function ContactDetailsModal({
         firstName: first,
         lastName: last,
         role: contact.role || "",
-        metVia: contact.metVia || "",
-        location: contact.location || "",
         email: contact.email || "",
         phone: contact.phone || "",
         stage: contact.stage || "",
@@ -723,10 +716,6 @@ export default function ContactDetailsModal({
         changes.push(`email: "${contact.email}" → "${formData.email}"`);
       if (formData.phone !== contact.phone)
         changes.push(`phone: "${contact.phone}" → "${formData.phone}"`);
-      if (formData.location !== contact.location)
-        changes.push(`address: "${contact.location}" → "${formData.location}"`);
-      if (formData.metVia !== contact.metVia)
-        changes.push(`how we met: "${contact.metVia || ''}" → "${formData.metVia || ''}"`);
       if (formData.role !== contact.role)
         changes.push(`group: "${contact.role}" → "${formData.role}"`);
       if (formData.stage !== contact.stage)
@@ -751,8 +740,6 @@ export default function ContactDetailsModal({
         name: fullName,
         initials: getInitials(formData.firstName, formData.lastName),
         role: formData.role,
-        metVia: formData.metVia,
-        location: formData.location,
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
@@ -765,7 +752,6 @@ export default function ContactDetailsModal({
         updatedByName:
           user?.displayName || user?.email?.split("@")[0] || t('modals.contactDetails.unknown_user'),
       };
-
       await updateDoc(contactRef, updateData);
 
       logActivity({
@@ -810,8 +796,6 @@ export default function ContactDetailsModal({
       const fieldsLog = [
         `Group: ${contact.role}`,
         `Stage: ${contact.stage}`,
-        contact.metVia ? `How we met: ${contact.metVia}` : '',
-        `Address: ${contact.location}`,
         `Email: ${contact.email || "N/A"}`,
         `Phone: ${contact.phone || "N/A"}`,
         `Total Interactions: ${interactionsSnap.size}`,
@@ -1234,7 +1218,7 @@ export default function ContactDetailsModal({
                           ))}
                         </div>
                         <p className="text-xs text-on-surface-variant cdm-meta mt-3">
-                          {[contact.role, contact.metVia, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
+                          {[contact.role, contact.lastContactedBy ? `contacted by ${contact.lastContactedBy}` : null].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                     </div>
@@ -1301,9 +1285,6 @@ export default function ContactDetailsModal({
                       <div className="cd-meta">
                         {[
                           [contact.year, contact.major].filter(Boolean).join(" · ") || null,
-                          contact.metVia && (
-                            <span className="row"><HeartHandshake className="w-3.5 h-3.5" /> {contact.metVia}</span>
-                          ),
                           fmtDate(contact.createdAt) && t('modals.contactDetails.added').replace('{date}', fmtDate(contact.createdAt) || ''),
                         ]
                           .filter(Boolean)
@@ -1503,42 +1484,6 @@ export default function ContactDetailsModal({
                         <option value="F">F</option>
                       </select>
                     </div>
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <HeartHandshake className="w-3.5 h-3.5" /> {t('modals.contactDetails.how_we_met')}
-                      </label>
-                      <select
-                        value={formData.metVia}
-                        onChange={(e) =>
-                          setFormData((f) => ({ ...f, metVia: e.target.value }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm appearance-none cursor-pointer"
-                      >
-                        <option value="">{t('modals.contactDetails.how_we_met_placeholder')}</option>
-                        {MET_VIA.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MapPin className="w-3.5 h-3.5" /> {t('modals.contactDetails.address')}
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={(e) =>
-                          setFormData((f) => ({
-                            ...f,
-                            location: e.target.value,
-                          }))
-                        }
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm"
-                        placeholder={t('modals.contactDetails.address_placeholder')}
-                      />
-                    </div>
-
                     <div className="space-y-1.5">
                       <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
                         <Mail className="w-3.5 h-3.5" /> {t('modals.contactDetails.email_label')}
@@ -2540,12 +2485,6 @@ export default function ContactDetailsModal({
                     <div className="cd-kv-row">
                       <Instagram className="w-3.5 h-3.5 cd-kv-ico" />
                       <span className="cd-kv-val dim">{contact.instagram}</span>
-                    </div>
-                  )}
-                  {contact.location && (
-                    <div className="cd-kv-row">
-                      <MapPin className="w-3.5 h-3.5 cd-kv-ico" />
-                      <span className="cd-kv-val">{contact.location}</span>
                     </div>
                   )}
                   {contact.role && (

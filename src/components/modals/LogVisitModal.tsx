@@ -393,7 +393,6 @@ export default function LogVisitModal({
                           {initialsOf(c.name)}
                         </span>
                         <span className="text-sm text-on-surface">{c.name}</span>
-                        <span className="ml-auto text-xs text-on-surface-variant">{c.location}</span>
                       </button>
                     ))}
                     {canAddNew && (

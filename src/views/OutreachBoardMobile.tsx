@@ -238,8 +238,7 @@ export default function OutreachBoardMobile({
               const days = ms != null ? daysSince(ms) : null;
               const overdue = days != null && days >= 7;
               const note = (touch?.note || c.notes || '').trim();
-              const sub = [c.role, c.location].filter(Boolean).join(' · ');
-
+              const sub = [c.role].filter(Boolean).join(' · ');
               return (
                 <article
                   className="flex items-start gap-3.5 p-4 bg-surface rounded-3xl border border-outline-variant/40 active:bg-surface-variant/30 transition-all jrnm-person  cursor-pointer"

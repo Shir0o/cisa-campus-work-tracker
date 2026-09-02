@@ -316,8 +316,6 @@ export default function Directory() {
           c.name.toLowerCase().includes(lowerQuery) ||
           c.email.toLowerCase().includes(lowerQuery) ||
           c.role.toLowerCase().includes(lowerQuery) ||
-          (c.metVia && c.metVia.toLowerCase().includes(lowerQuery)) ||
-          (c.location && c.location.toLowerCase().includes(lowerQuery)) ||
           (c.spiritualBackground && c.spiritualBackground.toLowerCase().includes(lowerQuery)) ||
           effectiveTags.some(t => normalizeTag(t).toLowerCase().includes(lowerQuery))
         );
@@ -834,7 +832,7 @@ export default function Directory() {
             const days = ms != null ? daysSince(ms) : null;
             const overdue = days != null && days >= 7;
             const note = (touch?.note || contact.notes || '').trim();
-            const sub = [contact.role, contact.metVia].filter(Boolean).join(' · ');
+            const sub = [contact.role].filter(Boolean).join(' · ');
             const tags = getEffectiveContactTags(contact.tags, contact.createdAt);
             const selected = selectedIds.has(contact.id);
 

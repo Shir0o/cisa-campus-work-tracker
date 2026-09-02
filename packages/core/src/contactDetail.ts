@@ -15,20 +15,18 @@ export interface ContactEditFields {
   firstName: string;
   lastName: string;
   role: string;
-  location: string;
   email: string;
   phone: string;
   stage: string;
   tags: string[];
   notes: string;
   spiritualBackground: string;
-  /** How we first met — the fixed "How we met" vocabulary (#356). */
-  metVia?: string;
 }
 
 /** Diffs an edit form against the live contact, producing the audit-log
- * change lines (`handleUpdate`'s change block). Location is the optional
- * address used by Visits; `metVia` ("How we met") is the header-line source. */
+ * change lines (`handleUpdate`'s change block). The "How we met" and address
+ * fields are intentionally not diffed — they were removed from the form
+ * (#730) and the form no longer writes them. */
 export function diffContactFields(before: Contact, after: ContactEditFields): string[] {
   const changes: string[] = [];
   const fullName = `${after.firstName} ${after.lastName}`.trim();
@@ -36,12 +34,6 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (fullName !== before.name) changes.push(`name: "${before.name}" → "${fullName}"`);
   if (after.email !== before.email) changes.push(`email: "${before.email}" → "${after.email}"`);
   if (after.phone !== before.phone) changes.push(`phone: "${before.phone}" → "${after.phone}"`);
-  if (after.location !== before.location) {
-    changes.push(`address: "${before.location}" → "${after.location}"`);
-  }
-  if (after.metVia !== before.metVia) {
-    changes.push(`how we met: "${before.metVia || ""}" → "${after.metVia || ""}"`);
-  }
   if (after.role !== before.role) changes.push(`group: "${before.role}" → "${after.role}"`);
   if (after.stage !== before.stage) changes.push(`stage: "${before.stage}" → "${after.stage}"`);
   if (after.spiritualBackground !== before.spiritualBackground) {
@@ -81,8 +73,6 @@ export function contactDeleteFieldsLog(
   return [
     `Group: ${contact.role}`,
     `Stage: ${contact.stage}`,
-    contact.metVia ? `How we met: ${contact.metVia}` : "",
-    `Address: ${contact.location}`,
     `Email: ${contact.email || "N/A"}`,
     `Phone: ${contact.phone || "N/A"}`,
     `Total Interactions: ${interactionCount}`,

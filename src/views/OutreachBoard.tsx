@@ -1282,7 +1282,7 @@ function InternalKanbanCard({
   const days = ms != null ? daysSince(ms) : null;
   const overdue = days != null && days >= 7;
   const note = (touch?.note || contact.notes || '').trim();
-  const sub = [contact.role, contact.location].filter(Boolean).join(' · ');
+  const sub = [contact.role].filter(Boolean).join(' · ');
   const tags = (contact.tags || []).filter(Boolean);
 
   return (

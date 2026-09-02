@@ -845,7 +845,6 @@ Analyze the input text carefully and extract the following:
           isExisting: true,
           name: existingContact.name,
           role: existingContact.role,
-          location: existingContact.location,
           stage: existingContact.stage,
           notes: parsed.content || ""
         };
@@ -854,7 +853,6 @@ Analyze the input text carefully and extract the following:
         const contactData = {
           name: parsed.contactName,
           role: "Student",
-          location: "",
           email: "",
           phone: "",
           stage: "First Contact",
@@ -927,7 +925,6 @@ Analyze the input text carefully and extract the following:
           isExisting: false,
           name: contactData.name,
           role: contactData.role,
-          location: contactData.location,
           stage: contactData.stage,
           notes: parsed.content || ""
         };
@@ -955,7 +952,6 @@ Analyze the input text carefully and extract the following:
         // Merge fields cleanly if they are empty on the existing contact record
         if (!existingContact.email && parsed.email) updatePayload.email = parsed.email;
         if (!existingContact.phone && parsed.phone) updatePayload.phone = parsed.phone;
-        if (!existingContact.location && parsed.location) updatePayload.location = parsed.location;
         if (!existingContact.spiritualBackground && parsed.spiritualBackground) {
           updatePayload.spiritualBackground = parsed.spiritualBackground;
         }
@@ -1028,14 +1024,13 @@ Analyze the input text carefully and extract the following:
           targetId: existingContact.id
         });
 
-        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", role: existingContact.role, location: existingContact.location, stage: existingContact.stage };
+        return { id: existingContact.id, isExisting: true, name: existingContact.name, notes: parsed.notes || "", role: existingContact.role, stage: existingContact.stage };
       }
 
       // Creating new contact
       const contactData = {
         name: parsed.name,
         role: parsed.role || "Student",
-        location: parsed.location || "",
         email: parsed.email || "",
         phone: parsed.phone || "",
         stage: parsed.stage || "First Contact",
@@ -1051,7 +1046,6 @@ Analyze the input text carefully and extract the following:
         hasNewActivity: true,
         attendance: {}
       };
-
       // Add directly to contacts collection using admin privileges
       const docRef = await getAdminDb().collection("contacts").add(contactData);
 
@@ -1059,7 +1053,6 @@ Analyze the input text carefully and extract the following:
       const fieldsLog = [
         `Group: ${contactData.role}`,
         `Stage: ${contactData.stage}`,
-        `Address: ${contactData.location}`,
         contactData.email ? `Email: ${contactData.email}` : "",
         contactData.phone ? `Phone: ${contactData.phone}` : "",
         contactData.spiritualBackground ? `Spiritual Background: ${contactData.spiritualBackground}` : "",
@@ -1637,7 +1630,6 @@ ${JSON.stringify(contactsList)}`;
           const newContactData = {
             name,
             role: (contact.role || "Student").slice(0, 64),
-            location: "",
             email: (contact.email || "").slice(0, 128),
             phone: (contact.phone || "").slice(0, 32),
             stage: (contact.stage || "lead").slice(0, 64),

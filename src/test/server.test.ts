@@ -1191,7 +1191,8 @@ describe("POST /api/quick-add — merge and subcommand paths", () => {
     const updated = getCollection("contacts")["c-merge"];
     expect(updated.email).toBe("kim@example.com");
     expect(updated.phone).toBe("+1 (555) 010-2222");
-    expect(updated.location).toBe("Library");
+    // #730: the location field is no longer merged on quick-add — it has
+    // been retired from the form, so quick-add shouldn't carry it either.
     expect(updated.spiritualBackground).toBe("Christian family");
     expect(updated.role).toBe("Trainee");
     expect(updated.tags).toEqual(["New"]);

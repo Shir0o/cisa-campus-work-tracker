@@ -122,7 +122,6 @@ export function subscribeTouches(
 export interface NewContactInput {
   name: string;
   role: string;
-  location: string;
   email: string;
   phone: string;
   stage: string;
@@ -130,8 +129,6 @@ export interface NewContactInput {
   notes: string;
   spiritualBackground: string;
   initials: string;
-  /** How we first met — the fixed "How we met" vocabulary (#356). */
-  metVia?: string;
   year?: string;
   major?: string;
   /** Backdates the contact, for the v2 log sheet's "First met" — everything
@@ -139,7 +136,6 @@ export interface NewContactInput {
    * quickCaptureRecents' fallback) reads `createdAt`. Omit for "now". */
   createdAt?: string;
 }
-
 export interface ContactNotifyPayload {
   userId: string;
   title: string;
@@ -239,17 +235,13 @@ export interface ContactUpdateFields {
   name: string;
   initials: string;
   role: string;
-  location: string;
   email: string;
   phone: string;
   stage: string;
   tags: string[];
   notes: string;
   spiritualBackground: string;
-  /** How we first met — the fixed "How we met" vocabulary (#356). */
-  metVia?: string;
 }
-
 /** Save the Contact Detail edit form (mirrors ContactDetailsModal's
  * handleUpdate). Activity logging (the field diff) is left to each platform,
  * so this stays a plain write. */

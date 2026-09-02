@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, User, Briefcase, MapPin, HeartHandshake, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
+import { X, User, Briefcase, Mail, Phone, Loader2, Calendar, Tag, MessageSquare, Sparkles } from 'lucide-react';
 import { db, handleFirestoreError, OperationType, logActivity, sendNotification } from '../../lib/firebase';
 import { isTrainee, fullTimerIds } from '../../lib/walking';
 import { stampPartners } from '../../lib/partners';
@@ -10,7 +10,7 @@ import { useAuth } from '../AuthProvider';
 import { useLanguage } from '../LanguageProvider';
 import { useSeason } from '../../lib/seasons';
 import { UsageStats } from '../../lib/usageStats';
-import { Contact, Stage, MET_VIA } from '../../types';
+import { Contact, Stage } from '../../types';
 import { inferGenderFromName, genderTag } from '../../lib/gender';
 import { normalizeTagList, TAG_SUGGESTIONS, tagStyle } from '../../lib/tags';
 
@@ -31,8 +31,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
     firstName: '',
     lastName: '',
     role: '',
-    metVia: '',
-    location: '',
     email: '',
     phone: '',
     stage: '',
@@ -68,12 +66,19 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
           const stageData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Stage[];
           setStages(stageData);
 
-          const fallback = stageData.length > 0 ? stageData[0].label : 'First Contact';
+          // #730: when stages are configured, default to the first one; when
+          // none are configured, fall back to "Unassigned" (no hardcoded
+          // "First Contact" anymore — that value was a stale historical
+          // default unrelated to the actual stages the full-timer has set up).
+          const fallback = stageData.length > 0 ? stageData[0].label : 'Unassigned';
           const validStages = new Set<string>(['Unassigned', ...stageData.map(s => s.label)]);
           const stage = initialStage && validStages.has(initialStage) ? initialStage : fallback;
           setFormData(f => ({ ...f, stage }));
         } catch (error) {
-          setFormData(f => ({ ...f, stage: initialStage || 'First Contact' }));
+          // Even on a fetch error, never default to "First Contact" — keep
+          // "Unassigned" so the contact lands in the safe bucket and the
+          // user can fix the stage once stages load.
+          setFormData(f => ({ ...f, stage: initialStage || 'Unassigned' }));
           handleFirestoreError(error, OperationType.LIST, 'stages');
         }
       };
@@ -126,8 +131,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       const contactData = {
         name: fullName,
         role: formData.role,
-        metVia: formData.metVia,
-        location: formData.location,
         email: formData.email,
         phone: formData.phone,
         stage: formData.stage,
@@ -156,12 +159,10 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
       stampPartners(contactData, user?.uid);
 
       const docRef = await addDoc(collection(db, 'contacts'), contactData);
-      
+
       const fieldsLog = [
         `Group: ${formData.role}`,
         `Stage: ${formData.stage}`,
-        formData.metVia ? `How we met: ${formData.metVia}` : '',
-        formData.location ? `Address: ${formData.location}` : '',
         formData.email ? `Email: ${formData.email}` : '',
         formData.phone ? `Phone: ${formData.phone}` : '',
         formData.spiritualBackground ? `Spiritual Background: ${formData.spiritualBackground}` : '',
@@ -221,8 +222,6 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
         firstName: '',
         lastName: '',
         role: '',
-        metVia: '',
-        location: '',
         email: '',
         phone: '',
         stage: formData.stage,
@@ -416,34 +415,7 @@ export default function NewContactModal({ isOpen, onClose, initialStage }: NewCo
                       </select>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <HeartHandshake className="w-3.5 h-3.5" /> HOW WE MET
-                      </label>
-                      <select
-                        value={formData.metVia}
-                        onChange={e => setFormData(f => ({ ...f, metVia: e.target.value }))}
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary outline-none transition-all text-sm text-on-surface appearance-none cursor-pointer"
-                      >
-                        <option value="">{t('modals.how_we_met_placeholder')}</option>
-                        {MET_VIA.map((m) => (
-                          <option key={m} value={m}>{m}</option>
-                        ))}
-                      </select>
-                    </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-on-surface-variant flex items-center gap-2 px-1  ">
-                        <MapPin className="w-3.5 h-3.5" /> ADDRESS
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.location}
-                        onChange={e => setFormData(f => ({ ...f, location: e.target.value }))}
-                        className="w-full h-11 px-4 rounded-xl bg-surface-container-high border border-outline focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all text-sm text-on-surface"
-                        placeholder="e.g. Miller Hall, off-campus"
-                      />
-                    </div>
 
                     {/* Email */}
                     <div className="space-y-1.5">

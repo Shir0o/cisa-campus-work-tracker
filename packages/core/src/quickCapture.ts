@@ -212,17 +212,19 @@ export function firstMetDate(preset: FirstMetPreset, now: number = Date.now()): 
 }
 
 /** The contact the sheet's *Someone new* mode creates — the answered three, plus
- * whatever the "Fill in the rest" disclosure was given.
- *
- * SUBSTITUTION: the design stores "where you met" as a tag on the contact and
- * offers a separate "Lives" field. A `Contact` here has ONE dual-purpose
- * `location` that this app's own new-contact form labels "ADDRESS", so "where
- * you met" keeps it (the address a visit would go to) and the design's "Lives"
- * is dropped rather than have the two fight over the same field. `tags` stays
- * the active-season tag every other `addContact` caller sets. */
+ * whatever the "Fill in the rest" disclosure was given. The "where you met"
+ * string is intentionally NOT written to the new contact (#730): the app no
+ * longer has an address / "where you met" field, so this surface stops
+ * carrying it forward. It's still passed in so `logSavedBeat` can name the
+ * spot in the saved-step sub-line. `tags` stays the active-season tag every
+ * other `addContact` caller sets. */
 export function newContactFromLog({
   name,
-  where,
+  // The log sheet still passes `where` ("where you met") so the saved-step
+  // sub-line can name the spot, but the field is no longer written to the
+  // new contact — see #730. Destructure-and-ignore here keeps the caller
+  // shape stable.
+  where: _where,
   note,
   stageLabel,
   tags,
@@ -233,12 +235,12 @@ export function newContactFromLog({
   metISO,
 }: LogSheetNewContact): NewContactInput {
   const trimmed = name.trim();
+
   const input: NewContactInput = {
     name: trimmed,
     // The sheet no longer asks for either of these; both stay on the shape so
     // the contact matches what every other addContact caller writes.
     role: "",
-    location: where.trim(),
     email: (email ?? "").trim(),
     phone: (phone ?? "").trim(),
     stage: stageLabel,
@@ -254,7 +256,6 @@ export function newContactFromLog({
   if (metISO) input.createdAt = metISO;
   return input;
 }
-
 // ── the saved step (the design's `M2LogSheet` mode "saved", Aug 2026) ───────
 // Saving no longer just toasts and closes: the sheet lands on a quiet second
 // beat asking what caring for them wants next. These are its words.

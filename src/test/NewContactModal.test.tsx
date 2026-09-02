@@ -1,7 +1,7 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { addDoc } from 'firebase/firestore';
+import { addDoc, getDocs } from 'firebase/firestore';
 import NewContactModal from '../components/modals/NewContactModal';
 import { useAuth } from '../components/AuthProvider';
 import { applyPartners, partnersTermKey } from '../lib/partners';
@@ -116,6 +116,62 @@ describe('NewContactModal', () => {
     });
   });
 
+  it('lists every configured stage in the "Where they\'re at" select (#730)', async () => {
+    // The mock firestore above returns a single stage labeled "Contacted".
+    // Open the disclosure to reveal the stage select, then assert both
+    // "Unassigned" and "Contacted" are present as options.
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    await waitFor(() => {
+      const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
+      const optionLabels = Array.from(stageSelect.options).map((o) => o.text);
+      expect(optionLabels).toContain('Unassigned');
+      expect(optionLabels).toContain('Contacted');
+    });
+  });
+
+  it('defaults stage to "Unassigned" when the stages collection is empty (#730)', async () => {
+    (getDocs as any).mockResolvedValueOnce({ docs: [] });
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    await waitFor(() => {
+      const stageSelect = screen.getByRole('combobox', { name: 'Stage' }) as HTMLSelectElement;
+      expect(stageSelect.value).toBe('Unassigned');
+      // No hardcoded "First Contact" fallback should appear.
+      const optionLabels = Array.from(stageSelect.options).map((o) => o.text);
+      expect(optionLabels).not.toContain('First Contact');
+    });
+  });
+  it('does not render a "How we met" or "Address" field (#730)', async () => {
+    // The new-contact form used to expose both fields (a fixed "How we met"
+    // select and a freeform ADDRESS input). Both are gone.
+    const user = userEvent.setup();
+    render(<NewContactModal isOpen={true} onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText('New Contact')).toBeInTheDocument();
+    });
+
+    // Open the full-fields disclosure to be sure no hidden field is tucked
+    // behind it.
+    await user.click(screen.getByText(/\+ Add the rest/i));
+
+    expect(screen.queryByText('HOW WE MET')).not.toBeInTheDocument();
+    expect(screen.queryByText('ADDRESS')).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/Miller Hall, off-campus/i)).not.toBeInTheDocument();
+  });
+
   it('allows adding a contact with only first name (2-field light intake)', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();
@@ -152,12 +208,9 @@ describe('NewContactModal', () => {
     const role = await screen.findByPlaceholderText('e.g. Student, Faculty');
     await mockUserAct.type(role, 'Student');
 
-    const location = await screen.findByPlaceholderText('e.g. Miller Hall, off-campus');
-    await mockUserAct.type(location, 'Campus Coffee');
-
     const email = await screen.findByPlaceholderText('alex@campus.edu');
     await mockUserAct.type(email, 'john@example.com');
-    
+
     const notes = await screen.findByPlaceholderText('Add some context about this contact...');
     await mockUserAct.type(notes, 'Nice guy');
 
@@ -172,8 +225,13 @@ describe('NewContactModal', () => {
 
     const contactArg = (addDoc as any).mock.calls.at(-1)?.[1];
     expect(contactArg?.tags).toEqual(expect.arrayContaining(['Summer 2026']));
+    // #730: the form no longer writes `metVia` or `location` to the new
+    // contact doc. They may still be present in the type as undefined (we keep
+    // the field on the schema for backward compat), but the form must not put
+    // a value on them.
+    expect(contactArg?.metVia ?? '').toBe('');
+    expect(contactArg?.location ?? '').toBe('');
   });
-
   it('stamps the adder’s partner as a co-creator when they are paired', async () => {
     const onClose = vi.fn();
     const mockUserAct = userEvent.setup();

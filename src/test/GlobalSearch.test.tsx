@@ -493,10 +493,12 @@ describe('GlobalSearch', () => {
   });
 
   it('ranks query matches by frecency score', () => {
-    // Add multiple contacts with "Hall"
+    // Add multiple contacts whose name contains the search needle — the
+    // #730 removal of `location` from the search predicate means we can't
+    // use address as a common needle anymore.
     h.mockData.contacts = [
-      docOf('c1', { name: 'Alice Wong', location: 'Hall A', updatedAt: '2026-06-10T10:00:00Z' }),
-      docOf('c2', { name: 'Bob Lee', location: 'Hall B', updatedAt: '2026-06-11T10:00:00Z' }),
+      docOf('c1', { name: 'Alice Halle', updatedAt: '2026-06-10T10:00:00Z' }),
+      docOf('c2', { name: 'Bob Halle', updatedAt: '2026-06-11T10:00:00Z' }),
     ];
 
     const uid = 'u1';
@@ -504,15 +506,15 @@ describe('GlobalSearch', () => {
     Frecency.recordOpen(uid, 'c1');
 
     render(<GlobalSearch />);
-    typeDesktop('hall');
+    typeDesktop('halle');
 
     const rows = screen.getAllByRole('button');
     const matchTexts = rows
       .map((r) => r.textContent || '')
-      .filter((t) => t.includes('Alice Wong') || t.includes('Bob Lee'));
+      .filter((t) => t.includes('Alice Halle') || t.includes('Bob Halle'));
 
-    expect(matchTexts[0]).toContain('Alice Wong');
-    expect(matchTexts[1]).toContain('Bob Lee');
+    expect(matchTexts[0]).toContain('Alice Halle');
+    expect(matchTexts[1]).toContain('Bob Halle');
   });
 
   it('records open event when selecting contact in search results', () => {
