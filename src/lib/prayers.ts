@@ -101,6 +101,46 @@ export function getContactGrade(contact: { year?: string; tags?: string[] }): st
 }
 
 /**
+ * Resolves the display name of the team member caring for the contact.
+ * Binds to `owner` primarily, falling back to `createdByName` / `addedBy`
+ * if `owner` is unset.
+ */
+export function getContactCaregiver(
+  contact: { owner?: string | null; createdByName?: string | null; addedBy?: string | null },
+  team?: { uid?: string; id?: string; name?: string }[],
+): string | undefined {
+  if (contact.owner?.trim()) {
+    const found = team?.find((m) => (m.uid || m.id) === contact.owner);
+    if (found?.name?.trim()) return found.name.trim();
+    return contact.owner.trim();
+  }
+  if (contact.createdByName?.trim()) return contact.createdByName.trim();
+  if (contact.addedBy?.trim()) {
+    const found = team?.find((m) => (m.uid || m.id) === contact.addedBy);
+    if (found?.name?.trim()) return found.name.trim();
+    return contact.addedBy.trim();
+  }
+  return undefined;
+}
+
+/**
+ * Resolves the display name of who created / added the contact.
+ * Reads `createdByName` first, then resolves `addedBy` UID against the team roster.
+ */
+export function getContactAddedBy(
+  contact: { createdByName?: string | null; addedBy?: string | null },
+  team?: { uid?: string; id?: string; name?: string }[],
+): string | undefined {
+  if (contact.createdByName?.trim()) return contact.createdByName.trim();
+  if (contact.addedBy?.trim()) {
+    const found = team?.find((m) => (m.uid || m.id) === contact.addedBy);
+    if (found?.name?.trim()) return found.name.trim();
+    return contact.addedBy.trim();
+  }
+  return undefined;
+}
+
+/**
  * Checks if a contact matches Brother/Male filtering based on gender, pronouns, or tags.
  */
 export function isContactBrother(contact: { gender?: string; pronouns?: string; tags?: string[] }): boolean {

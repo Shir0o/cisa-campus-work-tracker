@@ -813,6 +813,63 @@ describe('PrayerList', () => {
     const hidden = JSON.parse(localStorage.getItem('cisa.prayer.hidden') || '[]');
     expect(hidden).toContain('c1');
   });
+
+  it('displays Cared for by and Added by in contact header metadata (issue #716)', async () => {
+    vi.mocked(onSnapshot).mockImplementation((ref: any, callback: any) => {
+      if (ref?.path === 'contacts') {
+        callback({
+          docs: [
+            {
+              id: 'c-meta',
+              data: () => ({
+                name: 'Samuel Green',
+                role: 'Student',
+                year: 'Junior',
+                owner: 'u-mei',
+                createdByName: 'Tony Wang',
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'prayers') {
+        callback({
+          docs: [
+            {
+              id: 'p-meta',
+              data: () => ({
+                contactId: 'c-meta',
+                burden: 'Exam peace',
+                date: new Date().toISOString(),
+                status: 'pending',
+                prayerPage: true,
+              }),
+            },
+          ],
+          size: 1,
+        });
+      } else if (ref?.path === 'users') {
+        callback({
+          docs: [
+            { id: 'u-mei', data: () => ({ displayName: 'Mei Tanaka', approved: true, role: 'admin' }) },
+          ],
+          size: 1,
+        });
+      } else {
+        callback({ docs: [], size: 0 });
+      }
+      return vi.fn();
+    });
+
+    render(<PrayerList />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Samuel Green')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Cared for by Mei Tanaka/)).toBeInTheDocument();
+    expect(screen.getByText(/Added by Tony Wang/)).toBeInTheDocument();
+  });
 });
 
 

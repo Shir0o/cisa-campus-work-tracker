@@ -599,7 +599,9 @@
     "pill_answered": "answered",
     "pill_archive": "archive",
     "day_ago": "1 day ago",
-    "days_ago": "{n} days ago"
+    "days_ago": "{n} days ago",
+    "cared_for_by_name": "Cared for by {name}",
+    "added_by_name": "Added by {name}"
   },
   "ask": {
     "questions_for_team": "Questions for the team",

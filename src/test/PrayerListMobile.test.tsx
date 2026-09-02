@@ -347,4 +347,26 @@ describe('PrayerListMobile', () => {
     expect(screen.queryByTestId('stale-badge')).not.toBeInTheDocument();
     expect(screen.queryByTestId('stale-quick-actions')).not.toBeInTheDocument();
   });
+
+  it('displays Cared for by and Added by in contact header metadata (issue #716)', () => {
+    const contactWithTeam = contact({
+      name: 'Samuel Green',
+      role: 'Student',
+      year: 'Junior',
+      owner: 'u-mei',
+      createdByName: 'Tony Wang',
+    });
+    const team = [
+      { uid: 'u-mei', name: 'Mei Tanaka' },
+    ];
+
+    renderWithRouter({
+      entries: [{ contact: contactWithTeam, prayers: [prayer()] }],
+      team,
+    });
+
+    expect(screen.getByText('Samuel Green')).toBeInTheDocument();
+    expect(screen.getByText(/Cared for by Mei Tanaka/)).toBeInTheDocument();
+    expect(screen.getByText(/Added by Tony Wang/)).toBeInTheDocument();
+  });
 });
