@@ -22,6 +22,7 @@ Firebase Local Emulator Suite — Auth + Firestore, **zero cloud secrets**.
 | `people-directory.spec.ts` | Directory access per role |
 | `prayer-carrying.spec.ts` | Prayer wall per role |
 | `gatherings-attendance.spec.ts` | Gatherings + attendance |
+| `announcements-flow.spec.ts` | Announcements UI/UX rework, broadcast wizard, thread replies, read receipts (#743) |
 
 ## Running
 

@@ -122,18 +122,26 @@ export async function createGroupChat(
 export async function createAnnouncementRoom(
   name: string,
   memberUids: string[],
-  currentUser: { uid: string; displayName: string }
+  currentUser: { uid: string; displayName: string },
+  audiencePreset?: 'everyone' | 'custom',
+  initialPost?: { text: string; attachments?: ChatAttachment[]; pinned?: boolean }
 ): Promise<string> {
   const allMembers = Array.from(new Set([currentUser.uid, ...memberUids]));
 
-  const roomRef = await addDoc(collection(db, 'chatRooms'), {
+  const roomData: Record<string, any> = {
     type: 'announcement',
     name,
     memberIds: allMembers,
     createdById: currentUser.uid,
     createdByName: currentUser.displayName,
     createdAt: serverTimestamp(),
-  });
+  };
+
+  if (audiencePreset) {
+    roomData.audiencePreset = audiencePreset;
+  }
+
+  const roomRef = await addDoc(collection(db, 'chatRooms'), roomData);
 
   // Post system genesis message. senderId must be the acting uid, not the
   // 'system' sentinel createGroupChat uses — the messages create rule checks
@@ -146,6 +154,22 @@ export async function createAnnouncementRoom(
     timestamp: serverTimestamp(),
     type: 'system',
   });
+
+  // If an initial announcement post was written, send it immediately
+  if (initialPost && (initialPost.text.trim() || (initialPost.attachments && initialPost.attachments.length > 0))) {
+    await addDoc(collection(db, 'chatRooms', roomRef.id, 'messages'), {
+      roomId: roomRef.id,
+      text: initialPost.text.trim(),
+      senderId: currentUser.uid,
+      senderName: currentUser.displayName,
+      senderPhoto: '',
+      timestamp: serverTimestamp(),
+      type: 'text',
+      attachments: initialPost.attachments || [],
+      parentId: null,
+      pinned: !!initialPost.pinned,
+    });
+  }
 
   // Notify members added to announcement channel
   for (const memberId of memberUids) {
@@ -178,7 +202,9 @@ export async function sendMessage(
   sender: { uid: string; displayName: string; photoURL?: string },
   attachments?: ChatAttachment[],
   memberIds?: string[],
-  parentId?: string | null
+  parentId?: string | null,
+  roomType?: 'direct' | 'group' | 'announcement',
+  roomName?: string
 ): Promise<void> {
   const messagesRef = collection(db, 'chatRooms', roomId, 'messages');
   
@@ -217,25 +243,105 @@ export async function sendMessage(
 
   // Notify recipient(s) in room
   let recipients = memberIds;
+  let audiencePreset: string | undefined;
   if (!recipients || recipients.length === 0) {
     try {
       const roomDoc = await getDoc(doc(db, 'chatRooms', roomId));
       if (roomDoc.exists()) {
         const data = roomDoc.data();
         recipients = Array.isArray(data?.memberIds) ? data.memberIds : [];
+        audiencePreset = data?.audiencePreset;
       }
     } catch (e) {
       console.error('Error fetching room members for notification:', e);
     }
   }
 
+  // If audience preset is 'everyone', reconcile membership before notifying
+  if (audiencePreset === 'everyone') {
+    try {
+      const usersSnap = await getDocs(query(collection(db, 'users'), where('approved', '==', true)));
+      const activeUids = usersSnap.docs
+        .filter((d) => {
+          const u = d.data();
+          const email = (u.email || '').toLowerCase();
+          const name = (u.displayName || '').toLowerCase();
+          return !email.startsWith('cisa-') && !name.startsWith('cisa-');
+        })
+        .map((d) => d.id);
+      
+      const newUids = activeUids.filter((id) => !recipients!.includes(id));
+      if (newUids.length > 0) {
+        await updateDoc(doc(db, 'chatRooms', roomId), {
+          memberIds: arrayUnion(...newUids),
+        });
+        recipients = Array.from(new Set([...recipients!, ...newUids]));
+      }
+    } catch (e) {
+      console.error('Error reconciling audience preset membership:', e);
+    }
+  }
+
+  const isAnnounce = roomType === 'announcement';
+
+  if (isAnnounce && parentId) {
+    // Thread reply in an announcement room: notify post author & thread participants only
+    const threadRecipients = new Set<string>();
+    try {
+      // Find thread participants
+      const threadRepliesSnap = await getDocs(
+        query(collection(db, 'chatRooms', roomId, 'messages'), where('parentId', '==', parentId))
+      );
+      threadRepliesSnap.docs.forEach((d) => {
+        const data = d.data();
+        if (data.senderId) threadRecipients.add(data.senderId);
+      });
+
+      // Find author of parent message
+      const parentSnap = await getDoc(doc(db, 'chatRooms', roomId, 'messages', parentId));
+      if (parentSnap.exists()) {
+        const parentData = parentSnap.data();
+        if (parentData?.senderId) threadRecipients.add(parentData.senderId);
+      }
+    } catch (e) {
+      console.error('Error fetching thread participants for notification:', e);
+    }
+
+    for (const memberId of threadRecipients) {
+      if (memberId === sender.uid) continue;
+      const title = roomName || 'Announcement';
+      const body = `${sender.displayName}: ${previewText}`;
+      void sendNotification({
+        userId: memberId,
+        title,
+        message: body,
+        type: 'info',
+        targetId: roomId,
+        link: `/messages/${roomId}`,
+      });
+      void sendPushNotification({
+        userId: memberId,
+        title,
+        body,
+        data: { targetId: roomId, link: `/messages/${roomId}` },
+      });
+    }
+    return;
+  }
+
   if (recipients && Array.isArray(recipients)) {
     for (const memberId of recipients) {
       if (memberId === sender.uid) continue;
+
+      const title = isAnnounce ? (roomName || 'Announcement') : 'New message';
+      const notificationBody = isAnnounce
+        ? `${sender.displayName} posted an announcement: ${previewText}`
+        : `${sender.displayName}: ${previewText}`;
+
       void sendNotification({
         userId: memberId,
-        title: 'New message',
-        message: `${sender.displayName}: ${previewText}`,
+        title,
+        message: notificationBody,
         type: 'info',
         targetId: roomId,
         link: `/messages/${roomId}`,
@@ -244,11 +350,45 @@ export async function sendMessage(
       // recipient's phone (#270).
       void sendPushNotification({
         userId: memberId,
-        title: 'New message',
-        body: `${sender.displayName}: ${previewText}`,
+        title,
+        body: notificationBody,
         data: { targetId: roomId, link: `/messages/${roomId}` },
       });
     }
+  }
+}
+
+/**
+ * Toggle an acknowledgement ("Got it") on an announcement post.
+ * firestore.rules only lets a room member update their own entry.
+ */
+export async function acknowledgeAnnouncement(
+  roomId: string,
+  messageId: string,
+  uid: string,
+  current: string[] = []
+): Promise<void> {
+  const has = current.includes(uid);
+  const acknowledged = has ? current.filter((id) => id !== uid) : [...current, uid];
+  await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), { acknowledged });
+}
+
+/**
+ * Record a passive read receipt for an announcement post.
+ * Fired debounced/non-blocking when post enters view; errors are swallowed.
+ */
+export async function markAnnouncementRead(
+  roomId: string,
+  messageId: string,
+  uid: string
+): Promise<void> {
+  try {
+    await updateDoc(doc(db, 'chatRooms', roomId, 'messages', messageId), {
+      readBy: arrayUnion(uid),
+    });
+  } catch (err) {
+    // A lost read receipt is not worth interrupting the reader
+    console.debug('Failed to record announcement read receipt:', err);
   }
 }
 

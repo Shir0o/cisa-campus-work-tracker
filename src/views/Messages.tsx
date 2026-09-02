@@ -31,7 +31,8 @@ import {
   Check,
   X,
   Pin,
-  Bell
+  Bell,
+  Eye
 } from 'lucide-react';
 import { cn, getUserInitials, relTime, firstName } from '../lib/utils';
 import { db } from '../lib/firebase';
@@ -41,7 +42,16 @@ import { prefetchTranslations } from '../lib/translator';
 import { useMediaQuery } from '../lib/useMediaQuery';
 import { useLayout } from '../App';
 import { ChatRoom, ChatMessage, ChatAttachment, Contact } from '../types';
-import { sendMessage, reactToMessage, togglePinMessage, removeMessageForEveryone, deleteChatRoom, canRemoveConvForEveryone } from '../services/chat';
+import {
+  sendMessage,
+  reactToMessage,
+  togglePinMessage,
+  removeMessageForEveryone,
+  deleteChatRoom,
+  canRemoveConvForEveryone,
+  acknowledgeAnnouncement,
+  markAnnouncementRead
+} from '../services/chat';
 import { setTodoDone } from '../lib/todos';
 import type { TodoPerson } from '../lib/todos';
 import FromEntryTodoComposer from '../components/todos/FromEntryTodoComposer';
@@ -109,6 +119,7 @@ export default function Messages() {
   const [createChatOpen, setCreateChatOpen] = useState(false);
   const [chatDetailsOpen, setChatDetailsOpen] = useState(false);
   const [attachDataOpen, setAttachDataOpen] = useState(false);
+  const [readReceiptMsg, setReadReceiptMsg] = useState<ChatMessage | null>(null);
 
   // Messaging state
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
@@ -276,6 +287,16 @@ export default function Messages() {
 
       // Mark as read in LocalStorage
       localStorage.setItem(`chat_read_${activeRoomId}`, Date.now().toString());
+
+      // If announcement room, mark unread announcement posts as read by current user
+      const currentRoom = rooms.find(r => r.id === activeRoomId);
+      if (currentRoom?.type === 'announcement' && effectiveUid) {
+        roomMsgs.forEach((m) => {
+          if (m.type !== 'system' && !m.deleted && !m.readBy?.includes(effectiveUid)) {
+            void markAnnouncementRead(activeRoomId, m.id, effectiveUid);
+          }
+        });
+      }
 
       // Scroll messages stream container to bottom without jumping page
       setTimeout(() => {
@@ -629,8 +650,13 @@ export default function Messages() {
             <div className="msgs-people-empty">Loading conversations…</div>
           ) : filteredRooms.length === 0 ? (
             <div className="msgs-people-empty">Nothing here yet.</div>
-          ) : (
-            filteredRooms.map((room) => {
+          ) : (() => {
+            const isAll = filter === 'all';
+            const annRooms = filteredRooms.filter(r => r.type === 'announcement');
+            const convRooms = filteredRooms.filter(r => r.type !== 'announcement');
+            const shouldSection = isAll && annRooms.length > 0 && convRooms.length > 0;
+
+            const renderRoomItem = (room: ChatRoom) => {
               const isActive = room.id === activeRoomId;
               const name = getRoomName(room);
               const photo = getRoomPhoto(room);
@@ -640,6 +666,33 @@ export default function Messages() {
               const menuOpen = convMenuFor === room.id;
               const canAllConv = canRemoveConvForEveryone(room, effectiveUid, isAdmin);
 
+              if (room.type === 'announcement') {
+                return (
+                  <div
+                    key={room.id}
+                    className={cn("anrow", isActive && "active", unread && "unread")}
+                    onClick={() => handleSelectRoom(room.id)}
+                  >
+                    <div className="anrow-top">
+                      <span className="cluster">
+                        <Bell className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="anrow-name">{name}</span>
+                      {last?.timestamp?.seconds && (
+                        <span className="anrow-time">{relTime(new Date(last.timestamp.seconds * 1000).toISOString())}</span>
+                      )}
+                    </div>
+                    <div className="anrow-body">
+                      {last ? (last.senderName === 'System' ? last.text : last.text) : t('common.no_messages', 'No messages yet')}
+                    </div>
+                    <div className="anrow-meta">
+                      {unread && <span className="dot-warn" />}
+                      <span>{unread ? 'New' : 'Read'}{last ? ` · from ${firstName(last.senderName)}` : ''}</span>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div
                   key={room.id}
@@ -647,8 +700,8 @@ export default function Messages() {
                   onClick={() => handleSelectRoom(room.id)}
                 >
                   {isGroupish ? (
-                    <span className={cn("msgs-cluster", room.type === 'announcement' && "broadcast")}>
-                      {room.type === 'announcement' ? <Bell className="w-4 h-4" /> : <Users className="w-4 h-4" />}
+                    <span className="msgs-cluster">
+                      <Users className="w-4 h-4" />
                     </span>
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center border border-outline-variant/30 text-sm shrink-0">
@@ -768,8 +821,28 @@ export default function Messages() {
                   </div>
                 </div>
               );
-            })
-          )}
+            };
+
+            if (shouldSection) {
+              return (
+                <>
+                  <div className="sech">
+                    <span>{t('modals.announcements_heading', 'Announcements')}</span>
+                    <span className="n">{annRooms.length}</span>
+                    <span className="rule" />
+                  </div>
+                  {annRooms.map(renderRoomItem)}
+                  <div className="sech">
+                    <span>{t('common.conversations', 'Conversations')}</span>
+                    <span className="rule" />
+                  </div>
+                  {convRooms.map(renderRoomItem)}
+                </>
+              );
+            }
+
+            return filteredRooms.map(renderRoomItem);
+          })()}
           {hiddenConvs.length > 0 && (
             <div className="msgs-hidden-note msgs-hidden-convs">
               <span>
@@ -903,7 +976,152 @@ export default function Messages() {
                     );
                   }
 
-                  return (
+                  return activeRoom?.type === 'announcement' ? (
+                    <div key={msg.id} id={`msgb-${msg.id}`} className={cn("post", !gone && !msg.readBy?.includes(effectiveUid || '') && "fresh", msg.pinned && "pinned")}>
+                      {msg.pinned && (
+                        <div className="post-strip">
+                          <Pin className="w-3 h-3 shrink-0" />
+                          <span>Pinned</span>
+                        </div>
+                      )}
+                      <div className="post-head">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-xs shrink-0 border border-outline-variant/20">
+                          {msg.senderPhoto ? (
+                            <img src={msg.senderPhoto} alt={msg.senderName} className="w-full h-full object-cover rounded-full" />
+                          ) : (
+                            getUserInitials(msg.senderName)
+                          )}
+                        </div>
+                        <span className="post-who">{msg.senderName}</span>
+                        <span className="rolechip">{t('modals.full_timer_badge', 'Full-timer')}</span>
+                        <span className="post-when">
+                          {msg.timestamp?.seconds ? relTime(new Date(msg.timestamp.seconds * 1000).toISOString()) : ''}
+                        </span>
+                      </div>
+
+                      <div className="post-body">
+                        {gone ? (
+                          <div className="msgb-gone">{messageGoneLabel(msg, effectiveUid)}</div>
+                        ) : (
+                          <MessageBody text={msg.text} memberFirstNames={memberFirstNames} />
+                        )}
+                      </div>
+
+                      {/* Attachments inside announcement post */}
+                      {!gone && msg.attachments && msg.attachments.length > 0 && (
+                        <div className="px-4 pb-3 space-y-1.5">
+                          {msg.attachments.map((attach, idx) => {
+                            if (attach.type === 'contact') {
+                              return (
+                                <div key={idx} className="my-1">
+                                  <ContactPill
+                                    contactId={attach.id}
+                                    fallbackName={attach.name}
+                                    fallbackSubtitle={attach.subtitle}
+                                    onOpenContact={(contact) => setSelectedContact(contact)}
+                                  />
+                                </div>
+                              );
+                            }
+
+                            const AttachIcon = getAttachmentIcon(attach.type);
+                            const isTodo = attach.type === 'todo';
+                            const isTodoChecked = attach.status === 'completed';
+
+                            return (
+                              <div
+                                key={idx}
+                                onClick={() => !isTodo && handleAttachmentClick(attach)}
+                                className="attach cursor-pointer hover:bg-surface-container-high transition-colors"
+                              >
+                                {isTodo ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={isTodoChecked}
+                                    onChange={(e) => handleToggleTodo(attach, e.target.checked)}
+                                    className="w-4 h-4 rounded text-accent border-outline accent-primary cursor-pointer shrink-0"
+                                  />
+                                ) : (
+                                  <AttachIcon className="w-3.5 h-3.5 shrink-0" />
+                                )}
+                                <span className={cn("font-medium text-xs", isTodo && isTodoChecked && "line-through opacity-70")}>
+                                  {attach.name}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {!gone && (
+                        <div className="post-foot">
+                          {/* Got it acknowledgement */}
+                          <button
+                            type="button"
+                            className={cn("ack", msg.acknowledged?.includes(effectiveUid || '') && "done")}
+                            onClick={() => {
+                              if (effectiveUid && activeRoomId) {
+                                void acknowledgeAnnouncement(
+                                  activeRoomId,
+                                  msg.id,
+                                  effectiveUid,
+                                  msg.acknowledged || []
+                                );
+                              }
+                            }}
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            {msg.acknowledged?.includes(effectiveUid || '')
+                              ? t('modals.you_said_got_it', 'You said got it')
+                              : t('modals.got_it', 'Got it')}
+                          </button>
+
+                          {/* Quick Reactions */}
+                          {QUICK_REACTS.slice(0, 4).map((e) => (
+                            <button
+                              key={e}
+                              type="button"
+                              className={cn("react", mineReacted(e) && "on")}
+                              onClick={() => effectiveUid && reactToMessage(activeRoomId!, msg.id, effectiveUid, e, msg.reactions || [])}
+                            >
+                              <span>{e}</span>
+                              {tally[e] ? <span className="n">{tally[e]}</span> : null}
+                            </button>
+                          ))}
+
+                          {/* Reply in thread */}
+                          <button
+                            type="button"
+                            className="react ml-1 font-medium"
+                            onClick={() => setThreadOf(msg.id)}
+                          >
+                            <MessageSquare className="w-3 h-3 inline mr-1" />
+                            {convReplyCount(messages, msg.id) > 0
+                              ? (convReplyCount(messages, msg.id) === 1
+                                  ? t('modals.one_reply', '1 reply')
+                                  : t('modals.replies_count', '{n} replies').replace('{n}', String(convReplyCount(messages, msg.id))))
+                              : t('modals.reply_in_thread', 'Reply in thread')}
+                          </button>
+
+                          {/* Read receipts */}
+                          <div
+                            className={cn("readcount", msg.acknowledged?.includes(effectiveUid || '') && "done")}
+                            onClick={() => {
+                              if (isAdmin) setReadReceiptMsg(msg);
+                            }}
+                            title={isAdmin ? "View read receipts" : undefined}
+                          >
+                            <Eye className="w-3.5 h-3.5 inline mr-1" />
+                            <span>
+                              {t('modals.read_by_n', 'Read by {read} of {total}')
+                                .replace('{read}', String(msg.readBy?.length || 0))
+                                .replace('{total}', String(activeRoom?.memberIds?.length || 0))}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
                     <div key={msg.id} id={`msgb-${msg.id}`} className={cn("msgb", isMe && "mine")}>
                       {!isMe && (
                         <div className="w-7 h-7 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/20">
@@ -1116,95 +1334,94 @@ export default function Messages() {
               )}
             </div>
 
-            {/* Composer / readonly announcement bar */}
+            {/* Composer / readonly announcement guidance bar */}
             {canPostToActiveRoom ? (
-              <div className="msgs-composer">
-                {mentionSearch !== null && (
-                  <div className="msgs-mention-pop">
-                    {roomMembers
-                      .filter((m) => m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
-                      .map((m, idx) => (
-                        <div
-                          key={m.uid}
-                          className={cn("msgs-mention-row", idx === mentionIndex && "bg-surface-container-high")}
-                          onClick={() => handleSelectMention(m.displayName)}
-                        >
-                          <User className="w-3.5 h-3.5 shrink-0 text-on-surface-variant" />
-                          {m.displayName}
-                        </div>
-                      ))}
+              <div>
+                {activeRoom?.type === 'announcement' && (
+                  <div className="postbar">
+                    <Bell className="w-3.5 h-3.5 shrink-0" />
+                    <span>
+                      {t('modals.composer_audience_note', 'Posting to everyone on Campus — {n} people')
+                        .replace('{n}', String(activeRoom.memberIds?.length || 0))}
+                    </span>
                   </div>
                 )}
-
-                {attachments.length > 0 && (
-                  <div className="flex flex-wrap gap-2 py-2">
-                    {attachments.map((attach, idx) => {
-                      const AttachIcon = getAttachmentIcon(attach.type);
-                      return (
-                        <div
-                          key={idx}
-                          className="py-1.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant/60 text-xs font-semibold flex items-center gap-2"
-                        >
-                          <AttachIcon className="w-3.5 h-3.5 shrink-0" />
-                          <span className="max-w-[120px] truncate">{attach.name}</span>
-                          <button
-                            onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
-                            className="p-0.5 rounded-full hover:bg-surface-container-high cursor-pointer text-on-surface-variant"
+                <div className="msgs-composer">
+                  {mentionSearch !== null && (
+                    <div className="msgs-mention-pop">
+                      {roomMembers
+                        .filter((m) => m.displayName.toLowerCase().includes(mentionSearch.toLowerCase()))
+                        .map((m, idx) => (
+                          <div
+                            key={m.uid}
+                            className={cn("msgs-mention-row", idx === mentionIndex && "bg-surface-container-high")}
+                            onClick={() => handleSelectMention(m.displayName)}
                           >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
+                            <User className="w-3.5 h-3.5 shrink-0 text-on-surface-variant" />
+                            {m.displayName}
+                          </div>
+                        ))}
+                    </div>
+                  )}
 
-                <div className="msgs-composer-row">
-                  <button
-                    type="button"
-                    onClick={() => setAttachDataOpen(true)}
-                    className="icon-btn"
-                    title="Attach reference data"
-                  >
-                    <Paperclip className="w-4 h-4" />
-                  </button>
-                  <textarea
-                    placeholder="Write a message… (@ to mention)"
-                    value={inputText}
-                    onChange={handleInputChange}
-                    onKeyDown={handleKeyPress}
-                    rows={1}
-                    className="msgs-ta li-input"
-                  />
-                  <button
-                    type="button"
-                    disabled={!inputText.trim() && attachments.length === 0}
-                    className="msgs-send"
-                    title="Send"
-                    onClick={handleSend}
-                  >
-                    <Send className="w-4 h-4" />
-                  </button>
+                  {attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 py-2">
+                      {attachments.map((attach, idx) => {
+                        const AttachIcon = getAttachmentIcon(attach.type);
+                        return (
+                          <div
+                            key={idx}
+                            className="py-1.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant border border-outline-variant/60 text-xs font-semibold flex items-center gap-2"
+                          >
+                            <AttachIcon className="w-3.5 h-3.5 shrink-0" />
+                            <span className="max-w-[120px] truncate">{attach.name}</span>
+                            <button
+                              onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                              className="p-0.5 rounded-full hover:bg-surface-container-high cursor-pointer text-on-surface-variant"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <div className="msgs-composer-row">
+                    <button
+                      type="button"
+                      onClick={() => setAttachDataOpen(true)}
+                      className="icon-btn"
+                      title="Attach reference data"
+                    >
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                    <textarea
+                      placeholder={activeRoom?.type === 'announcement' ? "Write an announcement…" : "Write a message… (@ to mention)"}
+                      value={inputText}
+                      onChange={handleInputChange}
+                      onKeyDown={handleKeyPress}
+                      rows={1}
+                      className="msgs-ta li-input"
+                    />
+                    <button
+                      type="button"
+                      disabled={!inputText.trim() && attachments.length === 0}
+                      className="msgs-send"
+                      title="Send"
+                      onClick={handleSend}
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="msgs-readonly">
-                <span>This one's an announcement — replies go to the team directly.</span>
-                <span className="msgs-readonly-reacts">
-                  {QUICK_REACTS.slice(0, 4).map((e) => {
-                    const last = messages[messages.length - 1];
-                    return (
-                      <button
-                        key={e}
-                        onClick={() => {
-                          if (effectiveUid && last && !last.deleted) {
-                            reactToMessage(activeRoomId!, last.id, effectiveUid, e, last.reactions || []);
-                          }
-                        }}
-                      >{e}</button>
-                    );
-                  })}
-                </span>
+              <div className="foot">
+                <div className="foot-note">
+                  <Bell className="w-3.5 h-3.5 shrink-0" />
+                  <span>{t('modals.guidance_announcement_bar', 'Only Full-timers post here. Anyone can reply in a thread.')}</span>
+                </div>
               </div>
             )}
           </>
@@ -1243,7 +1460,7 @@ export default function Messages() {
               );
             }}
             roomMembers={roomMembers}
-            canPost={canPostToActiveRoom}
+            canPost={activeRoom.type === 'announcement' ? activeRoom.memberIds.includes(effectiveUid || '') : canPostToActiveRoom}
           />
         );
       })()}
@@ -1280,6 +1497,83 @@ export default function Messages() {
           meName={currentUser?.displayName || 'Someone'}
           onClose={() => setTodoFor(null)}
         />
+      )}
+
+      {/* Read Receipts Modal */}
+      {readReceiptMsg && activeRoom && (
+        <div className="modal-backdrop" onClick={() => setReadReceiptMsg(null)}>
+          <div className="pop" onClick={(e) => e.stopPropagation()}>
+            <div className="pophead">
+              <span className="poptitle">Read receipts</span>
+              <span className="popn">
+                {readReceiptMsg.readBy?.length || 0} / {activeRoom.memberIds?.length || 0} read
+              </span>
+            </div>
+
+            {/* Read by section */}
+            <div className="popsec">Read</div>
+            {(() => {
+              const readUids = readReceiptMsg.readBy || [];
+              if (readUids.length === 0) {
+                return <div className="text-xs text-on-surface-variant px-3 py-1">No one yet</div>;
+              }
+              return readUids.map((uid) => {
+                const u = usersCache[uid];
+                const displayName = u?.displayName || (uid === effectiveUid ? 'You' : 'Member');
+                return (
+                  <div key={uid} className="poprow">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/30">
+                      {u?.photoURL ? (
+                        <img src={u.photoURL} alt={displayName} className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        getUserInitials(displayName)
+                      )}
+                    </div>
+                    <span className="truncate flex-1 font-medium">{displayName}</span>
+                    {readReceiptMsg.acknowledged?.includes(uid) && (
+                      <span className="text-[11px] text-accent flex items-center gap-1 font-medium shrink-0">
+                        <Check className="w-3 h-3" />
+                        Got it
+                      </span>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+
+            {/* Not yet read section */}
+            <div className="popsec">Not yet</div>
+            {(() => {
+              const readUids = new Set(readReceiptMsg.readBy || []);
+              const unreadUids = (activeRoom.memberIds || []).filter(uid => !readUids.has(uid));
+              if (unreadUids.length === 0) {
+                return <div className="text-xs text-on-surface-variant px-3 py-1">Everyone has read this</div>;
+              }
+              return unreadUids.map((uid) => {
+                const u = usersCache[uid];
+                const displayName = u?.displayName || (uid === effectiveUid ? 'You' : 'Member');
+                return (
+                  <div key={uid} className="poprow">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 text-accent font-semibold flex items-center justify-center text-[10px] shrink-0 border border-outline-variant/30">
+                      {u?.photoURL ? (
+                        <img src={u.photoURL} alt={displayName} className="w-full h-full object-cover rounded-full" />
+                      ) : (
+                        getUserInitials(displayName)
+                      )}
+                    </div>
+                    <span className="truncate flex-1 text-on-surface-variant">{displayName}</span>
+                  </div>
+                );
+              });
+            })()}
+
+            <div className="popfoot">
+              <button type="button" className="action-btn-secondary" onClick={() => setReadReceiptMsg(null)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

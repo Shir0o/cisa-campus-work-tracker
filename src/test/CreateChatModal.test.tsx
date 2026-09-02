@@ -186,27 +186,51 @@ describe('CreateChatModal Component', () => {
     expect(screen.getByRole('button', { name: /Announcement/i })).toBeInTheDocument();
   });
 
-  it('creates an announcement room, and says who can post in it', async () => {
+  it('runs the 3-step Announcement wizard (preset -> compose -> review -> send) (#743)', async () => {
     asFullTimer();
     setupOnSnapshot(mockUsers);
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
 
+    // Switch to Announcement tab
     fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
-    expect(screen.getByText(/only Full-timers can post/i)).toBeInTheDocument();
+    expect(screen.getByText(/Only Full-timers can open one/i)).toBeInTheDocument();
 
-    fireEvent.change(screen.getByPlaceholderText(/Weekly notes/i), {
-      target: { value: 'Weekly notes' },
-    });
-    fireEvent.click(screen.getByText('Alice Green'));
-    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
+    // Step 1: Channel name and Audience presets
+    const nameInput = screen.getByPlaceholderText(/Campus updates|Weekly notes/i);
+    fireEvent.change(nameInput, { target: { value: 'Campus updates' } });
+
+    // By default "Everyone in the app" is chosen (or click it)
+    expect(screen.getByText(/Everyone in the app/i)).toBeInTheDocument();
+
+    // Click Next -> goes to Step 2
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+
+    // Step 2: Compose first post
+    expect(screen.getByText(/This goes to/i)).toBeInTheDocument();
+    const postArea = screen.getByPlaceholderText(/Write your announcement/i);
+    fireEvent.change(postArea, { target: { value: 'Welcome to the semester!' } });
+
+    // Click Review -> goes to Step 3
+    fireEvent.click(screen.getByRole('button', { name: /Review/i }));
+
+    // Step 3: Review summary card
+    expect(screen.getByText(/What lands on their phone/i)).toBeInTheDocument();
+    expect(screen.getByText(/Welcome to the semester!/i)).toBeInTheDocument();
+
+    // Click Send
+    const sendBtn = screen.getByRole('button', { name: /Send to/i });
+    fireEvent.click(sendBtn);
 
     await waitFor(() => {
-      expect(chatService.createAnnouncementRoom).toHaveBeenCalledWith('Weekly notes', ['u2'], {
-        uid: 'u1',
-        displayName: 'Current User',
-      });
-      expect(chatService.createGroupChat).not.toHaveBeenCalled();
+      expect(chatService.createAnnouncementRoom).toHaveBeenCalledWith(
+        'Campus updates',
+        ['u2', 'u3'],
+        { uid: 'u1', displayName: 'Current User' },
+        'everyone',
+        { text: 'Welcome to the semester!', attachments: [], pinned: false }
+      );
       expect(mockOnSelectRoom).toHaveBeenCalledWith('announcement-room-id');
+      expect(mockOnClose).toHaveBeenCalled();
     });
   });
 
@@ -319,8 +343,9 @@ describe('CreateChatModal Component', () => {
     fireEvent.change(screen.getByPlaceholderText(/Weekly notes/i), {
       target: { value: 'Weekly notes' },
     });
-    fireEvent.click(screen.getByText('Alice Green'));
-    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Next/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Review/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Send to/i }));
 
     await waitFor(() => {
       expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to create announcement room:', expect.any(Error));
@@ -329,7 +354,7 @@ describe('CreateChatModal Component', () => {
     consoleErrorSpy.mockRestore();
   });
 
-  it('switching tabs clears the selection and search', async () => {
+  it('switching tabs resets the announcement step and search', async () => {
     setupOnSnapshot(mockUsers);
     asFullTimer();
     render(<CreateChatModal isOpen={true} onClose={mockOnClose} onSelectRoom={mockOnSelectRoom} />);
@@ -339,11 +364,9 @@ describe('CreateChatModal Component', () => {
     });
     fireEvent.click(screen.getByText('Alice Green'));
 
-    // Move to the announcement tab — the picked person and search reset.
+    // Move to the announcement tab — step is 1, channel name input is shown.
     fireEvent.click(screen.getByRole('button', { name: /^Announcement$/i }));
-    expect((screen.getByPlaceholderText(/Find someone by name/i) as HTMLInputElement).value).toBe('');
-    fireEvent.click(screen.getByRole('button', { name: /Send announcement/i }));
-    expect(chatService.createAnnouncementRoom).not.toHaveBeenCalled();
+    expect(screen.getByPlaceholderText(/Weekly notes/i)).toBeInTheDocument();
 
     // And back to Message — still empty.
     fireEvent.click(screen.getByRole('button', { name: /^Message$/i }));

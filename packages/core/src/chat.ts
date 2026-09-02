@@ -28,14 +28,21 @@ export function isAnnouncement(room: ChatRoom): boolean {
 
 /** Client-side mirror of the firestore.rules gate on
  * chatRooms/{id}/messages create: in an announcement room only a Full-timer
- * may post. Everywhere else, membership is the rule (admins read every room,
+ * may post at the top level, but any room member may reply in a thread (#743).
+ * Everywhere else, membership is the rule (admins read every room,
  * so `isAdmin` covers posting into one they aren't a member of). */
 export function canPostToRoom(
   room: ChatRoom,
   currentUid: string | null | undefined,
   isAdmin: boolean,
+  parentId?: string | null,
 ): boolean {
-  if (isAnnouncement(room)) return isAdmin;
+  if (isAnnouncement(room)) {
+    if (parentId) {
+      return isAdmin || (!!currentUid && room.memberIds.includes(currentUid));
+    }
+    return isAdmin;
+  }
   return isAdmin || (!!currentUid && room.memberIds.includes(currentUid));
 }
 

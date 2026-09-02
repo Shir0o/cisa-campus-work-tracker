@@ -297,6 +297,8 @@ export interface ChatRoom {
     senderName: string;
     timestamp: unknown;
   };
+  /** Audience preset stored for announcement rooms (#743). */
+  audiencePreset?: 'everyone' | 'custom';
   /** Uids who hid this conversation from their own list ("delete for me").
    *  The room stays intact for everyone else; `sendMessage` clears the array
    *  so a new message brings the conversation back (WhatsApp-style). */
@@ -354,6 +356,10 @@ export interface ChatMessage {
   deleted?: { by: string; at: unknown };
   /** Slack-shaped thread parentId: null = top-level; set = reply (#563). */
   parentId?: string | null;
+  /** Passive read receipts: uids who have had this announcement post appear on screen (#743). */
+  readBy?: string[];
+  /** Active acknowledgement: uids who deliberately tapped "Got it" (#743). */
+  acknowledged?: string[];
 }
 
 export interface ImpersonateTarget {
