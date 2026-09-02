@@ -222,8 +222,8 @@ export default function NavRail(_props: NavRailProps = {}) {
                 aria-current={pathname === '/signup' ? 'page' : undefined}
                 data-tooltip={collapsed ? SIGNUP_TITLE : undefined}
                 className={cn(
-                  'group relative flex items-center gap-3 rounded-xl transition-colors',
-                  collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
+                  'group relative flex items-center gap-3 rounded-[14px] transition-colors',
+                  collapsed ? 'mx-auto h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
                   pathname === '/signup'
                     ? 'bg-primary text-on-primary font-medium'
                     : 'text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
@@ -328,7 +328,7 @@ function RailItem({ item, collapsed, currentPath, role, unread = 0 }: RailItemPr
         // pill and a 44×44 collapsed item to a circle. The nav spec asks for
         // a square at this width. See docs/design/DRIFT.md #4.
         'group relative flex items-center gap-3 rounded-[14px] transition-colors',
-        collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
+        collapsed ? 'mx-auto h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
         isActive
           ? 'bg-rail-selected text-rail-on-selected font-medium'
           : 'text-rail-on-dim hover:bg-rail-hover hover:text-rail-on',
@@ -387,7 +387,7 @@ function RailExternalItem({ link, collapsed }: { link: ExternalNavItem; collapse
       data-tooltip={collapsed ? link.label : undefined}
       className={cn(
         'group relative flex items-center gap-3 rounded-[14px] transition-colors text-rail-on-dim hover:bg-rail-hover hover:text-rail-on',
-        collapsed ? 'mx-2 h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
+        collapsed ? 'mx-auto h-11 w-11 justify-center' : 'mx-2 h-11 px-3',
       )}
     >
       <CalendarDays className="w-[18px] h-[18px] shrink-0" />

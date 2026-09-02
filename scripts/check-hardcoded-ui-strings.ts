@@ -68,7 +68,11 @@ function run(): void {
   ensureBaseRef(base, branch);
   const changedFiles = getChangedFiles(base);
   const targetFiles = changedFiles.filter(
-    (f) => (f.startsWith('src/') || f.startsWith('apps/mobile/src/')) && /\.tsx?$/.test(f),
+    (f) =>
+      (f.startsWith('src/') || f.startsWith('apps/mobile/src/')) &&
+      /\.tsx?$/.test(f) &&
+      !/\.(test|spec)\.tsx?$/.test(f) &&
+      !/\/test\//.test(f),
   );
 
   if (targetFiles.length === 0) {

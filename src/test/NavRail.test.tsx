@@ -431,6 +431,27 @@ describe('NavRail (#664)', () => {
     expect(within(signupLink).getByText('Sign-up form')).toHaveClass('sr-only');
   });
 
+  // ── Icon alignment when collapsed (Issue #728) ───────────────────────────
+  it('centers destination items, external links, and the sign-up link when collapsed', () => {
+    localStorage.setItem('campus-hub-nav-shell', 'rail-collapsed');
+    renderRail({ role: 'admin' });
+
+    // Destination item link
+    const myDayLink = screen.getByRole('link', { name: /^My Day/i });
+    expect(myDayLink).toHaveClass('mx-auto');
+    expect(myDayLink).not.toHaveClass('mx-2');
+
+    // External link
+    const extLink = screen.getByRole('link', { name: /Shared Calendar/i });
+    expect(extLink).toHaveClass('mx-auto');
+    expect(extLink).not.toHaveClass('mx-2');
+
+    // Sign-up form link
+    const signupLink = screen.getByRole('link', { name: /Sign-up form/i });
+    expect(signupLink).toHaveClass('mx-auto');
+    expect(signupLink).not.toHaveClass('mx-2');
+  });
+
   // The impersonation eye moved to NavChromeStrip; the rail's chrome lives
   // in the spec's "strip above the content" and is tested separately.
 });

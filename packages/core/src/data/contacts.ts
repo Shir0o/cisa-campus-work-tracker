@@ -241,6 +241,7 @@ export interface ContactUpdateFields {
   tags: string[];
   notes: string;
   spiritualBackground: string;
+  instagram?: string;
 }
 /** Save the Contact Detail edit form (mirrors ContactDetailsModal's
  * handleUpdate). Activity logging (the field diff) is left to each platform,

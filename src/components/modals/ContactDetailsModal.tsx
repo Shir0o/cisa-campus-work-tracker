@@ -1186,12 +1186,12 @@ export default function ContactDetailsModal({
                       <ChevronRight className="w-4.5 h-4.5 rotate-180 cdm-back-ico text-on-surface-variant" />
                       <span>{t('modals.contactDetails.people')}</span>
                     </button>
-                    {isAdmin && (
+                    {role !== 'viewer' && (
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant"
+                        className="px-3.5 py-1.5 rounded-full border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-variant transition-colors"
                       >
-                        Edit
+                        {t('actions.edit') || 'Edit'}
                       </button>
                     )}
                   </div>

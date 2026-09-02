@@ -21,12 +21,14 @@ export interface ContactEditFields {
   tags: string[];
   notes: string;
   spiritualBackground: string;
+  instagram?: string;
 }
 
 /** Diffs an edit form against the live contact, producing the audit-log
  * change lines (`handleUpdate`'s change block). The "How we met" and address
  * fields are intentionally not diffed — they were removed from the form
- * (#730) and the form no longer writes them. */
+ * (#730) and the form no longer writes them. Instagram is diffed: it is part
+ * of the unified mobile/PWA edit flow (#633). */
 export function diffContactFields(before: Contact, after: ContactEditFields): string[] {
   const changes: string[] = [];
   const fullName = `${after.firstName} ${after.lastName}`.trim();
@@ -34,6 +36,9 @@ export function diffContactFields(before: Contact, after: ContactEditFields): st
   if (fullName !== before.name) changes.push(`name: "${before.name}" → "${fullName}"`);
   if (after.email !== before.email) changes.push(`email: "${before.email}" → "${after.email}"`);
   if (after.phone !== before.phone) changes.push(`phone: "${before.phone}" → "${after.phone}"`);
+  if (after.instagram !== before.instagram) {
+    changes.push(`instagram: "${before.instagram || ""}" → "${after.instagram || ""}"`);
+  }
   if (after.role !== before.role) changes.push(`group: "${before.role}" → "${after.role}"`);
   if (after.stage !== before.stage) changes.push(`stage: "${before.stage}" → "${after.stage}"`);
   if (after.spiritualBackground !== before.spiritualBackground) {
